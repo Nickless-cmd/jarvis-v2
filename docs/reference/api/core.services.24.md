@@ -2,6 +2,57 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_engine.py`
+_Skill Engine — SKILL.md loader for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Skill` | `` | A loaded skill from disk. | [src](../../../core/services/skill_engine.py#L48) |
+| function | `_parse_skill_md` | `(path)` | Parse a SKILL.md file and return a Skill dataclass. | [src](../../../core/services/skill_engine.py#L71) |
+| function | `_find_skill_md` | `(mappe)` | — | [src](../../../core/services/skill_engine.py#L174) |
+| function | `_scan_skills` | `()` | Scan SKILLS_ROOT for all skills (mappe med SKILL.md). | [src](../../../core/services/skill_engine.py#L182) |
+| function | `reload_skills` | `()` | Force-reload all skills from disk. Returns summary. | [src](../../../core/services/skill_engine.py#L253) |
+| function | `get_skill` | `(name)` | Get a single skill by name. Lazy-loads if not cached. | [src](../../../core/services/skill_engine.py#L272) |
+| function | `list_skills` | `(tag=…)` | List all skills, optionally filtered by tag. | [src](../../../core/services/skill_engine.py#L287) |
+| function | `skill_exists` | `(name)` | Check if a skill exists on disk. | [src](../../../core/services/skill_engine.py#L313) |
+| function | `_collect_registered_tool_names` | `()` | Return the set of registered tool names (normalized form). | [src](../../../core/services/skill_engine.py#L318) |
+| function | `_skill_quality_nudges` | `(name, description, instructions, use_when=…, tags=…)` | Return non-blocking quality nudges for installable skill proposals. | [src](../../../core/services/skill_engine.py#L350) |
+| function | `validate_skill_proposal` | `(name, description, instructions, use_when=…, tags=…)` | Validate that a proposed skill would be installable by create_skill(). | [src](../../../core/services/skill_engine.py#L421) |
+| function | `create_skill` | `(name, description, instructions, use_when=…, tags=…, readonly=…)` | Create a new skill directory with SKILL.md on disk. | [src](../../../core/services/skill_engine.py#L502) |
+| function | `delete_skill` | `(name, *, force=…)` | Delete a skill directory from disk. | [src](../../../core/services/skill_engine.py#L582) |
+| function | `_indholds_hash` | `(skill)` | Fingeraftryk af det en skill FAKTISK siger til modellen. | [src](../../../core/services/skill_engine.py#L613) |
+| function | `_noter_hvis_indhold_aendret` | `(skill)` | Har denne skills tekst ændret sig siden sidst vi læste den? | [src](../../../core/services/skill_engine.py#L629) |
+| function | `get_skill_instructions` | `(name)` | Get the full instructions + context for a skill (for prompt injection). | [src](../../../core/services/skill_engine.py#L686) |
+| function | `search_skills` | `(query)` | Simple keyword search across skill names, descriptions, and instructions. | [src](../../../core/services/skill_engine.py#L734) |
+| function | `build_skill_engine_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_engine.py#L757) |
+| function | `_ensure_audit_table` | `()` | Idempotent: ensure skill_audit_log table exists. | [src](../../../core/services/skill_engine.py#L786) |
+| function | `_build_skill_snapshot` | `(name)` | Build a portable snapshot dict for a skill. | [src](../../../core/services/skill_engine.py#L814) |
+| function | `_record_audit_entry` | `(skill_name, action, *, diff_summary=…, reason=…, snapshot=…)` | Record a skill mutation in the audit log. Never raises. | [src](../../../core/services/skill_engine.py#L833) |
+| function | `get_skill_history` | `(name, limit=…)` | Return audit trail for a single skill, newest first. | [src](../../../core/services/skill_engine.py#L877) |
+| function | `list_recent_skill_changes` | `(limit=…)` | Return most recent skill mutations across all skills. | [src](../../../core/services/skill_engine.py#L914) |
+| function | `update_skill` | `(name, *, description=…, instructions=…, use_when=…, tags=…, reason=…)` | Update an existing skill's metadata and/or instructions. Logs audit. | [src](../../../core/services/skill_engine.py#L940) |
+| function | `_emit_skill_engine_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_engine.py#L1032) |
+| function | `record_skill_usage` | `(skill_name, *, source=…, success=…, query=…, context_tags=…, score=…)` | Record that a skill was used. Never raises. | [src](../../../core/services/skill_engine.py#L1048) |
+| function | `analyze_skill_usage` | `(days=…, min_invocations=…)` | Analyze skill usage patterns and generate improvement proposals. | [src](../../../core/services/skill_engine.py#L1094) |
+| function | `get_skill_usage_stats` | `(name=…, days=…, limit=…)` | Return raw usage stats for a skill (or all skills if name is None). | [src](../../../core/services/skill_engine.py#L1224) |
+
+## `core/services/skill_relevance_surface.py`
+_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L77) |
+| function | `matchede_skills` | `(user_message)` | Navnene paa de skills der matcher denne besked. Tom liste hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L107) |
+| function | `_navnet_staar_i` | `(skill_navn, besked)` | Staar skillets eget navn i beskeden? | [src](../../../core/services/skill_relevance_surface.py#L132) |
+| function | `_naevner_mekanismen` | `(besked)` | Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak. | [src](../../../core/services/skill_relevance_surface.py#L150) |
+| function | `skill_flade_event` | `(user_message)` | Det runtimen lagde i prompten, som et event klienterne kan vise. | [src](../../../core/services/skill_relevance_surface.py#L156) |
+| function | `sidst_foreslaaede` | `()` | Hvilke skills blev foreslaaet i den seneste prompt-bygning. | [src](../../../core/services/skill_relevance_surface.py#L202) |
+| function | `_er_selvstartet_tur` | `()` | Startede maskinen sig selv, uden nogen opgave fra ham? | [src](../../../core/services/skill_relevance_surface.py#L224) |
+| function | `_er_autonom_tur` | `()` | Koerer vi en autonom tur lige nu? | [src](../../../core/services/skill_relevance_surface.py#L245) |
+| function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L278) |
+| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L301) |
+| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L397) |
+
 ## `core/services/skill_scanner.py`
 _Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
 
@@ -621,37 +672,4 @@ _Temporal-recurrence signal tracking — migrated onto signal_tracking_framework
 | function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L291) |
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L296) |
 | function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L301) |
-
-## `core/services/temporal_rhythm.py`
-_Temporal Rhythm — felt time, not computed time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/temporal_rhythm.py#L46) |
-| function | `_gem` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L65) |
-| function | `_pending_initiatives_count` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L74) |
-| function | `_recent_tool_calls_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L82) |
-| function | `_recent_chat_activity_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L92) |
-| function | `_eventbus_queue_depth` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L112) |
-| function | `_compute_pulse_rate` | `(*, initiatives, tool_rate, chat_rate, queue)` | Combine inputs into pulse in [0.1, 2.0]. | [src](../../../core/services/temporal_rhythm.py#L133) |
-| function | `_label_from_pulse` | `(pulse)` | — | [src](../../../core/services/temporal_rhythm.py#L150) |
-| function | `_perceived_elapsed_factor` | `(pulse)` | When pulse is high, subjective time moves slower relative to clock. | [src](../../../core/services/temporal_rhythm.py#L160) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/temporal_rhythm.py#L168) |
-| function | `reset_temporal_rhythm` | `()` | Nulstil rytmen. Rydder OGSAA disken — ellers ville naeste `_synk()` | [src](../../../core/services/temporal_rhythm.py#L215) |
-| function | `get_current_rhythm` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L224) |
-| function | `build_temporal_rhythm_surface` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L229) |
-| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L255) |
-| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L263) |
-
-## `core/services/temporal_self_continuity.py`
-_Temporal self-continuity: past/current/future self handoff._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_temporal_continuity_from_latest_episode` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L16) |
-| function | `update_temporal_continuity_from_episode` | `(episode)` | — | [src](../../../core/services/temporal_self_continuity.py#L23) |
-| function | `build_temporal_self_continuity_surface` | `(*, limit=…)` | — | [src](../../../core/services/temporal_self_continuity.py#L51) |
-| function | `build_temporal_self_continuity_prompt_section` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L66) |
-| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/temporal_self_continuity.py#L79) |
-| function | `_load` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L89) |
 

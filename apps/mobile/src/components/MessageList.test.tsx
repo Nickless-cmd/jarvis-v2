@@ -367,3 +367,79 @@ it('uden topInset er der stadig luft — men kun den faste margin', async () => 
   const flad = Array.isArray(stil) ? Object.assign({}, ...stil.filter(Boolean)) : stil
   expect(flad.paddingBottom).toBe(12)
 })
+
+/** Alle testID'er og accessibility-labels i render-rækkefølge — samme hjælper
+ *  som `MessageBubble.test.tsx` bruger til at måle hvad der står over hvad. */
+const raekkefoelge = (node: unknown, ud: string[] = []): string[] => {
+  if (Array.isArray(node)) {
+    node.forEach((n) => raekkefoelge(n, ud))
+    return ud
+  }
+  if (!node || typeof node !== 'object') return ud
+  const n = node as { props?: Record<string, unknown>; children?: unknown }
+  const p = n.props ?? {}
+  if (typeof p.testID === 'string') ud.push(p.testID)
+  if (typeof p.accessibilityLabel === 'string') ud.push(p.accessibilityLabel)
+  raekkefoelge(n.children, ud)
+  return ud
+}
+
+/**
+ * Tænkelinjen skal ligge UNDER værktøjs-linjen (Bjørn 29/9-2026: «i desk lægger
+ * vi tænkelinjen ind under tool result linjen.. det bør vi osse gøre her»).
+ *
+ * I desk er tænke-linjen ikke en søskende OVER linjen — den er et ELEMENT i
+ * rundens detaljer, under rundens knap (`RaekkeTranskript.tsx:275`). Rækkerne
+ * bygges i `groupToolRounds`, og listen er INVERTERET (`ordered = [...rows]
+ * .reverse()`), så render-rækkefølgen er bund-til-top: den række der står SIDST
+ * er den ØVERSTE på skærmen. Værktøjs-linjen skal derfor stå efter tænke-linjen.
+ */
+it('tænkelinjen ligger UNDER værktøjs-linjen — som i desk', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg planen', seconds: 3 },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'fil.txt', status: 'ok' },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  const orden = raekkefoelge(s.toJSON())
+  const linje = orden.indexOf('tool-group')
+  const tanke = orden.indexOf('thinking-summary')
+  expect(linje).toBeGreaterThan(-1)
+  expect(tanke).toBeGreaterThan(-1)
+  expect(linje).toBeGreaterThan(tanke)
+})
+
+it('en tanke UDEN et kald efter sig bliver hvor den er', async () => {
+  // Flytningen gælder kun når der faktisk ER en linje at ligge under. En tanke
+  // der ender turen (eller går direkte over i svaret) har ingen værktøjs-linje.
+  const s = await render(
+    <MessageList
+      messages={[msg({
+        id: 'a2', role: 'assistant', content: 'færdig',
+        content_json: [
+          { type: 'thinking', text: 'jeg tænker mig om', seconds: 4 },
+          { type: 'text', text: 'færdig' }
+        ]
+      } as Partial<ChatMessage>)]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  const orden = raekkefoelge(s.toJSON())
+  expect(orden.indexOf('thinking-summary')).toBeGreaterThan(-1)
+  expect(orden.indexOf('tool-group')).toBe(-1)
+})

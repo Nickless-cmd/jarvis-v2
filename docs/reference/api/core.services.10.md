@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_review_prompter.py`
+_Decision review prompter — closes the adherence loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L44) |
+| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L53) |
+| function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L92) |
+| function | `_parse_review` | `(text)` | Læs dommen. Returnerer (verdict, channel, reasoning) — eller None. | [src](../../../core/services/decision_review_prompter.py#L125) |
+| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L169) |
+
 ## `core/services/decision_signal_staging.py`
 _Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
 
@@ -666,11 +677,4 @@ _Det faelles emne-ordforraad for droemme-kaeden._
 |---|---|---|---|---|
 | function | `domaene_for_tur` | `(tekst, *, timeout_sekunder=…)` | Hvilket staaende domaene roerer turen — eller None. | [src](../../../core/services/dream_domains.py#L90) |
 | function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L119) |
-
-## `core/services/dream_hypothesis_forced.py`
-_Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L30) |
 

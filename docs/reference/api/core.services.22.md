@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/secret_redaction.py`
+_Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `contains_secret` | `(text)` | Ser det ud til at indeholde en hemmelighed? Ren, ingen mutation. | [src](../../../core/services/secret_redaction.py#L70) |
+| function | `redact` | `(text)` | Maskér hemmeligheder. Bevarer alt andet tegn for tegn. | [src](../../../core/services/secret_redaction.py#L77) |
+| function | `read_for_prompt` | `(path)` | Læs en workspace-fil TIL PROMPTEN, med hemmeligheder maskeret. | [src](../../../core/services/secret_redaction.py#L92) |
+
+## `core/services/security_guard.py`
+_Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/security_guard.py#L30) |
+| function | `_iso` | `(dt=…)` | — | [src](../../../core/services/security_guard.py#L34) |
+| function | `is_owner` | `(user_id)` | True hvis user_id er ejeren (Bjørn). Owner kan få session-lock men | [src](../../../core/services/security_guard.py#L39) |
+| function | `record_audit` | `(user_id, action, *, session_id=…, details=…, device_info=…)` | Append-only. Aktioner: override_activated, sudo_executed, session_locked, | [src](../../../core/services/security_guard.py#L54) |
+| function | `record_abuse` | `(user_id, session_id, event_type, severity, *, details=…)` | severity ∈ {low, medium, high}. Kun high eskalerer til lock (§11.4). | [src](../../../core/services/security_guard.py#L73) |
+| function | `lock_session` | `(session_id, reason, *, user_id=…)` | — | [src](../../../core/services/security_guard.py#L93) |
+| function | `unlock_session` | `(session_id, *, user_id=…)` | — | [src](../../../core/services/security_guard.py#L108) |
+| function | `is_session_locked` | `(session_id)` | — | [src](../../../core/services/security_guard.py#L123) |
+| function | `is_account_locked` | `(user_id)` | True hvis brugeren har en AKTIV (ikke-udløbet) 'locked'-flag. | [src](../../../core/services/security_guard.py#L138) |
+| function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L156) |
+| function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L180) |
+| function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L198) |
+
 ## `core/services/seed_system.py`
 _Seed System — prospective memory / dormant intentions._
 
@@ -768,24 +795,4 @@ _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 | function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
 | function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
 | function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
-
-## `core/services/session_boot_reconciler.py`
-_Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_container_start` | `(nu=…)` | Hvornaar startede DENNE container? ``None`` naar det ikke kan afgoeres. | [src](../../../core/services/session_boot_reconciler.py#L48) |
-| function | `_drift_graense` | `(nu=…)` | Hvor gammel skal en `running`-raekke vaere, foer den er drift? | [src](../../../core/services/session_boot_reconciler.py#L65) |
-| function | `_observe` | `(payload)` | Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort, | [src](../../../core/services/session_boot_reconciler.py#L92) |
-| function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L106) |
-| function | `_ryd_visible_drift` | `(enforced)` | `visible_runs`-rækker der står `running` og som INTET kender. | [src](../../../core/services/session_boot_reconciler.py#L199) |
-| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L324) |
-
-## `core/services/session_context_resolve.py`
-_Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `aktiv_session_id` | `(standard=…)` | Sessionens id, eller `standard` hvis ingen kilde kender den. | [src](../../../core/services/session_context_resolve.py#L17) |
-| function | `aktivt_run_id` | `(standard=…)` | Det run der er i gang lige nu, eller `standard` hvis ingen kender det. | [src](../../../core/services/session_context_resolve.py#L47) |
 

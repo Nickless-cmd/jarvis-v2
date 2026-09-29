@@ -376,6 +376,12 @@ def decision_adherence_summary() -> dict[str, Any]:
         duplicate_groups=duplicate_groups,
         unreviewed=unreviewed,
     )
+    try:
+        from core.services.decision_action_gate import opportunity_summary
+        observed_opportunities = opportunity_summary(days=7)
+    except Exception as exc:
+        logger.debug("decision opportunities unavailable: %s", exc)
+        observed_opportunities = {}
     return {
         "status": "ok",
         "score": score,
@@ -386,6 +392,7 @@ def decision_adherence_summary() -> dict[str, Any]:
         "duplicate_groups": duplicate_groups,
         "low_decisions": low_decisions,
         "recovery": recovery,
+        "observed_opportunities": observed_opportunities,
         "flag": flag,
     }
 

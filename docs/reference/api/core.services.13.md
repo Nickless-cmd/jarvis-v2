@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_pattern_learning.py`
+_Gate-mønster-læring — vane-bryder oven på gate-substratet (2026-07-13)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_hydrated` | `()` | Genindlæs den durable snapshot ÉN gang ved første brug (ikke ved import → tests offline-rene). | [src](../../../core/services/gate_pattern_learning.py#L40) |
+| function | `_normalize_detected` | `(text)` | Normalisér den detekterede substring til en vane-FORM: lowercase, whitespace-kollaps, | [src](../../../core/services/gate_pattern_learning.py#L56) |
+| function | `record_gate_pattern` | `(pattern, detected_text, *, session_id=…, now=…)` | Registrér én gate-fyring for (pattern, detected_text). Self-safe — kaster ALDRIG. | [src](../../../core/services/gate_pattern_learning.py#L67) |
+| function | `repeated_patterns` | `(threshold=…, now=…)` | Overflade vane-kandidaterne: mønstre med count ≥ threshold indenfor alders-vinduet. | [src](../../../core/services/gate_pattern_learning.py#L121) |
+| function | `_evict_oldest_locked` | `()` | Drop den ældste (mindst nyligt sete) nøgle. Kaldes under _LOCK. | [src](../../../core/services/gate_pattern_learning.py#L140) |
+| function | `_emit_repeat_nudge` | `(pattern, sample, count, *, n_sessions)` | Nudge-substratet: fortæl Centralen at et gate-mønster er blevet en VANE. Self-safe. | [src](../../../core/services/gate_pattern_learning.py#L149) |
+| function | `_persist_best_effort` | `(force=…)` | Bedste-indsats durabel snapshot til runtime_state (overlever genstart). Fire-and-forget, | [src](../../../core/services/gate_pattern_learning.py#L167) |
+| function | `hydrate` | `()` | Genindlæs durabel snapshot fra runtime_state ind i in-memory-store. Kaldes eksplicit | [src](../../../core/services/gate_pattern_learning.py#L195) |
+| function | `_reset` | `()` | Test-hook: ryd in-memory-store + durabel snapshot + hydrate-flag (ren slate, så | [src](../../../core/services/gate_pattern_learning.py#L227) |
+
 ## `core/services/gate_privacy.py`
 _Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
 
@@ -567,16 +582,4 @@ _Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime`
 | function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L66) |
 | function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L92) |
 | function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L136) |
-
-## `core/services/heartbeat_scheduler.py`
-_Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L49) |
-| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L59) |
-| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L64) |
-| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L68) |
-| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
-| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L127) |
 

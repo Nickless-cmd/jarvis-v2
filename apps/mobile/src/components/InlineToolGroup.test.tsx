@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { InlineToolGroup } from './InlineToolGroup'
 import type { ToolItem } from '../lib/toolGroup'
 
@@ -103,4 +103,38 @@ it('rundens sætning erstatter den mekaniske tekst', async () => {
 it('uden sætning står den mekaniske tekst', async () => {
   const s = await render(<InlineToolGroup items={[item(), item(), item()]} />)
   expect(s.getByText('Læste 3 filer')).toBeTruthy()
+})
+
+/**
+ * «0s» er ikke et tal (Bjørn 29/9-2026: «0s skal væk fra tool result linjen»).
+ *
+ * En runde der blev færdig på under et sekund gik gennem `Math.floor(sek)` og
+ * skrev «0s» ud for sit ikon. SkillLinjen vægter allerede ved ét sekund
+ * (`sek >= 1` i SkillLinje.tsx:37) — det er husets eget skel; her manglede det.
+ * Grænsen er ét sekund: derover vises tallet som før.
+ */
+it('en runde under ét sekund viser INGEN tid — ikke «0s»', async () => {
+  jest.useFakeTimers()
+  try {
+    const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+    await act(async () => { jest.advanceTimersByTime(400) })
+    await s.rerender(<InlineToolGroup items={[item(), item()]} />)
+    expect(s.queryByTestId('runde-tid')).toBeNull()
+    expect(s.queryByText('0s')).toBeNull()
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+it('en runde over ét sekund viser tiden som før', async () => {
+  jest.useFakeTimers()
+  try {
+    const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+    await act(async () => { jest.advanceTimersByTime(3000) })
+    await s.rerender(<InlineToolGroup items={[item(), item()]} />)
+    expect(s.getByTestId('runde-tid')).toBeTruthy()
+    expect(s.getByText('3s')).toBeTruthy()
+  } finally {
+    jest.useRealTimers()
+  }
 })

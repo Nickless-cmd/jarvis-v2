@@ -83,6 +83,37 @@ class TestOprindelse:
         assert vro._origin_of_session(sid) == ventet
 
 
+def test_persisted_answer_records_action_outcome(gemte, monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        "core.services.decision_action_gate.record_outcomes",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    run = _Run()
+    run.user_message = "Hvad aftalte vi sidst?"
+    vro._persist_session_assistant_message(
+        run, "Vi aftalte A.", blocks=[{"type": "tool_use", "name": "recall"}],
+    )
+    assert len(gemte) == 1
+    assert recorded == [
+        (("visible-test", "Hvad aftalte vi sidst?", "Vi aftalte A."), {"tool_names": ["recall"]})
+    ]
+
+
+def test_autonomous_answer_does_not_create_owner_action_metric(gemte, monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        "core.services.decision_action_gate.record_outcomes",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    run = _Run()
+    run.autonomous = True
+    run.user_message = "Hvad aftalte vi sidst?"
+    vro._persist_session_assistant_message(run, "Et internt svar")
+    assert len(gemte) == 1
+    assert recorded == []
+
+
 def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch):
     class _Connection:
         def __enter__(self):

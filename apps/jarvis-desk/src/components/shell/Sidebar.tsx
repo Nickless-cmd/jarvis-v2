@@ -309,7 +309,7 @@ export function Sidebar({
                                 title={s.title || 'Uden titel'}
                                 active={s.id === activeId}
                                 working={isWorking(s.id)}
-                                workspaceKind={s.workspace_kind}
+                                erKode={erKodeSamtale(s)}
                                 onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                               />
                             ))}
@@ -322,7 +322,7 @@ export function Sidebar({
                             title={s.title || 'Uden titel'}
                             active={s.id === activeId}
                             working={isWorking(s.id)}
-                            workspaceKind={s.workspace_kind}
+                            erKode={erKodeSamtale(s)}
                             onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                           />
                         ))
@@ -435,14 +435,14 @@ function SessionItem({
   title,
   active,
   working,
-  workspaceKind,
+  erKode,
   onSelect,
 }: {
   id: string
   title: string
   active: boolean
   working?: boolean
-  workspaceKind?: string | null
+  erKode?: boolean
   onSelect: () => void
 }) {
   const { rename, remove } = useSessions()
@@ -504,7 +504,12 @@ function SessionItem({
           {/* Typen staar FAST til venstre (20/9-2026). Foer havde chat intet tag
               — raekken saa tom ud — og de tre prikker kom og gik FORAN titlen,
               saa den rykkede hver gang en session begyndte at arbejde. */}
-          {workspaceKind
+          {/* Arten kommer fra `kind`, ikke fra arbejdstraeet. Ikonet laeste
+              `workspace_kind` — samme stedfortraeder som grupperingen brugte,
+              og rettet samme sted (29/9-2026). Uden det her ville en
+              kode-samtale UDEN bundet arbejdstrae staa i kode-listen med et
+              chat-ikon: gruppen sagde ét, maerket sagde noget andet. */}
+          {erKode
             ? <Code size={12} className="session-mode-icon" />
             : <MessageSquare size={12} className="session-mode-icon" />}
           <span className="session-titel">{title}</span>

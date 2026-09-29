@@ -99,6 +99,12 @@ and verify the required hooks with:
 - No hidden side effects
 - No dual truth between config and DB
 - All risky actions require explicit policy/approval path
+- Tests of dict or result objects should assert the complete observable result,
+  including status, output and error fields. Use table cases for related failure
+  states. A 29/9/2026 test compared `sum(lens[:k])` with `sum(lens[:2])` while
+  `k == 2`; another measured a stub that its fixture had substituted for the
+  real function. Both passed without measuring behavior and were caught by
+  mutation runs. Make the test fail by disabling the behavior it claims to test.
 
 ## Boy Scout Rule
 

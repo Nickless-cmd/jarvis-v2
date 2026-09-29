@@ -130,9 +130,28 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
         <p className="account-google-hint">Ingen enheder er tilføjet endnu.</p>
       ) : null}
 
-      {overblik && overblik.denne.type === 'computer' && !overblik.denne.tilfoejet ? (
+      {/* Tilbyd registrering naar denne klient IKKE maa bruge code mode — uanset
+          om serveren kan genkende den som «computer».
+
+          Foer stod her `type === 'computer'`, og `_denne()` udleder typen af
+          `app_id`-claim'et. Et token uden claim giver «ukendt», saa knappen
+          forsvandt — praecis for den klient der havde brug for den.
+
+          Bjoern 29/9-2026: «i appen stod den stadig tilfoejet, saa jeg slog
+          reglen fra». Panelet sagde «tilfoejet» (fra REGISTRET) mens serveren
+          sagde «maa ikke bruge code mode» (fra TOKENET), og der var ingen vej
+          fra det ene til det andet. En hoenen-og-aegget-faelde: man skal
+          registrere for at faa claim'et, men knappen kraevede claim'et.
+
+          Telefoner har deres egen vej (parring) og hoerer ikke her. */}
+      {overblik && overblik.denne.type !== 'telefon' && !overblik.denne.tilfoejet ? (
         <div className="enheder-denne">
-          <p className="account-google-hint">Denne computer er ikke tilføjet{overblik.kraev_aktivt ? ' — code mode er lukket her, til den er.' : '.'}</p>
+          <p className="account-google-hint">
+            {overblik.denne.type === 'ukendt'
+              ? 'Denne klient er ikke genkendt som en tilfoejet enhed. Staar computeren allerede i listen, saa tilfoej den igen — den fornyer adgangen.'
+              : 'Denne computer er ikke tilføjet'}
+            {overblik.denne.type === 'ukendt' ? '' : (overblik.kraev_aktivt ? ' — code mode er lukket her, til den er.' : '.')}
+          </p>
           <input className="enheder-totp" inputMode="numeric" maxLength={6} placeholder="Totrinskode" value={computerTotp} onChange={(e) => setComputerTotp(e.target.value)} aria-label="Totrinskode til at tilføje denne computer" />
           <button type="button" className="account-google-btn" disabled={travl || computerTotp.trim().length !== 6} onClick={() => void tilfoejComputer()}>Tilføj denne computer</button>
         </div>

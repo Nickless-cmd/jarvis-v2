@@ -43,7 +43,7 @@ def _valid(shell_id: str) -> bool:
 
 
 async def start_async(*, command: str, user_id: str, cwd: str = "",
-                      timeout_s: float = 20.0) -> dict[str, Any]:
+                      titel: str = "", timeout_s: float = 20.0) -> dict[str, Any]:
     """Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}.
 
     `setsid` + omdirigering betyder at processen overlever baade bro-kaldet og
@@ -54,13 +54,23 @@ async def start_async(*, command: str, user_id: str, cwd: str = "",
 
     sid = _new_id()
     cd = f"cd {shlex.quote(cwd)} && " if cwd else ""
+    # Kommandoen og titlen skrives som deres EGNE filer, ved siden af
+    # .log/.pid/.rc. Listekommandoen i background_jobs.py laeser dem — og
+    # indtil 29/9-2026 blev .cmd laest men ALDRIG skrevet, saa
+    # operator-shellene stod navneloese i panelet med «(baggrunds-shell)»
+    # som eneste tekst. `printf '%s'` og ikke `echo`: et indhold der
+    # begynder med «-» ville ellers blive laest som en option.
+    meta = (
+        f"printf '%s' {shlex.quote(command)} > {_ROOT}/{sid}.cmd; "
+        + (f"printf '%s' {shlex.quote(titel)} > {_ROOT}/{sid}.title; " if titel else "")
+    )
     # `;` og IKKE `&&` foran setsid. `&` binder loesere end `&&`, saa
     # «mkdir -p X && setsid ... &» sender HELE kaeden i baggrunden — og
     # «echo $!» loeb saa foer mappen fandtes. Et kapløb der tabte paa den
     # foerste aegte koersel: loggen blev skrevet, .pid gjorde ikke, og
     # dermed var baade kill_shell og «koerer stadig» stille ubrugelige.
     boot = (
-        f"mkdir -p {_ROOT}; {cd}"
+        f"mkdir -p {_ROOT}; {meta}{cd}"
         f"setsid sh -c {shlex.quote(command)} > {_ROOT}/{sid}.log 2>&1 "
         f"& echo $! > {_ROOT}/{sid}.pid; cat {_ROOT}/{sid}.pid"
     )

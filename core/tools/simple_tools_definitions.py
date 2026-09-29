@@ -312,13 +312,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "Start a long-running command on the OPERATOR'S DESKTOP without "
                 "blocking the turn. Returns {shell_id, pid}. Poll it with "
                 "operator_bash_output, stop it with operator_kill_shell. The "
-                "process is detached: it survives runtime restarts."
+                "process is detached: it survives runtime restarts. "
+                "Send `titel` med — det er den tekst brugeren ser i "
+                "baggrundsjob-panelet, og uden den staar der et shell-id."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {"type": "string", "description": "Shell command to run in the background"},
                     "cwd": {"type": "string", "description": "Working directory (optional)"},
+                    "titel": {"type": "string", "description": "Kort menneskelig titel paa opgaven, fx «Bygger klienten» eller «Soeger i repoet». Vises som raekkens titel i baggrundsjob-panelet i stedet for shell-id'et. Valgfri."},
                 },
                 "required": ["command"],
             },

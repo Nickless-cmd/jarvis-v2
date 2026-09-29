@@ -71,8 +71,9 @@ _LISTE_CMD = (
     f'rc=""; [ -f "{_ROD}/$id.rc" ] && rc=$(cat "{_ROD}/$id.rc" 2>/dev/null); '
     'st="dead"; if kill -0 "$pid" 2>/dev/null; then st=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1); fi; '
     'start=$(stat -c %Y "$f" 2>/dev/null); '
-    'cmd=$(tr "\\n" " " < "$f".cmd 2>/dev/null | cut -c1-120); '
-    'echo "$id|$pid|$st|$rc|$start|$cmd"; '
+    'cmd=$(tr "\\n" " " < "$f".cmd 2>/dev/null | cut -c1-200); '
+    'titel=$(tr "\\n" " " < "$f".title 2>/dev/null | cut -c1-120); '
+    'echo "$id|$pid|$st|$rc|$start|$cmd|$titel"; '
     'done'
 )
 
@@ -100,12 +101,18 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
             continue
         jid, pid, st, rc, start = dele[0], dele[1], dele[2], dele[3], dele[4]
         kommando = dele[5] if len(dele) > 5 else ""
+        titel = dele[6] if len(dele) > 6 else ""
         levende = st not in ("dead", "", "Z")
         jobs.append({
             "id": jid,
             "kilde": "operator",
-            "navn": jid,
-            "kommando": kommando or "(baggrunds-shell)",
+            # B (Bjørn 29/9-2026): linje 1 er hvad opgaven LAVER, ikke hvad
+            # den hedder. Titlen skrives ved start (`<id>.title`); mangler
+            # den — fx et job startet foer 29/9 — er kommandoens foerste
+            # linje den aerlige faldback. Id'et baeres separat og staar kun
+            # i tooltip + aria-label.
+            "navn": titel or kommando or "(baggrunds-shell)",
+            "kommando": kommando,
             # T = standset af et signal. Den kommer GRATIS med i `ps -o stat=`
             # og skulle ellers gaettes.
             "status": "paused" if st == "T" else ("running" if levende else "exited"),
@@ -196,12 +203,15 @@ def _scout_jobs() -> list[dict[str, Any]]:
             continue
         maal = str(a.get("goal") or "").strip().splitlines()
         emne = maal[0] if maal else ""
+        # B (Bjørn 29/9-2026): spoergsmaalet ER titlen — «Scout-agent» siger
+        # hvad den ER, ikke hvad den laver. Rollen flytter i tooltip.
+        rolle = "Scout-agent" + (
+            " · din maskine" if a.get("tool_policy") == "read-only-workstation" else "")
         jobs.append({
             "id": str(a.get("agent_id") or ""),
             "kilde": "agent",
-            "navn": "Scout-agent" + (
-                " · din maskine" if a.get("tool_policy") == "read-only-workstation" else ""),
-            "kommando": emne[:120] or "(scout)",
+            "navn": emne[:120] or "(scout)",
+            "kommando": rolle,
             "status": "running" if aktiv else "exited",
             "pid": None,
             "sekunder": int(((nu if aktiv else slut) or nu) - start) if start else None,
@@ -260,19 +270,20 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
     """
     hvor = f" i {cwd}" if cwd and cwd != "~" else ""
     siden = "sidste kommando sluttede" if egen_maskine else "sidste kommando startede"
-    hvad = "Jarvis' arbejds-shell (bash)" if arbejds_shell else "åben shell"
+    hvad = "Jarvis' arbejds-shell" if arbejds_shell else "åben shell"
     # Kører der noget, ER tallet kommandoens køretid (`last_used` sættes ved
     # dens start), og så siger linjen hvad der kører — som i panelets øvrige
     # rækker. Det kunne den ikke før 26/9-2026: `list` svarede det samme
     # uanset, så kortet påstod «intet kører» uden at kunne vide det.
     linje = f"kører: {koerer}" if koerer else f"{hvad}{hvor} · tiden er siden {siden}"
+    # B (Bjørn 29/9-2026): linje 1 er TITLEN — hvad shellen laver lige nu,
+    # eller hvad den ER naar den venter. Id'et er ude af raekken og staar kun
+    # i tooltip + aria-label. Den fulde linje (hvor + hvad tallet betyder)
+    # ligger i `kommando`, som panelet viser i `title`.
+    titel = f"kører: {koerer}" if koerer else hvad
     return {
         "id": sid,
-        # Id'et ER navnet, som operator-shellene ovenfor. Daemonen tillader
-        # otte samtidige sessioner, og «Shell-session» otte gange ville give
-        # otte ens raekker OG otte ens `aria-label`s paa stop-knapperne.
-        # Hvad det er, staar paa linje tre.
-        "navn": sid,
+        "navn": titel,
         # To kilder, ikke én med maskinen gemt i navnet: i den eksisterende
         # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
         # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.

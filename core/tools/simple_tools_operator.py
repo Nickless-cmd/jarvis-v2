@@ -505,6 +505,7 @@ def _exec_operator_run_in_background(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.operator_background import start_async
     out = _run_operator_async(
         lambda: start_async(command=command, cwd=str(args.get("cwd") or ""),
+                            titel=str(args.get("titel") or ""),
                             user_id=user_id),
         tool_name="operator_run_in_background",
     )

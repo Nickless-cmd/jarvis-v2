@@ -114,7 +114,9 @@ def test_en_koerende_scout_vises_som_baggrundsjob(monkeypatch):
     j = bj.liste()["jobs"]
     assert len(j) == 1, "kun scout-agenter — ikke andre agent-roller"
     assert j[0]["kilde"] == "agent" and j[0]["status"] == "running"
-    assert j[0]["kommando"] == "Hvor bor cheap lane-værnet?"
+    # B (29/9-2026): spoergsmaalet er TITLEN, rollen ligger i tooltip.
+    assert j[0]["navn"] == "Hvor bor cheap lane-værnet?"
+    assert j[0]["kommando"] == "Scout-agent"
     assert j[0]["sekunder"] == 42 and j[0]["can_pause"] is False
 
 

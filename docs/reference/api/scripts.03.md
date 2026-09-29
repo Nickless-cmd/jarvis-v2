@@ -194,8 +194,8 @@ _Compare the live SQLite schema with its reviewed, per-table snapshot._
 | function | `inventory` | `(conn)` | — | [src](../../../scripts/verify_sqlite_schema.py#L60) |
 | function | `_unobserved` | `(value)` | True når et format ikke er observeret — tom tabel eller ingen kolonne. | [src](../../../scripts/verify_sqlite_schema.py#L98) |
 | function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L108) |
-| function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L139) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L178) |
+| function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L162) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L201) |
 
 ## `scripts/verify_vagt_graenser.py`
 _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._

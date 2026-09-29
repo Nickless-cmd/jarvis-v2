@@ -182,6 +182,28 @@ def test_dommeren_faar_blokkene_med(monkeypatch):
     assert "Rækkefølgen i din tur" in set_kald[0]
 
 
+def test_llm_suspicion_does_not_write_broken_review(monkeypatch):
+    recorded_reviews = []
+    monkeypatch.setattr(DE, "_recent_detection_at", None)
+    monkeypatch.setattr(
+        "core.services.behavioral_decisions.list_active_decisions",
+        lambda limit=10: [{"decision_id": "d1", "directive": "cite when corrected"}],
+    )
+    monkeypatch.setattr(
+        "core.services.daemon_llm.daemon_llm_call",
+        lambda *a, **k: "BREACH: d1 | possible missing quote",
+    )
+    monkeypatch.setattr("core.runtime.state_store.load_json", lambda *a, **k: [])
+    monkeypatch.setattr("core.runtime.state_store.save_json", lambda *a, **k: None)
+    monkeypatch.setattr("core.eventbus.bus.event_bus.publish", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "core.services.behavioral_decisions.review_decision",
+        lambda **kw: recorded_reviews.append(kw),
+    )
+    assert DE.detect_breach_in_output("A complete answer longer than twenty characters")
+    assert recorded_reviews == []
+
+
 def test_centralen_taeller_moensteret(monkeypatch):
     set_obs: list[dict] = []
 

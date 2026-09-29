@@ -54,7 +54,7 @@ import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
 import { useVisning, VisningContext } from '../lib/visning'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
-import { usePinVedStart } from '../hooks/usePinVedStart'
+import { useChatScroll } from '../lib/useChatScroll'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { HeaderMere } from '../components/shell/HeaderMere'
@@ -514,9 +514,6 @@ export function CodeView({
 
   // Autoscroll + scroll-til-bund-pil (som chat).
   const transcriptRef = useRef<HTMLDivElement>(null)
-  const [atBottom, setAtBottom] = useState(true)
-  const [unread, setUnread] = useState(0)
-  const NEAR_BOTTOM_PX = 120
 
   // ── Cross-device live (porteret 1:1 fra ChatView) ──────────────────────────
   // Code mode skal lyse op PRÆCIS som Chat mode når mobilen tager over: header-
@@ -593,21 +590,19 @@ export function CodeView({
     return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
   }, [bgActive, sessionId, settings])
 
-  const scrollToBottom = () => {
-    const el = transcriptRef.current
-    if (el) el.scrollTop = el.scrollHeight
-    setUnread(0)
-  }
-  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
-  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
-
-  const onScroll = () => {
-    const el = transcriptRef.current
-    if (!el) return
-    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
-    setAtBottom(near)
-    if (near) setUnread(0)
-  }
+  // Én scroll-koordinator — samme som ChatView (spec'ens punkt 1a+1c, 29/9-2026).
+  // Før havde dette view KUN pin-ved-start: interval-nettet fra 17/9 og
+  // ResizeObserveren fandtes slet ikke her. Konsekvensen var konkret: et svar der
+  // landede ad en vej hvor hverken stream-blokke, follow-blokke eller
+  // besked-antallet ændrede sig — og hvor ResizeObserveren heller ikke så det,
+  // fordi den kigger på containeren og ikke indholdet — havde INTET net i
+  // code-mode. Det er den bug Bjørn mærkede i chat 17/9-2026, og den stod stadig
+  // åben her. Koordinatoren bærer nettet for begge views.
+  const scroll = useChatScroll(transcriptRef, {
+    arbejder: stream.status === 'working',
+    aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+  })
+  const { melder } = scroll
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -872,7 +867,7 @@ export function CodeView({
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
-  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
   // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
   // Før hentede Code slet ikke kapitler og viste én streg pr. besked.
   // Samme kobling som i Chat: en pin bliver et anker paa skinnen.
@@ -908,13 +903,12 @@ export function CodeView({
   const pendingPauseAsk =
     fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
-  // Autoscroll: ved nye beskeder/stream-tokens, hold bunden hvis vi er nær den.
+  // Nye beskeder: HVAD der skete meldes her — om der må flyttes på rullen afgør
+  // koordinatoren. Code-mode husker sin session og skifter den sjældent, så der
+  // er ingen ny-session-gren her; den findes i ChatView.
   useEffect(() => {
-    const el = transcriptRef.current
-    if (el && atBottom) el.scrollTop = el.scrollHeight
-    else if (!atBottom) setUnread((u) => u + 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleMessages.length, sessionId])
+    melder('ny-besked')
+  }, [visibleMessages.length, sessionId, melder])
   // Alt der vokser mens man står i bund — stream-blokke, skiftet fra den
   // levende række til den gemte besked når svaret stopper, kilder og knapper
   // der dukker op bagefter — holdes i bund af browserens scroll-anker
@@ -1131,7 +1125,7 @@ export function CodeView({
           anchors={railAnchors}
         />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
-        <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
+        <div className={`transcript${scroll.atBottom ? ' is-at-bottom' : ''}`} ref={scroll.containerRef} onScroll={scroll.onScroll}>
           {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
               <CompactionNotice stats={compactionById.get(m.id)} />
@@ -1203,7 +1197,7 @@ export function CodeView({
               <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
             )}
           </div>
-          <JumpToLatest synlig={!atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+          <JumpToLatest synlig={!scroll.atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
           <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
           <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
           {composer}

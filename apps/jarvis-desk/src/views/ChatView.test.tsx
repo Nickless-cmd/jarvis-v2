@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
 import { useSessions } from '../hooks/useSessions'
+import { PIN_INTERVAL_MS } from '../lib/useChatScroll'
 import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
 import { PanelProvider } from '../contexts/PanelContext'
@@ -572,6 +573,13 @@ describe('ChatView — bund-fade', () => {
     act(() => { t.dispatchEvent(new Event('scroll')) })
   }
 
+  // Follow-ejerskabet afgøres ikke straks længere (29/9-2026): et læser-input
+  // afregnes ved `scrollend` — eller efter 500 ms. Testene skal derfor LUKKE
+  // gesten, ellers måler de en tilstand der endnu ikke er afgjort.
+  const slut = (t: HTMLElement) => {
+    act(() => { t.dispatchEvent(new Event('scrollend')) })
+  }
+
   it('slukker bund-fade naar man staar i bunden', async () => {
     const { container } = await vis()
     const t = container.querySelector('.transcript') as HTMLElement
@@ -583,19 +591,54 @@ describe('ChatView — bund-fade', () => {
   it('taender den igen naar man scroller op — der ER mere nedenfor', async () => {
     const { container } = await vis()
     const t = container.querySelector('.transcript') as HTMLElement
-    // 1000 indhold, 300 synligt, staar i toppen → 700px ned til bunden
+    maal(t, 1000, 300, 700) // staar i bunden
+    slut(t)
+    expect(t.className).toContain('is-at-bottom')
+    // 1000 indhold, 300 synligt, til toppen → 700px ned til bunden
     maal(t, 1000, 300, 0)
+    slut(t)
     expect(t.className).not.toContain('is-at-bottom')
   })
 
-  it('regner naer-bunden som bund (NEAR_BOTTOM_PX = 120)', async () => {
+  it('regner 25 px fra gulvet som bund — DSH-taersklen, ikke den gamle paa 120', async () => {
     const { container } = await vis()
     const t = container.querySelector('.transcript') as HTMLElement
-    maal(t, 1000, 300, 0)
-    expect(t.className).not.toContain('is-at-bottom')
-    // 50px fra bunden → inden for graensen
-    maal(t, 1000, 300, 650)
+    maal(t, 1000, 300, 700) // staar i bunden
+    slut(t)
     expect(t.className).toContain('is-at-bottom')
+    // 20px fra bunden → inden for DSH's 25px → stadig bund
+    maal(t, 1000, 300, 680)
+    slut(t)
+    expect(t.className).toContain('is-at-bottom')
+    // 50px fra bunden → over graensen → ikke bund
+    maal(t, 1000, 300, 650)
+    slut(t)
+    expect(t.className).not.toContain('is-at-bottom')
+  })
+
+  // 17/9-nettet (spec'ens punkt 1a/1c, 29/9-2026): et svar kan lande ad en vej
+  // hvor hverken stream-blokke, follow-blokke eller besked-antallet ændrer sig —
+  // fx serverens gemte besked der ERSTATTER en linje, eller et autonomt run
+  // hentet ind ved refresh. Kun interval-nettet ser det.
+  it('holder bunden naar indholdet vokser uden en React-opdatering (17/9-nettet)', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([
+      { session_id: 's1', run_id: 'remote-run', status: 'working' },
+    ])
+    try {
+      const { container } = await vis()
+      const t = container.querySelector('.transcript') as HTMLElement
+      maal(t, 1000, 300, 700) // staar i bunden
+      expect(t.className).toContain('is-at-bottom')
+
+      Object.defineProperty(t, 'scrollHeight', { value: 1800, configurable: true })
+      await act(async () => { await new Promise((r) => setTimeout(r, PIN_INTERVAL_MS + 80)) })
+
+      expect(t.scrollTop).toBe(1800)
+    } finally {
+      // Uden oprydningen ser næste test et aktivt run og får «anden enhed»-badgen
+      // — samme mønster som de to follow-stream-tests ovenfor.
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
   })
 })
 

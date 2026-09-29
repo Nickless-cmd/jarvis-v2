@@ -618,6 +618,8 @@ def evidence_permits_verdict(
     """
     v = str(verdict or "").strip().lower()
     if v == "broken":
+        if channel and not channel_has_data(evidence, channel):
+            return "unknown"
         if not bool(evidence.get("has_any_channel", evidence.get("has_evidence"))):
             return "unknown"
         return "broken"

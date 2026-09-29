@@ -410,19 +410,8 @@ def detect_breach_in_output(
     except Exception:
         pass
 
-    # Hook into review pipeline so adherence_score drops
-    try:
-        from core.services.behavioral_decisions import review_decision
-        for b in breaches:
-            review_decision(
-                decision_id=b["decision_id"],
-                verdict="broken",
-                note=f"Auto-detected breach: {b['description'][:140]}",
-                evidence=b["description"][:280],
-            )
-    except Exception as exc:
-        logger.debug("decision_enforcement: review write failed: %s", exc)
-
+    # These are LLM suspicions, not verified outcomes. Keep the event and
+    # recent-detections trail, but let the evidence-led daily review score them.
     return breaches
 
 

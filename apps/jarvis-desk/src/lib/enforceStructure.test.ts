@@ -40,6 +40,15 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
     const out = enforceStructure('Kør:\n```\nfor x - y - z\n```\nog - a - b - c')
     expect(out).toContain('for x - y - z')
   })
+  it('tilde-, lange og åbne fences beskytter koden mod strukturændring', () => {
+    const tekst = '**Vigtig overskrift**\nalfa — beta — gamma — delta'
+    for (const marker of ['~~~', '````', '```']) {
+      const lukket = `${marker}md\n${tekst}\n${marker}`
+      const aaben = `${marker}md\n${tekst}`
+      expect(enforceStructure(lukket)).toBe(lukket)
+      expect(enforceStructure(aaben)).toBe(aaben)
+    }
+  })
 })
 
 describe('enforceStructure — crammed tabel-reflow', () => {

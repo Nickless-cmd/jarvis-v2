@@ -58,6 +58,15 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # CT105 is the canonical runtime DB. Other hosts have divergent local DBs.
+      - id: verify-sqlite-schema
+        name: SQLite schema og tidsformater må ikke drive på CT105
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_sqlite_schema.py --only-host Jarvis --require-db
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: ingen NYE kaldere der læser en hel samtale-historik
       # synkront. `get_chat_session` gjorde Bjørns samtale til 21,5 MB, og
       # 14 af dens 45 kaldesteder læser alt for at bruge ét metadata-felt.

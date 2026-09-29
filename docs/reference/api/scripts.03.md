@@ -183,6 +183,18 @@ _Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
 | function | `_laes_grundlinje` | `()` | — | [src](../../../scripts/verify_silent_except.py#L118) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_silent_except.py#L125) |
 
+## `scripts/verify_sqlite_schema.py`
+_Compare the live SQLite schema with its reviewed, per-table snapshot._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_quote` | `(name)` | — | [src](../../../scripts/verify_sqlite_schema.py#L22) |
+| function | `timestamp_format` | `(value)` | — | [src](../../../scripts/verify_sqlite_schema.py#L26) |
+| function | `_timestamp_formats` | `(conn, table)` | — | [src](../../../scripts/verify_sqlite_schema.py#L41) |
+| function | `inventory` | `(conn)` | — | [src](../../../scripts/verify_sqlite_schema.py#L60) |
+| function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L98) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L115) |
+
 ## `scripts/verify_vagt_graenser.py`
 _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
 

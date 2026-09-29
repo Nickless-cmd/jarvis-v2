@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8170/15682 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8170/15688 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8170/15682 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 221 | 485 | 45% |
+| `scripts` | 221 | 491 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2220)
+## Undocumented public functions (2224)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2262,5 +2262,9 @@ Generated from source. 8170/15682 functions/methods documented (52%). The list b
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)
 - `scripts/verify_silent_except.py` :: `main` (L125)
+- `scripts/verify_sqlite_schema.py` :: `compare` (L98)
+- `scripts/verify_sqlite_schema.py` :: `inventory` (L60)
+- `scripts/verify_sqlite_schema.py` :: `main` (L115)
+- `scripts/verify_sqlite_schema.py` :: `timestamp_format` (L26)
 - `scripts/verify_vagt_graenser.py` :: `brud` (L55)
 - `scripts/verify_vagt_graenser.py` :: `main` (L74)

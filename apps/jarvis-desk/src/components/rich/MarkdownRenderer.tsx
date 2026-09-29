@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { isValidElement, memo, useMemo } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stabilizeStreamingMarkdown } from '../../lib/streamingMarkdown'
@@ -6,6 +6,7 @@ import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
+import { ChatCodeBlock } from './ChatCodeBlock'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -25,6 +26,13 @@ import { safeLinkHref } from '../../lib/sanitize'
 // render ville få react-markdown til at bygge alt om, også uændrede blokke.
 const PLUGINS = [remarkGfm]
 const KOMPONENTER: Components = {
+  pre: ({ children }) => {
+    if (!isValidElement(children)) return <pre>{children}</pre>
+    const props = children.props as { className?: string; children?: unknown }
+    const code = typeof props.children === 'string' ? props.children : String(props.children ?? '')
+    const lang = /^language-([^\s]+)/.exec(props.className ?? '')?.[1] ?? ''
+    return <ChatCodeBlock code={code} lang={lang} className={props.className} />
+  },
   a: ({ href, children }) => {
     const safe = href ? safeLinkHref(href) : null
     if (!safe) return <span>{children}</span>

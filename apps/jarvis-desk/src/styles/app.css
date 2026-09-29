@@ -1762,6 +1762,20 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .codeblock-bar button:hover { color: var(--fg-1); }
 .codeblock pre, .codeblock > div { margin: 0; padding: 10px 12px; overflow-x: auto; font-size: 13px; }
 .codeblock pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+/* 29/9-2026: chat og panelkode skifter farver sammen med appens tema. */
+.jarvis-body .chat-shiki,
+.codeblock .shiki {
+  --shiki-dark: var(--fg-1);
+  --shiki-light: var(--fg-1);
+}
+.jarvis-body .chat-shiki,
+.codeblock .shiki { background: transparent !important; color: var(--shiki-dark); }
+.jarvis-body .chat-shiki span,
+.codeblock .shiki span { color: var(--shiki-dark); }
+:root[data-theme='light'] .jarvis-body .chat-shiki,
+:root[data-theme='light'] .jarvis-body .chat-shiki span,
+:root[data-theme='light'] .codeblock .shiki,
+:root[data-theme='light'] .codeblock .shiki span { color: var(--shiki-light); }
 
 /* ToolCard (density-aware).
    Formsproget er mobil-appens (Bjoern 8/9-2026: «tool result til at ligne dem i

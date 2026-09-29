@@ -16,6 +16,17 @@ describe('redigeredeFiler', () => {
     ]
     expect(maalteRedigeringer(blocks)).toEqual({ 'a.ts': { added: 8, removed: 3 } })
   })
+
+  it('regner af kaldets EGNE par når serveren ikke har målt (operator-kald)', () => {
+    // Bjørn 29/9-2026: «feltet under mangler +xx -xx ved filerne uanset om de
+    // er redigeret på din container eller min maskine». `operator_*` kører på
+    // hans maskine, hvor vi ikke har filen i hånden — der findes ingen
+    // server-målte tal for dem, så uden faldbacken stod filen uden tal.
+    const blocks: ContentBlock[] = [
+      tool('operator_edit_file', { path: '/home/bs/x.ts', old_text: 'a\nb', new_text: 'a\nb\nc' }),
+    ]
+    expect(maalteRedigeringer(blocks)).toEqual({ '/home/bs/x.ts': { added: 3, removed: 2 } })
+  })
   it('finder de filer der blev SKREVET', () => {
     const ud = redigeredeFiler([
       tool('write_file', { path: 'src/a.ts' }),

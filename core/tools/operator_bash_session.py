@@ -54,7 +54,8 @@ def _exec_operator_bash_session_open(args: dict[str, Any]) -> dict[str, Any]:
     uid = str(args.get("_user_id") or "").strip()
     sid = "opsess-" + uuid.uuid4().hex[:12]
     with _LOCK:
-        _SESSIONS[sid] = {"cwd": "", "user_id": uid, "last": _now()}
+        _SESSIONS[sid] = {"cwd": "", "user_id": uid, "last": _now(),
+                          "titel": str(args.get("titel") or "")[:120]}
     return {
         "status": "ok", "session_id": sid,
         "note": ("Vedvarende operator-shell-session. Genbrug session_id i "
@@ -179,7 +180,9 @@ def _exec_operator_bash_session_list(_args: dict[str, Any]) -> dict[str, Any]:
     now = _now()
     with _LOCK:
         sessions = [
-            {"session_id": s, "cwd": v.get("cwd") or "~", "idle_s": round(now - v.get("last", now), 1)}
+            {"session_id": s, "cwd": v.get("cwd") or "~",
+             "idle_s": round(now - v.get("last", now), 1),
+             "titel": str(v.get("titel") or "")}
             for s, v in _SESSIONS.items()
         ]
     return {"status": "ok", "sessions": sessions}
@@ -192,8 +195,13 @@ OPERATOR_BASH_SESSION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Åbn en vedvarende shell-session på brugerens egen maskine (operatoren). "
             "Returnerer et session_id du genbruger på tværs af kald, så cd, env-vars og "
             "virtualenvs persisterer — samme stabilitet som operator_bash (ét bro-hop pr. "
-            "run), men med vedvarende tilstand. Idle-sessioner dør efter 30 min."),
-        "parameters": {"type": "object", "properties": {}, "required": []}}},
+            "run), men med vedvarende tilstand. Idle-sessioner dør efter 30 min. "
+            "Angiv `titel` med hvad sessionen er TIL — den er linje 1 i "
+            "baggrundsjob-panelet."),
+        "parameters": {"type": "object", "properties": {
+            "titel": {"type": "string", "description": (
+                "Kort titel paa hvad sessionen bruges til.")},
+        }, "required": []}}},
     {"type": "function", "function": {
         "name": "operator_bash_session_run",
         "description": (

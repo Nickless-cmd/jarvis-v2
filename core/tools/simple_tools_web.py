@@ -335,7 +335,7 @@ def _get_or_open_default_bash_session() -> str | None:
     # repo-roden, selv om kommentaren i _exec_bash lover det modsatte.
     from core.tools.bash_session import (
         _exec_bash_session_list,
-        _exec_bash_session_open,
+        _open_arbejdssession,
     )
     with _DEFAULT_BASH_SESSION_LOCK:
         sid = _DEFAULT_BASH_SESSION_ID
@@ -352,7 +352,9 @@ def _get_or_open_default_bash_session() -> str | None:
                     return sid
             # Otherwise: fall through and re-open below.
             _DEFAULT_BASH_SESSION_ID = None
-        result = _exec_bash_session_open({})
+        # `_open_arbejdssession`, ikke `_exec_bash_session_open`: den delte
+        # shell er ikke en opgave, og daemonen skal maerke den som arbejde.
+        result = _open_arbejdssession()
         if result.get("status") == "ok" and result.get("session_id"):
             _DEFAULT_BASH_SESSION_ID = str(result["session_id"])
             return _DEFAULT_BASH_SESSION_ID

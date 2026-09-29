@@ -76,6 +76,19 @@ class _Session:
         self.session_id = session_id
         self.lock = threading.Lock()
         self.last_used = time.time()
+        #: Titel og rolle skrives ved `open` (29/9-2026).
+        #:
+        #: `arbejde` markerer den DELTE shell som det almindelige `bash`-
+        #: vaerktoej bruger. Den er server-info, ikke en opgave, og panelet
+        #: skal ikke vise den. Foer blev den filtreret ved at sammenligne med
+        #: en PROCES-GLOBAL — og da daemonen overlever genstarte, slap hver ny
+        #: procesgenerations arbejds-shell igennem som en raekke «aaben shell».
+        #: Maalt 29/9-2026: fire efterladte arbejds-shells i panelet.
+        #:
+        #: `titel` er hvad sessionen er TIL. Skrives af den der aabner den,
+        #: ligesom baggrunds-jobbenes titel — ellers maa panelet gaette.
+        self.titel = ""
+        self.arbejde = False
         #: Kommandoen fra sidste `run`. Kun meningsfuld MENS laasen holdes —
         #: derfor ryddes den aldrig, og `_list_row` viser den kun naar
         #: `lock.locked()`. Det sparer et try/finally om hele `run`s krop,
@@ -366,6 +379,10 @@ def _list_row(sid: str, sess: _Session, now: float) -> dict[str, Any]:
         "alive": sess.alive(),
         "idle_seconds": int(now - sess.last_used),
         "busy": optaget,
+        # Sat ved `open`. `arbejde` afgoer om panelet viser den overhovedet;
+        # `titel` er hvad den viser i stedet for «aaben shell».
+        "titel": sess.titel,
+        "arbejde": sess.arbejde,
         # `running_command` ryddes aldrig; den er kun sand mens låsen holdes.
         "command": sess.running_command if optaget else "",
     }
@@ -478,6 +495,12 @@ def _daemon_main() -> int:
                 # ske under sess_lock — så venter open/run for alle andre imens.
                 try:
                     sess = _Session(sid)
+                    # Maerkningen sker HER, ved fødselen, og ikke i panelet:
+                    # daemonen ved hvad den selv lavede, og den overlever
+                    # genstarte — saa en forladt arbejds-shell bliver ved med
+                    # at vaere maerket som arbejde hele sin levetid.
+                    sess.titel = str(req.get("titel") or "")[:120]
+                    sess.arbejde = bool(req.get("arbejde"))
                 except Exception as exc:
                     _send(client, {"status": "error", "error": f"spawn failed: {exc}"})
                     return
@@ -770,7 +793,18 @@ def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, A
 
 
 def _exec_bash_session_open(args: dict[str, Any]) -> dict[str, Any]:
-    return _client_call({"op": "open"}, timeout=10.0)
+    return _client_call(
+        {"op": "open", "titel": str(args.get("titel") or "")}, timeout=10.0)
+
+
+def _open_arbejdssession() -> dict[str, Any]:
+    """Aabn den DELTE arbejds-shell — den `bash`-vaerktoejet genbruger.
+
+    Adskilt fra `_exec_bash_session_open` fordi den ikke er en opgave. Den
+    skal ikke i baggrundsjob-panelet, og daemonen maerker den derfor ved
+    fødselen frem for at panelet gaetter bagefter.
+    """
+    return _client_call({"op": "open", "arbejde": True}, timeout=10.0)
 
 
 def _exec_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
@@ -816,9 +850,14 @@ BASH_SESSION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "across calls so cd, env-vars, virtualenvs, sourced files all "
                 "persist. Sessions live in a singleton daemon — they survive "
                 "across all jarvis-api workers and across worker round-robin. "
-                "Idle sessions die after 30 min."
+                "Idle sessions die after 30 min. Send `titel` med hvad "
+                "sessionen er TIL — den er linje 1 i baggrundsjob-panelet, og "
+                "uden den staar der bare «aaben shell»."
             ),
-            "parameters": {"type": "object", "properties": {}, "required": []},
+            "parameters": {"type": "object", "properties": {
+                "titel": {"type": "string", "description": (
+                    "Kort titel paa hvad sessionen bruges til, fx «bygger klienten».")},
+            }, "required": []},
         },
     },
     {

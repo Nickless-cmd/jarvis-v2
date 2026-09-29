@@ -247,7 +247,8 @@ def _default_bash_sid() -> str:
 
 
 def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
-                arbejds_shell: bool = False, koerer: str = "") -> dict[str, Any]:
+                arbejds_shell: bool = False, koerer: str = "",
+                titel: str = "") -> dict[str, Any]:
     """Ét kort for en åben shell — samme form som de øvrige kilder.
 
     Teksten siger hvad tallet ER, og de to kilder er ikke ens:
@@ -280,10 +281,13 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
     # eller hvad den ER naar den venter. Id'et er ude af raekken og staar kun
     # i tooltip + aria-label. Den fulde linje (hvor + hvad tallet betyder)
     # ligger i `kommando`, som panelet viser i `title`.
-    titel = f"kører: {koerer}" if koerer else hvad
+    # Titlen skrives naar sessionen AABNES (`bash_session_open`), ligesom
+    # baggrunds-jobbenes. Mangler den, er «kører: …» den aerlige faldback —
+    # og «aaben shell» naar der ikke koerer noget.
+    navn = titel or (f"kører: {koerer}" if koerer else hvad)
     return {
         "id": sid,
-        "navn": titel,
+        "navn": navn,
         # To kilder, ikke én med maskinen gemt i navnet: i den eksisterende
         # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
         # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.
@@ -338,15 +342,20 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
         sid = str(s.get("session_id") or "")
         if not sid:
             continue
-        # Jarvis' arbejds-shell (det almindelige bash-vaerktoejs delte session)
-        # vises IKKE i panelet — den er konstant og kun server-info (Bjørn 29/9-2026).
-        # Andre shell-sessioner (aabnet med vilje) vises stadig.
-        if sid == arbejds:
+        # Jarvis' arbejds-shell vises IKKE. Daemonen maerker den ved
+        # fødselen (`arbejde=True`), saa det gaelder ogsaa de shells
+        # tidligere procesgenerationer efterlod — foer blev de sammenlignet
+        # med en PROCES-GLOBAL, og hver genstart slap en ny raekke «aaben
+        # shell» igennem (maalt 29/9-2026: fire). Sammenligningen med
+        # globalen staar tilbage som faldback for en daemon der er aeldre
+        # end maerkningen.
+        if s.get("arbejde") or sid == arbejds:
             continue
         ud.append(_shell_kort(
             sid, egen_maskine=False,
             idle=_sekunder(s.get("idle_seconds")),
             arbejds_shell=False,
+            titel=str(s.get("titel") or ""),
             # Mangler feltet, er daemonen ældre end 26/9-2026 og kan ikke
             # svare på spørgsmålet. Så siger kortet det ikke.
             koerer=str(s.get("command") or "") if s.get("busy") else "",
@@ -380,6 +389,7 @@ def _operator_shell_sessioner() -> list[dict[str, Any]]:
         ud.append(_shell_kort(
             sid, egen_maskine=True, idle=_sekunder(s.get("idle_s")),
             cwd=str(s.get("cwd") or ""),
+            titel=str(s.get("titel") or ""),
         ))
     return ud
 

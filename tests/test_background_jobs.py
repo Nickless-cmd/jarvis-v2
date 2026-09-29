@@ -196,6 +196,49 @@ def test_en_aaben_shell_paa_serveren_vises_som_baggrundsjob(monkeypatch):
     assert j[0]["can_pause"] is False
 
 
+def test_en_EFTERLADT_arbejds_shell_vises_ikke_selv_om_globalen_peger_andetsteds(monkeypatch):
+    # Rod (maalt 29/9-2026): arbejds-shellen blev filtreret ved at sammenligne
+    # med en PROCES-GLOBAL. Daemonen overlever genstarte, saa hver ny
+    # procesgenerations arbejds-shell slap igennem som en raekke «aaben shell»
+    # — fire af dem stod i panelet. Daemonen maerker dem nu ved fødselen, og
+    # maerkningen holder hele sessionens levetid, ogsaa efter ejeren er vaek.
+    _taend_shells(monkeypatch)
+    import core.tools.simple_tools_web as stw
+    monkeypatch.setattr(stw, "_DEFAULT_BASH_SESSION_ID", "bsh-nyproces", raising=False)
+    _monter_lokal(monkeypatch, [
+        {"session_id": "bsh-gammel1", "alive": True, "idle_seconds": 900, "arbejde": True},
+        {"session_id": "bsh-gammel2", "alive": True, "idle_seconds": 800, "arbejde": True},
+        {"session_id": "bsh-nyproces", "alive": True, "idle_seconds": 3, "arbejde": True},
+        {"session_id": "bsh-medvilje", "alive": True, "idle_seconds": 12, "arbejde": False},
+    ])
+    _monter_operator(monkeypatch, [])
+    assert [x["id"] for x in bj.liste()["jobs"]] == ["bsh-medvilje"]
+
+
+def test_en_aaben_shell_uden_titel_falder_tilbage_til_det_den_ER(monkeypatch):
+    # «aaben shell» er aerligt naar vi intet ved — men naar vi VED hvad
+    # sessionen er til, skal det staa. Titlen skrives ved aabningen.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [
+        {"session_id": "bsh-a", "alive": True, "idle_seconds": 5,
+         "titel": "bygger klienten"},
+        {"session_id": "bsh-b", "alive": True, "idle_seconds": 5},
+    ])
+    _monter_operator(monkeypatch, [])
+    navne = {x["id"]: x["navn"] for x in bj.liste()["jobs"]}
+    assert navne["bsh-a"] == "bygger klienten"
+    assert navne["bsh-b"] == "åben shell"
+
+
+def test_operator_sessionens_titel_kommer_med(monkeypatch):
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [])
+    _monter_operator(monkeypatch, [{"session_id": "opsess-abc123",
+                                    "cwd": "~/proj", "idle_s": 7,
+                                    "titel": "rydder logs op"}])
+    assert [x["navn"] for x in bj.liste()["jobs"]] == ["rydder logs op"]
+
+
 def test_panelet_maa_ikke_STARTE_daemonen_for_at_kigge_efter_den(monkeypatch):
     # `_exec_bash_session_list` gaar gennem `_ensure_daemon_running()`, som
     # spawner en daemon naar der ikke er nogen. Panelet poller hvert femte

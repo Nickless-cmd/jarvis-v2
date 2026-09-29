@@ -177,13 +177,18 @@ def test_close_paa_en_OPTAGET_session_vender_tilbage_med_det_samme():
 class _Attrap:
     """Nok af en session til at `_list_row` kan læses uden en daemon."""
 
-    def __init__(self, *, laast: bool, kommando: str, levende: bool = True):
+    def __init__(self, *, laast: bool, kommando: str, levende: bool = True,
+                 titel: str = "", arbejde: bool = False):
         self.lock = threading.Lock()
         if laast:
             self.lock.acquire()
         self.running_command = kommando
         self.last_used = time.time() - 42
         self._levende = levende
+        # Sat ved `open` (29/9-2026) — attrap'en skal baere dem, ellers
+        # maaler testen en anden kontrakt end daemonen udsteder.
+        self.titel = titel
+        self.arbejde = arbejde
 
     def alive(self) -> bool:
         return self._levende
@@ -198,6 +203,19 @@ def test_list_siger_om_sessionen_er_optaget_og_hvad_der_koerer():
     assert r["command"] == "npm run build"
     # `last_used` sættes ved kommandoens START, så tallet ER køretiden.
     assert r["idle_seconds"] == 42
+
+
+def test_list_baerer_titel_og_arbejdsmaerkning():
+    # Panelet skal kunne se HVAD en session er til, og om den overhovedet
+    # hoerer hjemme i panelet. Begge dele skrives ved `open` og skal derfor
+    # med i list-svaret — ellers maa panelet gaette bagefter.
+    r = _list_row("bsh-z", _Attrap(laast=False, kommando="",
+                                   titel="bygger klienten", arbejde=True), time.time())
+    assert r["titel"] == "bygger klienten"
+    assert r["arbejde"] is True
+    # Uden maerkning er det en almindelig session aabnet med vilje.
+    r2 = _list_row("bsh-w", _Attrap(laast=False, kommando=""), time.time())
+    assert r2["titel"] == "" and r2["arbejde"] is False
 
 
 def test_list_viser_ikke_en_gammel_kommando_paa_en_ledig_session():

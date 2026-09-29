@@ -9,6 +9,21 @@ const item = (over: Partial<ToolItem> = {}): ToolItem => ({
   ...over
 })
 
+/** Flad liste af testID'er og tekst i render-træets rækkefølge (oppefra og ned). */
+const orden = (node: unknown, ud: string[] = []): string[] => {
+  if (node == null) return ud
+  // Teksten ligger som streng-noder i `toJSON()`-træet — ikke i `children`
+  // som en streng, men som sit eget element. Uden denne gren fanges labels
+  // som «Læste a.py» aldrig, og en rækkefølge-assertion måler mod -1.
+  if (typeof node === 'string') { ud.push(node); return ud }
+  if (Array.isArray(node)) { node.forEach((n) => orden(n, ud)); return ud }
+  const n = node as { props?: Record<string, unknown>; children?: unknown }
+  const p = n.props ?? {}
+  if (typeof p.testID === 'string') ud.push(p.testID)
+  orden(n.children, ud)
+  return ud
+}
+
 it('viser ÉN linje for hele runden — ikke én pr. kald', async () => {
   const s = await render(<InlineToolGroup items={[item(), item(), item()]} />)
   expect(s.getByText('Læste 3 filer')).toBeTruthy()
@@ -31,6 +46,43 @@ it('ét kald har ingen chevron — den ville være et tomt løfte', async () => 
   expect(s.queryByTestId('icon-ChevronRight')).toBeNull()
   await fireEvent.press(s.getByTestId('tool-group'))
   expect(s.queryByTestId('tool-group-details')).toBeNull()
+})
+
+/**
+ * Runden kan foldes ud når den bærer en TANKE — ikke kun når den har flere kald
+ * (Bjørn 29/9-2026: «tænke-linjen ind i runde-linjen efter foldet.. det er det
+ * tætteste på chatview I desk»).
+ *
+ * Desk lægger tænke-blokken inde i `rv-arbejdsdetaljer`
+ * (`RaekkeTranskript.tsx:324`). Uden denne udvidelse ville tanken ikke kunne
+ * nås: runden har ét kald, `expandable` var falsk, og chevronen ville ikke
+ * være der at trykke på. Testen ovenfor skal stadig holde — et kald UDEN en
+ * tanke har fortsat intet at folde ud.
+ */
+it('en runde med ÉT kald men en tanke kan foldes ud — og viser tanken', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item()]} tanker={[{ key: 't1', text: 'jeg overvejer', seconds: 4 }]} />
+  )
+  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+  expect(s.queryByTestId('tool-group-details')).toBeNull()
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.getByTestId('tool-group-details')).toBeTruthy()
+  expect(s.getByTestId('thinking-summary')).toBeTruthy()
+  expect(s.getByText('Tænkte i 4s')).toBeTruthy()
+})
+
+it('tanken ligger ØVERST i folden — værktøjskaldene under den', async () => {
+  // Desk tegner elementerne i den rækkefølge de skete: tanken kom før kaldene.
+  const s = await render(
+    <InlineToolGroup
+      items={[item({ label: 'Læste a.py' }), item({ label: 'Læste b.py' })]}
+      tanker={[{ key: 't1', text: 'jeg overvejer', seconds: 4 }]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = orden(s.toJSON())
+  expect(r.indexOf('thinking-summary')).toBeGreaterThan(-1)
+  expect(r.indexOf('thinking-summary')).toBeLessThan(r.indexOf('Læste a.py'))
 })
 
 it('linjen er i nutid mens runden kører — og prikkerne ruller i stedet for «…»', async () => {

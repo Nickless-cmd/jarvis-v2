@@ -285,6 +285,10 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
     />
   )
   await fireEvent.press(s.getByTestId('turn-header'))
+  // Tanken der hørte til kaldet ligger INDE i runde-linjens fold — den er ikke
+  // synlig før den åbnes. Den anden har intet kald efter sig og står selv.
+  expect(s.queryAllByText(/Tænkte/).length).toBe(1)
+  await fireEvent.press(s.getByTestId('tool-group'))
   const taenkte = s.queryAllByText(/Tænkte/)
   expect(taenkte.length).toBe(2)
   // Og de baerer hver sin maalte tid — ikke den foerstes for dem begge.
@@ -385,16 +389,19 @@ const raekkefoelge = (node: unknown, ud: string[] = []): string[] => {
 }
 
 /**
- * Tænkelinjen skal ligge UNDER værktøjs-linjen (Bjørn 29/9-2026: «i desk lægger
- * vi tænkelinjen ind under tool result linjen.. det bør vi osse gøre her»).
+ * Tænkelinjen skal ligge INDE i runde-linjens fold (Bjørn 29/9-2026:
+ * «tænke-linjen ind i runde-linjen efter foldet.. det er det tætteste på
+ * chatview I desk»).
  *
- * I desk er tænke-linjen ikke en søskende OVER linjen — den er et ELEMENT i
- * rundens detaljer, under rundens knap (`RaekkeTranskript.tsx:275`). Rækkerne
- * bygges i `groupToolRounds`, og listen er INVERTERET (`ordered = [...rows]
- * .reverse()`), så render-rækkefølgen er bund-til-top: den række der står SIDST
- * er den ØVERSTE på skærmen. Værktøjs-linjen skal derfor stå efter tænke-linjen.
+ * Første forsøg lagde den som en søskenderække UNDER linjen. Desk gør mere end
+ * det: tænke-blokken er et ELEMENT i `rv-arbejdsdetaljer` — inde bag rundens
+ * chevron (`RaekkeTranskript.tsx:324`), tegnet som sin egen foldbare række.
+ * Tråden mister en linje pr. runde, og tanken er ét tryk væk.
+ *
+ * Derfor skal chevronen også frem når runden kun havde ÉT kald: uden den ville
+ * tanken ikke kunne nås, og vi havde byttet en synlig linje for en skjult.
  */
-it('tænkelinjen ligger UNDER værktøjs-linjen — som i desk', async () => {
+it('tænkelinjen ligger INDE i runde-linjens fold — som i desk', async () => {
   const s = await render(
     <MessageList
       messages={[
@@ -415,12 +422,47 @@ it('tænkelinjen ligger UNDER værktøjs-linjen — som i desk', async () => {
     />
   )
   await fireEvent.press(s.getByTestId('turn-header'))
-  const orden = raekkefoelge(s.toJSON())
-  const linje = orden.indexOf('tool-group')
-  const tanke = orden.indexOf('thinking-summary')
-  expect(linje).toBeGreaterThan(-1)
-  expect(tanke).toBeGreaterThan(-1)
-  expect(linje).toBeGreaterThan(tanke)
+  // Foldet: tænke-linjen er ikke sin egen række i tråden.
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  // Chevronen står frem selvom runden kun havde ét kald.
+  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+  // Åbn runden: tanken står nu inde i dens detaljer.
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const detaljer = within(s.getByTestId('tool-group-details'))
+  expect(detaljer.getByTestId('thinking-summary')).toBeTruthy()
+})
+
+/**
+ * Tur-hovedet skal stadig bære tænketiden — også nu hvor tanken bor INDE i
+ * runde-linjens fold.
+ *
+ * `medTurHoveder` regnede sekunderne fra tænke-RÆKKER. Da tanken flyttede ind i
+ * gruppen, faldt den ud af den optælling, og hovedet ville tie om sine sekunder
+ * uden at nogen fejl blev rejst. Målt: mutation M5 (tællingen fjernet fra
+ * gruppen) slap gennem HELE suiten — derfor denne test.
+ */
+it('tur-hovedet tæller tænketiden med, selvom tanken ligger i folden', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg planen', seconds: 3 },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'fil.txt', status: 'ok' },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  // Hovedet står uden at folde ud — det er dér tallet skal læses.
+  expect(s.getByText(/· 3s/)).toBeTruthy()
 })
 
 it('en tanke UDEN et kald efter sig bliver hvor den er', async () => {

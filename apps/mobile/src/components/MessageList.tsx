@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
-import { InlineToolGroup } from './InlineToolGroup'
+import { InlineToolGroup, type TankeRaekke } from './InlineToolGroup'
 import { formatTid } from './InlineToolGroup'
 import { TurnHeader } from './TurnHeader'
 import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
@@ -134,7 +134,7 @@ type Row = (
   | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
-  | { kind: 'tool-group'; key: string; items: ToolItem[] }
+  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[] }
   /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
    *  Findes kun mens der streames; rækken tilføjes ikke efter. */
   | { kind: 'arbejdslinje'; key: string; tekst: string }
@@ -236,10 +236,18 @@ function groupToolRounds(rows: Row[]): Row[] {
           }
     )
     out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items,
+      // Tanken følger med IND i linjen. Den stod før som en søskenderække
+      // EFTER gruppen; nu er den rundens første detalje, som i desk. Kun de
+      // tanker der hørte til netop denne gruppe — de øvrige bliver hvor de er.
+      tanker: tanke.length
+        ? tanke.flatMap((r) => r.kind === 'thinking'
+            ? [{ key: r.key, seconds: r.seconds, text: r.text, live: r.live, messageId: r.messageId }]
+            : [])
+        : undefined,
       turnId: buf[0]!.turnId, work: buf[0]!.work })
     buf = []
-    // Tanken lige efter linjen — ikke over den.
-    slipTanke()
+    // Tanken er nu INDENI linjen — den skal ikke også stå efter den.
+    tanke = []
   }
   for (const r of rows) {
     if (r.kind === 'tool' || r.kind === 'live-tool') {
@@ -282,7 +290,16 @@ function medTurHoveder(rows: Row[], aaben: (id: string) => boolean): Row[] {
       setHoved.add(row.turnId)
       const dele = arbejde.get(row.turnId) ?? []
       const vaerktoejer = dele.flatMap((r) => r.kind === 'tool-group' ? r.items : [])
-      const sekunder = dele.reduce((n, r) => n + (r.kind === 'thinking' ? r.seconds ?? 0 : 0), 0)
+      // Tænketiden bor nu INDE i gruppen for de tanker der hørte til en runde;
+      // kun de tanker uden et kald efter sig står stadig som egne rækker.
+      // Uden begge led ville hovedets «· 1m 3s» tabe netop de sekunder det
+      // skal vise — og det ville gøre det uden en fejl at se på.
+      const sekunder = dele.reduce((n, r) =>
+        n + (r.kind === 'thinking'
+          ? r.seconds ?? 0
+          : r.kind === 'tool-group'
+            ? (r.tanker ?? []).reduce((m, t) => m + (t.seconds ?? 0), 0)
+            : 0), 0)
       const fortalt = summarizeRound(vaerktoejer).replace(/…$/, '') ||
         (sekunder > 0 ? `Tænkte i ${formatTid(sekunder)}` : 'Arbejdede')
       const label = vaerktoejer.length && sekunder > 0 ? `${fortalt} · ${formatTid(sekunder)}` : fortalt
@@ -886,7 +903,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           const resume = visning === 'thinking'
             ? item.items.map((i: ToolItem) => (i.id ? resumeer[i.id] : undefined)).find(Boolean)
             : undefined
-          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} />
+          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} tanker={item.tanker} />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }
         if (item.kind === 'thinking') {

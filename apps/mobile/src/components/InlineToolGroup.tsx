@@ -7,6 +7,16 @@ import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
 import { DiffArk } from './DiffArk'
 import { Prikker } from './Prikker'
+import { ThinkingSummary } from './ThinkingSummary'
+
+/** Tænke-linje der hører til runden — tegnes inde i folden, øverst (som desk). */
+export interface TankeRaekke {
+  key: string
+  seconds?: number
+  text?: string
+  live?: boolean
+  messageId?: string
+}
 
 interface Props {
   items: ToolItem[]
@@ -21,6 +31,19 @@ interface Props {
   etiket?: string
   /** Visningen «Alt»: runden står åben fra start (kan stadig foldes). */
   aabenFraStart?: boolean
+  /**
+   * Tankerne der hørte til denne runde. Ligger INDE i folden, øverst — ikke
+   * som en søskenderække efter linjen.
+   *
+   * Desk gør præcis det: tænke-blokken er et ELEMENT i `rv-arbejdsdetaljer`,
+   * under rundens knap (`RaekkeTranskript.tsx:324`), tegnet som en selvstændig
+   * foldbar række med `data-tanke`. Bjørn 29/9-2026: «tænke-linjen ind i
+   * runde-linjen efter foldet.. det er det tætteste på chatview I desk».
+   *
+   * Udeladt/tom = runden har ingen tanke, og chevronen følger som før kun
+   * antallet af kald.
+   */
+  tanker?: TankeRaekke[]
 }
 
 /** Klokken vises først efter 5 s mens runden kører (kildens `zS`). */
@@ -54,11 +77,12 @@ export function formatTid(sek: number): string {
  * - **Folden**: 200 ms med opacitet; indholdet i en ramme på højst 200 dp,
  *   der selv scroller.
  */
-export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
+export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aabenFraStart, tanker }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
-  const [open, setOpen] = useState(!!aabenFraStart && items.length > 1)
+  const harTanker = !!tanker?.length
+  const [open, setOpen] = useState(!!aabenFraStart && (items.length > 1 || harTanker))
   const [vistAendring, setVistAendring] = useState<ToolItem['aendring']>(null)
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
@@ -107,7 +131,8 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
   // Claude Desktop 1:1 (læst i deres `Tf`: `summary || … || mekanisk`).
   const tekst = etiket ? etiket : summary.replace(/…$/, '')
   // Ét kald har ingen detalje at folde ud — så er caret'en et tomt løfte.
-  const expandable = items.length > 1
+  // MEN bærer runden en tanke, er der noget at folde ud alligevel: tanken.
+  const expandable = items.length > 1 || harTanker
 
   const toggle = () => {
     if (!expandable) return
@@ -159,6 +184,21 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
       {open ? (
         <View style={styles.ramme} testID="tool-group-details">
           <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.details}>
+            {/* Tanken ØVERST — den kom før kaldene, og desk tegner elementerne
+                i den rækkefølge de skete. Den har sin egen chevron: den er
+                stadig døren til selve teksten, ét tryk længere inde. */}
+            {(tanker ?? []).map((t) => (
+              <ThinkingSummary
+                key={t.key}
+                seconds={t.seconds}
+                text={t.text}
+                live={t.live}
+                messageId={t.messageId}
+                indlejret
+                // Visningen «Alt» åbner HELE vejen: runden, og tanken i den.
+                aabenFraStart={aabenFraStart}
+              />
+            ))}
             {items.map((item, i) => (
               // En række der redigerede eller skrev en fil kan trykkes: ændringen
               // åbner i diff-arket (Claude Desktop §9: «Click a filename on an

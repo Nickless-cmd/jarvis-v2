@@ -51,7 +51,8 @@ export const ThinkingSummary = memo(function ThinkingSummary({
   text,
   live,
   messageId,
-  aabenFraStart
+  aabenFraStart,
+  indlejret
 }: {
   seconds?: number
   text?: string
@@ -60,6 +61,8 @@ export const ThinkingSummary = memo(function ThinkingSummary({
   messageId?: string
   /** Visningen «Alt»: tanken står åben fra start. */
   aabenFraStart?: boolean
+  /** Inde i en runde-linjens fold: folden ejer venstremargen — ikke denne linje. */
+  indlejret?: boolean
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -188,7 +191,7 @@ export const ThinkingSummary = memo(function ThinkingSummary({
   const vist = fullText ?? text
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, indlejret ? styles.wrapIndlejret : null]}>
       <Pressable
         testID="thinking-summary"
         accessibilityRole={expandable ? 'button' : 'text'}
@@ -227,7 +230,7 @@ export const ThinkingSummary = memo(function ThinkingSummary({
         </View>
       </Pressable>
       {open && vist ? (
-        <View style={styles.ramme}>
+        <View style={[styles.ramme, indlejret ? styles.rammeIndlejret : null]}>
           <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.rammeIndhold}>
             <Text selectable style={styles.body}>{vist}</Text>
           </ScrollView>
@@ -240,6 +243,10 @@ export const ThinkingSummary = memo(function ThinkingSummary({
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },
+  // Inde i runde-linjens fold: folden har sin egen luft (10 dp), så linjen
+  // skal ikke lægge sin egen oveni — den ville rykke tanken ind i forhold til
+  // værktøjs-detaljerne den deler ramme med.
+  wrapIndlejret: { paddingHorizontal: 0 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,6 +267,9 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     marginTop: 4, marginHorizontal: 10, marginBottom: 8, maxHeight: 200, overflow: 'hidden',
     backgroundColor: 'rgba(0,0,0,0.25)'
   },
+  // Samme ramme, men uden sin egen margen: inde i folden er den ét element
+  // blandt flere, og foldens `gap` bestemmer afstanden — ikke denne.
+  rammeIndlejret: { marginHorizontal: 0, marginTop: 0, marginBottom: 0 },
   rammeScroll: { maxHeight: 200 },
   rammeIndhold: { padding: 10 },
   body: { color: tokens.color.fg3, fontSize: 14, lineHeight: 21 }

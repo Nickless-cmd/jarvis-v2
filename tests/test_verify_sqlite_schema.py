@@ -172,3 +172,51 @@ def test_forklaringen_naar_HELT_ud_gennem_main(capsys, tmp_path):
         "den praecise kommando mangler — en halv kommando er ingen vej videre")
     assert "STOP" in ud, "den forsvundne tabel blev ikke kaldt alvorlig"
     assert "TIDSFORMAT" in ud
+
+
+def test_empty_table_gaining_rows_is_not_drift():
+    """En tom tabel har intet format at sammenligne med.
+
+    Maalt 29/9-2026: cheap_lane_admission_leases (en lease-tabel) fik gaten til
+    at fejle mens en lease var aktiv og passere fem minutter senere, da den var
+    udloebet — samme kode, samme snapshot. Skriveren var uaendret hele tiden.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE leases (id INTEGER PRIMARY KEY, created_at TEXT)")
+    expected = guard.inventory(conn)
+    assert expected["tables"]["leases"]["created_at_formats"] == ["unobserved"]
+
+    # foerste raekke i en tidligere tom tabel -> ingen drift
+    conn.execute("INSERT INTO leases VALUES (1, '2026-09-29T11:15:41.123456+00:00')")
+    actual = guard.inventory(conn)
+    assert actual["tables"]["leases"]["created_at_formats"] == ["iso_utc_offset"]
+    assert guard.compare(actual, expected) == []
+
+    # ... og en tabel der tommes igen -> heller ingen drift
+    conn.execute("DELETE FROM leases")
+    tomt = guard.inventory(conn)
+    assert tomt["tables"]["leases"]["created_at_formats"] == ["unobserved"]
+    assert guard.compare(tomt, actual) == []
+
+
+def test_real_format_shift_between_two_observed_states_still_blocks():
+    """Fixet maa ikke slukke vagten: to observerede formater er stadig en drift."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, created_at TEXT)")
+    conn.execute("INSERT INTO events VALUES (1, '2026-09-29T07:38:59.148486+00:00')")
+    expected = guard.inventory(conn)
+    conn.execute("INSERT INTO events VALUES (2, '2026-09-29 05:30:26')")
+    actual = guard.inventory(conn)
+    assert guard.compare(actual, expected) == [
+        "CHANGED events.created_at_formats: ['iso_utc_offset'] -> "
+        "['iso_utc_offset', 'sqlite_utc_seconds']"
+    ]
+
+
+def test_table_without_created_at_column_is_not_a_format_drift():
+    """`[]` er 'ingen kolonne', ikke et format."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE uden_tid (id INTEGER PRIMARY KEY)")
+    expected = guard.inventory(conn)
+    assert expected["tables"]["uden_tid"]["created_at_formats"] == []
+    assert guard.compare(guard.inventory(conn), expected) == []

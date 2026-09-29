@@ -192,9 +192,10 @@ _Compare the live SQLite schema with its reviewed, per-table snapshot._
 | function | `timestamp_format` | `(value)` | — | [src](../../../scripts/verify_sqlite_schema.py#L26) |
 | function | `_timestamp_formats` | `(conn, table)` | — | [src](../../../scripts/verify_sqlite_schema.py#L41) |
 | function | `inventory` | `(conn)` | — | [src](../../../scripts/verify_sqlite_schema.py#L60) |
-| function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L98) |
-| function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L115) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L154) |
+| function | `_unobserved` | `(value)` | True når et format ikke er observeret — tom tabel eller ingen kolonne. | [src](../../../scripts/verify_sqlite_schema.py#L98) |
+| function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L108) |
+| function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L139) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L178) |
 
 ## `scripts/verify_vagt_graenser.py`
 _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._

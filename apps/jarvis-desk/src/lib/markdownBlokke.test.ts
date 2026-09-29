@@ -35,6 +35,11 @@ describe('delIBlokke', () => {
     expect(delIBlokke(md)).toEqual(['Før.\n', '```ts\nconst a = 1\n\nconst b = 2\n```\n', 'Efter.'])
   })
 
+  it('en kortere fence inde i fire backticks kan ikke åbne for blokdeling', () => {
+    const kode = '````md\n```\n\n**Vigtig overskrift**\n````'
+    expect(delIBlokke(`${kode}\n\nEfter.`)).toEqual([`${kode}\n`, 'Efter.'])
+  })
+
   it('en løs liste (tomme linjer mellem punkter) forbliver ÉN blok', () => {
     const md = '- et\n\n- to\n\n- tre\n\nAfsnit bagefter.'
     expect(delIBlokke(md)).toEqual(['- et\n\n- to\n\n- tre\n', 'Afsnit bagefter.'])

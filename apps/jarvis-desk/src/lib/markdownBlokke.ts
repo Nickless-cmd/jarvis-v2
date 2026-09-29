@@ -18,25 +18,26 @@
  *    liste med tomme linjer mellem punkterne — ellers blev det to lister).
  * Tabeller har aldrig tomme linjer inden i sig og deles derfor aldrig.
  */
+import { closingFence, openingFence, type FenceMark } from './fenceScanner'
+
 const LISTEPUNKT = /^\s{0,3}(?:[-*+]|\d{1,9}[.)])\s/
 
 export function delIBlokke(md: string): string[] {
   const linjer = md.split('\n')
   const blokke: string[] = []
   let aktuel: string[] = []
-  let iFence = false
-  let fenceTegn = ''
-
-  const aabnFence = (l: string) => /^\s{0,3}(`{3,}|~{3,})/.exec(l)?.[1] ?? ''
+  let fence: FenceMark | null = null
 
   for (let i = 0; i < linjer.length; i++) {
     const l = linjer[i]!
-    const f = aabnFence(l)
-    if (f) {
-      if (!iFence) { iFence = true; fenceTegn = f[0]! }
-      else if (f[0] === fenceTegn) { iFence = false }
+    // 29/9-2026: samme længde- og tegnregler som rendererens fence-scanner;
+    // ellers kunne en kort ``` i en ````-blok splitte koden i to blokke.
+    if (fence) {
+      if (closingFence(l, fence)) fence = null
+    } else {
+      fence = openingFence(l)
     }
-    if (!iFence && l.trim() === '' && aktuel.length > 0) {
+    if (!fence && l.trim() === '' && aktuel.length > 0) {
       // 29/9-2026: slice kopierede hele resten af dokumentet ved hvert skel;
       // indeks-opslag bevarer samme næste linje uden at kopiere den lange hale.
       let j = i + 1

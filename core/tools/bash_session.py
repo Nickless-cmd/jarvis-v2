@@ -194,9 +194,20 @@ class _Session:
             # blandes ind i denne kommandos output eller forvirrer marker-detektionen.
             self._drain_pending(timeout=0.05)
             marker = f"__JARVIS_END_{uuid.uuid4().hex}__"
+            # `set -o pipefail` (29/9-2026). Uden den er `$?` efter `{ cmd ; }`
+            # status for SIDSTE led i en pipe — altsaa `tail`. Maalt 28-29/9:
+            # `git commit … 2>&1 | tail -40` gav exit 0 selv naar en hook
+            # AFVISTE commit'en. Fejlen forsvandt i tavshed, og et afvist
+            # commit lignede et der lykkedes; Bjørn maatte sige det til mig.
+            # Med pipefail rapporterer pipen sit foerste fejlende led.
+            #
+            # SIGPIPE (141) normaliseres til 0: `cmd | head -5` lukker pipe'en
+            # tidligt, og 141 fra den vej er ikke en fejl — uden denne linje
+            # ville pipefail goere enhver `| head` til en falsk fejl.
+            _rc_norm = '[ "${_jarvis_rc:-0}" -eq 141 ] && _jarvis_rc=0'
             payload = (
-                f"{{ {command}\n"
-                f"}} ; echo \"{marker} $?\"\n"
+                f"{{ set -o pipefail; {command}\n"
+                f"}} ; _jarvis_rc=$? ; {_rc_norm} ; echo \"{marker} $_jarvis_rc\"\n"
             ).encode()
             try:
                 os.write(self.fd, payload)

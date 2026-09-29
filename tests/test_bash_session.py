@@ -44,6 +44,40 @@ def test_sund_kommando_virker(session):
     assert "HELLO_A" in (r.get("output") or "")
 
 
+# ── Pipefail: en pipe må ikke skjule en fejl (29/9-2026) ────────────────
+#
+# Målt 28-29/9-2026: `git commit … 2>&1 | tail -40` gav exit 0 selv når en
+# pre-commit-hook AFVISTE commit'en. `{ cmd ; } ; echo "$?"` rapporterer
+# SIDSTE led i pipen — altså `tail`, som altid lykkes. Et afvist commit
+# lignede derfor et der lykkedes, og Bjørn måtte sige det til mig.
+
+
+def test_pipe_skjuler_ikke_en_fejl(session):
+    """Kernen: fejler kommandoen, skal exit-koden sige det — også gennem en pipe."""
+    r = session.run("false | tail -3", timeout=10)
+    assert r["status"] == "ok"
+    assert r["exit_code"] != 0, "pipen skjulte fejlen — tail's 0 blev rapporteret"
+
+
+def test_pipe_med_sidste_led_i_orden_men_foerste_i_stykker(session):
+    """Samme klasse, med en rigtig git-kommando: ugyldig ref gennem pipe."""
+    r = session.run("git rev-parse --verify no-such-ref-xyz 2>&1 | tail -3", timeout=10)
+    assert r["exit_code"] != 0, "git-fejlen forsvandt bag tail"
+
+
+def test_sund_pipe_er_stadig_nul(session):
+    """Modstykket: en pipe hvor ALT lykkes må ikke blive en falsk fejl."""
+    r = session.run("echo hej | tail -3", timeout=10)
+    assert r["exit_code"] == 0
+    assert "hej" in (r.get("output") or "")
+
+
+def test_pipefail_er_slaaet_til_i_sessionen(session):
+    """Indstillingen skal stå i selve shellen — ikke kun i ét kald."""
+    r = session.run("set -o | grep pipefail", timeout=10)
+    assert "on" in (r.get("output") or ""), f"pipefail er ikke slået til: {r}"
+
+
 def test_desync_forgifter_ikke_sessionen(session, tmp_path):
     """KERNEN: efter en desyncende kommando skal den NÆSTE kommando stadig virke."""
     session.run("echo HELLO_A", timeout=10)

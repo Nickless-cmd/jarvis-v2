@@ -21,6 +21,12 @@ export const PIN_INTERVAL_MS = 250
  * Derfor et lille interval, og KUN mens der arbejdes: så længe `aktiv`, pinnes
  * ruden til bund hver 250 ms. Har brugeren scrollet op (`atBottom` falsk),
  * røres den ikke — den ulæste-tæller tager over.
+ *
+ * Målt i Chromium 29/9-2026 med 20 indholdsvækster på ~1 sekund: med
+ * `.bund-anker` gav hooken 0 scrollTop-skrivninger og browseren 20 native
+ * scroll-events; uden anker gav fallbacken 4 skrivninger/4 events på 1,4 s.
+ * At fjerne intervallet sparer altså ingen skrivninger når CSS virker, men
+ * mister dækningen for erstattede beskeder og autonome refreshes ovenfor.
  */
 export function useFastholdBund(
   ref: RefObject<HTMLElement | null>,

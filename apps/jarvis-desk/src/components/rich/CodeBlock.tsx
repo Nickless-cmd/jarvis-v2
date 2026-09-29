@@ -10,7 +10,12 @@ export function CodeBlock({ code, lang }: { code: string; lang: string }) {
 
   useEffect(() => {
     let alive = true
-    codeToHtml(code, { lang: lang || 'text', theme: 'github-dark' })
+    // 29/9-2026: samme lyse/mørke Shiki-tema som diff og chat-kode.
+    codeToHtml(code, {
+      lang: lang || 'text',
+      themes: { light: 'github-light', dark: 'github-dark' },
+      defaultColor: false,
+    })
       .then((h) => { if (alive) setHtml(h) })
       .catch(() => { if (alive) setHtml(null) })
     return () => { alive = false }

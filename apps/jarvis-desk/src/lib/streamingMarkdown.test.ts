@@ -27,6 +27,11 @@ describe('stabilizeStreamingMarkdown', () => {
     expect(stabilizeStreamingMarkdown(lukket)).toBe(lukket)
   })
   it('kortere eller forkert tegn kan ikke lukke en fence', () => {
-    expect(stabilizeStreamingMarkdown('Før\n````js\n```\n~~~')).toBe('Før')
+    expect(stabilizeStreamingMarkdown('Før\n````js\n```\n~~~')).toBe('Før\n````js\n```\n````')
+  })
+  it('viser afsluttede linjer i en åben fence uden den halve linje', () => {
+    expect(stabilizeStreamingMarkdown('Før\n```ts\nconst a = 1\nconst b')).toBe('Før\n```ts\nconst a = 1\n```')
+    expect(stabilizeStreamingMarkdown('Før\n```ts\nconst a = 1\nconst b = 2\n')).toBe('Før\n```ts\nconst a = 1\nconst b = 2\n```')
+    expect(stabilizeStreamingMarkdown('Før\n~~~~js\nconst x = 1\nrest')).toBe('Før\n~~~~js\nconst x = 1\n~~~~')
   })
 })

@@ -199,6 +199,19 @@ function erServerId(id: string): boolean {
 function groupToolRounds(rows: Row[]): Row[] {
   const out: Row[] = []
   let buf: Row[] = []
+  // Tænke-rækker holdes tilbage og lægges IND UNDER den værktøjs-linje de
+  // hører til. Desk gør præcis det samme: tænke-linjen er ikke en søskende
+  // OVER linjen, den er et ELEMENT i rundens detaljer, under rundens knap
+  // (`RaekkeTranskript.tsx:275` — `rv-arbejdsdetaljer`). Bjørn 29/9-2026: «i
+  // desk lægger vi tænkelinjen ind under tool result linjen.. det bør vi osse
+  // gøre her». Står tanken alene — uden et kald efter sig — bliver den hvor
+  // den er; den flyttes kun ned når der faktisk ER en linje at ligge under.
+  let tanke: Row[] = []
+  const slipTanke = () => {
+    if (tanke.length === 0) return
+    out.push(...tanke)
+    tanke = []
+  }
   const flush = () => {
     if (buf.length === 0) return
     const items: ToolItem[] = buf.map((r) =>
@@ -214,18 +227,28 @@ function groupToolRounds(rows: Row[]): Row[] {
     out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items,
       turnId: buf[0]!.turnId, work: buf[0]!.work })
     buf = []
+    // Tanken lige efter linjen — ikke over den.
+    slipTanke()
   }
   for (const r of rows) {
     if (r.kind === 'tool' || r.kind === 'live-tool') {
       if (buf.length && r.turnId !== buf[0]!.turnId) flush()
       buf.push(r)
     }
+    else if (r.kind === 'thinking') {
+      // En tanke EFTER et kald betyder at det kald er slut: luk gruppen (og
+      // dens egen tanke), og læg denne tanke i kø til den NÆSTE linje.
+      flush()
+      tanke.push(r)
+    }
     else {
       flush()
+      slipTanke()
       out.push(r)
     }
   }
   flush()
+  slipTanke()
   return out
 }
 

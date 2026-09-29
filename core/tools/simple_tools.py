@@ -23,6 +23,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
+from core.tools.tool_call_telemetry import udgiv_tool_invoked
 from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
@@ -1038,10 +1039,12 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _record_tool_outcome_memory(name, arguments, result, mode="tool")
         return result
 
-    event_bus.publish("tool.invoked", {
-        "tool": name,
-        "arguments": {k: str(v)[:100] for k, v in arguments.items()},
-    })
+    # Identiteten staar nu i payloadens ROD, ikke kun inde i argumenterne
+    # (29/9-2026). Uden det kunne kerne-rangeringen ikke skelne brugere, og et
+    # `json_extract(..., '$._runtime_user_id')` gav None for alle 59.778 kald.
+    # Udskilt til `tool_call_telemetry` foer aendringen — Boy Scout, filen er
+    # over 2.000 linjer.
+    udgiv_tool_invoked(name, arguments)
 
     try:
         result = handler(arguments)

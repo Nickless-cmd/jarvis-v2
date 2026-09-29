@@ -79,7 +79,12 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
     if (startet.current != null && slut == null) setSlut(Date.now())
   }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
   const sek = startet.current == null ? null : ((slut ?? nu) - startet.current) / 1000
-  const visSek = sek == null || (running && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
+  // «0s» er ikke et tal — det er en runde der blev færdig så hurtigt at der
+  // ikke ER noget at vise. SkillLinjen vægter allerede ved ét sekund
+  // (`sek >= 1` i SkillLinje.tsx:37); her manglede vægnet, så en runde under
+  // et sekund skrev «0s» ud for sit ikon. (Bjørn 29/9-2026: «0s skal væk fra
+  // tool result linjen».)
+  const visSek = sek == null || sek < 1 || (running && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
 
   // Entréen — kun når linjen BEGYNDER at arbejde; en genindlæst tråd skal
   // ikke sende hver linje gennem den.

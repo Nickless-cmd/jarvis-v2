@@ -99,6 +99,18 @@ def test_prompten_naevner_kanalerne_og_tillader_unknown():
     assert "words" in p, "kanalerne med data skal nævnes i prompten"
 
 
+def test_review_requires_observed_trigger_before_scoring():
+    from core.services import decision_review_prompter as P
+
+    prompt = P._build_review_prompt(
+        {"directive": "Citér ved rettelse", "rationale": "Læs først", "trigger_cue": "Bjørn retter mig"},
+        {"summary": "Beskeder observeret", "window_hours": 24, "channels": {"messages": True}},
+    )
+    assert "Læs først" in prompt
+    assert "Bjørn retter mig" in prompt
+    assert "ingen relevant anledning" in prompt
+
+
 def test_prompten_kender_messages_kanalen():
     """`messages` skal kunne vælges som CHANNEL — ellers kan en dom om at
     citere nogen ikke navngive den kanal den hviler på, og porten tvinger den

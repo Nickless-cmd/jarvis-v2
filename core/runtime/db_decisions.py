@@ -151,25 +151,9 @@ def append_review(
                 (evidence or "").strip() or None,
             ),
         )
-        # compute rolling adherence over last 20 reviews (ignoring 'irrelevant')
-        rows = conn.execute(
-            """
-            SELECT verdict FROM behavioral_decision_reviews
-             WHERE decision_id = ?
-             ORDER BY created_at DESC LIMIT 20
-            """,
-            (decision_id,),
-        ).fetchall()
-        scored = []
-        for r in rows:
-            v = str(r["verdict"]).lower().strip()
-            if v == "kept":
-                scored.append(1.0)
-            elif v == "partial":
-                scored.append(0.5)
-            elif v == "broken":
-                scored.append(0.0)
-        adherence = sum(scored) / len(scored) if scored else None
+        # Legacy per-turn LLM suspicions were written as broken reviews.
+        # Only independently assessed reviews belong in the adherence score.
+        adherence, _ = _verified_adherence(conn, decision_id)
         conn.execute(
             """
             UPDATE behavioral_decisions
@@ -182,6 +166,46 @@ def append_review(
         )
         conn.commit()
     return get_decision(decision_id)
+
+
+def _verified_adherence(
+    conn: sqlite3.Connection, decision_id: str,
+) -> tuple[float | None, str | None]:
+    rows = conn.execute(
+        """
+        SELECT verdict, created_at FROM behavioral_decision_reviews
+         WHERE decision_id = ?
+           AND (note IS NULL OR note NOT LIKE 'Auto-detected breach:%')
+         ORDER BY created_at DESC LIMIT 20
+        """,
+        (decision_id,),
+    ).fetchall()
+    values = {"kept": 1.0, "partial": 0.5, "broken": 0.0}
+    scored = [values[str(row["verdict"]).lower().strip()]
+              for row in rows if str(row["verdict"]).lower().strip() in values]
+    score = sum(scored) / len(scored) if scored else None
+    return score, str(rows[0]["created_at"]) if rows else None
+
+
+def repair_legacy_auto_adherence() -> int:
+    """Rebuild stored scores after legacy automatic suspicions polluted them.
+
+    The append-only reviews remain intact for audit. Safe to run repeatedly.
+    """
+    with connect() as conn:
+        _ensure_tables(conn)
+        ids = [str(row["decision_id"]) for row in conn.execute(
+            "SELECT decision_id FROM behavioral_decisions"
+        ).fetchall()]
+        for decision_id in ids:
+            score, reviewed_at = _verified_adherence(conn, decision_id)
+            conn.execute(
+                "UPDATE behavioral_decisions SET adherence_score = ?, "
+                "last_reviewed_at = ? WHERE decision_id = ?",
+                (score, reviewed_at, decision_id),
+            )
+        conn.commit()
+    return len(ids)
 
 
 def update_decision(

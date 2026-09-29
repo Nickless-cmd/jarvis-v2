@@ -48,6 +48,24 @@ class TestLastReviewTime:
         assert drp._last_review_time({"recent_reviews": []}) is None
         assert drp._last_review_time({}) is None
 
+    def test_auto_breach_does_not_reset_daily_review_clock(self):
+        now = datetime.now(UTC)
+        decision = {"recent_reviews": [
+            {"created_at": _iso(now), "note": "Auto-detected breach: suspected"},
+            {"created_at": _iso(now - timedelta(hours=30)), "verdict": "kept"},
+        ]}
+        assert drp._last_review_time(decision) == now - timedelta(hours=30)
+
+    def test_stored_verified_timestamp_survives_truncated_auto_reviews(self):
+        now = datetime.now(UTC)
+        decision = {
+            "last_reviewed_at": _iso(now - timedelta(hours=30)),
+            "recent_reviews": [
+                {"created_at": _iso(now), "note": "Auto-detected breach: suspected"},
+            ],
+        }
+        assert drp._last_review_time(decision) == now - timedelta(hours=30)
+
 
 def _run(active, full_map, *, flag=True, max_reviews=None):
     """Drive review_pending_decisions with mocked deps. Returns (result, call_count)."""

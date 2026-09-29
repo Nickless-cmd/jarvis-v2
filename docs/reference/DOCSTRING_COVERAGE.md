@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8178/15695 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8179/15697 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 8178/15695 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 699 | 1278 | 54% |
+| `core.runtime` | 700 | 1280 | 54% |
 | `core.services` | 5430 | 10681 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -395,12 +395,12 @@ Generated from source. 8178/15695 functions/methods documented (52%). The list b
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L77)
 - `core/runtime/db_core.py` :: `get_runtime_state_value` (L392)
 - `core/runtime/db_core.py` :: `set_runtime_state_value` (L372)
-- `core/runtime/db_decisions.py` :: `count_decisions` (L335)
+- `core/runtime/db_decisions.py` :: `count_decisions` (L359)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
-- `core/runtime/db_decisions.py` :: `delete_decision` (L320)
-- `core/runtime/db_decisions.py` :: `get_decision` (L266)
-- `core/runtime/db_decisions.py` :: `list_reviews` (L309)
-- `core/runtime/db_decisions.py` :: `set_status` (L249)
+- `core/runtime/db_decisions.py` :: `delete_decision` (L344)
+- `core/runtime/db_decisions.py` :: `get_decision` (L290)
+- `core/runtime/db_decisions.py` :: `list_reviews` (L333)
+- `core/runtime/db_decisions.py` :: `set_status` (L273)
 - `core/runtime/db_devices.py` :: `kraev_aktivt` (L169)
 - `core/runtime/db_devices.py` :: `saet_kraev` (L178)
 - `core/runtime/db_embeddings.py` :: `count_embeddings` (L133)
@@ -972,7 +972,7 @@ Generated from source. 8178/15695 functions/methods documented (52%). The list b
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
-- `core/services/decision_enforcement.py` :: `subscribe` (L562)
+- `core/services/decision_enforcement.py` :: `subscribe` (L551)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
 - `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L163)
 - `core/services/decision_ghosts.py` :: `describe_success_echo` (L171)

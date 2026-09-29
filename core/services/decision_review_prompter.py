@@ -61,11 +61,15 @@ def _last_review_time(decision: dict[str, Any]) -> datetime | None:
     reviews = decision.get("recent_reviews")
     if not isinstance(reviews, list) or not reviews:
         reviews = decision.get("reviews") or []
-    if not isinstance(reviews, list) or not reviews:
-        return None
+    if not isinstance(reviews, list):
+        reviews = []
     latest: datetime | None = None
     for entry in reviews:
         if not isinstance(entry, dict):
+            continue
+        # Legacy per-turn LLM suspicions were stored as broken reviews. They
+        # must not postpone the independent daily assessment.
+        if str(entry.get("note") or "").startswith("Auto-detected breach:"):
             continue
         ts = str(entry.get("created_at") or entry.get("at") or "")
         if not ts:
@@ -76,12 +80,19 @@ def _last_review_time(decision: dict[str, Any]) -> datetime | None:
             continue
         if latest is None or parsed > latest:
             latest = parsed
-    return latest
+    if latest is not None:
+        return latest
+    stored = str(decision.get("last_reviewed_at") or "")
+    try:
+        return datetime.fromisoformat(stored) if stored else None
+    except ValueError:  # a malformed legacy timestamp must not block a due review
+        return None
 
 
 def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | None = None) -> str:
     directive = str(decision.get("directive") or "").strip()
-    reason = str(decision.get("reason") or "").strip()
+    reason = str(decision.get("rationale") or decision.get("reason") or "").strip()
+    trigger = str(decision.get("trigger_cue") or "").strip()
     regnskab = str((evidence or {}).get("summary") or "").strip()
     timer = (evidence or {}).get("window_hours")
     kanaler = (evidence or {}).get("channels") or {}
@@ -91,6 +102,7 @@ def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | No
         "vurdere om du har holdt den siden sidste review.\n\n"
         f"Beslutning: {directive}\n"
         f"Grund: {reason}\n\n"
+        f"Anledning: {trigger or 'udled af beslutningen'}\n\n"
         f"REGNSKAB for de seneste {timer} timer — hentet fra eventbus, git-log, dine "
         "egne svar og din indre tilstand. Ikke fra din hukommelse:\n"
         f"  {regnskab}\n\n"
@@ -101,6 +113,8 @@ def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | No
         "  3. Kræver beslutningen en kanal der IKKE har data, er svaret unknown — "
         "tavshed i et tomt regnskab er ikke et brud.\n"
         "  4. Sig 'broken' når situationen faktisk indtraf og du ikke greb den.\n"
+        "  5. Hvis der var ingen relevant anledning i vinduet, svar unknown. "
+        "En fyldt kanal er ikke i sig selv en anledning.\n"
         "Format (præcis tre linjer):\n"
         "  VERDICT: kept|partial|broken|unknown\n"
         "  CHANNEL: tools|commits|words|messages|signals|inner|none\n"
@@ -283,5 +297,3 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         "failed": failed,
         "downgraded_no_evidence": downgraded,
     }
-
-

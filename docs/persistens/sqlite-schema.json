@@ -13890,6 +13890,101 @@
         "iso_utc_offset"
       ]
     },
+    "decision_action_opportunities": {
+      "digest": "36:9c:fb:cf:b0:cf:72:47:f8:ba:90:b5:8e:0b:03:0d:57:8e:80:2c:d0:18:9e:19:19:56:62:2a:1b:21:60:0e",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "memory_recalled",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "outcome",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'pending'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_decision_action_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_decision_action_created ON decision_action_opportunities (created_at)"
+          },
+          {
+            "name": "sqlite_autoindex_decision_action_opportunities_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
     "delayed_notifications": {
       "digest": "f4:b3:54:47:76:94:75:d5:f7:cd:4a:40:dc:7a:6b:1d:a4:68:f2:cd:73:63:13:6e:38:27:b8:47:9a:a4:06:8b",
       "schema": {

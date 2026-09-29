@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { erKodeSamtale } from '../lib/sessionGroups'
-import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
+import { listSessions, getSession, createSession, renameSession, deleteSession, setSessionFlags, setSessionWorkspace, type ChatSession, type ChatMessage } from '../lib/api'
 import { parsePauseAsk } from '../lib/pauseAsk'
 import { denseBlocks } from '../lib/blockHelpers'
 
@@ -30,6 +30,16 @@ export interface SessionContextValue {
   create: (title: string, kind?: 'chat' | 'code') => Promise<ChatSession>
   rename: (id: string, title: string) => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Fastgoer eller frigoer en samtale. Fastgjorte staar oeVerst — serveren
+   *  sorterer selv, saa raekkefoelgen retter sig ved naeste list-hentning. */
+  setPinned: (id: string, pinned: boolean) => Promise<void>
+  /** Arkivér en samtale. Den flytter til «arkiverede» nederst i panelet — den
+   *  forsvinder ikke, og kan hentes tilbage med «Gendan». Er den åben, lukkes
+   *  den, ellers stod man i en samtale der ikke længere står i listen. */
+  setArchived: (id: string, archived: boolean) => Promise<void>
+  /** Bind samtalen til et arbejdstræ — projekt-tilhørslen ER `workspace_root`,
+   *  så «flyt til projekt» er dette kald og ikke en flytning i en tabel. */
+  setWorkspace: (id: string, kind: 'container' | 'workstation', root: string) => Promise<void>
   refresh: () => Promise<void>
   /** Poll den aabne samtale; opdater sidebar-listen hoejst hvert 15. sekund. */
   refreshMessages: () => Promise<void>
@@ -60,7 +70,11 @@ export function SessionProvider({
 
   const loadSessions = useCallback(async () => {
     lastListLoadAtRef.current = Date.now()
-    const list = await listSessions(config)
+    // Arkiverede hentes MED (29/9-2026). Serveren skjuler dem som standard, og
+    // panelet havde ingen anden kilde — «Arkivér» gjorde samtalen usynlig i
+    // stedet for arkiveret. Nu bærer listen dem, og grupperingen lægger dem i
+    // «arkiverede» nederst.
+    const list = await listSessions(config, { inkluderArkiverede: true })
     setSessions((current) => stableSessions(current, list))
     return list
   }, [config])
@@ -224,6 +238,51 @@ export function SessionProvider({
     setMessages((prev) => (activeId === id ? [] : prev))
   }, [config, activeId])
 
+  // Fastgoer/frigoer. Optimistisk med vilje: listen hentes hoejst hvert 15.
+  // sekund (se `refreshMessages`), og uden den lokale opdatering ville klikket
+  // se ud som om det ikke virkede. Serveren er den der bestemmer — derfor
+  // hentes listen bagefter, saa den rigtige raekkefoelge staar der.
+  //
+  // Arkivering frigoer fastgoerelsen paa serveren; det spejles lokalt, saa
+  // raekken ikke staar med et fastgoerelses-maerke den ikke har laengere.
+  const setPinned = useCallback(async (id: string, pinned: boolean) => {
+    setSessions((prev) => prev.map((s) => (s.id === id
+      ? { ...s, pinned: pinned ? 1 : 0, archived: pinned ? 0 : s.archived }
+      : s)))
+    await setSessionFlags(config, id, { pinned })
+    void loadSessions()
+  }, [config, loadSessions])
+
+  // Arkivering flytter samtalen til «arkiverede» nederst — den forsvinder IKKE.
+  // Før fjernede vi den fra listen lokalt, og hentede den aldrig igen (serveren
+  // skjuler arkiverede), så der var ingen vej tilbage. Nu sætter vi flaget og
+  // lader grupperingen flytte rækken; serveren frigør fastgørelsen samtidig,
+  // og det spejles lokalt.
+  const setArchived = useCallback(async (id: string, archived: boolean) => {
+    setSessions((prev) => prev.map((s) => (s.id === id
+      ? { ...s, archived: archived ? 1 : 0, pinned: archived ? 0 : s.pinned }
+      : s)))
+    if (archived && activeId === id) {
+      setActiveId(null)
+      setMessages([])
+      loadedRef.current = null
+    }
+    await setSessionFlags(config, id, { archived })
+    void loadSessions()
+  }, [config, activeId, loadSessions])
+
+  // «Flyt til projekt» = bind samtalen til mappen. Projektet ER `workspace_root`;
+  // der findes ingen projekt-tabel at flytte rækker i. Optimistisk, så gruppen
+  // flytter sig straks, og serveren bekræfter bagefter.
+  const setWorkspace = useCallback(async (
+    id: string, kind: 'container' | 'workstation', root: string,
+  ) => {
+    setSessions((prev) => prev.map((s) => (s.id === id
+      ? { ...s, workspace_kind: kind, workspace_root: root } : s)))
+    await setSessionWorkspace(config, id, kind, root)
+    void loadSessions()
+  }, [config, loadSessions])
+
   const appendOptimistic = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, { ...msg, clientStatus: 'optimistic_user' }])
   }, [])
@@ -235,8 +294,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, refreshMessages, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, refreshMessages, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, refresh, refreshMessages, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, refresh, refreshMessages, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

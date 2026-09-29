@@ -25,6 +25,16 @@ export interface ChatSession {
   /** Projektet — stien til arbejdstraeet. Gemt i basen siden begyndelsen, men
    *  sendt med foerst 16/9-2026, saa sidepanelet kan gruppere efter projekt. */
   workspace_root?: string | null
+  /** Fastgjort (1/0) — staar OeVERST i listen. Serveren sorterer selv paa
+   *  `pinned DESC`, saa klienten skal ikke sortere: den skal bare vise listen
+   *  som den kommer. (Kolonnen har ligget i basen hele tiden; den blev foerst
+   *  sendt med 29/9-2026 — samme moenster som `kind` og `workspace_root`.) */
+  pinned?: number | null
+  /** Arkiveret (1/0) — falder UD af listen. Listningen udelader arkiverede som
+   *  standard, saa en arkiveret samtale forsvinder af sig selv uden at klienten
+   *  filtrerer. Fastgjort og arkiveret udelukker hinanden: arkivering frigoer
+   *  fastgoerelsen (se `set_session_flags` paa serveren). */
+  archived?: number | null
 }
 
 export interface ChatMessage {
@@ -261,10 +271,17 @@ export async function apiFetch<T>(
   throw lastError ?? new StreamError('unknown', 'Ukendt fejl', {})
 }
 
-export async function listSessions(config: ApiConfig): Promise<ChatSession[]> {
+export async function listSessions(
+  config: ApiConfig,
+  opts: { inkluderArkiverede?: boolean } = {},
+): Promise<ChatSession[]> {
+  // Arkiverede er skjult som standard paa serveren. Desk bad aldrig om dem, saa
+  // «Arkivér» gjorde samtalen usynlig i stedet for arkiveret — der var ingen
+  // vej tilbage (29/9-2026). Kun naar panelet beder om dem, kommer de med.
+  const q = opts.inkluderArkiverede ? '?inkluder_arkiverede=1' : ''
   const data = await apiFetch<
     { items: ChatSession[] } | { sessions: ChatSession[] } | ChatSession[]
-  >(config, '/chat/sessions')
+  >(config, `/chat/sessions${q}`)
   // Backend kan returnere enten array eller wrapped object — håndter alle:
   //   - direkte array
   //   - {sessions: [...]}
@@ -378,6 +395,44 @@ export async function renameSession(config: ApiConfig, sessionId: string, title:
 
 export async function deleteSession(config: ApiConfig, sessionId: string): Promise<void> {
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
+}
+
+/** Fastgoer eller arkivér en samtale. Ruten har ligget paa serveren hele tiden
+ *  (`PATCH /chat/sessions/{id}/flags`) — klienten havde bare ingen funktion til
+ *  den, saa de to felter var usynlige i desk.
+ *
+ *  Kun de felter man giver, aendres: `undefined` betyder «roer ikke». Udelades
+ *  begge, svarer serveren 400 — et kald uden indhold er en fejl, ikke et no-op. */
+export async function setSessionFlags(
+  config: ApiConfig,
+  sessionId: string,
+  flags: { pinned?: boolean; archived?: boolean },
+): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/flags`, {
+    method: 'PATCH',
+    body: flags,
+  })
+}
+
+/** Bind samtalen til et arbejdstræ — en mappe på egen computer (`workstation`)
+ *  eller et navngivet server-root (`container`).
+ *
+ *  Ruten har ligget på serveren hele tiden (`POST /chat/sessions/{id}/workspace`);
+ *  det var kun denne vej der manglede i klienten (29/9-2026).
+ *
+ *  Den kan ikke LØSNE: serveren kræver `kind` ∈ (container, workstation) og en
+ *  ikke-tom `root`. «Fjern projekt» findes derfor ikke som handling — den ville
+ *  kræve en rute der må skrive NULL, og den er der ikke. */
+export async function setSessionWorkspace(
+  config: ApiConfig,
+  sessionId: string,
+  kind: 'container' | 'workstation',
+  root: string,
+): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/workspace`, {
+    method: 'POST',
+    body: { kind, root },
+  })
 }
 
 /** Manuel compaction (Claude-Code-stil /compact). Udløser den samme baggrunds-motor NU,

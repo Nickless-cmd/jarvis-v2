@@ -62,7 +62,7 @@ describe('inddelingen', () => {
   })
 
   it('rækkefølgen er fast: det han selv har skrevet står øverst', () => {
-    expect(GRUPPE_ORDEN).toEqual(['chat', 'kode', 'baggrund'])
+    expect(GRUPPE_ORDEN).toEqual(['chat', 'kode', 'baggrund', 'arkiv'])
   })
 })
 
@@ -166,5 +166,40 @@ describe('arten afgøres af kind', () => {
     expect(iKode).toEqual(['chat-a'])
     expect(iChat.sort()).toEqual(['auto-recurring-1', 'chat-b'])
     expect(iChat.filter((id) => iKode.includes(id))).toEqual([])
+  })
+})
+
+// ── Arkiverede samtaler (29/9-2026) ────────────────────────────────────────
+//
+// Desk tilbød «Arkivér», men listen hentede kun ikke-arkiverede (serveren
+// skjuler dem som standard), og panelet havde ingen anden kilde. Samtalen blev
+// derfor usynlig — ikke arkiveret. Nu henter panelet dem med
+// (`inkluder_arkiverede=1`) og giver dem deres egen gruppe nederst, med
+// «Gendan» i menuen.
+
+describe('arkiverede samtaler', () => {
+  it('får deres egen gruppe — også når de er kode-samtaler', () => {
+    expect(grupperAf({ id: 'chat-1', kind: 'code', archived: 1 })).toBe('arkiv')
+    expect(grupperAf({ id: 'chat-2', kind: 'chat', archived: 1 })).toBe('arkiv')
+  })
+
+  it('arkiverede autonome står i arkiv, ikke blandt de kørsler der stadig lever', () => {
+    expect(grupperAf({ id: 'auto-dream-1', archived: 1 })).toBe('arkiv')
+    expect(grupperAf({ id: 'auto-dream-2' })).toBe('baggrund')
+  })
+
+  it('gruppen står NEDERST — efter det han selv har skrevet', () => {
+    expect(GRUPPE_ORDEN[GRUPPE_ORDEN.length - 1]).toBe('arkiv')
+  })
+
+  it('vises i BEGGE modes — en arkiveret kode-samtale skal kunne findes igen', () => {
+    expect(GRUPPER_I_MODE.chat).toContain('arkiv')
+    expect(GRUPPER_I_MODE.code).toContain('arkiv')
+  })
+
+  it('archived: 0 og null er ikke arkiveret', () => {
+    expect(grupperAf({ id: 'chat-3', archived: 0 })).toBe('chat')
+    expect(grupperAf({ id: 'chat-4', archived: null })).toBe('chat')
+    expect(grupperAf({ id: 'chat-5' })).toBe('chat')
   })
 })

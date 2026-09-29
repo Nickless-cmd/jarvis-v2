@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
+  Pin, Archive, ArchiveRestore, FolderInput, FolderPlus,
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -293,15 +294,7 @@ export function Sidebar({
                       g.gruppe === 'kode'
                         ? grupperEfterProjekt(g.sessioner).map((p) => (
                           <Fragment key={p.rod || 'uden'}>
-                            <div className="sidebar-label sidebar-projekt">
-                              <span className="sidebar-projekt-navn">{p.navn}</span>
-                              {p.sti && (
-                                <>
-                                  <span className="sidebar-projekt-prik" aria-hidden="true">·</span>
-                                  <span className="sidebar-projekt-sti" title={p.rod}>{p.sti}</span>
-                                </>
-                              )}
-                            </div>
+                            <ProjektOverskrift navn={p.navn} sti={p.sti} rod={p.rod} />
                             {p.sessioner.map((s) => (
                               <SessionItem
                                 key={s.id}
@@ -310,6 +303,8 @@ export function Sidebar({
                                 active={s.id === activeId}
                                 working={isWorking(s.id)}
                                 erKode={erKodeSamtale(s)}
+                                pinned={s.pinned}
+                                archived={s.archived}
                                 onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                               />
                             ))}
@@ -323,6 +318,8 @@ export function Sidebar({
                             active={s.id === activeId}
                             working={isWorking(s.id)}
                             erKode={erKodeSamtale(s)}
+                            pinned={s.pinned}
+                            archived={s.archived}
                             onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                           />
                         ))
@@ -429,6 +426,63 @@ function CoworkMenu() {
   )
 }
 
+/** Projekt-overskrift i sidepanelet — «jarvis-v2 · /media/projects», som i CC.
+ *
+ *  Den var en ren <div> indtil 29/9-2026, og DERFOR kunne der ikke sidde en menu
+ *  i dens ende: der var ingen knap at hænge den på. Nu er den en række med
+ *  samme «⋮» som samtalerne — usynlig indtil musen er der.
+ *
+ *  Menuen tilbyder det der KAN gøres uden en projekt-tabel. «Omdøb projekt»
+ *  kræver et navn der ikke er en mappesti, og «Fjern/Løsn alle» kræver en rute
+ *  der må skrive NULL — `POST /sessions/{id}/workspace` afviser begge med 400.
+ *  De er ikke bygget, og de skal ikke stå i en menu der ikke kan holde dem. */
+function ProjektOverskrift({ navn, sti, rod }: { navn: string; sti: string; rod: string }) {
+  const { create, setWorkspace } = useSessions()
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [open])
+
+  const nySamtaleHer = async () => {
+    setOpen(false)
+    const sess = await create('Ny samtale', 'code')
+    void setWorkspace(sess.id, 'workstation', rod)
+  }
+
+  return (
+    <div className="sidebar-label sidebar-projekt">
+      <span className="sidebar-projekt-navn">{navn}</span>
+      {sti && (
+        <>
+          <span className="sidebar-projekt-prik" aria-hidden="true">·</span>
+          <span className="sidebar-projekt-sti" title={rod}>{sti}</span>
+        </>
+      )}
+      {/* «Uden projekt» har ingen sti og faar ingen menu — der er intet projekt
+          at oprette en samtale i. */}
+      {rod && (
+        <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="session-more" aria-label="Projekt-handlinger"
+                  onClick={() => setOpen((o) => !o)}>
+            <MoreVertical size={14} />
+          </button>
+          {open && (
+            <div className="session-menu">
+              <button type="button" onClick={nySamtaleHer}>
+                <FolderPlus size={13} /> Ny samtale her
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Session-række med "..."-menu (omdøb / eksportér / slet) — vises ved hover. */
 function SessionItem({
   id,
@@ -436,6 +490,8 @@ function SessionItem({
   active,
   working,
   erKode,
+  pinned,
+  archived,
   onSelect,
 }: {
   id: string
@@ -443,9 +499,16 @@ function SessionItem({
   active: boolean
   working?: boolean
   erKode?: boolean
+  /** 1/0 fra basen. Serveren sorterer fastgjorte oeVerst, saa raekken skal
+   *  bare vise tilstanden — ikke flytte sig selv. */
+  pinned?: number | null
+  /** 1/0 fra basen. Arkiverede staar i deres egen gruppe nederst og har
+   *  «Gendan» i stedet for «Arkivér» — de er skjult server-side som standard,
+   *  men panelet henter dem med, saa de kan findes igen. */
+  archived?: number | null
   onSelect: () => void
 }) {
-  const { rename, remove } = useSessions()
+  const { rename, remove, setPinned, setArchived, setWorkspace } = useSessions()
   const { settings } = useSettings()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -482,6 +545,17 @@ function SessionItem({
     setOpen(false)
     setConfirmDelete(false)
     void remove(id)
+  }
+
+  // «Flyt til projekt» = bind samtalen til en mappe. Projektet ER
+  // `workspace_root` — der er intet at flytte i en tabel, saa selve valget af
+  // mappe ER flytningen. Native dialog: window.prompt() virker ikke i Electron.
+  const doFlytTilProjekt = async () => {
+    setOpen(false)
+    const bridge = (window as unknown as { jarvisDesk?: { pickFolder?: () => Promise<string | null> } }).jarvisDesk
+    const sti = await bridge?.pickFolder?.()
+    if (!sti) return
+    void setWorkspace(id, 'workstation', sti)
   }
 
   return (
@@ -532,6 +606,28 @@ function SessionItem({
         </button>
         {open && (
           <div className="session-menu">
+            {/* Fastgoer og arkivér. Begge har ligget i basen og paa serveren
+                hele tiden (`PATCH /sessions/{id}/flags`); det var kun denne
+                menu der ikke tilbød dem (Bjørn 29/9-2026). */}
+            <button type="button" onClick={() => { setOpen(false); void setPinned(id, !pinned) }}>
+              <Pin size={13} /> {pinned ? 'Frigør' : 'Fastgør'}
+            </button>
+            {/* Arkiverede har «Gendan» i stedet for «Arkivér». Uden den var
+                arkivering en sletning man ikke kunne fortryde (29/9-2026). */}
+            {archived ? (
+              <button type="button" onClick={() => { setOpen(false); void setArchived(id, false) }}>
+                <ArchiveRestore size={13} /> Gendan
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setOpen(false); void setArchived(id, true) }}>
+                <Archive size={13} /> Arkivér
+              </button>
+            )}
+            {!archived && (
+              <button type="button" onClick={doFlytTilProjekt}>
+                <FolderInput size={13} /> Flyt til projekt
+              </button>
+            )}
             <button type="button" onClick={() => { setOpen(false); setEditing(true) }}><Pencil size={13} /> Omdøb</button>
             <button type="button" onClick={doExport}><Download size={13} /> Eksportér</button>
             <button type="button" className="danger" onClick={doDelete}>

@@ -4470,6 +4470,14 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   display: flex; align-items: baseline; gap: 5px; min-width: 0;
   padding-left: 18px; cursor: default;
 }
+/* «⋮» i enden af projekt-overskriften (29/9-2026). Samme mønster som
+   samtale-rækkerne: usynlig indtil musen er der. Ankeret skubbes til højre med
+   `margin-left: auto`, så navn og sti bliver stående til venstre.
+   Menuen vokser mod VENSTRE (`.session-menu` har `right: 0`), så den kan ikke
+   blive klippet af `.sidebar`'s `overflow: hidden`. */
+.sidebar-projekt .session-menu-anchor { margin-left: auto; }
+.sidebar-projekt:hover .session-more,
+.sidebar-projekt .session-more:focus-visible { opacity: 1; }
 .sidebar-projekt-navn { color: var(--fg-2); flex: 0 0 auto; }
 .sidebar-projekt-sti {
   color: var(--fg-3); font-size: 11px; min-width: 0;

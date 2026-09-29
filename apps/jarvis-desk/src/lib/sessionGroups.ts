@@ -13,13 +13,17 @@
  * `kind`-kolonne; se `erKodeSamtale` for hvad stedfortræderen kostede.
  */
 
-export type SessionGruppe = 'chat' | 'kode' | 'baggrund'
+export type SessionGruppe = 'chat' | 'kode' | 'baggrund' | 'arkiv'
 
 export interface GrupperbarSession {
   id: string
   /** Samtalens VEDVARENDE art fra basen: 'chat' | 'code'. Den rigtige kilde. */
   kind?: string | null
   workspace_kind?: string | null
+  /** Arkiveret (1/0). Arkiverede er skjult i listningen som standard; panelet
+   *  beder selv om dem (se `listSessions`). Uden den her forsvandt de uden en
+   *  vej tilbage — «Arkivér» blev en sletning man ikke kunne fortyde. */
+  archived?: number | null
 }
 
 /**
@@ -64,14 +68,22 @@ export function erBaggrund(id: string): boolean {
 }
 
 export function grupperAf(s: GrupperbarSession): SessionGruppe {
+  // Arkiverede har deres EGEN gruppe nederst, uanset art (29/9-2026). Tjekket
+  // staar derfor foerst: en arkiveret kode-samtale hoerer ikke i projekt-listen,
+  // og en arkiveret autonom hoerer ikke mellem de koersler der stadig lever.
+  if (s.archived) return 'arkiv'
   if (erBaggrund(s.id)) return 'baggrund'
   return erKodeSamtale(s) ? 'kode' : 'chat'
 }
 
 export const GRUPPE_NAVN: Record<SessionGruppe, string> = {
   chat: 'samtaler',
-  kode: 'kode',
+  // «Projekter», ikke «kode» (Bjørn 29/9-2026). Under denne overskrift ligger
+  // samtalerne delt op pr. projekt — overskriften navngav FLADEN (kode), men
+  // indholdet er projekter, og det er dét man leder efter i listen.
+  kode: 'Projekter',
   baggrund: 'proaktive & autonome',
+  arkiv: 'arkiverede',
 }
 
 /**
@@ -85,13 +97,15 @@ export const GRUPPE_NAVN: Record<SessionGruppe, string> = {
  * lavet for at fjerne.
  */
 export const GRUPPER_I_MODE: Record<'chat' | 'code', SessionGruppe[]> = {
-  chat: ['chat', 'baggrund'],
-  code: ['kode'],
+  chat: ['chat', 'baggrund', 'arkiv'],
+  code: ['kode', 'arkiv'],
 }
 
 /** Rækkefølgen er fast og betyder noget: det han selv har skrevet står øverst,
- *  maskinens egne kørsler nederst. */
-export const GRUPPE_ORDEN: SessionGruppe[] = ['chat', 'kode', 'baggrund']
+ *  maskinens egne kørsler nederst — og det han har lagt væk allernederst.
+ *  Arkiverede står i BEGGE modes: en arkiveret kode-samtale skal kunne findes
+ *  igen også når man står i chat-fladen, ellers var den lige så væk som før. */
+export const GRUPPE_ORDEN: SessionGruppe[] = ['chat', 'kode', 'baggrund', 'arkiv']
 
 /**
  * Del listen op uden at ændre rækkefølgen inden for hver gruppe — serveren
@@ -101,7 +115,7 @@ export const GRUPPE_ORDEN: SessionGruppe[] = ['chat', 'kode', 'baggrund']
 export function grupperSessioner<T extends GrupperbarSession>(
   sessioner: T[],
 ): { gruppe: SessionGruppe; navn: string; sessioner: T[] }[] {
-  const bunker: Record<SessionGruppe, T[]> = { chat: [], kode: [], baggrund: [] }
+  const bunker: Record<SessionGruppe, T[]> = { chat: [], kode: [], baggrund: [], arkiv: [] }
   for (const s of sessioner || []) bunker[grupperAf(s)].push(s)
   return GRUPPE_ORDEN
     .filter((g) => bunker[g].length > 0)

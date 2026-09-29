@@ -46,13 +46,13 @@ describe('sessions-listen er inddelt', () => {
     vis('chat')
     expect(within(gruppe('samtaler')).getByText('2')).toBeInTheDocument()
     expect(within(gruppe('proaktive & autonome')).getByText('3')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^kode/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Projekter/i })).toBeNull()
     expect(screen.queryByText('ret lige den fil')).not.toBeInTheDocument()
   })
 
   it('code-mode viser KUN kode', () => {
     vis('code')
-    expect(within(gruppe('kode')).getByText('2')).toBeInTheDocument()
+    expect(within(gruppe('Projekter')).getByText('2')).toBeInTheDocument()
     expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
     expect(screen.queryByText('kan du kigge på gaten')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()

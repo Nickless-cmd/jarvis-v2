@@ -1251,7 +1251,7 @@ class ChatSessionRenameRequest(BaseModel):
 
 
 @router.get("/sessions")
-def chat_sessions(kind: str = "") -> dict:
+def chat_sessions(kind: str = "", inkluder_arkiverede: bool = False) -> dict:
     """List chat sessions.
 
     When the request carries an X-JarvisX-User header (set by the
@@ -1263,10 +1263,16 @@ def chat_sessions(kind: str = "") -> dict:
 
     `kind=chat|code` skiller de to flader. UDELADT betyder ALT — ikke «chat».
     Enhver klient der fandtes før kolonnen, får præcis det den altid har fået.
+
+    `inkluder_arkiverede` (29/9-2026): arkiverede falder ud af listen som
+    standard. Desk tilbød «Arkivér» uden nogen vej tilbage — samtalen blev
+    usynlig, ikke arkiveret. UDELADT betyder «skjul dem», som før; kun den
+    klient der beder om dem, får dem.
     """
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or None
-    return {"items": list_chat_sessions(user_id=uid, kind=(kind or None))}
+    return {"items": list_chat_sessions(
+        user_id=uid, kind=(kind or None), inkluder_arkiverede=inkluder_arkiverede)}
 
 
 # Bemærk: defineres FØR /sessions/{session_id} så "search" ikke fanges som id.

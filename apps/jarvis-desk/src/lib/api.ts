@@ -435,6 +435,20 @@ export async function setSessionWorkspace(
   })
 }
 
+/** Løsn samtalen fra sit workspace — «Fjern projekt».
+ *
+ * Serveren kunne hele tiden skrive NULL; det var kun POST-ruten ovenfor der
+ * afviste tom root. Uden denne vej ud kunne man vælge en forkert mappe i
+ * «Flyt til projekt» og aldrig komme af med den igen (29/9-2026). */
+export async function releaseSessionWorkspace(
+  config: ApiConfig,
+  sessionId: string,
+): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/workspace`, {
+    method: 'DELETE',
+  })
+}
+
 /** Manuel compaction (Claude-Code-stil /compact). Udløser den samme baggrunds-motor NU,
  *  uanset attention-budget. `focus` styrer valgfrit hvad summary'en prioriterer. */
 export async function compactNow(

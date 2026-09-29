@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
-  Pin, Archive, ArchiveRestore, FolderInput, FolderPlus,
+  Pin, Archive, ArchiveRestore, FolderInput, FolderMinus, FolderPlus,
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -294,7 +294,7 @@ export function Sidebar({
                       g.gruppe === 'kode'
                         ? grupperEfterProjekt(g.sessioner).map((p) => (
                           <Fragment key={p.rod || 'uden'}>
-                            <ProjektOverskrift navn={p.navn} sti={p.sti} rod={p.rod} />
+                            <ProjektOverskrift navn={p.navn} sti={p.sti} rod={p.rod} sessioner={p.sessioner.map((s) => s.id)} />
                             {p.sessioner.map((s) => (
                               <SessionItem
                                 key={s.id}
@@ -433,11 +433,17 @@ function CoworkMenu() {
  *  samme «⋮» som samtalerne — usynlig indtil musen er der.
  *
  *  Menuen tilbyder det der KAN gøres uden en projekt-tabel. «Omdøb projekt»
- *  kræver et navn der ikke er en mappesti, og «Fjern/Løsn alle» kræver en rute
- *  der må skrive NULL — `POST /sessions/{id}/workspace` afviser begge med 400.
- *  De er ikke bygget, og de skal ikke stå i en menu der ikke kan holde dem. */
-function ProjektOverskrift({ navn, sti, rod }: { navn: string; sti: string; rod: string }) {
-  const { create, setWorkspace } = useSessions()
+ *  kræver et navn der ikke er en mappesti og er derfor ikke bygget — den skal
+ *  ikke stå i en menu der ikke kan holde den.
+ *
+ *  «Fjern projekt» ER bygget (29/9-2026). Projektet findes kun som den fælles
+ *  `workspace_root`, så at løsne samtalerne fra mappen ER at fjerne projektet.
+ *  Der er ingen tabel at slette en række i — og derfor heller ikke to
+ *  handlinger: «Løsn alle samtaler» ville være samme knap med et andet navn. */
+function ProjektOverskrift({ navn, sti, rod, sessioner }: {
+  navn: string; sti: string; rod: string; sessioner: string[]
+}) {
+  const { create, setWorkspace, releaseWorkspace } = useSessions()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -451,6 +457,14 @@ function ProjektOverskrift({ navn, sti, rod }: { navn: string; sti: string; rod:
     setOpen(false)
     const sess = await create('Ny samtale', 'code')
     void setWorkspace(sess.id, 'workstation', rod)
+  }
+
+  // «Fjern projekt»: løsn hver samtale i gruppen fra mappen. Projektet findes
+  // kun som den fælles `workspace_root`, så det er den eneste måde at fjerne
+  // det på — og den eneste vej UD af et forkert mappevalg.
+  const fjernProjekt = async () => {
+    setOpen(false)
+    await Promise.all(sessioner.map((id) => releaseWorkspace(id)))
   }
 
   return (
@@ -474,6 +488,9 @@ function ProjektOverskrift({ navn, sti, rod }: { navn: string; sti: string; rod:
             <div className="session-menu">
               <button type="button" onClick={nySamtaleHer}>
                 <FolderPlus size={13} /> Ny samtale her
+              </button>
+              <button type="button" className="danger" onClick={fjernProjekt}>
+                <FolderMinus size={13} /> Fjern projekt
               </button>
             </div>
           )}

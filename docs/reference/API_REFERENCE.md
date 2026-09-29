@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-29 from app.routes (live) — 618 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-29 from app.routes (live) — 619 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -268,6 +268,7 @@
 | POST | `/chat/sessions/{session_id}/rewind/{rewind_id}/undo` | dict | chat_rewind |
 | GET | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
 | PUT | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
+| DELETE | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/stream` |  | chat |
 | POST | `/chat/stream/v2` |  | chat_stream_v2 |

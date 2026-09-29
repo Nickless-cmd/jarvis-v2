@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 
+// `vi.hoisted` fordi `vi.mock` løftes op over hele filen: uden den ville
+// mock'en referere en variabel der endnu ikke findes.
+const { releaseWorkspace } = vi.hoisted(() => ({ releaseWorkspace: vi.fn() }))
+
 // Bjørn 8/9-2026: «sessioner i side panelet er rodet». 278 chat-sessioner,
 // 181 autonome og én proaktiv lå i én flad liste — og indtil samme dag hed
 // chat-sessionerne alle sammen «Ny samtale», så navnene hjalp heller ikke.
@@ -24,6 +28,7 @@ vi.mock('../../hooks/useSessions', () => ({
   useSessions: () => ({
     sessions: SESSIONER, activeId: null,
     select: vi.fn(), create: vi.fn(), rename: vi.fn(), remove: vi.fn(), newChat: vi.fn(),
+    releaseWorkspace,
   }),
 }))
 vi.mock('../../hooks/useSettings', () => ({ useSettings: () => ({ settings: null }) }))
@@ -125,5 +130,22 @@ describe('projekt-overskrifter i kode-tilstand', () => {
     vis('chat')
     expect(screen.queryByText('Uden projekt')).not.toBeInTheDocument()
     expect(screen.queryByText('jarvis-v2')).not.toBeInTheDocument()
+  })
+
+  it('projekt-menuen kan fjerne projektet — den eneste vej UD af en forkert mappe', () => {
+    // Projektet ER `workspace_root`, saa «Fjern projekt» løsner hver samtale i
+    // gruppen. Der er ingen tabel at slette en række i — og derfor heller ikke
+    // to handlinger: «Løsn alle samtaler» ville være samme knap med et andet
+    // navn (Bjørn 29/9-2026).
+    releaseWorkspace.mockClear()
+    vis('code')
+    // Menuen sidder paa projekt-OVERSKRIFTEN, ikke paa raekkerne. Der er to
+    // projekter i testdata, saa vi maa gaa ind via overskriftens eget navn.
+    const overskrift = screen.getByText('jarvis-v2').closest('.sidebar-projekt') as HTMLElement
+    fireEvent.click(within(overskrift).getByRole('button', { name: /Projekt-handlinger/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Fjern projekt/i }))
+    // Kun samtalens eget projekt — den anden gruppe maa ikke rammes.
+    expect(releaseWorkspace).toHaveBeenCalledWith('chat-ccc')
+    expect(releaseWorkspace).not.toHaveBeenCalledWith('chat-ddd')
   })
 })

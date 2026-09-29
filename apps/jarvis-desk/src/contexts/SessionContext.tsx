@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { erKodeSamtale } from '../lib/sessionGroups'
-import { listSessions, getSession, createSession, renameSession, deleteSession, setSessionFlags, setSessionWorkspace, type ChatSession, type ChatMessage } from '../lib/api'
+import { listSessions, getSession, createSession, renameSession, deleteSession, setSessionFlags, setSessionWorkspace, releaseSessionWorkspace, type ChatSession, type ChatMessage } from '../lib/api'
 import { parsePauseAsk } from '../lib/pauseAsk'
 import { denseBlocks } from '../lib/blockHelpers'
 
@@ -40,6 +40,10 @@ export interface SessionContextValue {
   /** Bind samtalen til et arbejdstræ — projekt-tilhørslen ER `workspace_root`,
    *  så «flyt til projekt» er dette kald og ikke en flytning i en tabel. */
   setWorkspace: (id: string, kind: 'container' | 'workstation', root: string) => Promise<void>
+  /** Løsn samtalen fra sit workspace — «Fjern projekt». Projektet ER
+   *  `workspace_root`, så der er intet at slette i en tabel: bindingen er det
+   *  eneste der holder samtalen i gruppen. */
+  releaseWorkspace: (id: string) => Promise<void>
   refresh: () => Promise<void>
   /** Poll den aabne samtale; opdater sidebar-listen hoejst hvert 15. sekund. */
   refreshMessages: () => Promise<void>
@@ -283,6 +287,17 @@ export function SessionProvider({
     void loadSessions()
   }, [config, loadSessions])
 
+  // «Fjern projekt» = løsn samtalen fra sin mappe. Projektet ER `workspace_root`,
+  // så der er intet at slette i en tabel — bindingen er det eneste der binder
+  // samtalen til gruppen. Optimistisk, så rækken flytter til «Uden projekt»
+  // straks; serveren bekræfter bagefter.
+  const releaseWorkspace = useCallback(async (id: string) => {
+    setSessions((prev) => prev.map((s) => (s.id === id
+      ? { ...s, workspace_kind: null, workspace_root: null } : s)))
+    await releaseSessionWorkspace(config, id)
+    void loadSessions()
+  }, [config, loadSessions])
+
   const appendOptimistic = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, { ...msg, clientStatus: 'optimistic_user' }])
   }, [])
@@ -294,8 +309,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, refresh, refreshMessages, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, refresh, refreshMessages, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

@@ -641,6 +641,27 @@ def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) ->
     return {"ok": True, "kind": art, "root": rod}
 
 
+@router.delete("/sessions/{session_id}/workspace")
+def chat_release_session_workspace(session_id: str) -> dict:
+    """Løsn samtalen fra sit workspace — «Fjern projekt».
+
+    Servicen kunne hele tiden skrive NULL: `set_session_workspace` tager
+    `None` på BEGGE felter. Det var kun POST-ruten ovenfor der afviste tom
+    root med 400 — så der fandtes en vej IND i et projekt og ingen vej UD
+    igen. Valgte man en forkert mappe, sad man fast i den (Bjørn 29/9-2026).
+
+    Projektet ER `workspace_root`; der er ingen tabel at slette en række i.
+    At løsne samtalen er derfor præcis det samme som at fjerne den fra
+    projektet, og panelets «Fjern projekt» kalder denne rute for hver samtale
+    i gruppen.
+    """
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
+    from core.services.chat_sessions import set_session_workspace
+    set_session_workspace(session_id, kind=None, root=None)
+    return {"ok": True, "kind": None, "root": None}
+
+
 @router.get("/sessions/{session_id}/permission")
 def chat_get_session_permission(session_id: str) -> dict:
     """Samtalens tilladelses-niveau — den ene sandhed begge klienter læser.

@@ -166,6 +166,20 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
 | function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
 
+## `core/services/run_trailing.py`
+_Beskeder der hoerer EFTER historikken i en agentisk tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de to slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L40) |
+| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L45) |
+| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L49) |
+| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L57) |
+| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne. De vedvarende bliver. | [src](../../../core/services/run_trailing.py#L64) |
+| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L68) |
+| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L78) |
+| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L81) |
+
 ## `core/services/runtime_action_executor.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -730,16 +744,4 @@ _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 | function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L156) |
 | function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L180) |
 | function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L198) |
-
-## `core/services/seed_system.py`
-_Seed System — prospective memory / dormant intentions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
-| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
-| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L119) |
-| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L125) |
-| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L139) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L176) |
 

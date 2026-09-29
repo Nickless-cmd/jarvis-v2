@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_continuity.py`
+_Session Continuity — kontinuitet der føles, ikke kun opslås._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/session_continuity.py#L65) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/session_continuity.py#L69) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/session_continuity.py#L82) |
+| function | `detect_new_session` | `()` | Return whether current moment should be treated as 'new session'. | [src](../../../core/services/session_continuity.py#L105) |
+| function | `_gather_carry_context` | `()` | Collect what Jarvis might be carrying into today. | [src](../../../core/services/session_continuity.py#L155) |
+| function | `_build_morning_prompt` | `(carry, minutes_since_last)` | — | [src](../../../core/services/session_continuity.py#L255) |
+| function | `generate_morning_thread` | `(*, force=…)` | Generate and persist a morning thread if this is a new session. | [src](../../../core/services/session_continuity.py#L307) |
+| function | `get_latest_morning_thread` | `()` | — | [src](../../../core/services/session_continuity.py#L441) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/session_continuity.py#L463) |
+| function | `detect_echo_themes` | `(*, lookback_days=…)` | Find recurring themes in recent inner voices + chat messages. | [src](../../../core/services/session_continuity.py#L470) |
+| function | `get_echo_signals_for_prompt` | `()` | Return a quiet one-liner of recurring themes for prompt injection. | [src](../../../core/services/session_continuity.py#L538) |
+| function | `build_session_continuity_surface` | `()` | — | [src](../../../core/services/session_continuity.py#L566) |
+
 ## `core/services/session_distillation.py`
 _Session distillation and private brain continuity._
 
@@ -541,18 +559,4 @@ _Slå skills op FOR ham i stedet for at bede ham huske at slå op._
 | function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L278) |
 | function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L301) |
 | function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L397) |
-
-## `core/services/skill_scanner.py`
-_Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Finding` | `` | — | [src](../../../core/services/skill_scanner.py#L27) |
-| class | `ScanResult` | `` | — | [src](../../../core/services/skill_scanner.py#L35) |
-| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L40) |
-| method | `ScanResult.blocked_reasons` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L46) |
-| method | `ScanResult.as_dict` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L49) |
-| function | `_normalize` | `(content)` | Fold skjult/forvirrende unicode til NFKC så injection ikke gemmer sig i | [src](../../../core/services/skill_scanner.py#L102) |
-| function | `_has_hidden_format_chars` | `(content)` | — | [src](../../../core/services/skill_scanner.py#L110) |
-| function | `scan_skill` | `(content, *, path=…, block_severity=…)` | Scan en skill-definition (tekst/kode) for injection/malware/boundary. | [src](../../../core/services/skill_scanner.py#L114) |
 

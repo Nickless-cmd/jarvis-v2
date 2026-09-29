@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/seed_system.py`
+_Seed System — prospective memory / dormant intentions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
+| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
+| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L119) |
+| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L125) |
+| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L139) |
+| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L176) |
+
 ## `core/services/selective_attention.py`
 _Selective Attention — metacognitive focus modulation._
 
@@ -776,22 +788,4 @@ _Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
 |---|---|---|---|---|
 | function | `aktiv_session_id` | `(standard=…)` | Sessionens id, eller `standard` hvis ingen kilde kender den. | [src](../../../core/services/session_context_resolve.py#L17) |
 | function | `aktivt_run_id` | `(standard=…)` | Det run der er i gang lige nu, eller `standard` hvis ingen kender det. | [src](../../../core/services/session_context_resolve.py#L47) |
-
-## `core/services/session_continuity.py`
-_Session Continuity — kontinuitet der føles, ikke kun opslås._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/session_continuity.py#L65) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/session_continuity.py#L69) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/session_continuity.py#L82) |
-| function | `detect_new_session` | `()` | Return whether current moment should be treated as 'new session'. | [src](../../../core/services/session_continuity.py#L105) |
-| function | `_gather_carry_context` | `()` | Collect what Jarvis might be carrying into today. | [src](../../../core/services/session_continuity.py#L155) |
-| function | `_build_morning_prompt` | `(carry, minutes_since_last)` | — | [src](../../../core/services/session_continuity.py#L255) |
-| function | `generate_morning_thread` | `(*, force=…)` | Generate and persist a morning thread if this is a new session. | [src](../../../core/services/session_continuity.py#L307) |
-| function | `get_latest_morning_thread` | `()` | — | [src](../../../core/services/session_continuity.py#L441) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/session_continuity.py#L463) |
-| function | `detect_echo_themes` | `(*, lookback_days=…)` | Find recurring themes in recent inner voices + chat messages. | [src](../../../core/services/session_continuity.py#L470) |
-| function | `get_echo_signals_for_prompt` | `()` | Return a quiet one-liner of recurring themes for prompt injection. | [src](../../../core/services/session_continuity.py#L538) |
-| function | `build_session_continuity_surface` | `()` | — | [src](../../../core/services/session_continuity.py#L566) |
 

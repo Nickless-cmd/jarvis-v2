@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_scanner.py`
+_Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Finding` | `` | — | [src](../../../core/services/skill_scanner.py#L27) |
+| class | `ScanResult` | `` | — | [src](../../../core/services/skill_scanner.py#L35) |
+| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L40) |
+| method | `ScanResult.blocked_reasons` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L46) |
+| method | `ScanResult.as_dict` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L49) |
+| function | `_normalize` | `(content)` | Fold skjult/forvirrende unicode til NFKC så injection ikke gemmer sig i | [src](../../../core/services/skill_scanner.py#L102) |
+| function | `_has_hidden_format_chars` | `(content)` | — | [src](../../../core/services/skill_scanner.py#L110) |
+| function | `scan_skill` | `(content, *, path=…, block_severity=…)` | Scan en skill-definition (tekst/kode) for injection/malware/boundary. | [src](../../../core/services/skill_scanner.py#L114) |
+
 ## `core/services/skill_security_scanner.py`
 _Skill Security Scanner — single canonical scanner for SKILL.md + scripts/._
 
@@ -640,11 +654,4 @@ _Temporal self-continuity: past/current/future self handoff._
 | function | `build_temporal_self_continuity_prompt_section` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L66) |
 | function | `_decode_episode` | `(row)` | — | [src](../../../core/services/temporal_self_continuity.py#L79) |
 | function | `_load` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L89) |
-
-## `core/services/terminal_sanitize.py`
-_Fjern terminal-styrekoder fra tool-output før det når modellen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
 

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/terminal_sanitize.py`
+_Fjern terminal-styrekoder fra tool-output før det når modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
+
 ## `core/services/text_clip.py`
 _core/services/text_clip.py_
 
@@ -534,12 +541,4 @@ _Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
 | function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L82) |
 | function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L91) |
 | function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L102) |
-
-## `core/services/unconscious_modulation.py`
-_Unconscious modulation — sub-symbolic sampling-parameter shift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
-| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
 

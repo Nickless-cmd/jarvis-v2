@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15672 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15679 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -49,13 +49,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15672 functions/
 - [`core.services.18`](core.services.18.md) — `parallel_selves` … `process_supervisor`
 - [`core.services.19`](core.services.19.md) — `process_watcher` … `reasoning_classifier`
 - [`core.services.20`](core.services.20.md) — `reasoning_detectors` … `retry_runtime`
-- [`core.services.21`](core.services.21.md) — `rhythm_engine` … `seed_system`
-- [`core.services.22`](core.services.22.md) — `selective_attention` … `session_continuity`
-- [`core.services.23`](core.services.23.md) — `session_distillation` … `skill_scanner`
-- [`core.services.24`](core.services.24.md) — `skill_security_scanner` … `terminal_sanitize`
-- [`core.services.25`](core.services.25.md) — `text_clip` … `unconscious_modulation`
-- [`core.services.26`](core.services.26.md) — `unconscious_temperature_field` … `visible_run_recovery_coordinator`
-- [`core.services.27`](core.services.27.md) — `visible_run_recovery_dispatcher` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `rhythm_engine` … `security_guard`
+- [`core.services.22`](core.services.22.md) — `seed_system` … `session_context_resolve`
+- [`core.services.23`](core.services.23.md) — `session_continuity` … `skill_relevance_surface`
+- [`core.services.24`](core.services.24.md) — `skill_scanner` … `temporal_self_continuity`
+- [`core.services.25`](core.services.25.md) — `terminal_sanitize` … `ui_panel_store`
+- [`core.services.26`](core.services.26.md) — `unconscious_modulation` … `visible_run_outcome_state`
+- [`core.services.27`](core.services.27.md) — `visible_run_recovery_coordinator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

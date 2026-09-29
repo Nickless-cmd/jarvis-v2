@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8171/15689 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8172/15690 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8171/15689 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 699 | 1278 | 54% |
-| `core.services` | 5427 | 10679 | 50% |
+| `core.services` | 5428 | 10680 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1951,9 +1951,9 @@ Generated from source. 8171/15689 functions/methods documented (52%). The list b
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1326)
-- `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L243)
-- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L811)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1366)
+- `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L278)
+- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L851)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L197)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L35)

@@ -50,24 +50,54 @@ _OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
 # ── Ollama adapter (preserves existing /api/chat NDJSON behavior) ────────────
 
 
-def _append_image_message(messages: list[dict], tr) -> None:
-    """Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06).
+def _billed_besked(tr) -> dict | None:
+    """Pixels som en user-besked — eller None naar resultatet ikke bar et billede.
 
-    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen —
-    derfor foelger billedet som en user-besked lige efter. Kun `read_attachment`
-    paa en model der SELV kan se saetter feltet, saa for alle andre ture er
-    denne funktion et no-op og beskedstroemmen byte-identisk med foer.
+    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen,
+    saa billedet foelger som en user-besked (2026-09-06). Kun `read_attachment`
+    paa en model der SELV kan se saetter feltet.
     """
     url = str(getattr(tr, "image_data_url", "") or "")
     if not url:
-        return
-    messages.append({
+        return None
+    return {
         "role": "user",
         "content": [
             {"type": "text", "text": "[vedhæftet billede — se selv]"},
             {"type": "image_url", "image_url": {"url": url}},
         ],
-    })
+    }
+
+
+def _billeder_efter_tool_svarene(messages: list[dict], billeder: list[dict]) -> None:
+    """Laeg billederne EFTER alle tool-svarene i runden, ikke mellem dem.
+
+    ## Hvad der var galt (29/9-2026)
+
+    Billedet blev appendet lige efter DET tool-resultat der bar det. Havde
+    runden flere vaerktoejskald, havnede user-beskeden midt imellem
+    tool-svarene:
+
+        assistant (2 tool_calls)
+        tool  c1      <- read_attachment
+        user          <- billedet
+        tool  c2      <- bash
+
+    OpenAI-protokollen kraever at ALLE tool-svar foelger umiddelbart efter
+    assistent-beskeden. DeepSeek afviser med HTTP 400: «An assistant message
+    with 'tool_calls' must be followed by tool messages responding to each
+    'tool_call_id'.»
+
+    Maalt paa CT105: 28 afbrudte ture over to doegn, foerste gang 28/9 kl.
+    12:50 — da billederne begyndte at naa modellen. Betingelserne skal vaere
+    opfyldt samtidig: han laeser et billede OG kalder mindst ét vaerktoej mere
+    i samme runde. Derfor ramte den kun nogle gange, og derfor lignede den et
+    udbyder-udfald.
+
+    Modellen ser stadig pixels — de staar bare efter svarene i stedet for
+    inde i dem. Baerer ingen resultater billeder, er listen uroert.
+    """
+    messages.extend(billeder)
 
 
 class OllamaFollowupAdapter:
@@ -227,6 +257,7 @@ class OllamaFollowupAdapter:
             if exch.reasoning_content:
                 _asst["thinking"] = exch.reasoning_content
             messages.append(_asst)
+            _billeder: list[dict] = []
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -237,7 +268,11 @@ class OllamaFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
-                _append_image_message(messages, tr)
+                _billede = _billed_besked(tr)
+                if _billede is not None:
+                    _billeder.append(_billede)
+            # EFTER alle tool-svarene — se `_billeder_efter_tool_svarene`.
+            _billeder_efter_tool_svarene(messages, _billeder)
         return messages
 
     def stream_followup(
@@ -795,6 +830,7 @@ class OpenAICompatFollowupAdapter:
             if exch.reasoning_content:
                 assistant_msg["reasoning_content"] = exch.reasoning_content
             messages.append(assistant_msg)
+            _billeder: list[dict] = []
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -805,7 +841,11 @@ class OpenAICompatFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
-                _append_image_message(messages, tr)
+                _billede = _billed_besked(tr)
+                if _billede is not None:
+                    _billeder.append(_billede)
+            # EFTER alle tool-svarene — se `_billeder_efter_tool_svarene`.
+            _billeder_efter_tool_svarene(messages, _billeder)
         return messages
 
     def stream_followup(

@@ -4468,8 +4468,26 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    foldeniveauer i en liste paa 260 px bliver til rod. */
 .sidebar-projekt {
   display: flex; align-items: baseline; gap: 5px; min-width: 0;
-  padding-left: 18px; cursor: default;
+  cursor: default;
+  /* Samme venstre kant som samtalerne under den. Foer stod her
+     `padding-left: 18px` OVEN I etikettens egne 10px, saa overskriften laa
+     18px laengere inde end sine egne raekker (Bjoern 29/9-2026: «den er
+     rykket saa langt ind.. ser aandssvagt ud»). Indrykningen skulle vise at
+     projektet hoerer under KODE — men navnets egen farve goer allerede det,
+     og en kant der ikke flugter med noget koster mere end den viser. */
+  padding-left: 10px;
+  /* `.sidebar-label` daemper sig selv med `opacity: .8`, og opacity gaelder
+     HELE undertraeet — ogsaa en `position: absolute`-popup. Menuen havde
+     altsaa en uigennemsigtig baggrund (`--bg-2`) og sin egen `opacity: 1`,
+     og blev alligevel tegnet 80 % gennemsigtig: samtale-titlerne bagved
+     skinnede igennem og laa oven i menuens egen tekst (29/9-2026, maalt i
+     browseren — kilden saa rigtig ud begge steder).
+     Daempningen flytter derfor ned paa overskriftens EGEN tekst, saa den ser
+     ud som foer, mens menuen staar for sig. Den naeste popup i en
+     `.sidebar-label` skal goere det samme. */
+  opacity: 1;
 }
+.sidebar-projekt-navn, .sidebar-projekt-sti, .sidebar-projekt-prik { opacity: .8; }
 /* «⋮» i enden af projekt-overskriften (29/9-2026). Samme mønster som
    samtale-rækkerne: usynlig indtil musen er der. Ankeret skubbes til højre med
    `margin-left: auto`, så navn og sti bliver stående til venstre.

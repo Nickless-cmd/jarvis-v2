@@ -67,3 +67,108 @@ def test_precommit_skips_non_runtime_host(monkeypatch, tmp_path):
     monkeypatch.setattr(guard.socket, "gethostname", lambda: "developer-laptop")
     assert guard.main(["--only-host", "Jarvis", "--require-db",
                        "--db", str(tmp_path / "missing.db")]) == 0
+
+
+# ── En vagt der kun siger NEJ er en blokade (29/9-2026) ─────────────────────
+#
+# Den der bliver stoppet er som regel Jarvis, midt i noget andet. Foer denne
+# besked fik han 45 linjer «CHANGED x / MISSING y» og intet om hvad han saa
+# skulle goere. Uden en vej videre er valget mellem at gaette og at give op,
+# og begge dele er vaerre end det skema-drift koster.
+#
+# Formen er laant fra `verify_silent_except.py`, som allerede afslutter med
+# «Vaelg én:» og tre konkrete udveje.
+
+
+def test_en_blokeret_commit_faar_at_vide_hvad_den_skal_goere(capsys):
+    from pathlib import Path
+    guard._forklar(["CHANGED alpha.digest: a -> b"], Path("docs/persistens/sqlite-schema.json"))
+    ud = capsys.readouterr().out
+    assert "--write-snapshot" in ud, "kommandoen der loeser det staar ikke der"
+    assert "VAR DET DIG?" in ud, "den spoerger ikke om aendringen var tilsigtet"
+    assert "only-host" in ud or "CT105" in ud
+
+
+def test_en_FORSVUNDET_tabel_kaldes_alvorlig():
+    """NEW og MISSING er ikke lige alvorlige. En tabel der er vaek uden at
+    nogen fjernede den er det vagten findes for."""
+    from pathlib import Path
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        guard._forklar(["MISSING research_runs"], Path("s.json"))
+    ud = buf.getvalue()
+    assert "alvorlige" in ud.lower()
+    assert "STOP" in ud
+
+
+def test_et_skiftet_TIDSFORMAT_faar_sin_egen_forklaring():
+    """Den dyreste af de tre, og den mest tavse: et skiftet format giver et
+    troværdigt tal, ikke en fejl."""
+    from pathlib import Path
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        guard._forklar(["CHANGED events.created_at_formats: ['iso_utc_z'] -> ['sqlite_utc_seconds']"],
+                       Path("s.json"))
+    ud = buf.getvalue()
+    assert "TIDSFORMAT" in ud
+    assert "0 %" in ud or "100 %" in ud, "den siger ikke HVORDAN fejlen ser ud"
+
+
+def test_forklaringen_kommer_KUN_naar_der_er_noget_at_forklare(capsys, tmp_path, monkeypatch):
+    """Et rent skema maa ikke give en vaeg af tekst ved hvert commit."""
+    import sqlite3
+    import json
+    db = tmp_path / "t.db"
+    con = sqlite3.connect(db)
+    con.executescript("CREATE TABLE alpha (id INTEGER PRIMARY KEY);")
+    con.commit()
+    con.close()
+    snap = guard.inventory(sqlite3.connect(db))
+    snap["source_host"] = "TestHost"
+    (tmp_path / "s.json").write_text(json.dumps(snap))
+    kode = guard.main(["--db", str(db), "--snapshot", str(tmp_path / "s.json")])
+    ud = capsys.readouterr().out
+    assert kode == 0
+    assert "0 differences" in ud
+    assert "VAR DET DIG?" not in ud
+
+
+def test_forklaringen_naar_HELT_ud_gennem_main(capsys, tmp_path):
+    """De tre tests ovenfor kalder `_forklar` direkte og beviser derfor ikke
+    at `main` kalder den. Mutationskoersel: at fjerne kaldet i `main` lod dem
+    ALLE bestaa. Denne gaar hele vejen, som den der bliver stoppet goer.
+    """
+    import sqlite3
+    import json
+    db = tmp_path / "t.db"
+    con = sqlite3.connect(db)
+    con.executescript(
+        "CREATE TABLE alpha (id INTEGER PRIMARY KEY, created_at TEXT);"
+        "INSERT INTO alpha VALUES (1, '2026-09-29T07:38:59+00:00');"
+    )
+    con.commit()
+    con.close()
+    snap = guard.inventory(sqlite3.connect(db))
+    snap["source_host"] = "TestHost"
+    # ægte drift: tidsformatet skifter, og en tabel er vaek
+    snap["tables"]["alpha"]["created_at_formats"] = ["sqlite_utc_seconds"]
+    snap["tables"]["en_tabel_der_forsvandt"] = {
+        "digest": "ab:cd", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": [],
+    }
+    (tmp_path / "s.json").write_text(json.dumps(snap))
+
+    kode = guard.main(["--db", str(db), "--snapshot", str(tmp_path / "s.json")])
+    ud = capsys.readouterr().out
+
+    assert kode == 1, "en drift skal blokere"
+    # ... og den stoppede skal kunne komme videre UDEN at spoerge nogen
+    assert "VAR DET DIG?" in ud
+    assert "scripts/verify_sqlite_schema.py --write-snapshot" in ud, (
+        "den praecise kommando mangler — en halv kommando er ingen vej videre")
+    assert "STOP" in ud, "den forsvundne tabel blev ikke kaldt alvorlig"
+    assert "TIDSFORMAT" in ud

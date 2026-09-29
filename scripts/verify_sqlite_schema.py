@@ -112,6 +112,45 @@ def compare(current: dict, expected: dict) -> list[str]:
     return issues
 
 
+def _forklar(issues: list[str], snapshot: Path) -> None:
+    """Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade.
+
+    Den der bliver stoppet her er som regel Jarvis, midt i noget andet. Uden
+    en vej videre er valget mellem at gaette og at give op — og begge dele er
+    vaerre end det skema-drift koster.
+    """
+    tid = [i for i in issues if "created_at_formats" in i]
+    nye = [i for i in issues if i.startswith("NEW ")]
+    vaek = [i for i in issues if i.startswith("MISSING ")]
+
+    print("\n── Skemaet er ikke det samme som det gennemgaaede. Saadan kommer du videre ──")
+    print("\n1. LAES listen ovenfor. Hver linje er én forskel, ikke en fejl.")
+    if nye:
+        print(f"   NEW ({len(nye)}): tabeller der findes nu og ikke stod i snapshottet.")
+    if vaek:
+        print(f"   MISSING ({len(vaek)}): tabeller der ER VAEK. Det er den alvorlige.")
+        print("   Er en tabel forsvundet uden at du fjernede den, saa STOP og find ud af hvorfor.")
+    if tid:
+        print(f"   created_at_formats ({len(tid)}): en skriver har skiftet TIDSFORMAT.")
+        print("   Det er den dyre. To tabeller med hvert sit format kostede fire")
+        print("   forkerte maalinger paa ét doegn — hver gang med et troværdigt tal")
+        print("   som resultat (0 % eller 100 %), aldrig en fejl. Find skriveren.")
+
+    print("\n2. VAR DET DIG?")
+    print("   JA  — du aendrede et skema med vilje: opdater snapshottet og")
+    print("         forklar HVORFOR i commit-beskeden:")
+    print(f"           /opt/conda/envs/ai/bin/python scripts/verify_sqlite_schema.py --write-snapshot")
+    print(f"           git add -- {snapshot}")
+    print("   NEJ — saa har noget ANDET aendret skemaet. Det er praecis hvad")
+    print("         vagten findes for. Find ud af hvad foer du opdaterer")
+    print("         snapshottet; et blindt --write-snapshot goer vagten til pynt.")
+
+    print("\n3. Har du travlt og er forskellen harmloes, saa opdatér snapshottet")
+    print("   og SKRIV I COMMIT-BESKEDEN at du ikke naaede at undersoege den.")
+    print("   En noteret usikkerhed kan nogen finde senere. En tavs kan ingen.")
+    print("\nVagten koerer KUN paa CT105 (--only-host). Skemaet dér er det rigtige.\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
@@ -154,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
     for issue in issues:
         print(issue)
     print(f"verify-sqlite-schema: {len(current['tables'])} tables, {len(issues)} differences")
+    if issues:
+        _forklar(issues, args.snapshot)
     return bool(issues)
 
 

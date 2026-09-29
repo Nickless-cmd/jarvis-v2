@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -118,5 +118,58 @@ describe('projekt-menuen er ikke gennemsigtig', () => {
     const px = (v: string) => Number(String(v).replace('px', '')) || 0
     expect(px(getComputedStyle(h).paddingLeft))
       .toBe(px(getComputedStyle(raekke).paddingLeft))
+  })
+})
+
+/* ── Menuen vender opad naar listen ville klippe den ────────────────────────
+ *
+ * Jarvis' rettelse (`aa2aa1c09`, 29/9-2026): `.sessions` har
+ * `overflow-y: auto`, saa en menu der aabner nedad fra en raekke naer bunden
+ * bliver KLIPPET — den findes, men kan ikke ses. Pladsen maales i
+ * `useLayoutEffect` og klassen `opad` saettes hvis der ikke er plads.
+ *
+ * Den kom uden test, og i jsdom er ALLE rektangler nul: `0 - 0 < 0 + 12` er
+ * sandt, saa menuen faar `opad` uanset hvad. En test der bare laeste klassen
+ * ville altsaa bestaa uden at maale noget. Derfor stilles rektanglerne op
+ * eksplicit — ét tilfaelde med plads, ét uden. */
+
+/** Giv `.sessions`, ankeret og menuen hver sit rektangel. */
+function medPlads(pladsUnderAnkeret: number, menuHoejde: number) {
+  const rect = (top: number, bottom: number) =>
+    ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top,
+       x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const k = this.className?.toString() ?? ''
+    if (k.includes('sessions')) return rect(0, 500)
+    if (k.includes('session-menu-anchor')) return rect(0, 500 - pladsUnderAnkeret)
+    if (k.includes('session-menu')) return rect(0, menuHoejde)
+    return rect(0, 0)
+  })
+}
+
+describe('menuen vender opad naar der ikke er plads', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('rigelig plads under raekken → menuen bliver nedad', () => {
+    medPlads(300, 80)
+    const menu = aabenProjektMenu()
+    expect(menu.className).not.toMatch(/\bopad\b/)
+  })
+
+  it('for lidt plads → menuen vendes opad, ellers klipper listen den', () => {
+    medPlads(20, 80)
+    const menu = aabenProjektMenu()
+    expect(menu.className).toMatch(/\bopad\b/)
+  })
+
+  it('maalingen bruger menuens EGEN hoejde, ikke en fast konstant', () => {
+    // Samme plads, to menu-hoejder: kun den hoeje maa vendes. En implementering
+    // med en magisk konstant ville svare det samme begge gange.
+    medPlads(100, 40)
+    expect(aabenProjektMenu().className).not.toMatch(/\bopad\b/)
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+    medPlads(100, 200)
+    expect(aabenProjektMenu().className).toMatch(/\bopad\b/)
   })
 })

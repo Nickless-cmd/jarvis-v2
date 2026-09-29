@@ -21,6 +21,14 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null
+  /**
+   * Værktøjets RÅ navn fra `working_step` (fx `read_file`).
+   *
+   * `workingStep` bærer serverens færdige label — «Læser fil: X» — og den
+   * alene kunne kun give maskinens stemme. Navnet her gør det muligt at
+   * bygge sætningen i Jarvis' egen (se `lib/arbejdslinje.ts`).
+   */
+  workingAction: string | null
 
   research: ResearchUiState | null
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
@@ -68,6 +76,7 @@ export function initialStreamState(): StreamState {
     lane: '',
     blocks: [],
     workingStep: null,
+    workingAction: null,
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
@@ -133,6 +142,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
         skillFlade: event.message.id === state.activeRunId ? state.skillFlade : undefined,
         workingStep: null,
+        workingAction: null,
         research: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens, output: 0 }
       }
@@ -349,10 +359,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const erVaerktoej = event.payload.er_vaerktoej === true
           || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
         if (navn === 'thinking' && !erVaerktoej) {
-          return { ...state, workingStep: null }
+          return { ...state, workingStep: null, workingAction: null }
         }
         if (!navn || status !== 'running' || !erVaerktoej) {
-          return { ...state, workingStep: detail }
+          return { ...state, workingStep: detail, workingAction: navn || null }
         }
         const skridt = Number(event.payload.step ?? 0)
         // Allerede annonceret → lav den ikke igen. To slags «allerede»:
@@ -373,7 +383,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             ? b.foreloebig.skridt === skridt
             : b.name === navn && b.status === 'running'))
         if (alleredeAnnonceret) {
-          return { ...state, workingStep: detail }
+          return { ...state, workingStep: detail, workingAction: navn || null }
         }
         // EN RIGTIG BLOK I TRÅDEN — ikke et kort ved siden af. Det er de samme
         // rækker MessageList allerede tegner for færdige værktøjer; de skal
@@ -397,7 +407,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             etiket: typeof detail === 'string' ? detail : navn,
           },
         }
-        return { ...state, workingStep: detail, blocks: medPlads }
+        return { ...state, workingStep: detail, workingAction: navn || null, blocks: medPlads }
       }
       return state
 

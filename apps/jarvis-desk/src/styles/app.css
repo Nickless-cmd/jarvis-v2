@@ -348,6 +348,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
   padding: 4px; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
+/* Vender OPAD naar der ikke er plads nedad (Bjoern 29/9-2026: «folder ud under
+   sessionerne, den skal vaere oven paa»). `.sessions` har `overflow-y: auto`,
+   og en menu der aabnede nedad fra en raekke naer bunden blev derfor KLIPPET —
+   den fandtes, men kunne ikke ses. Klassen saettes i Sidebar.tsx efter en
+   maaling af hvor meget plads der er tilbage under raekken. */
+.session-menu.opad { top: auto; bottom: calc(100% + 4px); }
 .session-menu button {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: none; color: var(--fg-1); cursor: pointer;

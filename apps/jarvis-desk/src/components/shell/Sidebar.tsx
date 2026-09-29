@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
   Pin, Archive, ArchiveRestore, FolderInput, FolderMinus, FolderPlus,
@@ -445,12 +445,27 @@ function ProjektOverskrift({ navn, sti, rod, sessioner }: {
 }) {
   const { create, setWorkspace, releaseWorkspace } = useSessions()
   const [open, setOpen] = useState(false)
+  const menuAnkerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuOpad, setMenuOpad] = useState(false)
 
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
+  }, [open])
+
+  // Samme vending som samtale-raekkerne: projekt-overskriften kan staa nederst
+  // i listen, og dér blev menuen klippet af `.sessions`.
+  useLayoutEffect(() => {
+    if (!open) { setMenuOpad(false); return }
+    const anker = menuAnkerRef.current?.getBoundingClientRect()
+    const menu = menuRef.current?.getBoundingClientRect()
+    if (!anker || !menu) return
+    const beholder = menuAnkerRef.current?.closest('.sessions') as HTMLElement | null
+    const bund = beholder ? beholder.getBoundingClientRect().bottom : window.innerHeight
+    setMenuOpad(bund - anker.bottom < menu.height + 12)
   }, [open])
 
   const nySamtaleHer = async () => {
@@ -479,13 +494,13 @@ function ProjektOverskrift({ navn, sti, rod, sessioner }: {
       {/* «Uden projekt» har ingen sti og faar ingen menu — der er intet projekt
           at oprette en samtale i. */}
       {rod && (
-        <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
+        <div ref={menuAnkerRef} className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="session-more" aria-label="Projekt-handlinger"
                   onClick={() => setOpen((o) => !o)}>
             <MoreVertical size={14} />
           </button>
           {open && (
-            <div className="session-menu">
+            <div ref={menuRef} className={`session-menu${menuOpad ? ' opad' : ''}`}>
               <button type="button" onClick={nySamtaleHer}>
                 <FolderPlus size={13} /> Ny samtale her
               </button>
@@ -532,12 +547,33 @@ function SessionItem({
   const [draft, setDraft] = useState(title)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const menuAnkerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  /** Vender menuen OPAD naar der ikke er plads nedad (Bjoern 29/9-2026:
+   *  «folder ud under sessionerne, den skal vaere oven paa»). `.sessions` har
+   *  `overflow-y: auto`, saa en menu der aabnede nedad fra en raekke naer
+   *  bunden blev KLIPPET af listen — den var der, men man kunne ikke se den.
+   *  Samme faelde som notifikations-feedet ramte; her vendes menuen i stedet. */
+  const [menuOpad, setMenuOpad] = useState(false)
 
   useEffect(() => {
     if (!open) return
     const close = () => { setOpen(false); setConfirmDelete(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
+  }, [open])
+
+  // Maales FOER browseren maler (useLayoutEffect), saa menuen ikke naar at
+  // blinke nedad og hoppe op. Hoejden laeses fra menuen selv — ingen magisk
+  // konstant der skal holdes i takt med hvor mange punkter den har.
+  useLayoutEffect(() => {
+    if (!open) { setMenuOpad(false); return }
+    const anker = menuAnkerRef.current?.getBoundingClientRect()
+    const menu = menuRef.current?.getBoundingClientRect()
+    if (!anker || !menu) return
+    const beholder = menuAnkerRef.current?.closest('.sessions') as HTMLElement | null
+    const bund = beholder ? beholder.getBoundingClientRect().bottom : window.innerHeight
+    setMenuOpad(bund - anker.bottom < menu.height + 12)
   }, [open])
 
   useEffect(() => {
@@ -614,7 +650,7 @@ function SessionItem({
           )}
         </button>
       )}
-      <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
+      <div ref={menuAnkerRef} className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="session-more" aria-label="Mere" onClick={() => { setOpen((o) => !o); setConfirmDelete(false) }}>
           {/* Oprejst, ikke liggende (Bjørn 20/9-2026). Den liggende form er
               den samme glyf lagt ned; den oprejste er konventionen for en
@@ -622,7 +658,7 @@ function SessionItem({
           <MoreVertical size={15} />
         </button>
         {open && (
-          <div className="session-menu">
+          <div ref={menuRef} className={`session-menu${menuOpad ? ' opad' : ''}`}>
             {/* Fastgoer og arkivér. Begge har ligget i basen og paa serveren
                 hele tiden (`PATCH /sessions/{id}/flags`); det var kun denne
                 menu der ikke tilbød dem (Bjørn 29/9-2026). */}

@@ -48,8 +48,22 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
     # dispatcheren selv udfoere — ville de alle se `call_loaded_tool` i stedet
     # for `delete_file`, og den var dermed en universel gate-omgaaelse for alle
     # ~370 vaerktoejer. Efter denne linje findes dispatcheren ikke laengere.
-    from core.tools.kaldt_vaerktoej import pak_ud as _pak_ud
+    from core.tools.kaldt_vaerktoej import KALD_NAVN as _KALD_NAVN, pak_ud as _pak_ud
+    _var_dispatch = name == _KALD_NAVN
     name, arguments = _pak_ud(name, arguments)
+    if _var_dispatch:
+        # Udpakningen sker FOER telemetrien, saa `tool.invoked` baerer det
+        # AEGTE navn — hvilket er meningen, men goer dispatcheren usynlig for
+        # den maaling der skal afgoere om fletten i `visible_runs` kan skaeres.
+        # Derfor ét eget spor. Self-safe: maalingen maa aldrig stoppe kaldet.
+        try:
+            event_bus.publish("tool_router.dispatcher_brugt", {
+                "vaerktoej": name,
+                "ukendt_navn": name == _KALD_NAVN,
+                "run_id": run_id,
+            })
+        except Exception:  # et adoptions-spor maa ALDRIG stoppe et vaerktoejskald
+            pass
     if not name:
         return ("skip", None)
     try:

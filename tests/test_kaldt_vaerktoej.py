@@ -102,3 +102,45 @@ def test_dispatcheren_har_INGEN_executor():
         "udpakningen, og dermed udenom alle gates")
     # Kontrollen: registret er ikke bare tomt.
     assert "read_file" in _TOOL_HANDLERS
+
+
+def test_dispatcher_brugen_efterlader_et_SPOR(monkeypatch):
+    """Uden det er dispatcheren usynlig for sin egen adoptions-maaling.
+
+    Udpakningen sker foer telemetrien, saa `tool.invoked` baerer det aegte navn
+    — det er meningen. Men saa kan man ikke se OM dispatcheren blev brugt, og
+    det er praecis det tal der afgoer om fletten i `visible_runs` kan skaeres.
+    """
+    from core.eventbus import bus as _bus
+    from core.services import commit_gate_arbiter as cga
+    from core.services import simple_tool_executor as ste
+
+    hændelser: list[tuple[str, dict]] = []
+    monkeypatch.setattr(_bus.event_bus, "publish",
+                        lambda navn, nyttelast=None, **kw: hændelser.append((navn, nyttelast or {})))
+
+    class _V:
+        blocked = True
+        reason = "test"
+        gate_type = "decision_gate"
+
+    monkeypatch.setattr(cga, "evaluate_commit_gates", lambda **kw: _V())
+    ste._prepare_call(
+        {"function": {"name": KALD_NAVN, "arguments": {"navn": "todo_list"}}},
+        force=False, run_id="r1", session_id=None, user_message="",
+        controller=None, round_seen=set(),
+    )
+    spor = [n for navn, n in hændelser if navn == "tool_router.dispatcher_brugt"]
+    assert spor, [navn for navn, _ in hændelser]
+    assert spor[0]["vaerktoej"] == "todo_list"
+    assert spor[0]["ukendt_navn"] is False
+
+    # Kontrollen: et ALMINDELIGT kald maa ikke efterlade sporet, ellers maaler
+    # det bare «et vaerktoej blev kaldt».
+    hændelser.clear()
+    ste._prepare_call(
+        {"function": {"name": "todo_list", "arguments": {}}},
+        force=False, run_id="r1", session_id=None, user_message="",
+        controller=None, round_seen=set(),
+    )
+    assert not [n for navn, n in hændelser if navn == "tool_router.dispatcher_brugt"]

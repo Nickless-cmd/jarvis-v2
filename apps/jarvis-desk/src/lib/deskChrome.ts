@@ -34,6 +34,13 @@ export const DESK_CHROME = {
   centralBadge: false,
 
   /**
+   * Header: myldretids-pillen (30/9-2026, Bjørns bestilling). Varsler ≤15 min
+   * før DeepSeeks myldretid åbner og tæller ned mens den kører. Tager pladsen
+   * CentralBadge gav fra. Se components/shell/PeakBadge.tsx.
+   */
+  peakBadge: true,
+
+  /**
    * Miljø-panel: Maskine / GPU / Disk. Kontekst BLIVER — det er det ene tal
    * derinde der ændrer en beslutning (skal jeg starte forfra?).
    */

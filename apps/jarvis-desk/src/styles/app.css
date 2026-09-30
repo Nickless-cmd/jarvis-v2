@@ -1597,6 +1597,40 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: rgba(20,22,26,0.97); border: 1px solid rgba(255,255,255,0.1);
   box-shadow: 0 6px 20px rgba(0,0,0,0.4);
 }
+
+/* Myldretids-badge (30/9-2026, Bjørns bestilling). Søster til .central-badge:
+   samme pille, samme mål, samme mono — så headeren ikke får to visuelle sprog.
+   Farven bærer tilstanden: gul = varsel (≤15 min), rød = aktiv, grøn = netop
+   lukket. Den BLOKERER intet; den bærer beslutningen videre. Se PeakBadge.tsx. */
+.peak-badge {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11.5px; font-family: "SF Mono", Menlo, monospace; color: var(--fg-2);
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  user-select: none; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.peak-badge .peak-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); flex: 0 0 auto; }
+.peak-badge .peak-label { color: var(--fg-2); }
+.peak-badge .peak-count {
+  min-width: 15px; text-align: center; padding: 0 5px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+/* varsel — gul, og prikken pulserer: der er kort tid, og det må gerne ses. */
+.peak-badge.tone-varsel { background: rgba(245,196,81,0.08); border-color: rgba(245,196,81,0.26); }
+.peak-badge.tone-varsel .peak-dot { background: #f5c451; box-shadow: 0 0 6px rgba(245,196,81,0.5); }
+.peak-badge.tone-varsel .peak-count { color: #f5c451; }
+.peak-badge .peak-dot.pulse { animation: peak-pulse 1.4s ease-in-out infinite; }
+@keyframes peak-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+/* aktiv — rød med en anelse fyld: en undtagelse må gerne trække i øjet. */
+.peak-badge.tone-peak { background: rgba(255,93,93,0.10); border-color: rgba(255,93,93,0.28); }
+.peak-badge.tone-peak .peak-dot { background: #ff5d5d; box-shadow: 0 0 6px rgba(255,93,93,0.5); }
+.peak-badge.tone-peak .peak-label { color: var(--fg-1); }
+.peak-badge.tone-peak .peak-count { color: #ff8e8e; }
+/* efter — kort grøn kvittering, så væk igen. */
+.peak-badge.tone-off .peak-dot { background: #3ee08a; box-shadow: 0 0 6px rgba(62,224,138,0.5); }
+.peak-badge.tone-off .peak-count { color: #3ee08a; }
+@media (prefers-reduced-motion: reduce) { .peak-badge .peak-dot.pulse { animation: none; } }
 /* transcript gror og scroller inde i chatview */
 .chatview .transcript { flex: 1 1 auto; min-height: 0; }
 /* composer bliver i bunden, altid synlig, centreret til samme 820px-kolonne

@@ -86,6 +86,97 @@ def message_signatures(messages: list[dict[str, Any]]) -> tuple[list[str], list[
     return shas, lens, len(messages)
 
 
+#: Værktøjsnavne bag deres `tools_sha`, pr. proces.
+#:
+#: `component_signatures` kender ikke lanen; `record_visible_cache` gør. Navnene
+#: lægges derfor her, hvor de kan slås op på den hash der følger videre i
+#: telemetri-linjen — så skift-detektionen kan ligge hvor lanen er kendt.
+#:
+#: Hvorfor overhovedet (målt 30/9-2026): `tools_sha` skiftede 193 gange på én
+#: dag, og i ALLE 193 tilfælde ændrede `tools_len` sig — altså SÆTTET, aldrig
+#: en enkelt definitions indhold. De 15 skift i `visible`-lanen bar 1.028.484
+#: miss-tokens (14,3 % af lanens samlede miss) fra 1,3 % af linjerne, med 40×
+#: højere median-miss (62.672 mod 1.196). Vi kunne se AT det skiftede — ikke
+#: HVAD. Det er hele grunden til at dette findes.
+#:
+#: VærktøjsNAVNE er metadata, ikke samtale. Derfor kun ved skift, aldrig pr.
+#: linje: 1.200 linjer/dag ville ellers blive ~3 MB/dag for et svar vi kun
+#: skal bruge ~15 gange.
+_TOOL_NAMES_BY_SHA: dict[str, list[str]] = {}
+
+#: Sidste sete navneliste PR. LANE. Nødvendigt: `visible` og `visible-call`
+#: kalder begge hertil i samme proces med vidt forskellige sæt (51-82 KB mod
+#: 29 KB), så de skifter på skift. Uden lane-nøglen ville hvert sådant flip
+#: skrive en linje — ~193 støjlinjer for 15 ægte hændelser.
+_LAST_TOOL_NAMES: dict[str, list[str]] = {}
+
+
+def _tool_name(tool: Any) -> str:
+    """Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen."""
+    if not isinstance(tool, dict):
+        return str(tool)[:40]
+    fn = tool.get("function")
+    if isinstance(fn, dict) and fn.get("name"):
+        return str(fn["name"])
+    return str(tool.get("name") or tool.get("type") or "?")
+
+
+def _remember_tool_names(tools_sha: str, tools: Any) -> None:
+    """Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op."""
+    try:
+        if not tools_sha:
+            return
+        names = [_tool_name(t) for t in tools] if isinstance(tools, (list, tuple)) else []
+        _TOOL_NAMES_BY_SHA[tools_sha] = names
+        if len(_TOOL_NAMES_BY_SHA) > 64:  # bundet: en proces lever i uger
+            for gammel in list(_TOOL_NAMES_BY_SHA)[:-64]:
+                _TOOL_NAMES_BY_SHA.pop(gammel, None)
+    except Exception:  # self-safe: en navne-stash maa ikke kaste ind i stream-stien
+        pass
+
+
+def _note_tools_churn(lane: str, tools_sha: str) -> None:
+    """Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik.
+
+    Self-safe — maa aldrig kaste ind i stream-stien. Foerste kald pr. lane
+    skriver IKKE (der er intet at sammenligne med); det saetter kun baseline.
+    """
+    try:
+        names = _TOOL_NAMES_BY_SHA.get(tools_sha)
+        if names is None:
+            return
+        noegle = str(lane or "-")
+        foer = _LAST_TOOL_NAMES.get(noegle)
+        _LAST_TOOL_NAMES[noegle] = names
+        if foer is None or foer == names:
+            return
+        import os
+        from pathlib import Path
+        home = Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
+        log_dir = home / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        foer_s, nu_s = set(foer), set(names)
+        line = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "pid": os.getpid(),
+            "lane": noegle,
+            "tools_sha": tools_sha,
+            "tools_n_foer": len(foer), "tools_n_nu": len(names),
+            "tilfoejet": sorted(nu_s - foer_s),
+            "fjernet": sorted(foer_s - nu_s),
+            # Rækkefølgen er en del af hashen: et rent ombyt flytter `tools_sha`
+            # uden at noget kom eller gik. Uden dette felt ville et saadant
+            # skift se ud som «ingen ændring» og blive laest som en fejl i
+            # maalingen i stedet for som svaret.
+            "kun_raekkefoelge": (nu_s == foer_s) and (names != foer),
+            "names": names,
+        }
+        with (log_dir / "tools_churn.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+    except Exception:  # self-safe: churn-loggen maa ikke kaste ind i stream-stien
+        pass
+
+
 def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str, str | int | list[str]]:
     """Fingerprint prompt regions separately, without recording their contents.
 
@@ -106,6 +197,8 @@ def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str
         elif role != "system":
             seen_conversation = True
     tools_text = json.dumps(tools or [], sort_keys=True, ensure_ascii=False)
+    _t_sha = hashlib.sha256(tools_text.encode("utf-8", "replace")).hexdigest()[:16] if tools_text else ""
+    _remember_tool_names(_t_sha, tools)
 
     def digest(value: str) -> str:
         return hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()[:16] if value else ""
@@ -114,7 +207,8 @@ def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str
     return {
         "system_sha": digest(system), "system_len": len(system),
         "system_chunks": [digest(system[i:i + 1024]) for i in range(0, len(system), 1024)],
-        "tools_sha": digest(tools_text), "tools_len": len(tools_text),
+        "tools_sha": _t_sha, "tools_len": len(tools_text),
+        "tools_n": len(tools) if isinstance(tools, (list, tuple)) else 0,
         "tail_sha": digest(tail), "tail_len": len(tail),
         "msg_shas": msg_shas, "msg_lens": msg_lens, "msg_count": msg_count,
     }
@@ -138,6 +232,7 @@ def record_visible_cache(
     tail_sha: str = "",
     system_len: int = 0,
     tools_len: int = 0,
+    tools_n: int = 0,
     tail_len: int = 0,
     system_chunks: list[str] | None = None,
     msg_shas: list[str] | None = None,
@@ -170,6 +265,7 @@ def record_visible_cache(
             "system_len": int(system_len),
             "system_chunks": list(system_chunks or []),
             "tools_len": int(tools_len),
+            "tools_n": int(tools_n),
             "tail_len": int(tail_len),
             "msg_shas": list(msg_shas or []),
             "msg_lens": [int(n) for n in (msg_lens or [])],
@@ -178,6 +274,9 @@ def record_visible_cache(
             "miss": int(cache_miss),
             "pct": round(100.0 * int(cache_hit) / _in, 1) if _in else 0.0,
         }
+        # Værktøjssættet er den volatile del af det cachede præfiks — se noten
+        # ved `_TOOL_NAMES_BY_SHA`. Kaldes her, hvor `lane` er kendt.
+        _note_tools_churn(lane, tools_sha)
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
         # Cache→Central (spec §3.2/§3.3): fodr Centralen med prefix-cache-helbred, så

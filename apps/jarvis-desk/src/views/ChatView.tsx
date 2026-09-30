@@ -49,6 +49,7 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
@@ -878,6 +879,9 @@ export function ChatView({
         <AndenEnhedMaerke aktiv={showTakeover} />
         {DESK_CHROME.centralBadge && settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
+        )}
+        {DESK_CHROME.peakBadge && settings && (
+          <PeakBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
         {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />

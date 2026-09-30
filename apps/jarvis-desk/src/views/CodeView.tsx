@@ -27,6 +27,7 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
@@ -926,6 +927,7 @@ export function CodeView({
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
       <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
       {DESK_CHROME.centralBadge && <CentralBadge config={config} isOwner={isOwner} />}
+      {DESK_CHROME.peakBadge && config && <PeakBadge config={config} />}
       {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor

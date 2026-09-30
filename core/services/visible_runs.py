@@ -4976,24 +4976,17 @@ async def _stream_visible_run(
                     from core.services.auto_continuation import OPBRUGT as _OPBRUGT
                     if _agentic_loop_exit_reason == "completed":
                         _agentic_loop_exit_reason = _OPBRUGT
-                # CUT-OFF (2026-08-19): loopet sluttede "completed", men en runde
-                # blev afkortet (finish_reason=length) → exit-grunden skal ikke
-                # lyve om ren succes. Status forbliver completed (der ER et svar),
-                # men telemetri/incident viser truncation ærligt.
-                if _a_truncated and _agentic_loop_exit_reason == "completed":
-                    _agentic_loop_exit_reason = "completed-truncated"
                 # DURABEL FØRST, DEREFTER SSE (opgave 3). Før afgjorde dette
                 # sted selv hvad turen blev til og sendte beskeden — og hvis
                 # processen døde i mellemrummet, havde klienten set en
-                # afslutning ingen journal kendte. `settle_segment_exit` skriver
-                # posten og giver os dommen tilbage.
-                from core.services.visible_run_segment_settlement import settle_segment_exit
-                try:
-                    from core.services.auto_continuation import kaede_nr as _recovery_kaede_nr
-                    _recovery_attempt = _recovery_kaede_nr(run.session_id)
-                except Exception:
-                    _recovery_attempt = 0
-                _terminal = settle_segment_exit(
+                # afslutning ingen journal kendte.
+                #
+                # Selve afgoerelsen bor i `visible_run_segment_exit`: den retter
+                # exit-grunden, laeser genoptagelses-kaeden og lader
+                # afregningen skrive posten. Kun SSE og tilstands-markeringen
+                # nedenfor bliver her, fordi de haenger paa generatoren.
+                from core.services.visible_run_segment_exit import afgoer_segment_udfald
+                _terminal = afgoer_segment_udfald(
                     run_id=run.run_id,
                     session_id=run.session_id,
                     exit_reason=_agentic_loop_exit_reason,
@@ -5001,8 +4994,7 @@ async def _stream_visible_run(
                     finish_reason=_a_finish_reason,
                     forced_finalize=_forced_finalize_seen,
                     pending_tool_intent=_a_pending_tool_intent,
-                    recovery_attempt=_recovery_attempt,
-                    summary=str(_agentic_loop_exit_reason or ""),
+                    truncated=bool(_a_truncated),
                 )
                 _agentic_loop_exit_reason = _terminal.exit_reason
                 if _terminal.decision.should_continue:

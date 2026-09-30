@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8200/15722 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8200/15724 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8200/15722 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 224 | 494 | 45% |
+| `scripts` | 224 | 496 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2226)
+## Undocumented public functions (2227)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2132,6 +2132,7 @@ Generated from source. 8200/15722 functions/methods documented (52%). The list b
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
+- `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/find_tidsbomber.py` :: `main` (L54)

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_classifier_final.py`
+_Phase 3 FINAL classifier — pre-registered method, full 7-day data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_raw` | `()` | Load all interlanguage_practice rows from the sqlite DB, keeping only | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
+| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L126) |
+| function | `cleanup` | `(rows)` | Apply pre-registered §1 cleanup: drop rows with no primitive glyph, | [src](../../../scripts/interlanguage_classifier_final.py#L157) |
+| function | `featurize` | `(rows, embedder)` | Build the 403-dim feature matrix: normalized sentence embeddings (384) | [src](../../../scripts/interlanguage_classifier_final.py#L191) |
+| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | Permutation test for classifier accuracy: refit a LogisticRegression on | [src](../../../scripts/interlanguage_classifier_final.py#L209) |
+| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L229) |
+| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L255) |
+| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
+| function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
+| function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
+
 ## `scripts/interlanguage_classifier_interim.py`
 _Interim Phase 3 classifier — pre-registered method, partial data._
 
@@ -454,16 +470,4 @@ _Læg en ny mobil-APK op — og behold præcis én version tilbage._
 | function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
 | function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L86) |
 | function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L113) |
-
-## `scripts/regenerate_tier1.py`
-_Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_usage` | `()` | Count tool.invoked events per tool over the last WINDOW_DAYS from the runtime DB. | [src](../../../scripts/regenerate_tier1.py#L58) |
-| function | `load_registered_tools` | `()` | Return the set of tool names from the live TOOL_DEFINITIONS catalog. | [src](../../../scripts/regenerate_tier1.py#L79) |
-| function | `compute_new_tier1` | `(usage, registered)` | Build the new Tier-1 set: tools used >= USAGE_THRESHOLD unioned with | [src](../../../scripts/regenerate_tier1.py#L96) |
-| function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
-| function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
-| function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
 

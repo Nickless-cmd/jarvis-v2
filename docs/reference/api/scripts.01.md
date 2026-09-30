@@ -229,6 +229,14 @@ _Mål cold + warm import-tid for core.runtime.db._
 | function | `measure` | `(label)` | — | [src](../../../scripts/db_split_baseline.py#L18) |
 | function | `main` | `()` | — | [src](../../../scripts/db_split_baseline.py#L43) |
 
+## `scripts/dispatcher_adoption.py`
+_Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rækker` | `(con, kind, siden)` | — | [src](../../../scripts/dispatcher_adoption.py#L50) |
+| function | `main` | `()` | — | [src](../../../scripts/dispatcher_adoption.py#L63) |
+
 ## `scripts/docs_audit.py`
 _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable, static_
 
@@ -413,20 +421,4 @@ _Binary: jarvis vs ollama_local — pre-check for Phase 4._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_binary_jarvis_vs_ollama.py#L40) |
-
-## `scripts/interlanguage_classifier_final.py`
-_Phase 3 FINAL classifier — pre-registered method, full 7-day data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_raw` | `()` | Load all interlanguage_practice rows from the sqlite DB, keeping only | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
-| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L126) |
-| function | `cleanup` | `(rows)` | Apply pre-registered §1 cleanup: drop rows with no primitive glyph, | [src](../../../scripts/interlanguage_classifier_final.py#L157) |
-| function | `featurize` | `(rows, embedder)` | Build the 403-dim feature matrix: normalized sentence embeddings (384) | [src](../../../scripts/interlanguage_classifier_final.py#L191) |
-| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | Permutation test for classifier accuracy: refit a LogisticRegression on | [src](../../../scripts/interlanguage_classifier_final.py#L209) |
-| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L229) |
-| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L255) |
-| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
-| function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
-| function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
 

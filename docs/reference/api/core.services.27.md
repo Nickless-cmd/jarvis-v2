@@ -139,6 +139,14 @@ _Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
 | function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L200) |
 | function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L217) |
 
+## `core/services/visible_run_segment_exit.py`
+_Afgoer hvad et agentisk segment blev til, og goer det durabelt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kaede_nr_eller_loft` | `(session_id)` | Hvor langt er genoptagelses-kaeden naaet for denne samtale? | [src](../../../core/services/visible_run_segment_exit.py#L46) |
+| function | `afgoer_segment_udfald` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, truncated=…)` | Skriv segmentets ophoer durabelt og giv dommen tilbage. | [src](../../../core/services/visible_run_segment_exit.py#L62) |
+
 ## `core/services/visible_run_segment_settlement.py`
 _Ét sted hvor et unormalt segment-ophør bliver durabelt — før noget lukkes._
 
@@ -202,31 +210,31 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1307) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1313) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1334) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6452) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6524) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6557) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6564) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6568) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6594) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6625) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6637) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6681) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6739) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6813) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6866) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6904) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6908) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6919) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6933) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L6956) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L6988) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7015) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7046) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7098) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7133) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7137) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7154) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7204) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6444) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6516) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6549) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6556) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6560) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6586) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6617) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6629) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6673) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6731) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6805) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6858) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6896) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6900) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6911) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6925) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L6948) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L6980) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7007) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7038) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7090) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7125) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7129) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7146) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7196) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -541,15 +549,4 @@ _Voice daemon — runs the Hey Jarvis voice loop as a background thread._
 | function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
 | function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
 | function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
-
-## `core/services/wakeup_dispatcher.py`
-_Wakeup dispatcher — autonomous fire of self-wakeups._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L52) |
-| function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L80) |
-| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L153) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L184) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L360) |
 

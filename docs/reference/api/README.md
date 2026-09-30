@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15776 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15778 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -55,8 +55,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15776 functions/
 - [`core.services.24`](core.services.24.md) — `silence_patterns` … `temporal_body`
 - [`core.services.25`](core.services.25.md) — `temporal_context` … `tool_usage_store`
 - [`core.services.26`](core.services.26.md) — `tool_world_change` … `visible_model_observe`
-- [`core.services.27`](core.services.27.md) — `visible_model_ollama` … `wakeup_dispatcher`
-- [`core.services.28`](core.services.28.md) — `weekly_manifest` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `visible_model_ollama` … `voice_daemon`
+- [`core.services.28`](core.services.28.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

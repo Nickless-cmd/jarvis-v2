@@ -63,3 +63,63 @@ def test_gamle_poster_uden_felterne_siger_UKENDT_ikke_ufuldstaendig(tmp_path, mo
 def test_et_ukendt_id_giver_None(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "TOOL_RESULTS_DIR", tmp_path)
     assert store.get_tool_result("findes-ikke") is None
+
+
+# ── Hoved OG hale, ikke kun hoved (30/9-2026) ────────────────────────────────
+#
+# Afkortningen var `normalized[: max_chars - 1] + "…"` — halen blev droppet. For
+# et `bash`-resultat er halen oftest SVARET: exit-status, den sidste linje,
+# tallet man bad om. Målt på en faktisk request var `bash` to tredjedele af alt
+# værktøjs-output i prompten, så det er netop dér formen betyder noget.
+#
+# Samme princip som desk fik samme dag: hoved, hale, og en notits der siger hvor
+# meget der mangler — så modellen VED der er mere i stedet for at tro at
+# outputtet stopper.
+
+from core.services.tool_result_store import render_tool_result_for_prompt as _render
+
+_LANGT = "START-KOMMANDO" + ("x" * 3000) + "-SIDSTE-LINJE-EXITKODE-0"
+
+
+def test_halen_bevares():
+    """Kernen. Svaret staar til sidst i et kommando-output."""
+    ud = _render(_LANGT, expand=False, max_chars=400)
+    assert ud.endswith("EXITKODE-0"), ud[-60:]
+    assert ud.startswith("START-KOMMANDO"), ud[:40]
+
+
+def test_notitsen_siger_hvor_meget_der_mangler():
+    """Uden den tror modellen at outputtet stopper dér."""
+    ud = _render(_LANGT, expand=False, max_chars=400)
+    assert "udeladt" in ud, ud
+
+
+def test_budgettet_overholdes():
+    """Notitsen skal regnes MED, ellers spraenger afkortningen sit eget loft."""
+    for budget in (200, 400, 1200, 1500):
+        ud = _render(_LANGT, expand=False, max_chars=budget)
+        assert len(ud) <= budget, f"budget {budget}, fik {len(ud)}"
+
+
+def test_kort_indhold_roeres_ikke():
+    """Kontrollen. Uden den kunne testene ovenfor bestaa paa en funktion der
+    ALTID klipper — og saa forsvandt korte resultater ogsaa."""
+    kort = "kun lidt tekst"
+    assert _render(kort, expand=False, max_chars=400) == kort
+
+
+def test_det_er_DETERMINISTISK():
+    """Gengivelsen skal vaere byte-identisk tur efter tur, ellers braekker den
+    praefiks-cachen — hele grunden til at budgettet er fast (se kommentaren i
+    `transcript_sections`)."""
+    a = _render(_LANGT, expand=False, max_chars=400)
+    b = _render(_LANGT, expand=False, max_chars=400)
+    assert a == b
+
+
+def test_et_bittesmaa_budget_falder_tilbage_til_hoved_kun():
+    """En hale paa tre tegn oplyser ingen. Under graensen er hoved-kun aerligere
+    end en notits der fylder mere end det den beskriver."""
+    ud = _render(_LANGT, expand=False, max_chars=60)
+    assert len(ud) <= 60
+    assert ud.startswith("START")

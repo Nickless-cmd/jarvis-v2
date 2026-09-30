@@ -153,6 +153,17 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         lane: event.message.lane || state.lane,
         blocks: _sameRun ? state.blocks : [],
         workingStep: _sameRun ? state.workingStep : null,
+        // Et NYT run rydder genoptagelses-varslet. Foer var `message_delta`
+        // med stop_reason end_turn/completed den eneste vej ud — og en tvungen
+        // slutrunde har per definition ikke det stop_reason: det er selve
+        // udloeseren. Betingelsen der rejste banneret udelukkede altsaa vejen
+        // der fjernede det, saa det blev staaende resten af sessionen (Bjoern
+        // 30/9-2026: «saa forsvinder den badge ikk igen fra desk»).
+        //
+        // Varslet siger «Jarvis fortsaetter automatisk fra sit checkpoint».
+        // Naar fortsaettelsen faktisk koerer, har det sagt sit — og fejler den
+        // ogsaa, kommer der et nyt.
+        recoveryNotice: _sameRun ? state.recoveryNotice : undefined,
         skillFlade: _sameRun ? state.skillFlade : undefined,
         usage: {
           ...state.usage,
@@ -237,7 +248,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
       }
       if (event.kind === 'run_recovery') {
-        const p = event.payload as { reason?: string; message?: string; continuing?: boolean }
+        const p = event.payload as { reason?: string; message?: string; continuing?: boolean; ryddet?: boolean }
+        // Han trykkede det vaek. Banneret havde ingen knap overhovedet, saa et
+        // varsel der overlevede sin egen ryddevej kunne ikke fjernes af nogen.
+        if (p.ryddet) return { ...state, recoveryNotice: undefined }
         if (!p.message) return state
         return {
           ...state,

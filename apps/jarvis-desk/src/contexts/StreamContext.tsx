@@ -153,6 +153,8 @@ export interface StreamContextValue {
    * kun hentningen der manglede. Se `hentGenoptagelsesVarsel`.
    */
   visGenoptagelsesVarsel: (varsel: { reason: string; message: string; continuing: boolean }) => void
+  /** Han trykkede varslet vaek. Se `GenoptagelsesVarsel`. */
+  rydGenoptagelsesVarsel: () => void
 }
 
 // Konteksten bærer et LAGER, ikke selve værdien — se lib/vaerdiLager.
@@ -507,7 +509,9 @@ export function StreamProvider({
   }, [status, state.blocks, state.recoveryNotice])
 
   // Et varsel hentet over HTTP lægges ind ad SAMME vej som strømmens eget, så
-  // der kun er én måde et varsel kan opstå på — og kun ét sted det ryddes.
+  // der kun er én måde et varsel kan opstå på. Det ryddes tre steder, og de
+  // dækker hver sin situation: en tur der sluttede rent (`message_delta`), et
+  // nyt run der er gået i gang (`message_start`), og han selv (herunder).
   const visGenoptagelsesVarsel = useCallback(
     (varsel: { reason: string; message: string; continuing: boolean }) => {
       dispatch({
@@ -518,6 +522,14 @@ export function StreamProvider({
     },
     [dispatch],
   )
+
+  const rydGenoptagelsesVarsel = useCallback(() => {
+    dispatch({
+      type: 'system_event',
+      kind: 'run_recovery',
+      payload: { ryddet: true },
+    } as unknown as StreamEvent)
+  }, [dispatch])
 
   const value = useMemo<StreamContextValue>(
     () => ({
@@ -552,8 +564,9 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
       visGenoptagelsesVarsel,
+      rydGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

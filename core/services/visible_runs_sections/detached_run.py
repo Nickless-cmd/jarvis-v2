@@ -122,6 +122,20 @@ def start_user_run_detached(
     if recovery_task_id:
         logger.info("detached-run %s fortsaetter opgave %s (generation %d, forsoeg %d)",
                     run_id, recovery_task_id, recovery_generation, recovery_attempt)
+        # Og skriv kaeden ned, ikke kun ud. Indtil 30/9-2026 var log-linjen
+        # ovenfor det ENESTE `recovery_attempt` naaede: `start_visible_run`
+        # tager ingen recovery-parametre, saa den journalfoerte hver
+        # genoptagelse som forsoeg 0. Baade loftet i `claim_due_recovery` og
+        # dommen i `visible_terminal_policy` talte derfor forfra ved hvert led,
+        # og kaederne kunne laegge sig i forlaengelse af hinanden uden ende.
+        from core.services.in_flight_runs import stempl_genoptagelse
+        stempl_genoptagelse(
+            run_id=run_id,
+            session_id=sid,
+            task_id=recovery_task_id,
+            recovery_attempt=recovery_attempt,
+            recovery_generation=recovery_generation,
+        )
     visible_args = {
         "message": message,
         "session_id": session_id,

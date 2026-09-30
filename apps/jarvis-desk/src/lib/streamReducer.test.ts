@@ -91,6 +91,51 @@ describe('streamReducer', () => {
     expect(state.recoveryNotice?.message).toContain('fortsætter automatisk')
   })
 
+  // Bjørn 30/9-2026: «så forsvinder den badge ikk igen fra desk og der er ikk
+  // noget hvor jeg kan trykke den væk». Varslets ENESTE ryddevej var et
+  // message_delta med stop_reason end_turn/completed — og en tvungen slutrunde
+  // har per definition ikke det stop_reason. Betingelsen der rejste banneret
+  // udelukkede altså vejen der fjernede det.
+  const medVarsel = () => streamReducer(initialStreamState(), {
+    type: 'system_event',
+    kind: 'run_recovery',
+    payload: { reason: 'forced-finalize-unverified', message: 'En tvungen slutrunde…', continuing: true },
+  } as unknown as StreamEvent)
+
+  it('en tvungen slutrunde rydder IKKE varslet af sig selv', () => {
+    const s = streamReducer(medVarsel(), {
+      type: 'message_delta',
+      delta: { stop_reason: 'max_tokens' },
+      usage: { input_tokens: 1, output_tokens: 1 },
+    } as unknown as StreamEvent)
+    expect(s.recoveryNotice).toBeDefined()
+  })
+
+  it('et NYT run rydder varslet', () => {
+    const s = streamReducer(medVarsel(), {
+      type: 'message_start',
+      message: { id: 'visible-ny', model: 'm', provider: 'p', lane: 'l', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    } as unknown as StreamEvent)
+    expect(s.recoveryNotice).toBeUndefined()
+  })
+
+  it('men SAMME run beholder det — en reconnect er ikke en fortsættelse', () => {
+    const start = { type: 'message_start', message: { id: 'visible-1', model: 'm', provider: 'p', lane: 'l', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as unknown as StreamEvent
+    const varsel = { type: 'system_event', kind: 'run_recovery', payload: { reason: 'forced-finalize-unverified', message: 'En tvungen slutrunde…', continuing: true } } as unknown as StreamEvent
+    // Varslet rejses MENS visible-1 kører; så kommer et replay af samme run.
+    const s = [start, varsel, start].reduce(streamReducer, initialStreamState())
+    expect(s.recoveryNotice).toBeDefined()
+  })
+
+  it('han kan trykke det væk', () => {
+    const s = streamReducer(medVarsel(), {
+      type: 'system_event',
+      kind: 'run_recovery',
+      payload: { ryddet: true },
+    } as unknown as StreamEvent)
+    expect(s.recoveryNotice).toBeUndefined()
+  })
+
   it('message_stop sets done', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'r', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

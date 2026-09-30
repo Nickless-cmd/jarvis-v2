@@ -114,9 +114,16 @@ def fortsaettelses_besked(
 
 
 # ── Bogholderi ───────────────────────────────────────────────────────────────
-# To små registre, med vilje i hukommelsen: begge dør med processen, og det er
-# den rigtige levetid. Et kæde-tal der overlever en genstart ville kunne
-# blokere en fortsættelse timer senere af en grund ingen kan se længere.
+# ÉT lille register, med vilje i hukommelsen: det dør med processen, og det er
+# den rigtige levetid for et udfald.
+#
+# Her stod også `_KAEDE`, med samme begrundelse: et kæde-tal der overlever en
+# genstart kunne blokere en fortsættelse timer senere af en grund ingen kan se.
+# Levetiden var rigtig, men stedet var forkert — den synlige tur og den der
+# genoptager den kører ikke nødvendigvis i samme proces, og dicten fik aldrig en
+# skriver. Kæden tælles nu på journalens post (`in_flight_runs.aktiv_kaede_nr`),
+# hvor `claim_due_recovery` i forvejen tæller op, og hvor en ægte brugertur
+# nulstiller den ved selv at blive journalført med 0.
 
 import threading
 
@@ -124,8 +131,6 @@ _laas = threading.Lock()
 #: run_id → loekkens exit-grund. Skrives af visible_runs, laeses af den
 #: detached traad naar runnet er faerdigt.
 _UDFALD: dict[str, str] = {}
-#: session_id → antal auto-fortsaettelser i traek.
-_KAEDE: dict[str, int] = {}
 
 #: Hvor mange udfald vi husker. Nok til et dybt arbejdsforloeb, lille nok til
 #: at ordbogen ikke vokser i en proces der koerer i uger.
@@ -196,16 +201,26 @@ def hent_udfald(run_id: str, session_id: str = "") -> str:
 
 
 def kaede_nr(session_id: str) -> int:
-    with _laas:
-        return int(_KAEDE.get((session_id or "").strip(), 0))
+    """Hvor mange gange er DENNE samtale allerede genoptaget?
 
+    Tallet laa foer i en modul-dict her, skrevet af `saet_kaede`. Den funktion
+    havde NUL kaldere i hele repoet — det eneste der roerte dicten var
+    `noter_brugerbesked`, og den SLETTER. `kaede_nr` returnerede derfor altid 0,
+    og loftet i `visible_terminal_policy` (`recovery_attempt >= recovery_limit`)
+    kunne aldrig fyre: hver tvungen slutrunde uden faerdighedsbevis blev til
+    endnu en genoptagelse. Maalt 30/9-2026: ti i én samtale, tre af dem inden
+    for 24 minutter.
 
-def saet_kaede(session_id: str, nr: int) -> None:
+    Bremsen SAA rigtig ud, og det var vaerre end ingen bremse: baade koden og
+    kommentaren lovede et loft paa tre. Derfor er den doede skriver fjernet
+    frem for at faa en kalder — tallet bor ét sted nu, i journalen, som ogsaa er
+    der `claim_due_recovery` taeller op.
+    """
     sid = (session_id or "").strip()
     if not sid:
-        return
-    with _laas:
-        _KAEDE[sid] = max(0, int(nr))
+        return 0
+    from core.services.in_flight_runs import aktiv_kaede_nr
+    return aktiv_kaede_nr(sid)
 
 
 
@@ -214,15 +229,18 @@ _SIDSTE_BRUGER: dict[str, float] = {}
 
 
 def noter_brugerbesked(session_id: str) -> None:
-    """Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om
-    han tog over MENS et run kørte."""
+    """Brugeren skrev selv. Bruges til at afgøre om han tog over MENS et run
+    kørte.
+
+    Kæden nulstilles ikke laengere her: den tælles nu paa journalens post, og en
+    ægte brugertur journalfører sig med `recovery_attempt=0`. Nulstillingen sker
+    altså af sig selv, i samme skridt som turen bliver til."""
     import time
     sid = (session_id or "").strip()
     if not sid:
         return
     with _laas:
         _SIDSTE_BRUGER[sid] = time.monotonic()
-        _KAEDE.pop(sid, None)
 
 
 def bruger_skrev_efter(session_id: str, tidspunkt: float) -> bool:

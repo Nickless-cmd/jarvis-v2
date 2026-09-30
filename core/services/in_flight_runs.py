@@ -267,6 +267,35 @@ def mark_started(
         return
     sid = str(session_id or "")
     def change(records):
+        # ARV AF KAEDEN. En genoptagelse stempler sit kaedenummer paa run_id
+        # FOER koerslen journalfoerer sig selv (`stempl_genoptagelse`).
+        # `start_visible_run` — den der kalder herind — har ingen
+        # recovery-parametre og ville skrive 0 hen over stemplet. Saa talte
+        # baade loftet i `claim_due_recovery` og dommen i
+        # `visible_terminal_policy` forfra ved hvert led i kaeden.
+        tidligere = records.get(str(run_id)) or {}
+        kaede = max(int(recovery_attempt),
+                    int(tidligere.get("recovery_attempt") or 0))
+        slaegt = max(int(recovery_generation),
+                     int(tidligere.get("recovery_generation") or 0))
+        # RYDNING. Docstringen har altid lovet dette; koden gjorde det ikke.
+        # Maalt 30/9-2026: 174 poster, 149 af dem paa ÉN samtale, i en fil paa
+        # 287 kB som `_mutate` skriver HELT om under laasen ved hvert
+        # fremskridts-stempel.
+        #
+        # Et ULAEST varsel overlever med vilje: det er den eneste besked om at
+        # en opgave blev opgivet, og `recovery_snapshot` henter den netop paa
+        # `failed_terminal` + `notice_pending`.
+        if sid:
+            doede = [
+                noegle for noegle, rec in records.items()
+                if noegle != str(run_id)
+                and str(rec.get("session_id") or "") == sid
+                and str(rec.get("status") or "") in _AFSLUTTEDE
+                and not rec.get("notice_pending")
+            ]
+            for noegle in doede:
+                records.pop(noegle, None)
         records[str(run_id)] = {
             "task_id": str(task_id or run_id),
             "run_id": str(run_id),
@@ -287,8 +316,8 @@ def mark_started(
             "last_progress_at": _iso(),
             "last_tool": "",
             "owner_proc": current_owner(),
-            "recovery_generation": max(0, int(recovery_generation)),
-            "recovery_attempt": max(0, int(recovery_attempt)),
+            "recovery_generation": max(0, slaegt),
+            "recovery_attempt": max(0, kaede),
             "recovery_limit": max(0, int(recovery_limit)),
             "recovery_owner": "",
             "recovery_lease_until": "",
@@ -296,6 +325,87 @@ def mark_started(
             "notice_pending": False,
         }
     _mutate(change)
+
+
+def stempl_genoptagelse(
+    *,
+    run_id: str,
+    session_id: str = "",
+    task_id: str = "",
+    recovery_attempt: int = 0,
+    recovery_generation: int = 0,
+) -> None:
+    """Skriv kaedenummeret paa en genoptagelse FOER den journalfoerer sig selv.
+
+    `start_user_run_detached` kender kaeden — den staar i kravet den fik af
+    `claim_due_recovery`. Men det er `start_visible_run` der kalder
+    `mark_started`, og den har ingen recovery-parametre. Tallet naaede derfor
+    kun en log-linje i `detached_run`, og hver genoptagelse registrerede sig som
+    forsoeg 0.
+
+    Maalt 30/9-2026 i én samtale: ti genoptagelser, ni af dem med
+    `recovery_attempt=1`. Hvert led var altsaa sit eget foerste forsoeg, loftet
+    paa tre blev aldrig naaet, og kaederne laa i forlaengelse af hinanden uden
+    ende — tre af dem inden for 24 minutter.
+
+    Stemplet er en HALV post. `mark_started` skriver den faerdig et oejeblik
+    senere og arver tallet herfra.
+    """
+    if not run_id or int(recovery_attempt) <= 0:
+        return
+
+    def change(records):
+        rec = records.get(str(run_id))
+        if rec is None:
+            rec = {
+                "run_id": str(run_id),
+                "task_id": str(task_id or run_id),
+                "session_id": str(session_id or ""),
+                "status": "running",
+                "kind": "visible",
+                "started_at": _iso(),
+                "last_progress_at": _iso(),
+                "owner_proc": current_owner(),
+                "notice_pending": False,
+            }
+            records[str(run_id)] = rec
+        rec["recovery_attempt"] = max(0, int(recovery_attempt))
+        rec["recovery_generation"] = max(0, int(recovery_generation))
+        return True
+
+    try:
+        _mutate(change)
+    except Exception:
+        logger.warning("kunne ikke stemple genoptagelsen %s", run_id,
+                       exc_info=True)
+
+
+def aktiv_kaede_nr(session_id: str) -> int:
+    """Hvilket forsoeg i raekken er samtalens NYESTE synlige koersel?
+
+    Journalen er den eneste taeller der overlever et procesksifte: den synlige
+    tur og den der genoptager den behoever ikke koere i samme proces.
+    `auto_continuation._KAEDE` var en modul-dict, og dens skriver havde nul
+    kaldere — se `kaede_nr` der.
+
+    NYESTE, ikke stoerste. En helt ny brugertur journalfoerer sig med 0 og
+    nulstiller dermed kaeden af sig selv, mens en gammel post der aldrig blev
+    ryddet ikke kan forgifte den. Det bevarer den levetid det gamle register
+    havde med vilje: et kaedetal maa ikke kunne blokere en fortsaettelse timer
+    senere af en grund ingen kan se.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return 0
+    kandidater = [
+        rec for rec in _load().values()
+        if str(rec.get("session_id") or "") == sid
+        and str(rec.get("kind") or "visible") == "visible"
+    ]
+    if not kandidater:
+        return 0
+    nyeste = max(kandidater, key=lambda r: str(r.get("started_at") or ""))
+    return max(0, int(nyeste.get("recovery_attempt") or 0))
 
 
 def recovery_snapshot(session_id: str) -> dict[str, Any] | None:

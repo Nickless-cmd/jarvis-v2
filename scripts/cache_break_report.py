@@ -30,6 +30,7 @@ import json
 import pathlib
 import sqlite3
 import sys
+from datetime import datetime
 
 
 def _faelles_praefiks(a: list, b: list) -> int:
@@ -41,6 +42,21 @@ def _faelles_praefiks(a: list, b: list) -> int:
     return n
 
 
+def _pause_s(foer: str | None, efter: str | None) -> float | None:
+    """Sekunder mellem to runders created_at. None hvis en mangler.
+
+    Lagt ind 30/9-2026 efter maaling: kollaps-par har KORTERE pause (median
+    5,6 s) end rolige par (7,0 s), og runder inde i et run overlever pauser op
+    til 328 s ved 99 %. Pausen er altsaa ikke aarsagen til et brud inde i et
+    run — men den skal kunne laeses, saa den ikke bliver en fri variabel."""
+    if not foer or not efter:
+        return None
+    try:
+        return (datetime.fromisoformat(efter) - datetime.fromisoformat(foer)).total_seconds()
+    except ValueError:  # ugyldigt tidsstempel: pausen kan ikke opgoeres — ikke en fejl
+        return None
+
+
 def _hent(skaer: str) -> dict[str, list[dict]]:
     db = pathlib.Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -50,7 +66,7 @@ def _hent(skaer: str) -> dict[str, list[dict]]:
     # sorterer efter mellemrum, saa en graense med mellemrum slipper hele
     # doegnet igennem uden at fejle. Det kostede én forkert konklusion.
     for r in con.execute(
-        "SELECT payload_json FROM events WHERE kind=? AND created_at >= ? ORDER BY created_at",
+        "SELECT payload_json, created_at FROM events WHERE kind=? AND created_at >= ? ORDER BY created_at",
         ("cache.telemetry", skaer),
     ):
         try:
@@ -62,6 +78,9 @@ def _hent(skaer: str) -> dict[str, list[dict]]:
             continue
         rid = str(p.get("run_id") or "")
         if rid and isinstance(p.get("round"), int) and p.get("msg_shas"):
+            # created_at foelger med posten, saa _pause_s kan regne pausen
+            # mellem to runder. Uden den er pausen en fri variabel i rapporten.
+            p["_t"] = r["created_at"]
             pr_run[rid].append(p)
     return pr_run
 
@@ -90,12 +109,14 @@ def main() -> int:
                 continue  # ren tilfoejelse — cachen kan vokse, intet brud
             stabile_tegn = sum((foer.get("msg_lens") or [])[:k])
             omskrevne = len(a) - k
+            pause = _pause_s(foer.get("_t"), efter.get("_t"))
             brud.append((
                 int(efter.get("miss") or 0), rid[-12:], efter["round"], k, len(a), omskrevne,
                 stabile_tegn, int(foer.get("hit") or 0), int(efter.get("hit") or 0),
                 foer.get("system_sha") != efter.get("system_sha"),
                 foer.get("tools_sha") != efter.get("tools_sha"),
                 foer.get("tail_sha") != efter.get("tail_sha"),
+                pause,
             ))
 
     print(f"skaeringspunkt {skaer}   runs {len(pr_run)}   runde-par {runder_i_alt}")
@@ -108,14 +129,15 @@ def main() -> int:
         return 0
     spildt = sum(b[0] for b in brud)
     print(f"miss i de runder: {spildt:,} tokens\n")
-    print("%-14s %5s %7s %7s %9s %11s %11s  %s" % (
-        "run", "runde", "brud@", "af", "omskrevet", "hit foer", "hit efter", "sys/tools/hale"))
+    print("%-14s %5s %7s %7s %9s %11s %11s  %-10s %s" % (
+        "run", "runde", "brud@", "af", "omskrevet", "hit foer", "hit efter", "sys/tools/hale", "pause"))
     for r in sorted(brud, reverse=True)[: (len(brud) if alle else 15)]:
-        miss, rid, runde, k, n, omskrevne, tegn, h0, h1, ds, dt, dh = r
+        miss, rid, runde, k, n, omskrevne, tegn, h0, h1, ds, dt, dh, pause = r
         maerker = "".join(bogstav if aendret else "-"
                           for aendret, bogstav in ((ds, "S"), (dt, "T"), (dh, "H")))
-        print("  %-12s %5d %7d %7d %9d %11s %11s  %s   stabilt: %s tegn" % (
-            rid, runde, k, n, omskrevne, f"{h0:,}", f"{h1:,}", maerker, f"{tegn:,}"))
+        pausetekst = f"{pause:.0f}s" if pause is not None else "?"
+        print("  %-12s %5d %7d %7d %9d %11s %11s  %-10s pause %8s   stabilt: %s tegn" % (
+            rid, runde, k, n, omskrevne, f"{h0:,}", f"{h1:,}", maerker, pausetekst, f"{tegn:,}"))
 
     # Hvilken PLADS braekker oftest? Et fast indeks peger paa en fast afsender.
     pladser = collections.Counter(b[3] for b in brud)

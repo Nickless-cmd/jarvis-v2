@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8190/15712 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8191/15713 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 8190/15712 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 223 | 493 | 45% |
+| `scripts` | 224 | 494 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2108,7 +2108,7 @@ Generated from source. 8190/15712 functions/methods documented (52%). The list b
 - `scripts/block_unattributed_rebase.py` :: `main` (L9)
 - `scripts/block_unattributed_ref_rewrite.py` :: `main` (L24)
 - `scripts/brain_salience_reset.py` :: `main` (L65)
-- `scripts/cache_break_report.py` :: `main` (L69)
+- `scripts/cache_break_report.py` :: `main` (L88)
 - `scripts/cache_rate_monitor.py` :: `append_log` (L118)
 - `scripts/cache_rate_monitor.py` :: `main` (L124)
 - `scripts/capabilities_gen.py` :: `collect` (L35)

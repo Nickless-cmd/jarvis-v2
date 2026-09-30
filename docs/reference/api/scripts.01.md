@@ -110,9 +110,10 @@ _Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_faelles_praefiks` | `(a, b)` | — | [src](../../../scripts/cache_break_report.py#L35) |
-| function | `_hent` | `(skaer)` | — | [src](../../../scripts/cache_break_report.py#L44) |
-| function | `main` | `()` | — | [src](../../../scripts/cache_break_report.py#L69) |
+| function | `_faelles_praefiks` | `(a, b)` | — | [src](../../../scripts/cache_break_report.py#L36) |
+| function | `_pause_s` | `(foer, efter)` | Sekunder mellem to runders created_at. None hvis en mangler. | [src](../../../scripts/cache_break_report.py#L45) |
+| function | `_hent` | `(skaer)` | — | [src](../../../scripts/cache_break_report.py#L60) |
+| function | `main` | `()` | — | [src](../../../scripts/cache_break_report.py#L88) |
 
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._

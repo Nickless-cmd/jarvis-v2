@@ -46,6 +46,7 @@ import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { remoteRunHasVisibleActivity } from '../lib/remoteLiveness'
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
 import { KoeChip } from '../components/transcript/KoeChip'
@@ -173,6 +174,7 @@ export function CodeView({
   // Cross-device live-state (effekter wires længere nede): bruges allerede her i
   // miljø-felt-beregningen, så deklarationen skal stå før den.
   const [bgActive, setBgActive] = useState(false)
+  const [bgRunId, setBgRunId] = useState<string | null>(null)
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
@@ -552,6 +554,7 @@ export function CodeView({
           const serverHasRun = !!currentRun
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refreshMessages() }
@@ -1079,6 +1082,8 @@ export function CodeView({
   }
 
   // ── Aktiv samtale ──
+  const bgVisible = bgActive && remoteRunHasVisibleActivity(followState, bgRunId)
+
   return (
     <VisningContext.Provider value={visning}>
     <div className={`codeview${skinneAaben ? ' har-skinne' : ''}`}>
@@ -1180,11 +1185,11 @@ export function CodeView({
               altid, viser "klar" i hvile og lyser op ved et run (lokalt ELLER
               cross-device fra mobil). */}
           <LivenessIndicator
-            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
-            elapsedMs={bgActive && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
+            status={bgVisible && stream.status !== 'working' ? 'working' : stream.status}
+            elapsedMs={bgVisible && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
             density="compact"
-            workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
-            tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
+            workingStep={bgVisible && stream.status !== 'working' ? (followState.workingStep ?? 'arbejder') : stream.workingStep}
+            tokens={bgVisible && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
             compacting={compacting}
           />
           <div className="composer-notices">

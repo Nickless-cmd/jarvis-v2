@@ -13,6 +13,7 @@ import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { remoteRunHasVisibleActivity } from '../lib/remoteLiveness'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -542,6 +543,7 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const bgVisible = bgActive && remoteRunHasVisibleActivity(followState, bgRunId)
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
@@ -1028,12 +1030,12 @@ export function ChatView({
             væk / sad i toppen ved ny chat). Vises når der sker noget — eller
             når baggrundsjob kører, også i hvile (Bjørn 20/9-2026): så bærer
             linjen KUN job-tallet, og den forsvinder når jobbene lukker. */}
-        {(stream.status !== 'idle' || bgActive || runningJobs > 0 || compacting) && (
+        {(stream.status !== 'idle' || bgVisible || runningJobs > 0 || compacting) && (
           <LivenessIndicator
-            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
+            status={bgVisible && stream.status !== 'working' ? 'working' : stream.status}
             elapsedMs={stream.elapsedMs}
             density="compact"
-            workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep}
+            workingStep={bgVisible && stream.status !== 'working' ? (followState.workingStep ?? 'arbejder') : stream.workingStep}
             tokens={tokensTotal}
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}

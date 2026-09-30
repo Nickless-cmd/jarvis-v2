@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_contract_registry.py`
+_Skill Contract Registry — formal contracts for capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SkillSpec` | `` | Immutable skill identity. | [src](../../../core/services/skill_contract_registry.py#L23) |
+| class | `SkillPermissionSpec` | `` | Required scopes for a skill to run. | [src](../../../core/services/skill_contract_registry.py#L32) |
+| class | `SkillManifest` | `` | Bundle of spec + permissions + schemas. | [src](../../../core/services/skill_contract_registry.py#L40) |
+| function | `register_skill` | `(manifest)` | Register a skill manifest. Overwrites prior entry with same name. | [src](../../../core/services/skill_contract_registry.py#L54) |
+| function | `get_manifest` | `(name)` | — | [src](../../../core/services/skill_contract_registry.py#L59) |
+| function | `list_manifests` | `()` | — | [src](../../../core/services/skill_contract_registry.py#L63) |
+| function | `check_permissions` | `(name, granted_scopes)` | Evaluate whether granted scopes satisfy a skill's required scopes. | [src](../../../core/services/skill_contract_registry.py#L67) |
+| function | `_auto_register_known_skills` | `()` | Seed registry with contracts for well-known built-in capabilities. | [src](../../../core/services/skill_contract_registry.py#L93) |
+| function | `build_skill_contract_registry_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_contract_registry.py#L194) |
+| function | `_emit_skill_contract_registry_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_contract_registry.py#L226) |
+
 ## `core/services/skill_engine.py`
 _Skill Engine — SKILL.md loader for Jarvis._
 
@@ -653,23 +669,4 @@ _Temporal Narrative — continuous self-history over time._
 | function | `get_thread` | `()` | Get the full narrative thread. | [src](../../../core/services/temporal_narrative.py#L130) |
 | function | `reset_temporal_narrative` | `()` | Reset temporal narrative state (for testing). | [src](../../../core/services/temporal_narrative.py#L143) |
 | function | `build_temporal_narrative_surface` | `()` | Build MC surface for temporal narrative. | [src](../../../core/services/temporal_narrative.py#L150) |
-
-## `core/services/temporal_recurrence_signal_tracking.py`
-_Temporal-recurrence signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_temporal_recurrence_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L35) |
-| function | `refresh_runtime_temporal_recurrence_signal_statuses` | `()` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L43) |
-| function | `build_runtime_temporal_recurrence_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L47) |
-| function | `_extract_recurrence_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L52) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items, record_count)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L171) |
-| function | `_temporal_recurrence_track_summary` | `(items, message)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L211) |
-| function | `_empty_snapshot` | `()` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L247) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L263) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L275) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L287) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L291) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L296) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L301) |
 

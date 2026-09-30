@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model_types.py`
+_Value/result classes and typed exceptions for the visible model lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `VisibleModelResult` | `` | — | [src](../../../core/services/visible_model_types.py#L22) |
+| class | `VisibleModelDelta` | `` | — | [src](../../../core/services/visible_model_types.py#L55) |
+| class | `VisibleModelReasoningDelta` | `` | Én tanke-bid fra en thinking-model, UNDER første pas. | [src](../../../core/services/visible_model_types.py#L60) |
+| class | `VisibleModelStreamDone` | `` | — | [src](../../../core/services/visible_model_types.py#L74) |
+| class | `VisibleModelToolCalls` | `` | — | [src](../../../core/services/visible_model_types.py#L79) |
+| class | `VisibleModelStreamCancelled` | `` | — | [src](../../../core/services/visible_model_types.py#L83) |
+| class | `VisibleModelRateLimited` | `` | Visible-lanens provider er rate-limited (429) eller returnerede en | [src](../../../core/services/visible_model_types.py#L87) |
+| method | `VisibleModelRateLimited.__init__` | `(self, *args, provider=…, model=…)` | — | [src](../../../core/services/visible_model_types.py#L94) |
+
 ## `core/services/visible_run_abandonment.py`
 _Hvad der sker naar et run doer midt-flugt._
 
@@ -139,31 +153,31 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1307) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1313) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1334) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6454) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6526) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6559) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6566) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6570) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6596) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6627) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6639) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6683) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6741) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6815) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6868) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6906) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6910) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6921) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6935) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L6958) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L6990) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7017) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7048) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7100) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7135) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7139) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7156) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7206) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6452) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6524) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6557) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6564) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6568) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6594) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6625) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6637) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6681) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6739) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6813) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6866) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6904) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6908) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6919) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6933) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L6956) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L6988) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7015) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7046) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7098) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7133) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7137) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7154) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7204) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -561,17 +575,4 @@ _Quota and adaptive health calculations for cheap-lane candidates._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/witness_signal_tracking.py#L860) |
 | function | `run_witness_daemon` | `(*, trigger=…, last_visible_at=…)` | Bounded inner witness daemon — produces witness signals without visible turn. | [src](../../../core/services/witness_signal_tracking.py#L884) |
 | function | `get_witness_daemon_state` | `()` | Return current witness daemon state for MC observability. | [src](../../../core/services/witness_signal_tracking.py#L1000) |
-
-## `core/services/workspace_crypto.py`
-_Krypteret workspace-fil-I/O (spec §16, Lag 3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `encrypt_on_write` | `()` | True hvis non-owner skrivninger faktisk skal krypteres (sti-nøglet path). | [src](../../../core/services/workspace_crypto.py#L33) |
-| function | `should_encrypt` | `(user_id)` | True hvis denne brugers data skal krypteres (alle undtagen owner, §16.2). | [src](../../../core/services/workspace_crypto.py#L46) |
-| function | `write_workspace_file` | `(path, content, user_id)` | Skriv en workspace-fil. Non-owner → krypteret (.enc); owner → plaintext. | [src](../../../core/services/workspace_crypto.py#L65) |
-| function | `read_workspace_file` | `(path, user_id)` | Læs en workspace-fil. Prøver krypteret (.enc) først for non-owner, ellers | [src](../../../core/services/workspace_crypto.py#L91) |
-| function | `member_user_id_for_path` | `(path)` | Udled discord_id for filens NON-owner ejer ud fra `workspaces/<navn>/…`. | [src](../../../core/services/workspace_crypto.py#L113) |
-| function | `read_text_for_path` | `(path, *, encoding=…)` | Læs workspace-fil-tekst sti-nøglet. Returnerer None hvis hverken plaintext | [src](../../../core/services/workspace_crypto.py#L153) |
-| function | `write_text_for_path` | `(path, content)` | Skriv workspace-fil-tekst sti-nøglet. Mens ENCRYPT_ON_WRITE er FRA skrives | [src](../../../core/services/workspace_crypto.py#L171) |
 

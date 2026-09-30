@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15740 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15744 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,21 +42,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15740 functions/
 - [`core.services.11`](core.services.11.md) — `dream_hypothesis_forced` … `event_trigger_shadow`
 - [`core.services.12`](core.services.12.md) — `eventbus_central_bridge` … `gate_override`
 - [`core.services.13`](core.services.13.md) — `gate_pattern_learning` … `heartbeat_runtime_providers`
-- [`core.services.14`](core.services.14.md) — `heartbeat_scheduler` … `jarvis_brain`
-- [`core.services.15`](core.services.15.md) — `jarvis_brain_daemon` … `mcp_trust`
-- [`core.services.16`](core.services.16.md) — `meaning_significance_signal_tracking` … `mood_regulator_subscriber`
-- [`core.services.17`](core.services.17.md) — `mortality_awareness` … `paradox_tracker`
-- [`core.services.18`](core.services.18.md) — `paradoxes_capture` … `process_identity`
-- [`core.services.19`](core.services.19.md) — `process_supervisor` … `r2_5_haandhaevelse`
-- [`core.services.20`](core.services.20.md) — `read_before_write_guard` … `retention_coverage`
-- [`core.services.21`](core.services.21.md) — `retry_admissibility` … `scheduled_tasks`
-- [`core.services.22`](core.services.22.md) — `secret_redaction` … `sensory_source`
-- [`core.services.23`](core.services.23.md) — `session_boot_reconciler` … `skill_contract_registry`
-- [`core.services.24`](core.services.24.md) — `skill_engine` … `temporal_recurrence_signal_tracking`
-- [`core.services.25`](core.services.25.md) — `temporal_rhythm` … `turens_vaerktoejer`
-- [`core.services.26`](core.services.26.md) — `turn_changelog` … `visible_model_types`
-- [`core.services.27`](core.services.27.md) — `visible_run_abandonment` … `workspace_crypto`
-- [`core.services.28`](core.services.28.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `heartbeat_scheduler` … `irony_daemon`
+- [`core.services.15`](core.services.15.md) — `jarvis_brain` … `mcp_registry`
+- [`core.services.16`](core.services.16.md) — `mcp_trust` … `mood_oscillator`
+- [`core.services.17`](core.services.17.md) — `mood_regulator_subscriber` … `paid_lane_guard`
+- [`core.services.18`](core.services.18.md) — `paradox_tracker` … `procedure_bank_pipeline`
+- [`core.services.19`](core.services.19.md) — `process_identity` … `r2_5_blocking_gate`
+- [`core.services.20`](core.services.20.md) — `r2_5_haandhaevelse` … `retention`
+- [`core.services.21`](core.services.21.md) — `retention_coverage` … `scheduled_task_runner`
+- [`core.services.22`](core.services.22.md) — `scheduled_tasks` … `sensory_perception_bridge`
+- [`core.services.23`](core.services.23.md) — `sensory_source` … `skill_autosurface`
+- [`core.services.24`](core.services.24.md) — `skill_contract_registry` … `temporal_narrative`
+- [`core.services.25`](core.services.25.md) — `temporal_recurrence_signal_tracking` … `truth_gate_v2`
+- [`core.services.26`](core.services.26.md) — `turens_vaerktoejer` … `visible_model_sse`
+- [`core.services.27`](core.services.27.md) — `visible_model_types` … `witness_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

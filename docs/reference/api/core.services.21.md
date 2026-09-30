@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/retention_coverage.py`
+_Vagt: hvilke store tabeller i `jarvis.db` har ingen aftale om oprydning?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `har_politik` | `()` | Tabeller med en alders-politik, og hvor den står. Kilden er én. | [src](../../../core/services/retention_coverage.py#L129) |
+| function | `_stoerrelser` | `(conn)` | Bytes pr. tabel via dbstat. Tom dict hvis dbstat ikke er bygget ind. | [src](../../../core/services/retention_coverage.py#L149) |
+| function | `tabeller_uden_politik` | `(*, conn=…, min_bytes=…, min_raekker=…)` | De store tabeller der hverken har en politik eller en skreven grund. | [src](../../../core/services/retention_coverage.py#L165) |
+| function | `rapport` | `(fund)` | Én linje til loggen. Tom streng når der intet er at sige. | [src](../../../core/services/retention_coverage.py#L225) |
+
 ## `core/services/retry_admissibility.py`
 _Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
 
@@ -724,20 +734,4 @@ _Scheduled task dispatcher — binds workspace_context before firing._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
-
-## `core/services/scheduled_tasks.py`
-_Scheduled tasks service — lets Jarvis schedule future reminders/actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `push_scheduled_task` | `(*, focus, delay_minutes, source=…)` | Schedule a task to fire after delay_minutes. Returns task info dict. | [src](../../../core/services/scheduled_tasks.py#L24) |
-| function | `cancel_scheduled_task` | `(task_id)` | Cancel a pending task. Returns True if found and cancelled. | [src](../../../core/services/scheduled_tasks.py#L53) |
-| function | `edit_scheduled_task` | `(task_id, *, focus=…, delay_minutes=…)` | Edit an existing pending task. Returns updated task info or error dict. | [src](../../../core/services/scheduled_tasks.py#L64) |
-| function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L90) |
-| function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L120) |
-| function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L141) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L304) |
-| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L323) |
-| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L332) |
-| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L337) |
 

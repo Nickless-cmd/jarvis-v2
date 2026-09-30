@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/sensory_source.py`
+_Kilde-navne i Sansernes Arkiv — én liste, ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
+| function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
+| function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
+
 ## `core/services/session_boot_reconciler.py`
 _Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
 
@@ -513,20 +522,4 @@ _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
 | function | `approve_skill` | `(name, *, role)` | Owner-only. Validates against installed skills (skill_engine.skill_exists). | [src](../../../core/services/skill_autosurface.py#L68) |
 | function | `revoke_skill` | `(name, *, role)` | Owner-only. Removes `name` from the allowlist if present. | [src](../../../core/services/skill_autosurface.py#L91) |
 | function | `filter_to_approved` | `(names)` | Narrow `names` to the owner-approved allowlist, gated by the master flag. | [src](../../../core/services/skill_autosurface.py#L106) |
-
-## `core/services/skill_contract_registry.py`
-_Skill Contract Registry — formal contracts for capabilities._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SkillSpec` | `` | Immutable skill identity. | [src](../../../core/services/skill_contract_registry.py#L23) |
-| class | `SkillPermissionSpec` | `` | Required scopes for a skill to run. | [src](../../../core/services/skill_contract_registry.py#L32) |
-| class | `SkillManifest` | `` | Bundle of spec + permissions + schemas. | [src](../../../core/services/skill_contract_registry.py#L40) |
-| function | `register_skill` | `(manifest)` | Register a skill manifest. Overwrites prior entry with same name. | [src](../../../core/services/skill_contract_registry.py#L54) |
-| function | `get_manifest` | `(name)` | — | [src](../../../core/services/skill_contract_registry.py#L59) |
-| function | `list_manifests` | `()` | — | [src](../../../core/services/skill_contract_registry.py#L63) |
-| function | `check_permissions` | `(name, granted_scopes)` | Evaluate whether granted scopes satisfy a skill's required scopes. | [src](../../../core/services/skill_contract_registry.py#L67) |
-| function | `_auto_register_known_skills` | `()` | Seed registry with contracts for well-known built-in capabilities. | [src](../../../core/services/skill_contract_registry.py#L93) |
-| function | `build_skill_contract_registry_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_contract_registry.py#L194) |
-| function | `_emit_skill_contract_registry_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_contract_registry.py#L226) |
 

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_recurrence_signal_tracking.py`
+_Temporal-recurrence signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_temporal_recurrence_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L35) |
+| function | `refresh_runtime_temporal_recurrence_signal_statuses` | `()` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L43) |
+| function | `build_runtime_temporal_recurrence_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L47) |
+| function | `_extract_recurrence_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L52) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items, record_count)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L171) |
+| function | `_temporal_recurrence_track_summary` | `(items, message)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L211) |
+| function | `_empty_snapshot` | `()` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L247) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L263) |
+| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L275) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L287) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L291) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L296) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L301) |
+
 ## `core/services/temporal_rhythm.py`
 _Temporal Rhythm — felt time, not computed time._
 
@@ -541,12 +560,4 @@ _Evidens-baseret TruthGate v2 (Fase 2). Detekterer handlings-påstande og verifi
 | function | `_llm_judge` | `(text)` | Spørg billig lane om teksten påstår en handling der kræver tool-evidens. | [src](../../../core/services/truth_gate_v2.py#L256) |
 | function | `_maybe_llm_claim` | `(text)` | LLM-dommer KUN hvis teksten har et handlings-hint men intet deterministisk match. | [src](../../../core/services/truth_gate_v2.py#L279) |
 | function | `truth_gate_v2` | `(ctx)` | ctx: {text, executed_tool_names, followup_exchanges, run_id, session_id}. | [src](../../../core/services/truth_gate_v2.py#L293) |
-
-## `core/services/turens_vaerktoejer.py`
-_Ét værktøjssæt for HELE turen — begge trin ser det samme._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
-| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
 

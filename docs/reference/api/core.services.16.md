@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_trust.py`
+_MCP-tillid: allowliste + TOFU-pinning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_trust.py#L35) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_trust.py#L44) |
+| function | `is_allowlisted` | `(name)` | — | [src](../../../core/services/mcp_trust.py#L48) |
+| function | `allow` | `(name)` | Godkend et servernavn. Idempotent. | [src](../../../core/services/mcp_trust.py#L52) |
+| function | `revoke` | `(name)` | Fjern fra allowlisten OG drop pinnen. Idempotent. | [src](../../../core/services/mcp_trust.py#L65) |
+| function | `list_trust` | `()` | — | [src](../../../core/services/mcp_trust.py#L80) |
+| function | `_sha256_file` | `(path)` | — | [src](../../../core/services/mcp_trust.py#L85) |
+| function | `check_pin_stdio` | `(name, command)` | Pin en stdio-servers binær (sti + sha256). Første syn pinner. | [src](../../../core/services/mcp_trust.py#L96) |
+| function | `check_pin_http` | `(name, url)` | Pin en HTTP-servers vaert. Første syn pinner. | [src](../../../core/services/mcp_trust.py#L117) |
+
 ## `core/services/meaning_significance_signal_tracking.py`
 _Meaning/significance signal tracking — migrated onto signal_tracking_framework._
 
@@ -618,14 +633,4 @@ _Mood Oscillator — sinusoidal mood waves with event-driven bumps._
 | function | `_listener_loop` | `(q)` | Background thread that reads from eventbus queue and applies bumps. | [src](../../../core/services/mood_oscillator.py#L285) |
 | function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/mood_oscillator.py#L312) |
 | function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/mood_oscillator.py#L334) |
-
-## `core/services/mood_regulator_subscriber.py`
-_Mood regulator subscriber — router truth-gate detektioner til humøret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_mood_regulator_subscriber` | `()` | Start daemon-tråden der router detektions-events til mood-regulering. | [src](../../../core/services/mood_regulator_subscriber.py#L34) |
-| function | `stop_mood_regulator_subscriber` | `()` | — | [src](../../../core/services/mood_regulator_subscriber.py#L56) |
-| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/mood_regulator_subscriber.py#L73) |
-| function | `_route_event` | `(item)` | Route en enkelt eventbus-hændelse til ``regulate_auto``. | [src](../../../core/services/mood_regulator_subscriber.py#L89) |
 

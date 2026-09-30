@@ -226,11 +226,11 @@ _`SessionHandle` — én ejer, én lease, én sekvens._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `RuntimeSettings` | `` | — | [src](../../../core/runtime/settings.py#L11) |
-| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L609) |
-| function | `_som_bool` | `(v)` | Streng bool. bool("false") er True — og et flag i runtime.json skrevet | [src](../../../core/runtime/settings.py#L621) |
-| function | `_som_felt` | `(data, defaults, navn)` | Læs ét felt med typen fra standardværdien. | [src](../../../core/runtime/settings.py#L632) |
-| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L660) |
-| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1133) |
+| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L624) |
+| function | `_som_bool` | `(v)` | Streng bool. bool("false") er True — og et flag i runtime.json skrevet | [src](../../../core/runtime/settings.py#L636) |
+| function | `_som_felt` | `(data, defaults, navn)` | Læs ét felt med typen fra standardværdien. | [src](../../../core/runtime/settings.py#L647) |
+| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L675) |
+| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1148) |
 
 ## `core/runtime/state_store.py`
 _Tiny JSON-file state store for module-globals that must survive restart._

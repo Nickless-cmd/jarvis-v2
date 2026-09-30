@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_tasks.py`
+_Scheduled tasks service — lets Jarvis schedule future reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `push_scheduled_task` | `(*, focus, delay_minutes, source=…)` | Schedule a task to fire after delay_minutes. Returns task info dict. | [src](../../../core/services/scheduled_tasks.py#L24) |
+| function | `cancel_scheduled_task` | `(task_id)` | Cancel a pending task. Returns True if found and cancelled. | [src](../../../core/services/scheduled_tasks.py#L53) |
+| function | `edit_scheduled_task` | `(task_id, *, focus=…, delay_minutes=…)` | Edit an existing pending task. Returns updated task info or error dict. | [src](../../../core/services/scheduled_tasks.py#L64) |
+| function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L90) |
+| function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L120) |
+| function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L141) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L304) |
+| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L323) |
+| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L332) |
+| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L337) |
+
 ## `core/services/secret_redaction.py`
 _Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
 
@@ -786,13 +802,4 @@ _Sensory perception bridge._
 | function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | Build a percept dict in the shape expected by perceptual_event_engine._record_perceptual_event. | [src](../../../core/services/sensory_perception_bridge.py#L389) |
 | function | `classify_sensory_change` | `(event)` | Top-level entry. Returns a percept dict if the event represents a meaningful | [src](../../../core/services/sensory_perception_bridge.py#L411) |
 | function | `_classify_sensory_change_inner` | `(event)` | — | [src](../../../core/services/sensory_perception_bridge.py#L423) |
-
-## `core/services/sensory_source.py`
-_Kilde-navne i Sansernes Arkiv — én liste, ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
-| function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
-| function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
 

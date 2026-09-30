@@ -460,14 +460,16 @@ _Primary lane cache warmer._
 | function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L555) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L629) |
 
-## `scripts/prompt_dump_split.py`
-_Splitter et prompt-dump fra /tmp/jarvis-prompt-dumps/latest.json i sektioner._
+## `scripts/prompt_dump_readable.py`
+_Læsbar version af et prompt-dump (30/9-2026)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_split.py#L28) |
-| function | `_role_title` | `(m)` | — | [src](../../../scripts/prompt_dump_split.py#L35) |
-| function | `_msg_body` | `(m)` | Indholdet som tekst — håndterer både streng og strukturerede blokke. | [src](../../../scripts/prompt_dump_split.py#L41) |
-| function | `build_markdown` | `(dump)` | — | [src](../../../scripts/prompt_dump_split.py#L51) |
-| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_split.py#L145) |
+| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_readable.py#L36) |
+| function | `_text` | `(m)` | — | [src](../../../scripts/prompt_dump_readable.py#L43) |
+| function | `_split_user` | `(t)` | (bjoern-tegn, tool-resultat-tegn, rest) inde i ÉN user-besked. | [src](../../../scripts/prompt_dump_readable.py#L52) |
+| function | `_kind` | `(i, m)` | (kategori-noegle, menneske-etikette) for én besked. | [src](../../../scripts/prompt_dump_readable.py#L69) |
+| function | `_pct` | `(n, total)` | — | [src](../../../scripts/prompt_dump_readable.py#L93) |
+| function | `build` | `(dump, full=…)` | — | [src](../../../scripts/prompt_dump_readable.py#L97) |
+| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_readable.py#L253) |
 

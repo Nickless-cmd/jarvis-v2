@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/prompt_dump_split.py`
+_Splitter et prompt-dump fra /tmp/jarvis-prompt-dumps/latest.json i sektioner._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_split.py#L28) |
+| function | `_role_title` | `(m)` | — | [src](../../../scripts/prompt_dump_split.py#L35) |
+| function | `_msg_body` | `(m)` | Indholdet som tekst — håndterer både streng og strukturerede blokke. | [src](../../../scripts/prompt_dump_split.py#L41) |
+| function | `build_markdown` | `(dump)` | — | [src](../../../scripts/prompt_dump_split.py#L51) |
+| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_split.py#L145) |
+
 ## `scripts/publish_mobile_apk.py`
 _Læg en ny mobil-APK op — og behold præcis én version tilbage._
 

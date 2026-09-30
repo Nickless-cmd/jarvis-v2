@@ -620,10 +620,10 @@ _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
 | function | `_staar_i_imperativ` | `(lower, marker)` | Står markøren som en ORDRE — i starten af beskeden eller efter et | [src](../../../core/services/pushback.py#L283) |
 | function | `_har_pres_cue` | `(lower, marker, kort)` | Står et pres-cue i nærheden af markøren — før ELLER efter den? | [src](../../../core/services/pushback.py#L303) |
 | function | `_marker_er_pres` | `(marker, lower, kort)` | Er markøren et pres eller et emne? Se kommentaren over `_PRESSURE_CUES`. | [src](../../../core/services/pushback.py#L320) |
-| function | `_request_risk_evidence` | `(user_message)` | — | [src](../../../core/services/pushback.py#L335) |
-| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L350) |
-| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L423) |
-| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L430) |
+| function | `_request_risk_evidence` | `(user_message)` | — | [src](../../../core/services/pushback.py#L349) |
+| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L364) |
+| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L437) |
+| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L444) |
 
 ## `core/services/query_language_bridge.py`
 _Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._

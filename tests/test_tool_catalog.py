@@ -102,3 +102,33 @@ def test_spawn_agent_task_staar_i_inventaret():
     # Lige efter scout, saa forskellen kan ses paa stedet: scout LAESER,
     # spawn HANDLER.
     assert gruppe.index("spawn_agent_task") == gruppe.index("scout_agent") + 1
+
+
+# ── Kataloget skal sige «se efter i dine egne defs foerst» (30/9-2026) ───────
+#
+# Maalt over 30 dage: 541 hentede vaerktoejsnavne, ~80 (15 %) for vaerktoejer
+# der ALLEREDE laa i turens native function-defs — `notify_user` 20 gange,
+# `recall_memories` 19. Kataloget naevnte dem uden at skelne, og modellen
+# krydstjekkede ikke sit eget array.
+#
+# Det koster ingen cache (merge'n springer dem over), men en runde hver gang.
+
+def test_kataloget_beder_om_et_krydstjek_foerst():
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert "SE FØRST EFTER I DINE EGNE function-defs" in tekst, (
+        "katalogets krydstjek-linje er væk — saa hentes kerne-vaerktoejer igen")
+    # Kontrollen: pegepinden til load_more_tools skal BLIVE. Uden den kan de
+    # ~320 oevrige ikke findes overhovedet.
+    assert "load_more_tools" in tekst
+
+
+def test_kataloget_naevner_stadig_vaerktoejer():
+    """Uden den kunne testen ovenfor bestaa paa et katalog der kun er en
+    instruktion — og saa kan han ikke finde noget som helst."""
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert len(tekst) > 1000, len(tekst)
+    assert "KERNE-VÆRKTØJER" in tekst

@@ -15,8 +15,34 @@ from core.tools.simple_tools import get_tool_definitions
 
 _HEADER = (
     "KERNE-VÆRKTØJER (grupperet — de mest brugte). Du ser de relevante som native "
-    "function-defs hver tur; resten findes via load_more_tools(query=\"...\"):\n"
+    "function-defs hver tur; resten findes via load_more_tools(query=\"...\").\n"
+    "SE FØRST EFTER I DINE EGNE function-defs: står værktøjet der, så kald det "
+    "direkte. load_more_tools er KUN til dem der ikke er der.\n"
 )
+
+# 30/9-2026: linjen ovenfor er tilføjet efter en maaling. Over 30 dage blev der
+# hentet 541 vaerktoejsnavne, og ~80 af dem (15 %) var vaerktoejer der ALLEREDE
+# laa i turens native function-defs — `notify_user` 20 gange, `recall_memories`
+# 19, `search_memory` 6. Kataloget naevnte dem, og modellen krydstjekkede ikke
+# sit eget array.
+#
+# Det koster INGEN cache: merge-logikken i `visible_runs` springer et vaerktoej
+# over der allerede er der (`_xn not in _existing_names`), saa praefikset roerer
+# sig ikke. Det koster en RUNDE — latens og tokens for et kald der ikke behoevede
+# at ske.
+#
+# HVORFOR IKKE EN HAARD FILTRERING. Vaerktoejet kan ikke vide hvad der ligger i
+# turens array; `load_more_tools` faar hverken sessionen eller listen. Jeg
+# proevede den naerliggende tilnaermelse — «det deterministiske kernesaet fra en
+# tom brugerbesked» — og MAALTE at den er usikker: `heartbeat_status` falder ud
+# af saettet ved to ud af seks realistiske beskeder. Havde vaerktoejet svaret
+# «den har du allerede», kunne modellen ikke kalde den. En forkert filtrering
+# koster mere end de 15 %.
+#
+# Den eksakte kilde findes kun i `visible_runs`, som bygger arrayet — og at
+# traade listen derfra ned gennem `_execute_simple_tool_calls` til
+# `_prepare_call` er en aendring paa den varmeste sti i systemet for et problem
+# uden cache-omkostning. Prompten er det rette sted for en prompt-skabt vane.
 
 # 2026-06-22: the full ~445-tool text catalog was 59% of the visible system
 # prompt (~7.5k tokens) and fully redundant with the native tool definitions

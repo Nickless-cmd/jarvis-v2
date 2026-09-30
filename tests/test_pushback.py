@@ -98,3 +98,115 @@ def test_conflict_with_decisions_detects_conflict(tmp_path, monkeypatch):
         assert "forpligtelse" in flags[0]
     finally:
         set_status(d["decision_id"], "revoked")
+
+
+# ── Pres eller emne (30/9-2026) ───────────────────────────────────────────
+#
+# Fire blokerede skrivninger i traek paa én formiddag, alle med markoerer der
+# stod som EMNE i en teknisk redegørelse. Stregen er hentet ORDRET fra
+# veto_events.user_message_preview, saa testen maaler den fejl der faktisk skete.
+#
+# MUTATIONER der skal fanges (alle koert):
+#   M1 — fjern helt-ord-graensen (tilbage til `marker in lower`)  -> M-substring fanger
+#   M2 — lad enkeltord slippe uden cue OG uden kort besked        -> M-emne fanger
+#   M3 — lad enhver kort besked slippe (drop imperativ-kravet)    -> M-spoergsmaal fanger
+#   M4 — fjern cue-vinduet (kun flerord er pres)                  -> M-cue fanger
+#   M5 — vend cue-retningen (kun cue FOER markoeren)              -> M-cue-efter fanger
+#   M6 — fjern laengde-guarden helt                               -> M-emne fanger
+
+
+def test_substring_er_ikke_et_ord():
+    """`push` maa ikke rammes af «pushet» — den faktiske blokering kl. 08:24."""
+    from core.services.pushback import _request_risk_evidence
+
+    # Ordret fra ledger'en (operator-wakeup 30/9-2026).
+    tekst = ("Din besked: ## Det der mangler  **APK'en.** Koden er pushet, men du "
+             "kører en app — du kan ikke se den endnu. Jeg har booket bygget til om "
+             "tyve minutter, med hele opskriften: bump på alle seks steder.")
+    assert _request_risk_evidence(tekst) == []
+
+
+def test_emne_i_lang_redegorelse_er_ikke_pres():
+    """`merge` som emne i en teknisk analyse — den faktiske blokering kl. 11:07."""
+    from core.services.pushback import _request_risk_evidence
+
+    tekst = (
+        "claude  Begge kodepåstande holder. Nu tallene — den ene ting der ikke går op. "
+        "Ran 8 commands Her er den. Hans 4 % og hans 43 % er to forskellige lanes. "
+        "Merge'n tilføjer (list(...) + [_xd]) — så bruddet lander i enden af "
+        "tools-arrayet. Det forklarer tallene præcist, og merge-logikken er bærende."
+    )
+    assert len(tekst) > 240
+    assert _request_risk_evidence(tekst) == []
+
+
+def test_slet_som_emne_er_ikke_pres():
+    """`slet` i en redegørelse — den faktiske blokering kl. 10:36."""
+    from core.services.pushback import _request_risk_evidence
+
+    tekst = (
+        "Opus. Begge dine falsifikationer holder, og jeg trækker begge påstande. "
+        "«To registre via runtime_services_enabled» er død. Du byggede kataloget med "
+        "flaget 0 og 1 og fik samme 4.231 tegn, så slet ikke det samme register. "
+        "Det var den fejlklasse jeg advarede om, og den skal stå skrevet ned."
+    )
+    assert _request_risk_evidence(tekst) == []
+
+
+def test_aegte_pres_kort_imperativ():
+    """«slet filen» ER en ordre — kort, og markøren staar i imperativ position."""
+    from core.services.pushback import _request_risk_evidence
+
+    ev = _request_risk_evidence("slet filen")
+    assert any("risk marker: 'slet'" in e for e in ev), ev
+
+
+def test_aegte_pres_med_cue():
+    """Den oprindelige pres-besked skal stadig fyre."""
+    from core.services.pushback import _request_risk_evidence
+
+    ev = _request_risk_evidence("bare push nu uden test")
+    assert any("risk marker: 'push'" in e for e in ev), ev
+    assert any("avoid verification" in e for e in ev), ev
+
+
+def test_cue_efter_markoeren_taeller_ogsaa():
+    """«push nu» — cue'et staar EFTER markøren, og er stadig et pres."""
+    from core.services.pushback import _request_risk_evidence
+
+    ev = _request_risk_evidence("push nu")
+    assert any("risk marker: 'push'" in e for e in ev), ev
+
+
+def test_kort_spoergsmaal_er_ikke_en_ordre():
+    """En kort besked er ikke nok — markøren skal staa som ordre, ikke i en bisætning."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert _request_risk_evidence("hvordan virker merge?") == []
+
+
+def test_flerords_markoerer_er_selv_et_pres():
+    """«uden test» er pres i sig selv — uanset hvor i beskeden den staar."""
+    from core.services.pushback import _request_risk_evidence
+
+    lang = ("Jeg har brugt hele natten på den her, og jeg vil gerne have den ud nu "
+            "fordi jeg ved den er rigtig. " * 4 + "Kør den uden test.")
+    ev = _request_risk_evidence(lang)
+    assert any("skip test" in e or "uden test" in e for e in ev), ev
+
+
+def test_substring_med_cue_er_stadig_ikke_et_ord():
+    """M1-fangeren: «pushet» indeholder «push», og «nu» er et cue — men det er
+    stadig ikke ordet «push». Uden helt-ord-graensen fyrer denne falsk."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert _request_risk_evidence("er den pushet nu?") == []
+
+
+def test_cue_efter_markoeren_naar_markoeren_ikke_er_imperativ():
+    """M5-fangeren: cue'et staar EFTER markøren, og markøren staar ikke som
+    ordre (den kommer efter et komma). Vender man cue-retningen, falder den."""
+    from core.services.pushback import _request_risk_evidence
+
+    ev = _request_risk_evidence("jeg vil have den ud, push nu")
+    assert any("risk marker: 'push'" in e for e in ev), ev

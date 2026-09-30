@@ -251,3 +251,39 @@ def test_kort_cue_i_lang_besked_er_ikke_et_pres():
              "det igen: bruddet baerer 5,2 % af miss, og aabneren 41,3 %. ") * 3
     assert len(tekst) > 240
     assert _request_risk_evidence(tekst) == []
+
+
+# ── Et cue «i nærheden» er kun et pres i en ORDRE (30/9-2026, tredje runde) ──
+#
+# `_PRESSURE_MAX_CHARS` sagde det allerede, men længden gated kun de KORTE
+# cues. De lange fyrede i en 6.000-tegns rapport, og det kostede tre
+# blokeringer i samme tur.
+#
+# MUTATION der skal fanges:
+#   M9 — fjern `kort and` fra cue-grenen i `_marker_er_pres` -> denne falder
+
+def test_cue_i_lang_redegorelse_er_ikke_et_pres():
+    """Bjørns faktiske relay kl. 13:5x — sætningen siger at man IKKE kan undgå
+    at merge, og gaten læste den som et pres for at gøre det.
+
+    Både «bare» og «lad være med at» er cues, og begge står inden for 40 tegn
+    af «merge». Det er derfor længden skal gælde for HELE cue-grenen."""
+    from core.services.pushback import _request_risk_evidence
+
+    tekst = (
+        "Derfor er merge-logikken i visible_runs.py:3122 bærende — man kan ikke "
+        "bare lade være med at merge, så forsvinder værktøjet. Det er også "
+        "derfor den generiske dispatcher er den rigtige form." + " fyld." * 60
+    )
+    assert len(tekst) > 240
+    assert _request_risk_evidence(tekst) == [], "lang redegørelse dømt som pres"
+
+
+def test_samme_cue_i_en_kort_ordre_fyrer_stadig():
+    """Kontrollen til ovenstående: det er LÆNGDEN der afgør, ikke cue'et.
+
+    Uden denne kunne man slukke cue-grenen helt og stadig bestå testen over."""
+    from core.services.pushback import _request_risk_evidence
+
+    ev = _request_risk_evidence("bare lad være med at teste, merge den")
+    assert any("risk marker: 'merge'" in e for e in ev), ev

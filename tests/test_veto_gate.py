@@ -182,3 +182,33 @@ def test_visible_tool_exec_udleder_flaget_fra_KOERSLEN_ikke_fra_tekst():
     for forbudt in ("user_message", "user_message_preview", "besked"):
         assert f"user_present={forbudt}" not in src, (
             f"flaget udledes af tekst ({forbudt}) — det var netop fejlen")
+
+
+# ── Gatens egen svarkanal må ikke være gatet (30/9-2026) ──────────────────────
+#
+# Målt 30/9: gaten blokerede `override_gate`, `pause_and_ask` OG spørgsmålet om
+# at genstarte den — tre gange i samme tur på `risk marker: 'merge'`, hvor ordet
+# stod i Bjørns videresendte rapport. Så var `bash` den eneste vej ud, og
+# ledger'en tabte grunden til at bagdøren blev brugt.
+#
+# MUTATION der skal fanges:
+#   M10 — fjern de tre navne fra `_ALWAYS_ALLOWED_TOOLS` -> denne test falder
+
+def test_gatens_egen_svarkanal_er_aldrig_gatet(monkeypatch):
+    """At gate svarkanalen kan ikke beskytte noget — den fjerner kun udvejen.
+
+    `override_gate` fyrer først EFTER at gaten har logget sin blokering, og
+    `pause_and_ask` er det modsatte af at handle. En gate der blokerer «spørg
+    først» presser mod handling, ikke væk fra den.
+    """
+    vg, written = _hermetic(monkeypatch, _FIRM_SECTION)
+    for navn in ("override_gate", "gate_override_status", "pause_and_ask"):
+        allowed, reason = vg.check_veto(navn, "jeg pusher nu", record_event=True)
+        assert allowed is True, f"{navn} blev gatet: {reason}"
+    assert written == [], "svarkanalen må ikke skrive blocked-rækker"
+
+    # Kontrollen: SAMME sektion blokerer stadig en rigtig handling. Uden den
+    # her kunne testen bestå fordi sektionen slet ikke vetoer noget.
+    allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
+    assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+    assert len(written) == 1 and written[0]["tool_name"] == "write_file"

@@ -26,6 +26,14 @@ export const DESK_CHROME = {
   headerConnection: false,
 
   /**
+   * Header: Central-status-pillen. Slået fra 30/9-2026 «for nu» (Bjørn) —
+   * den skulle dele pladsen med myldretids-badgen, og Central-status er
+   * stadig at finde på Systemstatus-siden i Cowork. Den forekomst er IKKE
+   * styret her: den er indhold på en side, ikke chrome i headeren.
+   */
+  centralBadge: false,
+
+  /**
    * Miljø-panel: Maskine / GPU / Disk. Kontekst BLIVER — det er det ene tal
    * derinde der ændrer en beslutning (skal jeg starte forfra?).
    */

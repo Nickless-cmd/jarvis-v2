@@ -876,7 +876,7 @@ export function ChatView({
         {/* «Aktiv på en anden enhed» bor HER nu, ikke som et banner over
             samtalen — ved siden af de andre tilstands-signaler. */}
         <AndenEnhedMaerke aktiv={showTakeover} />
-        {settings && (
+        {DESK_CHROME.centralBadge && settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
         )}
         {DESK_CHROME.headerConnection && settings && (

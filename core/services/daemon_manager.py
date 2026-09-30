@@ -555,6 +555,16 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Fase C: 60min self-heal — 3+ providers nede samtidig → eskalér til Bjørn (Discord); model-drift (404) fjernes reaktivt",
     },
+    "peak_varsel": {
+        "module": "core.services.peak_varsel_daemon",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 5,
+        # Sikkert at auto-køre: sender højst ÉT varsel pr. vindue (dedup i
+        # runtime_state_kv), kun man-fre, kun dagvinduet. Nul LLM-tokens.
+        "default_enabled": True,
+        "description": "Varsel 15 min før DeepSeeks myldretid åbner (man-fre, dagvinduet) → notifikations-feed + mobil push",
+    },
     "cluster_somatic": {
         "module": "core.services.cluster_daemon",
         "reset_var": "_SOMATIC_FAMILY",

@@ -2133,6 +2133,19 @@ def _run_heartbeat_tick_locked(
             _dm.record_daemon_tick("provider_self_heal", _psh_result or {})
         except Exception:
             pass
+    # Peak-varsel (30/9-2026): 15 min før DeepSeeks myldretid åbner (man-fre,
+    # dagvinduet) → notifikations-feed + mobil push. Nul LLM-tokens; dedup'er
+    # selv pr. vindue. Se core/services/peak_varsel_daemon.py.
+    if _dm.is_enabled("peak_varsel"):
+        try:
+            from core.services.peak_varsel_daemon import tick_peak_varsel_daemon
+            _pv_result = _daemon_tick_with_deadline(
+                "peak_varsel", tick_peak_varsel_daemon,
+                deadline_seconds=15.0,
+            )
+            _dm.record_daemon_tick("peak_varsel", _pv_result or {})
+        except Exception:
+            pass
     # memory_safeguard — PENSIONERET 2026-07-15 → cluster_memory (kalder run() som
     # non-LLM member). Denne gamle bare tick-site importerede en IKKE-EKSISTERENDE
     # tick_memory_safeguard_daemon (ImportError → swallowed) og var reelt DØD; nu

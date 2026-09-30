@@ -51,6 +51,11 @@ def _som_utc(at: datetime | str | None) -> datetime:
     return d if d.tzinfo else d.replace(tzinfo=UTC)
 
 
+#: Offentligt alias (30/9-2026). ``peak_varsel_daemon`` og andre læsere skal
+#: ikke importere et understregnings-navn for at få samme UTC-normalisering.
+som_utc = _som_utc
+
+
 def _vindue_start(dag, fra: int) -> datetime:
     return datetime.combine(dag, time(fra, 0), tzinfo=UTC)
 

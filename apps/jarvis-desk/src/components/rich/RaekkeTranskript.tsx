@@ -84,6 +84,18 @@ const LAESERE = new Set([
   'scout_agent',
 ])
 
+/** Tekst efter det aktuelle arbejde er et levende svar. En ny tanke eller et
+ * nyt kald åbner arbejdet igen, hvis teksten viste sig at være et mellemsvar. */
+function svarStreamerNu(blocks: readonly ContentBlock[]): boolean {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i]
+    if (!b) continue
+    if (b.type === 'thinking' || b.type === 'tool_use') return false
+    if (b.type === 'text') return b.text.trim().length > 0
+  }
+  return false
+}
+
 /**
  * Arbejdsrundens ikon — rundens FORM, ikke dens sidste skridt.
  *
@@ -348,10 +360,12 @@ function RaekkeTranskriptImpl({
     e.slags === 'blok' && e.blok.type === 'tool_use' ? [postFor(e.blok.name).familie] : [],
   )
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
-  // Aaben mens der arbejdes, lukket naar turen er slut — man skal kunne
-  // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
+  // Arbejdet lukker ved første svartekst, mens svaret stadig streamer.
+  // Hvis modellen fortsætter med en tanke eller et kald, åbner det igen.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? streaming
+  const svarStreamer = streaming && arbejde.length > 0 && svarStreamerNu(blocks)
+  const arbejdeKoerer = streaming && !svarStreamer
+  const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
@@ -361,10 +375,10 @@ function RaekkeTranskriptImpl({
         <>
           <button
             type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
-            {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
+            {...(arbejdeKoerer && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
-            {streaming && aabenManuelt === null
+            {arbejdeKoerer && aabenManuelt === null
               ? <span className="rv-turTekst shimmer">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
             <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
@@ -372,8 +386,8 @@ function RaekkeTranskriptImpl({
           <div className="rv-gruppe" hidden={!aaben}>
             {aaben && sektioner.map((s, i) => {
               if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
-              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
-              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
+              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={arbejdeKoerer} config={config} beskedId={beskedId} />
+              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={arbejdeKoerer}
                 sidste={i === sektioner.length - 1} harSvar={svar.length > 0}
                 config={config} rundeEtiketter={etiketter} beskedId={beskedId} />
             })}

@@ -33,10 +33,12 @@ const msg = (over: Partial<ChatMessage>): ChatMessage => ({
  */
 it('viser et live-billede mens svaret streames', async () => {
   const blocks: ContentBlock[] = [
+    { type: 'tool_use', id: 'img-1', name: 'openrouter_image', input: { prompt: 'et æble' }, status: 'done' },
     { type: 'text', text: 'Her er billedet.' },
     { type: 'image', src: 'data:image/png;base64,AAAA', alt: 'et æble' },
   ]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
   expect(s.getByTestId('attachment-wrap')).toBeTruthy()
   expect(s.getByText('Her er billedet.')).toBeTruthy()
 })
@@ -91,6 +93,26 @@ it('viser turn header fra turen starter, før første blok kommer', async () => 
   expect(s.getByText('Working…')).toBeTruthy()
 })
 
+it('folder live arbejde før svaret streamer og åbner igen ved et nyt værktøj', async () => {
+  const arbejde: ContentBlock[] = [
+    { type: 'thinking', thinking: 'Finder årsagen.' },
+    { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' }, status: 'done' },
+  ]
+  const s = await render(<MessageList messages={[]} blocks={arbejde} working />)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
+
+  await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...arbejde, { type: 'text', text: 'Her er svaret' }]} working />) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByText('Her er svaret')).toBeTruthy()
+
+  await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...arbejde,
+    { type: 'text', text: 'Jeg tjekker mere.' },
+    { type: 'tool_use', id: 't2', name: 'grep', input: { pattern: 'fejl' }, status: 'running' },
+  ]} working />) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
+  expect(s.getByText('Jeg tjekker mere.')).toBeTruthy()
+})
+
 it('en ny tur starter åben, selv hvis forrige live tur blev lukket', async () => {
   const blocks: ContentBlock[] = [{ type: 'thinking', thinking: 'Undersøger.' }]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
@@ -120,7 +142,7 @@ it('samler gemt arbejde bag én turn header og lader slutsvaret stå synligt', a
   expect(s.getByTestId('tool-group')).toBeTruthy()
 })
 
-it('åbner live arbejde ned under turn headeren og lader svaret stå synligt', async () => {
+it('kan åbne live arbejde under turn headeren uden at skjule svaret', async () => {
   const blocks: ContentBlock[] = [
     { type: 'thinking', thinking: 'Jeg lægger en plan.' },
     { type: 'text', text: 'Jeg finder filen.' },
@@ -128,23 +150,24 @@ it('åbner live arbejde ned under turn headeren og lader svaret stå synligt', a
     { type: 'text', text: 'Her er svaret.' },
   ]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
-  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
   expect(s.getByText('Her er svaret.')).toBeTruthy()
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Jeg finder filen.')).toBeTruthy()
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
-  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
-  expect(s.queryByTestId('thinking-summary')).toBeNull()
   expect(s.getByText('Her er svaret.')).toBeTruthy()
 })
 
 it('folder arbejdet sammen ved skiftet fra stream til gemt slutsvar', async () => {
-  const blocks: ContentBlock[] = [
-    { type: 'thinking', thinking: 'Finder årsagen.' },
-    { type: 'text', text: 'Rettet.' },
-  ]
+  const blocks: ContentBlock[] = [{ type: 'thinking', thinking: 'Finder årsagen.' }]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
   expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
+
+  await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...blocks, { type: 'text', text: 'Rettet.' }]} working />) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByText('Rettet.')).toBeTruthy()
 
   const saved = msg({
     id: 'a1', role: 'assistant', content: 'Rettet.',
@@ -248,8 +271,10 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
     />
   )
 
-  // Thinking ligger under den åbne turn header, ikke inde i selve svaret.
+  // Thinking ligger under turn headeren, ikke inde i selve svaret.
   expect(s.getByTestId('turn-header')).toBeTruthy()
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
   // Og teksten skal være en separat boble
   expect(s.getByText('Svaret er 4')).toBeTruthy()
@@ -274,6 +299,7 @@ it('tænke-fragmentet står på trådens linje mens den tænker', async () => {
       messages={[msg({ id: 'u1', role: 'user', content: 'hvad er 2+2?' })]}
       // Tanken er den SIDSTE blok → rækken er live og bærer fragmentet.
       blocks={[{ type: 'thinking', thinking: 'jeg overvejer om 2+2 er 4' }]}
+      working
     />
   )
   expect(

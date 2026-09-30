@@ -133,3 +133,83 @@ def test_tool_kataloget_ligger_i_halen_og_ikke_i_praefikset():
     assert "KERNE-VÆRKTØJER" not in _praefiks(tekst), (
         "kataloget staar i praefikset igen — dets laengde foelger tool-scopet, "
         "saa et scope-skift braekker hele vaerktoejs-arrayet + samtalen")
+
+
+def test_support_signals_ligger_i_halen_og_ikke_i_praefikset(monkeypatch):
+    """Femte sag (30/9-2026): sektionens indhold afgoeres af et KAPLOEB.
+
+    Bygningen er cappet (`_HOT_RESOLVE_CAP_S`), og rammes deadline'en beholdes
+    kun de under-sektioner der NAAEDE at blive faerdige — resten loeber videre i
+    baggrunden. Hvilke der naaede det varierer fra tur til tur.
+
+    Maalt paa CT105 efter katalog-flytningen: to praefiks-varianter, 30.204 og
+    30.206 tegn. Foerste forskel laa i chunk 29 af 30 — 98 % inde i
+    systemblokken. Alligevel overlevede kun 33 % af praefikset, og hit faldt
+    89,5 % -> 79,2 %: to tegn i systemblokkens hale kostede hele
+    vaerktoejsarrayet OG hele samtalen.
+
+    Testen laaser begge halvdele: forbeholdet skal BLIVE i prompten (det er en
+    guardrail modellen skal se), men ligge EFTER markoeren.
+    """
+    from core.services import prompt_contract as pc
+    from core.services.prompt_sections.support_signals_section import SUBORDINAT
+
+    # INDSPROEJTET, ikke haabet paa. Foerste udgave af denne test byggede
+    # prompten som den var og krævede at forbeholdet stod der — den bestod
+    # isoleret og FALDT i fuld suite, fordi support-byggerne intet producerer
+    # under test-fixtures. En vagt der afhaenger af miljoeet maaler ikke
+    # placering; den maaler held. Her tvinges sektionen frem, saa kun
+    # PLACERINGEN er under maaling.
+    _blok = SUBORDINAT + "\nRuntime awareness support signal: probe."
+
+    def _fake(*, compact, include, user_message="", session_id=None, acc=None):
+        if acc is not None:
+            acc.append(_blok)
+        return [_blok]
+
+    monkeypatch.setattr(pc, "_visible_support_signal_sections", _fake)
+    a = pc.build_visible_chat_prompt_assembly(
+        provider="deepseek", model="deepseek-v4-flash",
+        user_message="hej", session_id=None,
+    )
+    tekst = a.text or ""
+    assert SUBORDINAT in tekst, "den indsproejtede sektion naaede slet ikke prompten"
+    assert SUBORDINAT not in _praefiks(tekst), (
+        "support_signals staar i praefikset igen — dens indhold er et "
+        "tids-snapshot, saa et kaploeb afgoer praefikset og braekker "
+        "vaerktoejs-arrayet + samtalen")
+
+
+def test_halen_faar_den_BUDGET_klippede_support_ikke_den_raa():
+    """Loftet maa ikke forsvinde med flytningen.
+
+    `support_signals` kostede 27,4 s af en 30,8-sekunders kold opbygning foer
+    den blev cappet, og attention-budgettet klipper den til sit loft. Halen skal
+    derfor faa `selected[...]` — ikke `support_content`, som er det uklippede
+    indhold. Forskellen er usynlig i placeringen, saa den maales paa kilden.
+    """
+    import ast
+    from pathlib import Path
+
+    kilde = Path("core/services/prompt_contract.py").read_text(encoding="utf-8")
+    traeet = ast.parse(kilde)
+    fundet = []
+    for node in ast.walk(traeet):
+        # _dyn_tail.append(<x>)
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and f.attr == "append"):
+            continue
+        if not (isinstance(f.value, ast.Name) and f.value.id == "_dyn_tail"):
+            continue
+        if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
+            continue
+        fundet.append(node.args[0].id)
+    assert "_support_valgt" in fundet, (
+        f"_dyn_tail.append(_support_valgt) findes ikke — halen faar noget andet: {fundet}")
+    # og navnet skal komme FRA budgettet
+    assert 'selected.get("support_signals")' in kilde, (
+        "_support_valgt hentes ikke fra `selected` — budgettets loft er omgaaet")
+    assert "_dyn_tail.append(support_content)" not in kilde, (
+        "halen faar det RAA indhold, saa attention-budgettets loft er væk")

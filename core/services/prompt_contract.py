@@ -2539,26 +2539,13 @@ def _build_visible_chat_prompt_assembly_impl(
         # koerer videre i baggrunden og faerdiggoer sig selv; vi venter bare
         # ikke paa den.
         support_raw = list(_support_acc)
-    # Forbeholdet hoistes til TOPPEN af den samlede blok (8/9-2026).
-    #
-    # Hver enkelt support-bygger sluttede med «Use only as subordinate support.
-    # Runtime and visible truth outrank it.» — og attention-budgettet klipper
-    # support_signals til ~400 tegn ved sidste linjeskift. Konsekvensen var maalt:
-    # forbeholdet stod NUL steder i den samlede prompt, mens world-model-blokkens
-    # data stod der i fuld laengde. Vaernet blev klippet af, dataen blev tilbage.
-    #
-    # Én gang oeverst loeser to ting: den overlever beskaeringen (det er en
-    # guardrail, ikke en fodnote), og den samme saetning fylder ikke fem gange i
-    # en blok der i forvejen er for stor til sit budget.
-    _SUBORDINAT = "Use only as subordinate support. Runtime and visible truth outrank it."
-    if support_raw:
-        _krop = "\n\n".join(
-            "\n".join(l for l in blok.split("\n") if l.strip() != _SUBORDINAT)
-            for blok in support_raw
-        )
-        support_content = _SUBORDINAT + "\n\n" + _krop
-    else:
-        support_content = None
+    # Forbeholdet hoistes til toppen af blokken; logikken og hvorfor den ser
+    # sådan ud bor nu i `prompt_sections/support_signals_section.py` (udskilt
+    # 30/9-2026, Boy Scout — filen var 4.911 linjer).
+    from core.services.prompt_sections.support_signals_section import (
+        byg_support_indhold as _byg_support,
+    )
+    support_content = _byg_support(support_raw)
 
     bridge_content = None  # spec 2026-07-05: altid None på visible-lane
 
@@ -2680,7 +2667,6 @@ def _build_visible_chat_prompt_assembly_impl(
         "self_state",
         "self_report",
         "inner_visible_bridge",
-        "support_signals",
         "continuity",
     ):
         content = selected.get(sec_name)
@@ -2688,6 +2674,34 @@ def _build_visible_chat_prompt_assembly_impl(
             parts.append(content)
             label = _section_labels.get(sec_name, sec_name)
             derived_inputs.append(label)
+
+    # ── support_signals hoerer i HALEN, ikke i praefikset (30/9-2026) ────────
+    #
+    # Den laa sidst i det cachede praefiks, og dens indhold er et TIDS-SNAPSHOT:
+    # bygningen er cappet (`_HOT_RESOLVE_CAP_S`), og rammes deadline'en beholdes
+    # kun de under-sektioner der NAAEDE at blive faerdige. Hvilke der naaede det
+    # afhaenger af et kaploeb — saa sektionen er ikke-deterministisk ved design.
+    #
+    # Maalt paa CT105 efter katalog-flytningen: to praefiks-varianter, 30.204 og
+    # 30.206 tegn, foerste forskel i chunk 29 af 30 — altsaa 98 % inde i
+    # systemblokken. Alligevel overlevede kun 33 % af praefikset, og hit faldt
+    # 89,5 % -> 79,2 %. To tegn i systemblokkens hale kostede hele
+    # vaerktoejsarrayet OG hele samtalen, fordi DeepSeek matcher fra
+    # begyndelsen: [system][tools][beskeder].
+    #
+    # Samme flytning som tool-kataloget fik (`eacce27e9`), men med en staerkere
+    # grund: kataloget var forudsigeligt pr. scope, dette er et kaploeb.
+    #
+    # VIGTIGT: vaerdien tages fra `selected`, ikke fra `support_content`.
+    # Attention-budgettet klipper sektionen til sit loft, og blokken kostede
+    # 27,4 s af en 30,8-sekunders kold opbygning foer den blev cappet. Et
+    # uklippet indhold i halen ville fjerne det loft i stilhed.
+    _support_valgt = selected.get("support_signals")
+    if _support_valgt:
+        _dyn_tail.append(_support_valgt)
+        derived_inputs.append(
+            _section_labels.get("support_signals", "support_signals") + " (tail)"
+        )
 
     # Transcript: prefer structured messages; fall back to flat text in system prompt
     # 2026-05-22 (Claude): re-ordered so stable-content (transcript, tool

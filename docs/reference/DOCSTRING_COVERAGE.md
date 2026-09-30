@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8227/15768 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8232/15774 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8227/15768 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5466 | 10724 | 50% |
+| `core.services` | 5471 | 10730 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -968,8 +968,8 @@ Generated from source. 8227/15768 functions/methods documented (52%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_surface` (L100)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L16)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L797)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L807)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L854)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
@@ -1145,7 +1145,7 @@ Generated from source. 8227/15768 functions/methods documented (52%). The list b
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2165)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2178)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1243)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)

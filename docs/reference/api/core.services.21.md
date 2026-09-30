@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_store.py`
+_Durable SQLite state for research runs, tasks, sources, and steering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
+| function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
+| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
+| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
+| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
+| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
+| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
+| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
+| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
+| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
+| function | `list_tasks` | `(run_id)` | Alle spor i deres egen rækkefølge — også de uafsluttede. | [src](../../../core/services/research_store.py#L152) |
+| function | `unfinished_tasks` | `(run_id)` | De spor der IKKE blev færdige. Et genoptaget run må kun tage dem. | [src](../../../core/services/research_store.py#L163) |
+| function | `prepare_recovery` | `(run_id, *, warning)` | Gør et afbrudt research-run klar til at blive taget op igen. | [src](../../../core/services/research_store.py#L174) |
+| function | `advance_to_completed` | `(run_id, *, warning=…)` | Før runnet hele vejen til `completed` — ét trin ad gangen. | [src](../../../core/services/research_store.py#L204) |
+| function | `completed_task_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L224) |
+| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L229) |
+| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L245) |
+| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L253) |
+| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L269) |
+| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L279) |
+| function | `list_findings` | `(run_id)` | Parsede findings for et run (Fase B2), i track-rækkefølge. | [src](../../../core/services/research_store.py#L286) |
+| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L313) |
+| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L327) |
+| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L334) |
+| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L345) |
+
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._
 
@@ -717,27 +749,4 @@ _Runtime self-model — small producer/subsystem surfaces + role helpers._
 | function | `_luk_flowet` | `(opgave, status)` | Afslut opgavens flow med samme udfald. Selv-sikker. | [src](../../../core/services/runtime_tasks.py#L128) |
 | function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L156) |
 | function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L166) |
-
-## `core/services/rupture_repair.py`
-_Rupture & Repair — relationel tension-tracking._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/rupture_repair.py#L86) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/rupture_repair.py#L90) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/rupture_repair.py#L103) |
-| function | `_rupture_key` | `(*, source_kind, topic)` | — | [src](../../../core/services/rupture_repair.py#L154) |
-| function | `_normalize_topic` | `(payload, *, event_kind)` | — | [src](../../../core/services/rupture_repair.py#L159) |
-| function | `_classify_rupture` | `(event_kind, payload)` | Returns (is_rupture, source_kind, tension_level ∈ [0,1]). | [src](../../../core/services/rupture_repair.py#L170) |
-| function | `_is_repair_attempt` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L202) |
-| function | `_is_repair_complete` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L212) |
-| function | `_row_to_rupture` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L232) |
-| function | `_row_to_repair` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L243) |
-| function | `_upsert_rupture` | `(conn, *, rupture_key, topic, source_kind, reason, evidence, tension_level, linked_run_id, linked_session_id, linked_incident_id, status, last_seen_at)` | Insert or update a rupture by rupture_key. Returns (row_dict, mutation). | [src](../../../core/services/rupture_repair.py#L254) |
-| function | `_create_repair` | `(conn, *, rupture_id, repair_kind, repair_note, change_summary, evidence, status, linked_run_id, linked_session_id)` | — | [src](../../../core/services/rupture_repair.py#L338) |
-| function | `evaluate_ruptures` | `(*, lookback_hours=…, event_limit=…)` | Scan recent events and detect/update ruptures and repairs. | [src](../../../core/services/rupture_repair.py#L372) |
-| function | `list_ruptures` | `(*, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L517) |
-| function | `list_repairs` | `(*, rupture_id=…, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L540) |
-| function | `summarize_ruptures` | `()` | — | [src](../../../core/services/rupture_repair.py#L570) |
-| function | `build_rupture_repair_surface` | `()` | MC surface for Rupture & Repair. | [src](../../../core/services/rupture_repair.py#L607) |
 

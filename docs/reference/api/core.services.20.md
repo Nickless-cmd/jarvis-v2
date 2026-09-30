@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/query_language_bridge.py`
+_Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normalise_for_embedding` | `(text)` | Byt danske fagord til engelske foer et embedding-opslag. | [src](../../../core/services/query_language_bridge.py#L80) |
+| function | `build_query_language_bridge_surface` | `(text=…)` | Observationsflade — hvad broen ville goere ved denne besked. | [src](../../../core/services/query_language_bridge.py#L103) |
+
 ## `core/services/quota_store.py`
 _Kvote-regnskab pr. bruger/mode med daglig nulstilling (spec §21)._
 
@@ -688,36 +696,4 @@ _Conservative and explainable inline/orchestrated research routing._
 |---|---|---|---|---|
 | function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L37) |
 | function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L42) |
-
-## `core/services/research_store.py`
-_Durable SQLite state for research runs, tasks, sources, and steering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
-| function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
-| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
-| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
-| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
-| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
-| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
-| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
-| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
-| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
-| function | `list_tasks` | `(run_id)` | Alle spor i deres egen rækkefølge — også de uafsluttede. | [src](../../../core/services/research_store.py#L152) |
-| function | `unfinished_tasks` | `(run_id)` | De spor der IKKE blev færdige. Et genoptaget run må kun tage dem. | [src](../../../core/services/research_store.py#L163) |
-| function | `prepare_recovery` | `(run_id, *, warning)` | Gør et afbrudt research-run klar til at blive taget op igen. | [src](../../../core/services/research_store.py#L174) |
-| function | `advance_to_completed` | `(run_id, *, warning=…)` | Før runnet hele vejen til `completed` — ét trin ad gangen. | [src](../../../core/services/research_store.py#L204) |
-| function | `completed_task_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L224) |
-| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L229) |
-| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L245) |
-| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L253) |
-| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L269) |
-| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L279) |
-| function | `list_findings` | `(run_id)` | Parsede findings for et run (Fase B2), i track-rækkefølge. | [src](../../../core/services/research_store.py#L286) |
-| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L313) |
-| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L327) |
-| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L334) |
-| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L345) |
 

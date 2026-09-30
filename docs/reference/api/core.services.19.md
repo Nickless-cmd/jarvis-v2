@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/procedure_bank.py`
+_Procedure Bank — reusable procedures learned from experience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_procedure` | `(*, name, trigger_pattern, procedure_text, success_count=…)` | Record or update a learned procedure. | [src](../../../core/services/procedure_bank.py#L19) |
+| function | `build_procedure_surface` | `()` | — | [src](../../../core/services/procedure_bank.py#L45) |
+
 ## `core/services/procedure_bank_pipeline.py`
 _Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
 
@@ -658,12 +666,4 @@ _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
 | function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L391) |
 | function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L464) |
 | function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L471) |
-
-## `core/services/query_language_bridge.py`
-_Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `normalise_for_embedding` | `(text)` | Byt danske fagord til engelske foer et embedding-opslag. | [src](../../../core/services/query_language_bridge.py#L80) |
-| function | `build_query_language_bridge_surface` | `(text=…)` | Observationsflade — hvad broen ville goere ved denne besked. | [src](../../../core/services/query_language_bridge.py#L103) |
 

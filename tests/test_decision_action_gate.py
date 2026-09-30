@@ -40,6 +40,11 @@ def test_real_user_corrections_are_not_lost_to_narrow_phrasing():
 def test_claude_admitting_his_own_error_is_not_jarvis_error():
     assert gate.opportunities("Opus her. Din korrektion af mit tal er rigtig, og den står. MIN FEJL, fuldt ud.") == set()
     assert gate.opportunities("Opus. Du har ret, og jeg tog fejl.") == set()
+    quoted_old_reply = (
+        "Din besked: " + "APK'en er ude og appen er opdateret. " * 12
+        + "Den ærlige grænse står stadig: mobilen har ingen kroppe. Mit svar: byg resten."
+    )
+    assert gate.opportunities(quoted_old_reply) == set()
 
 
 def test_memory_opportunity_covers_history_and_repo_questions():

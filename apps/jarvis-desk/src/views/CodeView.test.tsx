@@ -97,7 +97,11 @@ describe('CodeView', () => {
       const badge = await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
       const headerRight = badge.closest('.chatview-head-right')
       expect(headerRight).toBeInTheDocument()
-      expect(headerRight?.querySelector('[data-testid="central-badge"]')).toBeInTheDocument()
+      // Ankeret var `central-badge`, men CentralBadge blev slået fra i headeren
+      // 30/9-2026 (DESK_CHROME.centralBadge) og bor nu kun på Systemstatus-siden.
+      // Testens ærinde er at mærket hører i header-right — så det er mærket selv
+      // der er ankeret, ikke en nabo der kan slukkes uden at testen ved det.
+      expect(headerRight?.contains(badge)).toBe(true)
       expect(container.querySelector('.takeover-banner')).not.toBeInTheDocument()
     } finally {
       vi.mocked(api.getActiveRunSessions).mockResolvedValue([])

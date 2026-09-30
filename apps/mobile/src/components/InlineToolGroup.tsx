@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, Code2 } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -9,13 +9,21 @@ import { DiffArk } from './DiffArk'
 import { Prikker } from './Prikker'
 import { ThinkingSummary } from './ThinkingSummary'
 
-/** Tænke-linje der hører til runden — tegnes inde i folden, øverst (som desk). */
+/** Tænke-linje der hører til runden — tegnes inde i folden, på sin plads. */
 export interface TankeRaekke {
   key: string
   seconds?: number
   text?: string
   live?: boolean
   messageId?: string
+  /**
+   * Antallet af kald der kom FØR tanken i samme runde.
+   *
+   * Desk tegner rundens elementer i den rækkefølge de skete — tanken står
+   * MELLEM de kald den hørte til, ikke samlet øverst. Udeladt = 0, altså før
+   * det første kald.
+   */
+  foerKald?: number
 }
 
 interface Props {
@@ -32,8 +40,8 @@ interface Props {
   /** Visningen «Alt»: runden står åben fra start (kan stadig foldes). */
   aabenFraStart?: boolean
   /**
-   * Tankerne der hørte til denne runde. Ligger INDE i folden, øverst — ikke
-   * som en søskenderække efter linjen.
+   * Tankerne der hørte til denne runde. Ligger INDE i folden — ikke som en
+   * søskenderække efter linjen — på den plads de havde (`foerKald`).
    *
    * Desk gør præcis det: tænke-blokken er et ELEMENT i `rv-arbejdsdetaljer`,
    * under rundens knap (`RaekkeTranskript.tsx:324`), tegnet som en selvstændig
@@ -184,27 +192,29 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
       {open ? (
         <View style={styles.ramme} testID="tool-group-details">
           <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.details}>
-            {/* Tanken ØVERST — den kom før kaldene, og desk tegner elementerne
-                i den rækkefølge de skete. Den har sin egen chevron: den er
-                stadig døren til selve teksten, ét tryk længere inde. */}
-            {(tanker ?? []).map((t) => (
-              <ThinkingSummary
-                key={t.key}
-                seconds={t.seconds}
-                text={t.text}
-                live={t.live}
-                messageId={t.messageId}
-                indlejret
-                // Visningen «Alt» åbner HELE vejen: runden, og tanken i den.
-                aabenFraStart={aabenFraStart}
-              />
-            ))}
+            {/* Rundens elementer i den rækkefølge de skete: tanken står MELLEM
+                de kald den hørte til — ikke samlet øverst. Desk tegner dem
+                sådan (`RaekkeTranskript`), og `foerKald` bærer positionen.
+                Tanken har sin egen chevron: den er stadig døren til selve
+                teksten, ét tryk længere inde. */}
             {items.map((item, i) => (
-              // En række der redigerede eller skrev en fil kan trykkes: ændringen
-              // åbner i diff-arket (Claude Desktop §9: «Click a filename on an
-              // Edited or Wrote row»).
+              <Fragment key={`${item.label}-${i}`}>
+                {(tanker ?? []).filter((t) => (t.foerKald ?? 0) === i).map((t) => (
+                  <ThinkingSummary
+                    key={t.key}
+                    seconds={t.seconds}
+                    text={t.text}
+                    live={t.live}
+                    messageId={t.messageId}
+                    indlejret
+                    // Visningen «Alt» åbner HELE vejen: runden, og tanken i den.
+                    aabenFraStart={aabenFraStart}
+                  />
+                ))}
+              {/* En række der redigerede eller skrev en fil kan trykkes: ændringen
+                  åbner i diff-arket (Claude Desktop §9: «Click a filename on an
+                  Edited or Wrote row»). */}
               <Pressable
-                key={`${item.label}-${i}`}
                 style={styles.detailRaekke}
                 disabled={!item.aendring}
                 onPress={() => item.aendring && setVistAendring(item.aendring)}
@@ -221,6 +231,19 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
                   </View>
                 ) : null}
               </Pressable>
+              </Fragment>
+            ))}
+            {/* Tanker der kom efter det SIDSTE kald i runden. */}
+            {(tanker ?? []).filter((t) => (t.foerKald ?? 0) >= items.length).map((t) => (
+              <ThinkingSummary
+                key={t.key}
+                seconds={t.seconds}
+                text={t.text}
+                live={t.live}
+                messageId={t.messageId}
+                indlejret
+                aabenFraStart={aabenFraStart}
+              />
             ))}
           </ScrollView>
         </View>

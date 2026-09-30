@@ -85,6 +85,35 @@ it('tanken ligger ØVERST i folden — værktøjskaldene under den', async () =>
   expect(r.indexOf('thinking-summary')).toBeLessThan(r.indexOf('Læste a.py'))
 })
 
+it('tanken staar paa SIN PLADS — efter det kald den kom efter', async () => {
+  // Blokkene kommer i raekkefoelgen `thinking, text, tool_use` (maalt 30/9-2026
+  // i besked 153522). Tanken der hoerer til et kald staar derfor EFTER det i
+  // folden — ikke samlet overst. Desk tegner elementerne i den raekkefoelge de
+  // skete (`RaekkeTranskript`), og `foerKald` baerer positionen.
+  const s = await render(
+    <InlineToolGroup
+      items={[item({ label: 'Læste a.py' }), item({ label: 'Læste b.py' })]}
+      tanker={[{ key: 't1', text: 'så ser jeg på det', seconds: 4, foerKald: 1 }]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = orden(s.toJSON())
+  expect(r.indexOf('Læste a.py')).toBeLessThan(r.indexOf('thinking-summary'))
+  expect(r.indexOf('thinking-summary')).toBeLessThan(r.indexOf('Læste b.py'))
+})
+
+it('en tanke EFTER det sidste kald staar til sidst i folden', async () => {
+  const s = await render(
+    <InlineToolGroup
+      items={[item({ label: 'Læste a.py' })]}
+      tanker={[{ key: 't1', text: 'til sidst konkluderer jeg', seconds: 5, foerKald: 1 }]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = orden(s.toJSON())
+  expect(r.indexOf('Læste a.py')).toBeLessThan(r.indexOf('thinking-summary'))
+})
+
 it('linjen er i nutid mens runden kører — og prikkerne ruller i stedet for «…»', async () => {
   // Som desk og Claude Desktop: prikkerne er tre bevægelige prikker, ikke tegn
   // i teksten, så en ellipse i enden ville stå dobbelt.

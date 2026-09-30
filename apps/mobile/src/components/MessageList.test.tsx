@@ -38,7 +38,7 @@ it('viser et live-billede mens svaret streames', async () => {
     { type: 'image', src: 'data:image/png;base64,AAAA', alt: 'et æble' },
   ]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
-  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByTestId('attachment-wrap')).toBeTruthy()
   expect(s.getByText('Her er billedet.')).toBeTruthy()
 })
@@ -93,7 +93,7 @@ it('viser turn header fra turen starter, før første blok kommer', async () => 
   expect(s.getByText('Working…')).toBeTruthy()
 })
 
-it('folder live arbejde før svaret streamer og åbner igen ved et nyt værktøj', async () => {
+it('holder live arbejde åbent gennem synteser og folder først efter afslutning', async () => {
   const arbejde: ContentBlock[] = [
     { type: 'thinking', thinking: 'Finder årsagen.' },
     { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' }, status: 'done' },
@@ -102,7 +102,7 @@ it('folder live arbejde før svaret streamer og åbner igen ved et nyt værktøj
   expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
 
   await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...arbejde, { type: 'text', text: 'Her er svaret' }]} working />) })
-  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Her er svaret')).toBeTruthy()
 
   await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...arbejde,
@@ -111,6 +111,16 @@ it('folder live arbejde før svaret streamer og åbner igen ved et nyt værktøj
   ]} working />) })
   expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Jeg tjekker mere.')).toBeTruthy()
+
+  await act(async () => { s.rerender(<MessageList messages={[msg({
+    id: 'a1', role: 'assistant', content: 'Færdig.',
+    content_json: [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' } },
+      { type: 'text', text: 'Færdig.' },
+    ],
+  })]} blocks={[]} working={false} />) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByText('Færdig.')).toBeTruthy()
 })
 
 it('en ny tur starter åben, selv hvis forrige live tur blev lukket', async () => {
@@ -142,7 +152,7 @@ it('samler gemt arbejde bag én turn header og lader slutsvaret stå synligt', a
   expect(s.getByTestId('tool-group')).toBeTruthy()
 })
 
-it('kan åbne live arbejde under turn headeren uden at skjule svaret', async () => {
+it('kan lukke og genåbne live arbejde uden at skjule svaret', async () => {
   const blocks: ContentBlock[] = [
     { type: 'thinking', thinking: 'Jeg lægger en plan.' },
     { type: 'text', text: 'Jeg finder filen.' },
@@ -150,8 +160,10 @@ it('kan åbne live arbejde under turn headeren uden at skjule svaret', async () 
     { type: 'text', text: 'Her er svaret.' },
   ]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
-  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Her er svaret.')).toBeTruthy()
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
   await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
   expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Jeg finder filen.')).toBeTruthy()
@@ -166,7 +178,7 @@ it('folder arbejdet sammen ved skiftet fra stream til gemt slutsvar', async () =
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
 
   await act(async () => { s.rerender(<MessageList messages={[]} blocks={[...blocks, { type: 'text', text: 'Rettet.' }]} working />) })
-  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Rettet.')).toBeTruthy()
 
   const saved = msg({

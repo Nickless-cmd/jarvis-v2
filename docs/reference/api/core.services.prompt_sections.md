@@ -296,6 +296,13 @@ _Runtime self-report + self-model prompt sections._
 | function | `_runtime_awareness_prompt_surface` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L390) |
 | function | `_should_include_self_report` | `(text)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L412) |
 
+## `core/services/prompt_sections/support_signals_section.py`
+_Support-signalernes indhold — forbeholdet hoistet, kroppen samlet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `byg_support_indhold` | `(support_raw)` | Saml support-blokkene til ÉN sektion med forbeholdet øverst. | [src](../../../core/services/prompt_sections/support_signals_section.py#L33) |
+
 ## `core/services/prompt_sections/tool_discovery_nudge.py`
 _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikke ved findes._
 

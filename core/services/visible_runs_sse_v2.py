@@ -334,7 +334,13 @@ async def translate_to_v2(
         "provider": provider,
         "lane": lane,
         "session_id": session_id,
+        "has_tool": False,
     }
+
+    # Efter et værktøj kan tekst være både en mellemsyntese og slutsvaret.
+    # Hold kun den uafklarede tekst tilbage; et nyt værktøj/en ny runde gør
+    # den til arbejde, mens terminal done gør den til et bekræftet svar.
+    _pending_text: list[str] = []
 
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
@@ -426,6 +432,32 @@ async def translate_to_v2(
             ).to_sse_line())
             _state["text_block_open"] = False
 
+    async def _flush_pending_text(*, final: bool = False) -> None:
+        tail = echo_filter.flush()
+        if tail:
+            _pending_text.append(tail)
+        if not _pending_text:
+            return
+        text = "".join(_pending_text)
+        _pending_text.clear()
+        if final:
+            await queue.put(SystemEvent(
+                kind="final_answer_start",
+                payload={"run_id": str(_state["run_id"] or "")},
+            ).to_sse_line())
+        await _ensure_text_block_open()
+        # Replay et bekræftet svar i højst ~30 små dele. Det er samme tekst,
+        # uden et nyt modelkald, og fold-signalet står FØR første delta.
+        chunk_size = max(16, (len(text) + 29) // 30) if final else len(text)
+        for offset in range(0, len(text), chunk_size):
+            await queue.put(ContentBlockDelta(
+                index=int(_state["text_block_index"]),
+                delta_type="text_delta",
+                content=text[offset:offset + chunk_size],
+            ).to_sse_line())
+            if final and offset + chunk_size < len(text):
+                await asyncio.sleep(0.03)
+
     #: Hvilke billeder streamen allerede har sendt — nøgle er `attachment_id`.
     #: Uden den ville hvert efterfølgende billedværktøjs-resultat sende turens
     #: tidligere billeder igen.
@@ -451,6 +483,8 @@ async def translate_to_v2(
             return
         _annonceret.add(tool_id)
         tool_input = payload.get("arguments")
+        await _flush_pending_text()
+        _state["has_tool"] = True
         await _close_thinking_block_if_open()
         await _close_text_block_if_open()
         idx = _alloc_index()
@@ -472,6 +506,8 @@ async def translate_to_v2(
         input_json_delta) + stop, og videregiver status som system_event så
         klienten kan markere ToolCard'ens udfald."""
         ptype = str(payload.get("type") or "")
+        await _flush_pending_text()
+        _state["has_tool"] = True
         name = str(
             payload.get("capability_name")
             or payload.get("tool")
@@ -660,6 +696,7 @@ async def translate_to_v2(
 
                 if event_name == "reasoning_delta":
                     # Live thinking-trace → foldbart 'tænker…'-felt i frontend.
+                    await _flush_pending_text()
                     await _emit_message_start_if_needed()
                     if not _state["thinking_block_open"]:
                         await _open_thinking_block()
@@ -674,15 +711,24 @@ async def translate_to_v2(
                 elif event_name == "delta":
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()  # tanke færdig → nu svaret
-                    await _ensure_text_block_open()
                     raw_text = str(payload.get("delta") or "")
                     text = echo_filter.feed(raw_text)
                     if text:
-                        await queue.put(ContentBlockDelta(
-                            index=int(_state["text_block_index"]),
-                            delta_type="text_delta",
-                            content=text,
-                        ).to_sse_line())
+                        if _state["has_tool"]:
+                            _pending_text.append(text)
+                        else:
+                            await _ensure_text_block_open()
+                            await queue.put(ContentBlockDelta(
+                                index=int(_state["text_block_index"]),
+                                delta_type="text_delta",
+                                content=text,
+                            ).to_sse_line())
+
+                elif event_name == "working_step" and payload.get("action") == "thinking" and not payload.get("tool_id"):
+                    # En ny modelrunde bekræfter, at forrige tekst var syntese.
+                    await _flush_pending_text()
+                    await _emit_message_start_if_needed()
+                    await queue.put(SystemEvent(kind="working_step", payload=payload).to_sse_line())
 
                 elif (
                     event_name == "working_step"
@@ -709,6 +755,7 @@ async def translate_to_v2(
                     # 17/9-2026 betød det bare at linjen aldrig blev født; nu
                     # fødes den ved annonceringen, så uden dette ville den stå
                     # og «køre» resten af turen. Udfaldet lukker den.
+                    await _flush_pending_text()
                     await _emit_message_start_if_needed()
                     await queue.put(SystemEvent(
                         kind="tool_result",
@@ -733,6 +780,7 @@ async def translate_to_v2(
                     _state["saw_done"] = True
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()
+                    await _flush_pending_text(final=str(payload.get("status") or "") == "completed")
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)
@@ -764,6 +812,8 @@ async def translate_to_v2(
                     # (jarvis-code), som kører det lokalt og POSTer resultatet tilbage
                     # til /chat/tool_results. Payload bærer allerede den fulde form
                     # {type, run_id, session_id, call_id, name, arguments}.
+                    await _flush_pending_text()
+                    _state["has_tool"] = True
                     await _emit_message_start_if_needed()
                     await queue.put(_sse_format("tool_call", payload))
 
@@ -838,6 +888,7 @@ async def translate_to_v2(
             if _state["message_started"] and not _state["message_stopped"]:
                 try:
                     await _close_thinking_block_if_open()
+                    await _flush_pending_text()
                     await _close_text_block_if_open()
                     if not _state["saw_done"]:
                         from core.services.visible_terminal_policy import recovery_notice

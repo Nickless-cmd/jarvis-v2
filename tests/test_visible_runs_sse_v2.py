@@ -289,6 +289,51 @@ async def test_text_block_reopens_after_tool():
 
 
 @pytest.mark.asyncio
+async def test_final_answer_boundary_precedes_replayed_text_without_folding_intermediate_summary():
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {"type": "tool_result", "tool": "bash", "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Mellemresultat."})
+        yield _legacy_sse("working_step", {"run_id": "v1", "action": "thinking", "detail": "Tænker videre · runde 2"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Det endelige svar."})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    summary_at = next(i for i, (kind, data) in enumerate(events)
+                      if kind == "content_block_delta" and data["delta"].get("text") == "Mellemresultat.")
+    boundary_at = next(i for i, (kind, data) in enumerate(events)
+                       if kind == "system_event" and data.get("kind") == "final_answer_start")
+    answer_deltas = [(i, data["delta"]["text"]) for i, (kind, data) in enumerate(events)
+                     if kind == "content_block_delta" and data["delta"].get("type") == "text_delta"
+                     and i > boundary_at]
+    assert "".join(text for _, text in answer_deltas) == "Det endelige svar."
+    assert len(answer_deltas) > 1
+    answer_at = answer_deltas[0][0]
+    stop_at = next(i for i, (kind, _) in enumerate(events) if kind == "message_stop")
+    assert summary_at < boundary_at < answer_at < stop_at
+    assert sum(kind == "system_event" and data.get("kind") == "final_answer_start"
+               for kind, data in events) == 1
+
+
+@pytest.mark.asyncio
+async def test_interrupted_run_never_marks_buffered_text_as_final_answer():
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Uafsluttet syntese"})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "interrupted"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    assert not any(kind == "system_event" and data.get("kind") == "final_answer_start"
+                   for kind, data in events)
+    assert any(kind == "content_block_delta" and data["delta"].get("text") == "Uafsluttet syntese"
+               for kind, data in events)
+
+
+@pytest.mark.asyncio
 async def test_echo_line_filtered_from_text_stream():
     """En delta hvor modellen ekkoer [read_file]: ... skal ikke nå klienten
     som text_delta."""

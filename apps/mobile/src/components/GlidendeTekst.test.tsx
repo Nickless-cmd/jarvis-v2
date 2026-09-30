@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 import { fireEvent, render } from '@testing-library/react-native'
-import { GlidendeTekst } from './GlidendeTekst'
+import { GlidendeTekst, SWEEP_ANDEL, banen } from './GlidendeTekst'
 
 jest.mock('../lib/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
 let mockReduced = false
@@ -67,4 +67,85 @@ it('lys og grundfarve bruger samme synlige tekstmaske', async () => {
   const lys = s.getByTestId('glidende-lys', { includeHiddenElements: true })
   expect(lys).toBeTruthy()
   expect(s.getByText('Kører bash…')).toBeTruthy()
+})
+
+/* ── DSH-rytmen (30/9-2026) ─────────────────────────────────────────────────
+ *
+ * Bjørn valgte DSH's shimmer til desk og bad om den samme på mobilen: «det er
+ * stadig den sløve». Vores var ét kontinuert sweep på 2.250 ms; DSH's er
+ * 300 ms opstart, 1 s sweep, 500 ms hvile.
+ *
+ * Forskellen er ikke farten — den er at der ER en pause. Derfor måles der på
+ * hvor båndet FAKTISK står gennem omløbet, ikke på varigheden alene: en kortere
+ * varighed uden plateau er bare et hurtigere kontinuert sweep.
+ */
+describe('DSH-rytmen', () => {
+  const BREDDE = 200
+  const BAAND = 90
+
+  const vis = async () => {
+    const s = await render(<GlidendeTekst text="Kører bash…" aktiv />)
+    await fireEvent(s.getByTestId('glidende-tekst'), 'layout',
+      { nativeEvent: { layout: { width: BREDDE, height: 20 } } })
+    return s
+  }
+
+  /** Båndets translateX, læst ud af det rendrede træ. */
+  const hvor = (s: ReturnType<typeof render> extends Promise<infer T> ? T : never): number => {
+    const j = JSON.stringify(s.toJSON())
+    const m = /"transform":\[\{"translateX":(-?[\d.]+)\}\]/.exec(j)
+    if (!m) throw new Error('fandt ingen translateX i træet')
+    return Number(m[1])
+  }
+
+  it('sweepet fylder to tredjedele af omløbet — resten er hvile', () => {
+    // 1 s af 1,5 s. Står den på 1, er der ingen pause overhovedet.
+    expect(SWEEP_ANDEL).toBeCloseTo(1000 / 1500, 4)
+    expect(SWEEP_ANDEL).toBeLessThan(1)
+  })
+
+  it('SELVE BANEN har et plateau — konstanten alene beviser ingenting', () => {
+    // Mutationskørsel: at fjerne plateauet fra interpolationen lod alle
+    // elleve tests bestå, fordi de kun læste konstanten. Banen er derfor
+    // skilt ud som en ren funktion, og det er DEN der måles her.
+    const b = banen(BREDDE)
+    expect(b.inputRange).toEqual([0, SWEEP_ANDEL, 1])
+    // De to sidste udgangsværdier er ENS — det ER pausen.
+    expect(b.outputRange[1]).toBe(b.outputRange[2])
+  })
+
+  it('banen begynder og ender uden for teksten', () => {
+    const b = banen(BREDDE)
+    expect(b.outputRange[0]).toBeLessThanOrEqual(-BAAND)   // højre kant på 0
+    expect(b.outputRange[1]).toBeGreaterThanOrEqual(BREDDE) // venstre kant på bredden
+  })
+
+  it('banen følger bredden — ikke et fast tal', () => {
+    // En hardkodet slutposition ville ramme forkert på en kort linje.
+    expect(banen(100).outputRange[1]).toBeLessThan(banen(400).outputRange[1]!)
+  })
+
+  it('båndet starter HELT uden for teksten til venstre', async () => {
+    // Båndet er 90 bredt; ved -90 er dets højre kant præcis på 0.
+    const s = await vis()
+    expect(hvor(s)).toBe(-BAAND)
+  })
+
+  it('og ender HELT uden for teksten til højre', async () => {
+    // `outputRange`s anden værdi. Sammen med den forrige er det dét desk
+    // manglede: dér var gradienten brolagt, så et nyt bånd altid var på vej ind.
+    const s = await vis()
+    const j = JSON.stringify(s.toJSON())
+    expect(j).toContain(`"width":${BAAND}`)          // ét bånd, fast bredde
+    expect(hvor(s)).toBeLessThanOrEqual(0)
+  })
+
+  it('der er ÉN maske og ÉT bånd — ingen brolægning', async () => {
+    // Desks fejl var `background-repeat: repeat`. Her er der én `Rect` i
+    // den animerede gruppe, og den kan ikke gentages.
+    const s = await vis()
+    const j = JSON.stringify(s.toJSON())
+    expect((j.match(/url\(#lysboelge\)/g) ?? [])).toHaveLength(1)
+    expect((j.match(/url\(#bogstaver\)/g) ?? [])).toHaveLength(1)
+  })
 })

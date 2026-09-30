@@ -4,8 +4,51 @@ import Svg, { Defs, G, LinearGradient, Mask, Rect, Stop, Text as SvgText } from 
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { useTheme } from '../theme/ThemeContext'
 
-const VARIGHED_MS = 2250
+/* DSH-rytmen, som desk fik 30/9-2026 (Bjoern: «vil du soerge for mobilen for
+   samme dsh shimmer som du lige lavet i desk? Runde linjerne? Det er stadig
+   den sloeve»): 300 ms opstart, 1 s sweep, 500 ms hvile.
+
+   Vores egen var ét kontinuert sweep paa 2.250 ms. Forskellen er ikke farten:
+   DSH's HAR en pause, saa hvert sweep laeses som en begivenhed frem for som en
+   tilstand der bare koerer.
+
+   Hvilen ligger i INTERPOLATIONEN og ikke i en sekvens: ét `timing` over hele
+   omloebet, hvor de sidste 33 % holder baandet i ro. Saa bliver der kun ét
+   animeret vaerdi-forloeb at stoppe og rydde op i, og `useNativeDriver`
+   beholdes.
+
+   Desk havde samtidig en anden fejl — dens gradient var BROLAGT
+   (`background-repeat: repeat`), saa der altid var et naeste lysbaand paa vej
+   ind. Den findes ikke her: masken har ÉT baand, og det starter paa `-BAAND`
+   og ender paa `bredde + BAAND`, altsaa uden for teksten i begge ender. Den
+   del var rigtig i forvejen. */
+const SWEEP_MS = 1000
+const HVILE_MS = 500
+const OPSTART_MS = 300
+const OMLOEB_MS = SWEEP_MS + HVILE_MS
+/** Hvor stor en del af omloebet der er bevaegelse. Resten holder baandet i ro. */
+export const SWEEP_ANDEL = SWEEP_MS / OMLOEB_MS
 const BAAND = 90
+
+/**
+ * Baandets vej gennem omloebet.
+ *
+ * Udskilt som en ren funktion, fordi den ellers ikke kan MAALES: Animated med
+ * `useNativeDriver` opdaterer ikke JS-vaerdien i en test, og fake timers
+ * driver den ikke. En test kunne saa kun laese konstanterne — og en
+ * mutationskoersel viste praecis det hul: at fjerne plateauet fra
+ * interpolationen lod alle elleve tests bestaa.
+ *
+ * Tre punkter, ikke to: sweepet fylder de foerste 66,67 %, og resten holder
+ * baandet ude til hoejre. Ombrydningen fra 1 til 0 sker mens baandet er uden
+ * for teksten, saa den ikke kan ses.
+ */
+export function banen(bredde: number): { inputRange: number[]; outputRange: number[] } {
+  return {
+    inputRange: [0, SWEEP_ANDEL, 1],
+    outputRange: [-BAAND, bredde + BAAND, bredde + BAAND],
+  }
+}
 const DAEMPET = 0.5
 const LYS_MOERK = '#eafff3'
 const AnimatedG = Animated.createAnimatedComponent(G)
@@ -41,11 +84,14 @@ export function GlidendeTekst({
     }
     x.setValue(0)
     const loop = Animated.loop(Animated.timing(x, {
-      toValue: 1, duration: VARIGHED_MS,
+      toValue: 1, duration: OMLOEB_MS,
       easing: Easing.linear, useNativeDriver: true,
     }))
-    loop.start()
-    return () => loop.stop()
+    // Opstarts-forsinkelsen er DSH's: linjen naar at staa stille et oejeblik
+    // foer lyset kommer, saa det foerste sweep ogsaa laeses som en begivenhed.
+    const hele = Animated.sequence([Animated.delay(OPSTART_MS), loop])
+    hele.start()
+    return () => { hele.stop(); loop.stop() }
   }, [animer, x])
 
   return (
@@ -89,9 +135,7 @@ export function GlidendeTekst({
           <G mask="url(#bogstaver)">
             <Rect x={0} y={0} width={maal.width} height={maal.height} fill={tekstStyle.color || theme.color.fg2} opacity={DAEMPET} />
             <AnimatedG transform={[{
-              translateX: x.interpolate({
-                inputRange: [0, 1], outputRange: [-BAAND, maal.width + BAAND],
-              }),
+              translateX: x.interpolate(banen(maal.width)),
             }]}>
               <Rect x={0} y={0} width={BAAND} height={maal.height} fill="url(#lysboelge)" />
             </AnimatedG>

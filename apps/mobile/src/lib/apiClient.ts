@@ -435,6 +435,29 @@ export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   return data.session_ids ?? []
 }
 
+/** Ét kald inde i en underagent. Formen serveren svarer med. */
+export interface AgentKald {
+  tool_name?: string
+  arguments_json?: string
+  status?: string
+}
+
+/**
+ * Underagentens EGNE kald.
+ *
+ * `scout_agent` svarer med agentens id, og dens egne kald ligger bag
+ * `/mc/agents/{id}/tool-calls`. Uden dette endepunkt stod rækken med et resumé
+ * mens agentens arbejde lå uudforsket — samme hul desk lukkede med sin
+ * `Underagent`-krop. Hentes FØRST når rækken foldes ud, så en lang tråd med
+ * spejdere ikke fyrer et kald af ved indlæsning.
+ */
+export async function hentAgentKald(config: ApiConfig, agentId: string): Promise<AgentKald[]> {
+  const data = await apiFetch<{ tool_calls?: AgentKald[] }>(
+    config, `/mc/agents/${encodeURIComponent(agentId)}/tool-calls`,
+  )
+  return data.tool_calls ?? []
+}
+
 export interface ActiveRunSnapshot {
   sessionId: string
   runId: string

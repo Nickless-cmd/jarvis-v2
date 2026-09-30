@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { InlineToolGroup } from './InlineToolGroup'
+import { InlineToolGroup, SVAR_KLIP } from './InlineToolGroup'
 import type { ToolItem } from '../lib/toolGroup'
 
 const item = (over: Partial<ToolItem> = {}): ToolItem => ({
@@ -218,4 +218,272 @@ it('en runde over ét sekund viser tiden som før', async () => {
   } finally {
     jest.useRealTimers()
   }
+})
+
+/**
+ * Kaldets SVAR kan foldes ud — Bjørn 30/9-2026: «Tool result linjen mangler at
+ * kunne foldes ud.. og vises hvad du lavet i run».
+ *
+ * Før var folden en liste af ETIKETTER: «Læste USER.md» — men ikke ét ord af
+ * hvad der stod i filen. Kun kald der redigerede noget havde en krop
+ * (`aendring`, udledt af argumenterne), så alt andet arbejde var uigennemsigtigt.
+ * Nu bærer hvert kald sit resultat, og det kan åbnes.
+ */
+it('et kald med et svar er LUKKET som standard — svaret fylder ikke tråden', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'filens indhold her' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.queryByTestId('svar-0')).toBeNull()
+  expect(s.queryByText('filens indhold her')).toBeNull()
+})
+
+it('et tryk på kaldet folder svaret ud', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'filens indhold her' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste USER.md'))
+  expect(s.getByTestId('svar-0')).toBeTruthy()
+  expect(s.getByText('filens indhold her')).toBeTruthy()
+})
+
+it('et kald UDEN svar kan ikke aabnes — der er intet at vise', async () => {
+  const s = await render(<InlineToolGroup items={[item(), item()]} />)
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.queryByTestId('svar-0')).toBeNull()
+  expect(s.queryByTestId('svar-1')).toBeNull()
+})
+
+it('et redigeret kald gaar til DIFF-arket — ikke svar-folden', async () => {
+  // Diff-arket er rigere end rå tekst for et redigeret kald; den vej bevares.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Rettede a.py', tool: 'edit_file',
+             aendring: { sti: 'a.py', gammel: 'gammel', ny: 'ny' },
+             result: 'File edited successfully' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.getByTestId('aendring-0')).toBeTruthy()
+  expect(s.queryByTestId('svar-0')).toBeNull()
+})
+
+it('et meget langt svar klippes — og det siges hoejt', async () => {
+  // `fald`-familien beholder den rå vej: der er ingen form at klippe i. Har
+  // kaldet en krop (bash, fil, liste), klipper KROPPEN — ikke denne gren.
+  // `db_query` står i ingen tabel, og svaret her er ren tekst, så formen er
+  // også `fald`. Det er præcis den gren der skal måles.
+  const langt = 'x'.repeat(SVAR_KLIP + 250)
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte databasen', tool: 'db_query', result: langt }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Forespurgte databasen'))
+  expect(s.getByText(/afkortet \(/)).toBeTruthy()
+})
+
+it('et bash-kald faar TERMINAL-kroppen — ikke rå tekst', async () => {
+  // Kernen i ændringen (Bjørn 30/9-2026: «vi har ingen form visning»): et
+  // bash-kald og en fil-læsning så ens ud. Nu udtrækkes stdout af JSON-blobben
+  // og tegnes som terminal.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Kørte npm test', tool: 'bash', result: '{"stdout": "5 passed", "exit_code": 0}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Kørte npm test'))
+  expect(s.getByTestId('krop-terminal')).toBeTruthy()
+  expect(s.getByText('5 passed')).toBeTruthy()
+})
+
+it('en fil-laesning faar FIL-kroppen — med linjenumre', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Læste krop.ts', tool: 'read_file', result: '{"content": "const a = x\\nexport b"}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste krop.ts'))
+  expect(s.getByTestId('krop-fil')).toBeTruthy()
+})
+
+it('en soegning faar LISTE-kroppen — hitlisten, ikke raa JSON', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({
+        label: 'Søgte i filer',
+        tool: 'search',
+        result: '{"results":[{"file":"a.ts","line":42,"text":"const x = 1"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Søgte i filer'))
+  expect(s.getByTestId('krop-liste')).toBeTruthy()
+  expect(s.getByText('a.ts:42')).toBeTruthy()
+  expect(s.getByText('const x = 1')).toBeTruthy()
+})
+
+it('et kald UDEN tabel men MED liste-form faar ogsaa liste-kroppen', async () => {
+  // Familien følger resultatets FORM, ikke kun navnet: en liste ER en liste,
+  // uanset hvilket værktøj der sendte den. Det er den regel der løfter de
+  // værktøjer ingen har skrevet en krop til.
+  //
+  // `titel` er ikke blandt de kendte feltnavne, så punktet vises som
+  // `nøgle=værdi`. Det er med vilje: et ukendt felt skal vise SINE data, ikke
+  // et opfundet ord.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Hentede aftaler', tool: 'list_events', result: '{"events":[{"titel":"moede"}]}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Hentede aftaler'))
+  expect(s.getByTestId('krop-liste')).toBeTruthy()
+  expect(s.getByText('titel=moede')).toBeTruthy()
+})
+
+it('et liste-kald hvis svar IKKE er en liste falder til RAA tekst — ikke en tom ramme', async () => {
+  // Vagt mod den fejl testen «et meget langt svar klippes» fandt: familien er
+  // `liste`, men der er intet at tegne. Uden `kanTegneKrop` forsvandt indholdet.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte Centralen', tool: 'central_query', result: 'alt er i orden' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Forespurgte Centralen'))
+  expect(s.queryByTestId('krop-liste')).toBeNull()
+  expect(s.getByText('alt er i orden')).toBeTruthy()
+})
+
+it('et ukendt vaerktoej beholder den RAA form — vi gaetter ikke en krop', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte databasen', tool: 'central_query', result: 'svar-teksten' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Forespurgte databasen'))
+  expect(s.queryByTestId('krop-terminal')).toBeNull()
+  expect(s.queryByTestId('krop-fil')).toBeNull()
+  expect(s.getByTestId('svar-0')).toBeTruthy()
+})
+
+it('svaret staar UNDER kaldets etiket — ikke i stedet for den', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'svar-teksten' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste USER.md'))
+  const r = orden(s.toJSON())
+  expect(r.indexOf('Læste USER.md')).toBeGreaterThan(-1)
+  expect(r.indexOf('Læste USER.md')).toBeLessThan(r.indexOf('svar-0'))
+})
+
+it('et redigeret kald faar INGEN svar-chevron — kun diff-vejen', async () => {
+  // Uden denne vagt kunne et redigeret kald baere BAADE en diff-knap og en
+  // svar-fold: to doere til samme kald, hvor den ene aabner et tomt svar.
+  // Maalt paa chevrons, fordi svar-rammen er lukket som standard og derfor
+  // ikke kan skelne de to.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Rettede a.py', tool: 'edit_file',
+             aendring: { sti: 'a.py', gammel: 'g', ny: 'n' }, result: 'ok' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  // Kun runde-caret'en. Havde det redigerede kald ogsaa en svar-chevron,
+  // stod der to.
+  expect(s.queryAllByTestId('icon-ChevronDown').length).toBe(1)
+})
+
+describe('folden — de ni nye former', () => {
+  it('et minde-kald faar MIND-kroppen, bygget af argumenterne', async () => {
+    // `remember_this` svarer kun `{id}`. Uden argumenterne stod raekken med
+    // `id brn_…` — beviset i stedet for det der blev skrevet.
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Skrev et minde', tool: 'remember_this', result: '{"id":"brn_1"}',
+        input: '{"title":"Fundet","content":"En linje"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Skrev et minde'))
+    expect(s.getByTestId('krop-minde')).toBeTruthy()
+    expect(s.getByText('Fundet')).toBeTruthy()
+  })
+
+  it('et soegekald med traef-liste faar WEB-kroppen', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Soegte paa nettet', tool: 'web_search',
+        result: '{"results":[{"url":"https://a.dk","title":"En side"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Soegte paa nettet'))
+    expect(s.getByTestId('krop-web')).toBeTruthy()
+    expect(s.getByText('En side')).toBeTruthy()
+  })
+
+  it('en opgaveliste faar OPGAVE-kroppen — ikke en almindelig liste', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Satte opgaver', tool: 'todo_set',
+        result: '{"count":2,"todos":[{"content":"a","status":"completed"},{"content":"b","status":"in_progress"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Satte opgaver'))
+    expect(s.getByTestId('krop-opgave')).toBeTruthy()
+    expect(s.getByText(/1 af 2/)).toBeTruthy()
+  })
+
+  it('et afvist kald faar FEJL-kroppen — ikke sin tomme form', async () => {
+    // Et afvist bash-kald ville ellers vise sin tomme stdout og et exit-tal,
+    // som om det var koert.
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Kørte noget', tool: 'bash',
+        result: '{"status":"approval_needed","error":"Afventer godkendelse"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Kørte noget'))
+    expect(s.getByTestId('krop-fejl')).toBeTruthy()
+    expect(s.getByText('Afventer godkendelse')).toBeTruthy()
+  })
+
+  it('et spoergsmaal viser baade spoergsmaalet og svaret', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Spurgte', tool: 'pause_and_ask',
+        result: '{"answer":"Den anden"}', input: '{"question":"Hvilken?"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Spurgte'))
+    expect(s.getByTestId('krop-spoergsmaal')).toBeTruthy()
+    expect(s.getByText('Hvilken?')).toBeTruthy()
+    expect(s.getByText('Den anden')).toBeTruthy()
+  })
 })

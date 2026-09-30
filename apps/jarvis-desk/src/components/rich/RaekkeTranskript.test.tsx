@@ -91,19 +91,23 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
-  it('folder arbejdet før det levende svar og åbner igen hvis en ny arbejdsrunde starter', () => {
+  it('holder arbejdet åbent gennem synteser og folder først ved bekræftet afslutning', () => {
     const arbejde: ContentBlock[] = [tanke('Finder årsagen.'), kald('read_file')]
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={arbejde} streaming />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Her er svaret')]} streaming />)
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
     expect(screen.getByText('Her er svaret')).toBeInTheDocument()
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep')]} streaming />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Jeg tjekker mere.')).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep'), tekst('Færdig.')]} streaming={false} />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
   it('har læsbare foldpile og lader aktive rækkers ikoner følge shimmeren', () => {

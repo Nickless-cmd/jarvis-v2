@@ -510,18 +510,6 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   return rows
 }
 
-/** Skift til svarvisning ved første tekst efter arbejdet. Hvis Jarvis går
- * videre med en ny tanke eller et kald, vises arbejdet åbent igen. */
-function svarStreamerNu(blocks: readonly ContentBlock[]): boolean {
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    const b = blocks[i]
-    if (!b) continue
-    if (b.type === 'thinking' || b.type === 'tool_use') return false
-    if (b.type === 'text') return b.text.trim().length > 0
-  }
-  return false
-}
-
 /**
  * Sekunder mellem to maalinger — eller undefined hvis der ikke blev maalt.
  *
@@ -744,11 +732,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // funktion ved hver render ville få ALLE synlige bobler til at rendere om
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
-  const harArbejde = blocks.some((b) => b && (b.type === 'thinking' || b.type === 'tool_use'))
-  const svarStreamer = working && harArbejde && svarStreamerNu(blocks)
-  const liveArbejdeAabent = working && !svarStreamer
   const toggleFor = useRaekkeFn((id) => {
-    const aaben = turnOverrides[id] ?? (id === 'stream' ? liveArbejdeAabent : visning === 'verbose')
+    const aaben = turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
     // Listen er inverteret og fastholder normalt bunden. Indsatte arbejdsrækker
     // skubber derfor headeren OP i viewporten. Naar den foldes ud, ankrer vi
     // headeren efter ny layout, saa indholdet aabner NED under den.
@@ -776,17 +761,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const gemteGrupper = useMemo(() => groupToolRounds(persisted), [persisted])
   const gemteHoveder = useMemo(() => medTurHoveder(gemteGrupper,
     (id) => turnOverrides[id] ?? visning === 'verbose'), [gemteGrupper, turnOverrides, visning])
-  // Fold arbejdet ved svarstart, mens svarrækken fortsætter med at streame.
-  const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' ? liveArbejdeAabent : visning === 'verbose')
+  // Tekst-delta skelner ikke syntese fra slutsvar. Fold først ved bekræftet stop.
+  const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
   const nyeLive = medTurHoveder(groupToolRounds([...flade, ...levende]), erAaben)
   // En ny delta ændrer som regel kun den sidste række. Genbrug de øvrige
   // referencer, så memoiserede rækker beholder deres tekst, ikoner og state.
   const gamleLive = useRef(new Map<string, Row>())
   const naesteLive = new Map<string, Row>()
-  const liveHoveder = nyeLive.map((r) => {
-    const row = r.kind === 'turn-header' && r.turnId === 'stream' && svarStreamer
-      ? { ...r, live: false }
-      : r
+  const liveHoveder = nyeLive.map((row) => {
     const gammel = gamleLive.current.get(row.key)
     let stabil = row
     if (gammel?.kind === row.kind && gammel.work === row.work) {
@@ -815,7 +797,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     const firstLive = medHoveder.findIndex((r) => r.turnId === 'stream')
     medHoveder.splice(firstLive < 0 ? medHoveder.length : firstLive, 0, {
       kind: 'turn-header', key: 'turn-stream', turnId: 'stream',
-      label: 'Working…', live: liveArbejdeAabent, open: erAaben('stream'),
+      label: 'Working…', live: working, open: erAaben('stream'),
     })
   }
   // Skillelinjen over den FØRSTE række der hører til den første nye besked.

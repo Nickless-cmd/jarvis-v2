@@ -18,7 +18,20 @@ _HEADER = (
     "function-defs hver tur; resten findes via load_more_tools(query=\"...\").\n"
     "SE FØRST EFTER I DINE EGNE function-defs: står værktøjet der, så kald det "
     "direkte. load_more_tools er KUN til dem der ikke er der.\n"
+    "Og det er TO trin: load_more_tools(query=\"…\") giver dig skemaet — derefter "
+    "kalder du værktøjet med call_loaded_tool(navn=\"…\", argumenter={…}). Et hentet "
+    "værktøj kan IKKE kaldes direkte; det står ikke i din function-def-liste.\n"
 )
+
+# 30/9-2026: de to trin staar her fordi kataloget er det sted han slaar op FOER
+# han henter. Hentningens eget resultat peger ogsaa paa `call_loaded_tool`, og
+# dispatcherens beskrivelse siger det — men begge kommer FOERST naar han
+# allerede har hentet. Kataloget laerte ham kun halvdelen af flowet.
+#
+# Det koster ingenting at skrive her: kataloget blev flyttet til prompt-HALEN
+# samme dag, saa det bygges pr. tur efter cache-graensen. I morges ville de
+# samme tre linjer have aendret systemblokkens laengde og kasseret hele
+# vaerktoejsarrayet OG samtalen.
 
 # 30/9-2026: linjen ovenfor er tilføjet efter en maaling. Over 30 dage blev der
 # hentet 541 vaerktoejsnavne, og ~80 af dem (15 %) var vaerktoejer der ALLEREDE

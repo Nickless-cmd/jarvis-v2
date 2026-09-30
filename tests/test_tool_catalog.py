@@ -132,3 +132,32 @@ def test_kataloget_naevner_stadig_vaerktoejer():
     tekst = build_catalog_text()
     assert len(tekst) > 1000, len(tekst)
     assert "KERNE-VÆRKTØJER" in tekst
+
+
+def test_kataloget_laerer_ham_BEGGE_trin():
+    """Hentning er to trin, og kataloget er det sted han slaar op FOER han
+    henter.
+
+    Hentningens eget resultat peger paa `call_loaded_tool`, og dispatcherens
+    beskrivelse siger det — men begge kommer foerst naar han ALLEREDE har
+    hentet. Kataloget naevnte kun `load_more_tools`, altsaa halvdelen af flowet.
+
+    Et hentet vaerktoej kan ikke kaldes direkte: det staar ikke i hans
+    function-def-liste, og DeepSeek afviser et vaerktoej der ikke er
+    deklareret (maalt mod deres API 30/9-2026).
+    """
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert "load_more_tools" in tekst, "trin 1 mangler"
+    assert "call_loaded_tool" in tekst, "trin 2 mangler — han laerer kun halvdelen"
+
+
+def test_nudgen_naevner_ogsaa_andet_trin():
+    """Samme halve flow stod i nudge-teksterne der peger paa et hentet vaerktoej."""
+    from pathlib import Path
+
+    kilde = Path("core/services/tool_hunt_nudge.py").read_text(encoding="utf-8")
+    for stump in kilde.split("hent den med `load_more_tools`")[1:]:
+        assert "call_loaded_tool" in stump[:120], (
+            "en nudge siger «hent den» uden at sige hvordan den kaldes bagefter")

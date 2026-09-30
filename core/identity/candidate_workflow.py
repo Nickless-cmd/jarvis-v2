@@ -568,8 +568,22 @@ def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:
         # linje 70 af 202 og blev ALDRIG læst af prompten — hverken af de gamle
         # «første 40 linjer» eller af Kerne-mekanismen. 146 lærte præferencer
         # nåede ham aldrig. «## Lært» er relevans-udvalgt pr. tur i [HUKOMMELSE].
+        #
+        # 2026-10-01: rettelsen var UFYLDESTGØRENDE. `or`-faldet virker kun når
+        # write_section er TOM — men candidate_tracking.py sætter den eksplicit
+        # til «## Durable Preferences» otte steder, så de gik direkte igennem
+        # til en sektion ingen prompt læser. Bevis: linjen «- Reply preference:
+        # concise answers by default. (2026-09-25, sagt eksplicit)» står i
+        # USER.md's døde sektion med _stamp_learned_line's signatur — altså
+        # skrevet ad netop dette spor, efter rettelsen.
+        #
+        # Enhver USER.md-skrivning tvinges derfor til «## Lært»: både nye
+        # kandidater og dem der allerede ligger i køen med det gamle mål.
+        _requested = str(candidate.get("write_section") or "").strip()
+        if _requested in {"", "## Durable Preferences"}:
+            _requested = "## Lært"
         return {
-            "section_heading": str(candidate.get("write_section") or "## Lært"),
+            "section_heading": _requested,
             "content_line": _stamp_learned_line(
                 proposed_value or _user_line_from_key(candidate), candidate),
         }

@@ -121,6 +121,29 @@ def clear(session_id: str) -> None:
     _state_set(str(session_id or "").strip(), {})
 
 
+def _med_garanterede(navne: list[str]) -> list[str]:
+    """Foren med de vaerktoejer der ALTID skal kunne kaldes — og sorter.
+
+    `REQUIRED_LAZY_TOOL_NAMES` er listen hvis formaal er «maa altid overleve
+    kappen»; `SAFETY_FLOOR` er de vaerktoejer hvis fravaer er en
+    adfaerdsregression. Begge er KONSTANTE, saa arrayet er stadig byte-stabilt
+    fra tur til tur — og sorteringen er ikke kosmetik: raekkefoelgen ER
+    cache-noeglen, saa samme saet i to raekkefoelger er to praefikser.
+
+    Self-sikker: kan listerne ikke importeres, returneres navnene uaendret.
+    En forening der kaster ville braekke hvert vaerktoejskald.
+    """
+    try:
+        from core.tools.copilot_tool_pruning import (
+            REQUIRED_LAZY_TOOL_NAMES,
+            SAFETY_FLOOR,
+        )
+    except Exception as exc:  # en forening maa ikke braekke tool-stien
+        logger.debug("session_tool_pin: kunne ikke hente de garanterede: %s", exc)
+        return sorted(set(navne))
+    return sorted(set(navne) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR))
+
+
 def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]:
     """Hvilke værktøjer skal denne tur sende?
 
@@ -156,14 +179,13 @@ def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]
             # Prisen er ét cache-brud i de sessioner der mangler noget: arrayet
             # aendrer sig én gang, og derefter staar det stille igen. Et
             # vaerktoej der ikke kan kaldes er dyrere end det brud.
-            from core.tools.copilot_tool_pruning import (
-                REQUIRED_LAZY_TOOL_NAMES,
-                SAFETY_FLOOR,
-            )
-            samlet = sorted(
-                set(existing) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR))
-            return samlet, "pinned"
-        return pin(sid, picked), "pinned-new"
+            return _med_garanterede(existing), "pinned"
+        # FOERSTE tur i sessionen. Foreningen skal ogsaa gaelde HER: uden den
+        # var de garanterede vaerktoejer fravaerende praecis paa den tur der
+        # laaser saettet — og saa manglede de i hele sessionens levetid.
+        # Det er samtidig aabneren, som baerer ~35 % af al cache-miss.
+        pin(sid, picked)
+        return _med_garanterede(picked), "pinned-new"
     except Exception as exc:
         logger.debug("session_tool_pin: resolve faldt tilbage til routeren: %s", exc)
         return picked, "router"

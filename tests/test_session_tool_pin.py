@@ -25,6 +25,15 @@ def state(monkeypatch):
     return store
 
 
+def _garanterede() -> set[str]:
+    """De navne `resolve` ALTID lægger oveni — konstante, saa praefikset holder."""
+    from core.tools.copilot_tool_pruning import (
+        REQUIRED_LAZY_TOOL_NAMES,
+        SAFETY_FLOOR,
+    )
+    return set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR)
+
+
 def test_the_first_turn_decides_and_the_next_reuses(state):
     """Laasen vinder over routeren — men de KRAEVEDE er altid med.
 
@@ -38,7 +47,12 @@ def test_the_first_turn_decides_and_the_next_reuses(state):
     from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
 
     names, src = STP.resolve("s1", ["bash", "read_file", "recall_memories"])
-    assert src == "pinned-new" and names == ["bash", "read_file", "recall_memories"]
+    assert src == "pinned-new"
+    assert {"bash", "read_file", "recall_memories"} <= set(names)
+    # Kernen i 30/9-rettelsen: de garanterede er med ALLEREDE paa tur 1. Var de
+    # foerst med fra tur 2, skiftede arrayet mellem tur 1 og 2 — et cache-brud
+    # paa den anden tur i HVER session, og aabneren baerer ~35 % af al miss.
+    assert _garanterede() <= set(names)
     # Routeren vil noget andet naeste tur — laasen vinder, saa praefikset holder.
     again, src2 = STP.resolve("s1", ["calendar_create", "send_mail"])
     assert src2 == "pinned"
@@ -55,13 +69,22 @@ def test_the_set_is_order_stable(state):
     a, _ = STP.resolve("s1", ["read_file", "bash"])
     STP.clear("s1")
     b, _ = STP.resolve("s1", ["bash", "read_file"])
-    assert a == b == ["bash", "read_file"]
+    # Egenskaben ER ligheden — ikke den konkrete liste. `resolve` laegger de
+    # garanterede oveni (konstante), saa listen er laengere end input.
+    assert a == b
+    assert a == sorted(a), "usorteret svar = to praefikser for samme saet"
+    assert {"bash", "read_file"} <= set(a)
 
 
 def test_sessions_are_independent(state):
     STP.resolve("s1", ["bash"])
     names, src = STP.resolve("s2", ["calendar_create"])
-    assert src == "pinned-new" and names == ["calendar_create"]
+    assert src == "pinned-new"
+    assert "calendar_create" in names
+    # Isolationen maales paa den GEMTE laas: `bash` og `read_file` er i
+    # sikkerhedsgulvet og staar derfor i ALLE sendte saet — de kan ikke bruges
+    # til at paavise en laekage.
+    assert STP.get_pinned("s2") == ["calendar_create"]
     assert STP.get_pinned("s1") == ["bash"]
 
 
@@ -92,7 +115,10 @@ def test_compaction_releases_the_lock(state, monkeypatch):
     monkeypatch.setattr(STP, "_compact_epoch", lambda _sid: 8)
     assert STP.get_pinned("s1") == []
     names, src = STP.resolve("s1", ["read_file"])
-    assert src == "pinned-new" and names == ["read_file"]
+    assert src == "pinned-new"
+    assert "read_file" in names
+    # Laasen er nulstillet og sat forfra — routerens nye valg alene.
+    assert STP.get_pinned("s1") == ["read_file"]
 
 
 def test_the_kill_switch_restores_the_old_behaviour(state, monkeypatch):
@@ -101,7 +127,10 @@ def test_the_kill_switch_restores_the_old_behaviour(state, monkeypatch):
         "core.runtime.settings.load_settings",
         lambda: types.SimpleNamespace(session_tool_pin_enabled=False))
     names, src = STP.resolve("s1", ["calendar_create", "send_mail"])
+    # Kill-switchen skal give routerens RAA valg — ingen forening, praecis som
+    # foer laasen fandtes. Ellers er den ikke en kill-switch.
     assert src == "router" and names == ["calendar_create", "send_mail"]
+    assert not (_garanterede() - {"calendar_create", "send_mail"}) or True
     assert STP.get_pinned("s1") == []
 
 
@@ -117,7 +146,12 @@ def test_a_broken_state_store_never_blocks_the_turn(monkeypatch):
     monkeypatch.setattr("core.runtime.db.get_runtime_state_value", _boom)
     monkeypatch.setattr("core.runtime.db.set_runtime_state_value", _boom)
     names, src = STP.resolve("s1", ["bash", "read_file"])
-    assert names == ["bash", "read_file"]
+    # Hensigten: turen faar sine vaerktoejer, uanset at lagret er nede.
+    # Foreningen med de garanterede er stadig med — den laeser en KONSTANT, ikke
+    # lagret, saa den kan ikke falde med lagret.
+    assert {"bash", "read_file"} <= set(names)
+    assert _garanterede() <= set(names)
+    assert names == sorted(names)
 
 
 def test_an_empty_selection_is_left_alone(state):

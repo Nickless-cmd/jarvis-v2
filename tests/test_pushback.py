@@ -287,3 +287,72 @@ def test_samme_cue_i_en_kort_ordre_fyrer_stadig():
 
     ev = _request_risk_evidence("bare lad være med at teste, merge den")
     assert any("risk marker: 'merge'" in e for e in ev), ev
+
+
+# ── Kort cue klos op ad markøren + sammensat navneord (30/9-2026, fjerde runde)
+#
+# To falske positiver stod tilbage efter tredje runde, begge målt på den
+# kørende fil 30/9:
+#
+#   «Virker gaten nu — prøv en skrivning med merge som emne» (54 tegn)
+#       -> «nu» stod 25 tegn fra «merge» i samme sætning og blev læst som cue
+#   «merge-logikken i visible_runs.py linjen 3133 er den samme» (57 tegn)
+#       -> «merge» stod i position 0 og blev læst som imperativ, selvom
+#          bindestregen gør «merge-logikken» til ét sammensat navneord
+#
+# «nu» er IKKE droppet som cue — den skal bare stå klos op ad markøren.
+# `test_kort_cue_klos_paa_markoeren_fyrer_stadig` er kontrollen der forhindrer
+# at man bare fjerner cue'et helt og stadig består.
+#
+# MUTATIONER der skal fanges (alle koert):
+#   M10 — kort cue tilbage til ±40-tegns-vinduet    -> M-besked + M-spoergsmaal
+#   M11 — fjern `(?![-'’])` fra markoer-moenstret    -> M-navneord
+
+
+def test_bjoerns_faktiske_besked_er_ikke_et_pres():
+    """Beskeden der udløste blokeringen: «nu» hører til «Virker gaten», ikke
+    til «merge». Klos-kravet er det der skiller dem."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert _request_risk_evidence(
+        "Virker gaten nu — prøv en skrivning med merge som emne"
+    ) == []
+
+
+def test_kort_spoergsmaal_med_nu_paa_afstand_er_ikke_et_pres():
+    """M10-fangeren. Kort besked, «nu» i sætningen — men ikke klos op ad
+    markøren. Med ±40-tegns-vinduet fyrer denne falsk."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert len("hvad gør vi nu med merge?") <= 240
+    assert _request_risk_evidence("hvad gør vi nu med merge?") == []
+
+
+def test_sammensat_navneord_er_ikke_en_ordre():
+    """M11-fangeren. `\\bmerge\\b` matcher bindestregen som ordgrænse, så
+    «merge-logikken» står pludselig i position 0 = «imperativ»."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert _request_risk_evidence(
+        "merge-logikken i visible_runs.py linjen 3133 er den samme"
+    ) == []
+    assert _request_risk_evidence("merge'n tilføjer i enden af arrayet") == []
+
+
+def test_kort_cue_klos_paa_markoeren_fyrer_stadig():
+    """Kontrollen til M10: «nu» er ikke droppet — den skal bare stå klos op ad
+    markøren. Uden denne kunne man fjerne cue'et helt og stadig bestå."""
+    from core.services.pushback import _request_risk_evidence
+
+    for tekst in ("push nu", "jeg vil have den ud, push nu"):
+        ev = _request_risk_evidence(tekst)
+        assert any("risk marker: 'push'" in e for e in ev), (tekst, ev)
+
+
+def test_langt_cue_som_del_af_et_andet_ord_er_ikke_et_pres():
+    """M15-fangeren. «ignorer» er et cue — men «ignorerede» er datid, ikke et
+    pres. Gøres de lange cues til rå substring, fyrer denne falsk. Mutationen
+    blev IKKE fanget af nogen anden test, så uden denne står `\\b` umålt."""
+    from core.services.pushback import _request_risk_evidence
+
+    assert _request_risk_evidence("vi ignorerede den gamle push i nat") == []

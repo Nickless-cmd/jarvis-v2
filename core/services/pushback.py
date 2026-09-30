@@ -279,11 +279,29 @@ _PRESSURE_MAX_CHARS = 240
 #: et «nu» tre afsnit længere nede.
 _PRESSURE_CUE_WINDOW = 40
 
+#: Hvor tæt et KORT cue skal stå på markøren. «nu» er for almindeligt et dansk
+#: ord til at bære et pres på afstand: «push nu» er en ordre, men «Virker gaten
+#: nu — prøv en skrivning med merge som emne» (målt 30/9-2026, 54 tegn) blev
+#: dømt som pres, fordi «nu» stod 25 tegn fra «merge» i samme sætning. Et kort
+#: cue tæller derfor kun når det står klos op ad markøren — det er ikke droppet.
+_KORT_CUE_AFSTAND = 6
+
+
+def _marker_re(marker: str) -> str:
+    """Markøren som HELT ORD — og ikke som første led i et sammensat ord.
+
+    `\\bmerge\\b` matcher også «merge-logikken», fordi bindestregen er en
+    ordgrænse. Målt 30/9-2026: «merge-logikken i visible_runs.py …» (57 tegn,
+    kort) blev dømt som imperativ, fordi «merge» stod i position 0 — men
+    «merge-logikken» er ét navneord, ikke en ordre. Samme for «merge'n».
+    """
+    return rf"\b{re.escape(marker)}\b(?![-'’])"
+
 
 def _staar_i_imperativ(lower: str, marker: str) -> bool:
     """Står markøren som en ORDRE — i starten af beskeden eller efter et
     sætningsskilletegn? «slet filen» ja; «hvordan virker merge?» nej."""
-    for m in re.finditer(rf"\b{re.escape(marker)}\b", lower):
+    for m in re.finditer(_marker_re(marker), lower):
         foer = lower[: m.start()]
         if not foer or re.search(r"[.!?;:\n]\s*$", foer):
             return True
@@ -304,23 +322,32 @@ def _har_pres_cue(lower: str, marker: str, kort: bool) -> bool:
     """Står et pres-cue i nærheden af markøren — før ELLER efter den?
     «bare push» og «push nu» er begge et pres.
 
-    De helt korte cues (kun «nu») tæller BARE i en kort besked: «push nu» er et
-    pres, men «hvad gør vi nu med merge?» midt i en 6.000-tegns rapport er et
-    spørgsmål — og «nu» er for almindeligt et dansk ord til at bære det alene.
+    Lange cues («bare», «uden test», «lad være med at») må stå i samme sætning
+    (±`_PRESSURE_CUE_WINDOW` tegn). Det helt korte cue («nu») skal stå KLOS op
+    ad markøren — se `_KORT_CUE_AFSTAND`. Det er ikke droppet: «push nu» fyrer
+    stadig, og «jeg vil have den ud, push nu», hvor markøren står efter et
+    komma og gren (c) derfor ikke kan bære den.
     """
-    for m in re.finditer(rf"\b{re.escape(marker)}\b", lower):
+    for m in re.finditer(_marker_re(marker), lower):
         vindue = lower[max(0, m.start() - _PRESSURE_CUE_WINDOW): m.end() + _PRESSURE_CUE_WINDOW]
         if _LANG_CUE_RE.search(vindue):
             return True
-        if kort and _KORT_CUE_RE.search(vindue):
-            return True
+        if kort:
+            klos = (
+                lower[max(0, m.start() - _KORT_CUE_AFSTAND): m.start()]
+                + " "
+                + lower[m.end(): m.end() + _KORT_CUE_AFSTAND]
+            )
+            if _KORT_CUE_RE.search(klos):
+                return True
     return False
 
 
 def _marker_er_pres(marker: str, lower: str, kort: bool) -> bool:
     """Er markøren et pres eller et emne? Se kommentaren over `_PRESSURE_CUES`."""
-    # Helt ord. `push` må ikke rammes af «pushet», `slet` ikke af «slettet».
-    if not re.search(rf"\b{re.escape(marker)}\b", lower):
+    # Helt ord. `push` må ikke rammes af «pushet», `slet` ikke af «slettet» —
+    # og `merge` ikke af «merge-logikken» (sammensat navneord).
+    if not re.search(_marker_re(marker), lower):
         return False
     # (a) Flerords-markører er selv et pres.
     if " " in marker:

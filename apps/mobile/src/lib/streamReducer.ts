@@ -359,7 +359,22 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const erVaerktoej = event.payload.er_vaerktoej === true
           || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
         if (navn === 'thinking' && !erVaerktoej) {
-          return { ...state, workingStep: null, workingAction: null }
+          // BEHOLD den sidste ægte linje — ryd den ikke.
+          //
+          // Før nulstillede vi her, og det fik arbejdslinjen til at BLINKE:
+          // serveren sender et livstegn mellem hvert værktøjskald («Tænker
+          // videre · runde N», visible_runs.py:2866, plus «Thinking via …»
+          // ved start og ved grounding). Hvert af dem tømte `workingStep`,
+          // så linjen forsvandt og kom igen for hver runde.
+          //
+          // Bjørn 30/9-2026: «Den vises og forsvinder random under streamen.
+          // Meningen er den skal vises hele tiden under streamen og væk når
+          // streamen ender.» Det var ikke random — det var hvert mellemrum.
+          //
+          // Den forrige turs linje hænger ikke ved af sig selv: `message_start`
+          // nulstiller ved hver NY kørsel, og `working`-flaget slukker linjen
+          // når streamen ender. Derfor er det nok at lade den stå her.
+          return state
         }
         if (!navn || status !== 'running' || !erVaerktoej) {
           return { ...state, workingStep: detail, workingAction: navn || null }

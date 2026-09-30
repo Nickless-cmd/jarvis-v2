@@ -49,6 +49,11 @@ _MEMORY_TOOLS = frozenset({
     "recall", "search_memory", "recall_memories", "search_jarvis_brain",
     "unified_recall", "recall_before_act", "read_brain_entry",
 })
+# 2026-09-30 13:59:07 CEST: API activation of the corrected classifier.
+# Earlier rows missed image-prefixed feedback and some Claude corrections,
+# and one Claude self-correction was attributed to Jarvis. Keep the rows for
+# audit, but never mix them into the comparable opportunity summary.
+_VALID_MEASUREMENT_FROM = datetime(2026, 9, 30, 11, 59, 7, tzinfo=UTC)
 
 
 def _turn_text(user_message: str) -> str:
@@ -219,7 +224,10 @@ def record_outcomes(
 
 def opportunity_summary(*, days: int = 7) -> dict[str, dict[str, int]]:
     """Observed kept / all triggered opportunities, with uncertainty explicit."""
-    cutoff = (datetime.now(UTC) - timedelta(days=max(1, days))).isoformat()
+    cutoff = max(
+        datetime.now(UTC) - timedelta(days=max(1, days)),
+        _VALID_MEASUREMENT_FROM,
+    ).isoformat()
     result = {}
     with connect() as conn:
         try:

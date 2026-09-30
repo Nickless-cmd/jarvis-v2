@@ -139,6 +139,7 @@ def stream_visible_followup(
     top_p: float | None = None,
     tool_choice: str | None = None,
     run_id: str = "",
+    session_id: str = "",
     autonomous: bool = False,
     trailing_messages: list[dict] | None = None,
 ) -> Iterator[FollowupEvent]:
@@ -206,6 +207,7 @@ def stream_visible_followup(
     # Cache-telemetri-kontekst (kun openai-compat-adapteren bruger det i dag).
     if isinstance(adapter, OpenAICompatFollowupAdapter):
         _kwargs["run_id"] = run_id
+        _kwargs["session_id"] = session_id
         _kwargs["autonomous"] = autonomous
     yield from adapter.stream_followup(**_kwargs)
 

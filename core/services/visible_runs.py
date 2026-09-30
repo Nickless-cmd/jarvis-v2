@@ -3205,6 +3205,7 @@ async def _stream_visible_run(
                                     top_p=pump_top_p,
                                     tool_choice=pump_tool_choice,
                                     run_id=run.run_id,
+                                    session_id=run.session_id,
                                     autonomous=run.autonomous,
                                 )
                                 # Expose this attempt's generator so a retry can

@@ -861,6 +861,7 @@ class OpenAICompatFollowupAdapter:
         top_p: float | None = None,
         tool_choice: str | None = None,
         run_id: str = "",
+        session_id: str = "",
         autonomous: bool = False,
         trailing_messages: list[dict] | None = None,
         _length_retry: bool = False,
@@ -1169,7 +1170,15 @@ class OpenAICompatFollowupAdapter:
                     run_id=run_id, round_index=round_index, autonomous=autonomous,
                     lane="visible", provider=self.provider_id, model=model,
                     prefix_sha=_sha, prefix_len=_plen, cache_hit=_ch, cache_miss=_cm,
-                    session_id=current_session_id(), **_parts,
+                    # `session_id` traades eksplicit igennem som `run_id` (30/9-2026).
+                    # `stream_followup` er en GENERATOR: dens krop koerer i
+                    # forbrugerens kontekst, og ctxvar'en som `visible_runs:1400`
+                    # saetter naar den ikke herind. Maalt: session_id var tom paa
+                    # 3.115 af 3.115 telemetri-raekker, saa intet kunne grupperes
+                    # pr. session — praecis det spoergsmaal maalingen stod og
+                    # manglede. Ctxvar'en beholdes som fallback, saa ingen sti
+                    # bliver daarligere end i dag.
+                    session_id=session_id or current_session_id(), **_parts,
                 )
         except Exception:
             pass
@@ -1272,7 +1281,8 @@ class OpenAICompatFollowupAdapter:
                 model=model, base_messages=base_messages, exchanges=exchanges,
                 tool_definitions=tool_definitions, round_index=round_index,
                 thinking_mode="fast", temperature=temperature, top_p=top_p,
-                tool_choice=tool_choice, run_id=run_id, autonomous=autonomous,
+                tool_choice=tool_choice, run_id=run_id, session_id=session_id,
+                autonomous=autonomous,
                 _length_retry=True,
             )
             return

@@ -19,6 +19,7 @@
  * registrets label for alt vi ikke har navngivet.
  */
 import { useEffect, useState, type ReactNode } from 'react'
+import { behold, klausul, politikFor, klipLangeLinjer } from '../../lib/udeladelse'
 import { codeToHtml } from 'shiki'
 import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { safeImageSrc } from '../../lib/sanitize'
@@ -356,10 +357,27 @@ export function udDel(result: string | undefined): string {
 
 /* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
-export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: string; exit: number; pending?: boolean }) {
+export function Terminal({
+  cmd, ud, exit, pending = false, vaerktoej = 'bash', config, beskedId, toolUseId,
+}: {
+  cmd: string; ud: string; exit: number; pending?: boolean
+  /** Afgoer om der beholdes en HALE — shell gemmer exit-koden til sidst. */
+  vaerktoej?: string
+  /** Til spill-laget: uden dem er der ingen vej til resten, og knappen vises ikke. */
+  config?: ApiConfig; beskedId?: string; toolUseId?: string
+}) {
   const [visHele, setVisHele] = useState(false)
   const kort = cmd.length > 60 ? (kommandoEmne(cmd) || `${cmd.slice(0, 40)}…`) : cmd
   const afkortet = kort !== cmd
+  const spill = useSpill(config, beskedId, toolUseId)
+
+  // Udeladelses-laget (spec punkt 5). Er resten hentet, vises den raat — den
+  // der bad om alt skal faa alt.
+  const p = politikFor(vaerktoej)
+  const raa = spill.fuld ?? ud
+  const u = behold(klipLangeLinjer(raa), spill.fuld ? { ...p, hoved: Number.MAX_SAFE_INTEGER, hale: 0 } : p)
+  const note = klausul(u, p)
+
   return (
     <div className="rv-kort rv-term" data-exit={pending ? undefined : exit}>
       <div className="rv-kh">
@@ -373,9 +391,52 @@ export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: 
         {!pending && <span className="rv-exit">exit code {exit}</span>}
       </div>
       {visHele && <pre className="rv-kommando-fuld">{cmd}</pre>}
-      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud ? <Ansi tekst={ud} /> : (pending ? 'Kører…' : '')}</pre>
+      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>
+        {raa ? <Ansi tekst={u.hoved} /> : (pending ? 'Kører…' : '')}
+      </pre>
+      {note && <div className="rv-udeladt">{note}</div>}
+      {u.hale && <pre><Ansi tekst={u.hale} /></pre>}
+      {u.klippet && spill.kan && (
+        <div className="rv-spill">
+          <button type="button" className="rv-spill-knap" disabled={spill.henter}
+            onClick={(e) => { e.stopPropagation(); void spill.hent() }}>
+            {spill.henter ? 'Henter…' : 'Vis hele'}
+          </button>
+          <span className="rv-spill-maal">{u.ialt.toLocaleString('da-DK')} linjer</span>
+          {spill.fejl && <span className="rv-spill-fejl">{spill.fejl}</span>}
+        </div>
+      )}
     </div>
   )
+}
+
+/**
+ * Spill-laget: resten af et klippet resultat, hentet naar nogen beder om det.
+ *
+ * Locatoren fandtes i forvejen — `hentVaerktoejsResultat` har ligget i
+ * `lib/api.ts` UDEN en eneste kalder. Det er det hyppigste moenster i denne
+ * kodebase: korrekt kode som intet kalder. (spec punkt 5, 30/9-2026)
+ */
+function useSpill(config?: ApiConfig, beskedId?: string, toolUseId?: string) {
+  const [fuld, setFuld] = useState<string | null>(null)
+  const [henter, setHenter] = useState(false)
+  const [fejl, setFejl] = useState('')
+  const kan = Boolean(config && beskedId && toolUseId)
+  const hent = async () => {
+    if (!config || !beskedId || !toolUseId || henter) return
+    setHenter(true); setFejl('')
+    try {
+      const { hentVaerktoejsResultat } = await import('../../lib/api')
+      setFuld(await hentVaerktoejsResultat(config, beskedId, toolUseId))
+    } catch (e) {
+      // Fejlen skal SES. Et klik der ikke gjorde noget er vaerre end en knap
+      // der ikke var der.
+      setFejl(e instanceof Error ? e.message : 'kunne ikke hentes')
+    } finally {
+      setHenter(false)
+    }
+  }
+  return { fuld, henter, fejl, kan, hent }
 }
 
 export type DiffLinje = { k: 'add' | 'del' | 'ctx'; t: string }
@@ -929,7 +990,9 @@ export function kropFor(
 
   if (familie === 'terminal') {
     const cmd = streng(input.command) || streng(input.cmd) || kommandoFraStroem(live?.partialJson) || 'Klargør kommando…'
-    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running} />
+    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running}
+      vaerktoej={navn} config={config}
+      beskedId={billedKontekst?.beskedId} toolUseId={billedKontekst?.toolUseId} />
   }
   if (familie === 'diff') {
     const preview = objekt(værdi) ? streng(værdi.diff_preview) : ''

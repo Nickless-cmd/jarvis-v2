@@ -315,6 +315,35 @@
 .raekkevisning .rv-felter > div { display: grid; grid-template-columns: minmax(100px, 25%) 1fr; gap: var(--rv-gap); padding: 3px 0; }
 .raekkevisning .rv-felter dt { color: var(--fg-3); overflow-wrap: anywhere; }
 .raekkevisning .rv-felter dd { margin: 0; overflow-wrap: anywhere; }
+/* Udeladelses-klausulen (spec punkt 5, 30/9-2026). Bjoern valgte den DAEMPEDE
+   variant: den vil staa i mange lange resultater, og i advarselsfarven ville
+   den blive stoej i stedet for et signal. Stregerne foroven og forneden er
+   det der goer den til en graense og ikke bare en linje tekst.
+   Ingen radius — den har kun vandrette kanter. */
+.raekkevisning .rv-udeladt {
+  margin: 8px 0; padding: 6px var(--rv-pad-side);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  font-size: 12px; line-height: 1.5; color: var(--fg-3);
+}
+/* Vejen til resten. Locatoren fandtes allerede; det her er knappen der
+   endelig kalder den. */
+.raekkevisning .rv-spill {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: var(--rv-pad-lodret) var(--rv-pad-side);
+  border-top: 1px solid var(--line);
+}
+.raekkevisning .rv-spill-knap {
+  font: inherit; font-size: 12px; color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--overlay-line);
+  border-radius: 6px; padding: 3px 10px; cursor: pointer;
+}
+.raekkevisning .rv-spill-knap:hover:not(:disabled) { background: var(--bg-4); }
+.raekkevisning .rv-spill-knap:disabled { color: var(--fg-3); cursor: default; }
+.raekkevisning .rv-spill-maal { font: 11px var(--font-mono); color: var(--fg-3); }
+/* En fejlet hentning skal SES — et klik der ikke gjorde noget er vaerre end
+   en knap der ikke var der. */
+.raekkevisning .rv-spill-fejl { font-size: 11.5px; color: var(--error-fg); }
 .raekkevisning .rv-raadata { margin-top: 7px; color: var(--fg-3); font-size: 11px; }
 .raekkevisning .rv-raadata summary { width: max-content; cursor: pointer; }
 .raekkevisning .rv-raadata .rv-kort { margin-top: 6px; }

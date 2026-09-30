@@ -23,12 +23,14 @@ export const MAX_LINJER = 3
 /** Samlet loft. DSH bruger 120; vores skinne er smallere, men teksten ombrydes. */
 export const MAX_TEGN = 120
 
-/** Tegn, ikke UTF-16-enheder — et emoji er ét tegn og klippes ikke over. */
-export function klipTegn(s: string, maks: number): string {
-  const tegn = Array.from(s)
-  if (tegn.length <= maks) return s
-  return tegn.slice(0, Math.max(0, maks - 1)).join('').trimEnd() + '…'
-}
+// Klippet bor i `tekstKlip` og deles med udeladelses-laget (30/9-2026). To
+// kopier af et surrogat-sikkert klip er to steder fejlen kan komme tilbage.
+//
+// `export { x } from './y'` alene ville IKKE virke: den videresender uden at
+// binde navnet lokalt, og modulets egen kode her bruger det. Derfor import
+// OG re-eksport.
+import { klipTegn } from './tekstKlip'
+export { klipTegn }
 
 /** Ren tekst ud af en besked-krop, uanset om den er streng eller blokke. */
 function tekstAf(content: unknown): string {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { kropFor, postFor, udDel, exitKode } from './raekkeKroppe'
+import { kropFor, postFor, udDel, exitKode, Terminal } from './raekkeKroppe'
 import type { ApiConfig } from '../../lib/api'
 
 function vis(
@@ -634,5 +634,75 @@ describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
     await waitFor(() => expect(container.textContent).toContain('Et skrivebord'))
     expect(container.querySelector('.billed-knap')).not.toBeInTheDocument()
     expect(container.textContent).toContain('jarvisx-window-3.png')
+  })
+})
+
+/* ── Udeladelse og spill i terminal-kortet (spec punkt 5, 30/9-2026) ────────
+ *
+ * Reglerne er målt i `lib/udeladelse.test.ts`. Det her måler at KORTET bruger
+ * dem — og at knappen faktisk kalder den locator der har ligget ubrugt i
+ * `lib/api.ts`.
+ */
+const LANGT = Array.from({ length: 200 }, (_, i) => `linje ${i}`).join('\n')
+
+describe('Terminal — udeladelse', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('et kort resultat vises HELT og får ingen klausul', () => {
+    const { container } = render(<Terminal cmd="ls" ud={'a\nb\nc'} exit={0} vaerktoej="bash" />)
+    // Ansi-visningen deler teksten i spans, saa et tekst-match paa hele blokken
+    // finder ingenting — der maales paa den samlede tekst.
+    expect(container.textContent).toContain('a\nb\nc')
+    expect(document.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('et langt shell-resultat beholder hoved OG hale', () => {
+    const { container } = render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    const t = container.textContent ?? ''
+    expect(t).toContain('linje 0')      // hovedet
+    expect(t).toContain('linje 199')    // halen — exit-koden bor her
+    expect(t).not.toContain('linje 100')
+  })
+
+  it('klausulen siger hvor meget der mangler og hvad man gør', () => {
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    const k = document.querySelector('.rv-udeladt')?.textContent ?? ''
+    expect(k).toContain('168')
+    expect(k).toContain('tail')
+  })
+
+  it('en FIL-læsning får ingen hale — man læser forfra', () => {
+    const { container } = render(<Terminal cmd="read" ud={LANGT} exit={0} vaerktoej="read_file" />)
+    const t = container.textContent ?? ''
+    expect(t).toContain('linje 0')
+    expect(t).not.toContain('linje 199')
+    expect(document.querySelector('.rv-udeladt')?.textContent).toContain('til sidst')
+  })
+
+  it('UDEN id\'er vises ingen knap — der er ingen vej til resten', () => {
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    expect(screen.queryByRole('button', { name: 'Vis hele' })).toBeNull()
+  })
+
+  it('MED id\'er henter knappen resten gennem den eksisterende locator', async () => {
+    const api = await import('../../lib/api')
+    const spion = vi.spyOn(api, 'hentVaerktoejsResultat').mockResolvedValue('HELE TEKSTEN')
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash"
+      config={{ apiBaseUrl: 'http://x', authToken: null }} beskedId="m1" toolUseId="t1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis hele' }))
+    await waitFor(() => expect(spion).toHaveBeenCalledWith(
+      { apiBaseUrl: 'http://x', authToken: null }, 'm1', 't1'))
+    await screen.findByText('HELE TEKSTEN')
+    // Hentet = vist uafkortet. Klausulen giver ikke mening mere.
+    expect(document.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('en fejlet hentning SIGES — et dødt klik er værre end ingen knap', async () => {
+    const api = await import('../../lib/api')
+    vi.spyOn(api, 'hentVaerktoejsResultat').mockRejectedValue(new Error('404 ikke fundet'))
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash"
+      config={{ apiBaseUrl: 'http://x', authToken: null }} beskedId="m1" toolUseId="t1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis hele' }))
+    expect(await screen.findByText('404 ikke fundet')).toBeInTheDocument()
   })
 })

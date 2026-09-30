@@ -14,6 +14,13 @@ Samme fejl er rettet TRE gange:
     praefikset. Foerste kald i et run ramte 50,3 % mod opfoelgningernes
     84,9 %; den foerste systembesked havde tre hashes med naesten samme
     laengde. Blok 26 af 33 (79 % inde) var den foerste der afveg.
+  * 2026-09-30 — TOOL-KATALOGET («KERNE-VAERKTOEJER») laa som den SIDSTE
+    sektion i praefikset. Dets laengde er et fingeraftryk af tool-scopet
+    (1.728/2.479/4.231 tegn), og byggede man praefikset med to scopes afveg
+    de foerst paa tegn 30.441 — inde i kataloget, med alt foer byte-identisk.
+    31 af 54 nye aabner-praefikser havde et system der aldrig var sendt foer:
+    9,8 % hit, 2,70 mio miss. Flyttet til halen; praefikset er nu identisk
+    paa tvaers af alle fire scopes (30.206 tegn, samme sha).
 
 Hver gang blev det fundet ved at maale en regning, ikke ved at laese koden.
 Derfor den her: en sektion med et tal der aendrer sig hoerer i halen, og det
@@ -93,6 +100,7 @@ def test_vaekke_blokken_bygges_ind_i_halen_og_ikke_i_praefikset():
         for arg in node.args:
             if isinstance(arg, ast.Name) and arg.id in {
                 "wake_block", "chronicle_section", "dream_residue_section",
+                "_catalog_text",
             }:
                 modtagere.append(f"{node.func.value.id}:{arg.id}")
 
@@ -101,3 +109,27 @@ def test_vaekke_blokken_bygges_ind_i_halen_og_ikke_i_praefikset():
         assert m.startswith("_dyn_tail:"), (
             f"{m} appendes til praefikset. Sektionen baerer levende tal og "
             f"bryder DeepSeeks cache — den hoerer i _dyn_tail.")
+
+
+def test_tool_kataloget_ligger_i_halen_og_ikke_i_praefikset():
+    """Fjerde sag (30/9-2026): katalogets laengde ER tool-scopet.
+
+    Maalt FOER flytningen: praefiks 34.439 / 31.936 / 32.687 / 34.439 tegn for
+    ''/chat/code/cowork — fire forskellige hashes, og den foerste afvigelse
+    mellem to af dem laa paa tegn 30.441, inde i kataloget. EFTER: 30.206 tegn
+    og samme sha for alle fire.
+
+    Testen laaser begge halvdele: kataloget skal BLIVE i prompten (modellen skal
+    stadig kunne se hvad der findes og kan hentes), men ligge EFTER markoeren.
+    """
+    from core.services.prompt_contract import build_visible_chat_prompt_assembly
+
+    a = build_visible_chat_prompt_assembly(
+        provider="deepseek", model="deepseek-v4-flash",
+        user_message="hej", session_id=None,
+    )
+    tekst = a.text or ""
+    assert "KERNE-VÆRKTØJER" in tekst, "kataloget forsvandt helt fra prompten"
+    assert "KERNE-VÆRKTØJER" not in _praefiks(tekst), (
+        "kataloget staar i praefikset igen — dets laengde foelger tool-scopet, "
+        "saa et scope-skift braekker hele vaerktoejs-arrayet + samtalen")

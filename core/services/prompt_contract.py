@@ -2706,14 +2706,17 @@ def _build_visible_chat_prompt_assembly_impl(
     # Tool catalog — always-on compact list of all tool names so Jarvis knows
     # what exists even when tool_router scopes the full schemas to a subset.
     # Best-effort: never breaks prompt assembly.
-    try:
-        from core.services.tool_catalog import build_catalog_text as _build_catalog_text
-        _catalog_text = _build_catalog_text()
-        if _catalog_text:
-            parts.append(_catalog_text)
-            derived_inputs.append("tool catalog (compact)")
-    except Exception:
-        pass
+    #
+    # 30/9-2026: FLYTTET TIL HALEN (se `_dyn_tail` nedenfor). Den laa her — som
+    # den SIDSTE sektion i det cachede praefiks — og dens laengde er et
+    # fingeraftryk af tool-scopet: maalt 1.728 (chat) / 2.479 (code) / 4.231
+    # (tom | cowork) tegn. Byggede praefikset med to scopes og sammenlignede
+    # chunk for chunk: FOERSTE afvigelse ligger paa tegn 30.441 — inde i netop
+    # dette katalog — og alt foer er byte-identisk. I telemetrien havde 31 af
+    # 54 nye aabner-praefikser et system der aldrig var sendt foer (9,8 % hit,
+    # 2,70 mio miss). Placeringen var den dyreste der findes: DeepSeeks
+    # raekkefoelge er [system][tools][beskeder], saa et skift her invaliderede
+    # hele vaerktoejs-arrayet OG samtalen oveni.
 
     # jarvis-code Path B: tilføj surfaces EGEN 3-lags-toolbox-forklaring (native=Bjørns
     # maskine / runtime_*=container / operator_*=bro). Desk-katalogen ovenfor forklarer
@@ -3184,6 +3187,19 @@ def _build_visible_chat_prompt_assembly_impl(
         if _save_nudge:
             _dyn_tail.append(_save_nudge)
             derived_inputs.append("memory consolidation nudge (end-of-turn)")
+    except Exception:
+        pass
+    # Tool-kataloget hoerer i HALEN (30/9-2026, se den flyttede blok ovenfor).
+    # Det er statisk pr. scope, men scopet skifter mellem ture — og som sidste
+    # sektion i praefikset kostede et skift hele vaerktoejs-arrayet + samtalen
+    # oveni. I halen koster det kun sig selv. Indholdet er uaendret; kun
+    # positionen er flyttet, saa modellen ser praecis samme katalog.
+    try:
+        from core.services.tool_catalog import build_catalog_text as _build_catalog_text
+        _catalog_text = _build_catalog_text()
+        if _catalog_text:
+            _dyn_tail.append(_catalog_text)
+            derived_inputs.append("tool catalog (compact, tail)")
     except Exception:
         pass
     _dyn_tail.append(_time_pin_section())

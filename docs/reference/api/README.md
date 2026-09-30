@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15721 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15722 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -63,10 +63,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15721 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `mail_tools`
-- [`core.tools.02`](core.tools.02.md) — `math_tools` … `simple_tools_explore`
-- [`core.tools.03`](core.tools.03.md) — `simple_tools_native` … `workspace_capabilities_wsio`
-- [`core.tools.04`](core.tools.04.md) — `workspace_capability_decl` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `load_more_tools`
+- [`core.tools.02`](core.tools.02.md) — `mail_tools` … `simple_tools_enforcement`
+- [`core.tools.03`](core.tools.03.md) — `simple_tools_explore` … `workspace_capabilities_verdict`
+- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_wsio` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

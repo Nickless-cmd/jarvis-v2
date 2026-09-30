@@ -35,3 +35,33 @@ describe('stabilizeStreamingMarkdown', () => {
     expect(stabilizeStreamingMarkdown('Før\n~~~~js\nconst x = 1\nrest')).toBe('Før\n~~~~js\nconst x = 1\n~~~~')
   })
 })
+
+/* ── Verifikation af spec punkt 9's kendte begrænsning (30/9-2026) ──────────
+ *
+ * «En patologisk enkelt lang linje falder tilbage til den almindelige
+ * hale-vej.» Speccen siger selv: verificér at fallback'en faktisk udløses —
+ * en dokumenteret begrænsning der ikke virker er værre end en udokumenteret,
+ * fordi ingen leder efter den.
+ */
+describe('den kendte begrænsning: en fence uden en eneste afsluttet linje', () => {
+  const T = '```'
+
+  it('falder tilbage til hale-vejen — fencen holdes HELT tilbage', () => {
+    // Åbneren er kommet, men første linje er ikke afsluttet endnu. Der er
+    // intet at vise inde i blokken, så hele fencen holdes tilbage.
+    const md = `prosa før\n${T}js\nconst x = "en meget lang linje der endnu ikke er afsluttet`
+    const ud = stabilizeStreamingMarkdown(md)
+    expect(ud).toBe('prosa før')
+    expect(ud).not.toContain(T)
+  })
+
+  it('og så snart ÉN linje er afsluttet, skifter den til den frosne vej', () => {
+    // Kontrollen: uden den ville testen ovenfor også bestå hvis fallback'en
+    // var den eneste vej der fandtes.
+    const md = `prosa før\n${T}js\nconst x = 1\nconst y = `
+    const ud = stabilizeStreamingMarkdown(md)
+    expect(ud).toContain('const x = 1')
+    expect(ud).not.toContain('const y =')     // den halve linje vises ikke
+    expect(ud.endsWith(T)).toBe(true)          // midlertidig lukkemarkør
+  })
+})

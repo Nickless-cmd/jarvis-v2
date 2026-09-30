@@ -30,7 +30,13 @@ describe('Puls-takten', () => {
   })
 
   it('de tre bjælker er stadig forskudt — ellers er det et blink, ikke en bølge', () => {
-    const forskydninger = [...css.matchAll(/animation-delay: -([\d.]+)s/g)].map((m) => Number(m[1]))
+    // Formen er `calc(var(--fase, 0ms) - 0.22s)` siden 30/9-2026, hvor mærket
+    // blev pinnet til dokument-tid (spec punkt 8). `--fase` er HVOR i omløbet
+    // mærket står; forskydningen her er bølgen GENNEM mærket. To forskellige
+    // ting, og det er kun den anden denne vagt handler om — derfor matches
+    // tallet uanset om det står alene eller i en calc.
+    const forskydninger = [...css.matchAll(/animation-delay:[^;]*?-\s*([\d.]+)s/g)]
+      .map((m) => Number(m[1]))
     expect(forskydninger).toHaveLength(2)
     const [en, to] = forskydninger as [number, number]
     expect(to).toBeGreaterThan(en)

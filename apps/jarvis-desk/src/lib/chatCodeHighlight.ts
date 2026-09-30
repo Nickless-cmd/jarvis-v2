@@ -13,6 +13,17 @@ export interface ChatHighlight {
 /** 29/9-2026: den åbne fence får kun afsluttede linjer. Når en ny linje
  *  tilføjes, fortsætter Shiki fra den tidligere grammatiktilstand i stedet
  *  for at tokenisere hele den voksende kodeblok igen. */
+/**
+ * KENDT BEGRAENSNING — accepteret, ikke en fejl (spec punkt 9, 30/9-2026).
+ *
+ * En lang highlightet fence beholder HELE sit token-DOM. Streaming undgaar
+ * re-parse og re-tokenize ved at foere grammatik-tilstanden videre og kun
+ * tokenisere det nye, men den smider ikke gamle farver vaek og virtualiserer
+ * ikke spans. Den endelige DOM-stoerrelse foelger derfor token-antallet.
+ *
+ * DSH skriver den samme begraensning hoejt om sin egen implementering. Den
+ * staar her for at den ikke bliver «opfoert» som en fejl senere.
+ */
 export function tokenizeChatCode(
   highlighter: Highlighter,
   code: string,

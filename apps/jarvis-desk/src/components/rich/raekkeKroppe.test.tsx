@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { kropFor, postFor, udDel, exitKode, Terminal } from './raekkeKroppe'
+import { kropFor, postFor, udDel, exitKode, Terminal, LangKrop, MAX_LINJER, Minde } from './raekkeKroppe'
 import type { ApiConfig } from '../../lib/api'
 
 function vis(
@@ -704,5 +704,85 @@ describe('Terminal — udeladelse', () => {
       config={{ apiBaseUrl: 'http://x', authToken: null }} beskedId="m1" toolUseId="t1" />)
     fireEvent.click(screen.getByRole('button', { name: 'Vis hele' }))
     expect(await screen.findByText('404 ikke fundet')).toBeInTheDocument()
+  })
+})
+
+
+describe('Terminal — markoer-sekvenser og vognretur (spec punkt 6)', () => {
+  const ESC = String.fromCharCode(27)
+  const CR = String.fromCharCode(13)
+
+  it('viser ikke «[2K» som tekst', () => {
+    // `ansiStykker` oversaetter kun SGR. Alt andet stod som skrald paa skaermen.
+    const { container } = render(
+      <Terminal cmd="x" ud={`foer${ESC}[2Kefter`} exit={0} vaerktoej="bash" />)
+    expect(container.textContent).toContain('foerefter')
+    expect(container.textContent).not.toContain('[2K')
+  })
+
+  it('en progressbar viser sin sidste tilstand', () => {
+    const { container } = render(
+      <Terminal cmd="x" ud={`10%${CR}50%${CR}100%`} exit={0} vaerktoej="bash" />)
+    expect(container.textContent).toContain('100%')
+    expect(container.textContent).not.toContain(CR)
+  })
+
+  it('farven overlever rydningen', () => {
+    // Fjernede rydningen ogsaa SGR, ville farven forsvinde — og farven ER
+    // information; den er hele grunden til at vaerktoejet skrev den.
+    const { container } = render(
+      <Terminal cmd="x" ud={`${ESC}[32mgroen${ESC}[0m`} exit={0} vaerktoej="bash" />)
+    expect(container.querySelector('.rv-ansi-2')).toBeInTheDocument()
+    expect(container.textContent).toContain('groen')
+  })
+})
+
+
+describe('LangKrop — den delte geometri (spec punkt 6)', () => {
+  const langt = (n: number) => Array.from({ length: n }, (_, i) => `l${i}`).join('\n')
+
+  it('en kort krop staar HELT og faar ingen knap', () => {
+    const { container } = render(<LangKrop tekst={langt(MAX_LINJER)} />)
+    expect(container.textContent).toContain('l15')
+    expect(container.querySelector('.rv-udeladt')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Vis alle' })).toBeNull()
+  })
+
+  it('én linje over graensen klippes — med hoved OG hale', () => {
+    const { container } = render(<LangKrop tekst={langt(MAX_LINJER + 1)} />)
+    expect(container.textContent).toContain('l0')
+    expect(container.textContent).toContain('l16')   // halen
+    expect(container.querySelector('.rv-udeladt')).toBeInTheDocument()
+  })
+
+  it('midten er VAEK og tallet passer', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    expect(container.textContent).not.toContain('l50')
+    expect(container.querySelector('.rv-udeladt')?.textContent).toContain('84')
+  })
+
+  it('«Vis alle» folder ud LOKALT — teksten er der allerede', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis alle' }))
+    expect(container.textContent).toContain('l50')
+    expect(container.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('og kan foldes sammen igen', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis alle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vis færre' }))
+    expect(container.textContent).not.toContain('l50')
+  })
+
+  it('en enkelt meget lang linje klippes ogsaa her', () => {
+    const { container } = render(<LangKrop tekst={'x'.repeat(5000)} />)
+    expect((container.textContent ?? '').length).toBeLessThan(5000)
+  })
+
+  it('Minde bruger den — kortet straekkes ikke af en lang note', () => {
+    const { container } = render(<Minde titel="Note" meta="" tekst={langt(100)} />)
+    expect(container.querySelector('.rv-udeladt')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('l50')
   })
 })

@@ -4302,10 +4302,23 @@ def _time_pin_section() -> str:
     )
 
 
-def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str | None:
+def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 20000) -> str | None:
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
-    Jarvis doesn't re-discover them locally every session."""
+    Jarvis doesn't re-discover them locally every session.
+
+    2026-10-01 (Bjørn: «hæv loftet»): loftet stod på 1800 tegn, men filen var
+    15.400. Altså var 88 % af mine egne hurtig-fakta usynlige for mig — logins,
+    stier, værktøjskanalerne, wakeup-mekanikken. Værst: den SYNLIGE del var den
+    mest historie-tunge (0,8 historik-markører pr. 1.000 tegn, mod 0,3 i det
+    klippede), så klippet ramte præcis det operationelle og lod historikken stå.
+    Min egen advarsel om at tjekke `hostname` før jeg måler lå 55 tegn uden for
+    kanten — jeg skrev den for at undgå en fejl jeg så begå, og kunne ikke se den.
+
+    Loftet er nu et værn mod en løbsk fil, ikke et indholds-filter. Sektionen
+    ligger i det cachebare stable prefix, så de ekstra ~3.400 tokens koster
+    ~$0,00001 pr. cache-hit. Prisen ligger i at SKRIVE til filen (hvert skriv =
+    ét cache-reset), ikke i dens størrelse — derfor er et højt loft billigt."""
     from core.services.secret_redaction import read_for_prompt
     path = workspace_dir / "QUICK_FACTS.md"
     try:

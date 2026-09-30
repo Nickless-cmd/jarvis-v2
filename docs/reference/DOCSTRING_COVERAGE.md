@@ -1443,7 +1443,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4882)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4895)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)

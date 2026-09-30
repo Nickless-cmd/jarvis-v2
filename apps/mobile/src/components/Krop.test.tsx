@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native'
-import { TerminalKrop, FilKrop, Krop, MAX_LINJER } from './Krop'
+import { TerminalKrop, FilKrop, ListeKrop, Krop, MAX_LINJER, MAX_PUNKTER } from './Krop'
 
 /**
  * `render` er ASYNKRON i dette bibliotek (samme mønster som
@@ -107,6 +107,44 @@ describe('FilKrop', () => {
   })
 })
 
+describe('ListeKrop', () => {
+  it('tegner hvert punkt — med praefiks naar der er en sti', async () => {
+    const s = await render(<ListeKrop poster={[
+      { p: 'a.ts:42', v: 'const x = 1' },
+      { v: 'b.ts' },
+    ]} />)
+    expect(s.getByTestId('krop-liste')).toBeTruthy()
+    expect(s.getByText('a.ts:42')).toBeTruthy()
+    expect(s.getByText('const x = 1')).toBeTruthy()
+    expect(s.getByText('b.ts')).toBeTruthy()
+  })
+
+  it('klipper en lang liste — og siger hvor mange der er', async () => {
+    const poster = Array.from({ length: MAX_PUNKTER + 3 }, (_, i) => ({ v: `punkt ${i}` }))
+    const s = await render(<ListeKrop poster={poster} />)
+    expect(s.getByTestId('krop-vis-alle-punkter')).toBeTruthy()
+    expect(s.queryByText(`punkt ${MAX_PUNKTER + 2}`)).toBeNull()
+  })
+
+  it('«Vis alle» folder resten ud — uden et kald', async () => {
+    const poster = Array.from({ length: MAX_PUNKTER + 3 }, (_, i) => ({ v: `punkt ${i}` }))
+    const s = await render(<ListeKrop poster={poster} />)
+    await fireEvent.press(s.getByTestId('krop-vis-alle-punkter'))
+    expect(s.getByText(`punkt ${MAX_PUNKTER + 2}`)).toBeTruthy()
+    expect(s.queryByTestId('krop-vis-alle-punkter')).toBeNull()
+  })
+
+  it('en kort liste har ingen knap', async () => {
+    const s = await render(<ListeKrop poster={[{ v: 'a' }]} />)
+    expect(s.queryByTestId('krop-vis-alle-punkter')).toBeNull()
+  })
+
+  it('tegner INTET naar der ingen punkter er', async () => {
+    const s = await render(<ListeKrop poster={[]} />)
+    expect(s.queryByTestId('krop-liste')).toBeNull()
+  })
+})
+
 describe('Krop — vælgeren', () => {
   it('giver terminal-kroppen og udtrækker stdout af JSON-blobben', async () => {
     // Kaldsstedet giver det RÅ resultat; vælgeren udtrækker selv. Uden det
@@ -121,6 +159,20 @@ describe('Krop — vælgeren', () => {
     const s = await render(<Krop familie="fil" result={'{"content": "a\\nb"}'} />)
     expect(s.getByTestId('krop-fil')).toBeTruthy()
     expect(s.queryByTestId('krop-terminal')).toBeNull()
+  })
+
+  it('giver liste-kroppen for en hitliste', async () => {
+    const s = await render(<Krop familie="liste" result={'{"files":["a.ts","b.ts"]}'} />)
+    expect(s.getByTestId('krop-liste')).toBeTruthy()
+    expect(s.getByText('a.ts')).toBeTruthy()
+    expect(s.queryByTestId('krop-terminal')).toBeNull()
+  })
+
+  it('tegner INTET naar liste-resultatet ikke baerer en liste', async () => {
+    // Kaldsstedet falder så til rå tekst — en tom ramme ville være værre end
+    // den tekst vi havde i forvejen.
+    const s = await render(<Krop familie="liste" result="ren tekst" />)
+    expect(s.queryByTestId('krop-liste')).toBeNull()
   })
 
   it('tegner INTET for fald — kaldsstedet bærer den rå form', async () => {

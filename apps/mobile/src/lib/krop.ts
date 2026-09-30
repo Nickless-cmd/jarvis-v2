@@ -22,7 +22,7 @@
  * vagt-testen i `krop.test.ts` holder denne liste mod den.
  */
 
-export type KropFamilie = 'terminal' | 'fil' | 'diff' | 'fald'
+export type KropFamilie = 'terminal' | 'fil' | 'diff' | 'liste' | 'fald'
 
 const TERMINAL = new Set([
   'bash', 'operator_bash',
@@ -41,6 +41,44 @@ const DIFF = new Set([
 ])
 
 /**
+ * Liste: hitlister, tabeller, oversigter.
+ *
+ * Familien følger RESULTATETS form — en søgning giver en hitliste, en
+ * fil-søgning giver stier, `git_status` giver ændrede filer. Formen er den
+ * samme uanset værktøjets emne, så de hører i én krop.
+ *
+ * ## Hvorfor navnene står her og ikke udledes af resultatet alene
+ *
+ * Det ville være nærliggende at lade formen afgøre alt. Men `search_chat_history`
+ * svarer `{status, count, results, text}` — og `text` er en streng VED SIDEN AF
+ * listen. Form-reglen (`listenErIndholdet`) afviser netop det tilfælde, fordi
+ * `path`/`text` ved siden af en liste betyder at objektet er formen. Uden
+ * navne-tabellen ville historik-søgningen altså falde til rå tekst, selv om
+ * listen ligger lige der. Navnet er den viden resultatet ikke bærer.
+ *
+ * Navnene er verificeret mod `core/tools/simple_tools.py::get_tool_definitions`
+ * (485 værktøjer) — se vagt-testen i `krop.test.ts`. Et navn der ikke findes
+ * giver en form der LYVER, hvis navnet en dag bruges til noget andet.
+ */
+export const LISTE_NAVNE = [
+  // Filer og indhold
+  'find_files', 'operator_glob', 'operator_grep', 'operator_list_dir',
+  // Søgning: hitlister
+  'search', 'search_memory', 'search_sessions', 'search_chat_history',
+  'search_jarvis_brain', 'semantic_search_code', 'load_more_tools',
+  'recall', 'recall_memories', 'smart_outline',
+  // Git og processer: `{changes}`, `{diff}`, `{branches}`, `{processes}`
+  'git_log', 'git_status', 'git_diff', 'git_branch',
+  'process_list', 'process_tail', 'tail_log',
+  // Oversigter og lister fra Centralen
+  'central_query', 'read_chronicles', 'read_memory_topic', 'eventbus_recent',
+  'list_signal_surfaces', 'list_self_wakeups', 'list_agents',
+  'list_scheduled_tasks', 'list_side_tasks',
+] as const
+
+const LISTE = new Set<string>(LISTE_NAVNE)
+
+/**
  * Et gammelt navn skal pege videre, ikke dø.
  *
  * Desk fandt det med `explore` → `scout_agent` (omdøbt 17/9-2026): uden
@@ -56,6 +94,7 @@ export function kropFor(navn: string): KropFamilie {
   if (TERMINAL.has(nu)) return 'terminal'
   if (FIL.has(nu)) return 'fil'
   if (DIFF.has(nu)) return 'diff'
+  if (LISTE.has(nu)) return 'liste'
   return 'fald'
 }
 
@@ -171,4 +210,175 @@ export function filTekst(result: string | undefined): string {
 /** Sidste led af en sti — til filnavnet over linjenumrene. */
 export function filnavn(sti: string): string {
   return sti.replace(/\\/g, '/').split('/').filter(Boolean).at(-1) || sti
+}
+
+/* ══ Liste: hitlister, tabeller, oversigter ═════════════════════════════ */
+
+/**
+ * Den første liste i et resultat — uanset hvilken nøgle den er pakket i.
+ *
+ * `search_chat_history` kalder den `results`, `find_files` kalder den `files`,
+ * `list_self_wakeups` kalder den `wakeups`, og `central_query` gemmer den bag
+ * `data`. Leder vi efter ét bestemt navn, falder resten til rå tekst selv om
+ * listen ligger lige der. Ét niveau ned dækker `data`-indpakningen; vi graver
+ * ikke dybere, for et vilkårligt dybt gennemsyn ville gøre enhver struktur til
+ * en liste.
+ */
+export function foersteListe(v: unknown): unknown[] | null {
+  if (Array.isArray(v)) return v.length ? v : null
+  if (!objekt(v)) return null
+  for (const felt of Object.values(v)) if (Array.isArray(felt) && felt.length) return felt
+  for (const felt of Object.values(v)) {
+    if (!objekt(felt)) continue
+    for (const indre of Object.values(felt)) if (Array.isArray(indre) && indre.length) return indre
+  }
+  return null
+}
+
+/**
+ * Én linje for et listepunkt.
+ *
+ * De kendte felter først — `text`, `name`, `summary`, `title`, `prompt`,
+ * `content`, `path`, `value` — fordi de bærer meningen. Et punkt uden nogen af
+ * dem skal vise SINE felter (`k=v · k=v`), ikke ordet «Result»: en liste der
+ * ikke viser noget er værre end ingen liste.
+ *
+ * Vi klipper ved 300 tegn. Desk viser hele teksten og lader CSS'en klippe, men
+ * på en telefon er et `content`-felt på 4.000 tegn hele skærmen for ét punkt i
+ * en hitliste. Et punkt er et punkt.
+ */
+const PUNKT_KLIP = 300
+
+export function listeTekst(p: unknown): string {
+  if (!objekt(p)) return visTekst(p)
+  const kendt = streng(p.text) || streng(p.name) || streng(p.summary) || streng(p.title)
+    || streng(p.prompt) || streng(p.content) || streng(p.path) || streng(p.value)
+  const linje = kendt || Object.entries(p)
+    .filter(([k, felt]) => k !== 'status' && !Array.isArray(felt) && !objekt(felt))
+    .slice(0, 4)
+    .map(([k, felt]) => `${k}=${visTekst(felt)}`)
+    .join(' · ')
+  const s = linje || visTekst(p)
+  return s.length > PUNKT_KLIP ? `${s.slice(0, PUNKT_KLIP)}…` : s
+}
+
+/**
+ * En streng der ER en liste — én linje pr. element.
+ *
+ * `git_log` (`{log}`), `git_status` (`{changes}`) og `git_diff` (`{diff}`)
+ * sender én streng med linjer, ikke et array. Formen er en liste; værdien er
+ * tekst. Kræver mindst to linjer, så et enkelt svar (`{summary: "ok"}`) ikke
+ * bliver en liste med ét punkt.
+ */
+export function tekstLinjer(v: unknown): string[] | null {
+  if (!objekt(v)) return null
+  for (const [k, felt] of Object.entries(v)) {
+    if (k === 'status' || typeof felt !== 'string') continue
+    const linjer = felt.split('\n').map((s) => s.trimEnd()).filter((s) => s.trim() !== '')
+    if (linjer.length > 1) return linjer
+  }
+  return null
+}
+
+/** Rækkerne en liste-krop tegner: `p` er præfikset (fx `fil.ts:42`), `v` linjen. */
+export function listePoster(result: string | undefined): { p?: string; v: string }[] | null {
+  if (!result) return null
+  const { vaerdi } = pakUd(result)
+  const poster = foersteListe(vaerdi)
+  if (poster) {
+    return poster.map((p) => objekt(p)
+      ? {
+        p: `${streng(p.file) || streng(p.path)}${typeof p.line === 'number' ? `:${p.line}` : ''}` || undefined,
+        v: listeTekst(p),
+      }
+      : { v: visTekst(p) })
+  }
+  const linjer = tekstLinjer(vaerdi)
+  if (linjer) return linjer.map((v) => ({ v }))
+  return null
+}
+
+/* ══ Formen af resultatet — når navnet ikke er kendt ════════════════════ */
+
+const OPTAELLINGER = new Set(['count', 'total', 'n', 'length', 'size', 'antal'])
+
+/**
+ * Er listen HELE indholdet — eller står der meningsfulde felter ved siden af?
+ *
+ * `{count, goals:[…]}`: `goals` ER indholdet, `count` er en optælling.
+ * `{count, path, items:[…]}`: `path` er indhold ved siden af listen, så
+ * objektet er formen — ikke listen. Uden den skelnen blev et ukendt struktureret
+ * resultat til en liste af sine `items` og tabte `count`/`path`.
+ *
+ * ## Hvorfor der IKKE er en `pakUdEnkelt` her
+ *
+ * Desk har en hjælper der pakker `{wakeup: {…}}` ud til det indre objekt, så
+ * feltlisten viser de seks felter i stedet for «wakeup | 6 fields». Mobilen
+ * havde den også — indtil mutationsprøven viste at den **ikke kunne slås fra**:
+ * ingen test fangede den, fordi den ingen forskel gør her. Mobilens `fald` er rå
+ * tekst, ikke en feltliste, så udpakningen har intet at udpakke TIL. Død kode
+ * der ikke kan måles hører ikke hjemme, og `listenErIndholdet` ser gennem
+ * `data`-indpakningen alligevel (`foersteListe` graver ét niveau ned).
+ */
+function listenErIndholdet(v: Data): unknown[] | null {
+  const liste = foersteListe(v)
+  if (!liste) return null
+  const vedSidenAf = Object.entries(v).filter(([k, f]) =>
+    k !== 'status' && !OPTAELLINGER.has(k) && typeof f !== 'object' && typeof f !== 'boolean')
+  return vedSidenAf.length ? null : liste
+}
+
+/**
+ * Formen af RESULTATET — når værktøjets navn ikke står i nogen tabel.
+ *
+ * Familien følger resultatets form, ikke værktøjets emne: en liste ER en liste
+ * uanset hvilket værktøj der sendte den. Det er den regel der løfter de
+ * værktøjer ingen har skrevet en krop til — målt i desk 23/9-2026 havde 71 af
+ * 92 værktøjer slet ingen form, fordi tabellen ikke blev holdt ajour.
+ *
+ * Kun former der er entydige: en liste er en liste, og `stdout`/`stderr` er en
+ * terminal. Et fladt status-objekt (`get_weather`, `set_flag`) forbliver den
+ * rå feltliste — det ER dens form, og en gættet form ville være ringere.
+ */
+export function formFamilie(result: string | null | undefined): KropFamilie {
+  const { vaerdi } = pakUd(result ?? undefined)
+  if (!objekt(vaerdi)) return 'fald'
+  if (typeof vaerdi.stdout === 'string' || typeof vaerdi.stderr === 'string') return 'terminal'
+  if (listenErIndholdet(vaerdi)) return 'liste'
+  return 'fald'
+}
+
+/**
+ * Familien for et KALD — navnet først, så resultatets form.
+ *
+ * Rækkefølgen er ikke ligegyldig. `search_chat_history` svarer
+ * `{status, count, results, text}`, og `text` er en streng ved siden af listen —
+ * så form-reglen alene ville afvise den. Navnet er den viden resultatet ikke
+ * bærer, og formen er den viden tabellen ikke kan nå.
+ */
+export function kropForResult(navn: string, result: string | null | undefined): KropFamilie {
+  const fraNavn = kropFor(navn)
+  return fraNavn !== 'fald' ? fraNavn : formFamilie(result)
+}
+
+/**
+ * Kan kroppen FAKTISK tegne noget?
+ *
+ * Familien siger hvilken FORM kaldet har — ikke at der er noget at vise i den.
+ * `central_query` er `liste`, men svarer den med ren tekst, finder `listePoster`
+ * hverken en liste eller tekst-linjer, og `Krop` tegner ingenting. Uden denne
+ * gate lovede kaldsstedet en krop og tegnede en TOM ramme — indholdet forsvandt
+ * helt, hvilket er værre end rå tekst. Målt: det var præcis hvad testen «et
+ * meget langt svar klippes» fangede.
+ *
+ * Er svaret nej, falder kaldsstedet til den rå tekst. Vi viser aldrig mindre
+ * end vi gjorde før.
+ */
+export function kanTegneKrop(familie: KropFamilie, result: string | null | undefined): boolean {
+  const rå = result ?? ''
+  if (!rå.trim()) return false
+  if (familie === 'terminal') return udDel(rå).trim().length > 0
+  if (familie === 'fil') return filTekst(rå).trim().length > 0
+  if (familie === 'liste') return listePoster(rå) !== null
+  return false
 }

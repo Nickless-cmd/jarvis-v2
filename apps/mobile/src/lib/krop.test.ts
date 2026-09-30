@@ -1,4 +1,10 @@
-import { kropFor, udenHale, pakUd, udDel, exitKode, filTekst, filnavn } from './krop'
+import { readdirSync, readFileSync } from 'fs'
+import { join } from 'path'
+import {
+  kropFor, kropForResult, kanTegneKrop, formFamilie, foersteListe, listeTekst,
+  listePoster, tekstLinjer, udenHale, pakUd, udDel, exitKode, filTekst, filnavn,
+  LISTE_NAVNE,
+} from './krop'
 
 describe('kropFor', () => {
   it('bash-familien er terminal — også de session-baserede', () => {
@@ -18,10 +24,16 @@ describe('kropFor', () => {
     }
   })
 
+  it('soegning, git og oversigter er liste — hitlister og tabeller', () => {
+    for (const n of ['search', 'find_files', 'git_status', 'list_self_wakeups', 'central_query']) {
+      expect(kropFor(n)).toBe('liste')
+    }
+  })
+
   it('alt andet falder til den rå form — det er ikke en fejl', () => {
-    // Små status-objekter (`central_query`, `daemon_status`) ER feltlisten.
+    // Små status-objekter (`daemon_status`, `get_weather`) ER feltlisten.
     // En ukendt form maa ikke gættes; den skal falde tilbage.
-    expect(kropFor('central_query')).toBe('fald')
+    expect(kropFor('daemon_status')).toBe('fald')
     expect(kropFor('findes_ikke_som_vaerktoej')).toBe('fald')
   })
 })
@@ -113,5 +125,188 @@ describe('filnavn', () => {
 
   it('haandterer windows-stier', () => {
     expect(filnavn('C:\\Users\\bs\\note.txt')).toBe('note.txt')
+  })
+})
+
+describe('foersteListe', () => {
+  it('finder listen uanset hvad noeglen hedder', () => {
+    // De fire navne huset faktisk bruger: `results` (soegning), `files`
+    // (find_files), `wakeups` (list_self_wakeups) og `matches`.
+    expect(foersteListe({ status: 'ok', results: [{ a: 1 }] })).toEqual([{ a: 1 }])
+    expect(foersteListe({ files: ['a.ts'] })).toEqual(['a.ts'])
+    expect(foersteListe({ wakeups: [{ id: 1 }] })).toEqual([{ id: 1 }])
+    expect(foersteListe({ matches: [{ line: 2 }] })).toEqual([{ line: 2 }])
+  })
+
+  it('graver ét niveau ned — central_query pakker i `data`', () => {
+    expect(foersteListe({ data: { items: [{ id: 'x' }] } })).toEqual([{ id: 'x' }])
+  })
+
+  it('en tom liste er ingen liste', () => {
+    expect(foersteListe({ results: [] })).toBeNull()
+    expect(foersteListe({ status: 'ok' })).toBeNull()
+    expect(foersteListe('ren tekst')).toBeNull()
+  })
+
+  it('graver ikke vilkaarligt dybt — ellers blev enhver struktur en liste', () => {
+    expect(foersteListe({ a: { b: { c: [1] } } })).toBeNull()
+  })
+})
+
+describe('listeTekst', () => {
+  it('tager de kendte felter foerst', () => {
+    expect(listeTekst({ text: 'linjen', name: 'noget' })).toBe('linjen')
+    expect(listeTekst({ path: 'a.ts', line: 3 })).toBe('a.ts')
+    expect(listeTekst({ content: 'brødtekst' })).toBe('brødtekst')
+  })
+
+  it('et punkt uden kendte felter viser SINE felter — ikke ordet «Result»', () => {
+    // `list_self_wakeups` bærer `prompt`, `central_query` bærer `id`/`kind`.
+    expect(listeTekst({ id: 'w1', kind: 'fakta' })).toBe('id=w1 · kind=fakta')
+  })
+
+  it('klipper et langt punkt — et punkt er et punkt, ikke et dokument', () => {
+    const lang = 'x'.repeat(500)
+    const ud = listeTekst({ text: lang })
+    expect(ud.length).toBeLessThan(320)
+    expect(ud.endsWith('…')).toBe(true)
+  })
+
+  it('en ren streng vises som den er', () => {
+    expect(listeTekst('bare en sti')).toBe('bare en sti')
+  })
+})
+
+describe('tekstLinjer', () => {
+  it('en streng med flere linjer ER en liste — git log og git status', () => {
+    expect(tekstLinjer({ log: 'abc123 forrige\nfed456 nyeste' })).toEqual(['abc123 forrige', 'fed456 nyeste'])
+  })
+
+  it('én linje er ikke en liste — et enkelt svar maa ikke blive et punkt', () => {
+    expect(tekstLinjer({ summary: 'ok' })).toBeNull()
+  })
+
+  it('springer status over og tomme linjer over', () => {
+    expect(tekstLinjer({ status: 'ok\nfejl', changes: 'M a.ts\n\nM b.ts' })).toEqual(['M a.ts', 'M b.ts'])
+  })
+})
+
+describe('listePoster', () => {
+  it('saetter sti og linjetal foran punktet', () => {
+    const r = '{"results":[{"file":"a.ts","line":42,"text":"const x = 1"}]}'
+    expect(listePoster(r)).toEqual([{ p: 'a.ts:42', v: 'const x = 1' }])
+  })
+
+  it('et punkt uden sti faar intet praefiks', () => {
+    expect(listePoster('{"files":["a.ts","b.ts"]}')).toEqual([{ v: 'a.ts' }, { v: 'b.ts' }])
+  })
+
+  it('falder til tekst-linjer naar der ikke er et array', () => {
+    expect(listePoster('{"changes":"M a.ts\\nM b.ts"}')).toEqual([{ v: 'M a.ts' }, { v: 'M b.ts' }])
+  })
+
+  it('giver null naar der hverken er liste eller linjer — saa tegnes INTET', () => {
+    // Det er denne vej der goer at kaldsstedet kan falde til raa tekst i
+    // stedet for at vise en tom ramme.
+    expect(listePoster('ren tekst uden struktur')).toBeNull()
+    expect(listePoster(undefined)).toBeNull()
+  })
+})
+
+describe('formFamilie', () => {
+  it('en liste ER en liste — uanset hvilket vaerktoej der sendte den', () => {
+    expect(formFamilie('{"results":[{"a":1}]}')).toBe('liste')
+    expect(formFamilie('{"goals":[{"a":1}]}')).toBe('liste')
+  })
+
+  it('en optaelling ved siden af listen er stadig en liste', () => {
+    expect(formFamilie('{"count":2,"goals":[{"a":1}]}')).toBe('liste')
+  })
+
+  it('staar der meningsfulde felter VED SIDEN AF, er objektet formen', () => {
+    // `{count, path, items:[…]}` — `path` er indhold, ikke en optaelling.
+    expect(formFamilie('{"count":2,"path":"/x","items":[{"a":1}]}')).toBe('fald')
+  })
+
+  it('stdout eller stderr goer resultatet til en terminal', () => {
+    expect(formFamilie('{"status":"ok","stdout":"hej"}')).toBe('terminal')
+  })
+
+  it('et fladt status-objekt forbliver den raa form — det ER dens form', () => {
+    // `get_weather`, `set_flag`: en gættet form ville være ringere end ingen.
+    expect(formFamilie('{"status":"ok","temp":14.6}')).toBe('fald')
+    expect(formFamilie('ren tekst')).toBe('fald')
+  })
+})
+
+describe('kropForResult', () => {
+  it('navnet vinder naar det staar i en tabel', () => {
+    expect(kropForResult('search', '{"results":[{"a":1}]}')).toBe('liste')
+    expect(kropForResult('bash', '{"stdout":"x"}')).toBe('terminal')
+  })
+
+  it('navnet vinder ogsaa naar formen ville sige noget andet', () => {
+    // DEN VIGTIGE: `search_chat_history` svarer med `text` VED SIDEN AF listen,
+    // saa form-reglen alene ville give `fald`. Navnet er den viden resultatet
+    // ikke bærer.
+    const r = '{"status":"ok","count":1,"results":[{"role":"user"}],"text":"Found 1"}'
+    expect(formFamilie(r)).toBe('fald')
+    expect(kropForResult('search_chat_history', r)).toBe('liste')
+  })
+
+  it('RAEKKEFOELGEN maales: et kendt navn slaar en liste-form', () => {
+    // Vagt mod at bytte om på de to lag. `bash` er terminal, og selv om
+    // resultatet bærer en liste, er det stadig en terminal — navnet er den
+    // viden formen ikke har. Uden denne test slap ombytningen igennem
+    // mutationsproeven, fordi `search_chat_history`-tilfældet giver `liste`
+    // ad BEGGE veje og derfor ikke maaler rækkefølgen.
+    expect(formFamilie('{"results":[{"a":1}]}')).toBe('liste')
+    expect(kropForResult('bash', '{"results":[{"a":1}]}')).toBe('terminal')
+  })
+
+  it('formen fanger de vaerktoejer ingen tabel har', () => {
+    expect(kropForResult('list_events', '{"events":[{"titel":"moede"}]}')).toBe('liste')
+    expect(kropForResult('et_ukendt_vaerktoej', '{"status":"ok"}')).toBe('fald')
+  })
+})
+
+describe('kanTegneKrop', () => {
+  it('en liste-familie med ren tekst kan IKKE tegnes — saa falder vi til raa tekst', () => {
+    // Uden dette lovede kaldsstedet en krop og tegnede en TOM ramme.
+    expect(kanTegneKrop('liste', 'ren tekst')).toBe(false)
+    expect(kanTegneKrop('liste', '{"results":[{"a":1}]}')).toBe(true)
+  })
+
+  it('terminal og fil kraever ogsaa indhold', () => {
+    expect(kanTegneKrop('terminal', '{"stdout":"hej"}')).toBe(true)
+    // Et bash-kald UDEN stdout viser sin rå JSON: `udDel` falder tilbage til
+    // hele teksten, og det er stadig noget at vise — samme tekst som den rå vej
+    // ville give. Kun et HELT tomt resultat tegnes ikke.
+    expect(kanTegneKrop('terminal', '{"exit_code":0}')).toBe(true)
+    expect(kanTegneKrop('terminal', '')).toBe(false)
+    expect(kanTegneKrop('fil', '')).toBe(false)
+    expect(kanTegneKrop('fil', 'linje 1')).toBe(true)
+  })
+
+  it('den raa form tegnes aldrig som krop', () => {
+    expect(kanTegneKrop('fald', '{"status":"ok"}')).toBe(false)
+  })
+})
+
+describe('navnene findes i registret', () => {
+  it('hvert liste-navn staar i serverens vaerktoejskilde', () => {
+    // Kilden til sandheden er `core/tools/` — 485 værktøjer, defineret i Python.
+    // Vi læser den som TEKST. Et navn der ikke findes nogen steder kan ikke
+    // kaldes, og en form for et navn der ikke findes LYVER hvis navnet en dag
+    // bruges til noget andet. Desk havde otte sådanne (målt 23/9-2026), og
+    // deres egen kommentar pegede på en vagt-test der ikke fandtes.
+    const rod = join(__dirname, '..', '..', '..', '..')
+    const mappe = join(rod, 'core', 'tools')
+    const kilde = readdirSync(mappe)
+      .filter((f) => f.endsWith('.py'))
+      .map((f) => readFileSync(join(mappe, f), 'utf8'))
+      .join('\n')
+    const mangler = LISTE_NAVNE.filter((n) => !kilde.includes(`"${n}"`))
+    expect(mangler).toEqual([])
   })
 })

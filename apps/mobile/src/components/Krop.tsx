@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { highlight, type Span, type SpanKind } from '../lib/highlight'
 import { ANSI_FARVER, ansiStykker, ryd, type AnsiStil } from '../lib/ansiTekst'
-import { filTekst, exitKode, kropFor, udDel, type KropFamilie } from '../lib/krop'
+import { filTekst, exitKode, kropFor, listePoster, udDel, type KropFamilie } from '../lib/krop'
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 
@@ -181,6 +181,52 @@ export function FilKrop({ tekst }: { tekst: string }) {
   )
 }
 
+/* ══ Liste ══════════════════════════════════════════════════════════════ */
+
+/** Så mange punkter tegnes før listen klippes — resten er ét tryk væk. */
+export const MAX_PUNKTER = 12
+
+/**
+ * Liste-kroppen: hitlister, tabeller, oversigter.
+ *
+ * Desk har samme form (`Liste` i `raekkeKroppe.tsx`), og den er målt: stier er
+ * **sans**, ikke mono. Derfor ingen `MONO` her — det er den ene forskel fra
+ * terminal- og fil-kroppene, og den er hentet fra kilden og ikke gættet.
+ *
+ * Klippet er LOKALT, som i fil-kroppen: punkterne ligger allerede i hukommelsen,
+ * så «Vis alle» folder dem ud uden et kald. Vi klipper frem for at scrolle, fordi
+ * en indlejret lodret `ScrollView` inde i trådens liste giver to scrol-flader
+ * oven på hinanden — og den slåskamp er der ingen der vinder.
+ */
+export function ListeKrop({ poster }: { poster: { p?: string; v: string }[] }) {
+  const styles = useStyles(makestyles)
+  const [alt, setAlt] = useState(false)
+  if (!poster.length) return null
+  const klippet = !alt && poster.length > MAX_PUNKTER
+  const vist = klippet ? poster.slice(0, MAX_PUNKTER) : poster
+  return (
+    <View style={styles.liste} testID="krop-liste">
+      {vist.map((r, i) => (
+        <View key={i} style={styles.listePunkt}>
+          {r.p ? <Text style={styles.listeP} numberOfLines={1}>{r.p}</Text> : null}
+          <Text style={styles.listeV} numberOfLines={2}>{r.v}</Text>
+        </View>
+      ))}
+      {klippet ? (
+        <Pressable
+          onPress={() => setAlt(true)}
+          testID="krop-vis-alle-punkter"
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.listeKnap}
+        >
+          <Text style={styles.listeKnapTekst}>Vis alle {poster.length}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
 /* ══ Vælgeren ═══════════════════════════════════════════════════════════ */
 
 /**
@@ -205,6 +251,13 @@ export function Krop({
   }
   if (familie === 'fil') {
     return <FilKrop tekst={filTekst(rå)} />
+  }
+  if (familie === 'liste') {
+    // `listePoster` giver null når der hverken er en liste eller tekst-linjer at
+    // vise. Så tegner vi INTET — kaldsstedet falder til den rå tekst, og vi står
+    // ikke med en tom ramme der ligner en fejl.
+    const poster = listePoster(rå)
+    return poster ? <ListeKrop poster={poster} /> : null
   }
   return null
 }
@@ -252,4 +305,21 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   filUdeladt: { color: tokens.color.fg3, fontSize: 11, fontStyle: 'italic', paddingVertical: 3, paddingLeft: 34 },
   filKnap: { paddingTop: 4 },
   filKnapTekst: { color: tokens.color.fg2, fontSize: 11, textDecorationLine: 'underline' },
+
+  liste: {
+    borderLeftWidth: 2,
+    borderLeftColor: tokens.color.line,
+    paddingLeft: 8,
+    marginLeft: 6,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  listePunkt: { flexDirection: 'row', gap: 6, paddingVertical: 2 },
+  // Ingen `MONO`: desk målte at stier i en hitliste er sans, ikke mono.
+  // Præfikset dæmpes som filnummeret i fil-kroppen, så de to kroppe taler
+  // samme sprog om hvad der er sted og hvad der er indhold.
+  listeP: { color: tokens.color.fg3, fontSize: 12, lineHeight: 17, flexShrink: 0, maxWidth: '55%' },
+  listeV: { color: tokens.color.fg2, fontSize: 13, lineHeight: 17, flex: 1 },
+  listeKnap: { paddingTop: 4 },
+  listeKnapTekst: { color: tokens.color.fg2, fontSize: 11, textDecorationLine: 'underline' },
 })

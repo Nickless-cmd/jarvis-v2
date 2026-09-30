@@ -272,11 +272,13 @@ it('et redigeret kald gaar til DIFF-arket — ikke svar-folden', async () => {
 
 it('et meget langt svar klippes — og det siges hoejt', async () => {
   // `fald`-familien beholder den rå vej: der er ingen form at klippe i. Har
-  // kaldet en krop (bash, fil), klipper KROPPEN — ikke denne gren.
+  // kaldet en krop (bash, fil, liste), klipper KROPPEN — ikke denne gren.
+  // `db_query` står i ingen tabel, og svaret her er ren tekst, så formen er
+  // også `fald`. Det er præcis den gren der skal måles.
   const langt = 'x'.repeat(SVAR_KLIP + 250)
   const s = await render(
     <InlineToolGroup items={[
-      item({ label: 'Forespurgte databasen', tool: 'central_query', result: langt }),
+      item({ label: 'Forespurgte databasen', tool: 'db_query', result: langt }),
       item({ label: 'Læste b.py' }),
     ]} />
   )
@@ -311,6 +313,59 @@ it('en fil-laesning faar FIL-kroppen — med linjenumre', async () => {
   await fireEvent.press(s.getByTestId('tool-group'))
   await fireEvent.press(s.getByText('Læste krop.ts'))
   expect(s.getByTestId('krop-fil')).toBeTruthy()
+})
+
+it('en soegning faar LISTE-kroppen — hitlisten, ikke raa JSON', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({
+        label: 'Søgte i filer',
+        tool: 'search',
+        result: '{"results":[{"file":"a.ts","line":42,"text":"const x = 1"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Søgte i filer'))
+  expect(s.getByTestId('krop-liste')).toBeTruthy()
+  expect(s.getByText('a.ts:42')).toBeTruthy()
+  expect(s.getByText('const x = 1')).toBeTruthy()
+})
+
+it('et kald UDEN tabel men MED liste-form faar ogsaa liste-kroppen', async () => {
+  // Familien følger resultatets FORM, ikke kun navnet: en liste ER en liste,
+  // uanset hvilket værktøj der sendte den. Det er den regel der løfter de
+  // værktøjer ingen har skrevet en krop til.
+  //
+  // `titel` er ikke blandt de kendte feltnavne, så punktet vises som
+  // `nøgle=værdi`. Det er med vilje: et ukendt felt skal vise SINE data, ikke
+  // et opfundet ord.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Hentede aftaler', tool: 'list_events', result: '{"events":[{"titel":"moede"}]}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Hentede aftaler'))
+  expect(s.getByTestId('krop-liste')).toBeTruthy()
+  expect(s.getByText('titel=moede')).toBeTruthy()
+})
+
+it('et liste-kald hvis svar IKKE er en liste falder til RAA tekst — ikke en tom ramme', async () => {
+  // Vagt mod den fejl testen «et meget langt svar klippes» fandt: familien er
+  // `liste`, men der er intet at tegne. Uden `kanTegneKrop` forsvandt indholdet.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte Centralen', tool: 'central_query', result: 'alt er i orden' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Forespurgte Centralen'))
+  expect(s.queryByTestId('krop-liste')).toBeNull()
+  expect(s.getByText('alt er i orden')).toBeTruthy()
 })
 
 it('et ukendt vaerktoej beholder den RAA form — vi gaetter ikke en krop', async () => {

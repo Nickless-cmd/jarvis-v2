@@ -543,3 +543,37 @@ it('tanker efter et kald bliver i DEN runde — ikke skubbet ud som egne rækker
   expect(s.queryAllByText(/Tænkte i 4s/).length).toBe(1)
   expect(s.queryAllByText(/Tænkte i 5s/).length).toBe(1)
 })
+
+it('tanken ligger EFTER sit eget kald i folden — ikke samlet øverst', async () => {
+  // `foerKald` bærer tankens plads i runden. Uden den blev ALLE tanker tegnet
+  // før alle kald, og en tanke der kom efter et kald stod foran det.
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg', seconds: 3 },
+            { type: 'text', text: 'nu kalder jeg' },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'a.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på det', seconds: 4 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = raekkefoelge(s.toJSON())
+  const kald = r.indexOf('Kørte ls')
+  // Vagt: et forkert label-navn ville give -1, og så målte testen ingenting.
+  expect(kald).toBeGreaterThan(-1)
+  expect(r.indexOf('thinking-summary')).toBeGreaterThan(-1)
+  expect(kald).toBeLessThan(r.indexOf('thinking-summary'))
+})

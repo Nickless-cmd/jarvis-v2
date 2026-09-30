@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8220/15758 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8221/15759 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8220/15758 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5459 | 10714 | 50% |
+| `core.services` | 5460 | 10715 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1912,7 +1912,7 @@ Generated from source. 8220/15758 functions/methods documented (52%). The list b
 - `core/services/tool_result_store.py` :: `build_tool_result_reference` (L184)
 - `core/services/tool_result_store.py` :: `cleanup_old_results` (L157)
 - `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L196)
-- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L217)
+- `core/services/tool_result_store.py` :: `render_tool_result_for_prompt` (L253)
 - `core/services/tool_result_store.py` :: `save_tool_result` (L33)
 - `core/services/tool_result_store.py` :: `summarize_result` (L26)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)

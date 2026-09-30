@@ -444,16 +444,17 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 | function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L157) |
 | function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L184) |
 | function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L196) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L217) |
-| function | `_redact` | `(tekst)` | Maskér hemmeligheder i METADATA. Kaster aldrig. | [src](../../../core/services/tool_result_store.py#L267) |
-| function | `_redigeret` | `(args)` | Argumenterne som de skal LIGGE PAA DISKEN. | [src](../../../core/services/tool_result_store.py#L276) |
-| function | `_digest` | `(text)` | sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op. | [src](../../../core/services/tool_result_store.py#L299) |
-| function | `_sikr_privat_rod` | `()` | Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et | [src](../../../core/services/tool_result_store.py#L304) |
-| class | `UnsafeResultId` | `` | `result_id` peger uden for storen — eller kunne gøre det. | [src](../../../core/services/tool_result_store.py#L320) |
-| function | `_result_path` | `(result_id)` | Stien til ét resultat. Afviser alt der kan pege ud af roden. | [src](../../../core/services/tool_result_store.py#L324) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L347) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L355) |
-| function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L370) |
+| function | `_hoved_og_hale` | `(tekst, budget)` | Behold begyndelsen OG slutningen, og sig hvor meget der er udeladt. | [src](../../../core/services/tool_result_store.py#L236) |
+| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L253) |
+| function | `_redact` | `(tekst)` | Maskér hemmeligheder i METADATA. Kaster aldrig. | [src](../../../core/services/tool_result_store.py#L303) |
+| function | `_redigeret` | `(args)` | Argumenterne som de skal LIGGE PAA DISKEN. | [src](../../../core/services/tool_result_store.py#L312) |
+| function | `_digest` | `(text)` | sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op. | [src](../../../core/services/tool_result_store.py#L335) |
+| function | `_sikr_privat_rod` | `()` | Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et | [src](../../../core/services/tool_result_store.py#L340) |
+| class | `UnsafeResultId` | `` | `result_id` peger uden for storen — eller kunne gøre det. | [src](../../../core/services/tool_result_store.py#L356) |
+| function | `_result_path` | `(result_id)` | Stien til ét resultat. Afviser alt der kan pege ud af roden. | [src](../../../core/services/tool_result_store.py#L360) |
+| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L383) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L391) |
+| function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L406) |
 
 ## `core/services/tool_round_label.py`
 _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._

@@ -514,11 +514,17 @@ describe('animationer under streaming maler ikke hele samtalen (19/9-2026)', () 
     expect(kf).toContain('opacity')
     expect(kf).not.toMatch(/box-shadow|background|width|height|filter/)
   })
-  it('shimmer har sit eget lag, og sweepet er uændret (2.25s)', () => {
+  it('shimmer har sit eget lag, og kører DSH-rytmen', () => {
+    // 2,25 s var Claude Desktops tal, målt 1:1. Bjørn valgte DSH's rytme
+    // 30/9-2026 — «jeg vil gerne have der shimmer» — så pinnen flytter med
+    // vilje, ikke ved drift: 300 ms opstart, 1 s sweep, 500 ms hvile.
     const r = app.match(/^\.shimmer \{([^}]*)\}/m)?.[1] ?? ''
     expect(r).toContain('will-change: transform')
     expect(r).toContain('contain: paint')
-    expect(r).toContain('shimmer-sweep 2.25s linear infinite')
+    expect(r).toContain('shimmer-sweep 1.5s linear infinite 300ms')
+    // 15° fra lodret. Båndene står vinkelret på gradientens retning, så
+    // 90deg er lodret og 105deg er de 15°.
+    expect(r).toMatch(/linear-gradient\(105deg/)
   })
 })
 

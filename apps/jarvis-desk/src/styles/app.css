@@ -1629,19 +1629,54 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Liveness-indikator */
 /* Levende verbum: lysbølge gennem ordet + bevægende prikker */
 .live-verb { display: inline-flex; align-items: baseline; gap: 1px; }
+/* Rytmen er DSH's fra 30/9-2026 (Bjoern: «jeg vil gerne have der shimmer»):
+   300 ms opstart, 1 s sweep, 500 ms hvile. Vores egen var ét kontinuert sweep
+   paa 2,25 s. Forskellen er ikke farten: DSH's HAR en pause, saa hvert sweep
+   laeses som en begivenhed i stedet for som en tilstand der bare koerer.
+
+   Haeldningen er 105deg og ikke 100deg. Baandene staar vinkelret paa
+   gradientens retning, saa 90deg giver lodrette baand og 105deg giver de 15°
+   fra lodret DSH bruger.
+
+   NULSTILLINGEN — og hvad den i virkeligheden var.
+   Bjoern: «shimmer koerer igennem, starter forfra og resetter i andet forsoeg».
+   Foerste forsoeg flyttede start og slut til 130 % og -30 %, hvor lysbaandet
+   lige akkurat er ude i hver ende. Det hjalp ikke: «nulstiller stadig i
+   teksten, bar rykket lidt».
+
+   Han havde ret, og aarsagen var ikke tallene. `background-repeat` er som
+   standard `repeat`, og med `background-size: 220%` var fladen BROLAGT med
+   gradienten — et lysbaand hver 2,2 elementbredder. Der var aldrig ét baand
+   at faa ud af teksten; naeste brosten var altid paa vej ind. At flytte start
+   og slut flyttede bare hvor nulstillingen ramte.
+
+   Derfor: `no-repeat` og ÉT felt. Det ligger uden for teksten i begge ender,
+   og `background-color` maler grundfarven der hvor feltet ikke er — samme
+   `--fg-3`, saa overgangen ikke kan ses.
+
+   Geometrien er nu triviel: feltet er 50 % af bredden, saa
+   `background-position` foerer det fra -100 % (helt ude til venstre) til
+   200 % (helt ude til hoejre). Ingen brolaegning, ét baand, én vej. */
 .shimmer {
-  background: linear-gradient(100deg, var(--fg-3) 30%, #eafff3 50%, var(--fg-3) 70%);
-  background-size: 220% 100%;
+  background-color: var(--fg-3);
+  background-image: linear-gradient(105deg, var(--fg-3) 30%, #eafff3 50%, var(--fg-3) 70%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-  animation: shimmer-sweep 2.25s linear infinite; /* Claude Desktops SHIMMER: 2.25 */
+  animation: shimmer-sweep 1.5s linear infinite 300ms;
   /* background-position kan ikke køre på compositoren, så ordet males om ved
      hver frame. Eget lag: KUN ordet males om, ikke laget med hele samtalen
-     (profileret 19/9-2026: ~40 frames/s under streaming). Selve sweepet er
-     uændret — det er målt 1:1 mod Claude Desktop. */
+     (profileret 19/9-2026: ~40 frames/s under streaming). */
   will-change: transform; contain: paint;
 }
-@keyframes shimmer-sweep { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+/* Sweepet fylder de foerste 66,67 % (1 s af 1,5 s); resten er hvilen, hvor
+   feltet holdes i ro uden for teksten. */
+@keyframes shimmer-sweep {
+  0%     { background-position: -100% 0; }
+  66.67% { background-position: 200% 0; }
+  100%   { background-position: 200% 0; }
+}
 .live-dots { display: inline-flex; align-items: flex-end; gap: 2px; margin-left: 3px; padding-bottom: 1px; }
 .live-dots span {
   width: 3px; height: 3px; border-radius: 50%; background: var(--accent);

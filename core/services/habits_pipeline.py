@@ -27,7 +27,20 @@ from core.runtime.db import connect
 
 logger = logging.getLogger(__name__)
 
-_HABIT_SUGGEST_THRESHOLD = 2  # recurrence_count >= 2 → suggest
+# 2026-10-01: tærsklen stod på 2 — «anden gang en signatur ses» → forslag.
+# Det gav 6.773 forslag på 5½ måned, alle pending, ingen nogensinde læst
+# (accept_suggestion har nul kaldesteder). Bjørn siger «kør» to gange og får
+# et automations-forslag. Et forslag uden forbruger er ikke en indsigt, det er
+# støj i en tabel.
+#
+# Hævet til 8: højt nok til at tilfældig gentagelse ikke fyrer, lavt nok til
+# at et ægte mønster stadig når frem. Dette er den BILLIGE halvdel af rettelsen.
+# Den ægte rettelse er (a) at filtrere autonome kørsler fra — i dag registreres
+# drømme-daemonens eget prompt som Bjørns vane (838 forekomster, top-1) — og
+# (b) at tælle gentagelser på tværs af DAGE, ikke rå forekomster, så «5 gange
+# på en aften» ikke ligner «5 gange på en måned». Begge kræver et kaldested-
+# fix hhv. skema-ændring og ligger som separate forslag.
+_HABIT_SUGGEST_THRESHOLD = 8  # recurrence_count >= 8 → suggest
 _FRICTION_SUGGEST_THRESHOLD = 0.75  # inefficiency_score >= 0.75 → suggest
 
 

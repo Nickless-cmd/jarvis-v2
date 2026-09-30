@@ -78,3 +78,54 @@ def test_full_catalog_under_cap_returned_unchanged():
     tools = [{"function": {"name": f"t{i}"}} for i in range(10)]
     out = ctp.select_tools_for_copilot(tools, user_message="anything", max_tools=128)
     assert _names(out) == _names(tools)
+
+
+# ── De fire hyppigst hentede skal HAVE en plads (30/9-2026) ──────────────────
+#
+# Alle fire stod allerede i TIER_1_ALWAYS_ON og blev alligevel hentet 76 gange
+# paa 30 dage, fordi Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+# ankomstraekkefoelge — 77 af de 118 naaede aldrig arrayet. Medlemskab af
+# Tier 1 er ingen garanti; `REQUIRED_LAZY_TOOL_NAMES` er.
+#
+# Hver hentning koster ~8.704 tokens (maalt mod DeepSeeks API), fordi
+# vaerktoejsarrayet ligger foer hele samtalen i praefikset.
+
+_HYPPIGST_HENTEDE = (
+    "send_discord_dm",          # 28 hentninger paa 30 dage
+    "record_sensory_memory",    # 18 — stod ikke engang i Tier 1
+    "send_webchat_message",     # 15
+    "recall_sensory_memories",  # 15
+)
+
+
+def test_de_hyppigst_hentede_naar_faktisk_arrayet():
+    """Ikke «staar i Tier 1» — men «bliver rent faktisk sendt»."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    valgt = ctp.select_tools_for_visible(get_tool_definitions(), user_message="", session_id=None)
+    navne = {(d.get("function") or d).get("name") for d in valgt}
+    mangler = [n for n in _HYPPIGST_HENTEDE if n not in navne]
+    assert not mangler, f"hentes ofte, men sendes ikke: {mangler}"
+
+
+def test_byttet_sproenger_ikke_loftet():
+    """Kontrollen. Uden den kunne testen ovenfor bestaa ved at sende ALT —
+    og et array der vokser er praecis det problem de fire skulle loese."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    valgt = ctp.select_tools_for_visible(get_tool_definitions(), user_message="", session_id=None)
+    assert len(valgt) == ctp.VISIBLE_MAX_TOOLS
+
+
+def test_escape_vejene_overlever_byttet():
+    """Begge veje ud til de ~320 oevrige skal blive: `load_more_tools` finder
+    dem, `call_loaded_tool` kalder dem uden at roere arrayet."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    navne = {(d.get("function") or d).get("name")
+             for d in ctp.select_tools_for_visible(get_tool_definitions(),
+                                                   user_message="", session_id=None)}
+    assert {"load_more_tools", "call_loaded_tool"} <= navne

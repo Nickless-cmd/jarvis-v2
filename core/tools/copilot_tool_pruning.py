@@ -37,6 +37,25 @@ VISIBLE_MAX_TOOLS = 48
 # fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
+    # ── De fire hyppigst HENTEDE (30/9-2026, maalt over 30 dage) ───────────
+    #
+    # Alle fire stod allerede i TIER_1_ALWAYS_ON — og blev alligevel hentet
+    # 76 gange, fordi Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+    # ankomstraekkefoelge: 77 af de 118 naaede aldrig arrayet. Medlemskab af
+    # Tier 1 er altsaa ingen garanti; denne liste er.
+    #
+    # Prisen for at hente dem er maalt tre gange: én ny definition i arrayet
+    # koster 8.704 tokens mod DeepSeeks API, fordi arrayet ligger foer hele
+    # samtalen i praefikset. 76 hentninger paa 30 dage er ~660.000 tokens.
+    #
+    #   send_discord_dm          28 hentninger
+    #   record_sensory_memory    18   (stod ikke engang i Tier 1)
+    #   send_webchat_message     15
+    #   recall_sensory_memories  15
+    "send_discord_dm",
+    "record_sensory_memory",
+    "send_webchat_message",
+    "recall_sensory_memories",
     # Vejen til de hentede vaerktoejer (30/9-2026). Uden den i arrayet kan et
     # hentet vaerktoej ikke kaldes — DeepSeek afviser et vaerktoej der ikke er
     # deklareret — og saa er den eneste vej tilbage at flette definitionen ind
@@ -73,6 +92,14 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
 #   python scripts/regenerate_tier1.py [--apply]
 #
 # Trimmed from 185 -> 103 tools on 2026-04-29 (saved ~7,500 tokens / call).
+# Fjernet 30/9-2026 efter maaling: `geolocation_lookup`, `geocode`,
+# `reverse_geocode` og `nearby_search` blev kaldt **0 gange** paa 30 dage ud af
+# 95.574 vaerktoejskald, men fyldte fire af de 48 pladser i HVER tur. De fire
+# pladser er givet til de fire hyppigst HENTEDE (se REQUIRED_LAZY_TOOL_NAMES).
+# Geo-vaerktoejerne er ikke vaek — de naas gennem `load_more_tools` naar de
+# faktisk skal bruges, og det er praecis den handel den mekanisme findes til.
+# I alt stod 21 af de 48 sendte vaerktoejer ubrugte i 30 dage; disse fire er de
+# foerste der gav plads, ikke de sidste der kan.
 TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "adjust_mood", "analyze_image", "approve_proposal", "bash",
     "bash_session_open", "bash_session_run", "browser_click", "browser_navigate",
@@ -82,8 +109,8 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "daemon_status", "db_query", "decision_create", "decision_list",
     "deep_analyze", "discord_channel", "discord_status", "edit_file",
     "edit_task", "eventbus_recent", "find_files", "get_news",
-    "get_weather", "geolocation_lookup", "geocode", "reverse_geocode",
-    "route_directions", "nearby_search",
+    "get_weather",
+    "route_directions",
     "git_diff", "git_log", "git_status",
     "goal_create", "goal_list", "heartbeat_status", "hf_vision_analyze",
     "home_assistant", "internal_api", "list_agents", "list_events",

@@ -41,7 +41,14 @@ logger = logging.getLogger(__name__)
 # på en aften» ikke ligner «5 gange på en måned». Begge kræver et kaldested-
 # fix hhv. skema-ændring og ligger som separate forslag.
 _HABIT_SUGGEST_THRESHOLD = 8  # recurrence_count >= 8 → suggest
-_FRICTION_SUGGEST_THRESHOLD = 0.75  # inefficiency_score >= 0.75 → suggest
+# 2026-10-01 (fase 3): scoren klippes til max 1.0 i _upsert_friction, så
+# tærsklen KAN ikke hæves over 1.0 — den ville så aldrig fyre. Tærsklen står
+# derfor på loftet, og SKALAEN bestemmer hvornår loftet nås: repetition/8.0
+# rammer 1.0 ved 8. gentagelse — samme tærskel som habit-vejen. Begge veje
+# fodres af SAMME besked i record_habit_signal, så før gav ét mønster to
+# forslag (habit ved 8, friction ved 3).
+_FRICTION_SCALE = 8.0
+_FRICTION_SUGGEST_THRESHOLD = 1.0  # inefficiency_score >= 1.0 → suggest (= 8 gentagelser)
 
 
 def _now_iso() -> str:
@@ -159,7 +166,7 @@ def _upsert_friction(task_signature: str, now: str) -> tuple[str, int, float]:
         else:
             fid = str(row["friction_id"])
             repetition = int(row["repetition_count"] or 0) + 1
-        ineff = min(1.0, max(0.1, repetition / 3.0))
+        ineff = min(1.0, max(0.1, repetition / _FRICTION_SCALE))
         conn.execute(
             """
             INSERT INTO cognitive_friction_signals

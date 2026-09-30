@@ -5,9 +5,13 @@ Tilføjet 2026-10-01 ifm. at forslags-tærsklen blev hævet 2→8
 5½ måned, alle `pending`, ingen nogensinde læst — `accept_suggestion`
 havde nul kaldesteder i hele repoet.
 
-Testen pinner at tærsklen faktisk gater, så den ikke kan skride tilbage
-uden at en test ser det. Den dokumenterer OGSÅ at friction-vejen har sin
-egen, lavere tærskel — så man ikke tror loftet løste hele støjen.
+Fase 3 (samme dag): OGSÅ friction-vejen var for lav — scoren var
+`repetition / 3.0` og tærsklen 0.75, så den fyrede ved 3. gentagelse.
+Da begge veje fodres af samme besked, gav ét mønster to forslag. Nu
+rammer begge tærskler 8 gentagelser.
+
+Testen pinner at tærsklerne faktisk gater, så de ikke kan skride tilbage
+uden at en test ser det.
 """
 from __future__ import annotations
 
@@ -73,18 +77,44 @@ def test_habit_forslag_ved_taersklen(habits_db):
     assert len(oprettede) == 1
 
 
-def test_friction_vejen_har_sin_egen_lavere_taerskel(habits_db):
-    """Dokumenterer at habit-loftet (8) IKKE stopper alle forslag.
+def test_friction_vejen_fyrer_ved_samme_taerskel_som_habit(habits_db):
+    """Fase 3 (2026-10-01): friction fyrer ved 8 gentagelser — ikke ved 3.
 
-    Friction-vejen fyrer når `inefficiency_score >= 0.75`, og scoren er
-    `repetition / 3.0` — altså ved 3. gentagelse. Det er værd at vide, før
-    man tror tærskel-ændringen fjernede hele støjen.
+    Før: scoren var `repetition / 3.0` klippet til max 1.0, og tærsklen stod
+    på 0.75 — så den fyrede ved 3. gentagelse. Da begge veje fodres af SAMME
+    besked i `record_habit_signal`, gav ét mønster to forslag.
     """
-    for _ in range(3):
+    # 7 gentagelser: scoren er 7/8 = 0.875 < 1.0 → intet friction-forslag.
+    for _ in range(7):
         habits_db.record_habit_signal(message="friktions-besked")
+    forslag = habits_db.list_suggestions(status="pending")
+    assert [s for s in forslag if s["source_type"] == "friction"] == []
+
+    # 8. gentagelse rammer loftet 1.0 → præcis ét friction-forslag.
+    habits_db.record_habit_signal(message="friktions-besked")
     forslag = habits_db.list_suggestions(status="pending")
     friction_forslag = [s for s in forslag if s["source_type"] == "friction"]
     assert len(friction_forslag) == 1
+
+
+def test_friction_skalaen_rammer_loftet_ved_otte(habits_db):
+    """Pin at loftet nås ved 8.
+
+    Fælden denne test vogter imod: scoren er klippet til max 1.0, så en
+    fremtidig 'hæv tærsklen til 2.0'-rettelse ville gøre den UOPNÅELIG og
+    friction-vejen ville tie for evigt. Skalaen skal ændres, ikke tærsklen.
+    """
+    assert habits_db._FRICTION_SCALE == 8.0
+    assert habits_db._FRICTION_SUGGEST_THRESHOLD <= 1.0
+
+    habits_db._ensure_tables()
+    sig = habits_db._normalize_signature("skala-test")
+    fid, repetition, ineff = habits_db._upsert_friction(sig, habits_db._now_iso())
+    assert (repetition, ineff) == (1, 0.125)
+    for _ in range(7):
+        fid, repetition, ineff = habits_db._upsert_friction(sig, habits_db._now_iso())
+    assert repetition == 8
+    assert ineff == 1.0
 
 
 def test_accept_og_reject_aendrer_status(habits_db):
@@ -99,7 +129,7 @@ def test_accept_og_reject_aendrer_status(habits_db):
     assert accepteret is not None
     assert accepteret["status"] == "accepted"
     # Det accepterede forslag er ude af pending-køen. Der kan ligge ANDRE —
-    # friction-vejen har sin egen, lavere tærskel og fyrer allerede ved 3.
+    # friction-vejen har sin egen kilde og fyrer nu ved samme tærskel (8).
     pending_ids = [s["id"] for s in habits_db.list_suggestions(status="pending")]
     assert sid not in pending_ids
 

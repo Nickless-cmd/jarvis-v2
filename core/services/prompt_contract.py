@@ -3200,6 +3200,22 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("tool catalog (compact, tail)")
     except Exception:
         pass
+    # Myldretids-badge (30/9-2026, på Bjørns opfordring): DeepSeek koster det
+    # DOBBELTE i myldretiden (UTC 01-04 + 06-10, man-fre). Badgen er TAVS i
+    # off-peak, varsler 30 min før vinduet, og er stor mens det står åbent.
+    # Den blokerer intet — se core/services/peak_hours.py for hvorfor.
+    # Ligger lige før time-pin'en, så de to tids-blokke læses sammen.
+    try:
+        from core.services.peak_hours import peak_badge as _peak_badge
+        _peak_text = _peak_badge()
+        if _peak_text:
+            _dyn_tail.append(_peak_text)
+            derived_inputs.append("peak-hours badge (tail)")
+    except Exception as _peak_exc:  # badgen må ALDRIG kunne vælte en tur
+        import logging as _peak_logging
+        _peak_logging.getLogger(__name__).warning(
+            "peak_hours: badge sprang over: %s", _peak_exc
+        )
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     # Matrix-stemmerne er flyttet til en ÆGTE awareness-sektion (se prio 6 ovenfor).

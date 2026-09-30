@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15759 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15768 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,17 +46,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15759 functions/
 - [`core.services.15`](core.services.15.md) — `jarvis_brain` … `mcp_registry`
 - [`core.services.16`](core.services.16.md) — `mcp_trust` … `mood_oscillator`
 - [`core.services.17`](core.services.17.md) — `mood_regulator_subscriber` … `paid_lane_guard`
-- [`core.services.18`](core.services.18.md) — `paradox_tracker` … `procedure_bank_pipeline`
-- [`core.services.19`](core.services.19.md) — `process_identity` … `quota_store`
-- [`core.services.20`](core.services.20.md) — `r2_5_blocking_gate` … `resonance_decay`
-- [`core.services.21`](core.services.21.md) — `retention` … `scheduled_job_windows`
-- [`core.services.22`](core.services.22.md) — `scheduled_task_runner` … `sensory_archive`
-- [`core.services.23`](core.services.23.md) — `sensory_perception_bridge` … `simple_tool_executor`
-- [`core.services.24`](core.services.24.md) — `skill_autosurface` … `temporal_depth`
-- [`core.services.25`](core.services.25.md) — `temporal_narrative` … `totp_verifier`
-- [`core.services.26`](core.services.26.md) — `truth_gate_v2` … `visible_model_prompt`
-- [`core.services.27`](core.services.27.md) — `visible_model_sse` … `weighted_slot_health`
-- [`core.services.28`](core.services.28.md) — `witness_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `paradox_tracker` … `procedure_bank`
+- [`core.services.19`](core.services.19.md) — `procedure_bank_pipeline` … `query_language_bridge`
+- [`core.services.20`](core.services.20.md) — `quota_store` … `research_store`
+- [`core.services.21`](core.services.21.md) — `resonance_decay` … `rupture_repair`
+- [`core.services.22`](core.services.22.md) — `scheduled_job_windows` … `semantic_memory`
+- [`core.services.23`](core.services.23.md) — `sensory_archive` … `silence_patterns`
+- [`core.services.24`](core.services.24.md) — `simple_tool_executor` … `temporal_context`
+- [`core.services.25`](core.services.25.md) — `temporal_depth` … `tool_world_change`
+- [`core.services.26`](core.services.26.md) — `totp_verifier` … `visible_model_ollama`
+- [`core.services.27`](core.services.27.md) — `visible_model_prompt` … `weekly_manifest`
+- [`core.services.28`](core.services.28.md) — `weighted_slot_health` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

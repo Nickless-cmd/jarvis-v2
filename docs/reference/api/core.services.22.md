@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_job_windows.py`
+_Scheduled Job Windows — time-window batch scheduling with provider preferences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L33) |
+| function | `_load` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L37) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/scheduled_job_windows.py#L53) |
+| function | `register_window` | `(*, name, start_hour, end_hour, max_requests=…, allowed_providers=…, prefer_free_first=…, active=…)` | Register a scheduled window. Hours in local time. | [src](../../../core/services/scheduled_job_windows.py#L65) |
+| function | `set_window_active` | `(window_id, active)` | — | [src](../../../core/services/scheduled_job_windows.py#L103) |
+| function | `is_inside_window` | `(now, start_hour, end_hour)` | Supports wraparound (end_hour <= start_hour means crosses midnight). | [src](../../../core/services/scheduled_job_windows.py#L113) |
+| function | `current_window_day_key` | `(now, start_hour)` | Generate a unique key for (window, day) — e.g., '2026-04-20-22'. | [src](../../../core/services/scheduled_job_windows.py#L124) |
+| function | `_already_fired` | `(history, window_id, day_key)` | — | [src](../../../core/services/scheduled_job_windows.py#L141) |
+| function | `tick_windows` | `(*, now=…, callback=…)` | Evaluate all windows. For each window currently inside and not-yet-fired | [src](../../../core/services/scheduled_job_windows.py#L148) |
+| function | `list_windows` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L194) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — evaluates windows, no-op when not inside any. | [src](../../../core/services/scheduled_job_windows.py#L198) |
+| function | `build_scheduled_job_windows_surface` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L204) |
+| function | `_surface_summary` | `(windows, active_now, history)` | — | [src](../../../core/services/scheduled_job_windows.py#L228) |
+
 ## `core/services/scheduled_task_runner.py`
 _Scheduled task dispatcher — binds workspace_context before firing._
 
@@ -763,27 +782,4 @@ _Semantic memory — unified embedding + cosine search across memory surfaces._
 | function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L541) |
 | function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L550) |
 | function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L563) |
-
-## `core/services/sensory_archive.py`
-_Sansernes Arkiv — service layer for sensory memories._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_mood_from_content` | `(content, modality)` | Auto-extract a short Danish mood tone from content using keyword matching. | [src](../../../core/services/sensory_archive.py#L29) |
-| function | `_uden_raa_tanke` | `(content)` | Fjern model-raesonnement foer det bliver til et sanseindtryk. | [src](../../../core/services/sensory_archive.py#L106) |
-| function | `_record` | `(modality, content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L140) |
-| function | `record_visual` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L215) |
-| function | `record_audio` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L224) |
-| function | `record_atmosphere` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L233) |
-| function | `record_mixed` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L242) |
-| function | `list_recent` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/services/sensory_archive.py#L251) |
-| function | `search` | `(query, *, modality=…, limit=…)` | — | [src](../../../core/services/sensory_archive.py#L263) |
-| function | `get` | `(memory_id)` | — | [src](../../../core/services/sensory_archive.py#L272) |
-| function | `count` | `(*, modality=…)` | — | [src](../../../core/services/sensory_archive.py#L276) |
-| function | `er_kvittering` | `(content)` | Er dette kvitteringen for at der blev sanset — ikke et indtryk? | [src](../../../core/services/sensory_archive.py#L306) |
-| function | `_kvittering_mode` | `()` | Hvornår en kvittering er en sansning: skip | always. | [src](../../../core/services/sensory_archive.py#L321) |
-| function | `skal_arkiveres` | `(content)` | Skal denne tekst arkiveres som en sansning? | [src](../../../core/services/sensory_archive.py#L334) |
-| function | `er_maettet` | `(content)` | Er det her et indtryk, eller bare kvitteringen for at der blev sanset? | [src](../../../core/services/sensory_archive.py#L347) |
-| function | `seneste_maettede` | `(*, modality=…, kig=…)` | Nyeste post der faktisk beskriver noget — ellers None. | [src](../../../core/services/sensory_archive.py#L356) |
-| function | `summarize_for_context` | `(limit=…)` | Return a compact summary usable as surface/context injection. | [src](../../../core/services/sensory_archive.py#L372) |
 

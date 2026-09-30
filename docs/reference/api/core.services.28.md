@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/weighted_slot_health.py`
+_Quota and adaptive health calculations for cheap-lane candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_account_block_key` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L13) |
+| function | `record_account_block` | `(provider, auth_profile, code, retry_after_seconds)` | Pause every model on a profile when the provider rejects that account. | [src](../../../core/services/weighted_slot_health.py#L17) |
+| function | `clear_account_block` | `(provider, auth_profile)` | A real success proves that the account can be used again. | [src](../../../core/services/weighted_slot_health.py#L32) |
+| function | `_account_block_record` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L39) |
+| function | `_account_block_until` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L46) |
+| function | `active_account_block` | `(provider, auth_profile, now_epoch)` | Return the active account cooldown and its cause for telemetry. | [src](../../../core/services/weighted_slot_health.py#L50) |
+| function | `account_block_active` | `(provider, auth_profile, now_epoch)` | Whether this provider account is in its temporary shared cooldown. | [src](../../../core/services/weighted_slot_health.py#L64) |
+| function | `quota_snapshot` | `(candidate, *, get_state, count_invocations, decode_metadata, cache_prefix, cache_ttl_seconds, reset_hours)` | — | [src](../../../core/services/weighted_slot_health.py#L69) |
+| function | `adaptive_snapshot` | `(candidate, *, state, get_state, decode_metadata)` | — | [src](../../../core/services/weighted_slot_health.py#L145) |
+| function | `latency_rank_multiplier` | `(avg_latency_ms, success_count)` | Bias small cheap tasks toward proven fast models without excluding slow ones. | [src](../../../core/services/weighted_slot_health.py#L186) |
+| function | `decode_state_metadata` | `(state)` | — | [src](../../../core/services/weighted_slot_health.py#L193) |
+| function | `rolling_average` | `(*, current_avg, current_count, new_value)` | — | [src](../../../core/services/weighted_slot_health.py#L204) |
+| function | `normalize_probe_text` | `(value)` | — | [src](../../../core/services/weighted_slot_health.py#L210) |
+| function | `smoke_quality_score` | `(*, expected, actual)` | — | [src](../../../core/services/weighted_slot_health.py#L215) |
+
 ## `core/services/witness_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |

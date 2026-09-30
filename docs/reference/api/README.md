@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15724 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15734 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,10 +53,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15724 functions/
 - [`core.services.22`](core.services.22.md) — `secret_redaction` … `sensory_source`
 - [`core.services.23`](core.services.23.md) — `session_boot_reconciler` … `skill_contract_registry`
 - [`core.services.24`](core.services.24.md) — `skill_engine` … `temporal_recurrence_signal_tracking`
-- [`core.services.25`](core.services.25.md) — `temporal_rhythm` … `turn_tail_timing`
-- [`core.services.26`](core.services.26.md) — `turn_trace` … `visible_run_firstpass`
-- [`core.services.27`](core.services.27.md) — `visible_run_interruption` … `world_facts`
-- [`core.services.28`](core.services.28.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `temporal_rhythm` … `turn_changelog`
+- [`core.services.26`](core.services.26.md) — `turn_tail_timing` … `visible_run_abandonment`
+- [`core.services.27`](core.services.27.md) — `visible_run_firstpass` … `workspace_trust`
+- [`core.services.28`](core.services.28.md) — `world_facts` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -65,8 +65,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15724 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `load_more_tools`
 - [`core.tools.02`](core.tools.02.md) — `mail_tools` … `simple_tools_enforcement`
-- [`core.tools.03`](core.tools.03.md) — `simple_tools_explore` … `workspace_capabilities_verdict`
-- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_wsio` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `simple_tools_explore` … `workspace_capabilities_results`
+- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_verdict` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

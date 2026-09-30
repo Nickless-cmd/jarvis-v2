@@ -363,6 +363,13 @@ _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 | function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
 | function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
 
+## `core/tools/think_language_tools.py`
+_Værktøj: skift tænke-sprog uden genstart (killswitch, 30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_think_language` | `(args)` | — | [src](../../../core/tools/think_language_tools.py#L17) |
+
 ## `core/tools/tool_call_observation.py`
 _Alt hvad der KUN observerer et vaerktoejskald — efter det er kaldt._
 
@@ -641,16 +648,4 @@ _Rene result-formende helpers for workspace-capabilities._
 | function | `_preview_text` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L85) |
 | function | `_result_preview` | `(result)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L92) |
 | function | `_content_fingerprint` | `(text)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L106) |
-
-## `core/tools/workspace_capabilities_verdict.py`
-_Approval-verdicts + proposal/execution-content for mutating/sudo exec._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_approved_mutating_exec_verdict` | `(classification)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L31) |
-| function | `_approved_sudo_exec_verdict` | `(classification, *, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L76) |
-| function | `_mutating_exec_proposal_content` | `(*, command_text, command_source, classification)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L164) |
-| function | `_mutating_exec_execution_content` | `(*, command_text, command_source, classification, exit_code, output_text)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L215) |
-| function | `_sudo_exec_execution_content` | `(*, command_text, command_source, classification, exit_code, output_text)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L249) |
-| function | `_resolve_target_path_for_sudo_exec` | `(workspace_dir, target)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L284) |
 

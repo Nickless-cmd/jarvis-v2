@@ -96,6 +96,17 @@ _Batch-tag untagged skills for C2 — Skills meta-tags._
 | function | `update_skill_md` | `(path)` | Add tags to SKILL.md frontmatter. Returns True if changed. | [src](../../../scripts/tag_untagged_skills.py#L101) |
 | function | `main` | `()` | — | [src](../../../scripts/tag_untagged_skills.py#L155) |
 
+## `scripts/think_language_ab.py`
+_Tænke-sprog A/B — snapshot og sammenligning (30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_roundtime_proxy` | `(conn, lane, since, until)` | Median afstand mellem på hinanden følgende runder i samme run_id. | [src](../../../scripts/think_language_ab.py#L58) |
+| function | `snapshot` | `(since, until=…)` | Tag et snapshot af alle laner i vinduet [since, until). | [src](../../../scripts/think_language_ab.py#L88) |
+| function | `_fmt` | `(snap)` | — | [src](../../../scripts/think_language_ab.py#L141) |
+| function | `compare` | `(a, b)` | — | [src](../../../scripts/think_language_ab.py#L161) |
+| function | `main` | `()` | — | [src](../../../scripts/think_language_ab.py#L185) |
+
 ## `scripts/tool_result_cleanup.py`
 
 | Kind | Name | Signature | Summary | Source |

@@ -118,6 +118,16 @@ _Active theory-of-mind engine for Jarvis._
 | function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
 | function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
 
+## `core/services/think_language.py`
+_Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current` | `()` | Aktivt tænke-sprog. Ukendt værdi eller fejl → 'da' (fail-soft). | [src](../../../core/services/think_language.py#L53) |
+| function | `is_english` | `()` | True når tænkningen skal føres på engelsk. | [src](../../../core/services/think_language.py#L63) |
+| function | `set_language` | `(lang)` | Sæt tænke-sprog. Ukendt værdi afvises — returnerer det aktive sprog. | [src](../../../core/services/think_language.py#L68) |
+| function | `directive` | `()` | Instruktionen til prompt-halen — tom streng når dansk er aktivt. | [src](../../../core/services/think_language.py#L77) |
+
 ## `core/services/thought_action_proposal_daemon.py`
 _Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
 
@@ -542,14 +552,4 @@ _End-of-turn changelog — auto-summarize what this turn changed._
 | function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
 | function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
 | function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
-
-## `core/services/turn_tail_timing.py`
-_Hvor bliver sekunderne af EFTER svaret er skrevet færdigt?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start` | `(run_id)` | — | [src](../../../core/services/turn_tail_timing.py#L42) |
-| function | `mark` | `(run_id, navn)` | Notér at ét led er færdigt. Gratis hvis `start` aldrig blev kaldt. | [src](../../../core/services/turn_tail_timing.py#L57) |
-| function | `slut` | `(run_id)` | Afslut målingen. Returnerer halens længde i sekunder (0 hvis ukendt). | [src](../../../core/services/turn_tail_timing.py#L67) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/turn_tail_timing.py#L87) |
 

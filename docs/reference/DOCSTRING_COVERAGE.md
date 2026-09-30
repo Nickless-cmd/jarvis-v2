@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8200/15724 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8206/15734 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,24 +25,24 @@ Generated from source. 8200/15724 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5444 | 10698 | 50% |
+| `core.services` | 5448 | 10702 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 500 | 1021 | 48% |
+| `core.tools` | 500 | 1022 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 224 | 496 | 45% |
+| `scripts` | 226 | 501 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2227)
+## Undocumented public functions (2229)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1439,13 +1439,13 @@ Generated from source. 8200/15724 functions/methods documented (52%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3479)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3327)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3616)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3493)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3341)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3630)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4852)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4866)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -2250,6 +2250,8 @@ Generated from source. 8200/15724 functions/methods documented (52%). The list b
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)
 - `scripts/smoke_test_startup.py` :: `main` (L498)
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
+- `scripts/think_language_ab.py` :: `compare` (L161)
+- `scripts/think_language_ab.py` :: `main` (L185)
 - `scripts/tool_result_cleanup.py` :: `main` (L6)
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)
 - `scripts/user_md_learned_migration.py` :: `main` (L118)

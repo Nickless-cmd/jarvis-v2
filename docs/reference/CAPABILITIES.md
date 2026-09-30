@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-29 — 486 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-30 — 487 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -391,6 +391,7 @@
 | `synthesize_arc` | native | no |
 | `tail_log` | native | no |
 | `test_retry_policy` | native | no |
+| `think_language` | native | no |
 | `tick_quality_summary` | native | no |
 | `todo_add` | native | no |
 | `todo_list` | native | no |

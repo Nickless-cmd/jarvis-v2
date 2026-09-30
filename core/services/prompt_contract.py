@@ -3163,6 +3163,20 @@ def _build_visible_chat_prompt_assembly_impl(
         "tools structured (tool_calls), never inline. Do, don't promise."
     )
     derived_inputs.append("behavioral anchor (user-msg tail, action+epistemic)")
+    # Tænke-sprog-killswitch (30/9-2026). Ligger i HALEN ved siden af
+    # adfærds-ankret — samme grund: det er den plads modellen læser lige før
+    # brugerbeskeden. Tom når dansk kører (standard), så prompten er
+    # byte-identisk med før killswitchen blev bygget: ingen adfærd ændres før
+    # Bjørn tænder den, og der er derfor en ren baseline at måle imod.
+    # Se core/services/think_language.py for A/B-målingen bag (1,87x tokens).
+    try:
+        from core.services.think_language import directive as _think_lang_directive
+        _think_lang = _think_lang_directive()
+        if _think_lang:
+            _dyn_tail.append(_think_lang)
+            derived_inputs.append("thinking language (en)")
+    except Exception:
+        pass
     # End-of-turn save reminder — grouped WITH the behavioral anchor (audit #3,
     # 2026-07-22; moved here from mid-awareness). Unconditional per-turn nudge.
     try:

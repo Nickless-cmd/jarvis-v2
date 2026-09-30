@@ -8,7 +8,7 @@ import { getMessageReasoning } from '../lib/apiClient'
 import { loadFullThinking } from '../lib/fullThinking'
 import { GlidendeTekst } from './GlidendeTekst'
 import { Prikker } from './Prikker'
-import { formatTid } from './InlineToolGroup'
+import { formatTid } from '../lib/arbejdslinje'
 import { tankeFragment } from '../lib/tankeFragment'
 
 /**

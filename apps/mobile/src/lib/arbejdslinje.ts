@@ -149,3 +149,29 @@ export function arbejdslinjeTekst(
   const emne = emneFraDetail(detail)
   return emne ? `${med} ${emne}` : med
 }
+
+/* ══ Tallene i linjen ═════════════════════════════════════════════════════ */
+
+/**
+ * Klokken: «12s», «1m 5s», «1h 2m 3s» (Claude Desktops `BS`).
+ *
+ * Flyttet hertil fra `InlineToolGroup` 30/9-2026, sammen med uret: tal-formen
+ * hører til den linje der viser tallet. Desk har samme regel i `varighed`
+ * (`lib/jobsApi.ts`), blot med `t` for timer — mobilen har altid skrevet `h`,
+ * og det bliver den ved med.
+ */
+export function formatTid(sek: number): string {
+  const s = Math.max(0, Math.floor(sek))
+  const t = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  return t > 0 ? `${t}h ${m}m ${r}s` : m > 0 ? `${m}m ${r}s` : `${r}s`
+}
+
+/**
+ * Kort token-tal: 1234 → «1.2k». Desk's regel, ord for ord
+ * (`LivenessIndicator.tsx`), så de to klienter skriver samme tal ens.
+ */
+export function kortTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}

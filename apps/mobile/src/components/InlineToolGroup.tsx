@@ -7,7 +7,6 @@ import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
 import { DiffArk } from './DiffArk'
 import { Krop } from './Krop'
-import { Prikker } from './Prikker'
 import { ThinkingSummary } from './ThinkingSummary'
 import { kropForResult, kanTegneKrop } from '../lib/krop'
 
@@ -56,9 +55,6 @@ interface Props {
   tanker?: TankeRaekke[]
 }
 
-/** Klokken vises først efter 5 s mens runden kører (kildens `zS`). */
-export const KLOKKE_EFTER_S = 5
-
 /**
  * Hvor meget af et svar der tegnes før det klippes.
  *
@@ -67,15 +63,6 @@ export const KLOKKE_EFTER_S = 5
  * linjer. Klippet siges højt i stedet for at fortie resten.
  */
 export const SVAR_KLIP = 4000
-
-/** Kildens format (`BS`): «12s», «1m 5s», «1h 2m 3s». */
-export function formatTid(sek: number): string {
-  const s = Math.max(0, Math.floor(sek))
-  const t = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  return t > 0 ? `${t}h ${m}m ${r}s` : m > 0 ? `${m}m ${r}s` : `${r}s`
-}
 
 /**
  * Én sammenfoldet linje for en HEL runde værktøjsarbejde — med Claude
@@ -86,10 +73,14 @@ export function formatTid(sek: number): string {
  * - **`</>`** står fast foran linjen, også når runden er færdig (Bjørns
  *   valg 19/9-2026 — Claude Desktop viser den kun mens der arbejdes).
  * - **Labelen** glitrer mens der arbejdes og skifter med kildens overgange.
- * - **Klokken** venter 5 s mens runden kører; en færdig runde viser sit tal.
- * - **Prikker og caret** deler én celle. Telefonen har ingen hover, så
- *   caret'en står altid fremme på en færdig linje — kildens
- *   `[@media(hover:none)]`. Foldet = drejet -90°, åben = lige (150 ms).
+ * - **Klokken og de tre prikker er flyttet til arbejdslinjen** nederst i
+ *   beskeden (Bjørn 30/9-2026). Runden er kort og slukkes undervejs; tal og
+ *   bevægelse hører til den linje der lever hele streamen. Her står kun
+ *   rundens egen dør tilbage — caret'en.
+ * - **Caret'en**: telefonen har ingen hover, så den står altid fremme på en
+ *   færdig linje — kildens `[@media(hover:none)]`. Foldet = drejet -90°,
+ *   åben = lige (150 ms). Mens runden kører vises den ikke: der er endnu
+ *   intet at folde ud.
  * - **Entréen**: kildens 430 ms, hvor de første 30 % er usynlige. Blur og
  *   skala sker i den usynlige del, så det der ses er en forsinket fade — og
  *   den er med. (RN har ingen blur; den ville ikke ses alligevel.)
@@ -109,28 +100,6 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
-
-  // Klokken: fra det øjeblik linjen stod der og arbejdede. Strømmen bærer
-  // ikke kaldets starttid på mobilen; linjen dukker op når kaldet starter.
-  const startet = useRef<number | null>(running ? Date.now() : null)
-  const [slut, setSlut] = useState<number | null>(null)
-  const [nu, setNu] = useState(Date.now())
-  useEffect(() => {
-    if (running) {
-      if (startet.current == null) startet.current = Date.now()
-      setSlut(null)
-      const iv = setInterval(() => setNu(Date.now()), 250)
-      return () => clearInterval(iv)
-    }
-    if (startet.current != null && slut == null) setSlut(Date.now())
-  }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
-  const sek = startet.current == null ? null : ((slut ?? nu) - startet.current) / 1000
-  // «0s» er ikke et tal — det er en runde der blev færdig så hurtigt at der
-  // ikke ER noget at vise. SkillLinjen vægter allerede ved ét sekund
-  // (`sek >= 1` i SkillLinje.tsx:37); her manglede vægnet, så en runde under
-  // et sekund skrev «0s» ud for sit ikon. (Bjørn 29/9-2026: «0s skal væk fra
-  // tool result linjen».)
-  const visSek = sek == null || sek < 1 || (running && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
 
   // Entréen — kun når linjen BEGYNDER at arbejde; en genindlæst tråd skal
   // ikke sende hver linje gennem den.
@@ -179,9 +148,6 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
             <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           </View>
           <LabelSkift tekst={tekst} arbejder={running} style={styles.summary} farve={tokens.color.fg2} fastIkon />
-          {visSek != null ? (
-            <Text style={styles.tid} testID="runde-tid">{formatTid(visSek)}</Text>
-          ) : null}
           {/* Summen i selve linjen — foldet som standard ville tallene ellers
               kun ses af den der folder ud. Et nul vises ikke. */}
           {sum ? (
@@ -190,14 +156,14 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
               {sum.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{sum.fjernet}</Text> : null}
             </View>
           ) : null}
-          {running || expandable ? (
+          {/* Prikkerne er flyttet til arbejdslinjen (Bjørn 30/9-2026), så
+              cellen viser nu KUN rundens dør — og først når runden er
+              færdig, for før det er der intet at folde ud. */}
+          {!running && expandable ? (
             <View style={styles.celle} testID="tool-status-caret">
-              {running ? <Prikker farve={tokens.color.fg2} /> : null}
-              {!running && expandable ? (
-                <Animated.View style={{ transform: [{ rotate: drej.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
-                  <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-                </Animated.View>
-              ) : null}
+              <Animated.View style={{ transform: [{ rotate: drej.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
+                <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+              </Animated.View>
             </View>
           ) : null}
         </View>
@@ -337,9 +303,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   spark: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   summary: { color: tokens.color.fg2, fontSize: 15 },
   // Alt undtagen etiketten staar FAST. Det er dem der viser at der er mere at
-  // se — klokken, +/- og chevronen (Bjørn 30/9-2026) — og de maa ikke skubbes
-  // ud af skaermen naar etiketten er lang. Teksten er den der viger.
-  tid: { color: tokens.color.fg2, fontSize: 13, opacity: 0.65, fontVariant: ['tabular-nums'], flexShrink: 0 },
+  // se — +/- og chevronen (Bjørn 30/9-2026) — og de maa ikke skubbes ud af
+  // skaermen naar etiketten er lang. Teksten er den der viger.
   celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   // Kildens ramme: ½ dp kant, 8 dp hjørner, 4/10/8 dp margen, højst 200 dp.
   ramme: {

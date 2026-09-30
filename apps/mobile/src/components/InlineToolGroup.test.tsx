@@ -114,19 +114,25 @@ it('en tanke EFTER det sidste kald staar til sidst i folden', async () => {
   expect(r.indexOf('Læste a.py')).toBeLessThan(r.indexOf('thinking-summary'))
 })
 
-it('linjen er i nutid mens runden kører — og prikkerne ruller i stedet for «…»', async () => {
-  // Som desk og Claude Desktop: prikkerne er tre bevægelige prikker, ikke tegn
-  // i teksten, så en ellipse i enden ville stå dobbelt.
+it('runde-linjen har hverken prikker eller klokke mens den kører — de er flyttet', async () => {
+  // Bjørn 30/9-2026: de tre prikker og min/sec-tælleren sad i runde-linjen, men
+  // runden slukkes undervejs mens arbejdet fortsætter. Begge hører derfor til
+  // arbejdslinjen nederst nu (se `Arbejdslinje.test.tsx`), og her skal de ikke
+  // længere findes — hverken mens runden kører eller efter.
   const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
   expect(s.getByText('Læser 2 filer')).toBeTruthy()
-  // Skjult for skærmlæsere med vilje (kildens aria-hidden).
-  expect(s.getByTestId('prikker', { includeHiddenElements: true })).toBeTruthy()
+  expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
+  expect(s.queryByTestId('runde-tid')).toBeNull()
 })
 
-it('prikkerne forsvinder og caret\'en står fremme når runden er færdig', async () => {
-  const s = await render(<InlineToolGroup items={[item(), item()]} />)
-  expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
-  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+it('caret\'en kommer FOERST når runden er færdig — mens den kører er der ingen', async () => {
+  // Prikkerne delte cellen med caret'en. Da de flyttede, stod cellen tom mens
+  // runden kørte — og et tomt løfte er værre end ingen dør: chevronen vises
+  // nu kun når der faktisk ER noget at folde ud.
+  const kører = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+  expect(kører.queryByTestId('tool-status-caret')).toBeNull()
+  const færdig = await render(<InlineToolGroup items={[item(), item()]} />)
+  expect(færdig.getByTestId('tool-status-caret')).toBeTruthy()
 })
 
 it('</> står fast — også når runden er færdig (Bjørn 19/9-2026)', async () => {
@@ -187,34 +193,25 @@ it('uden sætning står den mekaniske tekst', async () => {
 })
 
 /**
- * «0s» er ikke et tal (Bjørn 29/9-2026: «0s skal væk fra tool result linjen»).
+ * Klokken er flyttet til arbejdslinjen (Bjørn 30/9-2026).
  *
- * En runde der blev færdig på under et sekund gik gennem `Math.floor(sek)` og
- * skrev «0s» ud for sit ikon. SkillLinjen vægter allerede ved ét sekund
- * (`sek >= 1` i SkillLinje.tsx:37) — det er husets eget skel; her manglede det.
- * Grænsen er ét sekund: derover vises tallet som før.
+ * Runde-linjen bar sin egen min/sec-tæller. Men runden er kort og slukkes
+ * undervejs, mens arbejdet fortsætter — så et tal der forsvinder midt i
+ * arbejdet er værre end ingen tal. Tælleren bor nu i arbejdslinjen nederst i
+ * beskeden, sammen med prikkerne og token-tallet (`Arbejdslinje.test.tsx`).
+ *
+ * Her skal derfor INTET tal stå — hverken mens runden kører eller efter.
+ * «0s»-reglen er væk med den: den fandtes kun fordi klokken stod her.
  */
-it('en runde under ét sekund viser INGEN tid — ikke «0s»', async () => {
-  jest.useFakeTimers()
-  try {
-    const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-    await act(async () => { jest.advanceTimersByTime(400) })
-    await s.rerender(<InlineToolGroup items={[item(), item()]} />)
-    expect(s.queryByTestId('runde-tid')).toBeNull()
-    expect(s.queryByText('0s')).toBeNull()
-  } finally {
-    jest.useRealTimers()
-  }
-})
-
-it('en runde over ét sekund viser tiden som før', async () => {
+it('runde-linjen viser INGEN tid — klokken er flyttet til arbejdslinjen', async () => {
   jest.useFakeTimers()
   try {
     const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
     await act(async () => { jest.advanceTimersByTime(3000) })
     await s.rerender(<InlineToolGroup items={[item(), item()]} />)
-    expect(s.getByTestId('runde-tid')).toBeTruthy()
-    expect(s.getByText('3s')).toBeTruthy()
+    expect(s.queryByTestId('runde-tid')).toBeNull()
+    expect(s.queryByText('3s')).toBeNull()
+    expect(s.queryByText('0s')).toBeNull()
   } finally {
     jest.useRealTimers()
   }
@@ -543,12 +540,15 @@ describe('linjen holder sig inden for skaermen', () => {
     }
   })
 
-  it('klokken, tallene og chevronen staar FAST — de maa ikke skubbes ud', async () => {
+  it('tallene og chevronen staar FAST — de maa ikke skubbes ud', async () => {
     // Det er dem der viser at der er mere at se (Bjørn 30/9-2026: «fordi der
     // bliver vist +/- diff og ikon >»). Etiketten er den der viger.
+    //
+    // Runden er FÆRDIG her: chevronen findes kun da. Prikkerne er flyttet til
+    // arbejdslinjen, og caret'en vises først når der er noget at folde ud.
     const s = await render(<InlineToolGroup items={[
       item({ label: 'x'.repeat(200), diff: { tilfoejet: 3, fjernet: 1 } }),
-      item({ label: 'y', running: true }),
+      item({ label: 'y' }),
     ]} />)
     const vej = vejTil(s.toJSON(), 'tool-spark')
     expect(vej).not.toBeNull()

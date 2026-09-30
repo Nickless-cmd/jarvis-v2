@@ -11,7 +11,7 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup, type TankeRaekke } from './InlineToolGroup'
-import { formatTid } from './InlineToolGroup'
+import { formatTid } from '../lib/arbejdslinje'
 import { TurnHeader } from './TurnHeader'
 import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
@@ -77,6 +77,14 @@ interface MessageListProps {
    * Udeladt eller null = ingen linje; tråden ser ud som før.
    */
   arbejdslinje?: string | null
+  /**
+   * Token-tallet til arbejdslinjen — `usage.input + cacheHit + cacheMiss +
+   * output`, altså HELE konteksten turen bærer og ikke kun svaret.
+   *
+   * Samme fire led som desk summerer (`ChatView.tsx:138`), så de to klienter
+   * viser samme tal for samme tur. Udeladt eller 0 = tallet vises ikke.
+   */
+  arbejdslinjeTokens?: number
   /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
@@ -137,7 +145,7 @@ type Row = (
   | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[] }
   /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
    *  Findes kun mens der streames; rækken tilføjes ikke efter. */
-  | { kind: 'arbejdslinje'; key: string; tekst: string }
+  | { kind: 'arbejdslinje'; key: string; tekst: string; tokens: number }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
   | { kind: 'skill'; key: string; kald: SkillKald }
   /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
@@ -512,7 +520,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, arbejdslinje, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -798,7 +806,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // streamen. Bjørn 29/9-2026: «fra streaming starter til den slutter og
   // så forsvinder igen i bunden af din besked».
   if (working && arbejdslinje) {
-    rows.push({ kind: 'arbejdslinje', key: 'arbejdslinje', tekst: arbejdslinje })
+    rows.push({ kind: 'arbejdslinje', key: 'arbejdslinje', tekst: arbejdslinje, tokens: arbejdslinjeTokens })
   }
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
@@ -928,7 +936,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'nye-beskeder') return <NyeBeskederRow />
         if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
         if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
-        if (item.kind === 'arbejdslinje') return <Arbejdslinje tekst={item.tekst} />
+        if (item.kind === 'arbejdslinje') return <Arbejdslinje tekst={item.tekst} tokens={item.tokens} />
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }

@@ -58,6 +58,33 @@ it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
   expect(s.queryByTestId('image-generation-progress')).toBeNull()
 })
 
+/**
+ * Arbejdslinjens token-tal skal FØRES hele vejen — fra `ChatScreen`s `usage`
+ * gennem rækken og ned i linjen. Uden den kobling ville tallet blive regnet,
+ * sendt og glemt: husets hyppigste fejl, en prop der aldrig når skærmen.
+ *
+ * Bjørn 30/9-2026: «lad os give den token country og min/sec tælleren fra
+ * runde linjen». MUT: fjern `tokens: arbejdslinjeTokens` fra rækken → linjen
+ * faar 0 og skjuler tallet → fanger.
+ */
+it('fører token-tallet ned i arbejdslinjen', async () => {
+  const s = await render(
+    <MessageList messages={[]} blocks={[]} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+  )
+  expect(s.getByTestId('arbejdslinje')).toBeTruthy()
+  expect(s.getByText('45.2k tokens')).toBeTruthy()
+  expect(s.getByText('Kører npm test')).toBeTruthy()
+})
+
+it('tegner INGEN arbejdslinje når streamen er slut', async () => {
+  // Linjen forsvinder med streamen — den skal ikke stå tilbage som en tom
+  // bjælke (Bjørn 29/9-2026). Tallet alene maa ikke holde den i live.
+  const s = await render(
+    <MessageList messages={[]} blocks={[]} working={false} arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+  )
+  expect(s.queryByTestId('arbejdslinje')).toBeNull()
+})
+
 it('viser turn header fra turen starter, før første blok kommer', async () => {
   const s = await render(<MessageList messages={[]} blocks={[]} working />)
   expect(s.getByTestId('turn-header')).toBeTruthy()

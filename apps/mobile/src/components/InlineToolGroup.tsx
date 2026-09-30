@@ -331,12 +331,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacing.sm,
-    paddingVertical: tokens.spacing.sm
+    paddingVertical: tokens.spacing.sm,
+    minWidth: 0
   },
-  spark: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center' },
+  spark: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   summary: { color: tokens.color.fg2, fontSize: 15 },
-  tid: { color: tokens.color.fg2, fontSize: 13, opacity: 0.65, fontVariant: ['tabular-nums'] },
-  celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center' },
+  // Alt undtagen etiketten staar FAST. Det er dem der viser at der er mere at
+  // se — klokken, +/- og chevronen (Bjørn 30/9-2026) — og de maa ikke skubbes
+  // ud af skaermen naar etiketten er lang. Teksten er den der viger.
+  tid: { color: tokens.color.fg2, fontSize: 13, opacity: 0.65, fontVariant: ['tabular-nums'], flexShrink: 0 },
+  celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   // Kildens ramme: ½ dp kant, 8 dp hjørner, 4/10/8 dp margen, højst 200 dp.
   ramme: {
     borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line, borderRadius: 8,
@@ -345,11 +349,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   rammeScroll: { maxHeight: 320 },
   details: { padding: 10, gap: 6 },
-  detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1 },
+  detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1, minWidth: 0 },
   // Trykbar: filen åbner i diff-arket. Understreget svagt — ikke en knap-form.
   detailLink: { color: tokens.color.fg2, textDecorationLine: 'underline', textDecorationColor: tokens.color.line },
   // Tallene står LIGE efter teksten, ikke ude ved kanten.
-  detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
   // Kaldets svar: rå tekst i fast bredde. Rammen er svagere end foldens egen,
   // så man kan se hvor svaret begynder og etiketten slutter.
   svarRamme: {
@@ -360,7 +364,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     color: tokens.color.fg3, fontSize: 12, lineHeight: 17,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
   },
-  tal: { flexDirection: 'row', gap: 6 },
+  tal: { flexDirection: 'row', gap: 6, flexShrink: 0 },
   talTekst: { fontSize: 12.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
   plus: { color: tokens.color.ok },
   minus: { color: tokens.color.error }

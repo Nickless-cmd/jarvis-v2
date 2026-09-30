@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, StyleSheet, Text, View, type TextStyle, type StyleProp } from 'react-native'
+import { Animated, Easing, PixelRatio, StyleSheet, Text, View, type TextStyle, type StyleProp } from 'react-native'
 import Svg, { Defs, G, LinearGradient, Mask, Rect, Stop, Text as SvgText } from 'react-native-svg'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { useTheme } from '../theme/ThemeContext'
@@ -27,8 +27,20 @@ export function GlidendeTekst({
   const animer = aktiv && !reduced && maal.width > 0 && maal.height > 0
   const lys = theme.scheme === 'light' ? theme.color.accentText : LYS_MOERK
   const tekstStyle = StyleSheet.flatten(style) || {}
-  const skrift = tekstStyle.fontSize || 14
-  const linje = tekstStyle.lineHeight || Math.round(skrift * 1.2)
+  const grund = tekstStyle.fontSize || 14
+  // Systemets skrift-skala gaelder den NATIVE teksten — RN's `allowFontScaling`
+  // er slaaet til som standard — men ikke for SVG'en. Uden den her tegnes de to
+  // tilstande i hver sin stoerrelse: den KOERENDE linje (SVG) i 15 dp, den
+  // FAERDIGE (native) i 15 x skalaen.
+  //
+  // Det er ikke teoretisk. Indtil 26/9-2026 var lyset bygget af NATIVE tekstlag
+  // og skalerade derfor med grundteksten; `763bb23a0` afloeste dem med én
+  // SVG-maske for at fjerne spoegelses-lagene — og tog skaleringen med i koebet.
+  // (Bjørn 30/9-2026: «tekst stoerrelsen er for stor mens runden koere … men
+  // naar runden er forbi aendrer teksten til normal stoerrelse».)
+  const skala = PixelRatio.getFontScale()
+  const skrift = grund * skala
+  const linje = (tekstStyle.lineHeight || Math.round(grund * 1.2)) * skala
   // SVG bruger en baseline; den usynlige native tekst bestemmer stadig
   // rækkehøjden og oplæsningsindholdet.
   const baseline = (maal.height - linje) / 2 + (linje + skrift) / 2 - 2
@@ -103,7 +115,9 @@ export function GlidendeTekst({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexShrink: 1, overflow: 'hidden', justifyContent: 'center' },
+  // `minWidth: 0` lader leddet krympe under tekstens egen bredde, saa en lang
+  // etiket kan afsluttes med «…» i stedet for at skubbe linjen ud over kanten.
+  wrap: { flexShrink: 1, minWidth: 0, overflow: 'hidden', justifyContent: 'center' },
   skjult: { opacity: 0 },
   svg: { position: 'absolute', top: 0, left: 0 },
 })

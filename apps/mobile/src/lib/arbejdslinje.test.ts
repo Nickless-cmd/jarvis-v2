@@ -1,4 +1,4 @@
-import { arbejdslinjeTekst } from './arbejdslinje'
+import { arbejdslinjeTekst, kortTokens } from './arbejdslinje'
 
 /**
  * Arbejdslinjens sætning. Hver test er mutationsprøvet — se `MUT`-noterne:
@@ -70,5 +70,19 @@ describe('arbejdslinjeTekst', () => {
     // «Todo set: 3 opgaver». Her bliver den «Sætter 3 opgaver».
     // MUT: fjern todo_set fra MED_GENSTAND → «Todo set: 3 opgaver» → fanger.
     expect(arbejdslinjeTekst('Todo set: 3 opgaver', 'todo_set')).toBe('Sætter 3 opgaver')
+  })
+})
+
+describe('kortTokens', () => {
+  it('forkorter over tusind — «1.2k», som desk', () => {
+    // Desk's regel, ord for ord (`LivenessIndicator.tsx`). MUT: fjern
+    // forkortelsen → «45200 tokens» fylder linjen → fanger.
+    expect(kortTokens(1234)).toBe('1.2k')
+    expect(kortTokens(45200)).toBe('45.2k')
+  })
+
+  it('lader tal under tusind stå som de er', () => {
+    expect(kortTokens(0)).toBe('0')
+    expect(kortTokens(999)).toBe('999')
   })
 })

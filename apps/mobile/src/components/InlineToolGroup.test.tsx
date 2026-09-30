@@ -114,19 +114,25 @@ it('en tanke EFTER det sidste kald staar til sidst i folden', async () => {
   expect(r.indexOf('Læste a.py')).toBeLessThan(r.indexOf('thinking-summary'))
 })
 
-it('linjen er i nutid mens runden kører — og prikkerne ruller i stedet for «…»', async () => {
-  // Som desk og Claude Desktop: prikkerne er tre bevægelige prikker, ikke tegn
-  // i teksten, så en ellipse i enden ville stå dobbelt.
+it('runde-linjen har hverken prikker eller klokke mens den kører — de er flyttet', async () => {
+  // Bjørn 30/9-2026: de tre prikker og min/sec-tælleren sad i runde-linjen, men
+  // runden slukkes undervejs mens arbejdet fortsætter. Begge hører derfor til
+  // arbejdslinjen nederst nu (se `Arbejdslinje.test.tsx`), og her skal de ikke
+  // længere findes — hverken mens runden kører eller efter.
   const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
   expect(s.getByText('Læser 2 filer')).toBeTruthy()
-  // Skjult for skærmlæsere med vilje (kildens aria-hidden).
-  expect(s.getByTestId('prikker', { includeHiddenElements: true })).toBeTruthy()
+  expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
+  expect(s.queryByTestId('runde-tid')).toBeNull()
 })
 
-it('prikkerne forsvinder og caret\'en står fremme når runden er færdig', async () => {
-  const s = await render(<InlineToolGroup items={[item(), item()]} />)
-  expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
-  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+it('caret\'en kommer FOERST når runden er færdig — mens den kører er der ingen', async () => {
+  // Prikkerne delte cellen med caret'en. Da de flyttede, stod cellen tom mens
+  // runden kørte — og et tomt løfte er værre end ingen dør: chevronen vises
+  // nu kun når der faktisk ER noget at folde ud.
+  const kører = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+  expect(kører.queryByTestId('tool-status-caret')).toBeNull()
+  const færdig = await render(<InlineToolGroup items={[item(), item()]} />)
+  expect(færdig.getByTestId('tool-status-caret')).toBeTruthy()
 })
 
 it('</> står fast — også når runden er færdig (Bjørn 19/9-2026)', async () => {
@@ -187,34 +193,25 @@ it('uden sætning står den mekaniske tekst', async () => {
 })
 
 /**
- * «0s» er ikke et tal (Bjørn 29/9-2026: «0s skal væk fra tool result linjen»).
+ * Klokken er flyttet til arbejdslinjen (Bjørn 30/9-2026).
  *
- * En runde der blev færdig på under et sekund gik gennem `Math.floor(sek)` og
- * skrev «0s» ud for sit ikon. SkillLinjen vægter allerede ved ét sekund
- * (`sek >= 1` i SkillLinje.tsx:37) — det er husets eget skel; her manglede det.
- * Grænsen er ét sekund: derover vises tallet som før.
+ * Runde-linjen bar sin egen min/sec-tæller. Men runden er kort og slukkes
+ * undervejs, mens arbejdet fortsætter — så et tal der forsvinder midt i
+ * arbejdet er værre end ingen tal. Tælleren bor nu i arbejdslinjen nederst i
+ * beskeden, sammen med prikkerne og token-tallet (`Arbejdslinje.test.tsx`).
+ *
+ * Her skal derfor INTET tal stå — hverken mens runden kører eller efter.
+ * «0s»-reglen er væk med den: den fandtes kun fordi klokken stod her.
  */
-it('en runde under ét sekund viser INGEN tid — ikke «0s»', async () => {
-  jest.useFakeTimers()
-  try {
-    const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-    await act(async () => { jest.advanceTimersByTime(400) })
-    await s.rerender(<InlineToolGroup items={[item(), item()]} />)
-    expect(s.queryByTestId('runde-tid')).toBeNull()
-    expect(s.queryByText('0s')).toBeNull()
-  } finally {
-    jest.useRealTimers()
-  }
-})
-
-it('en runde over ét sekund viser tiden som før', async () => {
+it('runde-linjen viser INGEN tid — klokken er flyttet til arbejdslinjen', async () => {
   jest.useFakeTimers()
   try {
     const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
     await act(async () => { jest.advanceTimersByTime(3000) })
     await s.rerender(<InlineToolGroup items={[item(), item()]} />)
-    expect(s.getByTestId('runde-tid')).toBeTruthy()
-    expect(s.getByText('3s')).toBeTruthy()
+    expect(s.queryByTestId('runde-tid')).toBeNull()
+    expect(s.queryByText('3s')).toBeNull()
+    expect(s.queryByText('0s')).toBeNull()
   } finally {
     jest.useRealTimers()
   }
@@ -485,5 +482,81 @@ describe('folden — de ni nye former', () => {
     expect(s.getByTestId('krop-spoergsmaal')).toBeTruthy()
     expect(s.getByText('Hvilken?')).toBeTruthy()
     expect(s.getByText('Den anden')).toBeTruthy()
+  })
+})
+
+type Knude = { props?: Record<string, unknown>; children?: unknown }
+
+/** Vejen fra roden ned til knuden med det givne testID — foraeldrene foerst,
+ *  knuden selv sidst. */
+const vejTil = (node: unknown, id: string, vej: Knude[] = []): Knude[] | null => {
+  if (node == null || typeof node === 'string') return null
+  if (Array.isArray(node)) {
+    for (const n of node) { const f = vejTil(n, id, vej); if (f) return f }
+    return null
+  }
+  const n = node as Knude
+  const her = [...vej, n]
+  if (n.props?.testID === id) return her
+  return vejTil(n.children, id, her)
+}
+
+/** Stilen paa en knude, uanset om den er et array. */
+const stil = (n: Knude | undefined): Record<string, unknown> => {
+  const st = n?.props?.style
+  if (Array.isArray(st)) return Object.assign({}, ...st.map((x) => (x && typeof x === 'object' ? x : {})))
+  return (st && typeof st === 'object' ? st : {}) as Record<string, unknown>
+}
+
+describe('linjen holder sig inden for skaermen', () => {
+  it('hvert led i etikettens kaede kan krympe — i BEGGE tilstande', async () => {
+    // En etiket der ikke kan krympe skubber linjen ud over skaermkanten — og
+    // tager klokken, +/- og chevronen med sig. Desk loeser det med
+    // `min-width: 0` + ellipsis paa `.toolgroup-label`; her skal HVERT led
+    // kunne krympe, ikke bare det yderste. Det mellemliggende lag —
+    // label-skiftets eget View — manglede baade `flexShrink` og `minWidth`,
+    // og dér stoppede krympningen. (Bjørn 30/9-2026: «nogen af runders linjer
+    // gaar helt ud af skaermen».)
+    //
+    // Den KOERENDE linje tegnes af GlidendeTekst (SVG), den FAERDIGE af et
+    // almindeligt Text. Kaeden er derfor forskellig, og begge skal maales:
+    // [0] er SVG-rammen i den koerende gren; [1] er label-skiftets lag og [2]
+    // cellen — de to findes i begge tilstande.
+    for (const running of [true, false]) {
+      const s = await render(<InlineToolGroup items={[item({ label: 'x'.repeat(200), running })]} />)
+      const vej = vejTil(s.toJSON(), running ? 'glidende-tekst' : 'linje-titel')
+      expect(vej).not.toBeNull()
+      // Sidste led i vejen er knuden selv; foraeldrene ligger lige foer den.
+      // Det er DEM der skal kunne krympe — roden kan ikke.
+      const led = running ? vej!.slice(-3) : vej!.slice(-3, -1)
+      expect(led.length).toBeGreaterThanOrEqual(2)
+      for (const n of led) {
+        expect(stil(n).flexShrink).toBe(1)
+        expect(stil(n).minWidth).toBe(0)
+      }
+      // Skaermkanten er graensen: cellen klipper, uanset hvad flex-loesningen
+      // naar frem til. Det er det sidste vaern mod at male ud over kanten.
+      expect(stil(vej!.at(-3)!).overflow).toBe('hidden')
+    }
+  })
+
+  it('tallene og chevronen staar FAST — de maa ikke skubbes ud', async () => {
+    // Det er dem der viser at der er mere at se (Bjørn 30/9-2026: «fordi der
+    // bliver vist +/- diff og ikon >»). Etiketten er den der viger.
+    //
+    // Runden er FÆRDIG her: chevronen findes kun da. Prikkerne er flyttet til
+    // arbejdslinjen, og caret'en vises først når der er noget at folde ud.
+    const s = await render(<InlineToolGroup items={[
+      item({ label: 'x'.repeat(200), diff: { tilfoejet: 3, fjernet: 1 } }),
+      item({ label: 'y' }),
+    ]} />)
+    const vej = vejTil(s.toJSON(), 'tool-spark')
+    expect(vej).not.toBeNull()
+    const raekke = vej![vej!.length - 2]!       // sparkens foraelder ER rækken
+    const boern = ((raekke.children ?? []) as Knude[]).map(stil)
+    // Praecis ÉN kan krympe — etiketten. Resten staar fast.
+    expect(boern.filter((b) => b.flexShrink === 1)).toHaveLength(1)
+    expect(boern.filter((b) => b.flexShrink === 0)).toHaveLength(boern.length - 1)
+    expect(stil(vejTil(s.toJSON(), 'tool-status-caret')!.at(-1)).flexShrink).toBe(0)
   })
 })

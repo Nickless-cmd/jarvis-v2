@@ -94,6 +94,7 @@ export function ChatView({
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
   // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
   const [bgActive, setBgActive] = useState(false)
+  const [bgObserved, setBgObserved] = useState(false)
   // Baggrundsjob til liveness-linjen («1 job kører»). Vi viser ANTALLET —
   // panelet viser detaljerne. Sjælden poll + pause når fanen er skjult: desk'ens
   // egne baggrundspolls sulter SSE-læseren (se StreamContext), og dette er
@@ -244,7 +245,7 @@ export function ChatView({
   // vis liveness + hent nye beskeder ind, så Jarvis' selv-startede svar dukker
   // op live i appen i stedet for at kræve et manuelt session-skift.
   useEffect(() => {
-    if (!settings || !sessionId) { setBgActive(false); return }
+    if (!settings || !sessionId) { setBgActive(false); setBgObserved(false); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     // Häng-detektor: antal polls i træk hvor VI tror vi streamer denne session,
@@ -272,6 +273,7 @@ export function ChatView({
           // Det er ikke et nyt baggrunds-run og skal ikke starte /follow igen.
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgObserved(active)
           setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
@@ -543,7 +545,7 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-  const bgVisible = bgActive && remoteRunHasVisibleActivity(followState, bgRunId)
+  const bgVisible = bgObserved && remoteRunHasVisibleActivity(followState, bgRunId)
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).

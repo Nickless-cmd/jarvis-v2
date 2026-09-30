@@ -174,6 +174,7 @@ export function CodeView({
   // Cross-device live-state (effekter wires længere nede): bruges allerede her i
   // miljø-felt-beregningen, så deklarationen skal stå før den.
   const [bgActive, setBgActive] = useState(false)
+  const [bgObserved, setBgObserved] = useState(false)
   const [bgRunId, setBgRunId] = useState<string | null>(null)
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
@@ -538,7 +539,7 @@ export function CodeView({
     return () => clearInterval(t)
   }, [bgActive])
   useEffect(() => {
-    if (!settings || !sessionId) { setBgActive(false); return }
+    if (!settings || !sessionId) { setBgActive(false); setBgObserved(false); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     let cooldown = 0
@@ -554,6 +555,7 @@ export function CodeView({
           const serverHasRun = !!currentRun
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgObserved(active)
           setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
@@ -1082,7 +1084,7 @@ export function CodeView({
   }
 
   // ── Aktiv samtale ──
-  const bgVisible = bgActive && remoteRunHasVisibleActivity(followState, bgRunId)
+  const bgVisible = bgObserved && remoteRunHasVisibleActivity(followState, bgRunId)
 
   return (
     <VisningContext.Provider value={visning}>

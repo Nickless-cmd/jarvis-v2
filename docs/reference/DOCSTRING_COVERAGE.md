@@ -1762,7 +1762,7 @@ Generated from source. 8206/15734 functions/methods documented (52%). The list b
 - `core/services/session_inbox.py` :: `pending_count` (L237)
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L363)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
-- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L168)
+- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L172)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_view.py` :: `saet_visning` (L58)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)

@@ -129,3 +129,48 @@ def test_escape_vejene_overlever_byttet():
              for d in ctp.select_tools_for_visible(get_tool_definitions(),
                                                    user_message="", session_id=None)}
     assert {"load_more_tools", "call_loaded_tool"} <= navne
+
+
+# ── Sikkerhedsgulvet skal HAANDHAEVES, ikke bare staa skrevet (30/9-2026) ────
+#
+# Gulvet stod i `scripts/regenerate_tier1.py` med teksten «must always be
+# available regardless of past usage» og blev unioneret ind i TIER_1_ALWAYS_ON
+# ved regenerering. Men Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+# ankomstraekkefoelge — saa gulvet var et krav ingen haandhaevede.
+#
+# Maalt: 7 af de 28 registrerede gulv-navne blev ikke sendt, heriblandt
+# `memory_upsert_section` med 157 kald paa 30 dage.
+
+def test_hele_sikkerhedsgulvet_naar_arrayet():
+    """Ikke «staar i en liste» — men «bliver rent faktisk sendt»."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    alle = get_tool_definitions()
+    registreret = {(d.get("function") or d).get("name") for d in alle}
+    valgt = {(d.get("function") or d).get("name")
+             for d in ctp.select_tools_for_visible(alle, user_message="", session_id=None)}
+    mangler = (set(ctp.SAFETY_FLOOR) & registreret) - valgt
+    assert not mangler, f"sikkerhedsgulvet naar ikke arrayet: {sorted(mangler)}"
+
+
+def test_gulvet_navngiver_kun_vaerktoejer_der_FINDES():
+    """`propose_git_commit` stod i gulvet uden at findes i kataloget. Et navn
+    ingen kan kalde er ikke et sikkerhedsgulv — det er en stavefejl med
+    autoritet."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    registreret = {(d.get("function") or d).get("name") for d in get_tool_definitions()}
+    ukendte = set(ctp.SAFETY_FLOOR) - registreret
+    assert not ukendte, f"gulvet navngiver vaerktoejer der ikke findes: {sorted(ukendte)}"
+
+
+def test_gulvet_har_ÉN_kilde():
+    """Gulvet stod to steder og blev haandhaevet nul. Generatoren skal LAESE
+    runtime-listen, ikke have sin egen."""
+    from pathlib import Path
+
+    kilde = Path("scripts/regenerate_tier1.py").read_text(encoding="utf-8")
+    assert "from core.tools.copilot_tool_pruning import SAFETY_FLOOR" in kilde, (
+        "generatoren har sin egen kopi af gulvet igen — dobbelt sandhed")

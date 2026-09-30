@@ -156,8 +156,12 @@ def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]
             # Prisen er ét cache-brud i de sessioner der mangler noget: arrayet
             # aendrer sig én gang, og derefter staar det stille igen. Et
             # vaerktoej der ikke kan kaldes er dyrere end det brud.
-            from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
-            samlet = sorted(set(existing) | set(REQUIRED_LAZY_TOOL_NAMES))
+            from core.tools.copilot_tool_pruning import (
+                REQUIRED_LAZY_TOOL_NAMES,
+                SAFETY_FLOOR,
+            )
+            samlet = sorted(
+                set(existing) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR))
             return samlet, "pinned"
         return pin(sid, picked), "pinned-new"
     except Exception as exc:

@@ -380,6 +380,7 @@ def init_db() -> None:
                 cost_usd REAL NOT NULL DEFAULT 0,
                 cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
                 cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
+                reasoning_tokens INTEGER NOT NULL DEFAULT 0,
                 user_id TEXT NOT NULL DEFAULT '',
                 run_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
@@ -405,6 +406,16 @@ def init_db() -> None:
         # rækker og interne kald uden run-kontekst beholder ''.
         if "run_id" not in _cost_cols:
             conn.execute("ALTER TABLE costs ADD COLUMN run_id TEXT NOT NULL DEFAULT ''")
+        # 2026-09-30: reasoning_tokens (Bjørn). DeepSeeks tænke-tokens er en
+        # DELMÆNGDE af completion_tokens — de er allerede betalt som output.
+        # Kolonnen ændrer derfor INGEN pris; den gør det bare målbart hvor stor
+        # en del af output der er tænkning. Uden den kan «kortere tænkning»-
+        # besparelsen ikke omsættes til kroner, og bær-videre-effekten (DeepSeek
+        # kræver reasoning_content sendt tilbage ved tool-kald, hvor det lægges
+        # i konteksten og dermed i miss-zonen) kan ikke prissættes. Historiske
+        # rækker beholder 0 — «ikke målt», ikke «ingen tænkning».
+        if "reasoning_tokens" not in _cost_cols:
+            conn.execute("ALTER TABLE costs ADD COLUMN reasoning_tokens INTEGER NOT NULL DEFAULT 0")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_costs_run_id ON costs (run_id)")
         # Alle cost-projektioner filtrerer på tidsvindue (daily_cost_summary
         # 30 dage, this_week_cost, today_cost). Uden dette indeks var hver af

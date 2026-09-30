@@ -1197,6 +1197,15 @@ class OpenAICompatFollowupAdapter:
             _out = int(_u.get("completion_tokens") or 0)
             _hit = int(_u.get("prompt_cache_hit_tokens") or 0)
             _miss = int(_u.get("prompt_cache_miss_tokens") or 0)
+            # Tænke-tokens er en DELMÆNGDE af completion_tokens (DeepSeek:
+            # `completion_tokens_details.reasoning_tokens`) — de er allerede
+            # betalt som output, så prisen røres ikke. Kolonnen gør det bare
+            # målbart hvor meget af output der er tænkning. `_usage` er HELE
+            # usage-chunken (samme blok som hit/miss læses fra), så detaljerne
+            # er i scope her uden at gå gennem streaming-adapteren.
+            _reas = int(
+                (_u.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+            )
             if _in or _out:
                 record_cost(
                     lane="agentic_round",
@@ -1206,6 +1215,7 @@ class OpenAICompatFollowupAdapter:
                     output_tokens=_out,
                     cache_hit_tokens=_hit,
                     cache_miss_tokens=_miss,
+                    reasoning_tokens=_reas,
                     cost_usd=compute_cost_usd(
                         self.provider_id, model,
                         cache_hit_tokens=_hit, cache_miss_tokens=_miss,

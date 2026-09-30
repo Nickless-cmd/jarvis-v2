@@ -3276,8 +3276,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset",
-        "iso_utc_z"
+        "iso_utc_offset"
       ]
     },
     "central_anomalies": {
@@ -13018,7 +13017,7 @@
       "created_at_formats": []
     },
     "costs": {
-      "digest": "93:dc:26:a7:37:af:d1:53:8b:68:7e:93:20:82:5f:f3:74:5e:69:24:03:cf:b5:ac:6c:a1:61:36:ee:73:ff:61",
+      "digest": "f1:61:4b:99:22:9e:92:56:b7:7f:90:de:ee:58:49:02:a0:a6:a8:3e:2c:30:23:3d:60:e6:69:8d:a3:cf:4e:98",
       "schema": {
         "columns": [
           {
@@ -13098,6 +13097,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reasoning_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
             "pk": 0,
             "hidden": 0
           },
@@ -13982,7 +13989,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "delayed_notifications": {
@@ -14329,7 +14336,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "emergent_patterns": {
@@ -41532,7 +41539,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "user_flags": {
@@ -41757,7 +41764,6 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset",
         "iso_utc_z"
       ]
     },

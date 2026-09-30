@@ -35,6 +35,42 @@ VISIBLE_MAX_TOOLS = 48
 # prompten og kataloget ellers peger paa. `explore` er det tydeligste tilfaelde:
 # scope tillod det, kataloget naevnte det, prompten anbefalede det — og pruneren
 # fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
+#: Vaerktoejer hvis FRAVAER er en adfaerdsregression, ikke en latens-optimering:
+#: tab af stemme, af godkendelsesvej, af hukommelse. Listen stod foer KUN i
+#: `scripts/regenerate_tier1.py` og blev unioneret ind i `TIER_1_ALWAYS_ON` ved
+#: regenerering — men Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+#: ankomstraekkefoelge, saa gulvet var et krav ingen haandhaevede.
+#:
+#: Maalt 30/9-2026: 7 af de 28 registrerede gulv-navne blev IKKE sendt, heriblandt
+#: `memory_upsert_section` med **157 kald** paa 30 dage. Byttet for at faestne
+#: gulvet koster syv pladser, hvoraf fem har NUL kald i samme periode:
+#:
+#:   ud:  list_scheduled_tasks 7x, read_model_config 6x, og fem med 0 kald
+#:   ind: memory_upsert_section 157x, git_log 22x, git_status 15x, git_diff 3x
+#:
+#: `propose_git_commit` stod i gulvet men findes ikke i kataloget — fjernet her
+#: frem for at baere et navn ingen kan kalde.
+SAFETY_FLOOR: tuple[str, ...] = (
+    # Brugervendt kommunikation — mist aldrig hans stemme
+    "notify_user", "send_webchat_message", "send_ntfy",
+    # Godkendelse og politik
+    "approve_proposal", "propose_source_edit", "list_proposals",
+    # Selvindsigt
+    "read_self_state", "read_mood", "read_self_docs", "read_chronicles",
+    # Hukommelse
+    "search_memory", "recall_memories", "memory_upsert_section",
+    "memory_check_duplicate", "recall_before_act",
+    # Filer
+    "read_file", "write_file", "edit_file", "search", "find_files", "bash",
+    # Web
+    "web_fetch", "web_search",
+    # Planlaegning
+    "schedule_task", "list_initiatives",
+    # Git
+    "git_status", "git_log", "git_diff",
+)
+
+
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
     # ── De fire hyppigst HENTEDE (30/9-2026, maalt over 30 dage) ───────────
@@ -383,7 +419,11 @@ def _faestn_kraevede(
 
     To kopier af den samme beslutning er dobbelt sandhed. Nu er der én.
     """
-    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + _betinget_kraevede(user_message)
+    # Sikkerhedsgulvet faestnes SAMMEN med de kraevede (30/9-2026). Det stod
+    # skrevet som «must always be available regardless of past usage» og var
+    # ikke haandhaevet nogen steder — se kommentaren over `SAFETY_FLOOR`.
+    kraevede = (tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
+                + _betinget_kraevede(user_message))
     for navn in kraevede:
         if navn in by_name and navn not in seen:
             selected_names.append(navn)

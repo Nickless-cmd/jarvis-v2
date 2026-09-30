@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15744 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15751 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,16 +47,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15744 functions/
 - [`core.services.16`](core.services.16.md) — `mcp_trust` … `mood_oscillator`
 - [`core.services.17`](core.services.17.md) — `mood_regulator_subscriber` … `paid_lane_guard`
 - [`core.services.18`](core.services.18.md) — `paradox_tracker` … `procedure_bank_pipeline`
-- [`core.services.19`](core.services.19.md) — `process_identity` … `r2_5_blocking_gate`
-- [`core.services.20`](core.services.20.md) — `r2_5_haandhaevelse` … `retention`
-- [`core.services.21`](core.services.21.md) — `retention_coverage` … `scheduled_task_runner`
-- [`core.services.22`](core.services.22.md) — `scheduled_tasks` … `sensory_perception_bridge`
-- [`core.services.23`](core.services.23.md) — `sensory_source` … `skill_autosurface`
-- [`core.services.24`](core.services.24.md) — `skill_contract_registry` … `temporal_narrative`
-- [`core.services.25`](core.services.25.md) — `temporal_recurrence_signal_tracking` … `truth_gate_v2`
-- [`core.services.26`](core.services.26.md) — `turens_vaerktoejer` … `visible_model_sse`
-- [`core.services.27`](core.services.27.md) — `visible_model_types` … `witness_signal_tracking`
-- [`core.services.28`](core.services.28.md) — `workspace_crypto` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `process_identity` … `quota_store`
+- [`core.services.20`](core.services.20.md) — `r2_5_blocking_gate` … `resonance_decay`
+- [`core.services.21`](core.services.21.md) — `retention` … `scheduled_job_windows`
+- [`core.services.22`](core.services.22.md) — `scheduled_task_runner` … `sensory_archive`
+- [`core.services.23`](core.services.23.md) — `sensory_perception_bridge` … `simple_tool_executor`
+- [`core.services.24`](core.services.24.md) — `skill_autosurface` … `temporal_depth`
+- [`core.services.25`](core.services.25.md) — `temporal_narrative` … `totp_verifier`
+- [`core.services.26`](core.services.26.md) — `truth_gate_v2` … `visible_model_prompt`
+- [`core.services.27`](core.services.27.md) — `visible_model_sse` … `weighted_slot_health`
+- [`core.services.28`](core.services.28.md) — `witness_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -72,8 +72,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15744 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_binary_jarvis_vs_ollama`
-- [`scripts.02`](scripts.02.md) — `interlanguage_classifier_final` … `publish_mobile_apk`
-- [`scripts.03`](scripts.03.md) — `regenerate_tier1` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `interlanguage_classifier_final` … `prompt_dump_split`
+- [`scripts.03`](scripts.03.md) — `publish_mobile_apk` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

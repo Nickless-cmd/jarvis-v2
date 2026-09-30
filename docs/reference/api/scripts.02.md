@@ -460,14 +460,14 @@ _Primary lane cache warmer._
 | function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L555) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L629) |
 
-## `scripts/publish_mobile_apk.py`
-_Læg en ny mobil-APK op — og behold præcis én version tilbage._
+## `scripts/prompt_dump_split.py`
+_Splitter et prompt-dump fra /tmp/jarvis-prompt-dumps/latest.json i sektioner._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L42) |
-| function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L46) |
-| function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
-| function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L86) |
-| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L113) |
+| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_split.py#L28) |
+| function | `_role_title` | `(m)` | — | [src](../../../scripts/prompt_dump_split.py#L35) |
+| function | `_msg_body` | `(m)` | Indholdet som tekst — håndterer både streng og strukturerede blokke. | [src](../../../scripts/prompt_dump_split.py#L41) |
+| function | `build_markdown` | `(dump)` | — | [src](../../../scripts/prompt_dump_split.py#L51) |
+| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_split.py#L145) |
 

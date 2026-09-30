@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8215/15744 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8218/15751 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8215/15744 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5457 | 10712 | 50% |
+| `core.services` | 5459 | 10714 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8215/15744 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 226 | 501 | 45% |
+| `scripts` | 227 | 506 | 44% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2229)
+## Undocumented public functions (2231)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1953,9 +1953,9 @@ Generated from source. 8215/15744 functions/methods documented (52%). The list b
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1386)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1400)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L278)
-- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L851)
+- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L865)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L197)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L35)
@@ -1963,7 +1963,7 @@ Generated from source. 8215/15744 functions/methods documented (52%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L172)
 - `core/services/visible_model.py` :: `execute_visible_model` (L264)
 - `core/services/visible_model.py` :: `stream_visible_model` (L323)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L702)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L689)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
@@ -2237,6 +2237,8 @@ Generated from source. 8215/15744 functions/methods documented (52%). The list b
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
 - `scripts/primary_cache_warmer.py` :: `main` (L629)
+- `scripts/prompt_dump_split.py` :: `build_markdown` (L51)
+- `scripts/prompt_dump_split.py` :: `main` (L145)
 - `scripts/publish_mobile_apk.py` :: `apk_navn` (L42)
 - `scripts/publish_mobile_apk.py` :: `hovedet` (L113)
 - `scripts/repro_streaming_fault.py` :: `main` (L77)

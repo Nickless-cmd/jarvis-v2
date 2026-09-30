@@ -782,6 +782,20 @@ class OpenAICompatFollowupAdapter:
                     # 22 %, ved vi ikke — derfor noteres det.
                     if spor is not None:
                         spor["thinking_disabled"] = True
+        # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump). Her er
+        # `payload` 100 % færdigbygget — inkl. tools, tool_choice og de
+        # thinking-justeringer der ellers kun ses i koden. Se prompt_dump.py.
+        try:
+            from core.services import prompt_dump as _pd
+            _pd.dump_payload(
+                provider=self.provider_id, model=model,
+                messages=payload.get("messages"),
+                tools=payload.get("tools"), lane="visible-followup",
+                params={k: v for k, v in payload.items()
+                        if k not in ("messages", "tools", "model")},
+            )
+        except Exception:  # self-safe: en dump maa ikke kaste ind i stream-stien
+            pass
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

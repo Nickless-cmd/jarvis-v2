@@ -30,6 +30,7 @@ function MessageRowImpl({
   blocks: rawBlocks,
   density,
   streaming,
+  finalAnswerStarted = false,
   rundeEtiketter,
   tankeResumeer,
   createdAt,
@@ -46,6 +47,8 @@ function MessageRowImpl({
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /** Bekræftet slutsvar fra serveren; folder arbejdet mens teksten stadig kommer. */
+  finalAnswerStarted?: boolean
   /**
    * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
    * Udeladt = ingen overskrifter; tråden ser ud som før.
@@ -147,7 +150,7 @@ function MessageRowImpl({
                 skiftes — fejlhegn, artefakter, kilder og handlinger er de samme,
                 og composer/liveness/save-rail roeres ikke. */}
             {raekker
-              ? <RaekkeTranskript blocks={blocks} streaming={streaming} beskedId={beskedId}
+              ? <RaekkeTranskript blocks={blocks} streaming={streaming} finalAnswerStarted={finalAnswerStarted} beskedId={beskedId}
                   config={config} rundeEtiketter={rundeEtiketter} />
               : <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (

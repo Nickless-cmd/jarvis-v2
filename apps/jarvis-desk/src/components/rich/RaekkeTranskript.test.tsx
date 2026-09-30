@@ -397,6 +397,17 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 
+  it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
+    const { container, rerender } = rtlRender(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del')]} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Første del')).toBeInTheDocument()
+    rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del og resten')]} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Første del og resten')).toBeInTheDocument()
+  })
+
   it('lægger den korte syntese INDE i arbejdet, ikke i svaret', () => {
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
     const mellem = container.querySelector('.rv-gruppe .rv-mellem')

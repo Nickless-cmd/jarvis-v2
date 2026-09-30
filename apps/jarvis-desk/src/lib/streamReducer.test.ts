@@ -6,6 +6,20 @@ const reduce = (events: StreamEvent[]) =>
   events.reduce(streamReducer, initialStreamState())
 
 describe('streamReducer', () => {
+  it('folder kun på det aktuelle runs bekræftede slutsvar og nulstiller ved nyt run', () => {
+    const start = (id: string): StreamEvent => ({
+      type: 'message_start',
+      message: { id, model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    })
+    const before = reduce([start('r1'), { type: 'system_event', kind: 'working_step', payload: { action: 'thinking', detail: 'Tænker videre · runde 2' } }])
+    expect(before.finalAnswerStarted).toBe(false)
+    expect(streamReducer(before, { type: 'system_event', kind: 'final_answer_start', payload: { run_id: 'old' } }).finalAnswerStarted).toBe(false)
+    expect(streamReducer(before, { type: 'system_event', kind: 'final_answer_start', payload: {} }).finalAnswerStarted).toBe(false)
+    const after = streamReducer(before, { type: 'system_event', kind: 'final_answer_start', payload: { run_id: 'r1' } })
+    expect(after.finalAnswerStarted).toBe(true)
+    expect(streamReducer(after, start('r2')).finalAnswerStarted).toBe(false)
+  })
+
   it('message_start sets working + activeRunId', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'visible-9', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

@@ -114,6 +114,8 @@ export interface StreamContextValue {
   /** Tænke-resuméer slået op på kald-id (visningen «thinking»). */
   tankeResumeer?: Record<string, string>
   activeRunId: string | null
+  /** Serveren har bekræftet, at den synlige tekst nu er slutsvaret. */
+  finalAnswerStarted: boolean
   elapsedMs: number
   workingStep: string | null
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
@@ -541,6 +543,7 @@ export function StreamProvider({
       rundeEtiketter: state.rundeEtiketter,
       tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
+      finalAnswerStarted: state.finalAnswerStarted,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,
       elapsedMs,
@@ -566,7 +569,7 @@ export function StreamProvider({
       visGenoptagelsesVarsel,
       rydGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

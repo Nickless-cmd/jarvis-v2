@@ -11,6 +11,7 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
+  finalAnswerStarted: boolean // serveren har bekræftet slutsvar før første synlige delta
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
   /**
@@ -32,7 +33,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -164,6 +165,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Naar fortsaettelsen faktisk koerer, har det sagt sit — og fejler den
         // ogsaa, kommer der et nyt.
         recoveryNotice: _sameRun ? state.recoveryNotice : undefined,
+        finalAnswerStarted: _sameRun ? state.finalAnswerStarted : false,
         skillFlade: _sameRun ? state.skillFlade : undefined,
         usage: {
           ...state.usage,
@@ -232,6 +234,12 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      if (event.kind === 'final_answer_start') {
+        const rid = String(event.payload?.run_id ?? '')
+        return rid && rid === state.activeRunId
+          ? { ...state, finalAnswerStarted: true }
+          : state
+      }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.

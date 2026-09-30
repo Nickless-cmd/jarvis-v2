@@ -329,10 +329,11 @@ function Arbejdsrunde({
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, beskedId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, beskedId, config, rundeEtiketter,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
+  finalAnswerStarted?: boolean
   beskedId?: string
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
@@ -348,10 +349,11 @@ function RaekkeTranskriptImpl({
     e.slags === 'blok' && e.blok.type === 'tool_use' ? [postFor(e.blok.name).familie] : [],
   )
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
-  // Samme delta kan være en mellemsyntese eller et slutsvar. Hold turen åben
-  // gennem hele den levende stream; kun en bekræftet afslutning folder den.
+  // Fold først ved serverens bekræftede grænse, før det første svar-delta.
+  // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? streaming
+  const arbejdeKoerer = streaming && !finalAnswerStarted
+  const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
@@ -361,10 +363,10 @@ function RaekkeTranskriptImpl({
         <>
           <button
             type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
-            {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
+            {...(arbejdeKoerer && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
-            {streaming && aabenManuelt === null
+            {arbejdeKoerer && aabenManuelt === null
               ? <span className="rv-turTekst shimmer">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
             <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>

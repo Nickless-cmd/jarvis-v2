@@ -76,38 +76,53 @@ RESTART_SELF_TOOL_DEFINITIONS = [
 ]
 
 
-#: Hvor ung skal en `running`-raekke vaere for at taelle som LEVENDE?
-#:
-#: En time. En raekke der har staaet `running` laengere er en zombie — og en
-#: vagt der taeller zombier med kan ALDRIG tilfredsstilles. Saa bliver den
-#: omgaaet med `force`, og saa beskytter den ingenting.
-#:
-#: Maalt lokalt: 5 «aktive» koersler, hvoraf ingen levede. Paa runtime var det
-#: tal 1. Forskellen er praecis grunden til loftet.
-LEVENDE_INDEN_FOR_SEKUNDER = 3600.0
-
-
 def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
-    """Hvilke synlige koersler er i gang lige nu — og kan plausibelt leve?
+    """Hvilke synlige koersler LEVER lige nu?
+
+    Tabellen kan ikke svare paa det. `visible_runs.status` bliver staaende paa
+    `running` indtil noget rydder den, og der findes intet heartbeat i raekken
+    — den har hverken `updated_at` eller andet der bevaeger sig. Derfor spoerger
+    vi `is_visible_run_alive()`, som modulet selv kalder «den AUTORITATIVE
+    liveness-test — CROSS-PROCES»: den laeser `last_activity_at` fra den DELTE
+    tilstand, som et levende run toucher hvert par sekunder, med en
+    stale-taerskel paa 75 sekunder.
+
+    HER STOD FOER ET ALDERSLOFT PAA ÉN TIME (30/9-2026). Det var en proxy for
+    det samme spoergsmaal, opfundet fordi forfatteren vidste at tabellen lyver
+    — og proxyen fejler i begge retninger:
+
+      * den slap et run paa TRE MINUTTER igennem som «levende», mens
+        `is_visible_run_alive` sagde False. Det blokerede en noedvendig
+        genstart, maalt samme dag;
+      * og den ville lade et run der HAR koert over en time — og stadig lever —
+        slippe forbi vagten, hvilket er den fejl vagten findes for.
+
+    Samme dag stod en `autonomous`-raekke `running` i 191 minutter uden ét spor
+    i journalen. Loftet skjulte den; heartbeatet doemte den doed med det samme.
+    Raekken ryddes foerst af `_ryd_visible_drift` ved 6-timers-graensen — tre
+    forskellige tal for det samme, hvoraf kun ét maaler noget.
 
     Selv-sikker: kan vi ikke spoerge, svarer vi TOMT — altsaa «ingen kendte».
     En vagt der blokerer paa sin egen fejl ville goere en noedvendig genstart
     umulig, og det er vaerre end den fejl den beskytter mod.
     """
-    from datetime import UTC, datetime, timedelta
     try:
         from core.runtime.db import connect
-        graense_tid = (datetime.now(UTC)
-                       - timedelta(seconds=LEVENDE_INDEN_FOR_SEKUNDER)).isoformat()
+        from core.services.visible_runs import is_visible_run_alive
         with connect() as conn:
             raekker = conn.execute(
                 "SELECT run_id, substr(text_preview, 1, 60) FROM visible_runs "
                 "WHERE status = 'running' AND (finished_at IS NULL OR "
-                "finished_at = '') AND started_at >= ? "
+                "finished_at = '') "
                 "ORDER BY started_at DESC LIMIT ?",
-                (graense_tid, int(graense)),
+                (int(graense),),
             ).fetchall()
-        return [{"run_id": str(r[0]), "preview": str(r[1] or "")} for r in raekker]
+        # Tabellen giver KANDIDATER; heartbeatet giver svaret.
+        return [
+            {"run_id": str(r[0]), "preview": str(r[1] or "")}
+            for r in raekker
+            if is_visible_run_alive(str(r[0]))
+        ]
     except Exception:
         logger.debug("restart_self: kunne ikke slaa aktive koersler op",
                      exc_info=True)

@@ -65,16 +65,69 @@ def test_ukendte_services_afvises_stadig():
     assert ud["status"] == "error"
 
 
-def test_opslaget_har_et_ALDERSLOFT():
-    """En zombie-raekke ville ellers blokere enhver genstart for evigt — og en
-    vagt der ikke kan tilfredsstilles bliver omgaaet.
+class _FalskConn:
+    """Minimal conn der svarer med faste raekker — ingen DB i spil."""
 
-    Maalt: 5 «aktive» koersler lokalt, hvoraf ingen levede. Paa runtime var
-    tallet 1.
+    def __init__(self, raekker):
+        self._raekker = raekker
+
+    def execute(self, *a, **k):
+        self._sidste = a
+        return self
+
+    def fetchall(self):
+        return self._raekker
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _med_raekker(monkeypatch, raekker, levende: set[str]):
+    import core.runtime.db as db
+    from core.services import visible_runs as vr
+    monkeypatch.setattr(db, "connect", lambda: _FalskConn(raekker))
+    monkeypatch.setattr(vr, "is_visible_run_alive", lambda rid: rid in levende)
+
+
+def test_vagten_spoerger_HEARTBEATET_ikke_tabellen(monkeypatch):
+    """Kernen (30/9-2026). `visible_runs.status` bliver staaende paa `running`
+    indtil noget rydder den, og raekken har intet heartbeat. Kun
+    `is_visible_run_alive` kan svare — den laeser `last_activity_at` fra den
+    delte tilstand med en stale-taerskel paa 75 sekunder.
+
+    Her stod foer et ALDERSLOFT paa én time. Det slap et run paa tre minutter
+    igennem som «levende» mens heartbeatet sagde doed, og blokerede en
+    noedvendig genstart. Samme dag stod en raekke `running` i 191 minutter uden
+    ét spor i journalen.
     """
-    import inspect
-    assert rst.LEVENDE_INDEN_FOR_SEKUNDER >= 3600
-    assert "started_at >= ?" in inspect.getsource(rst._aktive_koersler)
+    _med_raekker(monkeypatch,
+                 [("visible-lever", "et rigtigt svar"),
+                  ("autonomous-zombie", "doed raekke")],
+                 levende={"visible-lever"})
+    aktive = rst._aktive_koersler()
+    assert [a["run_id"] for a in aktive] == ["visible-lever"], aktive
+
+
+def test_en_GAMMEL_men_levende_koersel_blokerer_stadig(monkeypatch):
+    """Den anden retning, som alders-loftet fik forkert: et run der har koert
+    laenge og STADIG lever, er praecis det vagten findes for. Et tidsloft ville
+    have sluppet det forbi."""
+    _med_raekker(monkeypatch,
+                 [("visible-langt-run", "en lang agentisk tur")],
+                 levende={"visible-langt-run"})
+    assert len(rst._aktive_koersler()) == 1
+
+
+def test_alle_doede_lader_genstarten_koere(monkeypatch):
+    """Kontrollen. Uden den kunne testene ovenfor bestaa paa en vagt der
+    altid blokerer — og en vagt der ikke kan tilfredsstilles bliver omgaaet."""
+    _med_raekker(monkeypatch,
+                 [("a", ""), ("b", ""), ("c", "")],
+                 levende=set())
+    assert rst._aktive_koersler() == []
 
 
 def test_opslaget_kaster_aldrig(monkeypatch):

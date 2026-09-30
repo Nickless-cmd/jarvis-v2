@@ -175,3 +175,31 @@ def test_gulvet_har_ÉN_kilde():
     assert "from core.tools.copilot_tool_pruning import SAFETY_FLOOR" in kilde, (
         "generatoren har sin egen kopi af gulvet igen — dobbelt sandhed")
 
+
+
+# ── scout BLIVER, spawn gaar (30/9-2026) ─────────────────────────────────────
+#
+# Maalt en uge efter at `spawn_agent_task` blev sat i inventaret for at goere
+# den synlig: `scout_agent` 35 kald (15 siden 23/9), `spawn_agent_task` NUL i
+# 30 dage. Indgrebet virkede ikke, og den kostede 2.510 tegn i hver prompt.
+#
+# Bjoern 30/9: «den hedder scout idag» og «scout skal vaere i kataloget».
+
+def test_scout_er_i_kataloget():
+    """Bjoerns krav, og det han faktisk bruger. Faldt den ud af inventaret,
+    ville han igen kun kunne se det han ikke bruger."""
+    from core.services.tool_catalog import build_catalog_text
+
+    assert "scout_agent" in build_catalog_text()
+
+
+def test_spawn_agent_task_er_ude_af_det_faste_array():
+    """Det dyreste enkeltvaerktoej med nul kald. Den kan stadig naas — den
+    staar i kataloget og hentes med load_more_tools + call_loaded_tool."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.services.tool_catalog import build_catalog_text
+
+    assert "spawn_agent_task" not in ctp.REQUIRED_LAZY_TOOL_NAMES
+    assert "spawn_agent_task" not in ctp.SAFETY_FLOOR
+    # men den skal stadig kunne FINDES, ellers er evnen vaek og ikke bare flyttet
+    assert "spawn_agent_task" in build_catalog_text()

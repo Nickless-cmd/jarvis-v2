@@ -98,7 +98,27 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     # i arrayet, hvilket koster hele samtalen. Se `kaldt_vaerktoej.py`.
     "call_loaded_tool",
     "scout_agent",
-    "spawn_agent_task",
+    # `spawn_agent_task` FJERNET 30/9-2026 (Bjoern: «den hedder scout idag»).
+    #
+    # Den var det dyreste enkeltvaerktoej i arrayet — 2.510 tegn, ~581 tokens
+    # i HVER prompt — og den blev pinnet ind her fordi kataloget og prompten
+    # pegede paa den, samme grund som `explore`.
+    #
+    # 23/9-2026 blev den ogsaa sat i INVENTARET, netop fordi han greb
+    # `scout_agent` «fordi det var den han kunne SE». Det indgreb er nu maalt,
+    # en uge efter:
+    #
+    #     scout_agent        35 kald (15 af dem siden 23/9)
+    #     spawn_agent_task    0 kald — ingen taelling overhovedet i 30 dage
+    #
+    # Indgrebet virkede ikke. Han bruger scout, og scout BLIVER i inventaret
+    # (verificeret i det byggede katalog, og en vagt holder det fast). Den
+    # fjernede kan stadig naas: den staar i kataloget, hentes med
+    # `load_more_tools` og kaldes med `call_loaded_tool` — hvilket er praecis
+    # den vej de to mekanismer findes til.
+    #
+    # Samme spoergsmaal staar aabent for `dispatch_code_mode_task`, som ogsaa
+    # har nul kald. Den roeres ikke her: kode-flaaden er Bjoerns beslutning.
     # Fast i hans flade (Bjørn 17/9-2026): kode-flåden. Jarvis: «de er ikke i min
     # standard-værktøjsflade, så jeg griber dem ikke af mig selv».
     "dispatch_code_mode_task",

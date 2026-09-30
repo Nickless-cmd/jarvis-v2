@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { InlineToolGroup } from './InlineToolGroup'
+import { InlineToolGroup, SVAR_KLIP } from './InlineToolGroup'
 import type { ToolItem } from '../lib/toolGroup'
 
 const item = (over: Partial<ToolItem> = {}): ToolItem => ({
@@ -218,4 +218,91 @@ it('en runde over ét sekund viser tiden som før', async () => {
   } finally {
     jest.useRealTimers()
   }
+})
+
+/**
+ * Kaldets SVAR kan foldes ud — Bjørn 30/9-2026: «Tool result linjen mangler at
+ * kunne foldes ud.. og vises hvad du lavet i run».
+ *
+ * Før var folden en liste af ETIKETTER: «Læste USER.md» — men ikke ét ord af
+ * hvad der stod i filen. Kun kald der redigerede noget havde en krop
+ * (`aendring`, udledt af argumenterne), så alt andet arbejde var uigennemsigtigt.
+ * Nu bærer hvert kald sit resultat, og det kan åbnes.
+ */
+it('et kald med et svar er LUKKET som standard — svaret fylder ikke tråden', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'filens indhold her' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.queryByTestId('svar-0')).toBeNull()
+  expect(s.queryByText('filens indhold her')).toBeNull()
+})
+
+it('et tryk på kaldet folder svaret ud', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'filens indhold her' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste USER.md'))
+  expect(s.getByTestId('svar-0')).toBeTruthy()
+  expect(s.getByText('filens indhold her')).toBeTruthy()
+})
+
+it('et kald UDEN svar kan ikke aabnes — der er intet at vise', async () => {
+  const s = await render(<InlineToolGroup items={[item(), item()]} />)
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.queryByTestId('svar-0')).toBeNull()
+  expect(s.queryByTestId('svar-1')).toBeNull()
+})
+
+it('et redigeret kald gaar til DIFF-arket — ikke svar-folden', async () => {
+  // Diff-arket er rigere end rå tekst for et redigeret kald; den vej bevares.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Rettede a.py', tool: 'edit_file',
+             aendring: { sti: 'a.py', gammel: 'gammel', ny: 'ny' },
+             result: 'File edited successfully' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  expect(s.getByTestId('aendring-0')).toBeTruthy()
+  expect(s.queryByTestId('svar-0')).toBeNull()
+})
+
+it('et meget langt svar klippes — og det siges hoejt', async () => {
+  const langt = 'x'.repeat(SVAR_KLIP + 250)
+  const s = await render(<InlineToolGroup items={[item({ result: langt }), item({ label: 'Læste b.py' })]} />)
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste USER.md'))
+  expect(s.getByText(/afkortet \(/)).toBeTruthy()
+})
+
+it('svaret staar UNDER kaldets etiket — ikke i stedet for den', async () => {
+  const s = await render(
+    <InlineToolGroup items={[item({ result: 'svar-teksten' }), item({ label: 'Læste b.py' })]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste USER.md'))
+  const r = orden(s.toJSON())
+  expect(r.indexOf('Læste USER.md')).toBeGreaterThan(-1)
+  expect(r.indexOf('Læste USER.md')).toBeLessThan(r.indexOf('svar-0'))
+})
+
+it('et redigeret kald faar INGEN svar-chevron — kun diff-vejen', async () => {
+  // Uden denne vagt kunne et redigeret kald baere BAADE en diff-knap og en
+  // svar-fold: to doere til samme kald, hvor den ene aabner et tomt svar.
+  // Maalt paa chevrons, fordi svar-rammen er lukket som standard og derfor
+  // ikke kan skelne de to.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Rettede a.py', tool: 'edit_file',
+             aendring: { sti: 'a.py', gammel: 'g', ny: 'n' }, result: 'ok' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  // Kun runde-caret'en. Havde det redigerede kald ogsaa en svar-chevron,
+  // stod der to.
+  expect(s.queryAllByTestId('icon-ChevronDown').length).toBe(1)
 })

@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, Code2 } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
@@ -57,6 +57,15 @@ interface Props {
 /** Klokken vises først efter 5 s mens runden kører (kildens `zS`). */
 export const KLOKKE_EFTER_S = 5
 
+/**
+ * Hvor meget af et svar der tegnes før det klippes.
+ *
+ * Et bash-svar kan være hundreder af kB. Uden et loft ville ét kald skubbe
+ * resten af runden ud af syne — og det man leder efter er som regel de første
+ * linjer. Klippet siges højt i stedet for at fortie resten.
+ */
+export const SVAR_KLIP = 4000
+
 /** Kildens format (`BS`): «12s», «1m 5s», «1h 2m 3s». */
 export function formatTid(sek: number): string {
   const s = Math.max(0, Math.floor(sek))
@@ -92,6 +101,9 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
   const harTanker = !!tanker?.length
   const [open, setOpen] = useState(!!aabenFraStart && (items.length > 1 || harTanker))
   const [vistAendring, setVistAendring] = useState<ToolItem['aendring']>(null)
+  // Hvilke kald i runden der har deres SVAR foldet ud. Ét sæt pr. runde, så
+  // flere kald kan stå åbne samtidig — man læser typisk to svar mod hinanden.
+  const [aabneSvar, setAabneSvar] = useState<Record<number, boolean>>({})
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
@@ -214,23 +226,57 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
               {/* En række der redigerede eller skrev en fil kan trykkes: ændringen
                   åbner i diff-arket (Claude Desktop §9: «Click a filename on an
                   Edited or Wrote row»). */}
-              <Pressable
-                style={styles.detailRaekke}
-                disabled={!item.aendring}
-                onPress={() => item.aendring && setVistAendring(item.aendring)}
-                accessibilityRole={item.aendring ? 'button' : 'text'}
-                accessibilityLabel={item.aendring ? `${item.label} — vis ændringen` : item.label}
-                testID={item.aendring ? `aendring-${i}` : undefined}
-              >
-                <Text style={[styles.detail, item.aendring ? styles.detailLink : null]} numberOfLines={1}>{item.label}</Text>
-                {item.diff ? (
-                  // Grøn/rød pr. kald: `ok` og `error`, ikke accent.
-                  <View style={styles.tal}>
-                    {item.diff.tilfoejet ? <Text style={[styles.talTekst, styles.plus]}>+{item.diff.tilfoejet}</Text> : null}
-                    {item.diff.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text> : null}
-                  </View>
-                ) : null}
-              </Pressable>
+              {/* Kaldet kan åbnes. Redigerede kald går til diff-arket (rigere
+                  end rå tekst); alle andre folder deres SVAR ud — det er dét
+                  der gør runden gennemsigtig i stedet for en liste af
+                  etiketter (Bjørn 30/9-2026). */}
+              {(() => {
+                const svar = (item.result ?? '').trim()
+                const harSvar = !item.aendring && svar.length > 0
+                const aaben = !!aabneSvar[i]
+                const kanAabnes = !!item.aendring || harSvar
+                return (
+                  <>
+                    <Pressable
+                      style={styles.detailRaekke}
+                      disabled={!kanAabnes}
+                      onPress={() => item.aendring
+                        ? setVistAendring(item.aendring)
+                        : setAabneSvar((v) => ({ ...v, [i]: !v[i] }))}
+                      accessibilityRole={kanAabnes ? 'button' : 'text'}
+                      accessibilityState={kanAabnes ? { expanded: aaben } : undefined}
+                      accessibilityLabel={item.aendring
+                        ? `${item.label} — vis ændringen`
+                        : harSvar ? `${item.label} — vis svaret` : item.label}
+                      testID={item.aendring ? `aendring-${i}` : undefined}
+                    >
+                      {harSvar ? (
+                        <ChevronDown
+                          size={13}
+                          color={tokens.color.fg3}
+                          strokeWidth={2}
+                          style={{ transform: [{ rotate: aaben ? '0deg' : '-90deg' }] }}
+                        />
+                      ) : null}
+                      <Text style={[styles.detail, item.aendring ? styles.detailLink : null]} numberOfLines={1}>{item.label}</Text>
+                      {item.diff ? (
+                        // Grøn/rød pr. kald: `ok` og `error`, ikke accent.
+                        <View style={styles.tal}>
+                          {item.diff.tilfoejet ? <Text style={[styles.talTekst, styles.plus]}>+{item.diff.tilfoejet}</Text> : null}
+                          {item.diff.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text> : null}
+                        </View>
+                      ) : null}
+                    </Pressable>
+                    {harSvar && aaben ? (
+                      <View style={styles.svarRamme} testID={`svar-${i}`}>
+                        <Text style={styles.svarTekst} selectable>
+                          {svar.length > SVAR_KLIP ? `${svar.slice(0, SVAR_KLIP)}\n… afkortet (${svar.length} tegn)` : svar}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                )
+              })()}
               </Fragment>
             ))}
             {/* Tanker der kom efter det SIDSTE kald i runden. */}
@@ -268,16 +314,26 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // Kildens ramme: ½ dp kant, 8 dp hjørner, 4/10/8 dp margen, højst 200 dp.
   ramme: {
     borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line, borderRadius: 8,
-    marginTop: 4, marginHorizontal: 10, marginBottom: 8, maxHeight: 200, overflow: 'hidden',
+    marginTop: 4, marginHorizontal: 10, marginBottom: 8, maxHeight: 320, overflow: 'hidden',
     backgroundColor: 'rgba(0,0,0,0.25)'
   },
-  rammeScroll: { maxHeight: 200 },
+  rammeScroll: { maxHeight: 320 },
   details: { padding: 10, gap: 6 },
   detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1 },
   // Trykbar: filen åbner i diff-arket. Understreget svagt — ikke en knap-form.
   detailLink: { color: tokens.color.fg2, textDecorationLine: 'underline', textDecorationColor: tokens.color.line },
   // Tallene står LIGE efter teksten, ikke ude ved kanten.
   detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // Kaldets svar: rå tekst i fast bredde. Rammen er svagere end foldens egen,
+  // så man kan se hvor svaret begynder og etiketten slutter.
+  svarRamme: {
+    borderLeftWidth: 2, borderLeftColor: tokens.color.line,
+    paddingLeft: 8, marginLeft: 6, marginTop: 2, marginBottom: 2
+  },
+  svarTekst: {
+    color: tokens.color.fg3, fontSize: 12, lineHeight: 17,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
+  },
   tal: { flexDirection: 'row', gap: 6 },
   talTekst: { fontSize: 12.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
   plus: { color: tokens.color.ok },

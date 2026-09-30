@@ -393,8 +393,16 @@ it('den gemte visning baerer id og linjetal videre', () => {
   // en vagt der maaler det forkerte sted er lige saa blind som ingen vagt.
   const i = ml.indexOf('`${m.id}-t${bi}`')
   expect(i).toBeGreaterThan(0)
-  const gemt = ml.slice(i, i + 700)
+  // Vinduet loeber til raekkens EGEN slutning (`running: false`) i stedet for
+  // et fast antal tegn. Et fast tal knækkede 30/9-2026, da raekken fik et felt
+  // mere (`result`) og skubbede `diffFraResultat` ud over kanten — vagten
+  // maalte saa det forkerte sted, praecis som den første udgave advarede om.
+  const slut = ml.indexOf('running: false', i)
+  const gemt = ml.slice(i, slut > i ? slut : i + 700)
   expect(gemt).toMatch(/id: b\.id/)
   expect(gemt).toMatch(/diffFraResultat\(b\.result\)/)
   expect(gemt).toMatch(/toolDiff\(/)
+  // Raekken baerer ogsaa kaldets SVAR videre — ellers er folden tom for
+  // indhold naar traaden genindlaeses fra disken (Bjørn 30/9-2026).
+  expect(gemt).toMatch(/result: typeof b\.result === 'string'/)
 })

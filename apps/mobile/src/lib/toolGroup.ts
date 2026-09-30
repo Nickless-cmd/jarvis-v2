@@ -40,6 +40,19 @@ export interface ToolItem {
   count?: number
   /** Kaldets egen ændring — åbnes i diff-arket (Claude Desktop §9). */
   aendring?: { sti: string; gammel: string; ny: string } | null
+  /**
+   * Kaldets RESULTAT — hvad det faktisk svarede.
+   *
+   * Uden det var folden en liste af etiketter: man kunne se «Læste USER.md»
+   * men ikke ét ord af hvad der stod i filen. Kun kald der REDIGEREDE noget
+   * havde en krop (`aendring`, udledt af argumenterne), så alt andet arbejde
+   * var uigennemsigtigt. (Bjørn 30/9-2026: «Tool result linjen mangler at
+   * kunne foldes ud.. og vises hvad du lavet i run».)
+   *
+   * Kommer fra blokkens `result` — sat af reduceren når `tool_result`-rammen
+   * lander, og båret med herfra. `null` = kaldet har intet resultat endnu.
+   */
+  result?: string | null
 }
 
 import { grundnavn } from './toolSummary'

@@ -129,7 +129,7 @@ type Row = (
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[]; side: 'left' | 'right' }
   | { kind: 'tool'; key: string; content: string }
-  | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
+  | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null; result?: string }
   | { kind: 'image-generation'; key: string }
   | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
@@ -243,12 +243,14 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (kald.length === 0) { out.push(...tankeRækker); return }
     const items: ToolItem[] = kald.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body) }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body), result: r.result ?? null }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,
             tool: /\[([a-z_0-9]+)\]\s*:/i.exec((r as { content: string }).content)?.[1] ?? '',
-            count: countFromResult((r as { content: string }).content)
+            count: countFromResult((r as { content: string }).content),
+            // Den persisterede række ER resultatet (`[tool_result:…] [bash]: …`).
+            result: (r as { content: string }).content
           }
     )
     out.push({ kind: 'tool-group', key: `group-${kald[0]!.key}`, items,
@@ -453,6 +455,10 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         id: b.id,
         name: b.name,
         body: toolBody(b),
+        // Kaldets svar. `result` sættes på blokken når tool_result-rammen
+        // lander (se reducerens foldning), og bæres med her — ellers kunne
+        // folden vise HVAD der blev kaldt, men ikke hvad det svarede.
+        result: typeof b.result === 'string' ? b.result : undefined,
         running: b.status !== 'done' && b.status !== 'error',
         // Linjetallene for DETTE kald. Serverens MAALTE tal foerst: den har
         // filen i haanden lige foer den skriver, og kan derfor sige hvor meget
@@ -624,6 +630,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 id: b.id,
                 name: String(b.name ?? ''),
                 body: JSON.stringify(b.input ?? {}),
+                // Samme som live-rækken: svaret skal med, ellers er folden
+                // tom for indhold når tråden genindlæses fra disken.
+                result: typeof b.result === 'string' ? b.result : undefined,
                 diff: diffFraResultat(b.result) ?? toolDiff(String(b.name ?? ''), b.input),
                 running: false
               })

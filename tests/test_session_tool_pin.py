@@ -26,11 +26,28 @@ def state(monkeypatch):
 
 
 def test_the_first_turn_decides_and_the_next_reuses(state):
+    """Laasen vinder over routeren — men de KRAEVEDE er altid med.
+
+    Foer 30/9-2026 pinnede denne test `again == names` eksakt. Den lighed holdt
+    ogsaa de kraevede vaerktoejer ude af en gammel laas, og det kostede: en
+    session havde 97 laaste navne uden `call_loaded_tool`, saa modellen ikke
+    kunne kalde den overhovedet. Hensigten — «praefikset holder» — maales nu
+    som STABILITET over gentagne kald, hvilket er den egenskab der betyder
+    noget, i stedet for lighed med den foerste liste.
+    """
+    from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
+
     names, src = STP.resolve("s1", ["bash", "read_file", "recall_memories"])
     assert src == "pinned-new" and names == ["bash", "read_file", "recall_memories"]
     # Routeren vil noget andet naeste tur — laasen vinder, saa praefikset holder.
     again, src2 = STP.resolve("s1", ["calendar_create", "send_mail"])
-    assert src2 == "pinned" and again == names
+    assert src2 == "pinned"
+    assert set(names) <= set(again), "laasens egne navne forsvandt"
+    assert not ({"calendar_create", "send_mail"} & set(again)), "routeren vandt"
+    assert set(REQUIRED_LAZY_TOOL_NAMES) <= set(again), "de kraevede blev laast ude"
+    # DET er «praefikset holder»: samme svar hver gang, ikke lighed med foerste tur.
+    tredje, _ = STP.resolve("s1", ["noget_helt_andet"])
+    assert tredje == again
 
 
 def test_the_set_is_order_stable(state):
@@ -106,3 +123,45 @@ def test_a_broken_state_store_never_blocks_the_turn(monkeypatch):
 def test_an_empty_selection_is_left_alone(state):
     assert STP.resolve("s1", []) == ([], "router")
     assert STP.resolve("", ["bash"]) == (["bash"], "router")
+
+
+# ── Laasen maa ikke laase de KRAEVEDE ude (30/9-2026) ────────────────────────
+#
+# Maalt: en session havde 97 laaste vaerktoejer, og `call_loaded_tool` var IKKE
+# blandt dem — den blev bygget efter laasen blev sat, og `resolve` returnerer
+# laasen I STEDET FOR routerens valg. Modellen kunne dermed ikke kalde den
+# overhovedet. `notify_user` manglede paa samme vis og blev hentet 20 gange.
+#
+# Laasen nulstilles foerst ved compaction, saa uden det her ville et nyt
+# noedvendigt vaerktoej vaere utilgaengeligt i hele sessionens levetid.
+
+def test_de_kraevede_er_ALTID_med_selv_i_en_gammel_laas(monkeypatch):
+    from core.services import session_tool_pin as sp
+    from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
+
+    monkeypatch.setattr(sp, "get_pinned", lambda sid: ["bash", "read_file"])
+    navne, kilde = sp.resolve("s1", ["edit_file"])
+    assert kilde == "pinned"
+    mangler = set(REQUIRED_LAZY_TOOL_NAMES) - set(navne)
+    assert not mangler, f"laast ude af en gammel laas: {mangler}"
+
+
+def test_laasens_egne_navne_bevares(monkeypatch):
+    """Kontrollen. Uden den kunne testen ovenfor bestaa paa en `resolve` der
+    KASSEREDE laasen — og saa var hele praefiks-stabiliteten vaek."""
+    from core.services import session_tool_pin as sp
+
+    monkeypatch.setattr(sp, "get_pinned", lambda sid: ["bash", "et_saerligt_vaerktoej"])
+    navne, _ = sp.resolve("s1", ["edit_file"])
+    assert "et_saerligt_vaerktoej" in navne
+    assert "bash" in navne
+
+
+def test_resultatet_er_SORTERET_ellers_er_arrayet_ikke_byte_stabilt(monkeypatch):
+    """Raekkefoelgen ER cache-noeglen: to ture med samme saet i forskellig
+    orden giver to forskellige praefikser, og hele samtalen betales igen."""
+    from core.services import session_tool_pin as sp
+
+    monkeypatch.setattr(sp, "get_pinned", lambda sid: ["zebra", "alfa", "beta"])
+    navne, _ = sp.resolve("s1", ["edit_file"])
+    assert navne == sorted(navne), navne

@@ -135,7 +135,30 @@ def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]
     try:
         existing = get_pinned(sid)
         if existing:
-            return existing, "pinned"
+            # ── Laasen maa ikke laase de KRAEVEDE ude (30/9-2026) ──────────
+            #
+            # `existing` blev sat én gang og returneres derefter i stedet for
+            # routerens valg. Alt der bliver noedvendigt SENERE naaede derfor
+            # aldrig frem — laasen nulstilles foerst ved compaction.
+            #
+            # Maalt samme dag: en session havde 97 laaste vaerktoejer, og
+            # `call_loaded_tool` var IKKE blandt dem, fordi den blev bygget
+            # efter laasen blev sat. Modellen kunne dermed ikke kalde den
+            # overhovedet — adoptionen var nul af den grund, ikke fordi den
+            # blev fravalgt. `notify_user` manglede paa samme vis og blev
+            # hentet 20 gange paa 30 dage.
+            #
+            # Foreningen er med de EKSPLICIT kraevede — ikke med hele kernen.
+            # `REQUIRED_LAZY_TOOL_NAMES` er den liste hvis hele formaal er «maa
+            # altid overleve kappen», og den er konstant, saa arrayet er stadig
+            # byte-stabilt fra tur til tur. Sorteret af samme grund.
+            #
+            # Prisen er ét cache-brud i de sessioner der mangler noget: arrayet
+            # aendrer sig én gang, og derefter staar det stille igen. Et
+            # vaerktoej der ikke kan kaldes er dyrere end det brud.
+            from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
+            samlet = sorted(set(existing) | set(REQUIRED_LAZY_TOOL_NAMES))
+            return samlet, "pinned"
         return pin(sid, picked), "pinned-new"
     except Exception as exc:
         logger.debug("session_tool_pin: resolve faldt tilbage til routeren: %s", exc)

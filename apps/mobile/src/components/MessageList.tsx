@@ -209,23 +209,39 @@ function erServerId(id: string): boolean {
 
 function groupToolRounds(rows: Row[]): Row[] {
   const out: Row[] = []
-  let buf: Row[] = []
-  // Tænke-rækker holdes tilbage og lægges IND UNDER den værktøjs-linje de
-  // hører til. Desk gør præcis det samme: tænke-linjen er ikke en søskende
-  // OVER linjen, den er et ELEMENT i rundens detaljer, under rundens knap
-  // (`RaekkeTranskript.tsx:275` — `rv-arbejdsdetaljer`). Bjørn 29/9-2026: «i
-  // desk lægger vi tænkelinjen ind under tool result linjen.. det bør vi osse
-  // gøre her». Står tanken alene — uden et kald efter sig — bliver den hvor
-  // den er; den flyttes kun ned når der faktisk ER en linje at ligge under.
-  let tanke: Row[] = []
-  const slipTanke = () => {
-    if (tanke.length === 0) return
-    out.push(...tanke)
-    tanke = []
-  }
-  const flush = () => {
-    if (buf.length === 0) return
-    const items: ToolItem[] = buf.map((r) =>
+  // Elementerne i runden der bygges nu: kald OG tanker, i den rækkefølge de
+  // skete. Desk gør præcis dette (`opdelArbejdsrunder`, `raekkeModel.ts:71`):
+  // elementer samles, og KUN et mellemsvar afslutter runden — en tanke gør
+  // ikke. En runde uden kald bliver enkeltrækker.
+  //
+  // Bjørn 30/9-2026: «Tænkte linjen står stadig under tool result linjen».
+  // Den gjorde netop det, fordi denne funktion LUKKEDE runden i det øjeblik
+  // den så en tanke. Blokkene kommer i rækkefølgen `thinking, text, tool_use`
+  // (målt i besked 153522), så tanken blev skubbet ud som sin EGEN række efter
+  // den foregående rundes linje i stedet for at ligge inde i den.
+  let elementer: Row[] = []
+  let tur: string | undefined
+  const afslut = () => {
+    if (elementer.length === 0) return
+    const kald: Row[] = []
+    const tankeRækker: Row[] = []
+    const tanker: TankeRaekke[] = []
+    for (const r of elementer) {
+      if (r.kind === 'thinking') {
+        tankeRækker.push(r)
+        // Hvor mange kald der kom FØR den. Folden tegner elementerne i den
+        // rækkefølge de skete — som desk — i stedet for alle tanker øverst.
+        tanker.push({ key: r.key, seconds: r.seconds, text: r.text, live: r.live,
+          messageId: r.messageId, foerKald: kald.length })
+      } else {
+        kald.push(r)
+      }
+    }
+    elementer = []
+    tur = undefined
+    // Ingen linje at folde bag: tankerne står selv, hvor de stod.
+    if (kald.length === 0) { out.push(...tankeRækker); return }
+    const items: ToolItem[] = kald.map((r) =>
       r.kind === 'live-tool'
         ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body) }
         : {
@@ -235,39 +251,22 @@ function groupToolRounds(rows: Row[]): Row[] {
             count: countFromResult((r as { content: string }).content)
           }
     )
-    out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items,
-      // Tanken følger med IND i linjen. Den stod før som en søskenderække
-      // EFTER gruppen; nu er den rundens første detalje, som i desk. Kun de
-      // tanker der hørte til netop denne gruppe — de øvrige bliver hvor de er.
-      tanker: tanke.length
-        ? tanke.flatMap((r) => r.kind === 'thinking'
-            ? [{ key: r.key, seconds: r.seconds, text: r.text, live: r.live, messageId: r.messageId }]
-            : [])
-        : undefined,
-      turnId: buf[0]!.turnId, work: buf[0]!.work })
-    buf = []
-    // Tanken er nu INDENI linjen — den skal ikke også stå efter den.
-    tanke = []
+    out.push({ kind: 'tool-group', key: `group-${kald[0]!.key}`, items,
+      tanker: tanker.length ? tanker : undefined,
+      turnId: kald[0]!.turnId, work: kald[0]!.work })
   }
   for (const r of rows) {
-    if (r.kind === 'tool' || r.kind === 'live-tool') {
-      if (buf.length && r.turnId !== buf[0]!.turnId) flush()
-      buf.push(r)
-    }
-    else if (r.kind === 'thinking') {
-      // En tanke EFTER et kald betyder at det kald er slut: luk gruppen (og
-      // dens egen tanke), og læg denne tanke i kø til den NÆSTE linje.
-      flush()
-      tanke.push(r)
-    }
-    else {
-      flush()
-      slipTanke()
+    if (r.kind === 'tool' || r.kind === 'live-tool' || r.kind === 'thinking') {
+      // En ny TUR starter altid en ny runde.
+      if (elementer.length && r.turnId !== tur) afslut()
+      elementer.push(r)
+      tur = r.turnId
+    } else {
+      afslut()
       out.push(r)
     }
   }
-  flush()
-  slipTanke()
+  afslut()
   return out
 }
 

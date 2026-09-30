@@ -40,10 +40,10 @@ it('tænkningen overlever vejen fra stream til gemt besked', async () => {
   } as ChatMessage
   const v = await render(<MessageList messages={[msg]} blocks={[]} />)
   await act(async () => { fireEvent.press(v.getByTestId('turn-header')) })
-  // Den første tanke hørte til kaldet og ligger nu i runde-linjens fold; den
-  // anden har intet kald efter sig og står selv. Begge er der stadig — én er
-  // bare ét tryk væk.
-  expect(v.queryAllByText(/Tænkte/).length).toBe(1)
+  // BEGGE tanker hører til runden: den ene kom før kaldet, den anden efter det.
+  // Desk lukker kun runden på et mellemsvar — ikke på en tanke
+  // (`opdelArbejdsrunder`, raekkeModel.ts:71). Begge er der stadig — ét tryk væk.
+  expect(v.queryAllByText(/Tænkte/).length).toBe(0)
   await act(async () => { fireEvent.press(v.getByTestId('tool-group')) })
   expect(v.queryAllByText(/Tænkte/).length).toBe(2)
 })

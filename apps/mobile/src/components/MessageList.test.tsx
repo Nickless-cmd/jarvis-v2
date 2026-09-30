@@ -285,9 +285,10 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
     />
   )
   await fireEvent.press(s.getByTestId('turn-header'))
-  // Tanken der hørte til kaldet ligger INDE i runde-linjens fold — den er ikke
-  // synlig før den åbnes. Den anden har intet kald efter sig og står selv.
-  expect(s.queryAllByText(/Tænkte/).length).toBe(1)
+  // BEGGE tanker hører til runden: den ene kom før kaldet, den anden efter det.
+  // Desk lukker kun runden på et mellemsvar — ikke på en tanke
+  // (`opdelArbejdsrunder`, raekkeModel.ts:71).
+  expect(s.queryAllByText(/Tænkte/).length).toBe(0)
   await fireEvent.press(s.getByTestId('tool-group'))
   const taenkte = s.queryAllByText(/Tænkte/)
   expect(taenkte.length).toBe(2)
@@ -484,4 +485,95 @@ it('en tanke UDEN et kald efter sig bliver hvor den er', async () => {
   const orden = raekkefoelge(s.toJSON())
   expect(orden.indexOf('thinking-summary')).toBeGreaterThan(-1)
   expect(orden.indexOf('tool-group')).toBe(-1)
+})
+
+/**
+ * Bjørns faktiske blok-rækkefølge — målt 30/9-2026 i besked 153522:
+ *
+ *   thinking → text → tool_use → thinking → text → tool_use → thinking → text
+ *
+ * Den gamle `groupToolRounds` LUKKEDE runden i det øjeblik den så en tanke, så
+ * tanke 2 og 3 blev skubbet ud som deres EGNE rækker — og stod derfor under den
+ * foregående runde-linje. Det var netop dét Bjørn så: «Tænkte linjen står stadig
+ * under tool result linjen».
+ *
+ * Desk lukker kun på et mellemsvar (`opdelArbejdsrunder`, raekkeModel.ts:71), så
+ * tanken bliver liggende i den runde den hørte til.
+ */
+it('tanker efter et kald bliver i DEN runde — ikke skubbet ud som egne rækker', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg', seconds: 3 },
+            { type: 'text', text: 'nu kalder jeg' },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'a.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på det', seconds: 4 },
+            { type: 'text', text: 'så kalder jeg igen' },
+            { type: 'tool_use', name: 'bash', input: { command: 'pwd' }, tool_use_id: 't2' },
+            { type: 'tool_result', tool_use_id: 't2', content: '/tmp', status: 'ok' },
+            { type: 'thinking', text: 'til sidst konkluderer jeg', seconds: 5 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  // Kun den FØRSTE tanke står selv: den kom før det første kald, og der var
+  // ingen runde at lægge den i. Desk gør præcis det samme (enkeltræk).
+  expect(s.queryAllByText(/Tænkte/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 3s/).length).toBe(1)
+  const grupper = s.getAllByTestId('tool-group')
+  expect(grupper.length).toBe(2)
+  // Ingen af de to tanker der HØRTE til en runde står løst i tråden.
+  expect(s.queryAllByText(/Tænkte i 4s/).length).toBe(0)
+  expect(s.queryAllByText(/Tænkte i 5s/).length).toBe(0)
+  // Åbn begge runder. Listen er inverteret, så træets index 0 er den NYESTE
+  // runde — derfor spørges der efter begge, ikke efter «den første».
+  await fireEvent.press(s.getAllByTestId('tool-group')[0]!)
+  await fireEvent.press(s.getAllByTestId('tool-group')[1]!)
+  expect(s.queryAllByText(/Tænkte i 4s/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 5s/).length).toBe(1)
+})
+
+it('tanken ligger EFTER sit eget kald i folden — ikke samlet øverst', async () => {
+  // `foerKald` bærer tankens plads i runden. Uden den blev ALLE tanker tegnet
+  // før alle kald, og en tanke der kom efter et kald stod foran det.
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg', seconds: 3 },
+            { type: 'text', text: 'nu kalder jeg' },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'a.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på det', seconds: 4 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = raekkefoelge(s.toJSON())
+  const kald = r.indexOf('Kørte ls')
+  // Vagt: et forkert label-navn ville give -1, og så målte testen ingenting.
+  expect(kald).toBeGreaterThan(-1)
+  expect(r.indexOf('thinking-summary')).toBeGreaterThan(-1)
+  expect(kald).toBeLessThan(r.indexOf('thinking-summary'))
 })

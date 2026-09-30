@@ -1158,7 +1158,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L759)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L769)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)

@@ -210,3 +210,44 @@ def test_cue_efter_markoeren_naar_markoeren_ikke_er_imperativ():
 
     ev = _request_risk_evidence("jeg vil have den ud, push nu")
     assert any("risk marker: 'push'" in e for e in ev), ev
+
+
+# ── Cue'et skal ogsaa staa som ORD (30/9-2026, anden runde) ────────────────
+#
+# Fixet ovenfor holdt markoeren til helt ord — men cue-TJEKKET var stadig
+# `cue in vindue`. «nu» er et cue, og det findes inde i «minutter», «nul»,
+# «nutid», «menu» og «nummer». Maalt: 4 af 4 rene emne-saetninger blev doemt
+# som pres, og det ramte ALLE fem enkeltords-markoerer — ikke kun `merge`.
+#
+# MUTATIONER der skal fanges:
+#   M7 — cue-tjekket tilbage til substring (`cue in vindue`)   -> M8 fanger
+#   M8 — drop kort-kravet for det korte cue («nu»)             -> M7 fanger
+
+
+def test_cue_som_substring_i_et_almindeligt_ord():
+    """M8-fangeren: «nu» maa ikke rammes inde i «minutter», «nul» og «menu».
+
+    Ingen af saetningerne begynder med markoeren, saa ingen af dem staar i
+    imperativ position — de er rene emne-saetninger fra en teknisk rapport."""
+    from core.services.pushback import _request_risk_evidence
+
+    for tekst in (
+        "vi har maalt merge de sidste minutter og det er 5,2 procent",
+        "her staar merge i menu'en over vaerktoejer",
+        "den samlede merge-tid er 18,63 mio over alle minutter",
+        "jeg har maalt merge over nul runder i nat",
+    ):
+        assert _request_risk_evidence(tekst) == [], tekst
+
+
+def test_kort_cue_i_lang_besked_er_ikke_et_pres():
+    """M7-fangeren: «nu» er et cue — men kun naar beskeden selv er kort.
+
+    «hvad goer vi nu med merge?» midt i en 6.000-tegns rapport er et spoergsmaal.
+    Fjerner man kort-kravet for det korte cue, fyrer denne falsk."""
+    from core.services.pushback import _request_risk_evidence
+
+    tekst = ("claude  Analysen holder. Hvad goer vi nu med merge? Jeg har maalt "
+             "det igen: bruddet baerer 5,2 % af miss, og aabneren 41,3 %. ") * 3
+    assert len(tekst) > 240
+    assert _request_risk_evidence(tekst) == []

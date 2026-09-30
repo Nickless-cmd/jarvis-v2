@@ -290,12 +290,29 @@ def _staar_i_imperativ(lower: str, marker: str) -> bool:
     return False
 
 
-def _har_pres_cue(lower: str, marker: str) -> bool:
+#: Cue'erne som helt-ords-mønstre. Cue'en skal stå som ORD — ellers rammer «nu»
+#: inde i «minutter», «nul» og «menu». Målt 30/9-2026: med substring-match blev
+#: 4 af 4 rene emne-sætninger dømt som pres — og det ramte alle fem
+#: enkeltords-markører, ikke kun `merge`.
+_LANGE_CUES = tuple(c for c in _PRESSURE_CUES if len(c) > 3)
+_KORTE_CUES = tuple(c for c in _PRESSURE_CUES if len(c) <= 3)
+_LANG_CUE_RE = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in _LANGE_CUES) + r")\b")
+_KORT_CUE_RE = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in _KORTE_CUES) + r")\b")
+
+
+def _har_pres_cue(lower: str, marker: str, kort: bool) -> bool:
     """Står et pres-cue i nærheden af markøren — før ELLER efter den?
-    «bare push» og «push nu» er begge et pres."""
+    «bare push» og «push nu» er begge et pres.
+
+    De helt korte cues (kun «nu») tæller BARE i en kort besked: «push nu» er et
+    pres, men «hvad gør vi nu med merge?» midt i en 6.000-tegns rapport er et
+    spørgsmål — og «nu» er for almindeligt et dansk ord til at bære det alene.
+    """
     for m in re.finditer(rf"\b{re.escape(marker)}\b", lower):
         vindue = lower[max(0, m.start() - _PRESSURE_CUE_WINDOW): m.end() + _PRESSURE_CUE_WINDOW]
-        if any(cue in vindue for cue in _PRESSURE_CUES):
+        if _LANG_CUE_RE.search(vindue):
+            return True
+        if kort and _KORT_CUE_RE.search(vindue):
             return True
     return False
 
@@ -309,7 +326,7 @@ def _marker_er_pres(marker: str, lower: str, kort: bool) -> bool:
     if " " in marker:
         return True
     # (b) Et pres-cue i nærheden.
-    if _har_pres_cue(lower, marker):
+    if _har_pres_cue(lower, marker, kort):
         return True
     # (c) Kort besked + markøren som ordre.
     return kort and _staar_i_imperativ(lower, marker)

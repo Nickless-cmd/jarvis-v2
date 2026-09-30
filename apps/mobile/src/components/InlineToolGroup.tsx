@@ -6,8 +6,10 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
 import { DiffArk } from './DiffArk'
+import { Krop } from './Krop'
 import { Prikker } from './Prikker'
 import { ThinkingSummary } from './ThinkingSummary'
+import { kropFor } from '../lib/krop'
 
 /** Tænke-linje der hører til runden — tegnes inde i folden, på sin plads. */
 export interface TankeRaekke {
@@ -235,6 +237,13 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
                 const harSvar = !item.aendring && svar.length > 0
                 const aaben = !!aabneSvar[i]
                 const kanAabnes = !!item.aendring || harSvar
+                // Krop efter RESULTATETS form, ikke efter værktøjets navn
+                // (Bjørn 30/9-2026: «vi har ingen form visning»). Et bash-kald
+                // og en fil-læsning så ens ud som rå tekst; nu får de hver sin
+                // form. `fald` beholder den rå vej — for små status-objekter ER
+                // den den rigtige form, og en gættet form ville være ringere.
+                const familie = kropFor(item.tool)
+                const harKrop = familie === 'terminal' || familie === 'fil'
                 return (
                   <>
                     <Pressable
@@ -268,11 +277,17 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
                       ) : null}
                     </Pressable>
                     {harSvar && aaben ? (
-                      <View style={styles.svarRamme} testID={`svar-${i}`}>
-                        <Text style={styles.svarTekst} selectable>
-                          {svar.length > SVAR_KLIP ? `${svar.slice(0, SVAR_KLIP)}\n… afkortet (${svar.length} tegn)` : svar}
-                        </Text>
-                      </View>
+                      harKrop ? (
+                        <View testID={`svar-${i}`}>
+                          <Krop familie={familie} result={item.result} running={item.running} />
+                        </View>
+                      ) : (
+                        <View style={styles.svarRamme} testID={`svar-${i}`}>
+                          <Text style={styles.svarTekst} selectable>
+                            {svar.length > SVAR_KLIP ? `${svar.slice(0, SVAR_KLIP)}\n… afkortet (${svar.length} tegn)` : svar}
+                          </Text>
+                        </View>
+                      )
                     ) : null}
                   </>
                 )

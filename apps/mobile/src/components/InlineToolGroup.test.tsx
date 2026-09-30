@@ -271,11 +271,60 @@ it('et redigeret kald gaar til DIFF-arket — ikke svar-folden', async () => {
 })
 
 it('et meget langt svar klippes — og det siges hoejt', async () => {
+  // `fald`-familien beholder den rå vej: der er ingen form at klippe i. Har
+  // kaldet en krop (bash, fil), klipper KROPPEN — ikke denne gren.
   const langt = 'x'.repeat(SVAR_KLIP + 250)
-  const s = await render(<InlineToolGroup items={[item({ result: langt }), item({ label: 'Læste b.py' })]} />)
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte databasen', tool: 'central_query', result: langt }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
   await fireEvent.press(s.getByTestId('tool-group'))
-  await fireEvent.press(s.getByText('Læste USER.md'))
+  await fireEvent.press(s.getByText('Forespurgte databasen'))
   expect(s.getByText(/afkortet \(/)).toBeTruthy()
+})
+
+it('et bash-kald faar TERMINAL-kroppen — ikke rå tekst', async () => {
+  // Kernen i ændringen (Bjørn 30/9-2026: «vi har ingen form visning»): et
+  // bash-kald og en fil-læsning så ens ud. Nu udtrækkes stdout af JSON-blobben
+  // og tegnes som terminal.
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Kørte npm test', tool: 'bash', result: '{"stdout": "5 passed", "exit_code": 0}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Kørte npm test'))
+  expect(s.getByTestId('krop-terminal')).toBeTruthy()
+  expect(s.getByText('5 passed')).toBeTruthy()
+})
+
+it('en fil-laesning faar FIL-kroppen — med linjenumre', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Læste krop.ts', tool: 'read_file', result: '{"content": "const a = x\\nexport b"}' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Læste krop.ts'))
+  expect(s.getByTestId('krop-fil')).toBeTruthy()
+})
+
+it('et ukendt vaerktoej beholder den RAA form — vi gaetter ikke en krop', async () => {
+  const s = await render(
+    <InlineToolGroup items={[
+      item({ label: 'Forespurgte databasen', tool: 'central_query', result: 'svar-teksten' }),
+      item({ label: 'Læste b.py' }),
+    ]} />
+  )
+  await fireEvent.press(s.getByTestId('tool-group'))
+  await fireEvent.press(s.getByText('Forespurgte databasen'))
+  expect(s.queryByTestId('krop-terminal')).toBeNull()
+  expect(s.queryByTestId('krop-fil')).toBeNull()
+  expect(s.getByTestId('svar-0')).toBeTruthy()
 })
 
 it('svaret staar UNDER kaldets etiket — ikke i stedet for den', async () => {

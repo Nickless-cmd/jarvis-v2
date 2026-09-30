@@ -174,3 +174,4 @@ def test_gulvet_har_ÉN_kilde():
     kilde = Path("scripts/regenerate_tier1.py").read_text(encoding="utf-8")
     assert "from core.tools.copilot_tool_pruning import SAFETY_FLOOR" in kilde, (
         "generatoren har sin egen kopi af gulvet igen — dobbelt sandhed")
+

@@ -355,6 +355,23 @@ class RuntimeSettings:
     # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
     # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
     session_tool_pin_enabled: bool = True
+    #: Samme vaerktoejskasse i BEGGE trin af en tur (30/9-2026).
+    #:
+    #: Foerste pas brugte `select_tools_for_visible` (48 vaerktoejer), de
+    #: agentiske runder `tool_router` + laasen (~119). Saettene var ikke
+    #: indlejrede: 77 vaerktoejer kunne KUN kaldes i runderne, og 6 kun i
+    #: foerste pas — heriblandt `read_tool_result`, som laeser resultater fra
+    #: andre vaerktoejer og manglede netop i de runder hvor resultater laeses.
+    #:
+    #: Maalt: 95 % af alle ture har mere end én runde og bruger altsaa
+    #: vaerktoejer (median 9 runder). Den lille foerste kasse sparer derfor
+    #: noget paa 5 % af turene og tvinger en omvej i de 95 %, hvor det store
+    #: array alligevel sendes fra runde 1. Forenet sendes ÉT array pr. tur i
+    #: stedet for to, og prosa-turene rammer samme varme praefiks som resten.
+    #:
+    #: Killswitch: saet den til false i settings.json. `load_settings()` laeser
+    #: filen ved HVERT kald, saa den virker UDEN genstart.
+    visible_tools_unified: bool = True
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
@@ -631,6 +648,7 @@ _TIDLIGERE_UINDLAESTE = (
     "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
+    "visible_tools_unified",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",

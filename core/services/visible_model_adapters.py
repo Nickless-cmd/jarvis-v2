@@ -284,7 +284,7 @@ def _stream_openai_compatible_model(
     )
     # NB: filtreringen anvendes nedenfor på chat_messages efter de er bygget
     from core.tools.simple_tools import get_tool_definitions
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
 
     defaults = provider_runtime_defaults(provider)
     base_url = str(defaults.get("base_url") or "")
@@ -326,7 +326,7 @@ def _stream_openai_compatible_model(
             )
             for m in chat_messages
         ]
-    tools = select_tools_for_visible(
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 
@@ -613,8 +613,8 @@ def _run_openai_compatible_visible(
         model=model,
     )
     _assembly_ms = int((_time.monotonic() - _t_assembly) * 1000)
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
-    tools = select_tools_for_visible(
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
     _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
@@ -923,7 +923,7 @@ def _stream_openai_codex_model(
     """
     from core.services.cheap_provider_runtime import _iter_openai_codex_chat_events
     from core.tools.simple_tools import get_tool_definitions
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
 
     provider_config = _provider_router_config(provider="openai-codex")
     profile = str(provider_config.get("auth_profile") or "").strip() or "codex"
@@ -931,7 +931,7 @@ def _stream_openai_codex_model(
     prompt = _vm()._build_openai_codex_visible_prompt(
         message=message, model=model, session_id=session_id,
     )
-    tools = select_tools_for_visible(
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 

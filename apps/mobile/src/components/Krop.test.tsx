@@ -1,5 +1,19 @@
-import { fireEvent, render } from '@testing-library/react-native'
-import { TerminalKrop, FilKrop, ListeKrop, Krop, MAX_LINJER, MAX_PUNKTER } from './Krop'
+import { act, fireEvent, render } from '@testing-library/react-native'
+import {
+  TerminalKrop, FilKrop, ListeKrop, Krop, MAX_LINJER, MAX_PUNKTER,
+  MindeKrop, WebKrop, SpoergsmaalKrop, OpgaveKrop, SkrivKrop, FejlKrop,
+  BilledeKrop, UnderagentKrop, Raadata,
+} from './Krop'
+
+// Billede og underagent henter gennem `config` fra AuthContext. Vi giver dem
+// én, og mock'er de to hentninger — ellers slog de ud i netvaerk i en test.
+jest.mock('../state/AuthContext', () => ({
+  useAuthOptional: () => ({ config: { apiBaseUrl: 'http://x', authToken: 't' } }),
+}))
+jest.mock('./AuthImage', () => ({ hentTilCache: jest.fn(async () => '/tmp/x.png') }))
+jest.mock('../lib/apiClient', () => ({
+  hentAgentKald: jest.fn(async () => [{ tool_name: 'read_file', arguments_json: '{"path":"a"}' }]),
+}))
 
 /**
  * `render` er ASYNKRON i dette bibliotek (samme mønster som
@@ -179,5 +193,127 @@ describe('Krop — vælgeren', () => {
     const s = await render(<Krop familie="fald" result="noget" />)
     expect(s.queryByTestId('krop-terminal')).toBeNull()
     expect(s.queryByTestId('krop-fil')).toBeNull()
+  })
+})
+
+describe('MindeKrop', () => {
+  it('viser titel, meta og tekst', async () => {
+    const s = await render(<MindeKrop titel="Fundet" meta="fakta · self" tekst={'linje 1\nlinje 2'} />)
+    expect(s.getByTestId('krop-minde')).toBeTruthy()
+    expect(s.getByText('Fundet')).toBeTruthy()
+    expect(s.getByText('fakta · self')).toBeTruthy()
+    expect(s.getByText(/linje 1/)).toBeTruthy()
+  })
+})
+
+describe('WebKrop', () => {
+  it('tegner domaenet over titlen pr. traef', async () => {
+    const s = await render(<WebKrop traef={[{ dom: 'a.dk', titel: 'A' }]} />)
+    expect(s.getByTestId('krop-web')).toBeTruthy()
+    expect(s.getByText('a.dk')).toBeTruthy()
+    expect(s.getByText('A')).toBeTruthy()
+  })
+})
+
+describe('SpoergsmaalKrop', () => {
+  it('viser spoergsmaalet og svaret', async () => {
+    const s = await render(<SpoergsmaalKrop q="Hvilken?" svar="Den anden" />)
+    expect(s.getByTestId('krop-spoergsmaal')).toBeTruthy()
+    expect(s.getByText('Hvilken?')).toBeTruthy()
+    expect(s.getByText('Den anden')).toBeTruthy()
+  })
+})
+
+describe('OpgaveKrop', () => {
+  it('taeller faerdige og tegner de tre glyfer', async () => {
+    const s = await render(<OpgaveKrop poster={[
+      { tekst: 'a', status: 'completed' },
+      { tekst: 'b', status: 'in_progress' },
+      { tekst: 'c', status: 'pending' },
+    ]} />)
+    expect(s.getByText(/1 af 3/)).toBeTruthy()
+    expect(s.getByText(/1 i gang/)).toBeTruthy()
+    expect(s.getByText('☑')).toBeTruthy()
+    expect(s.getByText('◐')).toBeTruthy()
+    expect(s.getByText('☐')).toBeTruthy()
+  })
+})
+
+describe('Raadata', () => {
+  it('starter LUKKET og folder IN og OUT ud ved tryk', async () => {
+    const s = await render(<Raadata ind='{"a":1}' ud="nej" />)
+    expect(s.queryByText('IN')).toBeNull()
+    await fireEvent.press(s.getByTestId('krop-raadata-knap'))
+    expect(s.getByText('IN')).toBeTruthy()
+    expect(s.getByText('OUT')).toBeTruthy()
+  })
+})
+
+describe('SkrivKrop og FejlKrop', () => {
+  it('skriv viser beviset og har raa data ét tryk væk', async () => {
+    const s = await render(<SkrivKrop besked="1941 bytes skrevet" ind="{}" ud="ok" />)
+    expect(s.getByTestId('krop-skriv')).toBeTruthy()
+    expect(s.getByText('1941 bytes skrevet')).toBeTruthy()
+    expect(s.getByTestId('krop-raadata')).toBeTruthy()
+  })
+
+  it('fejl viser beskeden frem for den tomme form', async () => {
+    const s = await render(<FejlKrop besked="Stien maa ikke vises" ind="{}" ud="nej" />)
+    expect(s.getByTestId('krop-fejl')).toBeTruthy()
+    expect(s.getByText('Stien maa ikke vises')).toBeTruthy()
+  })
+
+  it('fejl uden besked siger det hoejt i stedet for at staa tom', async () => {
+    const s = await render(<FejlKrop besked="" ind="{}" ud="" />)
+    expect(s.getByText(/kunne ikke gennemføres/)).toBeTruthy()
+  })
+})
+
+describe('BilledeKrop', () => {
+  it('viser navn, maal og analysen — og henter gennem ruten', async () => {
+    const s = await render(<BilledeKrop
+      sti="/tmp/skaerm.png" navn="skaerm.png" meta="800 × 600"
+      spoergsmaal="hvad staar der?" tekst="Et skaermbillede"
+    />)
+    expect(s.getByTestId('krop-billede')).toBeTruthy()
+    expect(s.getByText('skaerm.png')).toBeTruthy()
+    expect(s.getByText('800 × 600')).toBeTruthy()
+    expect(s.getByText('Et skaermbillede')).toBeTruthy()
+  })
+})
+
+describe('UnderagentKrop', () => {
+  it('henter og viser agentens egne kald', async () => {
+    const s = await render(<UnderagentKrop agentId="ag-1" resultat="Fandt 3 filer" />)
+    expect(s.getByTestId('krop-underagent')).toBeTruthy()
+    expect(s.getByText('Fandt 3 filer')).toBeTruthy()
+    // Kaldet er asynkront — vent paa at det lander.
+    await act(async () => { await Promise.resolve() })
+    expect(s.getByTestId('krop-underagent-liste')).toBeTruthy()
+    expect(s.getByText('read_file')).toBeTruthy()
+  })
+})
+
+describe('Krop — de nye former', () => {
+  it('minde bygges af ARGUMENTERNE', async () => {
+    const s = await render(<Krop familie="minde" result={'{"id":"x"}'} input={'{"title":"T","content":"C"}'} />)
+    expect(s.getByTestId('krop-minde')).toBeTruthy()
+    expect(s.getByText('T')).toBeTruthy()
+  })
+
+  it('web tegner traef-listen', async () => {
+    const s = await render(<Krop familie="web" result={'{"results":[{"url":"a.dk","title":"A"}]}'} />)
+    expect(s.getByTestId('krop-web')).toBeTruthy()
+  })
+
+  it('opgave tegner linjerne', async () => {
+    const s = await render(<Krop familie="opgave" result={'{"todos":[{"content":"a","status":"pending"}]}'} />)
+    expect(s.getByTestId('krop-opgave')).toBeTruthy()
+  })
+
+  it('fejl tegner beskeden fra resultatet', async () => {
+    const s = await render(<Krop familie="fejl" result={'{"status":"approval_needed","error":"naegtet"}'} />)
+    expect(s.getByTestId('krop-fejl')).toBeTruthy()
+    expect(s.getByText('naegtet')).toBeTruthy()
   })
 })

@@ -53,6 +53,16 @@ export interface ToolItem {
    * lander, og båret med herfra. `null` = kaldet har intet resultat endnu.
    */
   result?: string | null
+  /**
+   * Kaldets ARGUMENTER — hvad det fik.
+   *
+   * Noedvendige for de former der viser hvad der blev SKREVET: et minde
+   * (`remember_this` svarer kun `{id}`), et spoergsmaal (`pause_and_ask`) og
+   * en skrivning. Indholdet findes kun i argumenterne — resultatet bærer
+   * beviset, ikke teksten. (Desk's `Minde`-krop bygger af samme grund af
+   * argumenterne.)
+   */
+  input?: unknown
 }
 
 import { grundnavn } from './toolSummary'

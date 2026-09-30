@@ -284,10 +284,10 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
                         // `liste`, men svarer den med ren tekst, har kroppen intet
                         // at vise. Rå tekst er altid bedre end ingenting.
                         const familie = kropForResult(item.tool, item.result)
-                        if (kanTegneKrop(familie, item.result)) {
+                        if (kanTegneKrop(familie, item.result, item.input)) {
                           return (
                             <View testID={`svar-${i}`}>
-                              <Krop familie={familie} result={item.result} running={item.running} />
+                              <Krop familie={familie} result={item.result} input={item.input} running={item.running} />
                             </View>
                           )
                         }

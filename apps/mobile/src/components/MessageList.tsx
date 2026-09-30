@@ -243,7 +243,7 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (kald.length === 0) { out.push(...tankeRækker); return }
     const items: ToolItem[] = kald.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body), result: r.result ?? null }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body), result: r.result ?? null, input: r.body }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,

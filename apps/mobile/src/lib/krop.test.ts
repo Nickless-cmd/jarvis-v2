@@ -4,6 +4,8 @@ import {
   kropFor, kropForResult, kanTegneKrop, formFamilie, foersteListe, listeTekst,
   listePoster, tekstLinjer, udenHale, pakUd, udDel, exitKode, filTekst, filnavn,
   LISTE_NAVNE,
+  mindeIndhold, webTraef, spoergsmaalIndhold, billedeIndhold, opgavePoster,
+  agentIdFra, erFejl, fejlBesked, skrivBesked,
 } from './krop'
 
 describe('kropFor', () => {
@@ -308,5 +310,173 @@ describe('navnene findes i registret', () => {
       .join('\n')
     const mangler = LISTE_NAVNE.filter((n) => !kilde.includes(`"${n}"`))
     expect(mangler).toEqual([])
+  })
+})
+
+describe('kropFor — de ni nye familier', () => {
+  it('skriv-vaerktoejerne er skriv', () => {
+    for (const n of ['publish_file', 'notify_user', 'verify_file_contains']) {
+      expect(kropFor(n)).toBe('skriv')
+    }
+  })
+
+  it('de to minde-skrivninger er minde — ikke skriv', () => {
+    // Indholdet staar i argumenterne, og kroppen skal vise det.
+    expect(kropFor('remember_this')).toBe('minde')
+    expect(kropFor('memory_upsert_section')).toBe('minde')
+  })
+
+  it('web-vaerktoejerne er web', () => {
+    for (const n of ['web_search', 'web_fetch', 'operator_webfetch', 'web_scrape']) {
+      expect(kropFor(n)).toBe('web')
+    }
+  })
+
+  it('pause_and_ask er spoergsmaal', () => {
+    expect(kropFor('pause_and_ask')).toBe('spoergsmaal')
+  })
+
+  it('billed-vaerktoejerne er billede', () => {
+    for (const n of ['analyze_image', 'operator_screenshot', 'operator_screenshot_window', 'look_around', 'read_visual_memory']) {
+      expect(kropFor(n)).toBe('billede')
+    }
+  })
+
+  it('todo-vaerktoejerne er opgave', () => {
+    for (const n of ['todo_set', 'todo_add', 'todo_update_status', 'todo_remove', 'todo_list']) {
+      expect(kropFor(n)).toBe('opgave')
+    }
+  })
+
+  it('scout_agent er underagent — ikke skriv', () => {
+    expect(kropFor('scout_agent')).toBe('underagent')
+  })
+})
+
+describe('mindeIndhold', () => {
+  it('laeser titel og tekst af ARGUMENTERNE', () => {
+    // `remember_this` svarer kun `{id}` — indholdet findes ikke i resultatet.
+    const m = mindeIndhold(JSON.stringify({ title: 'Fundet', content: 'En linje', kind: 'fakta', domain: 'self' }))
+    expect(m).toEqual({ titel: 'Fundet', meta: 'fakta · self', tekst: 'En linje' })
+  })
+
+  it('tager ogsaa imod et objekt og et heading-felt', () => {
+    expect(mindeIndhold({ heading: 'H', text: 'T' })).toEqual({ titel: 'H', meta: '', tekst: 'T' })
+  })
+
+  it('giver null naar titel eller tekst mangler', () => {
+    expect(mindeIndhold('{"title":"x"}')).toBeNull()
+    expect(mindeIndhold('ikke json')).toBeNull()
+    expect(mindeIndhold(undefined)).toBeNull()
+  })
+})
+
+describe('webTraef', () => {
+  it('tager traef-listen med domaene og titel', () => {
+    const t = webTraef('{"results":[{"url":"https://a.dk","title":"A"}]}')
+    expect(t).toEqual([{ dom: 'https://a.dk', titel: 'A' }])
+  })
+
+  it('afviser en liste UDEN url — den er ikke et web-resultat', () => {
+    // Uden det krav ville enhver liste af objekter blive laest som en soegning.
+    expect(webTraef('{"results":[{"text":"noget"}]}')).toBeNull()
+    expect(webTraef('{}')).toBeNull()
+  })
+})
+
+describe('spoergsmaalIndhold', () => {
+  it('spoergsmaalet fra argumenterne, svaret fra resultatet', () => {
+    const s = spoergsmaalIndhold('{"question":"Hvilken?"}', '{"answer":"Den anden"}')
+    expect(s).toEqual({ q: 'Hvilken?', svar: 'Den anden' })
+  })
+
+  it('giver null naar begge sider er tomme', () => {
+    expect(spoergsmaalIndhold('{}', '{}')).toBeNull()
+  })
+})
+
+describe('opgavePoster', () => {
+  it('laeser todos-listen med status', () => {
+    const p = opgavePoster('{"count":2,"todos":[{"content":"a","status":"completed"},{"content":"b","status":"in_progress"}]}')
+    expect(p).toEqual([{ tekst: 'a', status: 'completed' }, { tekst: 'b', status: 'in_progress' }])
+  })
+
+  it('laeser den ENKELTE todo fra todo_update_status', () => {
+    expect(opgavePoster('{"todo":{"content":"a","status":"pending"}}')).toEqual([{ tekst: 'a', status: 'pending' }])
+  })
+
+  it('giver null naar der ingen liste er', () => {
+    expect(opgavePoster('{"status":"ok"}')).toBeNull()
+  })
+})
+
+describe('agentIdFra', () => {
+  it('laeser agent_id — og giver null uden', () => {
+    expect(agentIdFra('{"agent_id":"ag-1"}')).toBe('ag-1')
+    expect(agentIdFra('{"status":"ok"}')).toBeNull()
+  })
+})
+
+describe('erFejl', () => {
+  it('fanger de fire afviste statusser', () => {
+    for (const st of ['error', 'blocked', 'approval_needed', 'guard_blocked']) {
+      expect(erFejl(JSON.stringify({ status: st }))).toBe(true)
+    }
+  })
+
+  it('et normalt resultat er ikke en fejl', () => {
+    expect(erFejl('{"status":"ok","stdout":"hej"}')).toBe(false)
+    expect(erFejl('ren tekst')).toBe(false)
+  })
+})
+
+describe('fejlBesked', () => {
+  it('tager fejl-feltet naar det findes', () => {
+    expect(fejlBesked('{"error":"Stien maa ikke vises"}')).toBe('Stien maa ikke vises')
+  })
+
+  it('springer et JSON-dokument over og tager foerste meningsfulde linje', () => {
+    // En afvist bro-handling er ren TEKST. Foerste linje ville vaere `{`.
+    expect(fejlBesked('{"a":1}\nNej, det maa du ikke')).toBe('Nej, det maa du ikke')
+  })
+})
+
+describe('formFamilie — web og opgave FOER liste', () => {
+  it('en traef-liste er web, ikke liste', () => {
+    expect(formFamilie('{"results":[{"url":"https://a.dk","title":"A"}]}')).toBe('web')
+  })
+
+  it('en todo-liste er opgave, ikke liste', () => {
+    expect(formFamilie('{"todos":[{"content":"a","status":"pending"}]}')).toBe('opgave')
+  })
+})
+
+describe('kropForResult — fejl gaar FOER navnet', () => {
+  it('et afvist bash-kald er fejl, ikke terminal', () => {
+    expect(kropForResult('bash', '{"status":"approval_needed","stdout":""}')).toBe('fejl')
+  })
+
+  it('et normalt bash-kald er stadig terminal', () => {
+    expect(kropForResult('bash', '{"status":"ok","stdout":"hej"}')).toBe('terminal')
+  })
+})
+
+describe('kanTegneKrop — de nye', () => {
+  it('minde kraever argumenterne, ikke resultatet', () => {
+    expect(kanTegneKrop('minde', '{"id":"x"}', '{"title":"t","content":"c"}')).toBe(true)
+    expect(kanTegneKrop('minde', '{"id":"x"}')).toBe(false)
+  })
+
+  it('web og opgave kraever deres form', () => {
+    expect(kanTegneKrop('web', '{"results":[{"url":"u","title":"t"}]}')).toBe(true)
+    expect(kanTegneKrop('web', '{"results":[{"text":"x"}]}')).toBe(false)
+    expect(kanTegneKrop('opgave', '{"todos":[{"content":"a"}]}')).toBe(true)
+  })
+
+  it('skriv, fejl og underagent tegner altid naar der er et resultat', () => {
+    expect(kanTegneKrop('skriv', '{"status":"ok"}')).toBe(true)
+    expect(kanTegneKrop('fejl', '{"status":"error"}')).toBe(true)
+    expect(kanTegneKrop('underagent', '{"agent_id":"a"}')).toBe(true)
+    expect(kanTegneKrop('skriv', '')).toBe(false)
   })
 })

@@ -410,3 +410,80 @@ it('et redigeret kald faar INGEN svar-chevron — kun diff-vejen', async () => {
   // stod der to.
   expect(s.queryAllByTestId('icon-ChevronDown').length).toBe(1)
 })
+
+describe('folden — de ni nye former', () => {
+  it('et minde-kald faar MIND-kroppen, bygget af argumenterne', async () => {
+    // `remember_this` svarer kun `{id}`. Uden argumenterne stod raekken med
+    // `id brn_…` — beviset i stedet for det der blev skrevet.
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Skrev et minde', tool: 'remember_this', result: '{"id":"brn_1"}',
+        input: '{"title":"Fundet","content":"En linje"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Skrev et minde'))
+    expect(s.getByTestId('krop-minde')).toBeTruthy()
+    expect(s.getByText('Fundet')).toBeTruthy()
+  })
+
+  it('et soegekald med traef-liste faar WEB-kroppen', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Soegte paa nettet', tool: 'web_search',
+        result: '{"results":[{"url":"https://a.dk","title":"En side"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Soegte paa nettet'))
+    expect(s.getByTestId('krop-web')).toBeTruthy()
+    expect(s.getByText('En side')).toBeTruthy()
+  })
+
+  it('en opgaveliste faar OPGAVE-kroppen — ikke en almindelig liste', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Satte opgaver', tool: 'todo_set',
+        result: '{"count":2,"todos":[{"content":"a","status":"completed"},{"content":"b","status":"in_progress"}]}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Satte opgaver'))
+    expect(s.getByTestId('krop-opgave')).toBeTruthy()
+    expect(s.getByText(/1 af 2/)).toBeTruthy()
+  })
+
+  it('et afvist kald faar FEJL-kroppen — ikke sin tomme form', async () => {
+    // Et afvist bash-kald ville ellers vise sin tomme stdout og et exit-tal,
+    // som om det var koert.
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Kørte noget', tool: 'bash',
+        result: '{"status":"approval_needed","error":"Afventer godkendelse"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Kørte noget'))
+    expect(s.getByTestId('krop-fejl')).toBeTruthy()
+    expect(s.getByText('Afventer godkendelse')).toBeTruthy()
+  })
+
+  it('et spoergsmaal viser baade spoergsmaalet og svaret', async () => {
+    const s = await render(<InlineToolGroup items={[
+      item({
+        label: 'Spurgte', tool: 'pause_and_ask',
+        result: '{"answer":"Den anden"}', input: '{"question":"Hvilken?"}',
+      }),
+      item({ label: 'Læste b.py' }),
+    ]} />)
+    await fireEvent.press(s.getByTestId('tool-group'))
+    await fireEvent.press(s.getByText('Spurgte'))
+    expect(s.getByTestId('krop-spoergsmaal')).toBeTruthy()
+    expect(s.getByText('Hvilken?')).toBeTruthy()
+    expect(s.getByText('Den anden')).toBeTruthy()
+  })
+})

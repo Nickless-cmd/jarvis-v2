@@ -22,7 +22,15 @@
  * vagt-testen i `krop.test.ts` holder denne liste mod den.
  */
 
-export type KropFamilie = 'terminal' | 'fil' | 'diff' | 'liste' | 'fald'
+export type KropFamilie =
+  // Formen følger af RESULTATET alene
+  | 'terminal' | 'fil' | 'diff' | 'liste'
+  // Formen læser ogsaa kaldets ARGUMENTER — indholdet staar kun dér
+  | 'skriv' | 'minde' | 'spoergsmaal'
+  // Formen følger resultatets egne felter
+  | 'web' | 'billede' | 'opgave' | 'underagent'
+  // Fejl, og faldbacken naar intet andet passer
+  | 'fejl' | 'raa' | 'fald'
 
 const TERMINAL = new Set([
   'bash', 'operator_bash',
@@ -39,6 +47,47 @@ const DIFF = new Set([
   'edit_file', 'operator_edit_file', 'operator_multi_edit',
   'write_file', 'operator_write_file',
 ])
+
+/**
+ * Skriv: handlinger der bekræftes, ikke vises.
+ *
+ * Familien er desk's (`skriv` i `raekkeKroppe.tsx`). Fælles for dem alle er at
+ * RESULTATET kun bærer beviset — `{id}`, `{status}`, «added successfully» —
+ * mens det man skrev staar i ARGUMENTERNE. Uden denne familie faldt de til
+ * feltlisten og viste `id brn_…`: beviset paa skrivningen i stedet for det
+ * der blev skrevet (Bjørn 23/9-2026: «det er jo ikk info jeg kan bruge til
+ * noget»).
+ *
+ * `write_file` staar IKKE her, selv om desk har den i `skriv`: mobilen viser
+ * den i diff-arket, og en ny fil ville bare vaere hele filen i grønt. Det er
+ * en bevidst afvigelse, ikke en forglemmelse.
+ */
+const SKRIV = new Set([
+  'publish_file', 'send_telegram_message', 'notify_user', 'verify_file_contains',
+])
+
+/** De to skrivninger hvor indholdet ER et minde — vist som titel + tekst. */
+const MINDE_NAVNE = new Set(['remember_this', 'memory_upsert_section'])
+
+/** Web: soegninger og hentninger — hvert traef er et domaene og en titel. */
+const WEB = new Set(['web_search', 'web_fetch', 'operator_webfetch', 'web_scrape'])
+
+/** Spoergsmaal: kaldet stiller et spoergsmaal, resultatet bærer svaret. */
+const SPOERGSMAAL = new Set(['pause_and_ask'])
+
+/** Billede: kald der læser eller tager et billede. */
+const BILLEDE = new Set([
+  'analyze_image', 'operator_screenshot', 'operator_screenshot_window',
+  'look_around', 'read_visual_memory',
+])
+
+/** Opgave: en liste af linjer med status — ikke en liste af felter. */
+const OPGAVE = new Set([
+  'todo_set', 'todo_add', 'todo_update_status', 'todo_remove', 'todo_list',
+])
+
+/** Underagent: agentens EGNE kald hentes fra serveren naar rækken foldes ud. */
+const UNDERAGENT = new Set(['scout_agent'])
 
 /**
  * Liste: hitlister, tabeller, oversigter.
@@ -95,6 +144,15 @@ export function kropFor(navn: string): KropFamilie {
   if (FIL.has(nu)) return 'fil'
   if (DIFF.has(nu)) return 'diff'
   if (LISTE.has(nu)) return 'liste'
+  // Underagent FOER skriv: `scout_agent` er ikke en skrivning, og dens form
+  // (agentens egne kald) er rigere end noget argumentet kan sige.
+  if (UNDERAGENT.has(nu)) return 'underagent'
+  if (MINDE_NAVNE.has(nu)) return 'minde'
+  if (SKRIV.has(nu)) return 'skriv'
+  if (WEB.has(nu)) return 'web'
+  if (SPOERGSMAAL.has(nu)) return 'spoergsmaal'
+  if (BILLEDE.has(nu)) return 'billede'
+  if (OPGAVE.has(nu)) return 'opgave'
   return 'fald'
 }
 
@@ -298,6 +356,179 @@ export function listePoster(result: string | undefined): { p?: string; v: string
   return null
 }
 
+/* ══ Udtræk for de former der ogsaa læser ARGUMENTERNE ══════════════════ */
+
+/**
+ * Kaldets argumenter som objekt.
+ *
+ * De former der viser HVAD der blev skrevet — et minde, et spoergsmaal, en
+ * fil — kan ikke noejes med resultatet: `remember_this` svarer `{id}`, og
+ * indholdet staar kun i argumenterne. `input` kommer som den raa JSON-streng
+ * fra streamen (eller et objekt, naar den er parset), saa vi tager imod begge.
+ */
+function somArgumenter(input: unknown): Data {
+  if (objekt(input)) return input
+  if (typeof input !== 'string' || !input.trim()) return {}
+  try {
+    const v: unknown = JSON.parse(input)
+    return objekt(v) ? v : {}
+  } catch { return {} }
+}
+
+/**
+ * Et minde der blev skrevet — hvad der blev husket, ikke id'et det fik.
+ *
+ * `remember_this` svarer kun `{id}` og `memory_upsert_section` med prosa
+ * («MEMORY.md section 'X' added successfully.»). Selve indholdet findes KUN i
+ * argumenterne. Laeste vi resultatet, faldt raekken til feltlisten og viste
+ * `id brn_…`: beviset paa skrivningen i stedet for det der blev skrevet
+ * (Bjørn 23/9-2026: «det er jo ikk info jeg kan bruge til noget»).
+ */
+export function mindeIndhold(input: unknown): { titel: string; meta: string; tekst: string } | null {
+  const o = somArgumenter(input)
+  const titel = streng(o.title) || streng(o.heading)
+  const tekst = streng(o.content) || streng(o.text)
+  if (!titel || !tekst) return null
+  return { titel, meta: [streng(o.kind), streng(o.domain)].filter(Boolean).join(' · '), tekst }
+}
+
+/**
+ * Traefene i et web-resultat — domaene og titel.
+ *
+ * `web_search` svarer en liste af `{url, title, snippet}`. Vi kraever en
+ * URL paa mindst ét traef: uden det er listen ikke et web-resultat, og
+ * `formFamilie` ville tage enhver liste af objekter for en soegning.
+ */
+export function webTraef(result: string | null | undefined): { dom: string; titel: string }[] | null {
+  const { vaerdi } = pakUd(result ?? undefined)
+  const poster = Array.isArray(vaerdi) ? vaerdi
+    : objekt(vaerdi) && Array.isArray(vaerdi.results) ? vaerdi.results : null
+  if (!poster?.length) return null
+  if (!poster.some((p) => objekt(p) && (streng(p.url) || streng(p.domain)))) return null
+  return poster.map((p) => objekt(p)
+    ? {
+      dom: streng(p.url) || streng(p.domain),
+      titel: streng(p.title) || streng(p.snippet) || streng(p.text) || visTekst(p),
+    }
+    : { dom: '', titel: visTekst(p) })
+}
+
+/** Spoergsmaalet staar i argumenterne, svaret i resultatet. */
+export function spoergsmaalIndhold(
+  input: unknown, result: string | null | undefined,
+): { q: string; svar: string } | null {
+  const o = somArgumenter(input)
+  const q = streng(o.question) || streng(o.prompt) || streng(o.text)
+  const { vaerdi } = pakUd(result ?? undefined)
+  const svar = typeof vaerdi === 'string' ? vaerdi
+    : objekt(vaerdi) ? streng(vaerdi.answer) || streng(vaerdi.response) || streng(vaerdi.text) : ''
+  if (!q && !svar) return null
+  return { q, svar }
+}
+
+/**
+ * Et billede — stien kan ligge i argumenterne ELLER i resultatet.
+ *
+ * `operator_screenshot` lægger den i resultatet; `analyze_image` faar den i
+ * argumenterne og svarer med en afgraenset kopi (`preview_path`). Laeste vi
+ * kun den ene, faldt kroppen til et navn uden billede.
+ */
+export function billedeIndhold(
+  input: unknown, result: string | null | undefined,
+): { sti: string; navn: string; meta: string; spoergsmaal: string; tekst: string } | null {
+  const o = somArgumenter(input)
+  const { vaerdi } = pakUd(result ?? undefined)
+  const preview = objekt(vaerdi) ? streng(vaerdi.preview_path) : ''
+  const sti = preview || streng(o.path) || streng(o.image_path)
+    || (objekt(vaerdi) ? streng(vaerdi.path) || streng(vaerdi.image_path) : '')
+  const tekst = objekt(vaerdi)
+    ? streng(vaerdi.analysis) || streng(vaerdi.description) || streng(vaerdi.caption) || streng(vaerdi.text)
+    : ''
+  if (!sti && !tekst) return null
+  const maal = objekt(vaerdi) && typeof vaerdi.width === 'number' && typeof vaerdi.height === 'number'
+    ? `${vaerdi.width} × ${vaerdi.height}` : ''
+  return { sti, navn: sti ? filnavn(sti) : '', meta: maal, spoergsmaal: streng(o.prompt), tekst }
+}
+
+/**
+ * Opgavelisten — linjer, ikke felter.
+ *
+ * `todo_set`/`todo_list` svarer `{count, todos:[{content, status}]}`, og
+ * `todo_update_status` svarer `{todo:{…}}`. Begge læses som ÉN liste: en
+ * opgaveliste er en tilstand man læser ned ad, og rækkefølgen er arbejdets.
+ */
+export function opgavePoster(result: string | null | undefined): { tekst: string; status: string }[] | null {
+  const { vaerdi } = pakUd(result ?? undefined)
+  if (!objekt(vaerdi)) return null
+  const liste = Array.isArray(vaerdi.todos) ? vaerdi.todos
+    : objekt(vaerdi.todo) ? [vaerdi.todo] : null
+  if (!liste?.length) return null
+  return liste.map((p) => objekt(p)
+    ? {
+      tekst: streng(p.content) || streng(p.text) || streng(p.title) || visTekst(p),
+      status: streng(p.status) || 'pending',
+    }
+    : { tekst: visTekst(p), status: 'pending' })
+}
+
+/**
+ * Underagentens id — naar resultatet bærer et.
+ *
+ * `scout_agent` svarer med agentens id, og agentens EGNE kald ligger bag et
+ * endepunkt der allerede findes. Uden id'et kan vi ikke hente dem, og rækken
+ * staar med et resumé i stedet for agentens arbejde.
+ */
+export function agentIdFra(result: string | null | undefined): string | null {
+  const { vaerdi } = pakUd(result ?? undefined)
+  if (!objekt(vaerdi)) return null
+  return streng(vaerdi.agent_id) || streng(vaerdi.agentId) || null
+}
+
+/**
+ * Er svaret en FEJL — ikke et resultat?
+ *
+ * En afvist handling (`approval_needed`, `guard_blocked`) eller en fejl-status
+ * skal vise BESKEDEN, ikke den form kroppen ellers ville have. Uden grenen
+ * viste et afvist bash-kald sin tomme stdout og et exit-tal, som om det var
+ * koert.
+ */
+export function erFejl(result: string | null | undefined): boolean {
+  const { vaerdi, ramme } = pakUd(result ?? undefined)
+  const status = streng(ramme?.status)
+  if (status === 'error' || status === 'blocked' || status === 'approval_needed' || status === 'guard_blocked') return true
+  if (streng(ramme?.error)) return true
+  return objekt(vaerdi) && !!streng(vaerdi.error)
+}
+
+/**
+ * Fejlens besked — det foerste meningsfulde der staar.
+ *
+ * En afvist handling fra broen er ren TEKST, ikke JSON. Et JSON-dokument
+ * springes over: foerste linje ville bare vaere `{`, og det siger ingenting.
+ */
+export function fejlBesked(result: string | null | undefined): string {
+  const { vaerdi, ramme } = pakUd(result ?? undefined)
+  const fraRamme = streng(ramme?.error) || streng(ramme?.message)
+  if (fraRamme) return fraRamme
+  if (objekt(vaerdi) && streng(vaerdi.error)) return streng(vaerdi.error)
+  const linje = udDel(result ?? '').split('\n').map((s) => s.trim())
+    .find((s) => s && !s.startsWith('{') && !s.startsWith('['))
+  if (!linje) return ''
+  return linje.length > 240 ? `${linje.slice(0, 240)}…` : linje
+}
+
+/** Skrivningens bevis — filens nye stoerrelse, antallet af udskiftninger, status. */
+export function skrivBesked(result: string | null | undefined): string {
+  const { vaerdi, ramme } = pakUd(result ?? undefined)
+  if (objekt(vaerdi)) {
+    if (typeof vaerdi.bytes_written === 'number') return `${vaerdi.bytes_written} bytes skrevet`
+    if (typeof vaerdi.size === 'number') return `${vaerdi.size} bytes`
+    if (typeof vaerdi.replacements === 'number') return `${vaerdi.replacements} udskiftninger`
+    if (streng(vaerdi.url)) return streng(vaerdi.url)
+  }
+  return streng(ramme?.status) || 'Udført'
+}
+
 /* ══ Formen af resultatet — når navnet ikke er kendt ════════════════════ */
 
 const OPTAELLINGER = new Set(['count', 'total', 'n', 'length', 'size', 'antal'])
@@ -344,6 +575,11 @@ export function formFamilie(result: string | null | undefined): KropFamilie {
   const { vaerdi } = pakUd(result ?? undefined)
   if (!objekt(vaerdi)) return 'fald'
   if (typeof vaerdi.stdout === 'string' || typeof vaerdi.stderr === 'string') return 'terminal'
+  // Web og opgave FOER liste: begge ER lister, men med en skarpere form.
+  // Et traef har et domaene over sin titel, og en opgavelinje har en status —
+  // en almindelig liste har ingen af delene.
+  if (webTraef(result)) return 'web'
+  if (opgavePoster(result)) return 'opgave'
   if (listenErIndholdet(vaerdi)) return 'liste'
   return 'fald'
 }
@@ -357,6 +593,10 @@ export function formFamilie(result: string | null | undefined): KropFamilie {
  * bærer, og formen er den viden tabellen ikke kan nå.
  */
 export function kropForResult(navn: string, result: string | null | undefined): KropFamilie {
+  // Fejl FOERST: et afvist kald skal vise HVORFOR, ikke den form det ville
+  // have haft hvis det var koert. Uden grenen viste et afvist bash-kald sin
+  // tomme stdout og et exit-tal, som om det var gaaet igennem.
+  if (erFejl(result)) return 'fejl'
   const fraNavn = kropFor(navn)
   return fraNavn !== 'fald' ? fraNavn : formFamilie(result)
 }
@@ -374,11 +614,21 @@ export function kropForResult(navn: string, result: string | null | undefined): 
  * Er svaret nej, falder kaldsstedet til den rå tekst. Vi viser aldrig mindre
  * end vi gjorde før.
  */
-export function kanTegneKrop(familie: KropFamilie, result: string | null | undefined): boolean {
+export function kanTegneKrop(
+  familie: KropFamilie, result: string | null | undefined, input?: unknown,
+): boolean {
   const rå = result ?? ''
   if (!rå.trim()) return false
   if (familie === 'terminal') return udDel(rå).trim().length > 0
   if (familie === 'fil') return filTekst(rå).trim().length > 0
   if (familie === 'liste') return listePoster(rå) !== null
+  if (familie === 'web') return webTraef(rå) !== null
+  if (familie === 'opgave') return opgavePoster(rå) !== null
+  if (familie === 'billede') return billedeIndhold(input, rå) !== null
+  if (familie === 'spoergsmaal') return spoergsmaalIndhold(input, rå) !== null
+  if (familie === 'minde') return mindeIndhold(input) !== null
+  // Skriv, fejl og underagent tegner ALTID noget: beskeden findes i resultatet
+  // eller i status. De kan ikke staa med en tom ramme.
+  if (familie === 'skriv' || familie === 'fejl' || familie === 'underagent') return true
   return false
 }

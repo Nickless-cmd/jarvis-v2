@@ -8,8 +8,11 @@ describe('delIBlokke', () => {
     const dokument = (antal: number) => Array.from({ length: antal }, (_, i) =>
       `## Del ${i}\n${Array.from({ length: 15 }, (_, j) => `linje ${i}-${j}`).join('\n')}\n\n`,
     ).join('') + 'slut'
+    // Mål over 4× input. Ved 2× var de enkelte kørsler så korte, at
+    // scheduler/GC gav 3-4× på uændret kode i både CI og lokalt. 4× skelner
+    // stadig tydeligt mellem lineær vækst (~4×) og hale-kopiering (~16×).
     const kort = dokument(300)
-    const langt = dokument(600)
+    const langt = dokument(1200)
     const maal = (tekst: string) => {
       const tider: number[] = []
       for (let i = 0; i < 12; i++) {
@@ -22,7 +25,7 @@ describe('delIBlokke', () => {
     }
     maal(kort)
     maal(langt)
-    expect(maal(langt) / maal(kort)).toBeLessThan(2.7)
+    expect(maal(langt) / maal(kort)).toBeLessThan(8)
   })
 
   it('deler ved tomme linjer mellem afsnit, overskrifter og tabeller', () => {

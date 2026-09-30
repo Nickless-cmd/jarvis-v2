@@ -1,11 +1,18 @@
 // §22.5 auto-update via electron-updater + GitHub releases.
 //
-// AKTIVERING kræver tre ting (ikke gjort endnu — derfor graceful no-op nu):
-//   1) npm i electron-updater
-//   2) electron-builder publish-config i package.json: "publish": [{ "provider": "github",
-//      "owner": "Nickless-cmd", "repo": "jarvis-v2" }]
-//   3) uploadede GitHub-releases (.deb/.exe/.dmg med latest.yml)
-// Indtil da er initAutoUpdate en no-op (dynamisk import fejler → fanges).
+// RETTET 1/10-2026: kommentaren her sagde «ikke gjort endnu — derfor graceful
+// no-op nu» om alle tre aktiverings-krav. Det var sandt da den blev skrevet,
+// men ikke længere — den modsagde koden og sendte en fejljagt i gang 30/9.
+// De tre krav er opfyldt: (1) `electron-updater ^6.8.9` i package.json,
+// (2) publish-config (github/Nickless-cmd/jarvis-v2), (3) releases med
+// latest.yml/latest-linux.yml/latest-mac.yml.
+//
+// Den RELLE no-op-betingelse i dag er derfor ikke længere de tre krav, men:
+//   · `cfg.enabled` er ikke sat (initAutoUpdate returnerer false straks), eller
+//   · `electron-updater` kan ikke importeres i den kørende build.
+// Bemærk også: opdagelsen af en ny release er forsinket — electron-updater
+// poller GitHub, og kilden kan ikke skubbe ned i klienten. En knap der ikke
+// reagerer STRAKS er derfor ikke det samme som en knap der er i stykker.
 
 export interface AutoUpdateConfig {
   enabled?: boolean

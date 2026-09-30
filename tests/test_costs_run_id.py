@@ -33,6 +33,7 @@ class TestPersistence:
                 cost_usd REAL NOT NULL DEFAULT 0,
                 cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
                 cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
+                reasoning_tokens INTEGER NOT NULL DEFAULT 0,
                 user_id TEXT NOT NULL DEFAULT '',
                 run_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL)

@@ -191,25 +191,38 @@ def test_halen_faar_den_BUDGET_klippede_support_ikke_den_raa():
     import ast
     from pathlib import Path
 
-    kilde = Path("core/services/prompt_contract.py").read_text(encoding="utf-8")
+    from core.services.prompt_sections.section_placement import (
+        HALE_SEKTIONER,
+        PRAEFIKS_SEKTIONER,
+    )
+
+    # 1) placeringen er DATA — de to maa ikke overlappe, og de volatile skal
+    #    staa i halen.
+    assert not (set(HALE_SEKTIONER) & set(PRAEFIKS_SEKTIONER)), (
+        "en sektion staar baade i praefikset og i halen")
+    for navn in ("support_signals", "self_report"):
+        assert navn in HALE_SEKTIONER, f"{navn} er ikke i halen laengere"
+        assert navn not in PRAEFIKS_SEKTIONER, f"{navn} er tilbage i praefikset"
+
+    # 2) og halen skal faa den BUDGET-klippede vaerdi. Loftet findes fordi
+    #    `support_signals` kostede 27,4 s af en 31-sekunders kold opbygning;
+    #    gav man halen det raa indhold, forsvandt loftet uden at noget fejlede.
+    kilde = Path(
+        "core/services/prompt_sections/section_placement.py"
+    ).read_text(encoding="utf-8")
     traeet = ast.parse(kilde)
-    fundet = []
+    hale_kilder = []
     for node in ast.walk(traeet):
-        # _dyn_tail.append(<x>)
         if not isinstance(node, ast.Call):
             continue
         f = node.func
         if not (isinstance(f, ast.Attribute) and f.attr == "append"):
             continue
-        if not (isinstance(f.value, ast.Name) and f.value.id == "_dyn_tail"):
+        if not (isinstance(f.value, ast.Name) and f.value.id == "dyn_tail"):
             continue
-        if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
-            continue
-        fundet.append(node.args[0].id)
-    assert "_support_valgt" in fundet, (
-        f"_dyn_tail.append(_support_valgt) findes ikke — halen faar noget andet: {fundet}")
-    # og navnet skal komme FRA budgettet
-    assert 'selected.get("support_signals")' in kilde, (
-        "_support_valgt hentes ikke fra `selected` — budgettets loft er omgaaet")
-    assert "_dyn_tail.append(support_content)" not in kilde, (
-        "halen faar det RAA indhold, saa attention-budgettets loft er væk")
+        hale_kilder.append(ast.unparse(node.args[0]) if node.args else "")
+    assert hale_kilder, "ingen dyn_tail.append i placerings-modulet"
+    for udtryk in hale_kilder:
+        assert udtryk == "indhold", f"halen faar {udtryk!r}, ikke den valgte vaerdi"
+    assert "selected.get(navn)" in kilde, (
+        "indhold hentes ikke fra `selected` — budgettets loft er omgaaet")

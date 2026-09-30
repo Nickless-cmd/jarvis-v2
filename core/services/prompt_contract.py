@@ -2659,49 +2659,19 @@ def _build_visible_chat_prompt_assembly_impl(
         "support_signals": "bounded runtime support signals",
         "continuity": "bounded session continuity",
     }
-    for sec_name in (
-        "capability_truth",
-        "output_discipline",
-        "cognitive_frame",
-        "cognitive_state",
-        "self_state",
-        "self_report",
-        "inner_visible_bridge",
-        "continuity",
-    ):
-        content = selected.get(sec_name)
-        if content:
-            parts.append(content)
-            label = _section_labels.get(sec_name, sec_name)
-            derived_inputs.append(label)
-
-    # ── support_signals hoerer i HALEN, ikke i praefikset (30/9-2026) ────────
-    #
-    # Den laa sidst i det cachede praefiks, og dens indhold er et TIDS-SNAPSHOT:
-    # bygningen er cappet (`_HOT_RESOLVE_CAP_S`), og rammes deadline'en beholdes
-    # kun de under-sektioner der NAAEDE at blive faerdige. Hvilke der naaede det
-    # afhaenger af et kaploeb — saa sektionen er ikke-deterministisk ved design.
-    #
-    # Maalt paa CT105 efter katalog-flytningen: to praefiks-varianter, 30.204 og
-    # 30.206 tegn, foerste forskel i chunk 29 af 30 — altsaa 98 % inde i
-    # systemblokken. Alligevel overlevede kun 33 % af praefikset, og hit faldt
-    # 89,5 % -> 79,2 %. To tegn i systemblokkens hale kostede hele
-    # vaerktoejsarrayet OG hele samtalen, fordi DeepSeek matcher fra
-    # begyndelsen: [system][tools][beskeder].
-    #
-    # Samme flytning som tool-kataloget fik (`eacce27e9`), men med en staerkere
-    # grund: kataloget var forudsigeligt pr. scope, dette er et kaploeb.
-    #
-    # VIGTIGT: vaerdien tages fra `selected`, ikke fra `support_content`.
-    # Attention-budgettet klipper sektionen til sit loft, og blokken kostede
-    # 27,4 s af en 30,8-sekunders kold opbygning foer den blev cappet. Et
-    # uklippet indhold i halen ville fjerne det loft i stilhed.
-    _support_valgt = selected.get("support_signals")
-    if _support_valgt:
-        _dyn_tail.append(_support_valgt)
-        derived_inputs.append(
-            _section_labels.get("support_signals", "support_signals") + " (tail)"
-        )
+    # Placeringen — praefiks eller hale — er DATA, ikke prosa. Se
+    # `prompt_sections/section_placement.py`: hvilke sektioner der ligger hvor,
+    # og den maalte grund til hver flytning. Tre sektioner er flyttet 30/9-2026
+    # (tool-katalog, support_signals, self_report), hver gang fordi de aendrede
+    # sig tur for tur og dermed kostede hele vaerktoejsarrayet + samtalen.
+    from core.services.prompt_sections.section_placement import placer_sektioner
+    placer_sektioner(
+        selected=selected,
+        labels=_section_labels,
+        parts=parts,
+        dyn_tail=_dyn_tail,
+        derived_inputs=derived_inputs,
+    )
 
     # Transcript: prefer structured messages; fall back to flat text in system prompt
     # 2026-05-22 (Claude): re-ordered so stable-content (transcript, tool

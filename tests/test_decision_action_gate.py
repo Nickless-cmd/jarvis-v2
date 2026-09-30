@@ -139,3 +139,19 @@ def test_pending_outcome_is_not_counted_as_unconfirmed(monkeypatch, tmp_path):
     assert gate.opportunity_summary(days=1)["memory"] == {
         "opportunities": 1, "kept": 0, "unconfirmed": 0, "pending": 1,
     }
+
+
+def test_summary_excludes_rows_from_broken_classifier(monkeypatch, tmp_path):
+    _database(monkeypatch, tmp_path)
+    with gate.connect() as conn:
+        gate._ensure_table(conn)
+        conn.execute(
+            "INSERT INTO decision_action_opportunities (run_id,kind,created_at,outcome) "
+            "VALUES (?,?,?,?)",
+            ("old", "quote", "2026-09-30T09:39:45+00:00", "unconfirmed"),
+        )
+        conn.commit()
+    gate.record_opportunities("new", "Deepseek apien kan osse vise cache hits", memory_recalled=False)
+    assert gate.opportunity_summary(days=7)["quote"] == {
+        "opportunities": 1, "kept": 0, "unconfirmed": 0, "pending": 1,
+    }

@@ -106,3 +106,33 @@ def test_accept_og_reject_aendrer_status(habits_db):
     # Ukendt id → None (ikke en exception).
     assert habits_db.accept_suggestion(suggestion_id="findes-ikke") is None
     assert habits_db.reject_suggestion(suggestion_id="findes-ikke") is None
+
+
+def test_format_pending_suggestions_tom_naar_der_intet_er(habits_db):
+    """Ingen ventende forslag → tom streng, så heartbeat-linjen udelades."""
+    assert habits_db.format_pending_suggestions_for_heartbeat() == ""
+
+
+def test_format_pending_suggestions_viser_id_og_signatur(habits_db):
+    """Fase 2: linjen bærer id'et (så forslaget KAN lukkes) og den FAKTISKE
+    signatur — ikke forslagets konstante suggestion_text."""
+    for _ in range(8):
+        habits_db.record_habit_signal(message="ryd op i rodet")
+    linje = habits_db.format_pending_suggestions_for_heartbeat()
+    assert linje, "forventede en linje efter 8 gentagelser"
+    # Signaturen skal stå i klartekst — det er hele pointen med opslaget.
+    assert "ryd op i rodet" in linje
+    # Mindst ét ventende forslags id skal være med, så det kan lukkes.
+    ids = [s["id"] for s in habits_db.list_suggestions(status="pending")]
+    assert any(i in linje for i in ids)
+    # Den konstante tekst må IKKE være det man ser.
+    assert "scheduled workflow" not in linje
+
+
+def test_format_pending_suggestions_respekterer_max_items(habits_db):
+    """max_items gater antallet af viste forslag."""
+    for i in range(10):
+        for _ in range(8):
+            habits_db.record_habit_signal(message=f"unikt moenster nummer {i}")
+    assert habits_db.format_pending_suggestions_for_heartbeat(max_items=1).count("[") == 1
+    assert habits_db.format_pending_suggestions_for_heartbeat(max_items=3).count("[") == 3

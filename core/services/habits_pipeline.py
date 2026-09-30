@@ -333,6 +333,76 @@ def list_suggestions(*, status: str = "pending", limit: int = 50) -> list[dict[s
     return [dict(r) for r in rows]
 
 
+def format_pending_suggestions_for_heartbeat(*, max_items: int = 3) -> str:
+    """Kompakt linje af de øverste ventende automations-forslag til heartbeat.
+
+    Lærings-sløjfen, fase 2 (2026-10-01): forslagene blev skrevet i 5½ måned
+    (6.773 rækker) uden at nogen læste dem — ``accept_suggestion`` havde nul
+    kaldesteder i hele repoet. Her får de en læser: heartbeat-prompten.
+
+    Hvert forslag bærer sit ``id``, så det kan lukkes med
+    ``accept_suggestion``/``reject_suggestion``. Signaturen slås op i
+    pattern-/friction-tabellen — forslagets egen ``suggestion_text`` er en
+    konstant og siger intet om HVAD der gentages.
+    """
+    _ensure_tables()
+    lim = max(1, min(int(max_items or 3), 10))
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT s.id, s.source_type, s.confidence, "
+            "       p.pattern_key, p.recurrence_count, "
+            "       f.task_signature, f.repetition_count "
+            "FROM cognitive_automation_suggestions s "
+            "LEFT JOIN cognitive_habit_patterns p ON p.pattern_id = s.source_id "
+            "LEFT JOIN cognitive_friction_signals f ON f.friction_id = s.source_id "
+            "WHERE s.status = 'pending' "
+            "ORDER BY s.created_at DESC LIMIT ?",
+            (lim,),
+        ).fetchall()
+    if not rows:
+        return ""
+    parts: list[str] = []
+    for r in rows:
+        d = dict(r)
+        raw = str(d.get("pattern_key") or d.get("task_signature") or "").strip()
+        # "<normaliseret besked>:<hash>" → vis kun beskeden
+        sig = raw.rsplit(":", 1)[0].strip() if ":" in raw else raw
+        if not sig:
+            sig = "(ukendt signatur)"
+        count = d.get("recurrence_count") or d.get("repetition_count") or 0
+        parts.append(f"[{d['id']}] «{sig[:70]}» ×{count}")
+    return " | ".join(parts)
+
+
+def cleanup_polluted_suggestions(*, older_than_days: int = 0) -> dict[str, Any]:
+    """Luk alle ``pending`` forslag ældre end ``older_than_days`` dage.
+
+    Fase 4 (2026-10-01): 6.773 forslag blev skrevet fra 22. april til 1. okt
+    uden at nogen læste dem. De er forurenede — phase 1-gaten stoppede ny
+    forurening, men de gamle rækker er støj. Vi sletter dem ikke (audit-spor),
+    vi markerer dem ``rejected`` så de forsvinder fra den aktive kø.
+
+    Med ``older_than_days=0`` lukkes ALLE eksisterende pending — en kold
+    start hvor kun genuinely nye vaner (fra rigtige bruger-beskeder,
+    tærskel 8) genererer forslag fremover.
+    """
+    _ensure_tables()
+    from datetime import UTC, datetime, timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
+    cutoff_iso = cutoff.isoformat()
+    now = _now_iso()
+    with connect() as conn:
+        n = conn.execute(
+            "UPDATE cognitive_automation_suggestions "
+            "SET status = 'rejected', updated_at = ? "
+            "WHERE status = 'pending' AND created_at < ?",
+            (now, cutoff_iso),
+        ).rowcount
+        conn.commit()
+    return {"rejected": n, "cutoff": cutoff_iso}
+
+
 def accept_suggestion(*, suggestion_id: str) -> dict[str, Any] | None:
     _ensure_tables()
     now = _now_iso()

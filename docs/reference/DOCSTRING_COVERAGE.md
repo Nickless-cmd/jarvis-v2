@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8238/15778 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8240/15780 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5476 | 10733 | 51% |
+| `core.services` | 5478 | 10735 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1134,12 +1134,12 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
 - `core/services/gut_engine.py` :: `build_gut_surface` (L181)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
-- `core/services/habits_pipeline.py` :: `accept_suggestion` (L336)
-- `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L382)
+- `core/services/habits_pipeline.py` :: `accept_suggestion` (L406)
+- `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L452)
 - `core/services/habits_pipeline.py` :: `list_friction` (L311)
 - `core/services/habits_pipeline.py` :: `list_habits` (L299)
 - `core/services/habits_pipeline.py` :: `list_suggestions` (L323)
-- `core/services/habits_pipeline.py` :: `reject_suggestion` (L363)
+- `core/services/habits_pipeline.py` :: `reject_suggestion` (L433)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)

@@ -79,3 +79,4 @@ def test_heartbeat_living_context_line_includes_experimental_prompt_fragments(
     assert "play_mode=true" in line
     assert "sleep_batch=true" in line
     assert "autonomy_from_trust=bounded" in line
+

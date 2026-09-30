@@ -20,14 +20,29 @@ from core.services.experience_correction_listener import (
 
 _EXPLICIT_ERROR = re.compile(
     r"\b(du tog fejl|du tager fejl|du misforstod|det var forkert|forkert svar|"
-    r"din fejl|du havde uret)\b|^\s*forkert\b",
+    r"din fejl|du havde uret|det kan ikk?e? passe|det passer ikke)\b|^\s*forkert\b",
     re.IGNORECASE,
 )
-_HISTORY_OR_REPO = re.compile(
+_HISTORY = re.compile(
     r"\b(sidst|tidligere|førhen|forrige|husker du|kan du huske|"
     r"vi aftalte|vi besluttede|du sagde|din historie|vores historie|"
-    r"repo(?:et|ets)?|kodebasen|projektets kode|commit(?:tet|s)?|"
-    r"hvilken fil|hvad står der i filen|hvad står der i repo)\b",
+    r"hvilken fil|hvad står der i filen|hvad står der i repo|"
+    r"hvilke? commits?|sidste commit)\b",
+    re.IGNORECASE,
+)
+_REPO_QUESTION = re.compile(
+    r"\b(hvad|hvor|hvordan|hvilke?|kan du finde)\b[^?.!\n]{0,90}"
+    r"\b(repo(?:et|ets)?|kodebasen|projektets kode)\b",
+    re.IGNORECASE,
+)
+_IMPLIED_CORRECTION = re.compile(
+    r"\b(står stadig|er stadig forkert|kan (?:også|osse) vise|"
+    r"kan (?:også|osse) se|den ene ting der ikke går op)\b",
+    re.IGNORECASE,
+)
+_JARVIS_ANALYSIS_WRONG = re.compile(
+    r"\bjarvis['’]?(?:s)?\s+(?:tal|analyse|påstand|konklusion)\b"
+    r"[^.!?\n]{0,180}\b(?:strider|vendt om|forkert|ikke korrekt)\b",
     re.IGNORECASE,
 )
 _MEMORY_TOOLS = frozenset({
@@ -36,17 +51,41 @@ _MEMORY_TOOLS = frozenset({
 })
 
 
+def _turn_text(user_message: str) -> str:
+    """Discard the transport's attachment instructions before classifying words."""
+    text = str(user_message or "").strip()
+    if text.startswith("[The user attached ") and "\n\n---\n\n" in text:
+        text = text.split("\n\n---\n\n", 1)[1].strip()
+    return text
+
+
+def _correction_excerpt(user_message: str) -> str:
+    """Use the challenged claim, not a long paste's unrelated opening words."""
+    text = _turn_text(user_message)
+    for pattern in (_JARVIS_ANALYSIS_WRONG, _IMPLIED_CORRECTION, _EXPLICIT_ERROR):
+        match = pattern.search(text[:4000])
+        if match:
+            return text[max(0, match.start() - 60): match.end() + 140]
+    return text[:300]
+
+
 def opportunities(user_message: str) -> set[str]:
     """Return only triggers with a concrete observable opportunity."""
-    text = str(user_message or "").strip()
+    text = _turn_text(user_message)
     if not text:
         return set()
     found: set[str] = set()
-    if _looks_like_correction(text) or _EXPLICIT_ERROR.search(text):
+    # The existing listener only scans the first 240 characters. Direct user
+    # feedback also arrives as "still" / "can also", and a long Claude paste
+    # can correct Jarvis' analysis after its introductory sentence.
+    direct_error = bool(_EXPLICIT_ERROR.search(text[:400]))
+    analysis_error = bool(_JARVIS_ANALYSIS_WRONG.search(text[:4000]))
+    if (_looks_like_correction(text) or direct_error or analysis_error
+            or _IMPLIED_CORRECTION.search(text[:500])):
         found.add("quote")
-        if _EXPLICIT_ERROR.search(text):
+        if direct_error or analysis_error:
             found.add("admit")
-    if _HISTORY_OR_REPO.search(text):
+    if _HISTORY.search(text[:500]) or _REPO_QUESTION.search(text[:500]):
         found.add("memory")
     return found
 
@@ -55,7 +94,7 @@ def query_current_memory(user_message: str, session_id: str | None) -> str | Non
     """Read current-turn memory; the caller gives this a bounded future."""
     from core.services.recall import recall
 
-    result = recall(str(user_message or "")[:500], limit=3, session_id=session_id)
+    result = recall(_turn_text(user_message)[:500], limit=3, session_id=session_id)
     if result.get("status") != "ok":
         return None
     return str(result.get("text") or "")[:1200] or None
@@ -94,7 +133,7 @@ def evaluate_turn(
     outcomes: dict[str, str] = {}
     if "quote" in due:
         outcomes["quote"] = (
-            "kept" if _citat_traef([user_message[:300]], [answer[:1200]])
+            "kept" if _citat_traef([_correction_excerpt(user_message)], [answer[:1200]])
             else "unconfirmed"
         )
     if "admit" in due:
@@ -195,11 +234,13 @@ def opportunity_summary(*, days: int = 7) -> dict[str, dict[str, int]]:
             raise
     for row in rows:
         kind = str(row["kind"])
-        entry = result.setdefault(kind, {"opportunities": 0, "kept": 0, "unconfirmed": 0})
+        entry = result.setdefault(kind, {"opportunities": 0, "kept": 0, "unconfirmed": 0, "pending": 0})
         n = int(row["n"])
         entry["opportunities"] += n
         if row["outcome"] == "kept":
             entry["kept"] += n
-        else:
+        elif row["outcome"] == "unconfirmed":
             entry["unconfirmed"] += n
+        else:
+            entry["pending"] += n
     return result

@@ -265,6 +265,7 @@ def quality_daemon_llm_call(
                         cost_usd=float(result.get("cost_usd") or 0.0),
                         cache_hit_tokens=int(result.get("cache_hit_tokens") or 0),
                         cache_miss_tokens=int(result.get("cache_miss_tokens") or 0),
+                        reasoning_tokens=int(result.get("reasoning_tokens") or 0),
                     )
                 except Exception:
                     pass

@@ -340,6 +340,7 @@ def execute_with_role_or_fallback(
                 result.get("cache_miss_tokens")
                 or result.get("prompt_cache_miss_tokens") or 0
             ),
+            reasoning_tokens=int(result.get("reasoning_tokens") or 0),
         )
     except Exception:
         pass

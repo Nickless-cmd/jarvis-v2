@@ -325,8 +325,22 @@ def _marker_er_pres(marker: str, lower: str, kort: bool) -> bool:
     # (a) Flerords-markører er selv et pres.
     if " " in marker:
         return True
-    # (b) Et pres-cue i nærheden.
-    if _har_pres_cue(lower, marker, kort):
+    # (b) Et pres-cue i nærheden — men KUN i en ordre, ikke i en redegørelse.
+    #
+    # `_PRESSURE_MAX_CHARS` sagde det allerede ("over denne længde er beskeden
+    # en redegørelse, ikke en ordre"), men længden gated kun de KORTE cues.
+    # De lange fyrede i en 6.000-tegns rapport, og 30/9 kl. 13:5x kostede det
+    # tre blokeringer i samme tur: Bjørns relay skrev «man kan ikke bare lade
+    # være med at merge», og både «bare» og «lad være med at» er cues der
+    # står inden for 40 tegn af markøren. Sætningen siger at man IKKE kan
+    # undgå at merge — gaten læste den som et pres for at gøre det.
+    #
+    # Grenen nedenfor (markøren som ordre) er med vilje IKKE gjort
+    # længde-uafhængig: i en rapport står «Merge'n tilføjer …» efter et
+    # punktum, altså i imperativ position, og så ville 11:07-blokeringen
+    # komme igen. Prisen er en ægte ordre gemt til sidst i en lang besked;
+    # Bjørns pres-beskeder måler < 100 tegn.
+    if kort and _har_pres_cue(lower, marker, kort):
         return True
     # (c) Kort besked + markøren som ordre.
     return kort and _staar_i_imperativ(lower, marker)

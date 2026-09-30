@@ -41,6 +41,15 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             arguments = {}
     if not isinstance(arguments, dict):
         arguments = {}
+    # ── Dispatcheren pakkes ud HER, foer alt andet (30/9-2026) ─────────────
+    # `call_loaded_tool` er en TRANSPORT, ikke en udfoerer. Hver eneste gate
+    # herunder noegles paa `name`: commit-gaten, r2.5, veto, skema-kontrakten,
+    # dedup, godkendelser og telemetrien. Udpakkede vi senere — eller lod
+    # dispatcheren selv udfoere — ville de alle se `call_loaded_tool` i stedet
+    # for `delete_file`, og den var dermed en universel gate-omgaaelse for alle
+    # ~370 vaerktoejer. Efter denne linje findes dispatcheren ikke laengere.
+    from core.tools.kaldt_vaerktoej import pak_ud as _pak_ud
+    name, arguments = _pak_ud(name, arguments)
     if not name:
         return ("skip", None)
     try:

@@ -98,7 +98,8 @@ def _tool_load_more_tools(arguments: dict) -> dict:
         "schemas": schemas,
         "tool_definitions": tool_definitions,
         "message": (
-            f"Added {len(resolved)} tool(s). Full schema below — call directly "
-            "using exactly these parameter names; do not guess."
+            f"Added {len(resolved)} tool(s). Full schema below. Call them via "
+            "call_loaded_tool(navn=\"<navn>\", argumenter={...}) using exactly "
+            "these parameter names; do not guess."
         ),
     }

@@ -37,6 +37,11 @@ VISIBLE_MAX_TOOLS = 48
 # fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
+    # Vejen til de hentede vaerktoejer (30/9-2026). Uden den i arrayet kan et
+    # hentet vaerktoej ikke kaldes — DeepSeek afviser et vaerktoej der ikke er
+    # deklareret — og saa er den eneste vej tilbage at flette definitionen ind
+    # i arrayet, hvilket koster hele samtalen. Se `kaldt_vaerktoej.py`.
+    "call_loaded_tool",
     "scout_agent",
     "spawn_agent_task",
     # Fast i hans flade (Bjørn 17/9-2026): kode-flåden. Jarvis: «de er ikke i min
@@ -437,7 +442,22 @@ def select_tools_for_visible(
       - 48 (2026-09-04) — CC-style small native pool. Rare tools are reached
         through load_more_tools, which is pinned into the cap.
     """
-    return select_tools_for_copilot(
-        tools, user_message=user_message, session_id=session_id, max_tools=max_tools,
+    # Dispatcheren laegges i INPUT, ikke oven paa resultatet: saa gaelder
+    # loftet, pin-logikken og `REQUIRED_LAZY_TOOL_NAMES` for den som for
+    # ethvert andet vaerktoej. Foerste forsoeg 30/9 lagde den ovenpaa og
+    # sproengte loftet (49 mod 48); andet forsoeg afkortede halen og smed et
+    # PINNED vaerktoej. Begge blev fanget af husets egne vagter.
+    from core.tools.kaldt_vaerktoej import DEFINITION as _KALD_DEF, KALD_NAVN as _KALD_NAVN
+    _ind = list(tools or [])
+    if not any((d.get("function") or d).get("name") == _KALD_NAVN for d in _ind):
+        _ind.append(_KALD_DEF)
+    valgt = select_tools_for_copilot(
+        _ind, user_message=user_message, session_id=session_id, max_tools=max_tools,
         stable_only=True,
     )
+    # `call_loaded_tool` staar ALTID med, og den er KONSTANT — det er hele
+    # pointen. Et hentet vaerktoej kaldes gennem den i stedet for at blive
+    # flettet ind i arrayet, saa praefikset kan genbruges paa tvaers af ture.
+    # Maalt: én ny definition i arrayet koster 8.704 tokens mod DeepSeeks API,
+    # og 419 tegn kostede 62.672 miss i produktion. Se `kaldt_vaerktoej.py`.
+    return valgt

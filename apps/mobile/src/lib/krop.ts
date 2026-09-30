@@ -329,6 +329,17 @@ export function listeTekst(p: unknown): string {
  * bliver en liste med ét punkt.
  */
 export function tekstLinjer(v: unknown): string[] | null {
+  // Et resultat der ER ren tekst — `search`s grep-linjer (`fil:linje: indhold`)
+  // eller `find_files`s stier. Det er den FORM de værktøjer svarer med, og
+  // uden denne gren faldt de til rå tekst selv om linjerne lå lige der.
+  //
+  // Målt på 26.831 RIGTIGE kald 30/9-2026: 1.037 af 1.422 liste-kald kunne
+  // ikke tegne, og `search` (458) og `find_files` (118) var de største. Mine
+  // egne fixtures havde formen `{results: [...]}` — serveren svarer med tekst.
+  if (typeof v === 'string') {
+    const linjer = v.split('\n').map((s) => s.trimEnd()).filter((s) => s.trim() !== '')
+    return linjer.length > 1 ? linjer : null
+  }
   if (!objekt(v)) return null
   for (const [k, felt] of Object.entries(v)) {
     if (k === 'status' || typeof felt !== 'string') continue

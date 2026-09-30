@@ -116,6 +116,7 @@ from apps.api.jarvis_api.routes.transcribe import router as transcribe_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.jarvisx import router as jarvisx_router
 from apps.api.jarvis_api.routes.status import router as status_router
+from apps.api.jarvis_api.routes.peak import router as peak_router
 from apps.api.jarvis_api.routes.sensory import router as sensory_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.jarvisx_bridge import router as jarvisx_bridge_router
@@ -967,6 +968,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(jarvisx_router)
     app.include_router(status_router)
+    app.include_router(peak_router)
     app.include_router(sensory_router)
     app.include_router(mc_router)
     from apps.api.jarvis_api.routes.mission_control_dashboard import router as mc_dashboard_router

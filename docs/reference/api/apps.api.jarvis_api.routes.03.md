@@ -33,6 +33,13 @@ _Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
 | function | `save_paste_endpoint` | `(request)` | Gem en paste og returnér id + kompakt reference-streng. | [src](../../../apps/api/jarvis_api/routes/paste.py#L27) |
 | function | `get_paste_endpoint` | `(paste_id)` | Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id. | [src](../../../apps/api/jarvis_api/routes/paste.py#L43) |
 
+## `apps/api/jarvis_api/routes/peak.py`
+_Myldretids-tilstand til desk-headerens badge (30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `peak_state_endpoint` | `()` | Myldretids-tilstanden lige nu — grundlaget for desk-badgen. | [src](../../../apps/api/jarvis_api/routes/peak.py#L25) |
+
 ## `apps/api/jarvis_api/routes/plugins.py`
 _Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
 

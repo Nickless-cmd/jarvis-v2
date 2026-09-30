@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-29 from app.routes (live) — 619 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-30 from app.routes (live) — 620 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -583,6 +583,7 @@
 | POST | `/notifikations-valg` | dict | notifikations_valg |
 | POST | `/paste` | dict | paste |
 | GET | `/paste/{paste_id}` | dict | paste |
+| GET | `/peak/state` | dict | peak |
 | GET | `/plugins` | dict | plugins |
 | POST | `/plugins/channel/{plugin_id}/inbound` | dict | plugins |
 | GET | `/plugins/channel/{plugin_id}/response` | dict | plugins |

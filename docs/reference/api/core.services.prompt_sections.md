@@ -296,6 +296,13 @@ _Runtime self-report + self-model prompt sections._
 | function | `_runtime_awareness_prompt_surface` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L390) |
 | function | `_should_include_self_report` | `(text)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L412) |
 
+## `core/services/prompt_sections/section_placement.py`
+_Hvilke budget-valgte sektioner der hører i præfikset, og hvilke i halen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `placer_sektioner` | `(*, selected, labels, parts, dyn_tail, derived_inputs)` | Læg hver budget-valgt sektion i præfikset eller i halen. | [src](../../../core/services/prompt_sections/section_placement.py#L79) |
+
 ## `core/services/prompt_sections/support_signals_section.py`
 _Support-signalernes indhold — forbeholdet hoistet, kroppen samlet._
 

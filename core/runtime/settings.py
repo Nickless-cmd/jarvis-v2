@@ -372,6 +372,21 @@ class RuntimeSettings:
     #: Killswitch: saet den til false i settings.json. `load_settings()` laeser
     #: filen ved HVERT kald, saa den virker UDEN genstart.
     visible_tools_unified: bool = True
+    #: Hold vaerktoejsarrayet HELT stille efter en `load_more_tools`-hentning
+    #: (30/9-2026). Baade fletten i `visible_runs` og udvidelsen af
+    #: `session_tool_pin` springes over, saa praefikset er byte-identisk paa
+    #: tvaers af ture og sessioner.
+    #:
+    #: Maalt: én ny definition i arrayet koster 8.704 tokens mod DeepSeeks API,
+    #: og +419 tegn kostede 62.672 miss i produktion — fordi arrayet ligger foer
+    #: hele samtalen. Skemaerne staar allerede i hentningens RESULTAT, altsaa i
+    #: beskederne, hvor de koster ~0; `call_loaded_tool` kalder dem derfra.
+    #:
+    #: RISIKOEN: bruger modellen ikke dispatcheren, kan et hentet vaerktoej ikke
+    #: kaldes — DeepSeek afviser et vaerktoej der ikke er deklareret. Derfor er
+    #: den en killswitch der virker UDEN genstart: `load_settings()` laeser
+    #: filen ved hvert kald.
+    visible_tools_frozen: bool = True
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
@@ -648,7 +663,7 @@ _TIDLIGERE_UINDLAESTE = (
     "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
-    "visible_tools_unified",
+    "visible_tools_unified", "visible_tools_frozen",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",

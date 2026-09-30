@@ -2148,15 +2148,15 @@ async def _stream_visible_run(
                     for _lm_n in _lm_added:
                         if _lm_n and _lm_n not in _round_extra_tools:
                             _round_extra_tools.append(str(_lm_n))
-                    # 2026-09-05: udvid præfiks-låsen, så et værktøj han hentede
-                    # frem holder ved til næste tur i stedet for at forsvinde og
-                    # tvinge et nyt load_more_tools (og et nyt præfiks).
+                    # 2026-09-05: laasen holdt et hentet vaerktoej ved til
+                    # naeste tur i stedet for at tvinge en ny hentning.
+                    # 30/9-2026: det — og fletten nedenfor — springes over naar
+                    # `visible_tools_frozen` er sat, for begge aendrer arrayet,
+                    # og arrayet ligger foer hele samtalen. Se
+                    # `hentede_vaerktoejer.py` for maalingen og killswitchen.
                     if _lm_added:
-                        try:
-                            from core.services.session_tool_pin import extend as _pin_extend
-                            _pin_extend(run.session_id, [str(n) for n in _lm_added])
-                        except Exception:
-                            pass
+                        from core.services.hentede_vaerktoejer import udvid_laasen
+                        udvid_laasen(run.session_id, [str(n) for n in _lm_added])
                 except Exception:
                     pass
 
@@ -3119,18 +3119,16 @@ async def _stream_visible_run(
                             "Skriv nu dit endelige svar til brugeren i prosa, baseret "
                             "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
                             "— opsummer hvad du fandt og svar direkte.")
-                    # Merge in tools added by load_more_tools in previous rounds
+                    # Flet de hentede definitioner ind — med mindre arrayet er
+                    # frosset. Logikken og maalingen bor i
+                    # `hentede_vaerktoejer.flet_ind`; frosset koster hentningen
+                    # intet praefiks, men kraever at modellen bruger
+                    # `call_loaded_tool` for at kalde vaerktoejet.
                     if _round_tool_definitions is not None and _round_extra_tools:
-                        _all_defs = _get_tool_defs() or []
-                        _extra_set = set(_round_extra_tools)
-                        _existing_names = {
-                            ((d.get("function") or {}).get("name") or d.get("name") or "")
-                            for d in _round_tool_definitions
-                        }
-                        for _xd in _all_defs:
-                            _xn = (_xd.get("function") or {}).get("name") or _xd.get("name") or ""
-                            if _xn in _extra_set and _xn not in _existing_names:
-                                _round_tool_definitions = list(_round_tool_definitions) + [_xd]
+                        from core.services.hentede_vaerktoejer import flet_ind
+                        _round_tool_definitions = flet_ind(
+                            _round_tool_definitions, _round_extra_tools,
+                            _get_tool_defs() or [])
 
                     # ── Fase 1 inner attempt-loop (spec §4.1): re-runs THIS round's
                     # model-sampling on a retryable transient failure (round-retry that

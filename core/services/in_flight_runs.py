@@ -671,8 +671,6 @@ def claim_due_recovery(
         candidates: list[tuple[str, dict[str, Any]]] = []
         udloebne: list[str] = []
         for key, rec in records.items():
-            if str(rec.get("kind") or "visible") != "visible":
-                continue
             status = str(rec.get("status") or "")
             if status == "recovering":
                 pass
@@ -681,6 +679,32 @@ def claim_due_recovery(
                 if lease is not None and lease > instant:
                     continue
             else:
+                continue
+            # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
+            # her overhovedet — kun `interrupted_for_session` havde en. Det
+            # gjorde ikke noget saa laenge et taellefejl braendte budgettet paa
+            # halvandet minut (se `release_recovery_claim`), for saa stoppede
+            # opgaven af sig selv. Naar udskydelser ikke laengere koster et
+            # forsoeg, kan en post vente i dagevis — og en fortsaettelse af et
+            # spoergsmaal fra i forgaars er ikke hjaelp, den er stoej i en
+            # samtale der for laengst er gaaet videre.
+            #
+            # 30/9-2026: tjekket laa EFTER kind-filteret, saa vinduet saa kun
+            # den synlige lane. Og `_ryd_afsluttede` tager kun `_AFSLUTTEDE`,
+            # hvori `recovering` ikke staar. En AUTONOM post der naaede
+            # `recovering` var derfor dobbelt uudslettelig: den kunne hverken
+            # genoptages eller udloebe. Maalt: én fra 29/9 kl. 14:38 stod der
+            # stadig et doegn senere, med et ulaest varsel ingen kunne naa.
+            #
+            # Vinduet gaelder nu ALLE slags. Selve genoptagelsen — og alt
+            # nedenfor — er stadig kun den synlige lanes.
+            settled = _parsed(rec.get("settled_at")) or _parsed(rec.get("interrupted_at"))
+            if settled is not None and (
+                instant - settled
+            ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
+                udloebne.append(key)
+                continue
+            if str(rec.get("kind") or "visible") != "visible":
                 continue
             if is_non_retryable_recovery_reason(rec.get("exit_reason")):
                 rec["status"] = "failed_terminal"
@@ -692,20 +716,6 @@ def claim_due_recovery(
                 continue
             due = _parsed(rec.get("next_attempt_at"))
             if due is not None and due > instant:
-                continue
-            # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
-            # her overhovedet — kun `interrupted_for_session` havde en. Det
-            # gjorde ikke noget saa laenge et taellefejl braendte budgettet paa
-            # halvandet minut (se `release_recovery_claim`), for saa stoppede
-            # opgaven af sig selv. Naar udskydelser ikke laengere koster et
-            # forsoeg, kan en post vente i dagevis — og en fortsaettelse af et
-            # spoergsmaal fra i forgaars er ikke hjaelp, den er stoej i en
-            # samtale der for laengst er gaaet videre.
-            settled = _parsed(rec.get("settled_at")) or _parsed(rec.get("interrupted_at"))
-            if settled is not None and (
-                instant - settled
-            ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
-                udloebne.append(key)
                 continue
             exhausted = int(rec.get("recovery_attempt") or 0) >= int(
                 rec.get("recovery_limit") or 3)

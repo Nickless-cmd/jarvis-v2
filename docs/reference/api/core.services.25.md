@@ -542,14 +542,11 @@ _Evidens-baseret TruthGate v2 (Fase 2). Detekterer handlings-påstande og verifi
 | function | `_maybe_llm_claim` | `(text)` | LLM-dommer KUN hvis teksten har et handlings-hint men intet deterministisk match. | [src](../../../core/services/truth_gate_v2.py#L279) |
 | function | `truth_gate_v2` | `(ctx)` | ctx: {text, executed_tool_names, followup_exchanges, run_id, session_id}. | [src](../../../core/services/truth_gate_v2.py#L293) |
 
-## `core/services/turn_changelog.py`
-_End-of-turn changelog — auto-summarize what this turn changed._
+## `core/services/turens_vaerktoejer.py`
+_Ét værktøjssæt for HELE turen — begge trin ser det samme._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_tool_calls_during` | `(run_id, started_at)` | — | [src](../../../core/services/turn_changelog.py#L27) |
-| function | `_git_changed_files` | `(repo)` | — | [src](../../../core/services/turn_changelog.py#L50) |
-| function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
-| function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
-| function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
+| function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
+| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
 

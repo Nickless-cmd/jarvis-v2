@@ -81,7 +81,7 @@ def opportunities(user_message: str) -> set[str]:
     direct_error = bool(_EXPLICIT_ERROR.search(text[:400]))
     analysis_error = bool(_JARVIS_ANALYSIS_WRONG.search(text[:4000]))
     if (_looks_like_correction(text) or direct_error or analysis_error
-            or _IMPLIED_CORRECTION.search(text[:500])):
+            or _IMPLIED_CORRECTION.search(text[:180])):
         found.add("quote")
         if direct_error or analysis_error:
             found.add("admit")

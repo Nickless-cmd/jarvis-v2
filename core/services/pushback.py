@@ -241,11 +241,104 @@ def _affective_pressure(snapshot: Any) -> tuple[str, float] | None:
     return feeling, min(1.0, round(strength, 2))
 
 
+# ── Pres eller emne? (30/9-2026) ──────────────────────────────────────────
+#
+# Markørerne ovenfor blev valgt til KORTE imperativer («bare push nu uden
+# test»). Bjørn skriver nu lange tekniske analyser — og dér optræder de samme
+# ord som EMNE, ikke som ordre. Målt i veto_events 30/9-2026:
+#
+#   `push`  ramte «Koden er pushet»          (substring, ikke helt ord)
+#   `merge` ramte «merge-logikken»           (emne i en 6.000-tegns rapport)
+#   `slet`  ramte en teknisk redegørelse     (emne)
+#
+# Resultatet var 215+172 rækker markeret `false_positive` mod 10 `honored` —
+# og fire blokerede skrivninger i træk på én formiddag. Det er samme fejlklasse
+# som da «commit», «nu», «fjern», «drop» og «hurtigt» blev fjernet én for én
+# (2026-05-03): man ryddede ord i stedet for at rette mekanismen. Nu rettes
+# mekanismen: en markør tæller kun når den står som et PRES.
+#
+# En pres-besked er kort og/eller bærer et pres-cue. En teknisk rapport er
+# hverken. Tre betingelser, og markøren skal matche som HELT ORD i alle tre:
+#
+#   (a) flerords-markører («uden test», «bare gør») ER selv et pres
+#   (b) et pres-cue står i nærheden af markøren
+#   (c) beskeden er kort OG markøren står i imperativ position (en ordre
+#       begynder ved et sætningsskilletegn, ikke midt i en bisætning)
+_PRESSURE_CUES: tuple[str, ...] = (
+    "bare", "nu", "straks", "med det samme", "omgående", "skynd",
+    "uden test", "skip test", "spring test", "springer test", "drop test",
+    "ignorér", "ignorer", "gør det", "kør det", "lad være med at",
+)
+
+#: Over denne længde er beskeden en redegørelse, ikke en ordre. Bjørns
+#: pres-beskeder måler < 100 tegn («Forsæt», «bare kør den»); de rapporter
+#: der udløste de falske positiver var 3.000-6.000.
+_PRESSURE_MAX_CHARS = 240
+
+#: Hvor tæt på markøren et pres-cue skal stå. Et cue i samme sætning, ikke
+#: et «nu» tre afsnit længere nede.
+_PRESSURE_CUE_WINDOW = 40
+
+
+def _staar_i_imperativ(lower: str, marker: str) -> bool:
+    """Står markøren som en ORDRE — i starten af beskeden eller efter et
+    sætningsskilletegn? «slet filen» ja; «hvordan virker merge?» nej."""
+    for m in re.finditer(rf"\b{re.escape(marker)}\b", lower):
+        foer = lower[: m.start()]
+        if not foer or re.search(r"[.!?;:\n]\s*$", foer):
+            return True
+    return False
+
+
+#: Cue'erne som helt-ords-mønstre. Cue'en skal stå som ORD — ellers rammer «nu»
+#: inde i «minutter», «nul» og «menu». Målt 30/9-2026: med substring-match blev
+#: 4 af 4 rene emne-sætninger dømt som pres — og det ramte alle fem
+#: enkeltords-markører, ikke kun `merge`.
+_LANGE_CUES = tuple(c for c in _PRESSURE_CUES if len(c) > 3)
+_KORTE_CUES = tuple(c for c in _PRESSURE_CUES if len(c) <= 3)
+_LANG_CUE_RE = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in _LANGE_CUES) + r")\b")
+_KORT_CUE_RE = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in _KORTE_CUES) + r")\b")
+
+
+def _har_pres_cue(lower: str, marker: str, kort: bool) -> bool:
+    """Står et pres-cue i nærheden af markøren — før ELLER efter den?
+    «bare push» og «push nu» er begge et pres.
+
+    De helt korte cues (kun «nu») tæller BARE i en kort besked: «push nu» er et
+    pres, men «hvad gør vi nu med merge?» midt i en 6.000-tegns rapport er et
+    spørgsmål — og «nu» er for almindeligt et dansk ord til at bære det alene.
+    """
+    for m in re.finditer(rf"\b{re.escape(marker)}\b", lower):
+        vindue = lower[max(0, m.start() - _PRESSURE_CUE_WINDOW): m.end() + _PRESSURE_CUE_WINDOW]
+        if _LANG_CUE_RE.search(vindue):
+            return True
+        if kort and _KORT_CUE_RE.search(vindue):
+            return True
+    return False
+
+
+def _marker_er_pres(marker: str, lower: str, kort: bool) -> bool:
+    """Er markøren et pres eller et emne? Se kommentaren over `_PRESSURE_CUES`."""
+    # Helt ord. `push` må ikke rammes af «pushet», `slet` ikke af «slettet».
+    if not re.search(rf"\b{re.escape(marker)}\b", lower):
+        return False
+    # (a) Flerords-markører er selv et pres.
+    if " " in marker:
+        return True
+    # (b) Et pres-cue i nærheden.
+    if _har_pres_cue(lower, marker, kort):
+        return True
+    # (c) Kort besked + markøren som ordre.
+    return kort and _staar_i_imperativ(lower, marker)
+
+
 def _request_risk_evidence(user_message: str) -> list[str]:
-    lower = (user_message or "").lower()
+    text = user_message or ""
+    lower = text.lower()
+    kort = len(text.strip()) <= _PRESSURE_MAX_CHARS
     evidence: list[str] = []
     for marker in _AFFECTIVE_RISK_MARKERS:
-        if marker in lower:
+        if _marker_er_pres(marker, lower, kort):
             evidence.append(f"risk marker: '{marker}'")
             if len(evidence) >= 3:
                 break

@@ -10,8 +10,8 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
-import { InlineToolGroup } from './InlineToolGroup'
-import { formatTid } from './InlineToolGroup'
+import { InlineToolGroup, type TankeRaekke } from './InlineToolGroup'
+import { formatTid } from '../lib/arbejdslinje'
 import { TurnHeader } from './TurnHeader'
 import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
@@ -25,6 +25,7 @@ import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
+import { Arbejdslinje } from './Arbejdslinje'
 import { ImageGenerationCard } from './ImageGenerationCard'
 import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
@@ -69,6 +70,21 @@ interface MessageListProps {
    * tråden ser ud som før.
    */
   rundeEtiketter?: Record<string, string>
+  /**
+   * Arbejdslinjens sætning i Jarvis' stemme — eller null.
+   *
+   * Bygget af `arbejdslinjeTekst(state.workingStep, state.workingAction)`.
+   * Udeladt eller null = ingen linje; tråden ser ud som før.
+   */
+  arbejdslinje?: string | null
+  /**
+   * Token-tallet til arbejdslinjen — `usage.input + cacheHit + cacheMiss +
+   * output`, altså HELE konteksten turen bærer og ikke kun svaret.
+   *
+   * Samme fire led som desk summerer (`ChatView.tsx:138`), så de to klienter
+   * viser samme tal for samme tur. Udeladt eller 0 = tallet vises ikke.
+   */
+  arbejdslinjeTokens?: number
   /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
@@ -121,12 +137,15 @@ type Row = (
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[]; side: 'left' | 'right' }
   | { kind: 'tool'; key: string; content: string }
-  | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
+  | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null; result?: string }
   | { kind: 'image-generation'; key: string }
   | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
-  | { kind: 'tool-group'; key: string; items: ToolItem[] }
+  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[] }
+  /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
+   *  Findes kun mens der streames; rækken tilføjes ikke efter. */
+  | { kind: 'arbejdslinje'; key: string; tekst: string; tokens: number }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
   | { kind: 'skill'; key: string; kald: SkillKald }
   /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
@@ -198,57 +217,66 @@ function erServerId(id: string): boolean {
 
 function groupToolRounds(rows: Row[]): Row[] {
   const out: Row[] = []
-  let buf: Row[] = []
-  // Tænke-rækker holdes tilbage og lægges IND UNDER den værktøjs-linje de
-  // hører til. Desk gør præcis det samme: tænke-linjen er ikke en søskende
-  // OVER linjen, den er et ELEMENT i rundens detaljer, under rundens knap
-  // (`RaekkeTranskript.tsx:275` — `rv-arbejdsdetaljer`). Bjørn 29/9-2026: «i
-  // desk lægger vi tænkelinjen ind under tool result linjen.. det bør vi osse
-  // gøre her». Står tanken alene — uden et kald efter sig — bliver den hvor
-  // den er; den flyttes kun ned når der faktisk ER en linje at ligge under.
-  let tanke: Row[] = []
-  const slipTanke = () => {
-    if (tanke.length === 0) return
-    out.push(...tanke)
-    tanke = []
-  }
-  const flush = () => {
-    if (buf.length === 0) return
-    const items: ToolItem[] = buf.map((r) =>
+  // Elementerne i runden der bygges nu: kald OG tanker, i den rækkefølge de
+  // skete. Desk gør præcis dette (`opdelArbejdsrunder`, `raekkeModel.ts:71`):
+  // elementer samles, og KUN et mellemsvar afslutter runden — en tanke gør
+  // ikke. En runde uden kald bliver enkeltrækker.
+  //
+  // Bjørn 30/9-2026: «Tænkte linjen står stadig under tool result linjen».
+  // Den gjorde netop det, fordi denne funktion LUKKEDE runden i det øjeblik
+  // den så en tanke. Blokkene kommer i rækkefølgen `thinking, text, tool_use`
+  // (målt i besked 153522), så tanken blev skubbet ud som sin EGEN række efter
+  // den foregående rundes linje i stedet for at ligge inde i den.
+  let elementer: Row[] = []
+  let tur: string | undefined
+  const afslut = () => {
+    if (elementer.length === 0) return
+    const kald: Row[] = []
+    const tankeRækker: Row[] = []
+    const tanker: TankeRaekke[] = []
+    for (const r of elementer) {
+      if (r.kind === 'thinking') {
+        tankeRækker.push(r)
+        // Hvor mange kald der kom FØR den. Folden tegner elementerne i den
+        // rækkefølge de skete — som desk — i stedet for alle tanker øverst.
+        tanker.push({ key: r.key, seconds: r.seconds, text: r.text, live: r.live,
+          messageId: r.messageId, foerKald: kald.length })
+      } else {
+        kald.push(r)
+      }
+    }
+    elementer = []
+    tur = undefined
+    // Ingen linje at folde bag: tankerne står selv, hvor de stod.
+    if (kald.length === 0) { out.push(...tankeRækker); return }
+    const items: ToolItem[] = kald.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body) }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body), result: r.result ?? null, input: r.body }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,
             tool: /\[([a-z_0-9]+)\]\s*:/i.exec((r as { content: string }).content)?.[1] ?? '',
-            count: countFromResult((r as { content: string }).content)
+            count: countFromResult((r as { content: string }).content),
+            // Den persisterede række ER resultatet (`[tool_result:…] [bash]: …`).
+            result: (r as { content: string }).content
           }
     )
-    out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items,
-      turnId: buf[0]!.turnId, work: buf[0]!.work })
-    buf = []
-    // Tanken lige efter linjen — ikke over den.
-    slipTanke()
+    out.push({ kind: 'tool-group', key: `group-${kald[0]!.key}`, items,
+      tanker: tanker.length ? tanker : undefined,
+      turnId: kald[0]!.turnId, work: kald[0]!.work })
   }
   for (const r of rows) {
-    if (r.kind === 'tool' || r.kind === 'live-tool') {
-      if (buf.length && r.turnId !== buf[0]!.turnId) flush()
-      buf.push(r)
-    }
-    else if (r.kind === 'thinking') {
-      // En tanke EFTER et kald betyder at det kald er slut: luk gruppen (og
-      // dens egen tanke), og læg denne tanke i kø til den NÆSTE linje.
-      flush()
-      tanke.push(r)
-    }
-    else {
-      flush()
-      slipTanke()
+    if (r.kind === 'tool' || r.kind === 'live-tool' || r.kind === 'thinking') {
+      // En ny TUR starter altid en ny runde.
+      if (elementer.length && r.turnId !== tur) afslut()
+      elementer.push(r)
+      tur = r.turnId
+    } else {
+      afslut()
       out.push(r)
     }
   }
-  flush()
-  slipTanke()
+  afslut()
   return out
 }
 
@@ -271,7 +299,16 @@ function medTurHoveder(rows: Row[], aaben: (id: string) => boolean): Row[] {
       setHoved.add(row.turnId)
       const dele = arbejde.get(row.turnId) ?? []
       const vaerktoejer = dele.flatMap((r) => r.kind === 'tool-group' ? r.items : [])
-      const sekunder = dele.reduce((n, r) => n + (r.kind === 'thinking' ? r.seconds ?? 0 : 0), 0)
+      // Tænketiden bor nu INDE i gruppen for de tanker der hørte til en runde;
+      // kun de tanker uden et kald efter sig står stadig som egne rækker.
+      // Uden begge led ville hovedets «· 1m 3s» tabe netop de sekunder det
+      // skal vise — og det ville gøre det uden en fejl at se på.
+      const sekunder = dele.reduce((n, r) =>
+        n + (r.kind === 'thinking'
+          ? r.seconds ?? 0
+          : r.kind === 'tool-group'
+            ? (r.tanker ?? []).reduce((m, t) => m + (t.seconds ?? 0), 0)
+            : 0), 0)
       const fortalt = summarizeRound(vaerktoejer).replace(/…$/, '') ||
         (sekunder > 0 ? `Tænkte i ${formatTid(sekunder)}` : 'Arbejdede')
       const label = vaerktoejer.length && sekunder > 0 ? `${fortalt} · ${formatTid(sekunder)}` : fortalt
@@ -426,6 +463,10 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         id: b.id,
         name: b.name,
         body: toolBody(b),
+        // Kaldets svar. `result` sættes på blokken når tool_result-rammen
+        // lander (se reducerens foldning), og bæres med her — ellers kunne
+        // folden vise HVAD der blev kaldt, men ikke hvad det svarede.
+        result: typeof b.result === 'string' ? b.result : undefined,
         running: b.status !== 'done' && b.status !== 'error',
         // Linjetallene for DETTE kald. Serverens MAALTE tal foerst: den har
         // filen i haanden lige foer den skriver, og kan derfor sige hvor meget
@@ -479,7 +520,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -597,6 +638,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 id: b.id,
                 name: String(b.name ?? ''),
                 body: JSON.stringify(b.input ?? {}),
+                // Samme som live-rækken: svaret skal med, ellers er folden
+                // tom for indhold når tråden genindlæses fra disken.
+                result: typeof b.result === 'string' ? b.result : undefined,
                 diff: diffFraResultat(b.result) ?? toolDiff(String(b.name ?? ''), b.input),
                 running: false
               })
@@ -757,6 +801,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // En besked kan blive til flere rækker (afsnit, runder, tanker), og en
   // runde-række bærer nøglen `group-<første kalds nøgle>`.
   const rows: Row[] = medNyeLinje(medHoveder, nyeFra)
+  // Arbejdslinjen lægges SIDST — den inverterede liste tegner index 0 i
+  // bunden, så den havner under alt andet i beskeden og forsvinder med
+  // streamen. Bjørn 29/9-2026: «fra streaming starter til den slutter og
+  // så forsvinder igen i bunden af din besked».
+  if (working && arbejdslinje) {
+    rows.push({ kind: 'arbejdslinje', key: 'arbejdslinje', tekst: arbejdslinje, tokens: arbejdslinjeTokens })
+  }
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -868,7 +919,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           const resume = visning === 'thinking'
             ? item.items.map((i: ToolItem) => (i.id ? resumeer[i.id] : undefined)).find(Boolean)
             : undefined
-          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} />
+          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} tanker={item.tanker} />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }
         if (item.kind === 'thinking') {
@@ -885,6 +936,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'nye-beskeder') return <NyeBeskederRow />
         if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
         if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
+        if (item.kind === 'arbejdslinje') return <Arbejdslinje tekst={item.tekst} tokens={item.tokens} />
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }

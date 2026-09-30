@@ -1,4 +1,5 @@
 import { railAnchors as ankrePrTur, railLabel, type RailAnchor } from '../components/chat/MessageRail'
+import { svarTilAnker } from './railSvarPreview'
 
 /**
  * Hvad saved rail viser: KAPITLER og KOMPRIMERINGER — ikke én streg pr. besked.
@@ -104,7 +105,9 @@ export function bygRailAnkre(
 
   return ud
     .sort((a, b) => a._plads - b._plads)
-    .map(({ _plads, ...a }) => a)
+    // Svar-uddraget haeftes paa TIL SIDST, saa det sker én gang pr. anker og
+    // ikke tre steder i byggeriet ovenfor. (spec punkt 3.2)
+    .map(({ _plads, ...a }) => ({ ...a, svar: svarTilAnker(beskeder, a.id) }))
 }
 
 /** « · 13/9 18:51» i lokal tid. Uden gyldigt tidspunkt: ingenting. */

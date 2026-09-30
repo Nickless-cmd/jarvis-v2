@@ -24,6 +24,23 @@
   --rv-tertiary: #a6a59c;
   --rv-h: 24px;      /* rækkens højde — målt: calc(24px + content-font-delta) */
   --rv-enhed: 16px;  /* målt: grundenheden mellem ALT */
+  /* Tre afstande i rækkevisningen bærer en ROLLE og er derfor navngivet
+     (29/9-2026). Tallene er UÆNDREDE — det her flytter ikke en pixel, det
+     samler bare beslutningen ét sted, som punkt 7 i Codex-speccen beder om.
+
+     Hvorfor kun tre: hele appen bruger 37 forskellige px-værdier over 1.608
+     afstands-deklarationer, og hvert eneste heltal fra 1 til 14 er i brug. Et
+     token pr. tal ville være en omdøbning, ikke et system. De tre nedenfor er
+     dem hvor det SAMME tal står for det SAMME på tværs af regler.
+
+     `8px` er bevidst IKKE med. Den optræder 12 steder i denne fil som margin
+     om en 2px-prik, gap i en overskrift, bundmargin på en foldet tur og
+     top-padding i en kolonne — fem roller, samme tal. Et fælles navn ville
+     binde dem sammen, og så flytter en rettelse det ene sted fire andre. */
+  --rv-pad-side: 11px;   /* rækkevisningens vandrette indryk — ~20 steder, og
+                            `::before`-markørerne ligger PÅ den kant */
+  --rv-pad-lodret: 9px;  /* lodret luft i en indholdsblok (resultat, kode, note) */
+  --rv-gap: 12px;        /* mellem etiket og værdi i en række */
   /* Den aktive opgavelinjes tone. Bor her af samme grund som --rv-tertiary:
      kun denne visning bruger den. `color-mix` er ikke en mulighed i vores
      Electron-version — rgba virker overalt. */
@@ -246,20 +263,20 @@
 }
 /* Filvisning: sti og linjenumre erstatter Read-værktøjets rå IN/OUT-JSON. */
 .raekkevisning .rv-filH {
-  display: flex; align-items: center; gap: 12px; padding: 7px 11px;
+  display: flex; align-items: center; gap: var(--rv-gap); padding: 7px var(--rv-pad-side);
   border-bottom: 1px solid var(--line); color: var(--fg-2);
   font: 12px var(--font-mono);
 }
 .raekkevisning .rv-filH > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .raekkevisning .rv-filM { margin-left: auto; color: var(--fg-3); font: 11px var(--font-mono); }
-.raekkevisning .rv-filTom { padding: 12px 11px; color: var(--fg-3); font-size: 12px; }
+.raekkevisning .rv-filTom { padding: 12px var(--rv-pad-side); color: var(--fg-3); font-size: 12px; }
 /* Mindet der blev skrevet (23/9-2026). `remember_this` svarer kun med `{id}`
    og `memory_upsert_section` med `{action}` — indholdet staar i ARGUMENTERNE.
    Hovedet er filkortets, saa de to former ikke laeser som to slags raekker.
    Teksten klippes ved 180px: en hel MEMORY.md-sektion maa ikke goere raekken
    hoej, for saa rykker transskriptet under den. */
 .raekkevisning .rv-mindeH {
-  display: flex; align-items: center; gap: 12px; padding: 7px 11px;
+  display: flex; align-items: center; gap: var(--rv-gap); padding: 7px var(--rv-pad-side);
   border-bottom: 1px solid var(--line); color: var(--fg-1);
   font: 12px var(--font-mono);
 }
@@ -269,7 +286,7 @@
 .raekkevisning .rv-mindeM { margin-left: auto; color: var(--fg-3); font: 11px var(--font-mono); }
 .raekkevisning .rv-mindeT {
   max-height: 180px; overflow: auto; overscroll-behavior: contain;
-  padding: 9px 11px; color: var(--rv-tertiary);
+  padding: var(--rv-pad-lodret) var(--rv-pad-side); color: var(--rv-tertiary);
   white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px;
 }
 .raekkevisning .rv-filKode { max-height: 224px; overflow: auto; padding: 6px 0; }
@@ -282,22 +299,51 @@
 .raekkevisning .rv-filKode .shiki span { color: var(--shiki-dark); }
 :root[data-theme='light'] .raekkevisning .rv-filKode .shiki,
 :root[data-theme='light'] .raekkevisning .rv-filKode .shiki span { color: var(--shiki-light); }
-.raekkevisning .rv-filKode .shiki .line { display: block; padding: 0 11px; min-height: 20px; }
+.raekkevisning .rv-filKode .shiki .line { display: block; padding: 0 var(--rv-pad-side); min-height: 20px; }
 .raekkevisning .rv-filKode .shiki .line::before {
   counter-increment: rv-linje; content: counter(rv-linje); display: inline-block;
   width: 36px; color: var(--fg-3); user-select: none;
 }
 .raekkevisning .rv-filLinje {
   display: grid; grid-template-columns: 36px minmax(max-content, 1fr);
-  min-width: max-content; padding: 0 11px; white-space: pre;
+  min-width: max-content; padding: 0 var(--rv-pad-side); white-space: pre;
   font: 12px/20px var(--font-mono); color: var(--fg-2);
 }
 .raekkevisning .rv-filNr { color: var(--fg-3); user-select: none; }
-.raekkevisning .rv-resultatH { padding: 9px 11px; font-size: 12px; color: var(--fg-2); white-space: pre-wrap; }
+.raekkevisning .rv-resultatH { padding: var(--rv-pad-lodret) var(--rv-pad-side); font-size: 12px; color: var(--fg-2); white-space: pre-wrap; }
 .raekkevisning .rv-felter { margin: 0; }
-.raekkevisning .rv-felter > div { display: grid; grid-template-columns: minmax(100px, 25%) 1fr; gap: 12px; padding: 3px 0; }
+.raekkevisning .rv-felter > div { display: grid; grid-template-columns: minmax(100px, 25%) 1fr; gap: var(--rv-gap); padding: 3px 0; }
 .raekkevisning .rv-felter dt { color: var(--fg-3); overflow-wrap: anywhere; }
 .raekkevisning .rv-felter dd { margin: 0; overflow-wrap: anywhere; }
+/* Udeladelses-klausulen (spec punkt 5, 30/9-2026). Bjoern valgte den DAEMPEDE
+   variant: den vil staa i mange lange resultater, og i advarselsfarven ville
+   den blive stoej i stedet for et signal. Stregerne foroven og forneden er
+   det der goer den til en graense og ikke bare en linje tekst.
+   Ingen radius — den har kun vandrette kanter. */
+.raekkevisning .rv-udeladt {
+  margin: 8px 0; padding: 6px var(--rv-pad-side);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  font-size: 12px; line-height: 1.5; color: var(--fg-3);
+}
+/* Vejen til resten. Locatoren fandtes allerede; det her er knappen der
+   endelig kalder den. */
+.raekkevisning .rv-spill {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: var(--rv-pad-lodret) var(--rv-pad-side);
+  border-top: 1px solid var(--line);
+}
+.raekkevisning .rv-spill-knap {
+  font: inherit; font-size: 12px; color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--overlay-line);
+  border-radius: 6px; padding: 3px 10px; cursor: pointer;
+}
+.raekkevisning .rv-spill-knap:hover:not(:disabled) { background: var(--bg-4); }
+.raekkevisning .rv-spill-knap:disabled { color: var(--fg-3); cursor: default; }
+.raekkevisning .rv-spill-maal { font: 11px var(--font-mono); color: var(--fg-3); }
+/* En fejlet hentning skal SES — et klik der ikke gjorde noget er vaerre end
+   en knap der ikke var der. */
+.raekkevisning .rv-spill-fejl { font-size: 11.5px; color: var(--error-fg); }
 .raekkevisning .rv-raadata { margin-top: 7px; color: var(--fg-3); font-size: 11px; }
 .raekkevisning .rv-raadata summary { width: max-content; cursor: pointer; }
 .raekkevisning .rv-raadata .rv-kort { margin-top: 6px; }
@@ -306,7 +352,7 @@
    brug. Forlægget klipper terminalen ved 224px og ind/ud-kortet ved 150px,
    begge med scroll i kortet selv, så RÆKKEN under stadig ligger hvor den skal. */
 .raekkevisning .rv-kort pre {
-  margin: 0; padding: 9px 11px; font: 12px/1.65 var(--font-mono);
+  margin: 0; padding: var(--rv-pad-lodret) var(--rv-pad-side); font: 12px/1.65 var(--font-mono);
   color: var(--rv-tertiary); white-space: pre-wrap; word-break: break-word;
   max-height: 224px; overflow: auto; overscroll-behavior: contain;
 }
@@ -317,7 +363,7 @@
 /* Terminal. Vis exit-koden efter afslutning; under kørslen kendes den endnu
    ikke. Kun en faktisk ikke-nul-kode får advarselsfarve og prik. */
 .raekkevisning .rv-term .rv-kh {
-  display: flex; align-items: center; gap: 8px; padding: 6px 11px;
+  display: flex; align-items: center; gap: 8px; padding: 6px var(--rv-pad-side);
   border-bottom: 1px solid var(--line); font: 12px var(--font-mono); color: var(--fg-2);
 }
 .raekkevisning .rv-term .rv-kh > span:first-child {
@@ -338,8 +384,8 @@
 }
 /* Diff — målt: +/− tegnes af CSS, ikke af teksten. */
 .raekkevisning .rv-diff pre { padding: 6px 0; }
-.raekkevisning .rv-l { display: block; padding: 1px 11px 1px 26px; position: relative; }
-.raekkevisning .rv-l::before { position: absolute; left: 11px; opacity: .75; }
+.raekkevisning .rv-l { display: block; padding: 1px var(--rv-pad-side) 1px 26px; position: relative; }
+.raekkevisning .rv-l::before { position: absolute; left: var(--rv-pad-side); opacity: .75; }
 .raekkevisning .rv-l[data-k='add'] { background: rgba(124,196,155,.10); color: #a8dcbd; }
 .raekkevisning .rv-l[data-k='add']::before { content: '+'; }
 .raekkevisning .rv-l[data-k='del'] { background: rgba(239,126,107,.10); color: #e8ab9e; }
@@ -356,9 +402,9 @@
 .raekkevisning .rv-diff .shiki { padding: 6px 0; }
 .raekkevisning .rv-diff .shiki code { display: block; }
 .raekkevisning .rv-diff .shiki .line {
-  display: block; padding: 1px 11px 1px 26px; position: relative;
+  display: block; padding: 1px var(--rv-pad-side) 1px 26px; position: relative;
 }
-.raekkevisning .rv-diff .shiki .line::before { position: absolute; left: 11px; opacity: .75; }
+.raekkevisning .rv-diff .shiki .line::before { position: absolute; left: var(--rv-pad-side); opacity: .75; }
 .raekkevisning .rv-diff .shiki .line[data-k='add'] { background: rgba(124,196,155,.10); }
 .raekkevisning .rv-diff .shiki .line[data-k='add']::before { content: '+'; }
 .raekkevisning .rv-diff .shiki .line[data-k='del'] { background: rgba(239,126,107,.10); }
@@ -412,14 +458,14 @@
 /* Ind/ud */
 .raekkevisning .rv-par { display: grid; grid-template-columns: 36px 1fr; }
 .raekkevisning .rv-par + .rv-par { border-top: 1px solid var(--line); }
-.raekkevisning .rv-mrk { padding: 9px 0 9px 11px; font: 11px var(--font-mono); color: var(--fg-3); }
+.raekkevisning .rv-mrk { padding: var(--rv-pad-lodret) 0 var(--rv-pad-lodret) var(--rv-pad-side); font: 11px var(--font-mono); color: var(--fg-3); }
 .raekkevisning .rv-v {
-  padding: 9px 11px 9px 0; font: 12px/1.65 var(--font-mono); color: var(--rv-tertiary);
+  padding: var(--rv-pad-lodret) var(--rv-pad-side) var(--rv-pad-lodret) 0; font: 12px/1.65 var(--font-mono); color: var(--rv-tertiary);
   white-space: pre-wrap; word-break: break-word;
 }
 /* Liste og træffere — målt: stier er SANS, ikke mono. */
 .raekkevisning .rv-liste { padding: 6px 0; }
-.raekkevisning .rv-i { display: flex; gap: 12px; padding: 3px 11px; font-size: 13px; color: var(--rv-tertiary); }
+.raekkevisning .rv-i { display: flex; gap: var(--rv-gap); padding: 3px var(--rv-pad-side); font-size: 13px; color: var(--rv-tertiary); }
 /* Progress-sporet: hvert trin viser VÆRKTØJETS ikon og emnet — ikke serverens
    label-tekst («Kører kommando: git status») råt. Bjørn 23/9-2026: «Kører
    kommando skal helt væk og erstattes af ikone». 8px og ikke 12: ikonet hører
@@ -428,17 +474,17 @@
 .raekkevisning .rv-iIkon { flex: none; color: var(--fg-3); margin-top: 2px; }
 .raekkevisning .rv-i .rv-p { color: var(--fg-2); flex: none; min-width: 24ch; }
 /* Web */
-.raekkevisning .rv-web .rv-i { display: block; padding: 7px 11px; }
+.raekkevisning .rv-web .rv-i { display: block; padding: 7px var(--rv-pad-side); }
 .raekkevisning .rv-dom { font-size: 12px; color: var(--fg-3); }
 .raekkevisning .rv-t { font-size: 13px; color: var(--fg-2); }
 /* Spørgsmål */
-.raekkevisning .rv-sp { padding: 10px 11px; }
+.raekkevisning .rv-sp { padding: 10px var(--rv-pad-side); }
 .raekkevisning .rv-q { font-size: 13px; color: var(--fg-1); }
 .raekkevisning .rv-a { display: flex; gap: 9px; margin-top: 7px; font-size: 13px; color: var(--rv-tertiary); }
 .raekkevisning .rv-a .rv-m { color: var(--fg-3); flex: none; }
 /* Billede */
-.raekkevisning .rv-bill { padding: 10px 11px; }
-.raekkevisning .rv-billH { display: flex; gap: 12px; align-items: center; }
+.raekkevisning .rv-bill { padding: 10px var(--rv-pad-side); }
+.raekkevisning .rv-billH { display: flex; gap: var(--rv-gap); align-items: center; }
 /* Knappen er billedet — den må ikke klemmes af flex, og cursoren skal vise
    at man kan åbne det i fuld størrelse. */
 .raekkevisning .rv-bill .billed-knap { flex: none; }
@@ -500,14 +546,14 @@
   max-height: 224px; overflow: auto; overscroll-behavior: contain;
 }
 .raekkevisning .rv-uaH {
-  padding: 5px 11px; border-bottom: 1px solid var(--line);
+  padding: 5px var(--rv-pad-side); border-bottom: 1px solid var(--line);
   font: 11px var(--font-mono); color: var(--fg-3);
 }
 /* Den venstre kant er hele pointen: de her kald hoerer til EN anden agent,
    ikke til turen. Uden den laeser de som Jarvis' egne. */
 .raekkevisning .rv-uaKald {
   display: flex; gap: 10px; align-items: baseline;
-  padding: 3px 11px 3px 9px; margin-left: 11px;
+  padding: 3px var(--rv-pad-side) 3px 9px; margin-left: var(--rv-pad-side);
   border-left: 2px solid var(--line); font-size: 13px;
 }
 .raekkevisning .rv-uaKald[data-status='error'] { border-left-color: var(--error-fg); }
@@ -523,13 +569,13 @@
    Den aktive linje får en svag accent-tone — den er dét man leder efter, og
    uden fremhævningen læser listen som en log man skal grave i. */
 .raekkevisning .rv-opgaveH {
-  padding: 7px 11px; border-bottom: 1px solid var(--line);
+  padding: 7px var(--rv-pad-side); border-bottom: 1px solid var(--line);
   font: 11px var(--font-mono); color: var(--fg-3);
 }
 .raekkevisning .rv-opgaveNu { color: var(--fg-2); }
 .raekkevisning .rv-opgaveLinje {
   display: flex; gap: 10px; align-items: baseline;
-  padding: 4px 11px; font-size: 13px; color: var(--rv-tertiary);
+  padding: 4px var(--rv-pad-side); font-size: 13px; color: var(--rv-tertiary);
 }
 .raekkevisning .rv-opgaveG { flex: none; width: 13px; color: var(--fg-3); }
 .raekkevisning .rv-opgaveT { min-width: 0; overflow-wrap: anywhere; }

@@ -58,6 +58,33 @@ it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
   expect(s.queryByTestId('image-generation-progress')).toBeNull()
 })
 
+/**
+ * Arbejdslinjens token-tal skal FØRES hele vejen — fra `ChatScreen`s `usage`
+ * gennem rækken og ned i linjen. Uden den kobling ville tallet blive regnet,
+ * sendt og glemt: husets hyppigste fejl, en prop der aldrig når skærmen.
+ *
+ * Bjørn 30/9-2026: «lad os give den token country og min/sec tælleren fra
+ * runde linjen». MUT: fjern `tokens: arbejdslinjeTokens` fra rækken → linjen
+ * faar 0 og skjuler tallet → fanger.
+ */
+it('fører token-tallet ned i arbejdslinjen', async () => {
+  const s = await render(
+    <MessageList messages={[]} blocks={[]} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+  )
+  expect(s.getByTestId('arbejdslinje')).toBeTruthy()
+  expect(s.getByText('45.2k tokens')).toBeTruthy()
+  expect(s.getByText('Kører npm test')).toBeTruthy()
+})
+
+it('tegner INGEN arbejdslinje når streamen er slut', async () => {
+  // Linjen forsvinder med streamen — den skal ikke stå tilbage som en tom
+  // bjælke (Bjørn 29/9-2026). Tallet alene maa ikke holde den i live.
+  const s = await render(
+    <MessageList messages={[]} blocks={[]} working={false} arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+  )
+  expect(s.queryByTestId('arbejdslinje')).toBeNull()
+})
+
 it('viser turn header fra turen starter, før første blok kommer', async () => {
   const s = await render(<MessageList messages={[]} blocks={[]} working />)
   expect(s.getByTestId('turn-header')).toBeTruthy()
@@ -285,6 +312,11 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
     />
   )
   await fireEvent.press(s.getByTestId('turn-header'))
+  // BEGGE tanker hører til runden: den ene kom før kaldet, den anden efter det.
+  // Desk lukker kun runden på et mellemsvar — ikke på en tanke
+  // (`opdelArbejdsrunder`, raekkeModel.ts:71).
+  expect(s.queryAllByText(/Tænkte/).length).toBe(0)
+  await fireEvent.press(s.getByTestId('tool-group'))
   const taenkte = s.queryAllByText(/Tænkte/)
   expect(taenkte.length).toBe(2)
   // Og de baerer hver sin maalte tid — ikke den foerstes for dem begge.
@@ -385,16 +417,19 @@ const raekkefoelge = (node: unknown, ud: string[] = []): string[] => {
 }
 
 /**
- * Tænkelinjen skal ligge UNDER værktøjs-linjen (Bjørn 29/9-2026: «i desk lægger
- * vi tænkelinjen ind under tool result linjen.. det bør vi osse gøre her»).
+ * Tænkelinjen skal ligge INDE i runde-linjens fold (Bjørn 29/9-2026:
+ * «tænke-linjen ind i runde-linjen efter foldet.. det er det tætteste på
+ * chatview I desk»).
  *
- * I desk er tænke-linjen ikke en søskende OVER linjen — den er et ELEMENT i
- * rundens detaljer, under rundens knap (`RaekkeTranskript.tsx:275`). Rækkerne
- * bygges i `groupToolRounds`, og listen er INVERTERET (`ordered = [...rows]
- * .reverse()`), så render-rækkefølgen er bund-til-top: den række der står SIDST
- * er den ØVERSTE på skærmen. Værktøjs-linjen skal derfor stå efter tænke-linjen.
+ * Første forsøg lagde den som en søskenderække UNDER linjen. Desk gør mere end
+ * det: tænke-blokken er et ELEMENT i `rv-arbejdsdetaljer` — inde bag rundens
+ * chevron (`RaekkeTranskript.tsx:324`), tegnet som sin egen foldbare række.
+ * Tråden mister en linje pr. runde, og tanken er ét tryk væk.
+ *
+ * Derfor skal chevronen også frem når runden kun havde ÉT kald: uden den ville
+ * tanken ikke kunne nås, og vi havde byttet en synlig linje for en skjult.
  */
-it('tænkelinjen ligger UNDER værktøjs-linjen — som i desk', async () => {
+it('tænkelinjen ligger INDE i runde-linjens fold — som i desk', async () => {
   const s = await render(
     <MessageList
       messages={[
@@ -415,12 +450,47 @@ it('tænkelinjen ligger UNDER værktøjs-linjen — som i desk', async () => {
     />
   )
   await fireEvent.press(s.getByTestId('turn-header'))
-  const orden = raekkefoelge(s.toJSON())
-  const linje = orden.indexOf('tool-group')
-  const tanke = orden.indexOf('thinking-summary')
-  expect(linje).toBeGreaterThan(-1)
-  expect(tanke).toBeGreaterThan(-1)
-  expect(linje).toBeGreaterThan(tanke)
+  // Foldet: tænke-linjen er ikke sin egen række i tråden.
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  // Chevronen står frem selvom runden kun havde ét kald.
+  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+  // Åbn runden: tanken står nu inde i dens detaljer.
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const detaljer = within(s.getByTestId('tool-group-details'))
+  expect(detaljer.getByTestId('thinking-summary')).toBeTruthy()
+})
+
+/**
+ * Tur-hovedet skal stadig bære tænketiden — også nu hvor tanken bor INDE i
+ * runde-linjens fold.
+ *
+ * `medTurHoveder` regnede sekunderne fra tænke-RÆKKER. Da tanken flyttede ind i
+ * gruppen, faldt den ud af den optælling, og hovedet ville tie om sine sekunder
+ * uden at nogen fejl blev rejst. Målt: mutation M5 (tællingen fjernet fra
+ * gruppen) slap gennem HELE suiten — derfor denne test.
+ */
+it('tur-hovedet tæller tænketiden med, selvom tanken ligger i folden', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg planen', seconds: 3 },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'fil.txt', status: 'ok' },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  // Hovedet står uden at folde ud — det er dér tallet skal læses.
+  expect(s.getByText(/· 3s/)).toBeTruthy()
 })
 
 it('en tanke UDEN et kald efter sig bliver hvor den er', async () => {
@@ -442,4 +512,95 @@ it('en tanke UDEN et kald efter sig bliver hvor den er', async () => {
   const orden = raekkefoelge(s.toJSON())
   expect(orden.indexOf('thinking-summary')).toBeGreaterThan(-1)
   expect(orden.indexOf('tool-group')).toBe(-1)
+})
+
+/**
+ * Bjørns faktiske blok-rækkefølge — målt 30/9-2026 i besked 153522:
+ *
+ *   thinking → text → tool_use → thinking → text → tool_use → thinking → text
+ *
+ * Den gamle `groupToolRounds` LUKKEDE runden i det øjeblik den så en tanke, så
+ * tanke 2 og 3 blev skubbet ud som deres EGNE rækker — og stod derfor under den
+ * foregående runde-linje. Det var netop dét Bjørn så: «Tænkte linjen står stadig
+ * under tool result linjen».
+ *
+ * Desk lukker kun på et mellemsvar (`opdelArbejdsrunder`, raekkeModel.ts:71), så
+ * tanken bliver liggende i den runde den hørte til.
+ */
+it('tanker efter et kald bliver i DEN runde — ikke skubbet ud som egne rækker', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg', seconds: 3 },
+            { type: 'text', text: 'nu kalder jeg' },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'a.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på det', seconds: 4 },
+            { type: 'text', text: 'så kalder jeg igen' },
+            { type: 'tool_use', name: 'bash', input: { command: 'pwd' }, tool_use_id: 't2' },
+            { type: 'tool_result', tool_use_id: 't2', content: '/tmp', status: 'ok' },
+            { type: 'thinking', text: 'til sidst konkluderer jeg', seconds: 5 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  // Kun den FØRSTE tanke står selv: den kom før det første kald, og der var
+  // ingen runde at lægge den i. Desk gør præcis det samme (enkeltræk).
+  expect(s.queryAllByText(/Tænkte/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 3s/).length).toBe(1)
+  const grupper = s.getAllByTestId('tool-group')
+  expect(grupper.length).toBe(2)
+  // Ingen af de to tanker der HØRTE til en runde står løst i tråden.
+  expect(s.queryAllByText(/Tænkte i 4s/).length).toBe(0)
+  expect(s.queryAllByText(/Tænkte i 5s/).length).toBe(0)
+  // Åbn begge runder. Listen er inverteret, så træets index 0 er den NYESTE
+  // runde — derfor spørges der efter begge, ikke efter «den første».
+  await fireEvent.press(s.getAllByTestId('tool-group')[0]!)
+  await fireEvent.press(s.getAllByTestId('tool-group')[1]!)
+  expect(s.queryAllByText(/Tænkte i 4s/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 5s/).length).toBe(1)
+})
+
+it('tanken ligger EFTER sit eget kald i folden — ikke samlet øverst', async () => {
+  // `foerKald` bærer tankens plads i runden. Uden den blev ALLE tanker tegnet
+  // før alle kald, og en tanke der kom efter et kald stod foran det.
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg', seconds: 3 },
+            { type: 'text', text: 'nu kalder jeg' },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'a.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på det', seconds: 4 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  await fireEvent.press(s.getByTestId('turn-header'))
+  await fireEvent.press(s.getByTestId('tool-group'))
+  const r = raekkefoelge(s.toJSON())
+  const kald = r.indexOf('Kørte ls')
+  // Vagt: et forkert label-navn ville give -1, og så målte testen ingenting.
+  expect(kald).toBeGreaterThan(-1)
+  expect(r.indexOf('thinking-summary')).toBeGreaterThan(-1)
+  expect(kald).toBeLessThan(r.indexOf('thinking-summary'))
 })

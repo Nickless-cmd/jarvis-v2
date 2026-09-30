@@ -237,6 +237,51 @@ it('«Taenker videre · runde N» er IKKE et vaerktoej', () => {
   expect(s.workingStep).toBeNull()
 })
 
+/**
+ * BLINKET — Bjørn 30/9-2026: «Den vises og forsvinder random under streamen.
+ * Meningen er den skal vises hele tiden under streamen og væk når streamen
+ * ender.»
+ *
+ * Det var ikke random. Serveren sender et livstegn mellem HVERT
+ * værktøjskald (`visible_runs.py:2866` — «Tænker videre · runde N»), og
+ * reducer'en tømte `workingStep` på hvert af dem. Arbejdslinjen blinkede af
+ * og på for hver runde.
+ *
+ * Testen ovenfor fangede det ikke: den starter fra TOM state, så der er intet
+ * at rydde. Denne starter fra en SAT linje — det er den forskel der gør
+ * blinket synligt.
+ */
+it('et livstegn midt i streamen rydder IKKE den linje der staar', () => {
+  let s = streamReducer(initialStreamState(), workingStep({
+    action: 'read_file', step: 1, detail: 'Læser fil: a.py',
+  }) as never)
+  expect(s.workingStep).toBe('Læser fil: a.py')
+
+  s = streamReducer(s, workingStep({
+    action: 'thinking', detail: 'Tænker videre · runde 2', step: 2,
+  }) as never)
+
+  expect(s.workingStep).toBe('Læser fil: a.py')
+  expect(s.workingAction).toBe('read_file')
+})
+
+it('en NY koersel rydder den forrige turs linje', () => {
+  // Modstykket: uden dette ville den forrige turs sidste linje kort stå ved en
+  // ny turs start, netop fordi livstegnene ikke længere rydder den.
+  let s = streamReducer(initialStreamState(), workingStep({
+    action: 'read_file', step: 1, detail: 'Læser fil: a.py',
+  }) as never)
+  s = streamReducer(s, {
+    type: 'message_start',
+    message: {
+      id: 'run-2', model: 'm', provider: 'p', lane: 'l',
+      usage: { input_tokens: 1, output_tokens: 0 },
+    },
+  } as never)
+  expect(s.workingStep).toBeNull()
+  expect(s.workingAction).toBeNull()
+})
+
 it('serverens eget flag vinder over navne-gaettet', () => {
   const s = streamReducer(initialStreamState(), workingStep({
     action: 'thinking', er_vaerktoej: true, step: 1,

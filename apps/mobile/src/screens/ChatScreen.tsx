@@ -21,6 +21,7 @@ import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
+import { arbejdslinjeTekst } from '../lib/arbejdslinje'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -1177,6 +1178,14 @@ export function ChatScreen({
   // ville det mangle den afstandsklods der holder det over komposeren.
   const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message)
 
+  // Arbejdslinjens token-tal: HELE konteksten turen bærer — input, cache-hit,
+  // cache-miss og output — ikke kun svaret. Samme fire led som desk summerer
+  // (`ChatView.tsx:138`), så de to klienter viser samme tal for samme tur.
+  // Læses direkte fra streamen: `input` sættes ved `message_start`, `output`
+  // regnes løbende, så tallet vokser mens der arbejdes.
+  const brugteTokens = stream.state.usage.input + stream.state.usage.cacheHit
+    + stream.state.usage.cacheMiss + stream.state.usage.output
+
   return (
     <View style={styles.root}>
       <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
@@ -1203,6 +1212,8 @@ export function ChatScreen({
               messages={sessions.messages}
               blocks={stream.state.blocks}
               working={stream.state.status === 'working' || serverBusy}
+              arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
+              arbejdslinjeTokens={brugteTokens}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.

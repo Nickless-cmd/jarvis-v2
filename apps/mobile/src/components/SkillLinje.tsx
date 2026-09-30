@@ -6,7 +6,7 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 import { scoreTekst, skillOversigt, type SkillKald } from '../lib/skillLinje'
 import { GlidendeTekst } from './GlidendeTekst'
 import { Prikker } from './Prikker'
-import { formatTid } from './InlineToolGroup'
+import { formatTid } from '../lib/arbejdslinje'
 
 /**
  * Skill-gaten og skill-indlæsningen som deres EGEN linje — portet fra desk

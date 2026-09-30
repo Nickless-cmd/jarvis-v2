@@ -124,3 +124,46 @@ describe('fastgjorte på skinnen', () => {
     expect(r[0]!.label).toContain('Rettede fejl i login')
   })
 })
+
+/* ── Svar-uddraget hæftes på hvert anker (spec punkt 3.2, 29/9-2026) ────────
+ *
+ * Etiketten siger hvad man spurgte om; uddraget siger hvad man fik. Reglerne
+ * for selve uddraget er målt i `railSvarPreview.test.ts`. Det her måler at
+ * BYGGEREN faktisk hæfter det på — en mutationskørsel fjernede `svar:` fra
+ * `.map()` og alt bestod, fordi ingen test spurgte efter feltet.
+ */
+describe('bygRailAnkre — svar-uddrag', () => {
+  it('hvert anker bærer svaret på SIN egen tur', () => {
+    const b = [
+      bruger('u0', 'hvad koster det'), svar('a0', tekst('Det koster 3,38 dollar.')),
+      bruger('u1', 'og i går'), svar('a1', tekst('I går var det 7,27.')),
+    ]
+    const r = bygRailAnkre(b, [])
+    expect(r.map((a) => [a.id, a.svar])).toEqual([
+      ['u0', 'Det koster 3,38 dollar.'],
+      ['u1', 'I går var det 7,27.'],
+    ])
+  })
+
+  it('en tur uden svar får `svar` som tom streng — ikke naboens', () => {
+    const b = [bruger('u0'), bruger('u1'), svar('a1', tekst('kun det sidste'))]
+    const r = bygRailAnkre(b, [])
+    expect(r.find((a) => a.id === 'u0')?.svar).toBe('')
+    expect(r.find((a) => a.id === 'u1')?.svar).toBe('kun det sidste')
+  })
+
+  it('også komprimerings-ankre bærer uddraget', () => {
+    // De peger på den første synlige besked EFTER markøren — altså dér hvor
+    // samtalen fortsatte, og det er netop dét man leder efter.
+    const b = [bruger('u0'), svar('a0'), markoer('m0'), bruger('u1'), svar('a1', tekst('fortsat her'))]
+    const r = bygRailAnkre(b, [])
+    const komp = r.find((a) => a.slags === 'komprimering')
+    expect(komp?.id).toBe('u1')
+    expect(komp?.svar).toBe('fortsat her')
+  })
+
+  it('et kodesvar giver tomt uddrag frem for et fragment', () => {
+    const b = [bruger('u0'), svar('a0', tekst('```bash\nls -la\n```'))]
+    expect(bygRailAnkre(b, [])[0]!.svar).toBe('')
+  })
+})

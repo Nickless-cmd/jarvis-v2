@@ -22,6 +22,7 @@ import { Composer } from '../components/Composer'
 import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { arbejdslinjeTekst } from '../lib/arbejdslinje'
+import { visibleStreamBlocks } from '../lib/streamReducer'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -1210,7 +1211,7 @@ export function ChatScreen({
               ref={listRef}
               topInset={topInset}
               messages={sessions.messages}
-              blocks={stream.state.blocks}
+              blocks={visibleStreamBlocks(stream.state)}
               working={stream.state.status === 'working' || serverBusy}
               arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
               arbejdslinjeTokens={brugteTokens}

@@ -20,6 +20,10 @@ export interface StreamState {
   provider: string
   lane: string
   blocks: ContentBlock[]
+  /** Løbende tekst, som serveren endnu ikke har klassificeret som syntese/slutsvar. */
+  provisionalText: string
+  /** Den bekræftede blok holdes skjult, indtil den kan afløse forhåndsvisningen. */
+  provisionalBlockIndex: number | null
   workingStep: string | null
   /**
    * Værktøjets RÅ navn fra `working_step` (fx `read_file`).
@@ -75,11 +79,22 @@ export function initialStreamState(): StreamState {
     provider: '',
     lane: '',
     blocks: [],
+    provisionalText: '',
+    provisionalBlockIndex: null,
     workingStep: null,
     workingAction: null,
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
+}
+
+/** Vis uafklaret tekst live uden at vise den bekræftede kopi to gange. */
+export function visibleStreamBlocks(state: StreamState): ContentBlock[] {
+  if (!state.provisionalText) return state.blocks
+  const blocks = state.provisionalBlockIndex == null
+    ? state.blocks
+    : state.blocks.filter((_, index) => index !== state.provisionalBlockIndex)
+  return [...blocks, { type: 'text', text: state.provisionalText }]
 }
 
 function estimateOutputTokens(blocks: ContentBlock[]): number {
@@ -139,6 +154,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         provider: event.message.provider,
         lane: event.message.lane,
         blocks: [],
+        provisionalText: '',
+        provisionalBlockIndex: null,
         // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
         skillFlade: event.message.id === state.activeRunId ? state.skillFlade : undefined,
         workingStep: null,
@@ -216,7 +233,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           }
         }
       }
-      return { ...state, blocks }
+      return {
+        ...state, blocks,
+        provisionalBlockIndex: cb.type === 'text' && state.provisionalText
+          ? event.index : state.provisionalBlockIndex,
+      }
     }
 
     case 'content_block_delta': {
@@ -245,6 +266,17 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     }
 
     case 'system_event':
+      if (event.kind === 'provisional_text_delta') {
+        const runId = String(event.payload.run_id ?? '')
+        if (!runId || state.status !== 'working' || (state.activeRunId && runId !== state.activeRunId)) return state
+        const delta = String(event.payload.delta ?? '')
+        return delta ? { ...state, activeRunId: runId, provisionalText: state.provisionalText + delta } : state
+      }
+      if (event.kind === 'provisional_text_commit') {
+        return String(event.payload.run_id ?? '') === state.activeRunId
+          ? { ...state, provisionalText: '', provisionalBlockIndex: null }
+          : state
+      }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9 på
@@ -445,7 +477,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const b = uden[i]
         if (b && b.type === 'tool_use' && b.foreloebig) delete uden[i]
       }
-      return { ...state, status: 'done', blocks: uden }
+      return { ...state, status: 'done', blocks: uden, provisionalText: '', provisionalBlockIndex: null }
     }
 
     case 'tool_round_label':
@@ -462,7 +494,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // den live visning ville kortvarigt vise dubleret tekst. `retry`-eventet
       // (ren "Reconnecting n/m"-signalering) falder gennem default = no-op,
       // præcis som desk's reducer.
-      return { ...state, status: 'working', blocks: [] }
+      return { ...state, status: 'working', blocks: [], provisionalText: '', provisionalBlockIndex: null }
 
     default:
       // Den DIREKTE form af `skill_surface` (SSE-v1) står ikke i typen; den

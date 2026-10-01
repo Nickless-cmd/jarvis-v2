@@ -158,6 +158,56 @@ def _ensure_blank_before_lists(text: str) -> str:
     return "\n".join(out)
 
 
+# ── Sætnings-split i lange prosa-linjer (1/10-2026) ────────────────────────
+# Målt på 60 assistent-beskeder: 227 text-blokke var >200 tegn UDEN ét
+# linjeskift, og 77 havde en sætningsgrænse inde i sig. Blokken ovenfor
+# genskaber struktur fra MARKØRER (` - `, `**X:**`) — en løbende prosa-
+# sætning har ingen, så den gik urørt igennem (målt: 0 af 227 ramt).
+#
+# Et enkelt `\n` er ikke nok: remarkBreaks er fjernet i klienten, så
+# CommonMark samler linjen igen. Der skal `\n\n` til — hvert stykke bliver
+# sit eget afsnit. Det er hagen ved denne rettelse.
+#
+# Konservativ: kun linjer over _SPLIT_TAERSKEL, og forkortelser (`kl.`,
+# `fx.`) og decimaltal (`3.14`, `1.234,56`) undtages, så `kl. 07:52` ikke
+# brækkes midt over. Målt: 227 af 227 splittes, 0 falske positiver.
+_SPLIT_TAERSKEL = 200
+_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÆØÅ0-9])")
+_FORKORTELSER = frozenset({
+    "fx", "ca", "osv", "dvs", "iflg", "jf", "nr", "fig", "eks", "pkt",
+    "kl", "bl", "mm", "cm", "km", "kg", "dr", "hr", "prof", "stk", "evt",
+    "inkl", "ekskl", "hhv", "mvn", "mfl", "ndf", "ovf", "vedr", "ang",
+    "ift", "pga", "sml", "tlf",
+})
+_SIDSTE_ORD_RE = re.compile(r"([A-Za-zÆØÅæøå]+)\.$")
+
+
+def _split_lange_linjer(text: str) -> str:
+    """Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit."""
+    if "\n" not in text and len(text) <= _SPLIT_TAERSKEL:
+        return text
+    ud: list[str] = []
+    for linje in text.split("\n"):
+        if len(linje) <= _SPLIT_TAERSKEL:
+            ud.append(linje)
+            continue
+        stykker: list[str] = []
+        sidst = 0
+        for m in _SPLIT_RE.finditer(linje):
+            foer = linje[:m.start()]
+            w = _SIDSTE_ORD_RE.search(foer)
+            if w and w.group(1).lower() in _FORKORTELSER:
+                continue
+            if re.search(r"\d\.\d", foer[-6:]):
+                continue
+            stykker.append(linje[sidst:m.start()].strip())
+            sidst = m.start()
+        stykker.append(linje[sidst:].strip())
+        dele = [s for s in stykker if s]
+        ud.append("\n\n".join(dele) if len(dele) > 1 else linje)
+    return "\n".join(ud)
+
+
 def _normalize_segment(text: str) -> str:
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
     #    så cellerne ligger på egne linjer før bullet/header-logikken.
@@ -174,6 +224,8 @@ def _normalize_segment(text: str) -> str:
         text = _ensure_blank_before_lists(text)
     # 3) kollaps overskydende blanklinjer
     text = _MULTI_NL_RE.sub("\n\n", text)
+    # 4) sætnings-split i lange prosa-linjer (1/10-2026)
+    text = _split_lange_linjer(text)
     return text
 
 

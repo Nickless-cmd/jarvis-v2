@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { ApiConfig } from '../../lib/api'
 import { getAccountMemory, searchAccountMemory } from '../../lib/coworkApi'
 import { useSettingsResource } from '../../hooks/useSettingsResource'
@@ -52,11 +53,11 @@ export function MemorySection({ config }: { config: ApiConfig | undefined }) {
         </section>}
       </div>
       <section className="memory-reading"><h4>Gemte noter</h4>
-        {data.memory_md ? <ReactMarkdown>{data.memory_md}</ReactMarkdown>
+        {data.memory_md ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.memory_md}</ReactMarkdown>
           : <p className="settings-empty">Der er endnu ingen gemte noter. Du kan bede Jarvis om at huske noget i samtalen.</p>}
       </section>
       <section className="memory-reading"><h4>Om dig</h4>
-        {data.user_md ? <ReactMarkdown>{data.user_md}</ReactMarkdown> : <p className="settings-empty">Der er endnu ingen oplysninger om dig her.</p>}
+        {data.user_md ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.user_md}</ReactMarkdown> : <p className="settings-empty">Der er endnu ingen oplysninger om dig her.</p>}
       </section>
       <section><h4>Seneste observationer</h4>
         {data.recent_sensory.length ? <ul className="memory-sensory">{data.recent_sensory.map(s => <li key={s.id}>{s.content}</li>)}</ul>

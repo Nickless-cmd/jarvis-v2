@@ -24,6 +24,18 @@ describe('MemorySection', () => {
     expect(screen.getByText(/7/)).toBeTruthy()
   })
 
+  it('viser tabeller i begge gemte dokumenter som tabeller', async () => {
+    getAccountMemory.mockResolvedValue({
+      memory_md: '| Emne | Status |\n|---|---|\n| Rejse | Planlagt |',
+      user_md: '| Navn | By |\n|---|---|\n| Bjørn | Svendborg |',
+      recent_sensory: [], brain_count: 0,
+    })
+    const { container } = render(<MemorySection config={cfg} />)
+    await waitFor(() => expect(container.querySelectorAll('.memory-reading table')).toHaveLength(2))
+    expect(screen.getByText('Planlagt')).toBeInTheDocument()
+    expect(screen.getByText('Svendborg')).toBeInTheDocument()
+  })
+
   it('søger og viser resultater', async () => {
     getAccountMemory.mockResolvedValue({ memory_md: '', user_md: '', recent_sensory: [], brain_count: 0 })
     searchAccountMemory.mockResolvedValue([{ id: 's1', content: 'regnvejr' }])

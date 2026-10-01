@@ -213,6 +213,12 @@ def _mem_write_queue_live(_snap: dict) -> dict[str, Any]:
     return tick_memory_write_queue_daemon()
 
 
+def _mem_candidate_digest_live(_snap: dict) -> dict[str, Any]:
+    """Ugentlig push-digest over kandidat-review-koeen (1/10-2026). Self-throttler."""
+    from core.services.candidate_review_digest import tick_candidate_review_digest
+    return tick_candidate_review_digest()
+
+
 # (member_name, live_fn) in a stable order. memory_write_queue is placed FIRST so
 # the load-bearing drain runs even under tight scheduling.
 _MEMORY_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
@@ -223,6 +229,7 @@ _MEMORY_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("memory_safeguard", _mem_safeguard_live),
     ("selective_consolidation", _mem_selective_consolidation_live),
     ("associative_recall", _mem_associative_recall_live),
+    ("candidate_review_digest", _mem_candidate_digest_live),
 )
 
 

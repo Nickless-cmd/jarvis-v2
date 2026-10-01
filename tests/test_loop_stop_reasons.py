@@ -61,10 +61,21 @@ def test_followup_rounds_resolve_their_own_thinking_mode():
 
 def test_forced_finalize_uses_pending_tool_intent_not_completed_default():
     src = _source()
+    import inspect
+
+    from core.services import visible_run_segment_exit as vrse
+
     assert "_a_pending_tool_intent" in src
-    # Opgave 3 (17/9-2026): udgangen går gennem `settle_segment_exit`, som
-    # skriver den durable post før den terminale SSE og selv kalder
-    # klassifikationen bag `resolve_agentic_exit`.
-    assert "settle_segment_exit(" in src
+    # Opgave 3 (17/9-2026): udgangen går gennem den durable afregning, som
+    # skriver posten før den terminale SSE og selv kalder klassifikationen bag
+    # `resolve_agentic_exit`.
+    #
+    # 30/9-2026: selve afgørelsen er udskilt til `visible_run_segment_exit`, så
+    # `settle_segment_exit(` og kæde-opslaget ikke længere står i `visible_runs`.
+    # Vagten følger sømmen. SSE og tilstands-markering blev i løkken, fordi de
+    # hænger på generatoren — og dét er stadig det denne test skal beskytte.
+    assert "afgoer_segment_udfald(" in src
     assert 'yield _sse(_terminal.event_name, _terminal.event_payload)' in src
-    assert "recovery_attempt=_recovery_attempt" in src
+    enhed = inspect.getsource(vrse)
+    assert "settle_segment_exit(" in enhed
+    assert "recovery_attempt=" in enhed, "kæde-nummeret skal med til afregningen"

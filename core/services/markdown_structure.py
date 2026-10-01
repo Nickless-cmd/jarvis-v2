@@ -16,7 +16,7 @@ struktur fra de strukturelle markører Jarvis faktisk bruger:
 Designprincipper:
   - Idempotent: tekst der allerede har newlines/struktur ændres ikke.
   - Konservativ: en enkelt ` - ` (tankestreg) røres ikke; kun lister på 2+.
-  - Kode-fences (```...```) lades helt i fred.
+  - Eksisterende markdownblokke og kode-fences lades helt i fred.
 """
 from __future__ import annotations
 
@@ -24,12 +24,41 @@ import re
 
 __all__ = ["normalize_markdown_structure"]
 
-# ```...``` blokke beskyttes mod al transformation.
-_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+# Fences identificeres på hele linjer, inkl. ~~~ og længere backtick-runs.
+_OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+_CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
+_INLINE_CODE_RE = re.compile(r"(?<!`)(`{1,2})(?!`).*?\1(?!`)", re.DOTALL)
+
+
+def _split_protected(text: str) -> list[tuple[bool, str]]:
+    parts: list[tuple[bool, str]] = []
+    buffer: list[str] = []
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        if fence is None:
+            opening = _OPEN_FENCE_RE.match(content)
+            if opening:
+                if buffer:
+                    parts.append((False, "".join(buffer)))
+                    buffer = []
+                marker = opening.group(1)
+                fence = (marker[0], len(marker))
+            buffer.append(line)
+        else:
+            buffer.append(line)
+            closing = _CLOSE_FENCE_RE.match(content)
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= fence[1]:
+                parts.append((True, "".join(buffer)))
+                buffer = []
+                fence = None
+    if buffer:
+        parts.append((fence is not None, "".join(buffer)))
+    return parts
 
 # `**Label:**` midt i en linje (har indhold før OG efter) → egen blok.
 # Kræver afsluttende kolon så vi kun rammer headers, ikke inline-emphasis.
-_INLINE_HEADER_RE = re.compile(r"(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)")
+_INLINE_HEADER_RE = re.compile(r"(?<![*+\-])(?<!\d\.)(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)")
 
 # Flerords-bold der ender på sætningstegn (`**Det er chat + permissions.**`) =
 # en selvstændig udsagn-sætning → eget afsnit. Lookahead `(?=[^*\n]*\s)` kræver
@@ -144,6 +173,14 @@ def _is_bullet_line(line: str) -> bool:
     return s.startswith("- ") or bool(_ORDERED_RE.match(s))
 
 
+_BLOCK_START_RE = re.compile(r"^(?:[-*+](?:[ \t]|$)|\d{1,9}[.)][ \t]|>|#{1,6}[ \t]|\|)")
+
+
+def _is_structured_line(line: str) -> bool:
+    """En eksisterende markdownblok må ikke omskrives som flad prosa."""
+    return bool(line[:1].isspace() or "|" in line or _BLOCK_START_RE.match(line))
+
+
 def _ensure_blank_before_lists(text: str) -> str:
     """Indsæt en blank linje før første bullet i en liste der følger prosa, så
     CommonMark starter listen i stedet for at klistre den til afsnittet."""
@@ -215,24 +252,34 @@ def _split_lange_linjer(text: str) -> str:
 
 
 def _normalize_segment(text: str) -> str:
+    # Hold inline-kode ude af strukturreglerne, men behold dens plads, så
+    # tabeller stadig kan rekonstrueres på tværs af kode i celler.
+    code_spans: list[str] = []
+
+    def _hide_code(match: re.Match[str]) -> str:
+        code_spans.append(match.group(0))
+        return f"\x00{len(code_spans) - 1}\x00"
+
+    text = _INLINE_CODE_RE.sub(_hide_code, text)
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
     #    så cellerne ligger på egne linjer før bullet/header-logikken.
     text = _reflow_crammed_tables(text)
-    # 1) inline `**Header:**` → egen blok
-    text = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", text)
-    # 1b) inline flerords-udsagn `**...sætning.**` → eget afsnit
-    text = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", text)
-    # 1c) inline ATX-header `... : ## Header` → headeren på egen blok
-    text = _INLINE_ATX_RE.sub(r"\n\n\1", text)
-    # 2) inline ` - ` bullets — kun når det er en ægte liste (2+ markører)
-    if len(_INLINE_BULLET_RE.findall(text)) >= 2:
-        text = _INLINE_BULLET_RE.sub("\n- ", text)
-        text = _ensure_blank_before_lists(text)
+    def _normalize_plain_line(line: str) -> str:
+        if _is_structured_line(line):
+            return line
+        line = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", line)
+        line = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", line)
+        line = _INLINE_ATX_RE.sub(r"\n\n\1", line)
+        if len(_INLINE_BULLET_RE.findall(line)) >= 2:
+            line = _ensure_blank_before_lists(_INLINE_BULLET_RE.sub("\n- ", line))
+        return line
+
+    text = "\n".join(_normalize_plain_line(line) for line in text.split("\n"))
     # 3) kollaps overskydende blanklinjer
     text = _MULTI_NL_RE.sub("\n\n", text)
     # 4) sætnings-split i lange prosa-linjer (1/10-2026)
     text = _split_lange_linjer(text)
-    return text
+    return re.sub(r"\x00(\d+)\x00", lambda m: code_spans[int(m.group(1))], text)
 
 
 def normalize_markdown_structure(text: str) -> str:
@@ -242,13 +289,5 @@ def normalize_markdown_structure(text: str) -> str:
     --workers 1 frys-fælde)."""
     if not text:
         return text
-    parts: list[str] = []
-    last = 0
-    for m in _FENCE_RE.finditer(text):
-        if m.start() > last:
-            parts.append(_normalize_segment(text[last:m.start()]))
-        parts.append(m.group(0))
-        last = m.end()
-    if last < len(text):
-        parts.append(_normalize_segment(text[last:]))
-    return "".join(parts)
+    return "".join(body if protected else _normalize_segment(body)
+                   for protected, body in _split_protected(text))

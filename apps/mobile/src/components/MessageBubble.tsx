@@ -127,9 +127,15 @@ export const MessageBubble = memo(function MessageBubble({
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const markdownStyles = useStyles(makemarkdownStyles)
+  const streaming = message.id.startsWith('stream-')
   // Blokke frem for én stor markdown: under streaming parses kun den sidste
   // blok igen (målt 19/9-2026: 6 parses og ~1.260 tegn pr. delta før).
-  const blokke = useMemo(() => delIBlokke(enforceStructure(message.content)), [message.content])
+  // Et færdigt svar skal parses som ét dokument, så referencelinks og andre
+  // konstruktioner på tværs af afsnit kan opløses (som i desk).
+  const blokke = useMemo(() => {
+    const md = enforceStructure(message.content)
+    return streaming ? delIBlokke(md) : [md]
+  }, [message.content, streaming])
   const { config } = useAuthOptional()
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
@@ -164,7 +170,6 @@ export const MessageBubble = memo(function MessageBubble({
   // rå tekst. Så virker træk hen over alt, indrykningen står som den er, og
   // Android giver selv Markér alt.
   const [markering, setMarkering] = useState(false)
-  const streaming = message.id.startsWith('stream-')
   // Kilderne kommer fra hvad han FAKTISK slog op — tool_use-inputs og
   // tool_result-indhold — ikke fra om han tilfældigvis citerede adressen i
   // svaret. Før dette forsvandt de i det sekund streamen stoppede, fordi den

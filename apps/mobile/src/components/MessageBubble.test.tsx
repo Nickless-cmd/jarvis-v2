@@ -34,6 +34,24 @@ describe('MessageBubble', () => {
     expect(screen.getByText('1.')).toBeTruthy()
     expect(screen.getByText('2.')).toBeTruthy()
   })
+
+  it('færdige svar opløser referencelinks på tværs af afsnit', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base, role: 'assistant',
+      content: 'Se [dokumentet][ref].\n\nEt andet afsnit.\n\n[ref]: https://example.com/docs',
+    } as ChatMessage} />)
+    expect(screen.getByText('dokumentet').parent?.props.onPress).toBeDefined()
+  })
+
+  it.each(['stream-1', 'm1'])('bevarer fede listeetiketter i svar %s', async (id) => {
+    const content = '- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet'
+    const screen = await render(<MessageBubble message={{
+      ...base, id, role: 'assistant', content,
+    } as ChatMessage} />)
+    expect(screen.getByText('Fil:')).toBeTruthy()
+    expect(screen.getByText('Linje:')).toBeTruthy()
+    expect(screen.getByText('Status:')).toBeTruthy()
+  })
 })
 
 describe('handlingsrækken hører til turens SIDSTE afsnit', () => {

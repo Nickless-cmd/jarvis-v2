@@ -8,13 +8,11 @@ import { scanFences } from './fenceScanner'
  *  før render. Det fanger 80% af tilfældene uden at røre hans skrivestil eller
  *  backend.
  *
- *  Sikkerhed: vi springer alt indhold inde i code-fences (```...```) over,
- *  og vi rører ALDRIG indhold inde i list-items (bullets/numbered) — der bruger
- *  Jarvis em-dash korrekt og det rendres pænt som det er.
+ *  Vi lader eksisterende markdownblokke og fenced code (backticks/tilder)
+ *  være urørte. Kun flad prosa er kandidat til strukturel reparation.
  */
 
-/** Splittet tekst i segmenter: enten almindelig tekst (skal transformeres) eller
- *  beskyttet (code-fence, der skal lades helt i fred). */
+/** Split tekst i prosa og beskyttede code-fences, også når den sidste er åben. */
 function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: string }> {
   const out: Array<{ kind: 'text' | 'fence'; body: string }> = []
   let last = 0
@@ -27,6 +25,15 @@ function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: strin
   }
   if (last < md.length) out.push({ kind: 'text', body: md.slice(last) })
   return out
+}
+
+/** Eksisterende markdown-blokke er ikke kandidater til reparation af flad prosa. */
+function isStructuredLine(line: string): boolean {
+  return /^[ \t]/.test(line) || line.includes('|') || /^(?:[-*+](?:[ \t]|$)|\d{1,9}[.)][ \t]|>|#{1,6}[ \t])/.test(line)
+}
+
+function mapPlainLines(text: string, transform: (line: string) => string): string {
+  return text.split('\n').map((line) => isStructuredLine(line) ? line : transform(line)).join('\n')
 }
 
 /** `**Header**` eller `**Header:**` på egen linje → `## Header`.
@@ -128,7 +135,7 @@ function flatEmDashLineToBullets(text: string): string {
 // klienten akkumulerer streaming-deltas live og reconciler ikke — så vi spejler
 // samme logik her, så LIVE-visningen også bliver struktureret.
 
-const INLINE_HEADER = /(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)/g
+const INLINE_HEADER = /(?<![*+\-])(?<!\d\.)(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)/g
 const INLINE_STATEMENT = /(?<=\S)[ \t]+(\*\*(?=[^*\n]*\s)[^*\n]{1,160}?[.!?]\*\*)[ \t]+(?=\S)/g
 const INLINE_BULLET = /(?<=\S)[ \t]-[ \t](?=\S)/g
 
@@ -245,18 +252,19 @@ export function enforceStructure(md: string): string {
     .map((s) => {
       if (s.kind === 'fence') return s.body
       let t = s.body
+      const codeSpans: string[] = []
+      t = t.replace(/(?<!`)(`{1,2})(?!`)[\s\S]*?\1(?!`)/g, (code) => {
+        codeSpans.push(code)
+        return `\0${codeSpans.length - 1}\0`
+      })
       // Crammed tabeller FØRST → celler på egne linjer før resten af kæden.
       t = reflowCrammedTables(t)
       t = boldNumberToList(t)
       // Inline → blok FØRST, så de linje-baserede regler ser rigtige linjer.
-      t = inlineHeaderToBlock(t)
-      t = inlineStatementToParagraph(t)
-      t = inlineAtxToBlock(t)
-      t = inlineBulletsToList(t)
-      t = boldOnlyLineToHeader(t)
-      t = boldPrefixInlineToHeader(t)
-      t = flatEmDashLineToBullets(t)
+      t = mapPlainLines(t, (line) => inlineBulletsToList(inlineAtxToBlock(inlineStatementToParagraph(inlineHeaderToBlock(line)))))
+      t = mapPlainLines(t, (line) => flatEmDashLineToBullets(boldPrefixInlineToHeader(boldOnlyLineToHeader(line))))
       return t.replace(/\n{3,}/g, '\n\n')
+        .replace(/\0(\d+)\0/g, (_, index: string) => codeSpans[Number(index)] ?? '')
     })
     .join('')
 }

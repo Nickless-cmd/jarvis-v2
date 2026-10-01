@@ -35,6 +35,30 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
     expect(lines.some((l) => l.trim() === '## Hvad det er')).toBe(true)
   })
 
+  it('fed etiket i en liste forbliver en liste', () => {
+    const src = '- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('fed etiket i en nummereret liste forbliver i listen', () => {
+    const src = '1. **Status:** rettet'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it.each([
+    '- [x] **Status:** rettet',
+    '- arbejde **Status:** rettet',
+    '> **Bemærk:** vigtigt',
+    '| Felt | Værdi |\n|---|---|\n| **Status:** | ok |',
+    '## **Status:** rettet',
+    '- noget **Dette er vigtigt.** videre',
+    '> tekst - a - b - c',
+    '- Valg: a - b - c',
+    '| A | B |\n|---|---|\n| x - y - z | ok |',
+  ])('bevarer gyldig markdownblok: %s', (src) => {
+    expect(enforceStructure(src)).toBe(src)
+  })
+
   it('flerords **sætning.** bliver eget afsnit', () => {
     const out = enforceStructure('noget (ask/trust) **Det er chat + permissions.** Ingen plans her')
     expect(out).toContain('\n\n**Det er chat + permissions.**\n\n')
@@ -57,6 +81,27 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
       expect(enforceStructure(lukket)).toBe(lukket)
       expect(enforceStructure(aaben)).toBe(aaben)
     }
+  })
+
+
+  it('inline-kode med bindestreger bevares', () => {
+    const src = 'Forklaring med `a - b - c` i kode.'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('åben kode-fence bevares under streaming', () => {
+    const src = 'Tekst før\n```ts\nconst x = a - b - c'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('tilde-fence bevares', () => {
+    const src = 'Før\n~~~ts\nconst x = a - b - c\n~~~\nEfter'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('lang backtick-fence kan indeholde tre backticks', () => {
+    const src = 'Før\n````md\n```\na - b - c\n```\n````\nEfter'
+    expect(enforceStructure(src)).toBe(src)
   })
 })
 

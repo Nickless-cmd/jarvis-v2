@@ -50,6 +50,18 @@ describe('MarkdownRenderer under streaming', () => {
     expect(maal(40) / maal(20)).toBeLessThan(2.8)
   })
 
+  it('bevarer fede listeetiketter gennem live og færdig rendering', () => {
+    const md = '- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet'
+    for (const streaming of [true, false]) {
+      const { container, unmount } = render(<MarkdownRenderer text={md} streaming={streaming} />)
+      expect(container.querySelectorAll('ul > li')).toHaveLength(3)
+      expect([...container.querySelectorAll('li > strong')].map((node) => node.textContent))
+        .toEqual(['Fil:', 'Linje:', 'Status:'])
+      expect(container.querySelector('h2')).toBeNull()
+      unmount()
+    }
+  })
+
   it('giver PRÆCIS samme HTML som ét samlet parse', () => {
     // Et samlet parse lægger linjeskift-tekstnoder MELLEM blokelementerne;
     // de delte blokke gør ikke. Det er mellemrum mellem blokke — usynligt —

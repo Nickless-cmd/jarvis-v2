@@ -33,6 +33,32 @@ def test_inline_colon_header_becomes_block():
     assert "\n\n**Hvad det er:**\n\n" in out
 
 
+def test_bold_labels_inside_list_items_are_not_split_into_headers():
+    src = "- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_numbered_list_bold_label_is_not_split():
+    src = "1. **Status:** rettet"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_valid_markdown_blocks_are_not_rewritten():
+    cases = [
+        "- [x] **Status:** rettet",
+        "- arbejde **Status:** rettet",
+        "> **Bemærk:** vigtigt",
+        "| Felt | Værdi |\n|---|---|\n| **Status:** | ok |",
+        "## **Status:** rettet",
+        "- noget **Dette er vigtigt.** videre",
+        "> tekst - a - b - c",
+        "- Valg: a - b - c",
+        "| A | B |\n|---|---|\n| x - y - z | ok |",
+    ]
+    for src in cases:
+        assert normalize_markdown_structure(src) == src, src
+
+
 def test_blank_line_before_list():
     src = "Forklaring her - alpha - beta - gamma"
     out = normalize_markdown_structure(src)
@@ -57,6 +83,26 @@ def test_code_fence_protected():
     assert "for x - y - z" in out
     # Men teksten udenfor er normaliseret
     assert "- a" in out.split("```")[-1]
+
+
+def test_inline_code_is_not_rewritten_as_a_list():
+    src = "Forklaring med `a - b - c` i kode."
+    assert normalize_markdown_structure(src) == src
+
+
+def test_open_code_fence_is_not_rewritten_while_streaming():
+    src = "Tekst før\n```ts\nconst x = a - b - c"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_tilde_fence_is_not_rewritten():
+    src = "Før\n~~~ts\nconst x = a - b - c\n~~~\nEfter"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_long_backtick_fence_can_contain_triple_backticks():
+    src = "Før\n````md\n```\na - b - c\n```\n````\nEfter"
+    assert normalize_markdown_structure(src) == src
 
 
 def test_real_cowork_message_gets_list():

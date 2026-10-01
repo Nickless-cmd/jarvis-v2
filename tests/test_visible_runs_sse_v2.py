@@ -71,6 +71,10 @@ async def test_basic_text_flow():
     assert "content_block_stop" in event_names
     assert "message_delta" in event_names
     assert "message_stop" in event_names
+    assert not any(
+        kind == "system_event" and data.get("kind") == "provisional_text_delta"
+        for kind, data in events
+    )
 
     # message_delta indeholder usage
     msg_delta = next(e for e in events if e[0] == "message_delta")

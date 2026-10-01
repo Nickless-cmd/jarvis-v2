@@ -436,10 +436,11 @@ async def translate_to_v2(
         tail = echo_filter.flush()
         if tail:
             _pending_text.append(tail)
-            await queue.put(SystemEvent(
-                kind="provisional_text_delta",
-                payload={"run_id": str(_state["run_id"] or ""), "delta": tail},
-            ).to_sse_line())
+            if _state["has_tool"]:
+                await queue.put(SystemEvent(
+                    kind="provisional_text_delta",
+                    payload={"run_id": str(_state["run_id"] or ""), "delta": tail},
+                ).to_sse_line())
         if not _pending_text:
             return
         text = "".join(_pending_text)

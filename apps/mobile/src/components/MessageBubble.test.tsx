@@ -24,6 +24,16 @@ describe('MessageBubble', () => {
     expect((await render(<MessageBubble message={user} />)).toJSON()).toBeTruthy()
     expect((await render(<MessageBubble message={asst} />)).toJSON()).toBeTruthy()
   })
+
+  it('viser Jarvis’ 1 · punkter som én nummereret liste', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base,
+      role: 'assistant',
+      content: '**1 · Skill-testen.**\nDen er stadig rød.\n\n**2 · Doc-drift.** To kommentarer er forældede.'
+    } as ChatMessage} />)
+    expect(screen.getByText('1.')).toBeTruthy()
+    expect(screen.getByText('2.')).toBeTruthy()
+  })
 })
 
 describe('handlingsrækken hører til turens SIDSTE afsnit', () => {

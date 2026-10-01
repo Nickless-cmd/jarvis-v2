@@ -20,7 +20,7 @@
  */
 import { closingFence, openingFence, type FenceMark } from './fenceScanner'
 
-const LISTEPUNKT = /^\s{0,3}(?:[-*+]|\d{1,9}[.)])\s/
+const LISTEPUNKT = /^(?:\s{0,3}(?:[-*+]|\d{1,9}[.)])\s|\s{0,3}\*\*\d{1,3}\s*·\s)/
 
 export function delIBlokke(md: string): string[] {
   const linjer = md.split('\n')

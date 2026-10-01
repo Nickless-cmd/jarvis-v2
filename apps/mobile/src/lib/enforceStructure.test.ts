@@ -5,6 +5,15 @@ import { enforceStructure } from './enforceStructure'
 // UDEN newlines (alt inline med ` - `/`**X:**`). enforceStructure skal rekonstruere
 // blokstruktur så live-visningen også bliver renderbar.
 describe('enforceStructure — inline-markør-rekonstruktion', () => {
+  it('gør Jarvis’ fedmarkerede 1 · punkter til en Markdown-liste uden at ændre teksten', () => {
+    const src = '## Åbent\n\n**1 · Skill-testen.**\nDen er stadig rød.\n\n**2 · Doc-drift.** To kommentarer er forældede.'
+    expect(enforceStructure(src)).toBe('## Åbent\n\n1. **Skill-testen.**\nDen er stadig rød.\n\n2. **Doc-drift.** To kommentarer er forældede.')
+  })
+
+  it('lader samme tegn i kode og almindelig prosa være urørt', () => {
+    const src = 'Han skrev **1 · Skill-testen** i sin note.\n\n```md\n**2 · kode**\n```'
+    expect(enforceStructure(src)).toBe(src)
+  })
   it('inline bullets bliver en liste på egne linjer', () => {
     const out = enforceStructure('Her er punkterne: - et - to - tre')
     const lines = out.split('\n')

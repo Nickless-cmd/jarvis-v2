@@ -1,12 +1,16 @@
 """Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import core.services.desktop_notifications as desktop_notifications
 import core.services.device_presence as device_presence
 import core.services.notification_router as notification_router
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["presence"])
 
@@ -25,6 +29,19 @@ class PingBody(BaseModel):
     # Opt-in geolocation. None = ingen ændring; {} = brugeren slog det FRA (ryd);
     # {lat,lon,label,source,precision} = ny lokation.
     location: dict | None = None
+    # Maaling af hvor jaevnt SSE-deltaerne NAAR frem paa enheden (1/10-2026).
+    #
+    # Desk laeser streamen med `fetch()` + `body.getReader()` — en aegte
+    # byte-laeser. Mobilen bruger `react-native-sse`, som henter via
+    # `xhr.onreadystatechange` og `responseText`: den ser foerst data naar RN's
+    # NATIVE netvaerkslag fyrer et callback, og det lag samler chunks sammen
+    # foerst. Bjoern 1/10: «man naar sjaeldent at se den streame — det virker
+    # som om det dumper ind — men KUN i mobilen.»
+    #
+    # Mekanismen er laest i begge klienters kilde; STOERRELSEN er ikke maalt paa
+    # en enhed. Derfor dette felt. Det rider med paa presence-pinget, som
+    # alligevel fyrer hvert 30. sekund — intet nyt endpoint, intet ekstra kald.
+    stream_tempo: dict | None = None
 
 
 class AckBody(BaseModel):
@@ -51,6 +68,21 @@ async def presence_ping(body: PingBody) -> dict:
         battery_saver=body.battery_saver,
         location=body.location,
     )
+    # Stream-tempoet bogfoeres som et event, saa det kan laeses uden at spoerge
+    # enheden igen. Self-safe: en maaling maa aldrig kunne vaelte et ping.
+    if body.stream_tempo:
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("mobile.stream_tempo", {
+                "device_key": str(body.device_key or ""),
+                "platform": str(body.platform or ""),
+                **{k: v for k, v in dict(body.stream_tempo).items() if k in (
+                    "events", "median_ms", "p90_ms", "maks_ms", "andel_under_2ms",
+                    "run_id", "varighed_s")},
+            })
+        except Exception:
+            logger.warning("kunne ikke bogfoere stream-tempo", exc_info=True)
+
     # Connections-cluster: forbindelses-livscyklus synlig i Centralen (metadata-only).
     try:
         from core.services.connections import note_presence

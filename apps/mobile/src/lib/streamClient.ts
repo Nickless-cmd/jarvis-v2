@@ -1,4 +1,5 @@
 import EventSource from 'react-native-sse'
+import { noterEvent } from './streamTempo'
 
 import type { ApiConfig } from './types'
 import type { StreamEvent } from './sseProtocol'
@@ -185,6 +186,9 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
           activeRunId = parsed.payload.run_id
           handlers.onRunId?.(parsed.payload.run_id)
         }
+        // Maal hvor jaevnt deltaerne NAAR frem (lib/streamTempo). Ren
+        // bogfoering, ingen I/O — og aldrig i vejen for streamen.
+        try { noterEvent(activeRunId || undefined) } catch { /* en maaling maa ikke vaelte en stream */ }
         handlers.onEvent(parsed)
         if (parsed.type === 'message_stop') {
           gotStop = true

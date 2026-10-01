@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/event_trigger_shadow.py`
+_core/services/event_trigger_shadow.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_mode` | `()` | Governance-mode (off|shadow|on) fra grund-dommerens flag. Self-safe. | [src](../../../core/services/event_trigger_shadow.py#L70) |
+| function | `_gather_signals` | `()` | Saml de flydende signaler som en dict[str,float] (0..1) — GENBRUG af de | [src](../../../core/services/event_trigger_shadow.py#L79) |
+| function | `_consult_guards` | `()` | Læs (read-only) hvad dispatch-værnene VILLE sige lige nu. Self-safe. | [src](../../../core/services/event_trigger_shadow.py#L99) |
+| function | `_record` | `(value, meta)` | — | [src](../../../core/services/event_trigger_shadow.py#L118) |
+| function | `_persist_durable` | `(sample)` | Append ét telemetri-sample til den durable ring-buffer i runtime-state | [src](../../../core/services/event_trigger_shadow.py#L126) |
+| function | `recent_shadow_samples` | `(limit=…)` | Læs de seneste durable shadow-samples (for θ-kalibrering). Nyeste sidst. | [src](../../../core/services/event_trigger_shadow.py#L143) |
+| function | `tick_event_trigger_shadow` | `(signals=…, *, now=…)` | Ét shadow-tick: saml signaler → evaluér den rene delta-trigger → konsultér | [src](../../../core/services/event_trigger_shadow.py#L162) |
+
 ## `core/services/eventbus_central_bridge.py`
 _core/services/eventbus_central_bridge.py_
 
@@ -564,18 +577,4 @@ _Mutation-cluster gate 🔒 — én graderet SECURITY-gate + ÉN kanonisk kilde 
 | function | `check_module` | `(target)` | auto_improvement_proposer._is_safe_target — True ⇔ sikkert at foreslå. | [src](../../../core/services/gate_mutation.py#L147) |
 | function | `check_prompt_target` | `(name)` | prompt_mutation_loop._check_target — allowed + besked (kald-stedet raiser). | [src](../../../core/services/gate_mutation.py#L152) |
 | function | `check_record` | `(target_path)` | identity_mutation_log.record_mutation — allowed + blok-grund. | [src](../../../core/services/gate_mutation.py#L158) |
-
-## `core/services/gate_override.py`
-_Per-kald gate-override — Jarvis' eksplicitte, loggede tilsidesættelse af en gate._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_Armed` | `` | Én armeret one-shot. Forbruges ved første kald der matcher nøglen. | [src](../../../core/services/gate_override.py#L69) |
-| function | `_expire_locked` | `(now)` | Fjern udløbne armeringer. Kaldes KUN med ``_LOCK`` taget. Returnerer antal fjernet. | [src](../../../core/services/gate_override.py#L80) |
-| function | `_note_key_miss` | `(tool_name, feeling, armed_keys)` | En armering findes for samme værktøj men en ANDEN feeling. | [src](../../../core/services/gate_override.py#L88) |
-| function | `arm_override` | `(event_id, reason, *, nerve=…, ttl_seconds=…)` | Armér ÉN one-shot for den hændelse ``event_id`` peger på. | [src](../../../core/services/gate_override.py#L107) |
-| function | `consume_override` | `(tool_name, feeling)` | Forbrug en armeret one-shot for (tool_name, feeling). | [src](../../../core/services/gate_override.py#L202) |
-| function | `_notify_owner` | `(tool_name, feeling, reason, event_id)` | Fortæl Bjørn at en gate blev overstyret. Kører i en daemon-tråd — en HTTP-request | [src](../../../core/services/gate_override.py#L260) |
-| function | `override_state` | `()` | Observabilitet: hvad er armeret lige nu, og hvad er udløbet? Read-only, kaster aldrig. | [src](../../../core/services/gate_override.py#L280) |
-| function | `_reset_for_tests` | `()` | Ryd al armeret tilstand. Kun til tests — den rigtige reset er en genstart. | [src](../../../core/services/gate_override.py#L307) |
 

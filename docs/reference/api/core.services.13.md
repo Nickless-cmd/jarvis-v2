@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_override.py`
+_Per-kald gate-override — Jarvis' eksplicitte, loggede tilsidesættelse af en gate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_Armed` | `` | Én armeret one-shot. Forbruges ved første kald der matcher nøglen. | [src](../../../core/services/gate_override.py#L69) |
+| function | `_expire_locked` | `(now)` | Fjern udløbne armeringer. Kaldes KUN med ``_LOCK`` taget. Returnerer antal fjernet. | [src](../../../core/services/gate_override.py#L80) |
+| function | `_note_key_miss` | `(tool_name, feeling, armed_keys)` | En armering findes for samme værktøj men en ANDEN feeling. | [src](../../../core/services/gate_override.py#L88) |
+| function | `arm_override` | `(event_id, reason, *, nerve=…, ttl_seconds=…)` | Armér ÉN one-shot for den hændelse ``event_id`` peger på. | [src](../../../core/services/gate_override.py#L107) |
+| function | `consume_override` | `(tool_name, feeling)` | Forbrug en armeret one-shot for (tool_name, feeling). | [src](../../../core/services/gate_override.py#L202) |
+| function | `_notify_owner` | `(tool_name, feeling, reason, event_id)` | Fortæl Bjørn at en gate blev overstyret. Kører i en daemon-tråd — en HTTP-request | [src](../../../core/services/gate_override.py#L260) |
+| function | `override_state` | `()` | Observabilitet: hvad er armeret lige nu, og hvad er udløbet? Read-only, kaster aldrig. | [src](../../../core/services/gate_override.py#L280) |
+| function | `_reset_for_tests` | `()` | Ryd al armeret tilstand. Kun til tests — den rigtige reset er en genstart. | [src](../../../core/services/gate_override.py#L307) |
+
 ## `core/services/gate_pattern_learning.py`
 _Gate-mønster-læring — vane-bryder oven på gate-substratet (2026-07-13)._
 
@@ -572,14 +586,4 @@ _``_build_influence_trace`` extracted from ``heartbeat_runtime`` (Boy-Scout)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_build_influence_trace` | `(*, private_brain, liveness, self_knowledge_summary, embodied_state=…, affective_meta_state=…, epistemic_runtime_state=…, loop_runtime=…, prompt_evolution=…, subagent_ecology=…, council_runtime=…, adaptive_planner=…, adaptive_reasoning=…, dream_influence=…, guided_learning=…, adaptive_learning=…, self_system_code_awareness=…, tool_intent=…)` | Build a bounded trace of what cognitive inputs were available to heartbeat. | [src](../../../core/services/heartbeat_runtime_influence.py#L27) |
-
-## `core/services/heartbeat_runtime_providers.py`
-_Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime``._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_execute_ollama_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L23) |
-| function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L66) |
-| function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L92) |
-| function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L136) |
 

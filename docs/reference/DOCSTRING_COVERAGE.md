@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8238/15778 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8240/15780 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5476 | 10733 | 51% |
+| `core.services` | 5478 | 10735 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1951,7 +1951,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1400)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1396)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L278)
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L865)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L197)
@@ -1961,7 +1961,7 @@ Generated from source. 8238/15778 functions/methods documented (52%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L172)
 - `core/services/visible_model.py` :: `execute_visible_model` (L264)
 - `core/services/visible_model.py` :: `stream_visible_model` (L323)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L689)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L687)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)

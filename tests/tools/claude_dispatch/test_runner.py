@@ -19,6 +19,8 @@ def _basic_spec():
 def patched_runner(tmp_dispatch_db):
     with patch("core.tools.claude_dispatch.runner.create_worktree") as mw, \
          patch("core.tools.claude_dispatch.runner.worktree_diff") as md, \
+         patch("core.tools.claude_dispatch.runner.find_host_oauth_token",
+               return_value="test-token") as _mt, \
          patch("core.tools.claude_dispatch.runner.subprocess.Popen") as mp:
         mw.return_value = "/media/projects/jarvis-v2/.claude/worktrees/claude-task-xyz"
         md.return_value = " core/foo.py | 2 +-\n 1 file changed"

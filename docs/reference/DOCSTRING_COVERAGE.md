@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8248/15791 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8254/15797 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8248/15791 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5484 | 10742 | 51% |
+| `core.services` | 5490 | 10748 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -873,11 +873,11 @@ Generated from source. 8248/15791 functions/methods documented (52%). The list b
 - `core/services/cluster_daemon.py` :: `innervoice_family` (L899)
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1388)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L498)
-- `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L435)
-- `core/services/cluster_daemon_families.py` :: `infra_family` (L1154)
+- `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L442)
+- `core/services/cluster_daemon_families.py` :: `infra_family` (L1161)
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
-- `core/services/cluster_daemon_families.py` :: `projects_family` (L872)
-- `core/services/cluster_daemon_families.py` :: `relation_family` (L671)
+- `core/services/cluster_daemon_families.py` :: `projects_family` (L879)
+- `core/services/cluster_daemon_families.py` :: `relation_family` (L678)
 - `core/services/cluster_family_scheduler.py` :: `stop` (L226)
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)

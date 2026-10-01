@@ -41,6 +41,7 @@ _NONLLM_TICKS = {
     "memory_safeguard": ("core.services.daemon_memory_safeguard", "run"),
     "selective_consolidation": ("core.services.selective_consolidation_daemon", "tick_selective_consolidation_daemon"),
     "associative_recall": ("core.services.associative_recall", "tick_associative_recall"),
+    "candidate_review_digest": ("core.services.candidate_review_digest", "tick_candidate_review_digest"),
 }
 
 _SNAP = {"council_entry_count": 5, "recent_context": "seneste samtale"}
@@ -193,7 +194,7 @@ def test_nonllm_members_run_even_when_gate_does_not_fire():
         assert member in result["members_ran"]
 
 
-def test_all_eight_members_run_in_one_tick():
+def test_all_nine_members_run_in_one_tick():
     with ExitStack() as stack:
         _patch_gated_tick(stack)
         _patch_nonllm_ticks(stack)
@@ -204,7 +205,7 @@ def test_all_eight_members_run_in_one_tick():
         result = cdmf.tick_cluster_memory()
 
     assert set(result["members_ran"]) == {"council_memory", *_NONLLM_TICKS.keys()}
-    assert len(result["members_ran"]) == 8
+    assert len(result["members_ran"]) == 9
 
 
 # ---------------------------------------------------------------------------

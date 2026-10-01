@@ -795,7 +795,18 @@ def upsert_runtime_chronicle_consolidation_brief(
             id_val=brief_id,
             type_val=brief_type,
             canonical_key=canonical_key,
-            lookup_statuses=("active", "softening", "stale"),
+            # 1/10-2026: `briefed` manglede her, og det var halvdelen af
+            # aarsagen til brief-ophobningen. Maalt mod DB'en: to upserts med
+            # SAMME canonical_key gav 2 raekker naar status='briefed', men 1
+            # raekke naar status='active'. `_upsert_signal` finder den
+            # eksisterende raekke via `canonical_key` + `status IN (...)`, saa
+            # naar `briefed` ikke staar i listen, kan dedup'en pr. konstruktion
+            # aldrig fyre for netop de briefs `cadence_producers` skriver.
+            # Den anden halvdel er noeglen selv (run-id) — se cadence_producers.
+            # `briefed` er en laeser-kontrakt: `_latest_chronicle_brief()` i
+            # diary_synthesis_signal_tracking laeser netop {"consolidated",
+            # "briefed"}, saa status aendres IKKE — den foeres til listen.
+            lookup_statuses=("active", "softening", "stale", "briefed"),
             overwrite_cols=[
                 ("status", status),
                 ("title", title),

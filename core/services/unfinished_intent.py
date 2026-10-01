@@ -130,6 +130,30 @@ def _tail(text: str, n: int = _TAIL_WINDOW_CHARS) -> str:
     return text[-n:]
 
 
+# ── Negations-guard (1/10-2026, målt falsk positiv) ────────────────────────
+# «…går den direkte UDEN AT jeg skal lede efter entity-ID'et først» blev læst
+# som et løfte om at lede — sætningen betød det modsatte. Konsekvensen var
+# målbar: et autonomt run på `ollama/glm-5.2:cloud` startede 24 s efter turen
+# og skrev et ANDET svar til Bjørn i samme chat (besked 157649, 1/10-2026).
+#
+# Samme fejlklasse som handoff-guarden (15/8-2026): en UNDERORDNET
+# «jeg skal»-sætning er ikke en pause. Handoff-guarden fanger den kun når
+# teksten SLUTTER med «så sig til»; min sluttede med «først.».
+#
+# Guarden dækker kun de utvetydige negationer. «for at» og «før jeg» er
+# bevidst udeladt — de kan også indlede et ægte løfte, og et tabt ægte
+# træf er den fejl retningen her foretrækker (se modulets filosofi).
+_NEGATION_BEFORE_RE = re.compile(
+    r"(?:\buden\s+at|\bi\s+stedet\s+for\s+at)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _er_negeret(tail: str, m: re.Match) -> bool:
+    """True hvis pausenøgleordet er indledt af en negation («uden at …»)."""
+    return bool(_NEGATION_BEFORE_RE.search(tail[: m.start()]))
+
+
 def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     """Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt
     i en opgave, ellers None.
@@ -181,12 +205,13 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
 
     # 1. "Lad mig først / lad mig se / lad mig selv tjekke ..."
     m = _LAD_MIG_RE.search(tail)
-    if m:
+    if m and not _er_negeret(tail, m):
         return UnfinishedIntent(pattern="lad_mig", matched_text=m.group(0))
 
     # 2. "Jeg skal lige / jeg skal først / jeg skal tjekke ..."
+    # Negations-guard 1/10-2026: «uden at jeg skal …» er ikke et løfte.
     m = _JEG_SKAL_RE.search(tail)
-    if m:
+    if m and not _er_negeret(tail, m):
         return UnfinishedIntent(pattern="jeg_skal", matched_text=m.group(0))
 
     # 3. "Først skal jeg / først lad mig / først må jeg"

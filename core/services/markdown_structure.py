@@ -180,6 +180,12 @@ _FORKORTELSER = frozenset({
     "ift", "pga", "sml", "tlf",
 })
 _SIDSTE_ORD_RE = re.compile(r"([A-Za-zÆØÅæøå]+)\.$")
+# Tabelrækker og listepunkter må IKKE splittes: en brudt tabelrække mister sin
+# struktur, og et brudt listepunkt mister sin bullet. Målt 1/10-2026 — den
+# første version brød en tabelrække midt over ved «. Og». Ren prosa rammes
+# stadig; det er hele formålet. (0 brud i 254 rigtige tabelrækker, men
+# risikoen er reel og billig at lukke.)
+_STRUKTUR_RE = re.compile(r"^\s*(?:\||[-*+]\s|\d+[.)]\s|>)")
 
 
 def _split_lange_linjer(text: str) -> str:
@@ -188,7 +194,7 @@ def _split_lange_linjer(text: str) -> str:
         return text
     ud: list[str] = []
     for linje in text.split("\n"):
-        if len(linje) <= _SPLIT_TAERSKEL:
+        if len(linje) <= _SPLIT_TAERSKEL or _STRUKTUR_RE.match(linje):
             ud.append(linje)
             continue
         stykker: list[str] = []

@@ -212,10 +212,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     const forrige = stateRef.current
     const resolved = typeof next === 'function' ? next(forrige) : next
     stateRef.current = resolved
-    // Kun tekst-deltaer samles: de ændrer `blocks` og intet andet af betydning.
+    // Begge tekstveje samles: bekræftede blok-deltaer og foreløbige synteser.
+    // Uden den sidste vej rendrer React én gang pr. lille provider-chunk.
     // Alt andet — statusskift, gendannet research, fejl — vises med det samme.
     const kunDelta = resolved.status === forrige.status && resolved.research === forrige.research
-      && resolved.blocks !== forrige.blocks
+      && resolved.activeRunId === forrige.activeRunId
+      && (resolved.blocks !== forrige.blocks || resolved.provisionalText !== forrige.provisionalText)
     if (!kunDelta) {
       toemRender()
       return

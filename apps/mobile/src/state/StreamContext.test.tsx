@@ -685,3 +685,43 @@ it('stream-tekst mætter ikke JS med en render på hver hurtig skærmframe', asy
     now.mockRestore()
   }
 })
+
+it('foreløbige syntese-deltaer bruger samme render-begrænsning som tekst', async () => {
+  const now = jest.spyOn(performance, 'now').mockReturnValue(1000)
+  const frames: Array<(t: number) => void> = []
+  const raf = jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => {
+    frames.push(cb as (t: number) => void)
+    return frames.length
+  })
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_request: unknown, nextHandlers: StreamHandlers) => {
+    handlers = nextHandlers
+    return { abort: jest.fn(), getRunId: () => 'run-123', getOffset: () => 0 }
+  })
+  let renders = 0
+  function Taeller() {
+    const { state } = useStream()
+    renders += 1
+    return <Text>{state.provisionalText}</Text>
+  }
+  try {
+    const screen = await render(<StreamProvider><Probe /><Taeller /></StreamProvider>)
+    await act(async () => { screen.getByText('send').props.onPress() })
+    await act(async () => {
+      handlers?.onEvent({ type: 'message_start', message: { id: 'run-123', usage: { input_tokens: 1 } } } as StreamEvent)
+    })
+    const before = renders
+    for (let i = 1; i <= 3; i++) {
+      await act(async () => {
+        handlers?.onEvent({ type: 'system_event', kind: 'provisional_text_delta', payload: { run_id: 'run-123', delta: 'x' } })
+        frames.shift()?.(1000 + i * 8)
+      })
+    }
+    expect(renders - before).toBe(0)
+    await act(async () => { frames.splice(0).forEach((frame) => frame(1040)) })
+    expect(screen.getByText('xxx')).toBeTruthy()
+  } finally {
+    raf.mockRestore()
+    now.mockRestore()
+  }
+})

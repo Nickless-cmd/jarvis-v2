@@ -247,6 +247,20 @@ def _split_lange_linjer(text: str) -> str:
     return "\n".join(ud)
 
 
+def _split_slaaet_til() -> bool:
+    """Skal lange prosa-linjer braekkes op i afsnit?
+
+    Standard FRA. Kan ikke afgoeres? Sig nej — at lade teksten staa som den kom
+    er den uskadelige retning; at omskrive den uden at vide om vi maatte er det
+    ikke.
+    """
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().markdown_split_lange_linjer)
+    except Exception:  # kan ikke laeses: lad teksten vaere
+        return False
+
+
 def _normalize_segment(text: str) -> str:
     # Hold inline-kode ude af strukturreglerne, men behold dens plads, så
     # tabeller stadig kan rekonstrueres på tværs af kode i celler.
@@ -283,8 +297,10 @@ def _normalize_segment(text: str) -> str:
     text = "\n".join(_normalize_plain_line(line) for line in text.split("\n"))
     # 3) kollaps overskydende blanklinjer
     text = _MULTI_NL_RE.sub("\n\n", text)
-    # 4) sætnings-split i lange prosa-linjer (1/10-2026)
-    text = _split_lange_linjer(text)
+    # 4) sætnings-split i lange prosa-linjer (1/10-2026) — se
+    #    `markdown_split_lange_linjer` i settings for hvorfor den er slukket.
+    if _split_slaaet_til():
+        text = _split_lange_linjer(text)
     return re.sub(r"\x00(\d+)\x00", lambda m: code_spans[int(m.group(1))], text)
 
 

@@ -30,8 +30,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  */
 export const FALDBAGSKALD_MS = 100
 
-/** Antal frames et opdaterings-vindue spænder over. 3 ≈ 50 ms ved 60 Hz → ~20/s. */
-export const KADENCE_FRAMES = 3
+/** Antal frames et opdaterings-vindue spænder over. 2 ≈ 33 ms ved 60 Hz → ~30/s.
+ *
+ * 1/10-2026: Bjørn meldte at teksten «bliver dumpet ind» i stedet for at flyde.
+ * Tallet var 3, kalibreret 29/9 mod en kilde der leverede ~66 tokens/s. Målt i
+ * dag på 35 fuldførte synlige ture: **median 110,8 tokens/s**, spredning 8–190.
+ * Kilden er blevet 1,7 gange hurtigere, og ved 20 malinger/s betyder det ~5,5
+ * tokens — omkring 22 tegn — der dukker op på én gang; på de hurtige ture ~38.
+ * Tre-fire ord ad gangen læses som et dump.
+ *
+ * 2 frames giver ~15 tegn pr. maling ved medianen. Begrænseren holder stadig
+ * imod det den blev bygget mod: profileringen 19/9 ramte ved ÉN render pr.
+ * delta (~66/s), og 30/s er det halve af det.
+ *
+ * Det er ét tal, og det er reversibelt. Føles desk tung i en lang samtale, sæt
+ * den tilbage til 3 — den egentlige løsning er at afkoble visning fra ankomst,
+ * og den kræver at de deterministiske ydelses-vagter i
+ * `MarkdownRenderer.streaming.test` kan måle med et styret ur.
+ */
+export const KADENCE_FRAMES = 2
 
 export function useRammeReducer<S, E>(reducer: (s: S, e: E) => S, init: () => S): [S, (e: E) => void] {
   const [state, setState] = useState(init)

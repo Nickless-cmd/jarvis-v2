@@ -387,6 +387,23 @@ class RuntimeSettings:
     #: den en killswitch der virker UDEN genstart: `load_settings()` laeser
     #: filen ved hvert kald.
     visible_tools_frozen: bool = True
+
+    #: Braek lange prosa-linjer op i afsnit ved saetningsgraenser.
+    #:
+    #: Jarvis byggede splitningen 1/10-2026 (prop-2389e27bfb36444f) mod en
+    #: maalt virkelighed: 227 text-blokke over 200 tegn uden ét linjeskift.
+    #: Samme dag fjernede Codex prompt-kravet om korte afsnit. Tilbage stod en
+    #: mekanisk haandhaevelse af en regel huset netop havde droppet.
+    #:
+    #: Og den koerer KUN i udfalds-stien, ikke under streaming. Teksten du saa
+    #: flyde som ét afsnit blev derfor til tre i det oejeblik turen sluttede —
+    #: ikke ny tekst, men den du allerede havde laest der FLYTTEDE sig. Bjoern
+    #: 1/10: «det ser ud som om teksten bliver dumpet ind».
+    #:
+    #: Slaaet FRA som standard. Jarvis' maaling er ikke forkert, saa koden
+    #: bliver staaende: én vaerdi i runtime.json taender den igen, og
+    #: `load_settings()` laeser filen ved hvert kald — ingen genstart.
+    markdown_split_lange_linjer: bool = False
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
@@ -664,6 +681,7 @@ _TIDLIGERE_UINDLAESTE = (
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
     "visible_tools_unified", "visible_tools_frozen",
+    "markdown_split_lange_linjer",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",

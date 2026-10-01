@@ -196,3 +196,43 @@ def test_tabel_med_hele_raekker_uden_linjeskift():
     ud = normalize_markdown_structure(t)
     assert "| Værktøj | Udfald |\n| --- | --- |\n| `bash` | skrev filen |\n" in ud
     assert "| `get_weather` | Taastrup |\n| `search` | fundet |" in ud
+
+
+# ── Prosa-splitningen er en killswitch, ikke en lov ────────────────────────
+
+_LANG = (
+    "Vi maalte cache-hit paa alle ture i dag og fandt en median paa 110,8 tokens "
+    "i sekundet. Det er markant hurtigere end den kalibrering der laa til grund. "
+    "Derfor blev hver maling til tre-fire ord ad gangen i stedet for flydende tekst."
+)
+
+
+def test_lang_prosalinje_staar_som_den_kom_naar_splitten_er_slukket(monkeypatch):
+    """Standard FRA. Jarvis byggede splitten 1/10-2026 mod 227 flade blokke,
+    men den koerer KUN i udfalds-stien — saa teksten du saa flyde som ét afsnit
+    blev til tre da turen sluttede. Det er ikke ny tekst; det er den du allerede
+    havde laest der flytter sig."""
+    from core.services import markdown_structure as ms
+    monkeypatch.setattr(ms, "_split_slaaet_til", lambda: False)
+    assert len(_LANG) > 200
+    assert "\n\n" not in ms.normalize_markdown_structure(_LANG)
+
+
+def test_splitten_virker_stadig_naar_den_taendes(monkeypatch):
+    """Koden slettes ikke. Jarvis' maaling er ikke forkert — den er bare ikke
+    det Bjoern vil have som standard, og én vaerdi i runtime.json taender den."""
+    from core.services import markdown_structure as ms
+    monkeypatch.setattr(ms, "_split_slaaet_til", lambda: True)
+    ud = ms.normalize_markdown_structure(_LANG)
+    assert ud.count("\n\n") >= 2
+
+
+def test_porten_siger_nej_naar_den_ikke_kan_laeses(monkeypatch):
+    """At lade teksten staa er den uskadelige retning; at omskrive den uden at
+    vide om vi maatte er det ikke."""
+    from core.services import markdown_structure as ms
+
+    def sprang():
+        raise OSError("runtime.json kunne ikke laeses")
+    monkeypatch.setattr("core.runtime.settings.load_settings", sprang)
+    assert ms._split_slaaet_til() is False

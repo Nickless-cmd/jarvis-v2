@@ -58,8 +58,14 @@ describe('useRammeReducer — ét kadence-vindue, ikke én frame', () => {
     expect(result.current[0]).toEqual(['1', '2'])
   })
 
-  it('KADENCE_FRAMES = 3 — loftet er ~20 opdateringer/s ved 60 Hz', () => {
-    expect(KADENCE_FRAMES).toBe(3)
+  it('KADENCE_FRAMES = 2 — loftet er ~30 opdateringer/s ved 60 Hz', () => {
+    // 1/10-2026: var 3 (~20/s), kalibreret 29/9 mod ~66 tokens/s. Maalt i dag
+    // paa 35 fuldfoerte synlige ture: median 110,8 tok/s — 1,7 gange hurtigere.
+    // Ved 20 malinger/s blev det ~22 tegn ad gangen, og det laeses som et dump.
+    // To frames giver ~15 tegn ved medianen og ligger stadig paa det halve af
+    // den ÉN-render-pr-delta der mettede render-traaden 19/9.
+    expect(KADENCE_FRAMES).toBe(2)
+    // Faldbagskaldet skal daekke et skjult vindue, hvor rAF ikke koerer.
     expect(FALDBAGSKALD_MS).toBeGreaterThan(KADENCE_FRAMES * 16)
   })
 })

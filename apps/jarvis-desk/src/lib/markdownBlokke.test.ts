@@ -48,6 +48,11 @@ describe('delIBlokke', () => {
     expect(delIBlokke(md)).toEqual(['- et\n\n- to\n\n- tre\n', 'Afsnit bagefter.'])
   })
 
+  it('holder Jarvis’ 1 · punkter sammen under streaming', () => {
+    const src = '**1 · Første.**\nDetalje.\n\n**2 · Andet.** Resten.\n\nEfter listen.'
+    expect(delIBlokke(src)).toEqual(['**1 · Første.**\nDetalje.\n\n**2 · Andet.** Resten.\n', 'Efter listen.'])
+  })
+
   it('en indrykket fortsættelse hører til blokken over', () => {
     const md = '1. punkt\n\n   mere om punktet\n\nNyt afsnit.'
     expect(delIBlokke(md)).toEqual(['1. punkt\n\n   mere om punktet\n', 'Nyt afsnit.'])

@@ -63,6 +63,15 @@ function boldPrefixInlineToHeader(text: string): string {
   )
 }
 
+/** Jarvis skriver undertiden `**1 · Titel**` i stedet for `1. **Titel**`.
+ * Kun linjestart tæller; citater og fed tekst midt i prosa er ikke lister. */
+function boldNumberToList(text: string): string {
+  return text.replace(
+    /^([ \t]{0,3})\*\*(\d{1,3})[ \t]*·[ \t]+([^*\n]+)\*\*/gm,
+    (_match, indent: string, number: string, title: string) => `${indent}${number}. **${title}**`,
+  )
+}
+
 /** Flad em-dash-separeret linje med 3+ separationer → bullet-liste.
  *
  *  Eksempel input:
@@ -238,6 +247,7 @@ export function enforceStructure(md: string): string {
       let t = s.body
       // Crammed tabeller FØRST → celler på egne linjer før resten af kæden.
       t = reflowCrammedTables(t)
+      t = boldNumberToList(t)
       // Inline → blok FØRST, så de linje-baserede regler ser rigtige linjer.
       t = inlineHeaderToBlock(t)
       t = inlineStatementToParagraph(t)

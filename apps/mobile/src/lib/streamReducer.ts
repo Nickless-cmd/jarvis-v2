@@ -24,6 +24,8 @@ export interface StreamState {
   provisionalText: string
   /** Den bekræftede blok holdes skjult, indtil den kan afløse forhåndsvisningen. */
   provisionalBlockIndex: number | null
+  /** Bekræftet tekst-delta uden startblok efter et relay-gap. */
+  provisionalMissingBlockIndex: number | null
   workingStep: string | null
   /**
    * Værktøjets RÅ navn fra `working_step` (fx `read_file`).
@@ -81,6 +83,7 @@ export function initialStreamState(): StreamState {
     blocks: [],
     provisionalText: '',
     provisionalBlockIndex: null,
+    provisionalMissingBlockIndex: null,
     workingStep: null,
     workingAction: null,
     research: null,
@@ -156,6 +159,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         blocks: [],
         provisionalText: '',
         provisionalBlockIndex: null,
+        provisionalMissingBlockIndex: null,
         // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
         skillFlade: event.message.id === state.activeRunId ? state.skillFlade : undefined,
         workingStep: null,
@@ -242,7 +246,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
 
     case 'content_block_delta': {
       const existing = state.blocks[event.index]
-      if (!existing) return state
+      if (!existing) {
+        return event.delta.type === 'text_delta' && state.provisionalText
+          ? { ...state, provisionalMissingBlockIndex: event.index }
+          : state
+      }
       const blocks = state.blocks.slice()
       const d = event.delta
       if (d.type === 'text_delta' && existing.type === 'text') {
@@ -268,14 +276,31 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'system_event':
       if (event.kind === 'provisional_text_delta') {
         const runId = String(event.payload.run_id ?? '')
-        if (!runId || state.status !== 'working' || (state.activeRunId && runId !== state.activeRunId)) return state
+        if (!runId || (state.status === 'working' && state.activeRunId && runId !== state.activeRunId)
+          || (state.status === 'done' && state.activeRunId === runId)) return state
         const delta = String(event.payload.delta ?? '')
-        return delta ? { ...state, activeRunId: runId, provisionalText: state.provisionalText + delta } : state
+        if (!delta) return state
+        // Ved sen tilkobling kan ring-bufferen have rullet message_start ud.
+        // Deltaen bærer stadig run-id, så den kan vække live-visningen selv.
+        const nytRun = state.activeRunId && state.activeRunId !== runId
+        return {
+          ...state, status: 'working', activeRunId: runId,
+          blocks: nytRun ? [] : state.blocks,
+          provisionalText: (nytRun ? '' : state.provisionalText) + delta,
+          provisionalBlockIndex: nytRun ? null : state.provisionalBlockIndex,
+          provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
+        }
       }
       if (event.kind === 'provisional_text_commit') {
-        return String(event.payload.run_id ?? '') === state.activeRunId
-          ? { ...state, provisionalText: '', provisionalBlockIndex: null }
-          : state
+        if (String(event.payload.run_id ?? '') !== state.activeRunId) return state
+        const blocks = state.blocks.slice()
+        if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+          blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+        }
+        return {
+          ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
+          provisionalMissingBlockIndex: null,
+        }
       }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
@@ -473,11 +498,14 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // Et værktøj hvis rigtige blok aldrig kom (afbrudt run, tabt
       // forbindelse) ville ellers stå og snurre under et svar der er slut.
       const uden = state.blocks.slice()
+      if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+        uden[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+      }
       for (let i = 0; i < uden.length; i++) {
         const b = uden[i]
         if (b && b.type === 'tool_use' && b.foreloebig) delete uden[i]
       }
-      return { ...state, status: 'done', blocks: uden, provisionalText: '', provisionalBlockIndex: null }
+      return { ...state, status: 'done', blocks: uden, provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 
     case 'tool_round_label':
@@ -494,7 +522,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // den live visning ville kortvarigt vise dubleret tekst. `retry`-eventet
       // (ren "Reconnecting n/m"-signalering) falder gennem default = no-op,
       // præcis som desk's reducer.
-      return { ...state, status: 'working', blocks: [], provisionalText: '', provisionalBlockIndex: null }
+      return { ...state, status: 'working', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
 
     default:
       // Den DIREKTE form af `skill_surface` (SSE-v1) står ikke i typen; den

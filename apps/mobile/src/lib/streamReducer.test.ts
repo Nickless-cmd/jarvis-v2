@@ -56,6 +56,49 @@ it('viser uafklaret syntese løbende og skifter til bekræftet tekst uden dublet
   expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
 })
 
+it('viser fortsatte synteser når ring-bufferen har mistet message_start og tekstblokkens start', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'relay_gap', payload: { resume_idx: 256 },
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Live syntese' },
+  })
+  expect(state.status).toBe('working')
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Live syntese' }])
+
+  // Den bekræftede delta kommer, men dens content_block_start lå før ring-gappet.
+  state = streamReducer(state, {
+    type: 'content_block_delta', index: 7, delta: { type: 'text_delta', text: 'Live syntese' },
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_commit', payload: { run_id: 'r1' },
+  })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Live syntese' }])
+
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Næste syntese' },
+  })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([
+    { type: 'text', text: 'Live syntese' },
+    { type: 'text', text: 'Næste syntese' },
+  ])
+})
+
+it('beholder det afsluttende svar når tekstblokkens start mangler efter relay-gap', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Afsluttende svar' },
+  })
+  state = streamReducer(state, {
+    type: 'content_block_delta', index: 9,
+    delta: { type: 'text_delta', text: 'Afsluttende svar' },
+  })
+  state = streamReducer(state, { type: 'message_stop' })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Afsluttende svar' }])
+})
+
 it('captures run id from system event', () => {
   const state = streamReducer(initialStreamState(), {
     type: 'system_event',

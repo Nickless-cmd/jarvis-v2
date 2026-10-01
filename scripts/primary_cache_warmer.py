@@ -60,7 +60,35 @@ PROMPT_FILE = HOME_DIR / "config" / "primary_system_prompt.txt"
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
-DEFAULT_MODEL = "deepseek-v4-flash"
+def _konfigureret_model() -> str:
+    """Den model den SYNLIGE lane bruger lige nu.
+
+    En cache-warmer der varmer en anden model end den der faktisk svarer,
+    varmer ingenting. Indtil 1/10-2026 stod navnet haardkodet her OG i
+    `settings.visible_model_name`, og de holdt kun sammen ved tilfaelde: da
+    konfigurationen blev skiftet til DeepSeeks kanoniske navn `deepseek-flash`,
+    blev warmeren staaende paa legacy-navnet. Maalt elleve minutter efter
+    skiftet — den varmede stadig det gamle navn.
+
+    Hvert tilbagefald peger paa det KANONISKE navn, ikke legacy-navnet: en fejl
+    her maa ikke foere os tilbage dertil hvor vi kom fra.
+    """
+    try:
+        from core.services.deepseek_modelnavne import KANONISK_FLASH
+    except Exception:  # scriptet kan koere uden repoets core paa sys.path
+        return "deepseek-flash"
+    try:
+        from core.runtime.settings import load_settings
+    except Exception:  # samme grund — uden settings er det kanoniske navn det sikre valg
+        return KANONISK_FLASH
+    try:
+        navn = str(load_settings().visible_model_name or "").strip()
+    except Exception:  # ulaeselig runtime.json; hellere kanonisk end legacy
+        return KANONISK_FLASH
+    return navn or KANONISK_FLASH
+
+
+DEFAULT_MODEL = _konfigureret_model()
 DEFAULT_MAX_TOKENS = 10
 DEFAULT_TEMPERATURE = 0.0
 MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald

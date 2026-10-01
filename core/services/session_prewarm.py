@@ -99,7 +99,10 @@ def warm_session_prefix(
     session_id: str,
     *,
     provider: str = "deepseek",
-    model: str = "deepseek-v4-flash",
+    # Tom = «den model den synlige lane bruger». Et haardkodet navn her ville
+    # kunne drive fra `settings.visible_model_name` — og en warmer der varmer
+    # en anden model end den der svarer, varmer ingenting. (Maalt 1/10-2026.)
+    model: str = "",
     user_id: str = "",
     role: str = "owner",
     workspace_name: str = "bjorn",
@@ -114,6 +117,11 @@ def warm_session_prefix(
     Returnerer en observability-dict: {status, cache_hit_tokens,
     cache_miss_tokens, input_tokens, elapsed_ms, reason?}.
     """
+    if not model:
+        from core.runtime.settings import load_settings
+        from core.services.deepseek_modelnavne import KANONISK_FLASH
+        model = str(load_settings().visible_model_name or "").strip() or KANONISK_FLASH
+
     t0 = time.monotonic()
     out: dict[str, Any] = {"status": "skipped", "session_id": session_id}
     try:

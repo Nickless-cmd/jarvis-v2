@@ -105,9 +105,18 @@ def test_naivt_tidspunkt_laeses_som_utc():
 
 
 def test_varsel_graense_er_praecis():
-    """Ved præcis VARSEL_MINUTTER før skal varslet vise; ét minut før er tavst."""
-    assert peak_badge(_u(2026, 10, 5, 5, 30)) is not None
-    assert peak_badge(_u(2026, 10, 5, 5, 29)) is None
+    """Ved præcis VARSEL_MINUTTER før skal varslet vise; ét minut før er tavst.
+
+    1/10-2026: tidspunkterne var hardkodet til 05:30/05:29 — altså 30 minutter
+    før vinduet åbner kl. 06 UTC. Da konstanten blev 15, målte testen ikke
+    længere sin egen overskrift. Nu regnes graensen UD af konstanten, så den
+    følger med næste gang tallet ændrer sig.
+    """
+    from datetime import timedelta
+    aabner = _u(2026, 10, 5, 6)
+    paa_graensen = aabner - timedelta(minutes=VARSEL_MINUTTER)
+    assert peak_badge(paa_graensen) is not None
+    assert peak_badge(paa_graensen - timedelta(minutes=1)) is None
 
 
 @pytest.mark.parametrize("time_utc", [1, 2, 3, 6, 7, 8, 9])

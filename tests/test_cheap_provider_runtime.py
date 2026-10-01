@@ -242,7 +242,14 @@ def test_register_provider_failure_sets_cooldown_for_provider_blocked(
     )
     assert state is not None
     assert state["status"] == "provider-blocked"
-    assert state["cooldown_until"] is not None
+    # Profil-scopet cooldown ligger i metadata, ikke i kolonnen — kolonnen er
+    # forbeholdt GLOBAL modelkarantæne. Se `_registrer_fejl` for hele
+    # begrundelsen; her læste testen kun kolonnen og så derfor en cooldown der
+    # var sat som «ikke sat». (1/10-2026.)
+    import json as _json
+    _meta = _json.loads(state.get("metadata_json") or "{}")
+    assert (_meta.get("profile_cooldowns") or {}).get("groq") or state["cooldown_until"], \
+        "hverken profil-cooldown eller global karantæne blev sat"
 
 
 def test_smoke_cheap_lane_returns_mixed_results(
@@ -830,9 +837,29 @@ def _registrer_fejl(isolated_runtime, *, code: str, message: str, status: int, r
     state = isolated_runtime.db.get_cheap_provider_runtime_state(
         provider="groq", model="llama-3.3-70b-versatile",
     )
-    if not state or not state.get("cooldown_until"):
+    if not state:
         return None
-    return (datetime.fromisoformat(state["cooldown_until"]) - datetime.now(UTC)).total_seconds()
+    # TO steder, og forskellen er med vilje: koden siger «Modelkarantæne er
+    # global; øvrige cooldowns tilhører kun auth-profilen». En pensioneret model
+    # karantænsættes i kolonnen `cooldown_until` for ALLE profiler; en
+    # forbigående fejl pauser kun DEN profil der ramte den, og lander i
+    # `metadata_json.profile_cooldowns`.
+    #
+    # 1/10-2026: hjælperen læste kun kolonnen, så de fire profil-scopede tests
+    # fik `None` og så ud som om ingen cooldown blev sat. Målt: en NVIDIA-agtig
+    # 404 giver `profile_cooldowns.groq` = +900 s, præcis som
+    # `_default_failure_cooldown_seconds` beregner. Produktionen var aldrig i
+    # stykker — testen læste det gamle sted.
+    import json as _json
+    meta = {}
+    try:
+        meta = _json.loads(state.get("metadata_json") or "{}")
+    except Exception:  # ulaeselig metadata = ingen profil-cooldown at finde
+        meta = {}
+    naar = (meta.get("profile_cooldowns") or {}).get("groq") or state.get("cooldown_until")
+    if not naar:
+        return None
+    return (datetime.fromisoformat(naar) - datetime.now(UTC)).total_seconds()
 
 
 def test_pensioneret_model_faar_24_timers_karantaene(isolated_runtime) -> None:

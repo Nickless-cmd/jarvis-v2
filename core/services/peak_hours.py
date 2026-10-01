@@ -30,7 +30,14 @@ from zoneinfo import ZoneInfo
 from core.services.llm_pricing import MYLDRE_VINDUER, er_myldretid
 
 #: Hvor mange minutter før et vindue åbner at varslet toner frem.
-VARSEL_MINUTTER: int = 30
+#:
+#: 1/10-2026: stod paa 30 her og paa 15 i `peak_varsel_daemon` — to konstanter
+#: med SAMME navn i hvert sit modul. Badgen i prompten tonede derfor frem et
+#: kvarter foer notifikationen blev sendt, og ingen af tallene var forkerte hver
+#: for sig; de var bare ikke det samme. Bjoern: 15 er det rigtige.
+#:
+#: Daemonen importerer nu herfra. Domaenet ejer tallet; forbrugeren laaner det.
+VARSEL_MINUTTER: int = 15
 
 _DANSK = ZoneInfo("Europe/Copenhagen")
 

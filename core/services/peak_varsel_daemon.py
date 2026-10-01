@@ -40,12 +40,17 @@ from zoneinfo import ZoneInfo
 
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.services.llm_pricing import MYLDRE_VINDUER
-from core.services.peak_hours import naeste_vindue_start, som_utc
+from core.services.peak_hours import (
+    VARSEL_MINUTTER,
+    naeste_vindue_start,
+    som_utc,
+)
 
 _log = logging.getLogger(__name__)
 
-#: Hvor mange minutter før vinduet åbner at varslet sendes.
-VARSEL_MINUTTER: Final[int] = 15
+#: `VARSEL_MINUTTER` importeres fra `peak_hours` — se begrundelsen der. Her
+#: stod indtil 1/10-2026 en EGEN konstant med samme navn og en anden vaerdi,
+#: saa badgen og notifikationen ikke kunne vaere enige.
 
 #: Dagvinduet er det der åbner kl. 06 UTC (08 dansk om sommeren, 07 om vinteren).
 #: Nat-vinduet (01-04 UTC) har ingen at minde.

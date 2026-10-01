@@ -341,6 +341,13 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
                 "run_id": rid,
             },
             cooldown_key=noegle,
+            # 2026-10-01: noeglen ER kvitteringen for hvad der allerede er
+            # genoptaget (se docstringen) — men den udloeb efter 900 s, mens
+            # eventet blev laest i et 60-minutters vindue. Samme doede koersel
+            # blev derfor genoptaget op til fire gange; maalt: 14 vaekninger
+            # for EN koersel. Kvitteringen skal vare saa laenge eventet staar
+            # som tabt arbejde — ikke kortere.
+            cooldown_seconds=_INDHENT_MINUTTER * 60,
         )
 
     return None

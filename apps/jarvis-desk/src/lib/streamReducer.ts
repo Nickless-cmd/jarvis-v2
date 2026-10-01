@@ -144,11 +144,27 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // det er SAMME run (activeRunId uændret) — replay'ens content_block_start
       // SÆTTER hvert index på ny (linje ~65), så staten genopbygges rent uden
       // dobling. Kun et ÆGTE nyt run (nyt id) nulstiller.
-      const _sameRun = state.activeRunId === event.message.id
+      // ── BLINKET (Bjørn 1/10-2026) ────────────────────────────────────────
+      // «nogen gange starter den op igen 5-7 sekunder og lukker ned igen uden
+      // der sker noget, og så blinker chatview lige en gang og så lander hele
+      // hans besked.»
+      //
+      // `message_start` bærer kun et run_id hvis et tidligere legacy-event har
+      // båret det (visible_runs_sse_v2.py:705) — kommer den før, er id'et TOMT.
+      // `system_event(kind='run')` sætter derefter det rigtige. Ved et replay
+      // kom `message_start` igen med "" og ramte `_sameRun` mod det rigtige id:
+      // falsk → blocks ryddet → blinket → og replay'et fyldte hele svaret ind
+      // på én gang.
+      //
+      // Et tomt id bærer INGEN information. Det må hverken erklære et nyt run
+      // eller overskrive det id vi allerede kender. Et ÆGTE nyt id nulstiller
+      // stadig — det er hele pointen med vagten.
+      const _indkommende = event.message.id || ''
+      const _sameRun = !_indkommende || state.activeRunId === _indkommende
       return {
         ...state,
         status: 'working',
-        activeRunId: event.message.id,
+        activeRunId: _indkommende || state.activeRunId,
         model: event.message.model || state.model,
         provider: event.message.provider || state.provider,
         lane: event.message.lane || state.lane,

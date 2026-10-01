@@ -603,3 +603,39 @@ describe('billedet i den levende stream (27/9-2026)', () => {
     expect((s.blocks[0] as { tool_use_id?: string }).tool_use_id).toBe('tu-3')
   })
 })
+
+// ── Blinket: et tomt message_start-id maa ikke rydde blokke (1/10-2026) ────
+
+describe('blinket', () => {
+  const start = (id: string) => ({
+    type: 'message_start',
+    message: { id, model: 'm', provider: 'deepseek', lane: 'primary', session_id: 's',
+               usage: { input_tokens: 0, output_tokens: 0 } },
+  } as never)
+  const tekst = [
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hele svaret.' } },
+  ] as never[]
+  const runEvent = { type: 'system_event', kind: 'run', payload: { run_id: 'visible-abc' } } as never
+
+  it('bevarer teksten naar replayets message_start har tomt id', () => {
+    // Her ryddede mobilen UBETINGET foer 1/10: hvert message_start slettede
+    // blokkene, saa et replay fjernede hele svaret og fyldte det ind igen.
+    const s = [start(''), runEvent, ...tekst, start('')].reduce(streamReducer, initialStreamState())
+    const synlig = s.blocks.filter(Boolean)
+      .map((b) => (b && b.type === 'text' ? b.text : '')).join('')
+    expect(synlig).toContain('Hele svaret.')
+  })
+
+  it('et AEGTE nyt run rydder stadig', () => {
+    const s = [start('visible-et'), ...tekst, start('visible-to')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.blocks.filter(Boolean)).toHaveLength(0)
+    expect(s.activeRunId).toBe('visible-to')
+  })
+
+  it('run-eventets id overlever et tomt message_start', () => {
+    const s = [start(''), runEvent, start('')].reduce(streamReducer, initialStreamState())
+    expect(s.activeRunId).toBe('visible-abc')
+  })
+})

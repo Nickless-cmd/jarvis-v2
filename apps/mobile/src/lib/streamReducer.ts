@@ -148,25 +148,38 @@ function medEtiket(
 
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
-    case 'message_start':
+    case 'message_start': {
+      // ── BLINKET (Bjørn 1/10-2026) ────────────────────────────────────────
+      // `message_start` bærer kun et run_id hvis et tidligere legacy-event har
+      // båret det (visible_runs_sse_v2.py:705) — kommer den før, er id'et TOMT,
+      // og `system_event(kind='run')` sætter derefter det rigtige. Her blev
+      // `blocks` ryddet UBETINGET ved hvert message_start, så et replay eller en
+      // genforbindelse slettede hele svaret og fyldte det ind igen på én gang.
+      //
+      // Desk havde en vagt mod netop det (samme run → behold blokke), men den
+      // sammenlignede mod et tomt id og fejlede. Mobilen havde ingen vagt.
+      // Begge rettet samme dag — de to klienter må ikke drive fra hinanden.
+      const _indkommende = event.message.id || ''
+      const _sammeRun = !_indkommende || _indkommende === state.activeRunId
       return {
         ...state,
         status: 'working',
-        activeRunId: event.message.id,
+        activeRunId: _indkommende || state.activeRunId,
         model: event.message.model,
         provider: event.message.provider,
         lane: event.message.lane,
-        blocks: [],
+        blocks: _sammeRun ? state.blocks : [],
         provisionalText: '',
         provisionalBlockIndex: null,
         provisionalMissingBlockIndex: null,
         // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
-        skillFlade: event.message.id === state.activeRunId ? state.skillFlade : undefined,
+        skillFlade: _sammeRun ? state.skillFlade : undefined,
         workingStep: null,
         workingAction: null,
         research: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens, output: 0 }
       }
+    }
 
     case 'content_block_start': {
       const blocks = state.blocks.slice()

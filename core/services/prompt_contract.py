@@ -2898,7 +2898,9 @@ def _build_visible_chat_prompt_assembly_impl(
         "four. Only split when a call genuinely needs the previous result. "
         "After a round of tool "
         "results: write one short synthesis of what you found and what it means "
-        "BEFORE starting the next round. Never run a round silently — Bjørn must be "
+        "BEFORE starting the next round. Cap it: one decisive finding plus the next "
+        "step — max two lines (~150 characters), not a summary of everything you saw. "
+        "Never run a round silently — Bjørn must be "
         "able to follow your thinking as you go, not just see the final result."
     )
     derived_inputs.append("workflow/narration contract (action contract)")

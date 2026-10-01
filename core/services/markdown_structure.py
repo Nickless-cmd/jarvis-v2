@@ -253,8 +253,16 @@ def _normalize_segment(text: str) -> str:
     code_spans: list[str] = []
 
     def _hide_code(match: re.Match[str]) -> str:
-        code_spans.append(match.group(0))
-        return f"\x00{len(code_spans) - 1}\x00"
+        span = match.group(0)
+        code_spans.append(span)
+        idx = str(len(code_spans) - 1)
+        # Bevar længden: _split_lange_linjer måler linjens længde, og en
+        # forkortet placeholder skubber linjen under tærsklen (målt
+        # 1/10-2026: 207 → 191 tegn, så linjen blev aldrig splittet).
+        # Nullerne lægges FØR indekset, så int() i restorationen stadig
+        # læser det rigtige indeks.
+        pad = max(0, len(span) - (len(idx) + 2))
+        return "\x00" + "0" * pad + idx + "\x00"
 
     text = _INLINE_CODE_RE.sub(_hide_code, text)
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST

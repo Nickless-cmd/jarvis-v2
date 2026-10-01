@@ -758,7 +758,7 @@ def _afbrudte_fra_db(*, minutter: int = _INDHENT_MINUTTER, maks: int = 40) -> li
                 SELECT id, kind, payload_json, created_at
                 FROM events
                 WHERE kind = ?
-                  AND created_at >= datetime('now', ?)
+                  AND datetime(created_at) >= datetime('now', ?)
                 ORDER BY id DESC
                 LIMIT ?
                 """,

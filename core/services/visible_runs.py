@@ -2871,6 +2871,26 @@ async def _stream_visible_run(
                             })
                         except Exception:
                             pass
+                    # ── Rundeskille (1/10-2026) ──────────────────────────────
+                    # Runderne blev lagt sammen med "".join() uden separator, så
+                    # runde N's sidste sætning og runde N+1's første smeltede
+                    # sammen. Målt i Bjørns besked 1/10-2026: «...koster én fil.
+                    # Skillen er læst...» blev gemt som «...koster én fil.Skillen
+                    # er læst...» — præcis ÉT lim-sted i 6.714 tegn, og det lå på
+                    # rundeskiftet. Det næste skift var rent, fordi modellen dér
+                    # selv skrev et indledende \n\n. Vi må ikke afhænge af det.
+                    # Separatoren lægges FØR snapshot'et nedenfor, så en retry-
+                    # trunkering beholder den; overskydende blanklinjer kollapses
+                    # af normalize_markdown_structure (\n{3,} → \n\n) på den
+                    # gemte tekst. Delta'en sendes også, så live-visningen
+                    # stemmer med det der persisteres.
+                    if _all_followup_parts and not _all_followup_parts[-1].endswith("\n"):
+                        _all_followup_parts.append("\n\n")
+                        yield _sse("delta", {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": "\n\n",
+                        })
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_round_reasoning: str = ""  # captured from FollowupDone

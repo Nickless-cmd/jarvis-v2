@@ -110,7 +110,7 @@ describe('JarvisBrowserPanel', () => {
   it('gør pilen grå når historikken ikke fører nogen steder', async () => {
     broPaa()
     render(<JarvisBrowserPanel aaben />)
-    expect(await screen.findByLabelText('Tilbage')).toBeEnabled()
+    await waitFor(() => expect(screen.getByLabelText('Tilbage')).toBeEnabled())
     expect(screen.getByLabelText('Frem')).toBeDisabled()
   })
 

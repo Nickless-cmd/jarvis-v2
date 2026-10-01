@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8240/15780 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8242/15784 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5478 | 10735 | 51% |
+| `core.services` | 5480 | 10737 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 110 | 186 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 229 | 513 | 44% |
+| `scripts` | 229 | 515 | 44% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2231)
+## Undocumented public functions (2233)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L210)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1134,12 +1134,12 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
 - `core/services/gut_engine.py` :: `build_gut_surface` (L181)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
-- `core/services/habits_pipeline.py` :: `accept_suggestion` (L323)
-- `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L369)
-- `core/services/habits_pipeline.py` :: `list_friction` (L298)
-- `core/services/habits_pipeline.py` :: `list_habits` (L286)
-- `core/services/habits_pipeline.py` :: `list_suggestions` (L310)
-- `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
+- `core/services/habits_pipeline.py` :: `accept_suggestion` (L413)
+- `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L459)
+- `core/services/habits_pipeline.py` :: `list_friction` (L318)
+- `core/services/habits_pipeline.py` :: `list_habits` (L306)
+- `core/services/habits_pipeline.py` :: `list_suggestions` (L330)
+- `core/services/habits_pipeline.py` :: `reject_suggestion` (L440)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
@@ -1200,8 +1200,8 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 - `core/services/living_executive.py` :: `choose_impulse` (L108)
 - `core/services/living_executive.py` :: `execute_impulse` (L137)
 - `core/services/living_executive.py` :: `process_event` (L120)
-- `core/services/living_executive.py` :: `start_listener` (L874)
-- `core/services/living_executive.py` :: `stop_listener` (L895)
+- `core/services/living_executive.py` :: `start_listener` (L881)
+- `core/services/living_executive.py` :: `stop_listener` (L902)
 - `core/services/local_small_model.py` :: `base_url` (L39)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
 - `core/services/long_horizon_goals.py` :: `create_goal` (L32)
@@ -2239,8 +2239,10 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)
 - `scripts/prompt_dump_split.py` :: `main` (L145)
-- `scripts/publish_mobile_apk.py` :: `apk_navn` (L42)
-- `scripts/publish_mobile_apk.py` :: `hovedet` (L113)
+- `scripts/publish_mobile_apk.py` :: `apk_navn` (L47)
+- `scripts/publish_mobile_apk.py` :: `find_apksigner` (L51)
+- `scripts/publish_mobile_apk.py` :: `hovedet` (L145)
+- `scripts/publish_mobile_apk.py` :: `kontroller_apk_signatur` (L56)
 - `scripts/repro_streaming_fault.py` :: `main` (L77)
 - `scripts/requirements_gen.py` :: `main` (L46)
 - `scripts/requirements_gen.py` :: `scan` (L29)

@@ -29,18 +29,50 @@ Uden `--host` arbejdes der i den lokale `--dir` (standard ~/.jarvis-v2/mobile).
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 APK_MOENSTER = re.compile(r"^jarvis-mobile-(\d+)\.apk$")
+# Certifikatet på den app, der allerede er installeret på telefonen (0.2.158).
+# Et andet certifikat kan Android ikke installere som opdatering.
+MOBILE_INSTALL_SIGNER_SHA256 = "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"  # pragma: allowlist secret
 
 
 def apk_navn(version_code: int) -> str:
     return f"jarvis-mobile-{version_code}.apk"
+
+
+def find_apksigner() -> str | None:
+    kandidater = sorted(glob.glob(str(Path.home() / "Android/Sdk/build-tools/*/apksigner")), reverse=True)
+    return kandidater[0] if kandidater else shutil.which("apksigner")
+
+
+def kontroller_apk_signatur(apk: Path) -> None:
+    vaerktoej = find_apksigner()
+    if not vaerktoej:
+        raise SystemExit("apksigner mangler — kan ikke kontrollere APK-signatur")
+    resultat = subprocess.run(
+        [vaerktoej, "verify", "--print-certs", str(apk)],
+        capture_output=True, text=True, timeout=60,
+    )
+    if resultat.returncode != 0:
+        raise SystemExit(f"APK-signatur kan ikke verificeres: {resultat.stderr.strip()}")
+    match = re.search(r"Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64})", resultat.stdout)
+    if not match:
+        raise SystemExit("APK-signatur mangler i apksigner-resultatet")
+    digest = match.group(1).lower()
+    if digest != MOBILE_INSTALL_SIGNER_SHA256:
+        raise SystemExit(
+            f"Forkert APK-signatur: {digest}. Installeret app bruger "
+            f"{MOBILE_INSTALL_SIGNER_SHA256}; Android afviser opdateringen."
+        )
+    print(f"APK-signatur matcher installeret app: {digest}")
 
 
 def vaelg_hvad_der_slettes(
@@ -124,6 +156,7 @@ def hovedet(argv: list[str] | None = None) -> int:
     apk = Path(a.apk)
     if not apk.is_file():
         raise SystemExit(f"findes ikke: {apk}")
+    kontroller_apk_signatur(apk)
 
     # Er APK'en DEN version vi siger den er?
     #

@@ -1,4 +1,4 @@
-import { initialStreamState, streamReducer, type StreamState } from './streamReducer'
+import { initialStreamState, streamReducer, visibleStreamBlocks, type StreamState } from './streamReducer'
 import { denseBlocks } from './blockHelpers'
 import type { ContentBlock } from './sseProtocol'
 
@@ -29,6 +29,31 @@ it('accumulates streamed text', () => {
 
   expect(state.blocks).toEqual([{ type: 'text', text: 'Hej' }])
   expect(state.status).toBe('working')
+})
+
+it('viser uafklaret syntese løbende og skifter til bekræftet tekst uden dublet', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'message_start',
+    message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } }
+  })
+  const system = (kind: string, payload: Record<string, unknown>) =>
+    ({ type: 'system_event' as const, kind, payload })
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Første ' }))
+  expect(streamReducer(state, system('provisional_text_delta', { run_id: 'old', delta: 'forkert' })).provisionalText).toBe('Første ')
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'syntese' }))
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Første syntese' } })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, system('provisional_text_commit', { run_id: 'r1' }))
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Slutsvar' }))
+  state = streamReducer(state, system('final_answer_start', { run_id: 'r1' }))
+  state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Slutsvar' } })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
+  state = streamReducer(state, { type: 'message_stop' })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
 })
 
 it('captures run id from system event', () => {

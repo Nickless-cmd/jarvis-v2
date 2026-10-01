@@ -71,6 +71,10 @@ async def test_basic_text_flow():
     assert "content_block_stop" in event_names
     assert "message_delta" in event_names
     assert "message_stop" in event_names
+    assert not any(
+        kind == "system_event" and data.get("kind") == "provisional_text_delta"
+        for kind, data in events
+    )
 
     # message_delta indeholder usage
     msg_delta = next(e for e in events if e[0] == "message_delta")
@@ -301,6 +305,12 @@ async def test_final_answer_boundary_precedes_replayed_text_without_folding_inte
     events = _parse_v2_events(await _collect(translate_to_v2(
         legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
     )))
+    previews = [(i, data["payload"]["delta"])
+                for i, (kind, data) in enumerate(events)
+                if kind == "system_event" and data.get("kind") == "provisional_text_delta"]
+    assert "".join(text for _, text in previews) == "Mellemresultat.Det endelige svar."
+    commit_at = next(i for i, (kind, data) in enumerate(events)
+                     if kind == "system_event" and data.get("kind") == "provisional_text_commit")
     summary_at = next(i for i, (kind, data) in enumerate(events)
                       if kind == "content_block_delta" and data["delta"].get("text") == "Mellemresultat.")
     boundary_at = next(i for i, (kind, data) in enumerate(events)
@@ -312,7 +322,7 @@ async def test_final_answer_boundary_precedes_replayed_text_without_folding_inte
     assert len(answer_deltas) > 1
     answer_at = answer_deltas[0][0]
     stop_at = next(i for i, (kind, _) in enumerate(events) if kind == "message_stop")
-    assert summary_at < boundary_at < answer_at < stop_at
+    assert previews[0][0] < summary_at < commit_at < previews[-1][0] < boundary_at < answer_at < stop_at
     assert sum(kind == "system_event" and data.get("kind") == "final_answer_start"
                for kind, data in events) == 1
 
@@ -329,6 +339,10 @@ async def test_interrupted_run_never_marks_buffered_text_as_final_answer():
     )))
     assert not any(kind == "system_event" and data.get("kind") == "final_answer_start"
                    for kind, data in events)
+    assert any(kind == "system_event" and data.get("kind") == "provisional_text_delta"
+               for kind, data in events)
+    assert any(kind == "system_event" and data.get("kind") == "provisional_text_commit"
+               for kind, data in events)
     assert any(kind == "content_block_delta" and data["delta"].get("text") == "Uafsluttet syntese"
                for kind, data in events)
 

@@ -18,11 +18,13 @@ _Læg en ny mobil-APK op — og behold præcis én version tilbage._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L42) |
-| function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L46) |
-| function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
-| function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L86) |
-| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L113) |
+| function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L47) |
+| function | `find_apksigner` | `()` | — | [src](../../../scripts/publish_mobile_apk.py#L51) |
+| function | `kontroller_apk_signatur` | `(apk)` | — | [src](../../../scripts/publish_mobile_apk.py#L56) |
+| function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L78) |
+| function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L106) |
+| function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L118) |
+| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L145) |
 
 ## `scripts/regenerate_tier1.py`
 _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._

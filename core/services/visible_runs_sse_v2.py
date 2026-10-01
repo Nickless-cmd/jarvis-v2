@@ -436,6 +436,11 @@ async def translate_to_v2(
         tail = echo_filter.flush()
         if tail:
             _pending_text.append(tail)
+            if _state["has_tool"]:
+                await queue.put(SystemEvent(
+                    kind="provisional_text_delta",
+                    payload={"run_id": str(_state["run_id"] or ""), "delta": tail},
+                ).to_sse_line())
         if not _pending_text:
             return
         text = "".join(_pending_text)
@@ -457,6 +462,11 @@ async def translate_to_v2(
             ).to_sse_line())
             if final and offset + chunk_size < len(text):
                 await asyncio.sleep(0.03)
+        if not final:
+            await queue.put(SystemEvent(
+                kind="provisional_text_commit",
+                payload={"run_id": str(_state["run_id"] or "")},
+            ).to_sse_line())
 
     #: Hvilke billeder streamen allerede har sendt — nøgle er `attachment_id`.
     #: Uden den ville hvert efterfølgende billedværktøjs-resultat sende turens
@@ -716,6 +726,10 @@ async def translate_to_v2(
                     if text:
                         if _state["has_tool"]:
                             _pending_text.append(text)
+                            await queue.put(SystemEvent(
+                                kind="provisional_text_delta",
+                                payload={"run_id": str(_state["run_id"] or ""), "delta": text},
+                            ).to_sse_line())
                         else:
                             await _ensure_text_block_open()
                             await queue.put(ContentBlockDelta(

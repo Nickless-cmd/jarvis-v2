@@ -7336,13 +7336,24 @@ def _update_cognitive_systems_async(
             pass
 
         # --- Habit signal recording ---
-        # Hver bruger-besked tracker habit-patterns + friction.
-        # Trigger'er automation-suggestions når thresholds nås.
-        try:
-            from core.services.habits_pipeline import record_habit_signal
-            record_habit_signal(message=user_message)
-        except Exception:
-            pass
+        # 2026-10-01: KUN rigtige brugerbeskeder. Kommentaren her sagde
+        # «hver bruger-besked», men `user_message` er i en AUTONOM kørsel
+        # daemonens eget prompt — ikke Bjørns ord. Målt i DB'en: top-1
+        # «vane» var drømme-daemonens systemprompt (838 forekomster),
+        # nr. 2 var runtime-inspektionsopgaven (319). Mit eget maskinrum
+        # blev registreret som brugeradfærd og injiceret i heartbeat som
+        # indsigt om ham.
+        #
+        # Autonome sessioner har prefix `auto-` (se `_origin_of_session` i
+        # visible_runs_outcomes.py: «auto-dream-20260902» → «dream»; tom for
+        # almindelige samtaler). `session_id` er i scope her, så gaten er ét
+        # led — ingen parameter-ændring i kalderen.
+        if not str(session_id or "").startswith("auto-"):
+            try:
+                from core.services.habits_pipeline import record_habit_signal
+                record_habit_signal(message=user_message)
+            except Exception:
+                pass
 
         # --- Self-surprise detection ---
         # Kaldsstedet leverer IKKE længere forventningen — detektoren udleder den selv

@@ -34,4 +34,11 @@ describe('MarkdownRenderer', () => {
     const { container } = render(<MarkdownRenderer text={'- et\n- to\n- tre'} streaming={false} />)
     expect(container.querySelectorAll('li').length).toBe(3)
   })
+  it.each([false, true])('viser 1 · punkterne som én liste under streaming=%s', (streaming) => {
+    const text = '**1 · Skill-testen.**\nDen er stadig rød.\n\n**2 · Doc-drift.** To kommentarer er forældede.'
+    const { container } = render(<MarkdownRenderer text={text} streaming={streaming} />)
+    expect(container.querySelectorAll('ol')).toHaveLength(1)
+    expect(container.querySelectorAll('li')).toHaveLength(2)
+    expect(container.querySelector('li')?.textContent).toContain('Den er stadig rød.')
+  })
 })

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15785 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15786 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -55,8 +55,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15785 functions/
 - [`core.services.24`](core.services.24.md) — `silence_listener` … `temperament_tendency_signal_tracking`
 - [`core.services.25`](core.services.25.md) — `temporal_body` … `tool_tagger`
 - [`core.services.26`](core.services.26.md) — `tool_usage_store` … `visible_model_adapters`
-- [`core.services.27`](core.services.27.md) — `visible_model_observe` … `voice_curator`
-- [`core.services.28`](core.services.28.md) — `voice_daemon` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `visible_model_observe` … `voice_anchor`
+- [`core.services.28`](core.services.28.md) — `voice_curator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

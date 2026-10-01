@@ -632,14 +632,21 @@ def _normalize_line(value: object) -> str:
         return ""
     if not normalized.startswith("- "):
         normalized = f"- {normalized}"
-    return normalized[:220]
+    # 1/10-2026: rå `[:220]` kløvede midt i en sætning. Målt den dag: 8 af 28
+    # kandidater stod på PRÆCIS 220 tegn med en halv sætning til slut
+    # («…Fikset i morges med»). Kandidatens tekst godkendes og skrives ind i
+    # hukommelsen, så en kløvet linje bliver en permanent halv sætning.
+    # `clip_text` klipper ved sætnings- så ord-grænse og sætter kun ellipsis
+    # når der FAKTISK blev klippet — den er allerede importeret her og bruges
+    # af `_daily_excerpt` længere nede.
+    return clip_text(normalized, limit=220)
 
 
 def _normalize_sentence(value: object) -> str:
     normalized = " ".join(str(value or "").split()).strip()
     if normalized.lower() in _NONE_MARKERS:
         return ""
-    return normalized[:220]
+    return clip_text(normalized, limit=220)
 
 
 def _normalize_confidence(value: object) -> str:

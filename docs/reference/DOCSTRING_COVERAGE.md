@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8240/15780 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8240/15782 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 229 | 513 | 44% |
+| `scripts` | 229 | 515 | 44% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2231)
+## Undocumented public functions (2233)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L210)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2239,8 +2239,10 @@ Generated from source. 8240/15780 functions/methods documented (52%). The list b
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)
 - `scripts/prompt_dump_split.py` :: `main` (L145)
-- `scripts/publish_mobile_apk.py` :: `apk_navn` (L42)
-- `scripts/publish_mobile_apk.py` :: `hovedet` (L113)
+- `scripts/publish_mobile_apk.py` :: `apk_navn` (L47)
+- `scripts/publish_mobile_apk.py` :: `find_apksigner` (L51)
+- `scripts/publish_mobile_apk.py` :: `hovedet` (L145)
+- `scripts/publish_mobile_apk.py` :: `kontroller_apk_signatur` (L56)
 - `scripts/repro_streaming_fault.py` :: `main` (L77)
 - `scripts/requirements_gen.py` :: `main` (L46)
 - `scripts/requirements_gen.py` :: `scan` (L29)

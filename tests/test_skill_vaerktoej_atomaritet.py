@@ -118,7 +118,19 @@ def test_den_tidlige_udgang_faestner_ogsaa(katalog):
     # Tvinger remaining <= 0. Var 8, da de faste var 8; bundet til listens
     # længde nu, så en ny fast post (dispatch_code_mode_task 17/9) ikke gør testen
     # til en test af listens længde.
-    lille = len(p.REQUIRED_LAZY_TOOL_NAMES) + 1
+    #
+    # 1/10-2026: loftet skal følge HELE det krævede sæt, ikke kun
+    # `REQUIRED_LAZY_TOOL_NAMES`. Da sikkerhedsgulvet blev håndhævet i
+    # `_faestn_kraevede` (`75e7aa9a3`, 30/9) voksede sættet fra 13 til 40
+    # unikke navne, mens loftet her stod på 14. Så blev `beholdt` længere end
+    # `max_tools`, og den afsluttende `[:max_tools]` skar i de KRÆVEDE efter
+    # katalog-position — `skill_invoke` ligger som nr. 437 og røg ud.
+    #
+    # Testen var altså ikke forældet af den betingede fæstning (15/9); den
+    # mistede sit eget regnestykke da sættet voksede. Bindes loftet til begge
+    # lister, måler den igen præcis det den hedder: at den TIDLIGE udgang
+    # fæstner.
+    lille = len(set(p.REQUIRED_LAZY_TOOL_NAMES) | set(p.SAFETY_FLOOR)) + 1
     ud = p.select_tools_for_copilot(
         katalog, user_message="hjaelp mig med excel", max_tools=lille, stable_only=True)
     assert "skill_invoke" in {_navn(t) for t in ud}

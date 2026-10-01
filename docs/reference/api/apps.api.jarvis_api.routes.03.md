@@ -58,16 +58,16 @@ _Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `PingBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L14) |
-| class | `AckBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L30) |
-| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L34) |
-| function | `presence_ping` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L40) |
-| function | `notifications_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L65) |
-| function | `notifications_ack` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L73) |
-| function | `notification_preferences_get` | `()` | Notif-routing §6: app-UI læser brugerens kanal-præferencer. | [src](../../../apps/api/jarvis_api/routes/presence.py#L80) |
-| function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L90) |
-| function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L106) |
-| function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L136) |
+| class | `PingBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L18) |
+| class | `AckBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L47) |
+| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L51) |
+| function | `presence_ping` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L57) |
+| function | `notifications_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L97) |
+| function | `notifications_ack` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L105) |
+| function | `notification_preferences_get` | `()` | Notif-routing §6: app-UI læser brugerens kanal-præferencer. | [src](../../../apps/api/jarvis_api/routes/presence.py#L112) |
+| function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L122) |
+| function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L138) |
+| function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L168) |
 
 ## `apps/api/jarvis_api/routes/provider_registry.py`
 _Registret over udbydere og modeller — laesning OG skrivning. Owner-only._

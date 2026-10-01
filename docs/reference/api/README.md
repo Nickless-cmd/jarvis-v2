@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15782 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15784 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,25 +38,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15782 functions/
 - [`core.services.07`](core.services.07.md) — `cheap_lane_control` … `cognitive_state_narrativizer`
 - [`core.services.08`](core.services.08.md) — `collective_pulse_daemon` … `council_runtime`
 - [`core.services.09`](core.services.09.md) — `council_settlement` … `decision_review_daemon`
-- [`core.services.10`](core.services.10.md) — `decision_review_prompter` … `dream_domains`
-- [`core.services.11`](core.services.11.md) — `dream_hypothesis_forced` … `event_trigger_shadow`
-- [`core.services.12`](core.services.12.md) — `eventbus_central_bridge` … `gate_override`
-- [`core.services.13`](core.services.13.md) — `gate_pattern_learning` … `heartbeat_runtime_providers`
-- [`core.services.14`](core.services.14.md) — `heartbeat_scheduler` … `irony_daemon`
-- [`core.services.15`](core.services.15.md) — `jarvis_brain` … `mcp_registry`
-- [`core.services.16`](core.services.16.md) — `mcp_trust` … `mood_oscillator`
-- [`core.services.17`](core.services.17.md) — `mood_regulator_subscriber` … `paid_lane_guard`
-- [`core.services.18`](core.services.18.md) — `paradox_tracker` … `proactivity_bridge`
-- [`core.services.19`](core.services.19.md) — `procedure_bank` … `pushback`
-- [`core.services.20`](core.services.20.md) — `query_language_bridge` … `research_router`
-- [`core.services.21`](core.services.21.md) — `research_store` … `runtime_tasks`
-- [`core.services.22`](core.services.22.md) — `rupture_repair` … `semantic_indexer`
-- [`core.services.23`](core.services.23.md) — `semantic_memory` … `silence_listener`
-- [`core.services.24`](core.services.24.md) — `silence_patterns` … `temporal_body`
-- [`core.services.25`](core.services.25.md) — `temporal_context` … `tool_usage_store`
-- [`core.services.26`](core.services.26.md) — `tool_world_change` … `visible_model_observe`
-- [`core.services.27`](core.services.27.md) — `visible_model_ollama` … `voice_daemon`
-- [`core.services.28`](core.services.28.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `decision_review_prompter` … `dream_distillation_daemon`
+- [`core.services.11`](core.services.11.md) — `dream_domains` … `event_gate`
+- [`core.services.12`](core.services.12.md) — `event_trigger_shadow` … `gate_mutation`
+- [`core.services.13`](core.services.13.md) — `gate_override` … `heartbeat_runtime_influence`
+- [`core.services.14`](core.services.14.md) — `heartbeat_runtime_providers` … `invocation_record`
+- [`core.services.15`](core.services.15.md) — `irony_daemon` … `mcp_manager`
+- [`core.services.16`](core.services.16.md) — `mcp_registry` … `mood_dialer`
+- [`core.services.17`](core.services.17.md) — `mood_oscillator` … `override_store`
+- [`core.services.18`](core.services.18.md) — `paid_lane_guard` … `proactive_question_gate_tracking`
+- [`core.services.19`](core.services.19.md) — `proactivity_bridge` … `push_dispatcher`
+- [`core.services.20`](core.services.20.md) — `pushback` … `research_quality`
+- [`core.services.21`](core.services.21.md) — `research_router` … `runtime_surface_cache`
+- [`core.services.22`](core.services.22.md) — `runtime_tasks` … `selvmodel_kobling`
+- [`core.services.23`](core.services.23.md) — `semantic_indexer` … `silence_detector`
+- [`core.services.24`](core.services.24.md) — `silence_listener` … `temperament_tendency_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `temporal_body` … `tool_tagger`
+- [`core.services.26`](core.services.26.md) — `tool_usage_store` … `visible_model_adapters`
+- [`core.services.27`](core.services.27.md) — `visible_model_observe` … `voice_curator`
+- [`core.services.28`](core.services.28.md) — `voice_daemon` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -123,6 +123,14 @@ _Deep Reflection Slot — real think-time, not tick-to-tick alert._
 | function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L384) |
 | function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L393) |
 
+## `core/services/deepseek_modelnavne.py`
+_Hvad DeepSeeks modeller HEDDER — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_flash` | `(model)` | Serveres denne model af `deepseek-flash`? | [src](../../../core/services/deepseek_modelnavne.py#L60) |
+| function | `er_thinking_model` | `(model, *, provider=…)` | Kræver modellen `reasoning_content` på tidligere assistant-ture? | [src](../../../core/services/deepseek_modelnavne.py#L65) |
+
 ## `core/services/delegation_advisor.py`
 _Delegation advisor — inline vs which subagent role._
 
@@ -669,12 +677,4 @@ _Dream Continuum — dreams that mature and "think" between ticks._
 | function | `_dream_residue_enabled` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L369) |
 | function | `_state` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L374) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/dream_distillation_daemon.py#L379) |
-
-## `core/services/dream_domains.py`
-_Det faelles emne-ordforraad for droemme-kaeden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `domaene_for_tur` | `(tekst, *, timeout_sekunder=…)` | Hvilket staaende domaene roerer turen — eller None. | [src](../../../core/services/dream_domains.py#L90) |
-| function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L119) |
 

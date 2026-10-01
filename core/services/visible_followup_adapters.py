@@ -908,10 +908,8 @@ class OpenAICompatFollowupAdapter:
         # samtale. Tilføjer placeholder reasoning i stedet så indholdet
         # bevares. Strip kun fra base_messages — current-run exchanges har
         # reasoning_content via _serialize_exchanges.
-        _is_thinking_model = (
-            self.provider_id == "deepseek"
-            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-        )
+        from core.services.deepseek_modelnavne import er_thinking_model
+        _is_thinking_model = er_thinking_model(model, provider=self.provider_id)
         if _is_thinking_model:
             _LEGACY_REASONING_PLACEHOLDER = (
                 "[legacy turn — reasoning trace not preserved before "
@@ -941,10 +939,8 @@ class OpenAICompatFollowupAdapter:
         # thinking-mode rejects the entire request with HTTP 400 if ANY
         # assistant message lacks reasoning_content. Patch the merged
         # message list once, right before send.
-        if (
-            self.provider_id == "deepseek"
-            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-        ):
+        from core.services.deepseek_modelnavne import er_thinking_model
+        if er_thinking_model(model, provider=self.provider_id):
             _PLACEHOLDER = (
                 "[reasoning trace not captured for this turn — preserving "
                 "field so deepseek thinking-mode accepts the request]"
@@ -969,7 +965,7 @@ class OpenAICompatFollowupAdapter:
                 1 for m in messages
                 if m.get("role") == "assistant" and not str(m.get("reasoning_content") or "").strip()
             )
-            if _no_rc and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+            if _no_rc and er_thinking_model(model, provider=self.provider_id):
                 _log.warning(
                     "deepseek followup round=%d model=%s missing reasoning_content on %d assistants — patching",
                     round_index, model, _no_rc,

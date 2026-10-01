@@ -83,12 +83,9 @@ export function EditedFilesCard({
   const visDiff = (path: string, el: HTMLElement) => {
     if (!diffs?.[path]?.length) return
     afbrydLuk()
-    // Rammen er CHAT-FLADEN, ikke vinduet. Foer blev pladsen maalt mod hele
-    // vinduet, og en fil-raekke yderst til hoejre havde saa aldrig plads —
-    // spejlingen lagde diffen hen over sidepanelet (Bjoern 29/9-2026).
-    // `.main` er den flade raekken selv bor i; findes den ikke, falder vi
-    // tilbage paa vinduet, og saa opfoerer den sig som foer.
-    const flade = el.closest('.main')
+    // `.main` omfatter ogsaa pladsen ved siden af samtalen. Brug selve
+    // beskedkolonnen, saa diffen aabner oven paa chatteksten.
+    const flade = el.closest('.msg-jarvis-wrap') ?? el.closest('.main')
     const ramme = flade
       ? flade.getBoundingClientRect()
       : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }

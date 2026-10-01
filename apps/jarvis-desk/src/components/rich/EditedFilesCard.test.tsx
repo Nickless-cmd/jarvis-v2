@@ -174,6 +174,32 @@ describe('hover-diffens placering i panelet', () => {
     expect(hoejre).toBeLessThanOrEqual(1400)
   })
 
+  it('centrerer hover-diffen over beskedkolonnen, ikke i området ved siden af chatten', () => {
+    const r = (left: number, right: number) => ({
+      left, right, top: 300, bottom: 320, width: right - left, height: 20,
+      x: left, y: 300, toJSON: () => ({}),
+    }) as DOMRect
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this.classList.contains('msg-jarvis-wrap')) return r(400, 1000)
+      if (this.classList.contains('main')) return r(260, 1400)
+      return r(600, 900)
+    })
+    Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true })
+    render(
+      <main className="main">
+        <div className="msg-jarvis-wrap">
+          <EditedFilesCard filer={FILER} onAabn={() => {}}
+            diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />
+        </div>
+      </main>,
+    )
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    const { left, hoejre } = iChatten(screen.getByRole('tooltip'))
+    expect(left).toBe(420)
+    expect(hoejre).toBe(980)
+  })
+
   it('en raekke naer skaermens bund vender popup\'en OPAD', () => {
     medFlader({ left: 300, right: 500, top: 850, bottom: 870 })
     render(

@@ -595,15 +595,15 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_split_protected` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L33) |
-| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L89) |
-| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L100) |
-| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L160) |
-| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L171) |
-| function | `_is_structured_line` | `(line)` | En eksisterende markdownblok må ikke omskrives som flad prosa. | [src](../../../core/services/markdown_structure.py#L179) |
-| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L184) |
-| function | `_split_lange_linjer` | `(text)` | Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit. | [src](../../../core/services/markdown_structure.py#L228) |
-| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L254) |
-| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L285) |
+| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L85) |
+| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L96) |
+| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L156) |
+| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L167) |
+| function | `_is_structured_line` | `(line)` | En eksisterende markdownblok må ikke omskrives som flad prosa. | [src](../../../core/services/markdown_structure.py#L175) |
+| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L180) |
+| function | `_split_lange_linjer` | `(text)` | Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit. | [src](../../../core/services/markdown_structure.py#L224) |
+| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L250) |
+| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L283) |
 
 ## `core/services/mcp_auth.py`
 _OAuth/bearer til remote MCP-servere._

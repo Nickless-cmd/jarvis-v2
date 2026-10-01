@@ -1,8 +1,16 @@
 import { describe, it, expect } from '@jest/globals'
 import { enforceStructure } from './enforceStructure'
+import contract from '../../../../tests/fixtures/markdown_normalization_contract.json'
+
+describe('fælles normaliseringskontrakt med server og desk', () => {
+  it.each(contract)('$name', ({ input, expected }) => {
+    expect(enforceStructure(input)).toBe(expected)
+    expect(enforceStructure(expected)).toBe(expected)
+  })
+})
 
 // Spejler core/services/markdown_structure.py — Jarvis emitterer ~50% af svar
-// UDEN newlines (alt inline med ` - `/`**X:**`). enforceStructure skal rekonstruere
+// UDEN newlines (bl.a. ` - `-lister). enforceStructure skal rekonstruere
 // blokstruktur så live-visningen også bliver renderbar.
 describe('enforceStructure — inline-markør-rekonstruktion', () => {
   it('gør Jarvis’ fedmarkerede 1 · punkter til en Markdown-liste uden at ændre teksten', () => {
@@ -27,12 +35,9 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
     expect(enforceStructure(src)).toBe(src)
   })
 
-  it('inline **Header:** bliver egen blok (promoveret til ## header)', () => {
-    const out = enforceStructure('Intro tekst. **Hvad det er:** noget indhold bagefter')
-    // Kolon-header på egen linje promoveres til en rigtig markdown-header.
-    expect(out).toContain('## Hvad det er')
-    const lines = out.split('\n')
-    expect(lines.some((l) => l.trim() === '## Hvad det er')).toBe(true)
+  it('bevarer inline **Header:** på samme linje som værdien', () => {
+    const src = 'Intro tekst. **Hvad det er:** noget indhold bagefter'
+    expect(enforceStructure(src)).toBe(src)
   })
 
   it('fed etiket i en liste forbliver en liste', () => {

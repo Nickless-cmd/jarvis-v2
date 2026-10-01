@@ -1,0 +1,62 @@
+[
+  {
+    "name": "fed etiket på linje",
+    "input": "**Fil:** src/lib/x.ts",
+    "expected": "**Fil:** src/lib/x.ts"
+  },
+  {
+    "name": "fed etiket alene",
+    "input": "**Status:**",
+    "expected": "**Status:**"
+  },
+  {
+    "name": "fed overskrift uden markdown-header",
+    "input": "**Hvad det betyder**",
+    "expected": "**Hvad det betyder**"
+  },
+  {
+    "name": "inline etiket efter prosa",
+    "input": "Intro. **Hvad det er:** noget indhold her",
+    "expected": "Intro. **Hvad det er:** noget indhold her"
+  },
+  {
+    "name": "em dash i prosa",
+    "input": "Vi har flere lag — API kører — Session er portabel — Auth findes",
+    "expected": "Vi har flere lag — API kører — Session er portabel — Auth findes"
+  },
+  {
+    "name": "nummereret titel",
+    "input": "**1 · Skill-testen.**",
+    "expected": "1. **Skill-testen.**"
+  },
+  {
+    "name": "gyldig liste",
+    "input": "- **Fil:** src/lib/x.ts\n- **Linje:** 42",
+    "expected": "- **Fil:** src/lib/x.ts\n- **Linje:** 42"
+  },
+  {
+    "name": "inline punkter",
+    "input": "Her er punkterne: - et - to - tre",
+    "expected": "Her er punkterne:\n\n- et\n- to\n- tre"
+  },
+  {
+    "name": "nummereret titel omtalt i prosa",
+    "input": "Han skrev **1 · Skill-testen** i sin note.",
+    "expected": "Han skrev **1 · Skill-testen** i sin note."
+  },
+  {
+    "name": "nummereret titel i citat",
+    "input": "> **1 · Skill-testen**",
+    "expected": "> **1 · Skill-testen**"
+  },
+  {
+    "name": "nummereret titel i kodehegn",
+    "input": "```md\n**1 · Skill-testen**\n```",
+    "expected": "```md\n**1 · Skill-testen**\n```"
+  },
+  {
+    "name": "eksplicit overskrift",
+    "input": "## Status\n\n**Fil:** src/lib/x.ts",
+    "expected": "## Status\n\n**Fil:** src/lib/x.ts"
+  }
+]

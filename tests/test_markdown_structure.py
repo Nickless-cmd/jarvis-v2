@@ -1,7 +1,7 @@
 """Tests for markdown_structure.normalize_markdown_structure.
 
 Baggrund: Jarvis (deepseek) emitterer inkonsistent newlines — ca. halvdelen af
-hans svar skriver alt inline med ` - `-bullets og `**X:**`-headers men UDEN
+hans svar skriver alt inline med ` - `-bullets men UDEN
 newlines, så CommonMark merger det til én lang linje ("kastet ind"). Denne
 normalizer rekonstruerer blok-struktur fra de inline-markører, server-side, før
 beskeden gemmes + sendes til alle kanaler. Idempotent på allerede-struktureret
@@ -10,6 +10,15 @@ tekst.
 from __future__ import annotations
 
 from core.services.markdown_structure import normalize_markdown_structure
+import json
+from pathlib import Path
+
+
+def test_faelles_normaliseringskontrakt():
+    fixture = Path(__file__).parent / 'fixtures' / 'markdown_normalization_contract.json'
+    for case in json.loads(fixture.read_text(encoding='utf-8')):
+        assert normalize_markdown_structure(case['input']) == case['expected'], case['name']
+        assert normalize_markdown_structure(case['expected']) == case['expected'], case['name']
 
 
 def test_inline_bullets_become_list():
@@ -27,10 +36,10 @@ def test_single_inline_dash_not_touched():
     assert normalize_markdown_structure(src) == src
 
 
-def test_inline_colon_header_becomes_block():
+def test_inline_colon_label_stays_inline():
     src = 'Intro tekst. **Hvad det er:** noget indhold her bagefter'
     out = normalize_markdown_structure(src)
-    assert "\n\n**Hvad det er:**\n\n" in out
+    assert out == src
 
 
 def test_bold_labels_inside_list_items_are_not_split_into_headers():
@@ -116,7 +125,8 @@ def test_real_cowork_message_gets_list():
     out = normalize_markdown_structure(src)
     bullets = [ln for ln in out.split("\n") if ln.startswith("- ")]
     assert len(bullets) >= 3
-    assert "\n\n**Hvad det er:**\n\n" in out
+    assert "**Hvad det er:**" in out
+    assert "\n\n**Hvad det er:**\n\n" not in out
 
 
 def test_multiword_bold_statement_becomes_paragraph():

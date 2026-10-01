@@ -52,6 +52,14 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Linje:')).toBeTruthy()
     expect(screen.getByText('Status:')).toBeTruthy()
   })
+
+  it.each(['stream-1', 'm1'])('bevarer en fed etiket i prosa %s', async (id) => {
+    const screen = await render(<MessageBubble message={{
+      ...base, id, role: 'assistant', content: 'Intro. **Hvad det er:** noget indhold her',
+    } as ChatMessage} />)
+    expect(screen.getByText('Hvad det er:')).toBeTruthy()
+    expect(screen.getByText('noget indhold her')).toBeTruthy()
+  })
 })
 
 describe('handlingsrækken hører til turens SIDSTE afsnit', () => {

@@ -62,6 +62,17 @@ describe('MarkdownRenderer under streaming', () => {
     }
   })
 
+  it('viser en fed etiket i prosa uden at oprette en overskrift', () => {
+    const md = 'Intro. **Hvad det er:** noget indhold her'
+    for (const streaming of [true, false]) {
+      const { container, unmount } = render(<MarkdownRenderer text={md} streaming={streaming} />)
+      expect(container.querySelector('p > strong')?.textContent).toBe('Hvad det er:')
+      expect(container.querySelector('p')?.textContent).toBe('Intro. Hvad det er: noget indhold her')
+      expect(container.querySelector('h2')).toBeNull()
+      unmount()
+    }
+  })
+
   it('giver PRÆCIS samme HTML som ét samlet parse', () => {
     // Et samlet parse lægger linjeskift-tekstnoder MELLEM blokelementerne;
     // de delte blokke gør ikke. Det er mellemrum mellem blokke — usynligt —

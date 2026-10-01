@@ -12,8 +12,8 @@ import { ChatCodeBlock } from './ChatCodeBlock'
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
  *
  *  Strukturel håndhævelse: enforceStructure() konverterer Jarvis' uvaner
- *  (`**Header:**`-afsnit, inline `## Header` midt i en linje) til ægte
- *  markdown-blokke FØR ReactMarkdown ser teksten. Det giver konsekvent layout.
+ *  (inline `## Header`, lister og tabeller mast sammen på én linje) til ægte
+ *  markdown-blokke FØR ReactMarkdown ser teksten. Fede etiketter bevares.
  *
  *  remarkBreaks FJERNET (2026-06-13): den gjorde ÉT newline til <br>, hvilket
  *  forstærkede HVER parse-fejl (især malformede tabeller) til en <br>-jammet

@@ -1,17 +1,16 @@
 """Rekonstruér markdown-blokstruktur fra inline-markører.
 
 Jarvis (deepseek-modellen) emitterer inkonsistent newlines: ca. halvdelen af
-hans svar skriver alt inline med ` - `-bullets og `**X:**`-headers men UDEN
+hans svar skriver alt inline med ` - `-bullets men UDEN
 newlines. CommonMark merger så det hele til ét løbende afsnit ("kastet ind").
 Hverken client-rendering (remark-breaks/enforceStructure) kan redde tekst der
 bogstaveligt er én linje — der er ingen `\\n` at bryde på.
 
 Denne funktion kører server-side på den endelige assistent-tekst FØR den gemmes
 og sendes til kanaler (jarvis-desk, webchat, Discord). Den genskaber blok-
-struktur fra de strukturelle markører Jarvis faktisk bruger:
+struktur fra eksplicitte markører og bevarer fede etiketter som skrevet:
 
   - ` - item - item - item`  → en rigtig punktliste (én pr. linje)
-  - `**Header:**` midt i en linje → headeren på egen linje med blanklinjer om
 
 Designprincipper:
   - Idempotent: tekst der allerede har newlines/struktur ændres ikke.
@@ -28,6 +27,7 @@ __all__ = ["normalize_markdown_structure"]
 _OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 _INLINE_CODE_RE = re.compile(r"(?<!`)(`{1,2})(?!`).*?\1(?!`)", re.DOTALL)
+_BOLD_NUMBER_RE = re.compile(r"^([ \t]{0,3})\*\*(\d{1,3})[ \t]*·[ \t]+([^*\n]+)\*\*", re.MULTILINE)
 
 
 def _split_protected(text: str) -> list[tuple[bool, str]]:
@@ -55,10 +55,6 @@ def _split_protected(text: str) -> list[tuple[bool, str]]:
     if buffer:
         parts.append((fence is not None, "".join(buffer)))
     return parts
-
-# `**Label:**` midt i en linje (har indhold før OG efter) → egen blok.
-# Kræver afsluttende kolon så vi kun rammer headers, ikke inline-emphasis.
-_INLINE_HEADER_RE = re.compile(r"(?<![*+\-])(?<!\d\.)(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)")
 
 # Flerords-bold der ender på sætningstegn (`**Det er chat + permissions.**`) =
 # en selvstændig udsagn-sætning → eget afsnit. Lookahead `(?=[^*\n]*\s)` kræver
@@ -264,10 +260,12 @@ def _normalize_segment(text: str) -> str:
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
     #    så cellerne ligger på egne linjer før bullet/header-logikken.
     text = _reflow_crammed_tables(text)
+    # Samme eksplicitte nummerering som live-klienterne: **1 · Titel** → 1. **Titel**.
+    text = _BOLD_NUMBER_RE.sub(lambda m: f"{m[1]}{m[2]}. **{m[3]}**", text)
+
     def _normalize_plain_line(line: str) -> str:
         if _is_structured_line(line):
             return line
-        line = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", line)
         line = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", line)
         line = _INLINE_ATX_RE.sub(r"\n\n\1", line)
         if len(_INLINE_BULLET_RE.findall(line)) >= 2:

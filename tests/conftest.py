@@ -398,6 +398,20 @@ def _pin_deployment_env_for_tests(monkeypatch):
     """
     monkeypatch.setenv("JARVISX_AUTH_REQUIRED", "0")
     monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "0")
+    # Kryptering: `JARVISX_ENCRYPT_WORKSPACES=1` er sat i DRIFT (verificeret
+    #    1/10-2026: env-varen står i serverens miljø — ikke i runtime.json, ikke
+    #    i koden).
+    #    Uden dette punkt skriver member-workspaces `.enc` i stedet for
+    #    plaintext, og enhver test der læser `workspaces/<navn>/MEMORY.md`
+    #    fejler med FileNotFoundError: grøn i CI, rød i drift. Målt på to filer
+    #    (test_workspace_bootstrap, test_multi_user) — samme familie som
+    #    punkterne ovenfor: testen arvede maskinens tilstand.
+    #
+    #    Tests der VIL måle kryptering sætter selv flaget pr. test
+    #    (test_workspace_crypto, test_file_tools_exec, test_workspace_files,
+    #    test_workspace_capabilities, test_prompt_relevance_backend) — deres
+    #    opsætning kører EFTER denne fixture og vinder.
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "0")
     # 3. `config/runtime.json` bærer maskinens levende flag — bl.a. Fase-4's
     #    `agent_step_*`, `client_turn_*`, `skill_autosurface_*` og
     #    `cache_split_*`. `load_settings()` læser filen hvis den findes, så

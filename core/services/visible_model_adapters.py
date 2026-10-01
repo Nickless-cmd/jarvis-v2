@@ -278,10 +278,8 @@ def _stream_openai_compatible_model(
     # requesten. Strip assistant-messages uden reasoning_content når vi
     # går til thinking-mode model. Pris: tab af gamle assistant-turns.
     # Værdi: API'et accepterer requesten.
-    _is_thinking_model = (
-        provider == "deepseek"
-        and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-    )
+    from core.services.deepseek_modelnavne import er_thinking_model
+    _is_thinking_model = er_thinking_model(model, provider=provider)
     # NB: filtreringen anvendes nedenfor på chat_messages efter de er bygget
     from core.tools.simple_tools import get_tool_definitions
     from core.services.turens_vaerktoejer import vaerktoejer_for_turen

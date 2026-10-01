@@ -245,7 +245,8 @@ def synthesize_nonthinking_rescue(
         # deepseek-chat selv) har ikke bug'en → ingen rescue (undgå dobbelt-svar).
         if _pid != "deepseek":
             return ""
-        if model not in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+        from core.services.deepseek_modelnavne import er_thinking_model
+        if not er_thinking_model(model, provider=_pid):
             return ""
         # Siden alias-pensioneringen 24/7 findes intet chat-alias at swappe til:
         # non-thinking er et REQUEST-param som adapteren sætter ud fra

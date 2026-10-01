@@ -1678,7 +1678,11 @@ _DEEPSEEK_PRICES_PER_M: dict[str, dict[str, Decimal]] = {
 
 
 def _deepseek_price_table(model: str) -> dict[str, Decimal] | None:
-    if model == "deepseek-v4-flash":
+    # BEGGE navne: `deepseek-flash` er det kanoniske i dag, og
+    # `deepseek-v4-flash` er legacy-navnet der serveres af den. Stod kun
+    # det gamle her, gav et konfigurations-skift `None` -> pris 0.
+    from core.services.deepseek_modelnavne import er_flash
+    if er_flash(model):
         return _DEEPSEEK_PRICES_PER_M["deepseek-v4-flash"]
     if model == "deepseek-v4-pro":
         from datetime import datetime, timezone

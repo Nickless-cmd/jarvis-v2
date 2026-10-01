@@ -57,6 +57,11 @@ PRICING: dict[tuple[str, str], dict[str, tuple[float, float]]] = {
 # forsvinde ud af regnskabet — praecis den slags blindt hjoerne vi lige har
 # lukket i hovedbogen. Aliaset holder prisen ét sted.
 _ALIAS = {
+    # 1/10-2026: `deepseek-flash` er DeepSeeks kanoniske navn i dag, og
+    # `deepseek-v4-flash` serveres af den (verificeret mod API'ens eget
+    # `model`-felt). Uden denne linje ville et skift af konfigurationen
+    # prise hvert kald til 0,0 og lade dem forsvinde ud af regnskabet.
+    "deepseek-flash": "deepseek-v4-flash",
     "deepseek-chat": "deepseek-v4-flash",
     "deepseek-reasoner": "deepseek-v4-flash",
     "deepseek-v4-flash-vision-exp": "deepseek-v4-flash",

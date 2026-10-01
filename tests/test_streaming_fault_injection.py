@@ -204,7 +204,10 @@ def _drive(monkeypatch, shape: str, *, run_id: str,
         vr, "_persist_session_assistant_message",
         lambda run, text, **_k: persisted.append(text))
     monkeypatch.setattr(vr, "append_chat_message", lambda **_k: {"id": "m1"})
-    monkeypatch.setattr(vr, "record_cost", lambda **_k: None)
+    # 1/10-2026: hovedbogen skrives nu gennem `visible_run_cost`, saa
+    # `visible_runs.record_cost` findes ikke laengere. Patch det rigtige
+    # soem — et navn der ikke bruges ville lade testen tie.
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_k: None)
     monkeypatch.setattr(vr.event_bus, "publish", lambda *a, **k: None)
     # Tunge baggrunds-daemons (_post_process: memory-konsolidering/session-summary
     # → LLM-fallback-kæder) mockes → hermetisk + hurtigt. De er fire-and-forget

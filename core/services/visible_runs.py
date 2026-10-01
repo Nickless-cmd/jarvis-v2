@@ -222,7 +222,6 @@ from core.services.visible_model import (
 # core.services.visible_runs.run_non_visible_with_fallback direkte.
 from core.services.non_visible_fallback import run_non_visible_with_fallback
 from core.memory.private_layer_pipeline import write_private_terminal_layers
-from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     connect,
@@ -5386,16 +5385,15 @@ async def _stream_visible_run(
                 # Cost-ledger er en del af run-kontrakten, ikke best-effort
                 # efterbehandling. SSE-v2 lukker legacy-generatoren så snart den
                 # ser done; kode efter yield'et bliver derfor aldrig kørt.
-                record_cost(
-                    provider=run.provider,
-                    model=run.model,
+                from core.services.visible_run_cost import (
+                    bogfoer_koerslens_omkostning,
+                )
+                bogfoer_koerslens_omkostning(
+                    run,
                     input_tokens=total_input_tokens,
                     output_tokens=total_output_tokens,
-                    cost_usd=0.0,
-                    lane="visible",
                     cache_hit_tokens=total_cache_hit_tokens,
                     cache_miss_tokens=total_cache_miss_tokens,
-                    run_id=run.run_id,
                 )
                 try:
                     from core.services import turn_tail_timing as _hale
@@ -5807,16 +5805,14 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
-        record_cost(
-            lane=run.lane,
-            provider=run.provider,
-            model=run.model,
+        from core.services.visible_run_cost import bogfoer_koerslens_omkostning
+        bogfoer_koerslens_omkostning(
+            run,
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
-            cost_usd=total_cost_usd,
             cache_hit_tokens=total_cache_hit_tokens,
             cache_miss_tokens=total_cache_miss_tokens,
-            run_id=run.run_id,
+            cost_usd=total_cost_usd,
         )
         event_bus.publish(
             "cost.recorded",

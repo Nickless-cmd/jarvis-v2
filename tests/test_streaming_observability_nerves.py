@@ -232,7 +232,10 @@ def test_h5_persist_failure_in_run_fires_nerve(monkeypatch):
 
     monkeypatch.setattr(vr, "_persist_session_assistant_message", _raise_persist)
     monkeypatch.setattr(vr, "append_chat_message", lambda **_k: {"id": "m1"})
-    monkeypatch.setattr(vr, "record_cost", lambda **_k: None)
+    # 1/10-2026: hovedbogen skrives nu gennem `visible_run_cost`, saa
+    # `visible_runs.record_cost` findes ikke laengere. Patch det rigtige
+    # soem — et navn der ikke bruges ville lade testen tie.
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_k: None)
     monkeypatch.setattr(vr.event_bus, "publish", lambda *a, **k: None)
     monkeypatch.setattr(vr, "_run_memory_postprocess", lambda *a, **k: None)
     monkeypatch.setattr(vr, "_track_runtime_candidates", lambda *a, **k: None)

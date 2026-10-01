@@ -105,11 +105,22 @@ class TestSkema:
 
 class TestKaldesteder:
     def test_begge_visible_runs_kald_sender_run_id(self):
-        """To record_cost-kald: den agentiske gren (lane="visible") og den
-        generelle (lane=run.lane). Binder kun det ene, er halvdelen af turene
-        stadig kun tidsmatchbare."""
-        from core.services import visible_runs
-        blocks = inspect.getsource(visible_runs).split("record_cost(")[1:]
-        assert len(blocks) >= 2
-        for i, b in enumerate(blocks[:2]):
-            assert "run_id=" in b[:b.index(")")], f"kald #{i + 1} mangler run_id"
+        """Begge skrivninger skal binde raekken til sin koersel.
+
+        Der er to: den der ligger lige FOER `yield _sse("done", ...)` — den
+        eneste der naar at koere paa SSE-v2-vejen — og den generelle til sidst.
+        Binder kun det ene, er halvdelen af turene stadig kun tidsmatchbare.
+
+        1/10-2026: begge gaar nu gennem `visible_run_cost`, saa `run_id` saettes
+        ÉT sted. Vagten foelger soemmen. Den samme udskilning rettede en fejl den
+        her vagt ikke kunne se: den foerste skrivning haardkodede
+        `lane="visible"`, saa AUTONOME koersler blev bogfoert som synlige.
+        """
+        from core.services import visible_run_cost, visible_runs
+        kilde = inspect.getsource(visible_runs)
+        assert kilde.count("bogfoer_koerslens_omkostning(") == 2,             "begge skrivninger skal gaa gennem enheden"
+        assert "record_cost(" not in kilde,             "hovedbogen maa ikke skrives udenom enheden"
+        assert 'lane="visible"' not in kilde,             "lane skal komme fra koerslen, ikke et fast ord"
+        enhed = inspect.getsource(visible_run_cost.bogfoer_koerslens_omkostning)
+        assert "run_id=" in enhed, "enheden skal binde raekken til koerslen"
+        assert 'getattr(run, "lane"' in enhed, "lane skal tages fra koerslen"

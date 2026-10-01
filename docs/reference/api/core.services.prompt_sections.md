@@ -233,6 +233,13 @@ _MEMORY.md line/section selection for the visible prompt._
 | function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L280) |
 | function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L284) |
 
+## `core/services/prompt_sections/output_discipline.py`
+_Output discipline guidance for visible model prompts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_output_discipline_instruction` | `(*, strength)` | Return the output guidance appropriate to a model's strength. | [src](../../../core/services/prompt_sections/output_discipline.py#L4) |
+
 ## `core/services/prompt_sections/pattern_counterfactuals.py`
 _Surface pattern-counterfactual hypotheses in the prompt._
 

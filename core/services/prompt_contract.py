@@ -29,6 +29,7 @@ from core.services.prompt_relevance_backend import (
 from core.services.prompt_sections.memory_selection import (  # noqa: F401
     MemorySectionSelection,
 )
+from core.services.prompt_sections.output_discipline import _output_discipline_instruction
 
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
@@ -1511,15 +1512,6 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("output style preference", _e)
 
-    # Markdown-formatering. En backend-normalizer retter inline-struktur, men en
-    # nudge reducerer hvor ofte den skal arbejde + holder rå kanal-tekst pæn.
-    _awareness_add(7, "markdown formatting", (
-        "Formatering: brug RIGTIGE linjeskift i markdown. Hvert listepunkt på sin "
-        "egen linje (\\n- punkt), og afsnit adskilt af en blank linje. Skriv ALDRIG "
-        "en hel liste eller flere afsnit som én lang linje med ' - ' inline — det "
-        "rendrer som sammenklistret tekst."
-    ))
-
     # Tool-echo-leak. Når du har kaldt et værktøj, så FORTOLK resultatet med dine
     # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
     # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
@@ -1551,8 +1543,8 @@ def _build_visible_chat_prompt_assembly_impl(
     # værktøjskald: tekst efter er «svaret», tekst før er «arbejde». Målt på en
     # ægte tur: hele analysen (med et spørgsmål til Bjørn) stod FØR et
     # `remember_this`, og kvitteringen «Gemt —» blev vist som svaret. Reglen er
-    # en FORM-regel som markdown-linjen ovenfor, ikke en adfærdsegenskab — og
-    # den er den eneste mekanisme der rammer FØR bruddet. Om den virker måles
+    # en rækkefølge-regel, og den er den eneste mekanisme der rammer FØR
+    # bruddet. Om den virker måles
     # af Centralen (`svar_efter_kald`), ikke af min egen forsikring.
     _awareness_add(7, "rækkefølge: svar sidst", (
         "Rækkefølge: læg interne kald (`remember_this`, `set_flag`, `goal_create`) "
@@ -4110,26 +4102,6 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
     cacheable prefix, loaded in both warmer and live). Kept as a no-op returning
     "" so the gated call-sites don't have to change shape."""
     return ""
-
-
-def _output_discipline_instruction(*, strength: str) -> str:
-    """Tiered output discipline (harness Part 1). BOTH tiers get 'synthesize & stop' (safe for weak —
-    it helps them STOP); STRONG additionally gets conciseness caps (they would truncate weak lanes).
-    Does NOT repeat the self-correction / tool-honesty blocks — those stay as their own sections.
-    `strength` from model_trust.model_strength(); anything but 'strong' → weak tier. Self-safe."""
-    lines = [
-        "Output discipline:",
-        "- After each tool result, consider: do I have enough to answer? If yes, synthesize your",
-        "  findings and respond directly — do not keep calling tools when you already have the answer.",
-        "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",
-        "- Tool results are for you — refer to them in your own words, never reproduce them verbatim.",
-    ]
-    if str(strength) == "strong":
-        lines += [
-            "- Go straight to the point. Try the simplest approach first without going in circles. Do not overdo it.",
-            "- Keep text between tool calls to ≤25 words. Keep final responses to ≤100 words unless the task genuinely requires more.",
-        ]
-    return "\n".join(lines)
 
 
 def _central_notices_section() -> str | None:

@@ -171,9 +171,77 @@ _TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
 _CHEAP_LANE_METADATA_TABLER = frozenset({"cheap_provider_invocations"})
 
 
+#: Hvor længe et ubehandlet forslag bliver i review-køen før det pensioneres.
+#: Tabellens 60-dages vindue ovenfor binder HELE tabellen; dette binder hver TYPE,
+#: fordi de ikke er lige handlingsanrettede.
+#:
+#: Målt 1/10-2026: 5.231 proposed, hvoraf 3.144 var `chronicle_draft` — og 0 af
+#: 1.847 er NOGENSINDE blevet applied. `chronicle_draft` har ingen auto-apply-vej:
+#: `_should_auto_apply` dækker kun MEMORY.md/USER.md, og dens eneste læsere TÆLLER
+#: den (`runtime_candidates.py:162/242`). Den hober sig altså op i hele det 60-dages
+#: vindue uden at nogen ser eller bruger den — en blindgyde. `memory_promotion` og
+#: `preference_update` HAR en vej (auto-apply gennem memory-gaten) og beholder det
+#: lange vindue; de er reelt review-bare.
+#:
+#: Syv dage for chronicle er ikke en gætning: den er 8× det vindue den ugentlige
+#: chronicle-konsolidering arbejder i, så en ægte frisk kandidat er for længst
+#: fanget inden den pensioneres.
+_CANDIDATE_TYPE_MAX_AGE: tuple[tuple[str, int], ...] = (
+    ("chronicle_draft", 7),
+    ("memory_promotion", 30),
+    ("preference_update", 30),
+    ("prompt_feedback_update", 30),
+)
+
+
+def prune_stale_contract_candidates() -> dict[str, object]:
+    """Type-bevidst alders-pruning af ``runtime_contract_candidates``.
+
+    Den generiske 60-dages regel rammer hele tabellen; denne giver hver type sit
+    eget vindue, så en blindgyde ikke fylder køen op i to måneder. Sletter KUN
+    ubehandlede (``status='proposed'``) rækker — approved/applied røres ikke.
+    Små kappede batches (ét commit hver → korte låse). Self-safe: rejser aldrig.
+    """
+    import re
+    out: dict[str, object] = {}
+    try:
+        from core.runtime.db import connect
+    except Exception as exc:  # self-safe: uden DB-forbindelse rapporteres fejlen — retentionen vaelter ikke
+        return {"error": str(exc)[:120]}
+    for candidate_type, days in _CANDIDATE_TYPE_MAX_AGE:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", candidate_type):
+            continue
+        cutoff = (datetime.now(UTC) - timedelta(days=max(1, int(days)))).isoformat()
+        deleted = 0
+        try:
+            while deleted < _DEFAULT_MAX_DELETE:
+                take = min(_DEFAULT_BATCH_SIZE, _DEFAULT_MAX_DELETE - deleted)
+                with connect() as conn:
+                    cur = conn.execute(
+                        "DELETE FROM runtime_contract_candidates WHERE rowid IN ("
+                        "SELECT rowid FROM runtime_contract_candidates "
+                        "WHERE candidate_type = ? AND status = 'proposed' "
+                        "AND created_at < ? ORDER BY rowid ASC LIMIT ?)",
+                        (candidate_type, cutoff, take),
+                    )
+                    n = cur.rowcount or 0
+                    conn.commit()
+                if n <= 0:
+                    break
+                deleted += n
+            out[candidate_type] = deleted
+        except Exception as exc:  # self-safe: en fejlende type maa ikke stoppe de oevrige
+            out[candidate_type] = f"err:{str(exc)[:60]}"
+    return out
+
+
 def prune_telemetry_tables() -> dict[str, object]:
     """Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts."""
     out: dict[str, object] = {}
+    try:
+        out["runtime_contract_candidates_by_type"] = prune_stale_contract_candidates()
+    except Exception as exc:
+        out["runtime_contract_candidates_by_type"] = f"err:{str(exc)[:60]}"
     for table, ts_col, days in _TELEMETRY_RETENTION:
         try:
             if table in _CHEAP_LANE_METADATA_TABLER:

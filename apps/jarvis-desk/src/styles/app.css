@@ -1788,6 +1788,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 11px;
 }
 .codeblock-bar button:hover { color: var(--fg-1); }
+.codeblock-bar .chat-code-copy {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; min-height: 28px; border-radius: 6px;
+}
+.codeblock-bar .chat-code-copy:hover { background: var(--bg-3); }
 .codeblock pre, .codeblock > div { margin: 0; padding: 10px 12px; overflow-x: auto; font-size: 13px; }
 .codeblock pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 /* 29/9-2026: chat og panelkode skifter farver sammen med appens tema. */

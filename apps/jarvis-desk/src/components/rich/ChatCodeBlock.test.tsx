@@ -33,7 +33,9 @@ describe('ChatCodeBlock', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     render(<ChatCodeBlock code={'line1\nline2'} lang="txt" />)
-    await userEvent.click(screen.getByRole('button', { name: /kopiér/i }))
+    const copy = screen.getByRole('button', { name: 'Kopiér kode' })
+    expect(copy.querySelector('svg')).toBeInTheDocument()
+    await userEvent.click(copy)
     expect(writeText).toHaveBeenCalledWith('line1\nline2')
   })
 
@@ -41,8 +43,8 @@ describe('ChatCodeBlock', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     render(<ChatCodeBlock code={'echo hej'} lang="bash" />)
-    await userEvent.click(screen.getByRole('button', { name: /kopiér/i }))
-    expect(await screen.findByText('Kopieret')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Kopiér kode' }))
+    expect(await screen.findByRole('button', { name: 'Kopieret' })).toBeInTheDocument()
   })
 
   it('siger det hoejt naar kopiering fejler — den kvitterer ikke falsk', async () => {

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8267/15811 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8274/15815 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8267/15811 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5503 | 10762 | 51% |
+| `core.runtime` | 701 | 1281 | 54% |
+| `core.services` | 5509 | 10765 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -392,9 +392,9 @@ Generated from source. 8267/15811 functions/methods documented (52%). The list b
 - `core/runtime/db_concept_baseline.py` :: `get_concept_baseline_stat` (L99)
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
-- `core/runtime/db_core.py` :: `PooledConnection.close` (L77)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L392)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L372)
+- `core/runtime/db_core.py` :: `PooledConnection.close` (L86)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L401)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L381)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L359)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L344)
@@ -736,15 +736,15 @@ Generated from source. 8267/15811 functions/methods documented (52%). The list b
 - `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L237)
 - `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L230)
 - `core/services/calm_anchor.py` :: `build_calm_anchor_surface` (L215)
-- `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L296)
-- `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L287)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_session_review` (L73)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_visible_turn` (L42)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` (L256)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` (L162)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` (L191)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` (L220)
-- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` (L133)
+- `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L299)
+- `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L290)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_session_review` (L76)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_for_visible_turn` (L45)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` (L259)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` (L165)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` (L194)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` (L223)
+- `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` (L136)
 - `core/services/central_adaptation.py` :: `is_paused` (L230)
 - `core/services/central_agenda.py` :: `is_authoritative` (L42)
 - `core/services/central_analyst.py` :: `build_analyst_surface` (L72)
@@ -1060,7 +1060,7 @@ Generated from source. 8267/15811 functions/methods documented (52%). The list b
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)
 - `core/services/emergent_signal_tracking.py` :: `get_emergent_signal_daemon_state` (L228)
 - `core/services/emotion_tagging.py` :: `build_emotion_tagging_surface` (L90)
-- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L31)
+- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L32)
 - `core/services/endpoint_usage_store.py` :: `usage_stats` (L83)
 - `core/services/env_block.py` :: `is_enabled` (L48)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_prompt_section` (L185)
@@ -1248,9 +1248,9 @@ Generated from source. 8267/15811 functions/methods documented (52%). The list b
 - `core/services/memory_density.py` :: `mark_promoted` (L185)
 - `core/services/memory_emotional_context.py` :: `get_mood_for_heading` (L61)
 - `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L104)
-- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L94)
-- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
-- `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
+- `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L95)
+- `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L59)
+- `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L27)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
 - `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L173)
 - `core/services/memory_tattoos.py` :: `describe_tattoo` (L156)

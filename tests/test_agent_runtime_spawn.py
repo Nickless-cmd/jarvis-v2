@@ -52,3 +52,69 @@ def test_der_er_INGEN_udelukkelse_af_copilot_for_scouten():
     src = inspect.getsource(M)
     assert "exclude=" not in src, "der må ikke være en udelukkelses-mængde"
     assert "_SCOUT_UDELUKKER" not in src
+
+
+# ── Ukendt rolle: faldet er tilladt, tavsheden er ikke (2/10-2026) ──────
+
+
+def test_ukendt_rolle_falder_tilbage_MED_en_advarsel(caplog):
+    """Bjørn: «godkend de props der venter» — forslaget om at logge faldet.
+
+    Fri tekst i rolle-feltet er TILLADT (se skemaet for spawn_agent_task). Men
+    maalt i `agent_registry` stod 13 koersler med et rollenavn der ikke findes
+    i templaten — fire med opgaveteksten klaebet paa. Alle koerte researcher-
+    templaten, og ingen kunne se det. Faldet bevares; advarslen er det nye.
+    """
+    import logging
+    from unittest.mock import patch
+
+    from core.services import agent_runtime_spawn as M
+
+    with (
+        patch.object(M, "_check_spawn_limits"),
+        patch.object(M, "_spawn_depth_for", return_value=0),
+        patch.object(M, "create_agent_registry_entry", return_value={"agent_id": "a1"}),
+        patch.object(M, "execute_agent_task", return_value={}),
+        patch("core.services.recursion_guard.can_spawn", return_value=True),
+        caplog.at_level(logging.WARNING),
+    ):
+        M.spawn_agent_task(
+            role="verification-cost", goal="x", auto_execute=False
+        )
+
+    assert any(
+        "ukendt agent-rolle" in str(r.message) for r in caplog.records
+    ), "faldet skete i tavshed — advarslen mangler"
+
+
+def test_kendt_rolle_giver_INGEN_advarsel(caplog):
+    """Advarslen skal betyde noget: en kendt rolle maa ikke stoeje."""
+    import logging
+    from unittest.mock import patch
+
+    from core.services import agent_runtime_spawn as M
+
+    with (
+        patch.object(M, "_check_spawn_limits"),
+        patch.object(M, "_spawn_depth_for", return_value=0),
+        patch.object(M, "create_agent_registry_entry", return_value={"agent_id": "a2"}),
+        patch.object(M, "execute_agent_task", return_value={}),
+        patch("core.services.recursion_guard.can_spawn", return_value=True),
+        caplog.at_level(logging.WARNING),
+    ):
+        M.spawn_agent_task(role="researcher", goal="x", auto_execute=False)
+
+    assert not any(
+        "ukendt agent-rolle" in str(r.message) for r in caplog.records
+    ), "en kendt rolle gav en advarsel — saa er advarslen vaerdilos"
+
+
+def test_faldet_er_ikke_skrevet_som_et_tavst_get():
+    """Den TAVSE form skal ikke kunne snige sig ind igen."""
+    import inspect
+
+    from core.services import agent_runtime_spawn as M
+
+    src = inspect.getsource(M)
+    assert 'AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])' not in src
+    assert "ukendt agent-rolle" in src

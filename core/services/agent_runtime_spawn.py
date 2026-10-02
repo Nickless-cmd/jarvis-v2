@@ -171,7 +171,20 @@ def spawn_agent_task(
             f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
         )
     allowed_tools = allowed_tools or []
-    template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
+    # Fri tekst er TILLADT (rollen er en label, ikke en enum — se skemaet for
+    # spawn_agent_task). Men foer 2/10-2026 skete faldet TAVST: maalt i
+    # agent_registry stod 13 koersler med et rollenavn der ikke findes i
+    # templaten — fire af dem med opgaveteksten klaebet paa («navn — spoergsmaal»).
+    # Ingen kunne se at de alle sammen koerte researcher-templaten. Faldet
+    # bevares; kun tavsheden fjernes.
+    template = AGENT_ROLE_TEMPLATES.get(role)
+    if template is None:
+        logger.warning(
+            "ukendt agent-rolle %r — bruger researcher-templaten som bund "
+            "(fri tekst er tilladt; send system_prompt for en egen persona)",
+            role,
+        )
+        template = AGENT_ROLE_TEMPLATES["researcher"]
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
     # Expand tool_policy → concrete tools when the caller gave no explicit allowlist

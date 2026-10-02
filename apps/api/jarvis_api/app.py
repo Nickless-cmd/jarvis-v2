@@ -356,6 +356,13 @@ def create_app() -> FastAPI:
             start_auto_remember_subscriber()
             start_daily_journal_daemon()
             start_discord_gateway()
+            # Vagthund: gatewayens klienttraad doer paa en enkelt 503 fra
+            # Discord og blev aldrig rejst igen — 11 timer doed kanal
+            # 1-2/10-2026. Supervisoren tjekker ejerskabet og rejser den.
+            from core.services.discord_gateway_supervisor import (
+                start_discord_gateway_supervisor,
+            )
+            start_discord_gateway_supervisor()
             start_telegram_gateway()
             start_voice_daemon()
             try:
@@ -706,6 +713,9 @@ def create_app() -> FastAPI:
                 ("stop_heartbeat_scheduler", stop_heartbeat_scheduler),
                 ("stop_notification_bridge", stop_notification_bridge),
                 ("stop_scheduled_tasks_service", stop_scheduled_tasks_service),
+                ("stop_discord_gateway_supervisor",
+                 _senere("core.services.discord_gateway_supervisor",
+                         "stop_discord_gateway_supervisor")),
                 ("stop_discord_gateway", stop_discord_gateway),
                 ("stop_telegram_gateway", stop_telegram_gateway),
                 ("stop_auto_remember_subscriber", stop_auto_remember_subscriber),

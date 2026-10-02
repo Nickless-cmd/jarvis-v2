@@ -196,8 +196,8 @@ def _iter_openai_compatible_chat_events(
                             provider=provider, code=_vf.STALL_KODE,
                             message=(
                                 f"{provider}/{model} holdt forbindelsen aaben i "
-                                f"{int(_stime.monotonic() - _t_aabnet)}s uden ét "
-                                f"eneste indholds-event"
+                                f"{int(_stime.monotonic() - _t_aabnet)}s uden en "
+                                f"eneste data-linje — kun keepalive"
                             ),
                         )
                     continue

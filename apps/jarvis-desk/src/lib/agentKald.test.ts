@@ -42,7 +42,7 @@ describe('agentIdFra', () => {
 
 describe('erUnderagent', () => {
   it('kender de værktøjer der føder en agent', () => {
-    for (const n of ['scout_agent', 'spawn_agent_task', 'dispatch_code_mode_task', 'convene_council']) {
+    for (const n of ['scout_agent', 'spawn_agent_task', 'dispatch_code_mode_task']) {
       expect(erUnderagent(n)).toBe(true)
     }
   })

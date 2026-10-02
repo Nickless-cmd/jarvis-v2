@@ -6,13 +6,13 @@ swarms to a landing conclusion, and manage the full agent lifecycle
 
 This module was split (behavior-preserving) into focused submodules:
 
+- ``agent_runtime_council``  — council & swarm collective rounds
 - ``agent_runtime_base``     — imports, limits, role templates, tool loop,
                                 the reversible ``agent_tools_enabled`` flag,
                                 and small pure helpers
 - ``agent_runtime_surfaces`` — read/build surfaces over agents + councils
 - ``agent_runtime_spawn``    — spawn/execute/message/schedule/cleanup +
                                 terminal lifecycle transitions
-- ``agent_runtime_council``  — council & swarm collective rounds
 
 Every public and private symbol that previously lived here is re-exported
 from this module for full backward compatibility. Notably
@@ -54,6 +54,20 @@ from core.services.agent_runtime_base import (  # noqa: F401
 from core.services.agent_runtime_surfaces import (  # noqa: F401
     _progress_label,
 )
+from core.services.agent_runtime_council import (  # noqa: F401
+    _augment_council_surface,
+    _build_council_role_prefixed_summary,
+    _close_council_agents,
+    _derive_initiative,
+    _detect_swarm_conflicts,
+    _extract_confidence,
+    _extract_vote,
+    _format_peer_context,
+    _load_council_model_config,
+    _parse_percent_confidence,
+    _run_collective_round,
+    _trim,
+)
 from core.services.agent_runtime_spawn import (  # noqa: F401
     _SPAWN_TOOL_INSTRUCTION,
     _WATCHER_RELAY_KEYWORDS,
@@ -69,18 +83,4 @@ from core.services.agent_runtime_spawn import (  # noqa: F401
     _result_contract_text,
     _schedule_retry_backoff,
     _spawn_depth_for,
-)
-from core.services.agent_runtime_council import (  # noqa: F401
-    _augment_council_surface,
-    _build_council_role_prefixed_summary,
-    _close_council_agents,
-    _derive_initiative,
-    _detect_swarm_conflicts,
-    _extract_confidence,
-    _extract_vote,
-    _format_peer_context,
-    _load_council_model_config,
-    _parse_percent_confidence,
-    _run_collective_round,
-    _trim,
 )

@@ -17,8 +17,6 @@ def test_registry_contains_all_daemons():
         "meta_reflection", "experienced_time", "development_narrative",
         "absence", "creative_drift", "existential_wonder", "dream_insight",
         "code_aesthetic", "memory_decay", "user_model", "desire",
-        "autonomous_council",
-        "council_memory",
     }
     # System has grown beyond the original 22 daemons (43+ as of 2026-05-15).
     # Test intent: verify the 22 known/core daemons are registered. New
@@ -119,10 +117,14 @@ def test_restart_clears_state_var(tmp_path):
 
 
 def test_retired_daemons_default_disabled(tmp_path):
-    """Fase 6/7 + Lag 6: autonomous_council, code_aesthetic and current_pull are
-    retired — registered (code + engine preserved) but not running by default."""
+    """code_aesthetic og current_pull er pensioneret — registreret (kode bevaret)
+    men ikke koerende som standard.
+
+    2/10-2026: `autonomous_council` er TAGET UD af listen, fordi dens post ikke
+    findes mere. Den gik fra pensioneret til SLETTET — se begrundelsen ved
+    `_BEVIDST_SLUKKEDE` nedenfor."""
     from core.services import daemon_manager
-    retired = ("autonomous_council", "code_aesthetic", "current_pull")
+    retired = ("code_aesthetic", "current_pull")
     for name in retired:
         assert name in daemon_manager.get_daemon_names()
         assert daemon_manager._REGISTRY[name].get("default_enabled") is False, name
@@ -220,7 +222,17 @@ def test_set_interval_requires_minutes_param(tmp_path):
 # paa gratis smaa-modeller, med konklusioner der aldrig blev laest. Bjoern 15/9:
 # "council er spildt tokens". Motoren er intakt (convene_council kan stadig kaldes
 # on-demand); det er kun den blinde, tidsstyrede trigger der er vaek.
-_BEVIDST_SLUKKEDE: set[str] = {"autonomous_council"}
+# 2/10-2026: saettet er TOMT. `autonomous_council` var dens eneste post, og
+# daemonen er nu slettet — der findes ingen registry-post til at baere en
+# begrundelse. Bjoerns dom fra 15/9 staar bevaret ovenfor, for den er grunden:
+# 35 raad paa 11 dage med konklusioner der aldrig blev laest. Motoren
+# (`agent_runtime_council` + `council_deliberation_controller`) staar stadig og
+# kan kaldes on-demand; det var den blinde trigger OG den tavse
+# hukommelses-daemon der forsvandt.
+#
+# Vagten nedenfor maaler derfor ingenting lige nu. Det er med vilje: naeste gang
+# noget slukkes bevidst, skal navnet staa her MED sin begrundelse.
+_BEVIDST_SLUKKEDE: set[str] = set()
 
 
 def test_hver_pensioneret_daemon_har_en_efterfoelger():
@@ -287,6 +299,8 @@ def test_familierne_koerer_faktisk_de_genindsatte():
     # familie-tick og samlede ~3 raad i doegnet paa gratis smaa-modeller, hvis
     # konklusioner aldrig blev laest. Denne assertion vender den gamle vagt: nu
     # skal den IKKE ligge i listen, saa genindsættelsen ikke sker ved et uheld.
+    # 2/10-2026: trivielt sandt nu — daemonen er slettet, saa den KAN ikke staa
+    # paa listen. Bevaret som en historisk markoer, ikke som en levende vagt.
     assert "autonomous_council" not in [n for n, _fn in C._COGNITION_UNCONDITIONAL]
     # current_pull køres inline i affect-familiens non-LLM-runner, ikke fra en liste.
     import inspect

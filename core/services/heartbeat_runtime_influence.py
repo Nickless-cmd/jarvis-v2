@@ -1194,15 +1194,6 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    if _dm.is_enabled("autonomous_council"):
-        try:
-            from core.services.autonomous_council_daemon import tick_autonomous_council_daemon
-            _ac_result = _hb._daemon_tick_with_deadline(
-                "autonomous_council", tick_autonomous_council_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("autonomous_council", _ac_result or {})
-        except Exception:
-            pass
 
     # C5 — event-trigger SHADOW-meter FLYTTET 2026-07-14 til den ubetingede daemon-sektion
     # i heartbeat_runtime (% 6 ≈ 3 min). Var HER inde i _build_influence_trace, men den bygges
@@ -1210,17 +1201,6 @@ def _build_influence_trace(
     # på 24t). Nu tikker den uanset idle, så et fuldt 24t θ-vindue akkumulerer. Se daemon_manager
     # _REGISTRY["event_trigger_shadow"].
 
-    if _dm.is_enabled("council_memory"):
-        try:
-            from core.services.council_memory_daemon import tick_council_memory_daemon
-            _recent_ctx = " ".join(inputs_present[:5])
-            _cm_result = _hb._daemon_tick_with_deadline(
-                "council_memory", tick_council_memory_daemon,
-                recent_context=_recent_ctx, deadline_seconds=20.0,
-            )
-            _dm.record_daemon_tick("council_memory", _cm_result or {})
-        except Exception:
-            pass
 
 
 

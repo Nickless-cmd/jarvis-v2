@@ -141,33 +141,4 @@ def test_update_setting_unknown_key_returns_error():
     assert "valid_keys" in result
 
 
-# ── recall_council_conclusions ─────────────────────────────────────────
 
-def test_recall_council_conclusions_returns_matches():
-    from unittest.mock import patch
-    entries = [
-        {"topic": "Autonomy", "conclusion": "Focus.", "timestamp": "2026-04-01T10:00:00",
-         "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
-    ]
-    with (
-        patch("core.services.council_memory_service.read_all_entries", return_value=entries),
-        patch("core.services.council_memory_daemon._call_similarity_llm", return_value="1"),
-    ):
-        result = _call_handler("recall_council_conclusions", {"topic": "autonomy and limits"})
-    assert "entries" in result
-    assert len(result["entries"]) == 1
-
-
-def test_recall_council_conclusions_returns_empty_on_no_match():
-    from unittest.mock import patch
-    entries = [
-        {"topic": "Autonomy", "conclusion": "Focus.", "timestamp": "2026-04-01T10:00:00",
-         "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
-    ]
-    with (
-        patch("core.services.council_memory_service.read_all_entries", return_value=entries),
-        patch("core.services.council_memory_daemon._call_similarity_llm", return_value="ingen"),
-    ):
-        result = _call_handler("recall_council_conclusions", {"topic": "something unrelated"})
-    assert result["entries"] == []
-    assert "message" in result

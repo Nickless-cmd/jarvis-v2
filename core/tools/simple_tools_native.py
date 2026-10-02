@@ -4,7 +4,7 @@ Udskilt fra ``simple_tools.py`` (Boy Scout, 2026-07): initiativer, mood, memory,
 proposals, tasks, chronicles, dreams, notify, discord, home-assistant, council,
 agenter, daemon, settings, project, central/db-query, tool-router (load_more_tools)
 samt google/gmail/notes/hf-connector-handlers. INGEN logik-ændring — kun flyt.
-Modulet ejer sin egen tilstand (_DISCORD_* rate-limits, _convene_council_daily_*
+Modulet ejer sin egen tilstand (_DISCORD_* rate-limits
 tællere, _SENSITIVE_SETTING_PATTERNS). ``simple_tools`` re-importerer alle navne
 (dispatch-dict + tests).
 
@@ -1705,103 +1705,13 @@ def _exec_home_assistant(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Ukendt action: {action!r}. Brug list_entities, get_state eller call_service.", "status": "error"}
 
 
-_convene_council_daily_date: str = ""
-_convene_council_daily_count: int = 0
 _CONVENE_COUNCIL_DAILY_MAX = 5
 
 
-def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
-    global _convene_council_daily_date, _convene_council_daily_count
-    topic = str(args.get("topic") or "").strip()
-    if not topic:
-        return {"status": "error", "error": "topic is required"}
-    urgency = str(args.get("urgency") or "medium")
-
-    # Daily rate limit (does not apply to urgency=high — crisis bypass)
-    if urgency != "high":
-        from datetime import UTC, datetime as _dt
-        today = _dt.now(UTC).strftime("%Y-%m-%d")
-        if _convene_council_daily_date != today:
-            _convene_council_daily_date = today
-            _convene_council_daily_count = 0
-        if _convene_council_daily_count >= _CONVENE_COUNCIL_DAILY_MAX:
-            return {
-                "status": "rate_limited",
-                "error": f"Det lille råd er kaldt {_convene_council_daily_count} gange i dag (max {_CONVENE_COUNCIL_DAILY_MAX}). Brug urgency='high' i en ægte krise.",
-                "daily_count": _convene_council_daily_count,
-                "daily_max": _CONVENE_COUNCIL_DAILY_MAX,
-            }
-        _convene_council_daily_count += 1
-    explicit_roles: list[str] = list(args.get("roles") or [])
-
-    if explicit_roles:
-        roles = explicit_roles
-    elif urgency == "high":
-        roles = ["critic", "planner"]
-    elif urgency == "low":
-        roles = ["planner", "critic", "researcher", "synthesizer", "devils_advocate"]
-    else:  # medium
-        roles = ["planner", "critic", "researcher", "synthesizer"]
-
-    try:
-        from core.services.agent_runtime import create_council_session_runtime
-        session = create_council_session_runtime(topic=topic, roles=roles)
-        council_id = str(session.get("council_id") or "")
-        if not council_id:
-            return {"status": "error", "error": "failed to create council session"}
-        # KVITTERING (Fase 6): runden startes, og turen gaar videre. Maalt
-        # 10/9-2026 tog en runde ~17 sekunder selv efter parallelisering — og
-        # sytten sekunders frys er sytten sekunder hvor han ikke kan andet.
-        #
-        # Resultatet er ikke vaek: `council_status` henter det direkte, og
-        # runden skriver sin konklusion til raads-hukommelsen uanset, saa
-        # `recall_council_conclusions` finder den ogsaa hvis han glemmer det.
-        from core.services.council_receipt import receipt, start_round_in_background
-        startet = start_round_in_background(council_id)
-        return receipt(council_id, topic=topic, roles=roles, started=startet)
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
 
 
-def _exec_council_status(args: dict[str, Any]) -> dict[str, Any]:
-    """Hent et raad der blev sat i gang med `convene_council`."""
-    from core.services.council_receipt import status
-    return status(str(args.get("council_id") or ""))
 
 
-def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:
-    action = str(args.get("action") or "").strip()
-    if not action:
-        return {"status": "error", "error": "action is required"}
-
-    try:
-        from core.services.agent_runtime import spawn_agent_task
-        result = spawn_agent_task(
-            role="devils_advocate",
-            goal=(
-                f"Jarvis is about to take the following action:\n\n{action}\n\n"
-                "Argue the strongest possible case AGAINST this action. "
-                "Be specific. End your response with one of: "
-                "ESCALATE (full council needed) or PROCEED (action seems defensible)."
-            ),
-            auto_execute=True,
-            budget_tokens=2000,
-        )
-        text = ""
-        messages = result.get("messages") or []
-        for msg in reversed(messages):
-            if str(msg.get("direction") or "") == "agent->jarvis":
-                text = str(msg.get("content") or "")
-                break
-        escalate = "ESCALATE" in text.upper()
-        return {
-            "status": "ok",
-            "objection": text[:600] if text else "No objection raised.",
-            "escalate_to_council": escalate,
-            "agent_id": str(result.get("agent_id") or ""),
-        }
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
 
 
 # ── Agent tools handlers ───────────────────────────────────────────────
@@ -2246,33 +2156,6 @@ def _exec_update_setting(args: dict[str, Any]) -> dict[str, Any]:
     return {"key": key, "old": old_value, "new": value}
 
 
-def _exec_recall_council_conclusions(args: dict[str, Any]) -> dict[str, Any]:
-    topic = str(args.get("topic") or "").strip()
-    if not topic:
-        return {"error": "topic is required", "entries": []}
-    from core.services.council_memory_service import read_all_entries
-    from core.services.council_memory_daemon import (
-        _call_similarity_llm,
-        _parse_indices,
-    )
-    entries = read_all_entries()
-    if not entries:
-        return {"entries": [], "message": "Ingen rådskonklusioner gemt endnu"}
-
-    index_lines = []
-    for i, entry in enumerate(entries, 1):
-        summary = str(entry.get("conclusion") or "")[:120]
-        index_lines.append(f"{i}. [{entry.get('timestamp', '')}] {entry.get('topic', '')} — {summary}")
-    index_text = "\n".join(index_lines)
-
-    llm_response = _call_similarity_llm(recent_context=topic, index_text=index_text)
-    indices = _parse_indices(llm_response, max_idx=len(entries))
-
-    if not indices:
-        return {"entries": [], "message": "Ingen relevante rådskonklusioner fundet"}
-
-    matched = [entries[i - 1] for i in indices]
-    return {"entries": matched}
 
 
 def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
@@ -3081,8 +2964,6 @@ __all__ = [
     "_exec_discord_channel",
     "_exec_search_chat_history",
     "_exec_home_assistant",
-    "_exec_convene_council",
-    "_exec_quick_council_check",
     "_exec_spawn_agent_task",
     "_exec_send_message_to_agent",
     "_exec_list_agents",
@@ -3095,7 +2976,6 @@ __all__ = [
     "_exec_eventbus_recent",
     "_is_sensitive_setting",
     "_exec_update_setting",
-    "_exec_recall_council_conclusions",
     "_exec_internal_api",
     "_exec_my_project_status",
     "_exec_my_project_journal_write",

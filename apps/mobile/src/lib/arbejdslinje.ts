@@ -96,7 +96,6 @@ const MED_GENSTAND: Record<string, string> = {
 const UDEN_GENSTAND: Record<string, string> = {
   compact_context: 'Komprimerer konteksten',
   look_around: 'Kigger rundt',
-  convene_council: 'Indkalder rådet',
   daemon_status: 'Tjekker daemons',
   heartbeat_status: 'Tjekker hjerteslaget',
   central_query: 'Spørger Centralen',

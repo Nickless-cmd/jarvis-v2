@@ -274,24 +274,6 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_affect] Emergent appetites with intensity-based lifecycle",
     },
-    "autonomous_council": {
-        "module": "core.services.autonomous_council_daemon",
-        "reset_var": "_last_council_at",
-        "reset_value": None,
-        "default_cadence_minutes": 30,
-        "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret. GENINDSAT i cognition-familien 5/9, TAGET UD IGEN 15/9 (cluster_daemon._COGNITION_UNCONDITIONAL) — den blinde trigger er vaek, motoren intakt.
-        "retired": "2026-07-13",
-        "description": "[PENSIONERET] Blind, automatisk raadsindkaldelse via signal-scoring — ingen familie kalder den laengere (taget ud 15/9-2026). Motoren (convene_council + council_deliberation_controller + council-tabellerne) er intakt: raadet samles kun on-demand.",
-    },
-    "council_memory": {
-        "module": "core.services.council_memory_daemon",
-        "reset_var": "_last_llm_call_at",
-        "reset_value": None,
-        "default_cadence_minutes": 10,
-        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (GATED LLM member bag familiens ÉNE should_generative_fire — cooldown-timer LLM → salience-gatet; self-throttler stadig 10min cooldown). council.memory_injected + heartbeat council_memory-context BEVARET.
-        "retired": "2026-07-15",
-        "description": "[PENSIONERET → cluster_memory] Injects relevant past council conclusions into heartbeat context",
-    },
     "signal_decay": {
         "module": "core.services.signal_decay_daemon",
         "reset_var": "_last_tick_at",

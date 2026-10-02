@@ -108,39 +108,27 @@ def _collect_memory_snapshot() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _mem_council_signals(snap: dict) -> dict[str, float]:
-    """council_memory gate signal: how much council history there is to weigh."""
-    n = float(snap.get("council_entry_count", 0) or 0)
-    return {"entries": min(n / 3.0, 1.0)}
-
-
-def _mem_council_live(snap: dict) -> dict[str, Any]:
-    from core.services.council_memory_daemon import tick_council_memory_daemon
-    return tick_council_memory_daemon(recent_context=str(snap.get("recent_context", "")))
-
-
 def build_memory_family() -> ClusterDaemon:
     """Construct the memory/maintenance cluster-daemon (family #6), LIVE.
 
-    ONE gated LLM member (council_memory) behind the family gate. The seven
-    NON-LLM maintenance members are run UNCONDITIONALLY by
-    ``tick_cluster_memory``, not gated here.
+NUL gatede LLM-medlemmer siden 2/10-2026 (raadet pensioneret). De syv
+    NON-LLM vedligeholdelses-medlemmer koeres UBETINGET af
+    ``tick_cluster_memory``, ikke gatet her.
     """
     return ClusterDaemon(
         family_name=MEMORY_FAMILY,
         cluster="cognition",
         collect_snapshot=_collect_memory_snapshot,
-        members=[
-            ClusterMember(
-                name="council_memory",
-                signals=_mem_council_signals,
-                observe=_iv_surface_observe(
-                    ("core.services.council_memory_daemon", "build_council_memory_surface"),
-                    ("last_llm_call_at", "injected_count"),
-                ),
-                live=_mem_council_live,
-            ),
-        ],
+        # 2/10-2026: familiens ENESTE gatede medlem var `council_memory`, og
+        # raadet er pensioneret. Gaten har dermed ingenting at gate. De syv
+        # NON-LLM vedligeholdelses-medlemmer koeres ubetinget af
+        # `tick_cluster_memory` og er uberoerte.
+        #
+        # NB: `memory_family()` har ingen kaldere uden for denne fil (kun en
+        # `reset_var`-reference i daemon_manager), og `cluster_memory` har NUL
+        # events i basen — familien ser selv doed ud. Det er et SEPARAT spor;
+        # her roeres kun raadet.
+        members=[],
     )
 
 

@@ -7,7 +7,7 @@ what it WOULD dispatch, consults the dispatch guards, and records telemetry to
 
 These tests prove:
   * a decision → telemetry with would_dispatch=True + crossed populated,
-    and ZERO LLM / ZERO council calls;
+    og kun observerer;
   * a flat (None) evaluate → telemetry with would_dispatch=False, again zero;
   * a signal-source error → safe skip (records nothing), never raises.
 """
@@ -18,7 +18,7 @@ import pytest
 
 @pytest.fixture()
 def captured(monkeypatch):
-    """Capture central_timeseries.record calls + install LLM/council tripwires."""
+    """Opsaml central_timeseries.record — shadow maa observere, ikke handle."""
     from core.services import central_timeseries as ts
 
     records: list[dict] = []
@@ -28,24 +28,16 @@ def captured(monkeypatch):
 
     monkeypatch.setattr(ts, "record", _rec)
 
-    calls = {"llm": 0, "council": 0}
-
-    # Tripwires on the real LLM + council seams the daemon would use. The shadow
-    # module must NEVER reach these.
-    import core.services.autonomous_council_daemon as acd
-
-    def _boom_council(*a, **k):
-        calls["council"] += 1
-        raise AssertionError("council convened in shadow mode")
-
-    def _boom_llm(*a, **k):
-        calls["llm"] += 1
-        raise AssertionError("LLM fired in shadow mode")
-
-    monkeypatch.setattr(acd, "_run_autonomous_council", _boom_council, raising=False)
-    monkeypatch.setattr(acd, "_call_llm", _boom_llm, raising=False)
-
-    return {"records": records, "calls": calls}
+    # 2/10-2026: her stod to tripwires paa raads-daemonen (`_run_autonomous_council`
+    # og `_call_llm`). Raadet er pensioneret og modulet findes ikke mere, saa en
+    # tripwire paa det ville maale INGENTING — og de seks `== 0`-assertions ville
+    # passere trivielt og se betryggende ud. Fjernet frem for at staa som pynt.
+    #
+    # Maalt samtidig: `central_convene_judge` kalder slet ingen LLM (nul traef paa
+    # _call_llm/execute_with_role/cheap_lane/complete), saa der er ingen anden
+    # soem at flytte vagten til. Det testen stadig daekker — at shadow OBSERVERER
+    # og ikke handler — ligger i `records`.
+    return {"records": records}
 
 
 @pytest.fixture()
@@ -86,8 +78,6 @@ def test_decision_records_would_dispatch_true_no_llm_no_council(monkeypatch, cap
 
     assert out["recorded"] is True
     assert out["would_dispatch"] is True
-    assert captured["calls"]["llm"] == 0
-    assert captured["calls"]["council"] == 0
 
     assert len(captured["records"]) == 1
     rec = captured["records"][0]
@@ -119,8 +109,6 @@ def test_flat_records_would_dispatch_false_no_llm_no_council(monkeypatch, captur
 
     assert out["recorded"] is True
     assert out["would_dispatch"] is False
-    assert captured["calls"]["llm"] == 0
-    assert captured["calls"]["council"] == 0
 
     assert len(captured["records"]) == 1
     meta = captured["records"][0]["meta"]
@@ -143,5 +131,3 @@ def test_signal_source_error_is_safe_skip(monkeypatch, captured, shadow_mode):
     assert out["recorded"] is False
     assert out.get("skipped") == "signal_source_error"
     assert captured["records"] == []
-    assert captured["calls"]["llm"] == 0
-    assert captured["calls"]["council"] == 0

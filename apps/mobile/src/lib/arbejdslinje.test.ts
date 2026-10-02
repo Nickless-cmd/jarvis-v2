@@ -41,9 +41,11 @@ describe('arbejdslinjeTekst', () => {
   })
 
   it('hele sætninger uden genstand bruges som de er', () => {
-    // MUT: flyt convene_council til MED_GENSTAND → «Indkalder rådet rådet» → fanger.
-    expect(arbejdslinjeTekst('Indkalder råd: noget', 'convene_council'))
-      .toBe('Indkalder rådet')
+    // 2/10-2026: eksemplet var `convene_council`, men raadet er pensioneret.
+    // Byttet til et vaerktoej der FINDES — adfaerden er den samme.
+    // MUT: flyt look_around til MED_GENSTAND → «Kigger rundt rundt» → fanger.
+    expect(arbejdslinjeTekst('Kigger: noget', 'look_around'))
+      .toBe('Kigger rundt')
   })
 
   it('tom eller manglende workingStep tegner intet', () => {

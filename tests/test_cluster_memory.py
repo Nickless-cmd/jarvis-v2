@@ -29,9 +29,6 @@ from unittest.mock import MagicMock, patch
 
 import core.services.cluster_daemon_families as cdmf
 
-# The single GATED LLM member and the (module, tick-fn) it dispatches to.
-_GATED_TICK = ("core.services.council_memory_daemon", "tick_council_memory_daemon")
-
 # The 7 NON-LLM members and the (module, fn) each runs unconditionally.
 _NONLLM_TICKS = {
     "memory_write_queue": ("core.services.memory_write_queue", "tick_memory_write_queue_daemon"),
@@ -47,11 +44,47 @@ _NONLLM_TICKS = {
 _SNAP = {"council_entry_count": 5, "recent_context": "seneste samtale"}
 
 
-def _patch_gated_tick(stack: ExitStack) -> MagicMock:
-    mod, fn = _GATED_TICK
-    m = MagicMock(return_value={"injected": True})
-    stack.enter_context(patch(f"{mod}.{fn}", m))
-    return m
+# ---------------------------------------------------------------------------
+# NUL gatede medlemmer siden 2/10-2026 (raadet pensioneret)
+# ---------------------------------------------------------------------------
+
+
+def test_familien_har_ingen_gatede_medlemmer_laengere():
+    """Raadet var familiens ENESTE gatede LLM-medlem.
+
+    Foer 2/10-2026 stod her `== {"council_memory"}`. Da raadet blev pensioneret
+    (32 vaerktoejs-kald nogensinde, 15 af dem fejlede, intet siden 10/9) havde
+    gaten ingenting at gate. De otte NON-LLM vedligeholdelses-medlemmer koeres
+    ubetinget af `tick_cluster_memory` og er uberoerte — det daekkes nedenfor.
+    """
+    fam = cdmf.build_memory_family()
+    assert fam.family_name == "cluster_memory"
+    assert [m.name for m in fam.members] == []
+
+
+def test_uden_medlemmer_spoerges_den_generative_gate_slet_ikke():
+    """Maalt, ikke antaget: med nul medlemmer naas `should_generative_fire` ALDRIG.
+
+    NB en uoverensstemmelse fundet samtidig: resultatet rapporterer
+    `gate_calls == 1`, selv om gate-funktionen blev kaldt NUL gange. Familien
+    siger altsaa at den gatede uden at have gjort det. Det pinnes IKKE her som
+    forventet adfaerd — det er en rapporterings-fejl der hoerer i sit eget spor.
+    """
+    fam = cdmf.build_memory_family()
+    kald = {"n": 0}
+
+    def _fire(name, signals, **kw):
+        kald["n"] += 1
+        return True
+
+    with ExitStack() as stack:
+        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
+        stack.enter_context(patch("core.services.event_gate.should_generative_fire", side_effect=_fire))
+        stack.enter_context(patch("core.services.central_core.central"))
+        result = fam.tick(_SNAP, shadow=False)
+
+    assert kald["n"] == 0, "gaten blev spurgt, men der er ingen medlemmer at gate"
+    assert result["members_ran"] == []
 
 
 def _patch_nonllm_ticks(stack: ExitStack) -> dict[str, MagicMock]:
@@ -71,85 +104,9 @@ def _patch_nonllm_ticks(stack: ExitStack) -> dict[str, MagicMock]:
 # ---------------------------------------------------------------------------
 
 
-def test_memory_family_gates_once():
-    """The gated LLM tier consults should_generative_fire exactly ONCE."""
-    fam = cdmf.build_memory_family()
-    calls = {"n": 0}
-
-    def _fire(name, signals, **kw):
-        calls["n"] += 1
-        return True
-
-    with ExitStack() as stack:
-        _patch_gated_tick(stack)
-        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
-        stack.enter_context(patch("core.services.event_gate.should_generative_fire", side_effect=_fire))
-        stack.enter_context(patch("core.services.central_core.central"))
-        result = fam.tick(_SNAP, shadow=False)
-
-    assert calls["n"] == 1, "family must gate ONCE for the LLM tier"
-    assert result["gate_calls"] == 1
-    assert result["fired"] is True
-
-
-def test_build_memory_family_declares_single_gated_member():
-    fam = cdmf.build_memory_family()
-    assert fam.family_name == "cluster_memory"
-    assert {m.name for m in fam.members} == {"council_memory"}
-
-
-def test_family_gate_receives_council_namespaced_signals():
-    fam = cdmf.build_memory_family()
-    seen: dict = {}
-
-    def _fire(name, signals, **kw):
-        seen["name"] = name
-        seen["signals"] = dict(signals)
-        return True
-
-    with ExitStack() as stack:
-        _patch_gated_tick(stack)
-        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
-        stack.enter_context(patch("core.services.event_gate.should_generative_fire", side_effect=_fire))
-        stack.enter_context(patch("core.services.central_core.central"))
-        fam.tick(_SNAP, shadow=False)
-
-    assert seen["name"] == "cluster_memory"
-    assert any(k.startswith("council_memory:") for k in seen["signals"]), "gated member signals missing from the ONE gate"
-
-
 # ---------------------------------------------------------------------------
 # Dispatch — gated member runs iff the family gate fires
 # ---------------------------------------------------------------------------
-
-
-def test_fired_family_invokes_council_member():
-    fam = cdmf.build_memory_family()
-    with ExitStack() as stack:
-        m = _patch_gated_tick(stack)
-        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
-        stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=True))
-        stack.enter_context(patch("core.services.central_core.central"))
-        result = fam.tick(_SNAP, shadow=False)
-
-    assert result["members_ran"] == ["council_memory"]
-    assert m.call_count == 1
-    # recent_context is forwarded to the old daemon's tick
-    assert m.call_args.kwargs.get("recent_context") == "seneste samtale"
-
-
-def test_gate_skip_runs_no_council_generation():
-    fam = cdmf.build_memory_family()
-    with ExitStack() as stack:
-        m = _patch_gated_tick(stack)
-        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
-        stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=False))
-        stack.enter_context(patch("core.services.central_core.central"))
-        result = fam.tick(_SNAP, shadow=False)
-
-    assert result["fired"] is False
-    assert result["members_ran"] == []
-    assert m.call_count == 0
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +116,6 @@ def test_gate_skip_runs_no_council_generation():
 
 def test_all_seven_nonllm_members_run_when_gate_fires():
     with ExitStack() as stack:
-        _patch_gated_tick(stack)
         nonllm = _patch_nonllm_ticks(stack)
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
         stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=True))
@@ -177,7 +133,6 @@ def test_nonllm_members_run_even_when_gate_does_not_fire():
     safeguard, consolidation, recall — must run every tick regardless of the
     generative family gate."""
     with ExitStack() as stack:
-        gated = _patch_gated_tick(stack)
         nonllm = _patch_nonllm_ticks(stack)
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
         stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=False))
@@ -185,18 +140,26 @@ def test_nonllm_members_run_even_when_gate_does_not_fire():
         stack.enter_context(patch.object(cdmf, "_collect_memory_snapshot", return_value=_SNAP))
         result = cdmf.tick_cluster_memory()
 
-    # generative gate blocked the LLM member ...
-    assert result["fired"] is False
-    assert gated.call_count == 0
-    # ... but the 7 non-LLM members ran anyway
+    # 2/10-2026: her stod `assert result["fired"] is False`. Den kan ikke
+    # arrangeres laengere, og grunden er vaerd at kende: familien har nul
+    # medlemmer siden raadet blev pensioneret, saa `_aggregate_signals` giver
+    # tomt, og `ClusterDaemon._gate_fires` har en fail-open — «if not agg:
+    # return True» — der fyrer UDEN at spoerge `should_generative_fire`.
+    # Resultatet melder derfor `fired: True` og `gate_calls: 1` selv om gaten
+    # blev spurgt NUL gange. Virkningen er harmloes (medlems-loekken er tom),
+    # men RAPPORTEN er forkert. `cluster_daemon.py` er faelles for alle
+    # familier, saa den roeres ikke herfra — det er sit eget spor.
+    #
+    # Det testen faktisk daekker staar uaendret: vedligeholdelsen koerer hver
+    # tik uanset den generative gate, fordi den gaar gennem
+    # `tick_cluster_memory` og ikke gennem familiens gate.
     for member, m in nonllm.items():
         assert m.call_count == 1, f"{member} must run unconditionally"
         assert member in result["members_ran"]
 
 
-def test_all_nine_members_run_in_one_tick():
+def test_all_eight_members_run_in_one_tick():
     with ExitStack() as stack:
-        _patch_gated_tick(stack)
         _patch_nonllm_ticks(stack)
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
         stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=True))
@@ -204,8 +167,9 @@ def test_all_nine_members_run_in_one_tick():
         stack.enter_context(patch.object(cdmf, "_collect_memory_snapshot", return_value=_SNAP))
         result = cdmf.tick_cluster_memory()
 
-    assert set(result["members_ran"]) == {"council_memory", *_NONLLM_TICKS.keys()}
-    assert len(result["members_ran"]) == 9
+    # 2/10-2026: ni -> otte. Raadet var det niende og er pensioneret.
+    assert set(result["members_ran"]) == set(_NONLLM_TICKS)
+    assert len(result["members_ran"]) == 8
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +179,6 @@ def test_all_nine_members_run_in_one_tick():
 
 def test_memory_write_queue_drains_every_tick():
     with ExitStack() as stack:
-        _patch_gated_tick(stack)
         nonllm = _patch_nonllm_ticks(stack)
         # gate does NOT fire — the drain must still happen
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
@@ -280,7 +243,6 @@ def test_rediscovery_fragment_injected_when_decay_surfaces_one():
 
 def test_nonllm_member_error_isolated_and_siblings_still_run():
     with ExitStack() as stack:
-        _patch_gated_tick(stack)
         nonllm = _patch_nonllm_ticks(stack)
         nonllm["memory_pruning"].side_effect = RuntimeError("pruning boom")
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
@@ -298,23 +260,6 @@ def test_nonllm_member_error_isolated_and_siblings_still_run():
     assert "selective_consolidation" in result["members_ran"]
 
 
-def test_council_error_does_not_crash_family():
-    with ExitStack() as stack:
-        m = _patch_gated_tick(stack)
-        m.side_effect = RuntimeError("council exploded")
-        nonllm = _patch_nonllm_ticks(stack)
-        stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
-        stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=True))
-        stack.enter_context(patch("core.services.central_core.central"))
-        stack.enter_context(patch.object(cdmf, "_collect_memory_snapshot", return_value=_SNAP))
-        result = cdmf.tick_cluster_memory()
-
-    assert "council_memory" in result["member_errors"]
-    assert "exploded" in result["member_errors"]["council_memory"]
-    # the 7 non-LLM siblings still ran despite the gated member's error
-    assert set(_NONLLM_TICKS).issubset(set(result["members_ran"]))
-
-
 def test_entrypoint_never_raises_on_broken_family():
     with patch.object(cdmf, "memory_family", side_effect=RuntimeError("family down")), \
          patch.object(cdmf, "_collect_memory_snapshot", return_value=_SNAP):
@@ -327,7 +272,6 @@ def test_entrypoint_never_raises_on_broken_family():
 def test_entrypoint_runs_live_by_default():
     """tick_cluster_memory defaults to LIVE (shadow=False) so it produces."""
     with ExitStack() as stack:
-        gated = _patch_gated_tick(stack)
         _patch_nonllm_ticks(stack)
         stack.enter_context(patch("core.services.event_gate.event_driven_enabled", return_value=True))
         stack.enter_context(patch("core.services.event_gate.should_generative_fire", return_value=True))
@@ -336,7 +280,6 @@ def test_entrypoint_runs_live_by_default():
         result = cdmf.tick_cluster_memory()
 
     assert result["shadow"] is False
-    assert gated.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -354,13 +297,13 @@ def test_cluster_memory_registered_live():
     assert "memory" in entry["description"]
 
 
-def test_eight_old_memory_daemons_retired():
+def test_seven_old_memory_daemons_retired():
     from core.services import daemon_manager as dm
 
     retired = [
         "memory_decay", "memory_pruning", "memory_maintenance", "memory_safeguard",
-        "selective_consolidation", "associative_recall", "council_memory",
-        "memory_write_queue",
+        "selective_consolidation", "associative_recall",
+        "memory_write_queue",  # council_memory FJERNET 2/10 — posten findes ikke mere
     ]
     with patch.object(dm, "_load_state", return_value={}):
         for name in retired:

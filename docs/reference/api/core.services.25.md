@@ -457,7 +457,7 @@ _Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L180) |
+| function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L184) |
 
 ## `core/services/tool_embeddings.py`
 _Tool description embedding cache._

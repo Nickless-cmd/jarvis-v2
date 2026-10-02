@@ -80,6 +80,10 @@ DANSKE_UDTRYK: dict[str, str] = {
     "note_delete": "slet noten, fjern huskesedlen",
     "memory_graph_query": "hvad ved du om, fortæl mig om, hvad har du på",
     "recall_sensory_memories": "hvad har jeg set, mine sanser, sanseindtryk",
+    # Maalt 2/10-2026: uden denne linje ramte «optag en sans fra rummet» intet —
+    # «optag» faldt til mic_listen/phone_record_audio (1,55) og «sans» stod uden
+    # modstykke. Vaerktoejet var i korpus hele tiden; det manglede kun i broen.
+    "record_sensory_memory": "optag en sans, gem et sanseindtryk, skriv i sansernes arkiv",
     "search_chat_history": "søg i vores samtaler, hvad sagde vi om, tidligere snak",
     "search_jarvis_brain": "søg i din hjerne, hvad har du gemt",
     # ── Beslutninger, mål, planer ────────────────────────────────────────

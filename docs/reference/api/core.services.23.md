@@ -2,86 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/self_wakeup.py`
-_Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/self_wakeup.py#L48) |
-| function | `_save` | `(records)` | — | [src](../../../core/services/self_wakeup.py#L55) |
-| function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L59) |
-| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L133) |
-| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L162) |
-| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L192) |
-| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L222) |
-| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L240) |
-| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L248) |
-| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L309) |
-| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L318) |
-| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L354) |
-| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L378) |
-| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L388) |
-| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L392) |
-| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L396) |
-
-## `core/services/selfhood_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_selfhood_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L30) |
-| function | `refresh_runtime_selfhood_proposal_statuses` | `()` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L52) |
-| function | `build_runtime_selfhood_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L83) |
-| function | `_extract_selfhood_proposals` | `()` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L112) |
-| function | `_persist_selfhood_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L198) |
-| function | `_build_snapshots` | `()` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L272) |
-| function | `_snapshot_entry` | `(snapshots, domain_key)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L283) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L291) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L302) |
-| function | `_proposal_type_from_prompt_type` | `(prompt_type)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L314) |
-| function | `_selfhood_target_for_type` | `(proposal_type)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L324) |
-| function | `_proposed_shift_for_type` | `(proposal_type)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L334) |
-| function | `_proposal_confidence` | `(*, prompt_confidence, snapshot)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L344) |
-| function | `_proposal_reason` | `(*, proposal_type, selfhood_target, proposal_confidence)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L354) |
-| function | `_source_anchor` | `(*, item, snapshot)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L364) |
-| function | `_proposal_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L372) |
-| function | `_source_anchor_from_support_summary` | `(summary)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L381) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L386) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L391) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L396) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L408) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L417) |
-
-## `core/services/selvmodel.py`
-_Den levende selvmodel — hvem Jarvis er, som noget der kan udvikle sig._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu` | `(nu)` | — | [src](../../../core/services/selvmodel.py#L64) |
-| function | `_norm` | `(tekst)` | — | [src](../../../core/services/selvmodel.py#L68) |
-| function | `handler_om_ham` | `(udsagn)` | Handler udsagnet om ham — ikke om driften omkring ham? | [src](../../../core/services/selvmodel.py#L72) |
-| function | `_conn` | `()` | — | [src](../../../core/services/selvmodel.py#L78) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/selvmodel.py#L98) |
-| function | `_log` | `(conn, t, handling, *, foer=…, hvorfor=…, kilde=…, nu)` | — | [src](../../../core/services/selvmodel.py#L106) |
-| function | `_save` | `(conn, t)` | — | [src](../../../core/services/selvmodel.py#L115) |
-| function | `effektiv_styrke` | `(t, nu)` | — | [src](../../../core/services/selvmodel.py#L124) |
-| function | `_kildenoegle` | `(k)` | — | [src](../../../core/services/selvmodel.py#L132) |
-| function | `_krav_opfyldt` | `(grad, kilder)` | Bevis-kravet følger graden (Jarvis' ændring 3). | [src](../../../core/services/selvmodel.py#L138) |
-| function | `_find` | `(conn, art, emne, status)` | — | [src](../../../core/services/selvmodel.py#L150) |
-| function | `_antal` | `(conn, sql, args)` | — | [src](../../../core/services/selvmodel.py#L157) |
-| function | `_svar` | `(status, t=…, grund=…, grad=…)` | — | [src](../../../core/services/selvmodel.py#L161) |
-| function | `udtryk` | `(art, emne, udsagn, *, kilde, bevis, samtale_id=…, hvorfor=…, nu=…)` | Et udsagn om hvem han er, fra én kilde. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/selvmodel.py#L166) |
-| function | `_nyt` | `(art, emne, udsagn, grad, status, kilder, kilde, nu)` | — | [src](../../../core/services/selvmodel.py#L238) |
-| function | `_skift` | `(traek_id, status, handling, *, hvorfor=…, af=…, nu=…)` | — | [src](../../../core/services/selvmodel.py#L246) |
-| function | `godkend` | `(traek_id, *, nu=…)` | Bjørns ja til et forslag på godkendelses-graden (fx navnet). | [src](../../../core/services/selvmodel.py#L262) |
-| function | `afvis` | `(traek_id, *, af, hvorfor, nu=…)` | Afvis et træk med en grund — Bjørn et forslag, eller Jarvis et træk Bjørn fremsatte. | [src](../../../core/services/selvmodel.py#L267) |
-| function | `rul_tilbage` | `(traek_id, *, hvorfor=…, nu=…)` | Bjørns tilbagerulning. En ny række i historikken, aldrig en sletning. | [src](../../../core/services/selvmodel.py#L272) |
-| function | `hent` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L277) |
-| function | `historik` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L283) |
-| function | `aktive` | `(*, nu=…, limit=…)` | De levende træk: aktive og ikke falmet under tærsklen, stærkest først. | [src](../../../core/services/selvmodel.py#L289) |
-| function | `ugens_opsummering` | `(*, nu=…)` | Ugens ændringer på opsummerings-graden — det Bjørn ser og kan rulle tilbage. | [src](../../../core/services/selvmodel.py#L302) |
-| function | `_kilde_tekst` | `(t)` | — | [src](../../../core/services/selvmodel.py#L313) |
-| function | `prompt_sektion` | `(*, nu=…, limit=…)` | «Hvem jeg er lige nu» — hvert træk med dato og kilde (Jarvis' ændring 4). | [src](../../../core/services/selvmodel.py#L326) |
-
 ## `core/services/selvmodel_kobling.py`
 _Selvmodellens første lodrette skive: fra hans svar til hans prompt._
 
@@ -609,4 +529,45 @@ _Signal Pressure Accumulator — generativ autonomi: fra signal til presning._
 | function | `get_dominant_pressures` | `(min_accumulated=…)` | Return pressures above a minimum threshold — these are the ones that matter. | [src](../../../core/services/signal_pressure_accumulator.py#L197) |
 | function | `snapshot` | `()` | Return a serializable snapshot of current pressure state. | [src](../../../core/services/signal_pressure_accumulator.py#L202) |
 | function | `run_pressure_accumulator_tick` | `()` | Run one tick of the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L219) |
+
+## `core/services/signal_surface_gc.py`
+_Garbage collector for runtime signal-surface trackers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_force_archive` | `(*, items, id_field, update_fn, label)` | — | [src](../../../core/services/signal_surface_gc.py#L33) |
+| function | `collect` | `()` | Run a full GC pass across the three signal-surface trackers. | [src](../../../core/services/signal_surface_gc.py#L75) |
+
+## `core/services/signal_surface_router.py`
+_Signal Surface Router — maps surface names to build functions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_router` | `()` | Build name → function mapping. Local imports stay lazy. | [src](../../../core/services/signal_surface_router.py#L11) |
+| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L261) |
+| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L268) |
+| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L272) |
+| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L276) |
+| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L301) |
+
+## `core/services/signal_tracking_framework.py`
+_Spec-driven framework for the ``*_signal_tracking`` family._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `parse_dt` | `(value, *, z_normalize=…, tz_normalize=…)` | ISO → datetime, superset of the 12 original variants. | [src](../../../core/services/signal_tracking_framework.py#L46) |
+| function | `merge_fragments` | `(*parts, cap=…, sep=…)` | De-duplicated, whitespace-normalised join of text fragments (capped). | [src](../../../core/services/signal_tracking_framework.py#L66) |
+| function | `_default_early_retire` | `(_item)` | — | [src](../../../core/services/signal_tracking_framework.py#L82) |
+| class | `SignalTrackingSpec` | `` | Everything the framework needs to run one signal's lifecycle. | [src](../../../core/services/signal_tracking_framework.py#L87) |
+| method | `SignalTrackingSpec.ev` | `(self, leaf)` | — | [src](../../../core/services/signal_tracking_framework.py#L152) |
+| method | `SignalTrackingSpec.new_signal_id` | `(self)` | — | [src](../../../core/services/signal_tracking_framework.py#L155) |
+| function | `track_for_visible_turn` | `(spec, *, session_id, run_id, user_message=…, context=…)` | Extract candidates for this turn and persist them. Never raises. | [src](../../../core/services/signal_tracking_framework.py#L161) |
+| function | `refresh_statuses` | `(spec)` | Mark long-inactive signals stale. Preserves each spec's exact window + | [src](../../../core/services/signal_tracking_framework.py#L196) |
+| function | `build_surface` | `(spec, *, limit=…)` | Refresh, list, bucket by status, summarise — the read surface. | [src](../../../core/services/signal_tracking_framework.py#L234) |
+| function | `persist_signals` | `(spec, *, signals, session_id, run_id)` | Upsert candidates, supersede same-group siblings, publish events. | [src](../../../core/services/signal_tracking_framework.py#L272) |
+| function | `_supersede_and_publish` | `(spec, *, signal, item, now)` | — | [src](../../../core/services/signal_tracking_framework.py#L309) |
+| function | `_publish_lifecycle` | `(spec, *, item)` | — | [src](../../../core/services/signal_tracking_framework.py#L335) |
+| function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L359) |
+| function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L413) |
+| function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L425) |
 

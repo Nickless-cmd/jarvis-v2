@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_outbound_substrate.py`
+_Proactive-outbound substrate — what Jarvis just said proactively._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_summarize_outbound_payload` | `(kind, payload)` | Extract the actual question/message text from a delivered event. | [src](../../../core/services/proactive_outbound_substrate.py#L36) |
+| function | `compute_proactive_outbound_substrate` | `(*, window_min=…, max_events=…)` | Return raw proactive-outbound events as substrate strings. | [src](../../../core/services/proactive_outbound_substrate.py#L49) |
+| function | `build_proactive_outbound_section` | `()` | Prompt section — proactive messages Jarvis sent in last 30 min. | [src](../../../core/services/proactive_outbound_substrate.py#L101) |
+
 ## `core/services/proactive_question_gate_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -662,17 +671,4 @@ _Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
 | function | `_current_down_providers` | `()` | Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []. | [src](../../../core/services/provider_self_heal.py#L66) |
 | function | `tick_provider_self_heal_daemon` | `()` | Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn | [src](../../../core/services/provider_self_heal.py#L76) |
 | function | `handle_model_drift` | `(*, provider, model, status_code)` | 404 på en model = model-drift → fjern auto fra pool + log. Returnér True hvis fjernet. | [src](../../../core/services/provider_self_heal.py#L91) |
-
-## `core/services/published_files.py`
-_Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/published_files.py#L46) |
-| function | `note` | `(run_id, *, filename, url=…, mime_type=…, size_bytes=…, attachment_id=…, tool_use_id=…)` | Registrér at turen udgav en fil eller et billede. Kaster aldrig. | [src](../../../core/services/published_files.py#L51) |
-| function | `take` | `(run_id)` | Hent og RYD turens udgivne filer. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L99) |
-| function | `peek` | `(run_id, *, tool_use_id=…)` | Se turens poster UDEN at rydde dem. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L108) |
-| function | `peek_efter_tool_use` | `(tool_use_id)` | Turens poster for ÉT værktøjskald — uden at vide hvilket run de ligger i. | [src](../../../core/services/published_files.py#L130) |
-| function | `_bloktype` | `(mime)` | Hvilken renderer skal klienten bruge? | [src](../../../core/services/published_files.py#L155) |
-| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L171) |
 

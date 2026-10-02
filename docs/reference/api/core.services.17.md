@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/monitor_streams.py`
+_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
+| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
+| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
+| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
+| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
+| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
+| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
+| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
+| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
+
 ## `core/services/mood_dialer.py`
 _Mood Dialer — humør til gradueret initiativ-parametre._
 
@@ -631,12 +646,4 @@ _Outreach composer — Spor-1 of generative autonomy._
 | function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
 | function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L285) |
 | function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L302) |
-
-## `core/services/override_command.py`
-_Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `handle_override_command` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe). | [src](../../../core/services/override_command.py#L24) |
-| function | `_handle_override_command_impl` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override`. | [src](../../../core/services/override_command.py#L52) |
 

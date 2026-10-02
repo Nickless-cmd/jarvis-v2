@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/published_files.py`
+_Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/published_files.py#L46) |
+| function | `note` | `(run_id, *, filename, url=…, mime_type=…, size_bytes=…, attachment_id=…, tool_use_id=…)` | Registrér at turen udgav en fil eller et billede. Kaster aldrig. | [src](../../../core/services/published_files.py#L51) |
+| function | `take` | `(run_id)` | Hent og RYD turens udgivne filer. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L99) |
+| function | `peek` | `(run_id, *, tool_use_id=…)` | Se turens poster UDEN at rydde dem. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L108) |
+| function | `peek_efter_tool_use` | `(tool_use_id)` | Turens poster for ÉT værktøjskald — uden at vide hvilket run de ligger i. | [src](../../../core/services/published_files.py#L130) |
+| function | `_bloktype` | `(mime)` | Hvilken renderer skal klienten bruge? | [src](../../../core/services/published_files.py#L155) |
+| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L171) |
+
 ## `core/services/push_dispatcher.py`
 _Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppression._
 
@@ -708,13 +721,4 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 | method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L960) |
 | function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L967) |
 | function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1042) |
-
-## `core/services/research_prompt_context.py`
-_Request-scoped research instructions consumed by prompt assembly surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
-| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…)` | — | [src](../../../core/services/research_prompt_context.py#L23) |
-| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L36) |
 

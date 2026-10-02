@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/interruption_notice.py`
+_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
+| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
+
 ## `core/services/invocation_record.py`
 _Durabel invokations-tilstand for kald ingen bliver spurgt om._
 
@@ -630,25 +638,4 @@ _OAuth/bearer til remote MCP-servere._
 | function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
 | function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L91) |
 | function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L117) |
-
-## `core/services/mcp_client.py`
-_MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L46) |
-| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L49) |
-| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L63) |
-| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L80) |
-| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L106) |
-| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L121) |
-| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L135) |
-| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L143) |
-| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L152) |
-| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L179) |
-| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L186) |
-| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L204) |
-| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L217) |
-| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L231) |
-| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L238) |
 

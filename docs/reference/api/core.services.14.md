@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_runtime_helpers.py`
+_Pure leaf helpers extracted from ``heartbeat_runtime``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_log_debug` | `(message, **fields)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L25) |
+| function | `_hours_since_iso` | `(value)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L33) |
+| function | `_detect_visible_language` | `()` | Detect the language Bjørn is currently using in webchat. | [src](../../../core/services/heartbeat_runtime_helpers.py#L47) |
+| function | `_classify_heartbeat_execution_exception` | `(exc)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L105) |
+| function | `_http_error_detail` | `(exc)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L114) |
+| function | `_parse_heartbeat_key_values` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L124) |
+| function | `_parse_bool` | `(value, *, default, truthy=…)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L136) |
+| function | `_parse_int` | `(value, *, default, minimum)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L154) |
+| function | `_extract_json_object` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L164) |
+| function | `_extract_openai_text` | `(data)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L192) |
+| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L208) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L219) |
+| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L228) |
+| function | `_value_drifted` | `(expected, actual)` | True if expected ≠ actual under tolerant comparison. | [src](../../../core/services/heartbeat_runtime_helpers.py#L232) |
+
 ## `core/services/heartbeat_runtime_influence.py`
 _``_build_influence_trace`` extracted from ``heartbeat_runtime`` (Boy-Scout)._
 
@@ -633,12 +653,4 @@ _Internal-opposition signal tracking — migrated onto signal_tracking_framework
 | function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L333) |
 | function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L338) |
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L343) |
-
-## `core/services/interruption_notice.py`
-_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
-| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
 

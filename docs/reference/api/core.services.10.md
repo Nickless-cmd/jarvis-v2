@@ -442,6 +442,22 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1727) |
 | function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1771) |
 
+## `core/services/discord_gateway_supervisor.py`
+_Vagthund der genrejser Discord-gatewayen naar dens klienttraad er doed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gateway_er_ejet` | `()` | Ejer DENNE proces gatewayen? Fejl regnes som «ja», saa en laesefejl | [src](../../../core/services/discord_gateway_supervisor.py#L78) |
+| function | `_discord_er_slaaet_til` | `()` | Er Discord konfigureret OG aktiveret? Ellers skal vi ikke rejse noget. | [src](../../../core/services/discord_gateway_supervisor.py#L92) |
+| function | `_skriv_tilstand` | `(**felter)` | Spejl supervisorens tilstand saa Centralen kan se den. | [src](../../../core/services/discord_gateway_supervisor.py#L103) |
+| function | `_vent_paa_at_traadene_doer` | `()` | Vent indtil klient- og subscriber-traaden er vaek. True hvis de doede. | [src](../../../core/services/discord_gateway_supervisor.py#L116) |
+| function | `_reparer` | `()` | Stop resterne og start gatewayen forfra. True hvis ejerskab blev vundet. | [src](../../../core/services/discord_gateway_supervisor.py#L146) |
+| function | `_loop` | `()` | Tjek med faste mellemrum; bak eksponentielt ud naar reparation fejler. | [src](../../../core/services/discord_gateway_supervisor.py#L201) |
+| function | `_sov` | `(sekunder)` | Sov i smaa bidder, saa et stop ikke skal vente et helt interval. | [src](../../../core/services/discord_gateway_supervisor.py#L224) |
+| function | `start_discord_gateway_supervisor` | `()` | Start vagthunden. Sikker at kalde ubetinget. | [src](../../../core/services/discord_gateway_supervisor.py#L232) |
+| function | `stop_discord_gateway_supervisor` | `()` | Stop vagthunden. SKAL kaldes FOER `stop_discord_gateway()` ved nedlukning, | [src](../../../core/services/discord_gateway_supervisor.py#L250) |
+| function | `supervisor_status` | `()` | Til Centralen: koerer vagthunden, og hvor mange gange har den maattet | [src](../../../core/services/discord_gateway_supervisor.py#L257) |
+
 ## `core/services/dispatch_envelope.py`
 _Robustness envelope builder + plausibility guard for the dispatch-redesign._
 
@@ -648,21 +664,4 @@ _Dream Consolidation — semantic + LLM-driven consolidation during low-activity
 | function | `consolidation_loop` | `(stop_event)` | Kald tick() på egen kadence og LOG udfaldet. | [src](../../../core/services/dream_consolidation_daemon.py#L934) |
 | function | `start_dream_consolidation_daemon` | `()` | Start konsoliderings-tråden. Idempotent. | [src](../../../core/services/dream_consolidation_daemon.py#L955) |
 | function | `stop_dream_consolidation_daemon` | `()` | Stop tråden. Self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L971) |
-
-## `core/services/dream_continuum.py`
-_Dream Continuum — dreams that mature and "think" between ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DreamThought` | `` | A thought a dream has between ticks. | [src](../../../core/services/dream_continuum.py#L26) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_continuum.py#L40) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/dream_continuum.py#L44) |
-| function | `evolve_dreams` | `(duration)` | Evolve dreams based on elapsed duration since last tick. | [src](../../../core/services/dream_continuum.py#L53) |
-| function | `_generate_dream_thought` | `(dream, maturity)` | Generate a thought a dream has during idle. | [src](../../../core/services/dream_continuum.py#L89) |
-| function | `get_dream_thoughts` | `(dream_id)` | Get all thoughts for a specific dream. | [src](../../../core/services/dream_continuum.py#L111) |
-| function | `get_top_dream_thought` | `()` | Get the most relevant dream thought for prompt injection. | [src](../../../core/services/dream_continuum.py#L125) |
-| function | `format_dreams_for_prompt` | `()` | Format dreams and thoughts for prompt injection. | [src](../../../core/services/dream_continuum.py#L139) |
-| function | `get_dream_maturity` | `(dream_id)` | Get maturity level of a specific dream. | [src](../../../core/services/dream_continuum.py#L151) |
-| function | `reset_dream_continuum` | `()` | Reset dream continuum state (for testing). | [src](../../../core/services/dream_continuum.py#L156) |
-| function | `build_dream_continuum_surface` | `()` | Build MC surface for dream continuum. | [src](../../../core/services/dream_continuum.py#L164) |
 

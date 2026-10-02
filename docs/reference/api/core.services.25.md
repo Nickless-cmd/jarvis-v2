@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/telemetry_gate.py`
+_Telemetri er ikke sandhed — Fase 10, kriterium 2._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `gaeldende_niveau` | `()` | `full` | `redacted` | `none` | `ubestemt` for den kørsel vi er i nu. | [src](../../../core/services/telemetry_gate.py#L89) |
+| function | `maa_afgoere` | `()` | Må telemetri autorisere eller afgøre arbejde? **Nej. Altid nej.** | [src](../../../core/services/telemetry_gate.py#L112) |
+| function | `er_kanonisk` | `(tabel)` | Hører `tabel` til den kanoniske sandhed? | [src](../../../core/services/telemetry_gate.py#L125) |
+| function | `beskaer` | `(poster, maks, *, navn)` | Behold de nyeste `maks` — og **tæl** det der ryger. | [src](../../../core/services/telemetry_gate.py#L135) |
+| function | `beskaer_efter_alder` | `(poster, dage, *, navn, maks=…, nu=…)` | Behold poster nyere end `dage` — og tæl **alt** der ryger. | [src](../../../core/services/telemetry_gate.py#L158) |
+| function | `tabt` | `(navn=…)` | Hvor mange poster er kastet væk? Uden navn: hele regnskabet. | [src](../../../core/services/telemetry_gate.py#L219) |
+| function | `nulstil_tab` | `()` | Kun til tests. Produktionen skal aldrig glemme hvad den tabte. | [src](../../../core/services/telemetry_gate.py#L227) |
+| function | `redigér_til_eksport` | `(vaerdi)` | Rens en **kopi** til eksport. Originalen røres aldrig. | [src](../../../core/services/telemetry_gate.py#L233) |
+
 ## `core/services/temperament_tendency_signal_tracking.py`
 _Temperament-tendency signal tracking — migrated onto signal_tracking_framework._
 
@@ -571,16 +585,4 @@ _Per-turn tool selection._
 | function | `_embedding_query` | `(user_message)` | Forespoergslen der embeddes — dansk broet til engelsk. | [src](../../../core/services/tool_router.py#L395) |
 | function | `_select_inner` | `(*, user_message, session_id, lane, run_id, settings, started_at)` | — | [src](../../../core/services/tool_router.py#L426) |
 | function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L486) |
-
-## `core/services/tool_router_runtime.py`
-_Nightly daemon: refresh always-core ranking, recompute embeddings,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_adjust_threshold` | `(*, current, load_more_rate_7d)` | — | [src](../../../core/services/tool_router_runtime.py#L19) |
-| function | `_read_load_more_rate` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L29) |
-| function | `run_once` | `()` | Single daemon iteration. Safe to call manually for testing. | [src](../../../core/services/tool_router_runtime.py#L34) |
-| function | `_loop` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L64) |
-| function | `start_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L73) |
-| function | `stop_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L85) |
 

@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_model_is_deepseek_pro_tier` | `(model)` | True hvis modellen er den dyre deepseek-pro/reasoner-pro-tier. | [src](../../../core/services/visible_model.py#L97) |
+| function | `_turn_is_owner_scoped` | `()` | Er den aktuelle tur owner-scoped (Bjørn)? Self-safe → False ved fejl. | [src](../../../core/services/visible_model.py#L109) |
+| function | `gate_visible_model_tier` | `(provider, model, *, is_owner=…)` | WS5-gate: nedgradér deepseek-v4-pro → v4-flash medmindre (a) kill-switch- | [src](../../../core/services/visible_model.py#L120) |
+| function | `_configured_provider_models` | `(provider)` | — | [src](../../../core/services/visible_model.py#L150) |
+| function | `available_provider_models` | `(*, provider, auth_profile=…)` | — | [src](../../../core/services/visible_model.py#L172) |
+| function | `execute_visible_model` | `(*, message, provider, model, session_id=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model.py#L264) |
+| function | `stream_visible_model` | `(*, message, provider, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model.py#L323) |
+| function | `available_ollama_models_for_visible_target` | `()` | — | [src](../../../core/services/visible_model.py#L395) |
+| function | `_build_visible_input` | `(message, *, session_id, provider=…, model=…)` | — | [src](../../../core/services/visible_model.py#L451) |
+| function | `_giv_modellen_oejne` | `(messages, *, session_id, model)` | Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret. | [src](../../../core/services/visible_model.py#L534) |
+| function | `_build_visible_chat_messages_for_github` | `(message, *, session_id, provider=…, model=…)` | Build OpenAI chat-completions messages for the visible lane. | [src](../../../core/services/visible_model.py#L562) |
+| function | `_split_dynamic_tail` | `(instruction)` | Separate volatile runtime instructions without changing their role. | [src](../../../core/services/visible_model.py#L648) |
+| function | `_is_current_user_turn` | `(message, current_text)` | Match the persisted current turn, not merely any user-role runtime item. | [src](../../../core/services/visible_model.py#L662) |
+| function | `_insert_system_tail_before_current_user` | `(messages, tail)` | Keep volatile prompt sections cache-late while preserving system attribution. | [src](../../../core/services/visible_model.py#L674) |
+| function | `_insert_typed_system_tail_before_current_user` | `(items, tail)` | — | [src](../../../core/services/visible_model.py#L687) |
+| function | `_visible_system_instruction_for_provider` | `(*, provider, model, user_message, session_id)` | — | [src](../../../core/services/visible_model.py#L701) |
+| function | `_build_visible_prompt_assembly` | `(*, provider, model, user_message, session_id)` | Return the full PromptAssembly (including structured transcript). | [src](../../../core/services/visible_model.py#L716) |
+
 ## `core/services/visible_model_adapters.py`
 _Per-provider visible-lane adapters + auth/probe/readiness helpers._
 
@@ -133,9 +155,9 @@ _Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L96) |
-| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L109) |
-| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L114) |
+| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
+| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
+| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
 
 ## `core/services/visible_run_interruption.py`
 _Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
@@ -538,38 +560,4 @@ _Hvilket billede må en klient hente — og hvad gør vi når svaret er «ingen�
 | function | `maa_vises` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../core/services/vision_preview.py#L83) |
 | function | `_kopinavn` | `(fuld)` | Et navn udledt af filen selv, så samme billede giver samme kopi. | [src](../../../core/services/vision_preview.py#L109) |
 | function | `visnings_sti` | `(sti)` | Den sti en klient kan HENTE billedet på. Tom streng hvis ingen findes. | [src](../../../core/services/vision_preview.py#L120) |
-
-## `core/services/visual_memory.py`
-_Visual memory — webcam snapshots beskrevet af vision-model._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_compare_suffix` | `(previous_desc, time_ago_label)` | Mandatory instruction: always describe what has changed. | [src](../../../core/services/visual_memory.py#L95) |
-| function | `_ollama_base_url` | `()` | Pull Ollama base URL from provider_router.json (falls back to localhost). | [src](../../../core/services/visual_memory.py#L108) |
-| function | `tick_visual_memory_daemon` | `()` | Capture webcam snapshot and describe it via vision model. | [src](../../../core/services/visual_memory.py#L128) |
-| function | `get_visual_memories` | `(*, limit=…)` | Return most recent visual memory records (newest first). | [src](../../../core/services/visual_memory.py#L206) |
-| function | `get_latest_visual_memory_for_prompt` | `()` | Return the most recent visual memory as a quiet prompt hint. | [src](../../../core/services/visual_memory.py#L213) |
-| function | `_coarse_age_label` | `(minutes_ago)` | Bucket minutes-since into coarse labels so prompt cache stays stable. | [src](../../../core/services/visual_memory.py#L256) |
-| function | `look_around_now` | `(*, where=…, prompt_override=…)` | On-demand capture — Jarvis chooses to look. Bypasses cadence-limit. | [src](../../../core/services/visual_memory.py#L281) |
-| function | `build_visual_memory_surface` | `()` | MC observability surface. | [src](../../../core/services/visual_memory.py#L368) |
-| function | `_fold` | `(text)` | Sammenlign navne uden at snuble over æøå, store bogstaver og bindestreger. | [src](../../../core/services/visual_memory.py#L433) |
-| function | `known_cameras` | `()` | Alle kendte kameraer — config vinder over det indbyggede kort. | [src](../../../core/services/visual_memory.py#L446) |
-| function | `default_camera` | `()` | Nøglen på det kamera der bruges når ingen har sagt hvor der skal kigges. | [src](../../../core/services/visual_memory.py#L460) |
-| function | `resolve_camera` | `(where=…)` | Slå et menneskeligt stednavn op. Tom streng giver standardkameraet. | [src](../../../core/services/visual_memory.py#L481) |
-| function | `capture_from_camera` | `(where=…)` | Hent et billede. Returnerer (base64-jpeg, kamera-nøgle, læsbart navn). | [src](../../../core/services/visual_memory.py#L525) |
-| function | `describe_cameras` | `()` | Én linje pr. kamera — til værktøjsbeskrivelser og prompten. | [src](../../../core/services/visual_memory.py#L540) |
-| function | `_capture_image` | `(where=…)` | Hent et billede fra et navngivet kamera. Returnerer (base64-jpeg, kameranavn). | [src](../../../core/services/visual_memory.py#L554) |
-| function | `_capture_source` | `()` | Return 'ha_camera' or 'webcam' based on runtime config. | [src](../../../core/services/visual_memory.py#L575) |
-| function | `_ha_camera_entity` | `()` | Return HA camera entity_id from runtime config. | [src](../../../core/services/visual_memory.py#L581) |
-| function | `_capture_ha_camera` | `(entity_id=…)` | Fetch snapshot from Home Assistant camera and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L587) |
-| function | `_capture_webcam` | `(device_index=…)` | Capture one frame from webcam and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L623) |
-| function | `_describe_image` | `(image_b64, *, model, provider, prompt=…, previous=…)` | Send image to vision model and return description. | [src](../../../core/services/visual_memory.py#L648) |
-| function | `_previous_time_label` | `(captured_at)` | — | [src](../../../core/services/visual_memory.py#L670) |
-| function | `_build_prompt` | `(previous=…, prompt_index=…)` | Assemble the full vision prompt: prefix + rotating focus + optional compare. | [src](../../../core/services/visual_memory.py#L685) |
-| function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L707) |
-| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L762) |
-| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L769) |
-| function | `_vision_model` | `()` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L777) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L810) |
-| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L815) |
 

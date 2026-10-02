@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_client.py`
+_MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L46) |
+| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L49) |
+| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L63) |
+| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L80) |
+| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L106) |
+| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L121) |
+| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L135) |
+| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L143) |
+| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L152) |
+| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L179) |
+| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L186) |
+| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L204) |
+| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L217) |
+| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L231) |
+| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L238) |
+
 ## `core/services/mcp_manager.py`
 _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
 
@@ -604,19 +625,4 @@ _Witness surface for hidden behavior modulators._
 | function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
 | function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
 | function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
-
-## `core/services/monitor_streams.py`
-_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
-| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
-| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
-| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
-| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
-| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
-| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
-| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
-| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
 

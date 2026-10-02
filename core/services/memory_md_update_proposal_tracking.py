@@ -13,6 +13,7 @@ from core.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
 from core.eventbus.bus import event_bus
+from core.services.candidate_hygiene import normalize_candidate_domain
 from core.runtime.db import (
     list_runtime_memory_md_update_proposals,
     supersede_runtime_memory_md_update_proposals_for_dimension,
@@ -450,8 +451,15 @@ def _title_suffix(domain_key: str) -> str:
 
 
 def _domain_from_canonical_key(canonical_key: str) -> str:
+    """Sidste led af witness-nøglen, foldet til en STABIL domæne-nøgle.
+
+    Foldningen er nødvendig fordi nøglen bygges af en sætning: to
+    formuleringer af samme opgave gav to domæner, og eksakt-match kunne ikke
+    se at de var samme. Målt 2/10-2026: 202 domæner for ~3-5 opgaver.
+    Idempotent, så den tåler at køre på allerede-normaliserede nøgler.
+    """
     parts = [part for part in canonical_key.split(":") if part]
-    return parts[-1] if parts else ""
+    return normalize_candidate_domain(parts[-1]) if parts else ""
 
 
 def _memory_kind_from_canonical_key(canonical_key: str) -> str:

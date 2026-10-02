@@ -774,24 +774,30 @@ def _prune_old_records() -> None:
         set_runtime_state_value(_STATE_KEY, kept)
 
 
-def _vision_model() -> tuple[str, str]:
+def _vision_model(*, force_config: bool = False) -> tuple[str, str]:
     """Return (model_name, provider) — den valgte model vinder over config.
 
     Har Bjørn valgt en syns-model i composeren, skal look_around kigge gennem de
     øjne han har valgt. Uden et aktivt valg — daemon-stien, hvor ingen tur kører
     — gælder runtime-config som før.
+
+    Når force_config=True, springes den aktive visible model over — brug til
+    sansningsværktøjer (look_around, natrutine) hvor thinking-modeller som
+    deepseek-v4-flash lækker reasoning ind i impressionen. Se arkiv-tjek
+    2/10-2026: dagens eneste visuelle sans var 100% prompt-lækage.
     """
-    try:
-        from core.services.vision_backend import (
-            active_visible_target,
-            model_can_see,
-            resolve_vision_provider,
-        )
-        chosen_provider, chosen_model = active_visible_target()
-        if chosen_model and model_can_see(chosen_model):
-            return chosen_model, (chosen_provider or resolve_vision_provider(chosen_model))
-    except Exception:
-        pass
+    if not force_config:
+        try:
+            from core.services.vision_backend import (
+                active_visible_target,
+                model_can_see,
+                resolve_vision_provider,
+            )
+            chosen_provider, chosen_model = active_visible_target()
+            if chosen_model and model_can_see(chosen_model):
+                return chosen_model, (chosen_provider or resolve_vision_provider(chosen_model))
+        except Exception:
+            pass
 
     settings = load_settings()
     model = str(settings.extra.get("vision_model_name") or "").strip()

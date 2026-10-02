@@ -41,12 +41,12 @@ _Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
 |---|---|---|---|---|
 | function | `model_can_see` | `(model)` | Kan DENNE model selv se et billede? | [src](../../../core/services/vision_backend.py#L86) |
 | function | `active_visible_target` | `()` | (provider, model) for den synlige tur der koerer lige nu — ("","") hvis ingen. | [src](../../../core/services/vision_backend.py#L99) |
-| function | `resolve_vision_target` | `()` | (provider, model, kilde) for syns-vaerktoejerne lige nu. | [src](../../../core/services/vision_backend.py#L111) |
-| function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L125) |
-| function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L141) |
-| function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L191) |
-| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L214) |
-| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L237) |
+| function | `resolve_vision_target` | `(*, force_config=…)` | (provider, model, kilde) for syns-vaerktoejerne lige nu. | [src](../../../core/services/vision_backend.py#L111) |
+| function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L131) |
+| function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L147) |
+| function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L197) |
+| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L220) |
+| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L243) |
 
 ## `core/services/vision_preview.py`
 _Hvilket billede må en klient hente — og hvad gør vi når svaret er «ingen»?_
@@ -88,9 +88,9 @@ _Visual memory — webcam snapshots beskrevet af vision-model._
 | function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L707) |
 | function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L762) |
 | function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L769) |
-| function | `_vision_model` | `()` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L777) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L810) |
-| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L815) |
+| function | `_vision_model` | `(*, force_config=…)` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L777) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L816) |
+| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L821) |
 
 ## `core/services/voice_anchor.py`
 _Voice anchor — combined static seed + auto-refreshed external exemplars._

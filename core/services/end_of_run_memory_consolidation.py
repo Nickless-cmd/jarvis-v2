@@ -18,6 +18,7 @@ from core.identity.candidate_workflow import (
 )
 from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.runtime.db import upsert_runtime_contract_candidate
+from core.services.candidate_hygiene import is_transient_line
 from core.services.text_clip import clip_text
 
 _EXCERPT_MEMORY_CHARS = 2400
@@ -408,6 +409,12 @@ def _normalize_memory_items(raw_items: object) -> list[dict[str, str]]:
                 continue
             line = line or f"- {request}"
         elif not line:
+            continue
+        # C (2/10-2026): en flygtig linje — en dato, et handlings-verbum
+        # («fikset», «pushet») eller en indholdsløs titel — er en hændelse,
+        # ikke varig viden. Den blev før løftet til kandidat og levede til
+        # den udløb. Afvis den ved kilden.
+        if target != "REQUEST" and is_transient_line(line):
             continue
         key = (target, (request or line).lower())
         if key in seen:

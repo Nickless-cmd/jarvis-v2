@@ -32,6 +32,7 @@ from core.runtime.db_core import (
     _CONFIDENCE_RANKS,
     _SOURCE_KIND_RANKS,
     _EVIDENCE_CLASS_RANKS,
+    TERMINAL_CANDIDATE_STATUSES,
 )
 
 
@@ -2312,14 +2313,25 @@ def upsert_runtime_contract_candidate(
                 WHERE candidate_type = ?
                   AND target_file = ?
                   AND canonical_key = ?
-                  AND status IN ('proposed', 'approved')
                 ORDER BY id DESC
                 LIMIT 1
                 """,
                 (candidate_type, target_file, canonical_key),
             ).fetchone()
 
-        if existing is None:
+        if existing is not None and str(existing["status"] or "") in TERMINAL_CANDIDATE_STATUSES:
+            # 2/10-2026: opslaget så før kun `proposed`/`approved`, så en
+            # `applied` nøgle var USYNLIG. Samme kendsgerning blev derfor
+            # indsat på ny og dræbt på ny som `superseded` — 21.258 af 21.460
+            # stable-context-rækker var den sløjfe. Er nøglen afgjort, returnér
+            # den eksisterende række uændret; indsæt intet og flet intet.
+            resolved_id = str(existing["candidate_id"])
+            upsert_meta = {
+                "was_created": False,
+                "was_updated": False,
+                "merge_state": "duplicate-terminal",
+            }
+        elif existing is None:
             conn.execute(
                 """
                 INSERT INTO runtime_contract_candidates (
@@ -2579,6 +2591,40 @@ def list_runtime_contract_candidates(
             (*params, max(limit, 1)),
         ).fetchall()
     return [_runtime_contract_candidate_from_row(row) for row in rows]
+
+
+def runtime_contract_candidate_status_for_key(
+    *,
+    candidate_type: str,
+    target_file: str,
+    canonical_key: str,
+) -> str | None:
+    """Returnér status for den nyeste kandidat med præcis denne nøgle, ellers None.
+
+    Findes fordi `_candidate_already_applied` i services-laget scannede de 20
+    nyeste rækker af (type, fil) og derefter ledte efter nøglen *i det vindue*.
+    Målt 2/10-2026 for `user-preference:reminders:assumption-caution`: den
+    `applied`-række lå på id 82615, mens vinduets yngste grænse var 92229 — så
+    gaten svarede «ikke applied» for evigt, og nøglen blev genskabt 680 gange.
+    Et opslag direkte på nøglen er både billigere og korrekt.
+    """
+    if not canonical_key:
+        return None
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        row = conn.execute(
+            """
+            SELECT status
+            FROM runtime_contract_candidates
+            WHERE candidate_type = ?
+              AND target_file = ?
+              AND canonical_key = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (candidate_type, target_file, canonical_key),
+        ).fetchone()
+    return str(row["status"]) if row is not None else None
 
 
 def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | None:

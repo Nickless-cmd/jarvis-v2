@@ -43,6 +43,15 @@ _DB_CONNECT_LOGGED: bool = False
 _DB_WAL_INITIALIZED: bool = False
 _core_logger = _logging.getLogger("uvicorn.error")
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
+
+#: Status'er hvor en kandidat er AFGJORT og ikke må genopstå med samme nøgle.
+#: Målt 2/10-2026: `upsert_runtime_contract_candidate` slog kun op på
+#: `proposed`/`approved`, så en `applied` nøgle var usynlig for opslaget —
+#: samme kendsgerning blev indsat igen og dræbt igen som `superseded`.
+#: 21.258 af 21.460 stable-context-rækker var præcis den sløjfe.
+#: `rejected` tælles med: afvises den SAMME linje (samme nøgle) igen, er den
+#: ikke ny viden, og et system der spørger igen om et afvist svar er støj.
+TERMINAL_CANDIDATE_STATUSES = frozenset({"applied", "superseded", "rejected"})
 _EVIDENCE_CLASS_RANKS = {
     "weak_signal": 1,
     "runtime_support_only": 2,

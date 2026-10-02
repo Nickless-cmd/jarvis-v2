@@ -34,6 +34,12 @@ def _patch_rows(monkeypatch, rows):
     monkeypatch.setattr(db, "connect", lambda: _FakeConn(rows))
 
 
+def _patch_last_tick(monkeypatch, value):
+    """Bind throttle-tilstanden — den bor nu på disk, ikke i en modul-global."""
+    monkeypatch.setattr(crd, "_load_last_tick", lambda: value)
+    monkeypatch.setattr(crd, "_save_last_tick", lambda now: None)
+
+
 def test_digest_taeller_per_type_og_finder_aeldste(monkeypatch):
     now = datetime.now(UTC)
     _patch_rows(monkeypatch, [
@@ -72,7 +78,7 @@ def test_ugyldigt_tidsstempel_springes_over_men_tallet_beholdes(monkeypatch):
 
 
 def test_tick_tier_under_taerskel(monkeypatch):
-    monkeypatch.setattr(crd, "_last_tick_at", None)
+    _patch_last_tick(monkeypatch, None)
     _patch_rows(monkeypatch, [("memory_promotion", 3, datetime.now(UTC).isoformat())])
     r = crd.tick_candidate_review_digest()
     assert r["sent"] is False
@@ -80,14 +86,14 @@ def test_tick_tier_under_taerskel(monkeypatch):
 
 
 def test_tick_throttler_indtil_ugen_er_gået(monkeypatch):
-    monkeypatch.setattr(crd, "_last_tick_at", datetime.now(UTC))
+    _patch_last_tick(monkeypatch, datetime.now(UTC))
     r = crd.tick_candidate_review_digest()
     assert r["sent"] is False
     assert r["reason"] == "cadence"
 
 
 def test_tick_sender_over_taerskel(monkeypatch):
-    monkeypatch.setattr(crd, "_last_tick_at", None)
+    _patch_last_tick(monkeypatch, None)
     now = datetime.now(UTC)
     _patch_rows(monkeypatch, [
         ("memory_promotion", 500, (now - timedelta(days=20)).isoformat()),
@@ -104,7 +110,7 @@ def test_tick_sender_over_taerskel(monkeypatch):
 
 
 def test_fejlet_notifikation_vaelter_ikke_daemonen(monkeypatch):
-    monkeypatch.setattr(crd, "_last_tick_at", None)
+    _patch_last_tick(monkeypatch, None)
     _patch_rows(monkeypatch, [("memory_promotion", 500, datetime.now(UTC).isoformat())])
     import core.services.notification_bridge as nb
 
@@ -126,3 +132,30 @@ def test_database_fejl_giver_tom_digest_ikke_kast(monkeypatch):
     d = crd.build_candidate_review_digest()
     assert d["total_proposed"] == 0
     assert "error" in d
+
+
+def test_throttlen_overlever_en_genstart(monkeypatch, tmp_path):
+    """Regression (2/10-2026): kadencen laa i en modul-global og blev nulstillet
+    ved HVER runtime-genstart — saa «ugentligt» blev «ved hver genstart», og
+    koen blev annonceret igen og igen. Den skal laeses fra disk, ikke fra RAM.
+    """
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    _patch_rows(monkeypatch, [("memory_promotion", 500, datetime.now(UTC).isoformat())])
+    sendt = []
+    import core.services.notification_bridge as nb
+    monkeypatch.setattr(
+        nb, "send_session_notification",
+        lambda text, **kw: (sendt.append(text), {"status": "ok"})[1],
+    )
+
+    foerste = crd.tick_candidate_review_digest()
+    assert foerste["sent"] is True
+
+    # Simulér genstart: RAM er tom, men disken staar. Uden persistens ville
+    # andet kald sende igen; med den skal det ties ihjel af kadencen.
+    andet = crd.tick_candidate_review_digest()
+    assert andet["sent"] is False
+    assert andet["reason"] == "cadence"
+    assert len(sendt) == 1

@@ -66,6 +66,11 @@
       "beskrivelse": "Boredom to Curiosity Bridge — transforms boredom into curiosity.",
       "registreret": "2026-09-25"
     },
+    "candidate_review_digest": {
+      "ejer": "core/services/candidate_review_digest.py",
+      "beskrivelse": "Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed.",
+      "registreret": "2026-10-02"
+    },
     "computer_use_policy": {
       "ejer": "core/services/computer_use_policy.py",
       "beskrivelse": "Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.",
@@ -150,6 +155,11 @@
       "ejer": "core/services/initiative_accumulator.py",
       "beskrivelse": "Initiative Accumulator — proactive wants that accumulate between ticks.",
       "registreret": "2026-09-25"
+    },
+    "klient_versioner": {
+      "ejer": "core/services/klient_versioner.py",
+      "beskrivelse": "Seneste APP-VERSION pr. klient (mobile/desk), meldt af klienten selv i X-Jarvis-Klientversion. Ikke en historik: én post pr. klient, sidst skrevet vinder. Findes fordi manifestet kun siger hvad der er UDGIVET, ikke hvad der er INSTALLERET.",
+      "registreret": "2026-09-28"
     },
     "living_executive": {
       "ejer": "core/services/living_executive.py",
@@ -310,11 +320,6 @@
       "ejer": "core/services/agent_self_evaluation.py",
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
-    },
-    "klient_versioner": {
-      "ejer": "core/services/klient_versioner.py",
-      "beskrivelse": "Seneste APP-VERSION pr. klient (mobile/desk), meldt af klienten selv i X-Jarvis-Klientversion. Ikke en historik: én post pr. klient, sidst skrevet vinder. Findes fordi manifestet kun siger hvad der er UDGIVET, ikke hvad der er INSTALLERET.",
-      "registreret": "2026-09-28"
     }
   }
 }

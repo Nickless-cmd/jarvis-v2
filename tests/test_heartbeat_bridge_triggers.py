@@ -117,21 +117,22 @@ def test_ping_posts_when_trigger_present(workspace: Path, monkeypatch) -> None:
     assert heartbeat_triggers.peek_trigger(workspace) is None
 
 
-def test_aktiv_session_KOEER_forslaget_i_stedet_for_at_banke_paa(workspace: Path, monkeypatch) -> None:
-    """Hele formaalet med flytningen 2/10-2026.
+def test_aktiv_session_DROPPER_forslaget(workspace: Path, monkeypatch) -> None:
+    """To aendringer paa to dage, og den anden afloeser den foerste.
 
-    Foer: `_deliver_heartbeat_proposal` skrev direkte med `append_chat_message`
-    og var HELT uden daemon-vagten — den kunne lande midt i en saetning mens
-    Bjoern arbejdede. Nu gaar den gennem `send_session_notification`, saa en
-    AKTIV session faar beskeden i koeen og flushet efter turen.
+    2/10 blev leveringen flyttet gennem daemon-vagten, saa et forslag i en aktiv
+    session blev KOEET i stedet for skrevet midt i en saetning. Senere samme dag
+    blev de to aktivitets-tjek slaaet sammen: funktionen havde sit EGET
+    haandrullede 5-minutters-tjek der DROPPEDE forslaget, og det overlappede
+    `is_session_active`. Ét tjek, og handlingen er drop.
 
-    To ting pinnes, og de er lige vigtige:
-      1. intet skrives direkte (ingen `append_chat_message`-kald),
-      2. status er STADIG "sent" — kalderen i heartbeat_runtime tjekker
-         `status == "sent"` praecist, og et "queued" laest som fejl kostede en
-         dobbelt-levering 23/9-2026.
+    Hvorfor drop og ikke koe netop her: et forslag er periodisk og bliver lavet
+    igen ved naeste tik. Et gammelt forslag der lander efter Bjoerns tur er
+    stoej han ikke bad om, mens et friskt kommer af sig selv. Drop er strengt
+    stillere, og det var hele formaalet.
 
-    Fjern `session_id=`/vagten i heartbeat_delivery, og denne test fejler.
+    Gaelder KUN denne sti. De oevrige kilder koees som foer — det pinnes i
+    test_aktiv_session_vagten.py.
     """
     heartbeat_triggers.set_trigger(
         workspace, reason="project-need", source="test", text="project ping"
@@ -145,8 +146,7 @@ def test_aktiv_session_KOEER_forslaget_i_stedet_for_at_banke_paa(workspace: Path
 
     def fake_enqueue(*, session_id, content, source, urgent=False,
                      user_id=None, workspace_name=None):
-        koeet.append({"session_id": session_id, "content": content, "source": source,
-                      "urgent": urgent})
+        koeet.append({"session_id": session_id, "source": source})
         return {"status": "queued", "id": 7}
 
     import core.services.chat_sessions as cs
@@ -159,15 +159,36 @@ def test_aktiv_session_KOEER_forslaget_i_stedet_for_at_banke_paa(workspace: Path
 
     result = heartbeat_runtime._deliver_heartbeat_proposal(
         policy=_base_policy(workspace),
-        tick_id="t-koe",
+        tick_id="t-aktiv",
         summary="summary",
         proposed_action="forslag der ikke maa banke paa",
     )
 
     assert direkte == [], f"skrev direkte i en aktiv session: {direkte}"
-    assert len(koeet) == 1, koeet
-    assert koeet[0]["content"] == "forslag der ikke maa banke paa"
-    assert koeet[0]["source"] == "heartbeat-propose-bridge"
-    assert koeet[0]["urgent"] is False, "et hjerteslag er ikke akut"
-    assert result["status"] == "sent", "kalderen tjekker == 'sent'; koeet er ogsaa leveret"
-    assert "webchat-queued" in str(result["artifact"]), result["artifact"]
+    assert koeet == [], f"koeede et forslag der skulle vaere droppet: {koeet}"
+    assert result["status"] == "blocked"
+    assert result["blocked_reason"] == "recent-session-activity", result
+
+
+def test_de_to_aktivitets_tjek_er_ÉT_tjek():
+    """Vagten mod at de driver fra hinanden igen.
+
+    Det haandrullede tjek laeste sessionens beskeder, kiggede kun paa
+    role="user" og havde sit eget haardkodede 5. `is_session_active` laeser
+    events-tabellen, taeller enhver besked og har vinduet som konstant. To tjek
+    med samme formaal og forskellig maaling er ét der kan drive.
+    """
+    import ast
+    import pathlib as _p
+
+    kilde = _p.Path("core/services/heartbeat_delivery.py").read_text()
+    for n in ast.walk(ast.parse(kilde)):
+        if isinstance(n, ast.FunctionDef) and n.name == "_deliver_heartbeat_proposal":
+            tekst = ast.unparse(n)
+            assert "is_session_active" in tekst, "bruger ikke det faelles tjek"
+            assert "age_minutes" not in tekst, "det haandrullede tjek er tilbage"
+            assert "role" not in tekst or "user_msgs" not in tekst, (
+                "laeser igen sessionens beskeder selv"
+            )
+            return
+    raise AssertionError("_deliver_heartbeat_proposal findes ikke laengere")

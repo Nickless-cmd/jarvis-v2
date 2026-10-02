@@ -144,35 +144,38 @@ def _deliver_heartbeat_proposal(
             "blocked_reason": "missing-webchat-session",
         }
 
-    # Recent-user-activity guard: don't deliver if the user wrote something
-    # in the last 5 minutes — prevents heartbeat messages appearing as
-    # "double responses" right after the user's turn.
-    try:
-        session_data = get_chat_session(session_id)
-        messages = (session_data or {}).get("messages") or []
-        user_msgs = [m for m in messages if m.get("role") == "user"]
-        if user_msgs:
-            last_user_ts = str(user_msgs[-1].get("created_at") or "")
-            if last_user_ts:
-                from datetime import UTC, datetime
-                last_dt = datetime.fromisoformat(last_user_ts.replace("Z", "+00:00"))
-                age_minutes = (datetime.now(UTC) - last_dt).total_seconds() / 60
-                if age_minutes < 5:
-                    return {
-                        "status": "blocked",
-                        "summary": message_text,
-                        "action_type": "webchat-heartbeat-proposal",
-                        "artifact": "",
-                        "blocked_reason": "recent-user-activity",
-                    }
-    except Exception:
-        # Fejler ÅBENT: kaster opslaget, leveres forslaget alligevel. Retningen
-        # er arvet fra heartbeat_runtime og aendres ikke her — men den skal
-        # kunne SES, for ellers ser et leveret forslag ud som om vagten sagde ja.
-        logger.warning(
-            "heartbeat_delivery: kunne ikke tjekke nylig bruger-aktivitet for %s "
-            "— leverer alligevel", session_id, exc_info=True,
-        )
+    # 2/10-2026: ÉT aktivitets-tjek. Her stod en haandrullet variant der laeste
+    # hele sessionens beskeder, kiggede paa den seneste med role="user" og
+    # droppede forslaget hvis den var under 5 minutter gammel. Den overlappede
+    # `is_session_active` — samme formaal, samme 5-minutters vindue — men
+    # maalte noget andet og kunne drive fra den. De er nu det samme tjek.
+    #
+    # Tre ting blev bedre ved at bruge den faelles:
+    #   * den laeser events-tabellen og er cross-process; den gamle laeste en
+    #     session-snapshot i DENNE proces,
+    #   * vinduet kommer fra `_SESSION_ACTIVE_WINDOW_SECONDS` i stedet for et
+    #     haardkodet 5, saa der kun er ét tal at aendre,
+    #   * den taeller ENHVER besked, ogsaa Jarvis' egne. Det tjener formaalet
+    #     bedre end den gamle: et forslag lige efter at en tur afsluttede ser
+    #     praecis ud som den «dobbelt-besvarelse» tjekket skulle forhindre.
+    #
+    # Handlingen er DROP, ikke koe, og det er med vilje: et forslag er
+    # periodisk og bliver lavet igen ved naeste tik. Et gammelt forslag der
+    # lander efter Bjoerns tur er stoej han ikke bad om, mens et friskt kommer
+    # af sig selv. Koe-vejen i vagten er derfor uopnaaelig HERFRA — det gaelder
+    # kun denne ene sti, og de oevrige kilder koees som foer.
+    from core.services.session_inbox import is_session_active
+    if is_session_active(session_id):
+        return {
+            "status": "blocked",
+            "summary": message_text,
+            "action_type": "webchat-heartbeat-proposal",
+            "artifact": "",
+            # Navnet var «recent-user-activity», men tjekket taeller nu enhver
+            # besked. Ingen laeser strengen (verificeret), saa den kan vaere
+            # praecis frem for arvet.
+            "blocked_reason": "recent-session-activity",
+        }
 
     # 2/10-2026: gennem daemon-vagten i stedet for direkte skrivning. Er
     # sessionen aktiv, koees beskeden og flushes efter Bjoerns tur — et

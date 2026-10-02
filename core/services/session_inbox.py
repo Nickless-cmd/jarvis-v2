@@ -125,6 +125,17 @@ def is_session_active(session_id: str, *, window_seconds: int | None = None) -> 
             ).fetchone()
         return row is not None
     except Exception:
+        # Fejler mod «ikke aktiv», altsaa mod at LEVERE med det samme. Siden
+        # 2/10-2026 styrer denne ene funktion baade koeningen OG heartbeat'ens
+        # drop-beslutning, saa en DB-fejl her betyder at alt leveres straks i
+        # stedet for at vente — en stoerre konsekvens end da den kun afgjorde
+        # koeen. Retningen beholdes (bedre at levere end at tabe), men den skal
+        # kunne SES; ellers ser en stribe afbrydelser ud som om vagten sagde ja.
+        logger.warning(
+            "session_inbox: kunne ikke afgoere om %s er aktiv — "
+            "behandler den som INAKTIV, saa beskeder leveres straks",
+            session_id, exc_info=True,
+        )
         return False
 
 

@@ -484,16 +484,33 @@ class TestAutoCommitBlockedNotification:
         assert "hook blokerede" in msg
 
     def test_falls_back_to_session_notification(self):
+        """Fallback'en naar nudge-systemet ikke tog beskeden.
+
+        2/10-2026: stubben var `lambda m, source, urgent` og pinnede dermed
+        kaldets SIGNATUR, ikke en beslutning. Da `urgent=True` blev fjernet,
+        faldt den paa et manglende argument. Den maaler nu kontrakten i stedet:
+        beskeden skal komme frem, OG den maa ikke springe koe-vagten over.
+        """
         from core.services.run_closure_gate import _notify_auto_commit_blocked
-        sent: list[str] = []
+        kald: list[dict] = []
         with patch("core.services.run_closure_gate._last_auto_commit_error", ""), \
              patch("core.services.outbound_nudges.push_nudge",
                    return_value={"status": "disabled"}), \
              patch("core.services.notification_bridge.send_session_notification",
-                   side_effect=lambda m, source, urgent: sent.append(m)) as fb:
+                   side_effect=lambda m, **kw: kald.append({"m": m, **kw})):
             _notify_auto_commit_blocked(
                 {"count": 1, "paths": ["x.py"], "truncated": False},
                 run_id="rid-10", session_id="sid-10",
             )
-        assert len(sent) == 1
-        assert "rid-10" in sent[0]
+        assert len(kald) == 1
+        assert "rid-10" in kald[0]["m"]
+        assert kald[0]["source"] == "run-closure-gate"
+        # Kernen: beskeden slutter med «Kig paa repoet naar du har tid», saa den
+        # maa IKKE bryde ind midt i en saetning. Er sessionen aktiv, skal den
+        # koees og flushes naar Bjoerns tur er omme.
+        assert kald[0].get("urgent", False) is False, (
+            "fallback'en springer koe-vagten over igen"
+        )
+        assert "når du har tid" in kald[0]["m"], (
+            "beskedens egen ordlyd er begrundelsen for at den ikke er akut"
+        )

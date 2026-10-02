@@ -449,10 +449,16 @@ def _notify_auto_commit_blocked(
     except Exception:
         nudged = False
     if not nudged:
-        # Fallback: notification bridge (urgent — det er en efterladt ændring).
+        # Fallback: notification bridge. 2/10-2026: urgent=True er fjernet.
+        # Beskeden slutter ordret med «Kig på repoet når du har tid» og
+        # modsagde dermed sit eget flag — den sprang inbox-køen over og kunne
+        # lande midt i en sætning. Bjørn saa den tre gange paa tre doegn i sin
+        # arbejdssession. Er han aktiv, koees den nu og flushes naar hans tur
+        # er omme (eller senest efter fallback-vinduet); er han ikke aktiv,
+        # leveres den direkte MED mobil-push praecis som foer.
         try:
             from core.services.notification_bridge import send_session_notification
-            send_session_notification(message, source="run-closure-gate", urgent=True)
+            send_session_notification(message, source="run-closure-gate")
         except Exception:
             logger.warning("run_closure_gate: auto-commit-blocked notice delivery failed", exc_info=True)
 

@@ -99,8 +99,20 @@ def test_beskeden_lander_i_hans_sidst_aktive_samtale(monkeypatch):
         "core.services.chat_sessions.append_chat_message",
         lambda **kw: skrevet.append(kw) or {"id": "m1"},
     )
+    # 2/10-2026: vejen gaar nu gennem daemon-vagten i notification_bridge.
+    # Den validerer at sessionen FINDES, og den koeer hvis den er aktiv.
+    # Denne test maaler DESTINATIONEN paa den direkte vej, saa begge siges
+    # eksplicit — ellers kunne den stille skifte til koe-vejen.
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_chat_session", lambda sid: {"id": sid},
+    )
+    monkeypatch.setattr(
+        "core.services.session_inbox.is_session_active", lambda sid, **k: False,
+    )
     assert B._persist_as_chat("u1", "💭 en tanke") == "chat-abc"
     assert skrevet[0]["session_id"] == "chat-abc"
+    assert skrevet[0]["user_id"] == "u1", "afsenderens user_id gik tabt i flytningen"
+    assert skrevet[0]["workspace_name"] == "default"
 
 
 def test_uden_en_frisk_samtale_falder_den_tilbage_til_siloen(monkeypatch):
@@ -115,6 +127,12 @@ def test_uden_en_frisk_samtale_falder_den_tilbage_til_siloen(monkeypatch):
     )
     monkeypatch.setattr(
         "core.services.chat_sessions.append_chat_message", lambda **kw: {"id": "m1"},
+    )
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_chat_session", lambda sid: {"id": sid},
+    )
+    monkeypatch.setattr(
+        "core.services.session_inbox.is_session_active", lambda sid, **k: False,
     )
     assert B._persist_as_chat("u1", "💭 en tanke") == B._PROACTIVITY_SESSION_ID
 

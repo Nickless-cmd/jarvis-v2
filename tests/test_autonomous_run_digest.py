@@ -77,7 +77,11 @@ def test_referatet_lander_i_hans_sidst_aktive_samtale():
     with patch("core.services.proactivity_bridge._sidst_aktive_samtale",
                return_value="chat-abc"), \
          patch("core.services.chat_sessions.append_chat_message",
-               side_effect=lambda **kw: skrevet.append(kw)):
+               side_effect=lambda **kw: skrevet.append(kw)), \
+         patch("core.services.chat_sessions.get_chat_session",
+               side_effect=lambda sid: {"id": sid}), \
+         patch("core.services.session_inbox.is_session_active",
+               return_value=False):
         assert post_referat(run_id="r1", session_id="auto-dream-1",
                             output="Jeg læste mine drømme igennem.") == "chat-abc"
     assert skrevet[0]["session_id"] == "chat-abc"
@@ -85,7 +89,10 @@ def test_referatet_lander_i_hans_sidst_aktive_samtale():
 
 
 def test_uden_en_frisk_samtale_skrives_der_ingenting():
-    """Ellers ville referatet ligge i en silo igen — præcis det han klagede over."""
+    """Ellers ville referatet ligge i en silo igen — præcis det han klagede over.
+
+    2/10-2026: leveringen gaar nu gennem daemon-vagten, men dette vaern ligger
+    FOER den — er der ingen frisk samtale, kaldes vagten aldrig."""
     with patch("core.services.proactivity_bridge._sidst_aktive_samtale", return_value=""), \
          patch("core.services.chat_sessions.append_chat_message") as m:
         assert post_referat(run_id="r1", session_id="auto-dream-1", output="noget") == ""
@@ -99,7 +106,11 @@ def test_et_laekket_output_tages_IKKE_med():
     with patch("core.services.proactivity_bridge._sidst_aktive_samtale",
                return_value="chat-abc"), \
          patch("core.services.chat_sessions.append_chat_message",
-               side_effect=lambda **kw: skrevet.append(kw)):
+               side_effect=lambda **kw: skrevet.append(kw)), \
+         patch("core.services.chat_sessions.get_chat_session",
+               side_effect=lambda sid: {"id": sid}), \
+         patch("core.services.session_inbox.is_session_active",
+               return_value=False):
         post_referat(run_id="r1", session_id="auto-work-1",
                      output="Initiative: a genuine next step — perhaps re-reading the trace.",
                      aendrede_filer=["core/x.py"], committet=True)

@@ -73,6 +73,18 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_inbox_session_status "
         "ON session_inbox(session_id, status)"
     )
+    # 2/10-2026: afsenderens user_id/workspace_name skal med gennem koeen.
+    # `append_chat_message` falder tilbage paa kontekst-variabler naar de er
+    # tomme, og flush'en koerer i en daemon-traad UDEN den kontekst. Uden disse
+    # kolonner ville en KOEET besked derfor lande med et andet workspace_name
+    # end den samme besked leveret direkte — en tavs dataaendring i praecis den
+    # tabel vi er ved at rydde op i. ALTER er idempotent via try/except: sqlite
+    # har ingen "ADD COLUMN IF NOT EXISTS".
+    for _kolonne in ("user_id", "workspace_name"):
+        try:
+            conn.execute(f"ALTER TABLE session_inbox ADD COLUMN {_kolonne} TEXT")
+        except sqlite3.OperationalError:
+            pass  # kolonnen findes allerede — den eneste fejl ALTER kan give her
 
 
 def _connect() -> sqlite3.Connection:
@@ -125,8 +137,15 @@ def enqueue(
     content: str,
     source: str,
     urgent: bool = False,
+    user_id: str | None = None,
+    workspace_name: str | None = None,
 ) -> dict[str, Any]:
-    """Add a daemon notification to the inbox for later delivery."""
+    """Add a daemon notification to the inbox for later delivery.
+
+    `user_id`/`workspace_name` er afsenderens egne vaerdier. De gemmes, saa
+    flush'en kan skrive beskeden med PRAECIS de felter den ville have faaet
+    ved direkte levering — se kommentaren ved ALTER TABLE ovenfor.
+    """
     if not session_id or not content.strip():
         return {"status": "error", "error": "session_id and content required"}
     now_iso = datetime.now(UTC).isoformat()
@@ -134,9 +153,12 @@ def enqueue(
         with _connect() as conn:
             cur = conn.execute(
                 """INSERT INTO session_inbox
-                   (session_id, content, source, urgent, queued_at, status)
-                   VALUES (?, ?, ?, ?, ?, 'queued')""",
-                (session_id, content.strip(), source, int(urgent), now_iso),
+                   (session_id, content, source, urgent, queued_at, status,
+                    user_id, workspace_name)
+                   VALUES (?, ?, ?, ?, ?, 'queued', ?, ?)""",
+                (session_id, content.strip(), source, int(urgent), now_iso,
+                 (user_id or "").strip() or None,
+                 (workspace_name or "").strip() or None),
             )
             conn.commit()
             inbox_id = cur.lastrowid
@@ -157,7 +179,8 @@ def pending_for_session(session_id: str) -> list[dict[str, Any]]:
     try:
         with _connect() as conn:
             rows = conn.execute(
-                """SELECT id, content, source, urgent, queued_at
+                """SELECT id, content, source, urgent, queued_at,
+                          user_id, workspace_name
                    FROM session_inbox
                    WHERE session_id = ? AND status = 'queued'
                    ORDER BY id ASC""",
@@ -202,10 +225,20 @@ def flush_session(session_id: str) -> dict[str, Any]:
         return {"status": "ok", "delivered": 0, "note": "session not found"}
     for item in items:
         try:
+            # Kun de felter koeen faktisk gemte — samme begrundelse som i
+            # notification_bridge: `None` er semantisk identisk med at udelade,
+            # men at sende dem ubetinget aendrer kaldets form og braekker
+            # stubs med en smal signatur. Et item uden afsender-felter giver
+            # derfor praecis det kald flush'en lavede foer 2/10-2026.
+            _afsender = {
+                n: str(item[n]) for n in ("user_id", "workspace_name")
+                if str(item.get(n) or "").strip()
+            }
             message = append_chat_message(
                 session_id=session_id,
                 role="assistant",
                 content=str(item["content"]),
+                **_afsender,
             )
             event_bus.publish(
                 "channel.chat_message_appended",

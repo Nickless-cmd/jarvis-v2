@@ -96,9 +96,22 @@ class Korpus:
     til eller gaar — ikke pr. besked.
     """
 
-    def __init__(self, tekster: dict[str, str]) -> None:
+    def __init__(
+        self,
+        tekster: dict[str, str],
+        *,
+        tunge: dict[str, frozenset[str]] | None = None,
+    ) -> None:
         self._tekster = {nv: (t or "").lower() for nv, t in tekster.items()}
         self._ord = {nv: ord_i(t) for nv, t in self._tekster.items()}
+        # Ord der vejer som NAVNET (dobbelt) selv om de ikke staar i navnet.
+        # Bruges af den danske bro: et dansk udtryk der kun staar i ét
+        # vaerktoej er et lige saa staerkt signal som et ord i selve navnet.
+        # Uden vaegten kan ét dansk ord ikke naa over gulvet (2 x 0,89 = 1,78
+        # mod 1,35) — og broen ville vaere bygget uden at virke.
+        self._tunge = {
+            nv: frozenset((tunge or {}).get(nv, frozenset())) for nv in tekster
+        }
         df: Counter[str] = Counter()
         for ord_saet in self._ord.values():
             df.update(ord_saet)
@@ -142,7 +155,11 @@ class Korpus:
             # Navnet vejer dobbelt: staar ordet i NAVNET, er det et langt
             # staerkere signal end at det optraeder et sted i beskrivelsen.
             navn_lav = navn.lower()
-            score = sum(self.idf(w) * (2.0 if w in navn_lav else 1.0) for w in faelles)
+            tunge_her = self._tunge.get(navn, frozenset())
+            score = sum(
+                self.idf(w) * (2.0 if (w in navn_lav or w in tunge_her) else 1.0)
+                for w in faelles
+            )
             scoret.append((score, navn, faelles))
         if not scoret:
             return None
@@ -159,15 +176,31 @@ class Korpus:
         )
 
 
-def byg_korpus_fra_definitioner(definitioner: list[dict]) -> Korpus:
-    """Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket)."""
+def byg_korpus_fra_definitioner(definitioner: list[dict], *, dansk: bool = True) -> Korpus:
+    """Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket).
+
+    ``dansk=True`` (standard) fletter den danske udtryks-bro ind i hvert
+    vaerktoejs tekst, vaegtet som navnet. Maalt 2/10-2026 gav matcheren uden
+    broen traef paa 104 af 600 af Bjoerns beskeder (17 %); aarsagen var at
+    vaerktoejerne beskriver sig paa engelsk mens han skriver dansk. Se
+    ``core.services.tool_dansk_bro``.
+    """
+    from core.services.tool_dansk_bro import dansk_tillaeg
+
     tekster: dict[str, str] = {}
+    tunge: dict[str, frozenset[str]] = {}
     for d in definitioner or []:
         fn = d.get("function") or d
         navn = str(fn.get("name") or "").strip()
-        if navn:
-            tekster[navn] = navn + " " + str(fn.get("description") or "")
-    return Korpus(tekster)
+        if not navn:
+            continue
+        tillaeg = dansk_tillaeg(navn) if dansk else ""
+        tekster[navn] = " ".join(
+            p for p in (navn, tillaeg, str(fn.get("description") or "")) if p
+        )
+        if tillaeg:
+            tunge[navn] = frozenset(ord_i(tillaeg))
+    return Korpus(tekster, tunge=tunge)
 
 
 def hyppige_ord_hos_brugeren(

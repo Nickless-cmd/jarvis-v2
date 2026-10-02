@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8282/15823 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8284/15824 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8282/15823 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 701 | 1281 | 54% |
-| `core.services` | 5517 | 10773 | 51% |
+| `core.services` | 5519 | 10774 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8282/15823 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2233)
+## Undocumented public functions (2232)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L210)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1202,7 +1202,6 @@ Generated from source. 8282/15823 functions/methods documented (52%). The list b
 - `core/services/living_executive.py` :: `process_event` (L120)
 - `core/services/living_executive.py` :: `start_listener` (L881)
 - `core/services/living_executive.py` :: `stop_listener` (L902)
-- `core/services/local_small_model.py` :: `base_url` (L39)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
 - `core/services/long_horizon_goals.py` :: `create_goal` (L32)
 - `core/services/long_horizon_goals.py` :: `delete_goal` (L126)

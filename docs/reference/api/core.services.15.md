@@ -501,8 +501,8 @@ _Ét-ords-spoergsmaal til den lille lokale model paa Jarvis' eget kort._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `base_url` | `()` | — | [src](../../../core/services/local_small_model.py#L39) |
-| function | `spoerg_et_ord` | `(system, bruger, *, timeout_s=…)` | Foerste HELE ord af modellens svar, med STORE bogstaver. ``None`` = intet svar. | [src](../../../core/services/local_small_model.py#L47) |
+| function | `base_url` | `()` | CHAT-ollamaens adresse — ikke embeddings'. | [src](../../../core/services/local_small_model.py#L39) |
+| function | `spoerg_et_ord` | `(system, bruger, *, timeout_s=…)` | Foerste HELE ord af modellens svar, med STORE bogstaver. ``None`` = intet svar. | [src](../../../core/services/local_small_model.py#L64) |
 
 ## `core/services/local_tool_broker.py`
 _Local-tool broker (Path B — server-owned transcript, client-local execution)._

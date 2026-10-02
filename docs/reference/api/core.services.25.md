@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/telegram_gateway.py`
+_Telegram gateway — bidirectional messaging via Telegram Bot API._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_config` | `()` | — | [src](../../../core/services/telegram_gateway.py#L43) |
+| function | `is_configured` | `()` | — | [src](../../../core/services/telegram_gateway.py#L57) |
+| function | `get_status` | `()` | — | [src](../../../core/services/telegram_gateway.py#L61) |
+| function | `_api` | `(token, method, payload)` | — | [src](../../../core/services/telegram_gateway.py#L67) |
+| function | `_api_get` | `(token, method, payload)` | HTTP GET to Telegram Bot API (used for getFile). | [src](../../../core/services/telegram_gateway.py#L77) |
+| function | `_api_post_file` | `(token, method, data, files)` | HTTP POST multipart/form-data to Telegram Bot API (sendPhoto etc.). | [src](../../../core/services/telegram_gateway.py#L87) |
+| function | `_resolve_telegram_file_url` | `(*, token, file_id)` | Call getFile to get a download URL for a Telegram file_id. | [src](../../../core/services/telegram_gateway.py#L120) |
+| function | `_extract_telegram_media` | `(msg)` | Extract media items from a Telegram message dict. | [src](../../../core/services/telegram_gateway.py#L135) |
+| function | `_download_tg_attachment` | `(url, filename, mime, size, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L179) |
+| function | `_build_telegram_attachment_prefix` | `(media_items, *, token, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L193) |
+| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/telegram_gateway.py#L220) |
+| function | `send_telegram_file` | `(text, file_path, chat_id=…)` | Send a file to owner (or chat_id) via Telegram. | [src](../../../core/services/telegram_gateway.py#L225) |
+| function | `send_message` | `(text, chat_id=…, parse_mode=…)` | Send a message to owner (or specific chat_id). Returns status dict. | [src](../../../core/services/telegram_gateway.py#L267) |
+| function | `_get_or_create_session` | `(chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L302) |
+| function | `_poll_loop` | `(token, owner_chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L313) |
+| function | `_eventbus_subscriber_loop` | `()` | Buffer assistant responses per session, flush when run completes. | [src](../../../core/services/telegram_gateway.py#L408) |
+| function | `start_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L464) |
+| function | `stop_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L495) |
+
 ## `core/services/telemetry_gate.py`
 _Telemetri er ikke sandhed — Fase 10, kriterium 2._
 
@@ -318,20 +342,20 @@ _Tick-scoped in-memory cache — lives exactly one heartbeat tick._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `maybe_run_tiny_webchat_execution_pilot` | `(*, policy, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L30) |
-| function | `build_runtime_webchat_execution_pilot_surface` | `(*, limit=…)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L150) |
-| function | `_build_execution_candidate` | `(*, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L191) |
-| function | `_execution_focus` | `(*, question_gate, question_loop, question_pressure)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L325) |
-| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L343) |
-| function | `_message_text` | `(*, focus, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L366) |
-| function | `_resolve_target_session_id` | `()` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L376) |
-| function | `_cooldown_state` | `(canonical_key)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L386) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L404) |
-| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L431) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L442) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L451) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L460) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L467) |
+| function | `maybe_run_tiny_webchat_execution_pilot` | `(*, policy, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L29) |
+| function | `build_runtime_webchat_execution_pilot_surface` | `(*, limit=…)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L161) |
+| function | `_build_execution_candidate` | `(*, heartbeat_tick_id, decision_summary, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L202) |
+| function | `_execution_focus` | `(*, question_gate, question_loop, question_pressure)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L336) |
+| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L354) |
+| function | `_message_text` | `(*, focus, ping_text)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L377) |
+| function | `_resolve_target_session_id` | `()` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L387) |
+| function | `_cooldown_state` | `(canonical_key)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L397) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L415) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L442) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L453) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L462) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L471) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L478) |
 
 ## `core/services/tool_batch_notice.py`
 _Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
@@ -564,25 +588,4 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 | function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L373) |
 | function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L393) |
 | function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L432) |
-
-## `core/services/tool_router.py`
-_Per-turn tool selection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ToolSelection` | `` | — | [src](../../../core/services/tool_router.py#L43) |
-| function | `_clarity_signal` | `(msg)` | Hvor sandsynligt er det at turen har brug for et vaerktoej? | [src](../../../core/services/tool_router.py#L65) |
-| function | `_score` | `(user_message, *, top_sim, load_more_rate_7d)` | — | [src](../../../core/services/tool_router.py#L114) |
-| function | `_all_tool_names` | `()` | — | [src](../../../core/services/tool_router.py#L121) |
-| function | `_always_core_set` | `(limit)` | Top-N tools by 7-day call count ∪ pinned set, with fallback. | [src](../../../core/services/tool_router.py#L129) |
-| function | `kald_pr_bruger` | `(dage=…)` | Hvilke vaerktoejer kalder hver bruger — grundlaget kernen mangler. | [src](../../../core/services/tool_router.py#L167) |
-| function | `_load_more_rate_7d` | `()` | — | [src](../../../core/services/tool_router.py#L200) |
-| function | `_confidence_buckets` | `(values, n_buckets=…)` | — | [src](../../../core/services/tool_router.py#L218) |
-| function | `_count_missed_tools` | `(rows)` | — | [src](../../../core/services/tool_router.py#L226) |
-| function | `build_tool_router_surface` | `()` | Mission Control surface for tool router state. | [src](../../../core/services/tool_router.py#L242) |
-| function | `select_tools` | `(*, user_message, session_id, lane, run_id=…)` | Select a subset of tools for this turn. Always returns a ToolSelection. | [src](../../../core/services/tool_router.py#L346) |
-| function | `_sprog_bro_taendt` | `()` | Live-kontakt for sprog-broen. Self-safe: kan config ikke laeses, er den TIL. | [src](../../../core/services/tool_router.py#L386) |
-| function | `_embedding_query` | `(user_message)` | Forespoergslen der embeddes — dansk broet til engelsk. | [src](../../../core/services/tool_router.py#L395) |
-| function | `_select_inner` | `(*, user_message, session_id, lane, run_id, settings, started_at)` | — | [src](../../../core/services/tool_router.py#L426) |
-| function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L486) |
 

@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_orchestrator.py`
+_Adaptive research coordinator around the existing visible and agent runtimes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L29) |
+| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L33) |
+| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L47) |
+| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L55) |
+| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L77) |
+| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L108) |
+| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L151) |
+| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L176) |
+| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L192) |
+| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L203) |
+| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L207) |
+| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L212) |
+| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L229) |
+| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L303) |
+| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L320) |
+| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L354) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L392) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L438) |
+| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L488) |
+| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L512) |
+| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L550) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L582) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L623) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L649) |
+| class | `ResearchRecoverableError` | `` | Der er intet at syntetisere på — forælderen må tage sig af det. | [src](../../../core/services/research_orchestrator.py#L952) |
+| method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L960) |
+| function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L967) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1042) |
+
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
 
@@ -621,30 +655,4 @@ _Runtime self-model — identity awareness (self-insight, narrative identity,_
 | function | `_idle_consolidation_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1024) |
 | function | `_epistemic_runtime_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1043) |
 | function | `_subagent_ecology_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1059) |
-
-## `core/services/runtime_self_model_state.py`
-_Runtime self-model — base state surfaces + temporal/mineness awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_state.py#L17) |
-| function | `_embodied_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L29) |
-| function | `_loop_runtime_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L45) |
-| function | `_runtime_task_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L64) |
-| function | `_runtime_flow_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L87) |
-| function | `_runtime_hook_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L110) |
-| function | `_browser_body_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L144) |
-| function | `_standing_orders_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L176) |
-| function | `_layered_memory_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L197) |
-| function | `_affective_meta_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L218) |
-| function | `_experiential_runtime_context_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L233) |
-| function | `_inner_voice_daemon_surface` | `()` | Read inner voice daemon state for self-model integration. | [src](../../../core/services/runtime_self_model_state.py#L249) |
-| function | `_derive_support_stream_awareness` | `(experiential, inner_voice)` | Derive compact self-aware support stream state. | [src](../../../core/services/runtime_self_model_state.py#L265) |
-| function | `_runtime_self_appraisal_record` | `(*, kind, state, evidence, confidence, allowed_effects, ttl_minutes)` | Structured source-truth record for runtime self-model renderings. | [src](../../../core/services/runtime_self_model_state.py#L342) |
-| function | `_derive_subjective_temporal_feel` | `(experiential, inner_voice)` | Derive a compact subjective temporal feel from existing runtime truth. | [src](../../../core/services/runtime_self_model_state.py#L367) |
-| function | `_temporal_narrative` | `(temporal_state, felt_proximity, return_signal, persistence_feel, gap_minutes)` | Compact self-awareness narrative for felt time. | [src](../../../core/services/runtime_self_model_state.py#L468) |
-| function | `_mineness_source_snapshot` | `()` | Gather the minimal runtime truth needed for mineness derivation. | [src](../../../core/services/runtime_self_model_state.py#L528) |
-| function | `_derive_mineness_ownership` | `(*, experiential, inner_voice, support_stream, temporal_feel, sources)` | Derive a bounded mineness/ownership surface from existing runtime truth. | [src](../../../core/services/runtime_self_model_state.py#L578) |
-| function | `_mineness_narrative` | `(*, ownership_state, carried_thread_state, carried_thread_count, brain_top_focus, brain_continuity, open_loop_signal, voice_mode, support_posture, felt_proximity)` | Compact mineness narrative. Empty in ambient default. | [src](../../../core/services/runtime_self_model_state.py#L680) |
-| function | `build_mineness_ownership_prompt_section` | `()` | Compact heartbeat-side prompt section for mineness/ownership. | [src](../../../core/services/runtime_self_model_state.py#L714) |
 

@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_loop_lifecycle_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_proactive_loop_lifecycle_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L73) |
+| function | `refresh_runtime_proactive_loop_lifecycle_signal_statuses` | `()` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L96) |
+| function | `build_runtime_proactive_loop_lifecycle_surface` | `(*, limit=…)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L159) |
+| function | `_build_runtime_proactive_loop_lifecycle_surface_uncached` | `(*, limit=…)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L169) |
+| function | `_extract_proactive_loop_lifecycle_candidates` | `()` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L216) |
+| function | `_build_lifecycle_candidate` | `(*, loop_kind, loop_focus, open_loop, autonomy_pressure, source_anchor, question_readiness, closure_readiness, relation, meaning, witness, chronicle, metabolism, release, initiative, regulation)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L379) |
+| function | `_persist_proactive_loop_lifecycle_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L492) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L554) |
+| function | `_best_loop_focus` | `(*, latest_loop, attachment, loyalty, relation, meaning)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L586) |
+| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L607) |
+| function | `_derive_loop_state` | `(*, loop_kind, open_status, question_readiness, closure_readiness, witness_persistence, release_state)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L633) |
+| function | `_loop_summary` | `(*, loop_kind, loop_state, loop_focus, question_readiness, closure_readiness)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L653) |
+| function | `_source_anchor` | `(surface, *, fallback)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L677) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L685) |
+| function | `_max_ranked` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L696) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L705) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L714) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L723) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L730) |
+
 ## `core/services/proactive_outbound_substrate.py`
 _Proactive-outbound substrate — what Jarvis just said proactively._
 
@@ -52,11 +76,11 @@ _Proaktivitets-broen — samler Jarvis' indre spørgsmål/initiativer/undren og 
 | function | `_route` | `(uid, text, importance)` | Send direkte via den eksisterende notifikations-router (springer nudge-brønden over — broen | [src](../../../core/services/proactivity_bridge.py#L206) |
 | function | `_sidst_aktive_samtale` | `()` | Den senest rørte af HANS egne samtaler — ikke en baggrunds-session. | [src](../../../core/services/proactivity_bridge.py#L236) |
 | function | `_persist_as_chat` | `(uid, text)` | Skriv beskeden som en RIGTIG chat-besked, så Bjørn kan se og SVARE på den | [src](../../../core/services/proactivity_bridge.py#L267) |
-| function | `_mark_sent_items_acted` | `(items)` | Markér afsendte initiativer som acted, så de ikke sendes igen senere (før kun | [src](../../../core/services/proactivity_bridge.py#L288) |
-| function | `_observe` | `(nerve, meta)` | — | [src](../../../core/services/proactivity_bridge.py#L312) |
-| function | `run_proactivity_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn. Hybrid: urgent straks / ellers digest / ellers observe suppressed. | [src](../../../core/services/proactivity_bridge.py#L320) |
-| function | `register_proactivity_bridge_producer` | `()` | Registrér broen som cadence-producer (~10 min, visible_grace 15 min). | [src](../../../core/services/proactivity_bridge.py#L388) |
-| function | `build_proactivity_bridge_surface` | `()` | Read-only surface til /central/proactivity + jc. Self-safe. | [src](../../../core/services/proactivity_bridge.py#L395) |
+| function | `_mark_sent_items_acted` | `(items)` | Markér afsendte initiativer som acted, så de ikke sendes igen senere (før kun | [src](../../../core/services/proactivity_bridge.py#L307) |
+| function | `_observe` | `(nerve, meta)` | — | [src](../../../core/services/proactivity_bridge.py#L331) |
+| function | `run_proactivity_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn. Hybrid: urgent straks / ellers digest / ellers observe suppressed. | [src](../../../core/services/proactivity_bridge.py#L339) |
+| function | `register_proactivity_bridge_producer` | `()` | Registrér broen som cadence-producer (~10 min, visible_grace 15 min). | [src](../../../core/services/proactivity_bridge.py#L407) |
+| function | `build_proactivity_bridge_surface` | `()` | Read-only surface til /central/proactivity + jc. Self-safe. | [src](../../../core/services/proactivity_bridge.py#L414) |
 
 ## `core/services/procedure_bank.py`
 _Procedure Bank — reusable procedures learned from experience._
@@ -658,17 +682,4 @@ _Provider retry policy — exponential backoff for transient failures._
 | function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
 | function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
 | function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
-
-## `core/services/provider_self_heal.py`
-_Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_notify_bjorn` | `(message)` | Eskalér via eksisterende notifikations-sti (Discord/ntfy). | [src](../../../core/services/provider_self_heal.py#L22) |
-| function | `_remove_from_router` | `(provider, model)` | Fjern (provider, model) fra provider_router.json. Self-safe. | [src](../../../core/services/provider_self_heal.py#L31) |
-| function | `_observe_central` | `(payload)` | — | [src](../../../core/services/provider_self_heal.py#L46) |
-| function | `check_and_heal` | `(*, down_providers)` | 3+ providers nede samtidig → eskalér til Bjørn. Returnér True hvis eskaleret. | [src](../../../core/services/provider_self_heal.py#L54) |
-| function | `_current_down_providers` | `()` | Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []. | [src](../../../core/services/provider_self_heal.py#L66) |
-| function | `tick_provider_self_heal_daemon` | `()` | Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn | [src](../../../core/services/provider_self_heal.py#L76) |
-| function | `handle_model_drift` | `(*, provider, model, status_code)` | 404 på en model = model-drift → fjern auto fra pool + log. Returnér True hvis fjernet. | [src](../../../core/services/provider_self_heal.py#L91) |
 

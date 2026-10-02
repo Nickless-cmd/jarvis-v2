@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8264/15807 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8266/15809 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8264/15807 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 700 | 1280 | 54% |
-| `core.services` | 5500 | 10758 | 51% |
+| `core.services` | 5502 | 10760 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1757,8 +1757,8 @@ Generated from source. 8264/15807 functions/methods documented (52%). The list b
 - `core/services/sensory_archive.py` :: `search` (L263)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L237)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L363)
+- `core/services/session_inbox.py` :: `pending_count` (L270)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L396)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L194)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
@@ -1889,8 +1889,8 @@ Generated from source. 8264/15807 functions/methods documented (52%). The list b
 - `core/services/thought_stream_daemon.py` :: `get_latest_thought_fragment` (L175)
 - `core/services/thought_stream_daemon.py` :: `tick_thought_stream_daemon` (L28)
 - `core/services/thought_thread.py` :: `build_thought_thread_surface` (L192)
-- `core/services/tiny_webchat_execution_pilot.py` :: `build_runtime_webchat_execution_pilot_surface` (L150)
-- `core/services/tiny_webchat_execution_pilot.py` :: `maybe_run_tiny_webchat_execution_pilot` (L30)
+- `core/services/tiny_webchat_execution_pilot.py` :: `build_runtime_webchat_execution_pilot_surface` (L161)
+- `core/services/tiny_webchat_execution_pilot.py` :: `maybe_run_tiny_webchat_execution_pilot` (L29)
 - `core/services/tool_chip_payload.py` :: `build_tool_capability_payload` (L34)
 - `core/services/tool_contract_shadow.py` :: `pr_vaerktoej` (L41)
 - `core/services/tool_contract_shadow.py` :: `taellere` (L37)

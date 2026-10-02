@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_auth.py`
+_OAuth/bearer til remote MCP-servere._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L33) |
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L38) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L45) |
+| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
+| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
+| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
+| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L91) |
+| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L117) |
+
 ## `core/services/mcp_client.py`
 _MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
 
@@ -616,13 +630,4 @@ _Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
 | function | `set_pin` | `(model, pin)` | Owner override: 'weak' | 'strong' | 'auto' (default). Self-safe. | [src](../../../core/services/model_trust.py#L75) |
 | function | `model_strength` | `(model)` | 'strong' | 'weak'. Pin wins; else earned strength. FAILS OPEN to 'weak'. | [src](../../../core/services/model_trust.py#L91) |
 | function | `build_model_trust_surface` | `()` | Central-CLI view: per-model trust state. Self-safe. | [src](../../../core/services/model_trust.py#L105) |
-
-## `core/services/modulator_witness.py`
-_Witness surface for hidden behavior modulators._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
-| function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
-| function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
 

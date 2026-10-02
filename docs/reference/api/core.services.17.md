@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/modulator_witness.py`
+_Witness surface for hidden behavior modulators._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
+| function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
+| function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
+
 ## `core/services/monitor_streams.py`
 _Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
 
@@ -292,11 +301,12 @@ _Notification bridge — lets Jarvis push messages to the active session._
 | function | `get_pinned_session_id` | `()` | Return the currently pinned session ID, or empty string if none. | [src](../../../core/services/notification_bridge.py#L44) |
 | function | `_push_proactive` | `(session_id, text)` | Spejl en proaktiv session-notifikation som mobil-push til sessionens ejer. | [src](../../../core/services/notification_bridge.py#L74) |
 | function | `delivery_succeeded` | `(result)` | True når notifikationen er ANTAGET til levering. | [src](../../../core/services/notification_bridge.py#L94) |
-| function | `send_session_notification` | `(content, *, source=…, urgent=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L107) |
-| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L215) |
-| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L263) |
-| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L290) |
-| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L302) |
+| function | `_koe_afsender` | `(user_id, workspace_name)` | Kun de afsender-felter der faktisk er sat — se begrundelsen ved | [src](../../../core/services/notification_bridge.py#L107) |
+| function | `send_session_notification` | `(content, *, source=…, urgent=…, session_id=…, user_id=…, workspace_name=…, push=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L119) |
+| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L274) |
+| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L322) |
+| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L349) |
+| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L361) |
 
 ## `core/services/notification_router.py`
 _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
@@ -630,20 +640,4 @@ _`OutcomeProjector` — ét terminalt udfald pr. run, uden at opfinde sandhed._
 | method | `OutcomeLedger.record` | `(self, run_id, outcome)` | — | [src](../../../core/services/outcome_projector.py#L179) |
 | method | `OutcomeLedger.outcome` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L195) |
 | method | `OutcomeLedger.is_terminal` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L198) |
-
-## `core/services/outreach_composer.py`
-_Outreach composer — Spor-1 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
-| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
-| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
-| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L81) |
-| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L113) |
-| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L162) |
-| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L199) |
-| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
-| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L285) |
-| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L302) |
 

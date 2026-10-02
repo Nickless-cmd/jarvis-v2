@@ -2524,8 +2524,20 @@ async def _stream_visible_run(
                         # 6.400-8.320 (= systembeskeden) mens miss voksede til
                         # 76k. Nu bestemmer routeren ÉN gang pr. session.
                         from core.services.session_tool_pin import resolve as _pin_resolve
+                        # Atomaritet (2/10-2026): prompten kan nævne et skill
+                        # («[SKILLS DER MATCHER DENNE OPGAVE]»), men målt samme
+                        # dag overlevede INTET skill-værktøj router+pin i de
+                        # agentiske runder — kun `load_more_tools` og
+                        # `call_loaded_tool`. Den betingede pin fandtes kun i
+                        # første pas. Samme betingelse, samme delte opslag, så
+                        # prompt og værktøjssæt ikke kan sige hver sit.
+                        try:
+                            from core.tools.copilot_tool_pruning import _betinget_kraevede
+                            _betinget = _betinget_kraevede(run.user_message)
+                        except Exception:
+                            _betinget = ()
                         _names, _pin_src = _pin_resolve(
-                            run.session_id, list(_selection.selected_names))
+                            run.session_id, list(_selection.selected_names), _betinget)
                         _selected_set = set(_names)
                         _agentic_tools = [
                             d for d in _agentic_tools
@@ -2691,6 +2703,9 @@ async def _stream_visible_run(
                 # 70 annoncerede, tool_choice=required) — det er ikke dét.
                 _hollow_promise_nudges = 0
                 _HOLLOW_MAX_NUDGES = 2
+                # Skill-beslutning (2/10-2026): ét stærkt match = ét krav om
+                # svar. Cap 1, samme grund som hollow-promise-loftet.
+                _skill_gate_nudges = 0
                 _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
                 _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
@@ -4224,6 +4239,65 @@ async def _stream_visible_run(
                                     pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
+                        # ── SKILL-BESLUTNING (2/10-2026, flag-gated, fail-open) ──
+                        # Fladen skriver «[SKILLS DER MATCHER DENNE OPGAVE]» i
+                        # prompten, og Bjørn ser den i chatten. Men målt samme
+                        # dag: i de agentiske runder (117 værktøjer) overlevede
+                        # INTET skill-værktøj router+pin. Vejen til et skill var
+                        # tre trin mod bash' ét, og sidste faktiske brug var 29/9.
+                        # Et STÆRKT match må ikke ties ihjel: enten invokeres
+                        # det, eller svaret nævner det ved navn. ÉN nudge pr. tur.
+                        # Ligger efter hollow-promise-vagten med vilje: et brudt
+                        # løfte er en tillids-sag og vejer tungere end metode.
+                        if not _is_last_round and _skill_gate_nudges < 1:
+                            try:
+                                from core.services.skill_gate_guard import (
+                                    build_nudge as _sg_nudge,
+                                    is_unanswered_skill_match as _sg_unanswered,
+                                    skill_gate_guard_enabled as _sg_enabled,
+                                )
+                                from core.services.skill_relevance_surface import (
+                                    skill_flade_event as _sg_flade,
+                                )
+                                _sg_ev = _sg_flade(run.user_message) or {}
+                                _sg_primaere = [
+                                    str(m.get("name") or "")
+                                    for m in (_sg_ev.get("matches") or [])
+                                    if m.get("primary") and str(m.get("name") or "")
+                                ]
+                                _sg_kaldte = [
+                                    str((_tc.get("function") or {}).get("name") or "")
+                                    for _sg_ex in _followup_exchanges
+                                    for _tc in (getattr(_sg_ex, "tool_calls", []) or [])
+                                ]
+                                if _sg_enabled() and _sg_unanswered(
+                                    primary_matches=_sg_primaere,
+                                    called_tool_names=_sg_kaldte,
+                                    final_text="".join(_a_parts),
+                                    nudged_already=bool(_skill_gate_nudges),
+                                ):
+                                    _skill_gate_nudges += 1
+                                    _sg_tekst = _sg_nudge(_sg_primaere)
+                                    _tur_hale.tilfoej_vedvarende(_sg_tekst)
+                                    _followup_exchanges.append(
+                                        _vf.ToolExchange(
+                                            text=_exchange_text(),
+                                            tool_calls=[], results=[]))
+                                    logger.info(
+                                        "skill-gate run_id=%s — staerkt match uden "
+                                        "svar: %s", run.run_id, ", ".join(_sg_primaere[:3]))
+                                    try:
+                                        from core.eventbus.bus import event_bus as _sg_bus
+                                        _sg_bus.publish("skill_gate.nudge", {
+                                            "run_id": str(run.run_id or ""),
+                                            "session_id": str(run.session_id or ""),
+                                            "skills": _sg_primaere[:3],
+                                        })
+                                    except Exception:
+                                        pass  # telemetri må ikke vælte turen
+                                    continue
+                            except Exception:
+                                pass  # fail-open → normal break nedenfor
                         # ── Baggrunds-shells: slut ikke mens noget koerer ──
                         # `operator_run_in_background` er ubrugelig uden det her:
                         # man starter en kommando, turen slutter, og resultatet

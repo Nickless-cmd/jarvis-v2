@@ -144,15 +144,26 @@ def _med_garanterede(navne: list[str]) -> list[str]:
     return sorted(set(navne) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR))
 
 
-def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]:
+def resolve(
+    session_id: str,
+    selected_names: list[str],
+    extra_required: tuple[str, ...] = (),
+) -> tuple[list[str], str]:
     """Hvilke værktøjer skal denne tur sende?
 
     Returnerer (navne, kilde) hvor kilde er "pinned" (genbrugt, præfiks holder),
     "pinned-new" (denne tur låste sættet) eller "router" (låsen er slået fra).
     Self-safe: enhver fejl → routerens eget valg, som før.
+
+    ``extra_required`` er værktøjer der er nødvendige netop fordi prompten
+    nævner dem — i praksis ``skill_invoke`` når et skill matcher (2/10-2026).
+    De flettes ind i LÅSEN, ikke kun i svaret, så arrayet står stille fra næste
+    tur af. Uden det nåede den betingede pin kun første pas, og de agentiske
+    runder — hvor arbejdet sker — havde intet skill-værktøj overhovedet.
     """
     sid = str(session_id or "").strip()
     picked = [str(n) for n in (selected_names or []) if str(n).strip()]
+    ekstra = [str(n).strip() for n in (extra_required or []) if str(n).strip()]
     if not sid or not picked or not pin_enabled():
         return picked, "router"
     try:
@@ -179,13 +190,19 @@ def resolve(session_id: str, selected_names: list[str]) -> tuple[list[str], str]
             # Prisen er ét cache-brud i de sessioner der mangler noget: arrayet
             # aendrer sig én gang, og derefter staar det stille igen. Et
             # vaerktoej der ikke kan kaldes er dyrere end det brud.
+            if ekstra and not set(ekstra) <= set(existing):
+                # Et betinget krævet værktøj nåede ikke låsen. Foreningen sker
+                # ÉN gang — derefter står arrayet stille igen, så præfikset
+                # holder. Samme afvejning som `_med_garanterede`: et værktøj
+                # der ikke kan kaldes er dyrere end ét cache-brud.
+                return _med_garanterede(pin(sid, [*existing, *ekstra])), "pinned"
             return _med_garanterede(existing), "pinned"
         # FOERSTE tur i sessionen. Foreningen skal ogsaa gaelde HER: uden den
         # var de garanterede vaerktoejer fravaerende praecis paa den tur der
         # laaser saettet — og saa manglede de i hele sessionens levetid.
         # Det er samtidig aabneren, som baerer ~35 % af al cache-miss.
-        pin(sid, picked)
-        return _med_garanterede(picked), "pinned-new"
+        pin(sid, [*picked, *ekstra])
+        return _med_garanterede([*picked, *ekstra]), "pinned-new"
     except Exception as exc:
         logger.debug("session_tool_pin: resolve faldt tilbage til routeren: %s", exc)
         return picked, "router"

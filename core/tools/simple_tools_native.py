@@ -601,7 +601,10 @@ def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
 
     lines = [f"Pending proposals ({len(pending)}):"]
     for p in pending:
-        pid = str(p.get("proposal_id") or "")[:18]
+        # Fuld id (2/10-2026). Her stod [:18], som klippede «prop-» + 13 hex og
+        # gjorde den viste noegle UBrugelig som opslagsnoegle: approve_proposal
+        # svarede «not-found» paa praecis den streng brugeren kunne kopiere.
+        pid = str(p.get("proposal_id") or "")
         kind = str(p.get("kind") or "")
         title = str(p.get("title") or "")
         lines.append(f"  [{pid}] {kind}: {title}")

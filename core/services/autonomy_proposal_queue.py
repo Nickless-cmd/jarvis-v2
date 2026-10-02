@@ -223,6 +223,30 @@ def approve_proposal(
         except Exception:
             pass
         return {"status": "failed", "proposal": resolved, "error": str(exc)}
+    # Executorens EGEN status afgoer (2/10-2026). Foer blev proposalen sat til
+    # «executed» uanset hvad executoren svarede — saa et «stale»-svar (filen
+    # aendret under forslaget, guard i _execute_source_edit_proposal) blev meldt
+    # som en SUCCES. Maalt samme dag: 3 af 5 source-edits skrev INTET til disken
+    # og meldte alligevel «executed successfully». Den falske kvittering er
+    # farligere end fejlen: den faar kalderen til at tro arbejdet er landet.
+    _exec_status = str(result.get("status") or "") if isinstance(result, dict) else ""
+    if _exec_status in ("error", "stale", "failed"):
+        _why = str(result.get("error") or _exec_status) if isinstance(result, dict) else _exec_status
+        resolved = resolve_autonomy_proposal(
+            proposal_id,
+            status="failed",
+            resolved_by="executor",
+            resolution_note=f"Executor svarede {_exec_status}: {_why[:200]}",
+            execution_result=result if isinstance(result, dict) else {"value": result},
+        )
+        try:
+            event_bus.publish(
+                "autonomy_proposal.execution_failed",
+                {"proposal_id": proposal_id, "kind": kind, "error": _exec_status},
+            )
+        except Exception:  # self-safe: en event-fejl maa ikke skjule den aegte aarsag
+            pass
+        return {"status": "failed", "proposal": resolved, "error": _why}
     resolved = resolve_autonomy_proposal(
         proposal_id,
         status="executed",

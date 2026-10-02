@@ -706,7 +706,7 @@ Generated from source. 8284/15824 functions/methods documented (52%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `get_registered_proposal_kinds` (L54)
 - `core/services/autonomy_proposal_queue.py` :: `list_pending_proposals` (L155)
 - `core/services/autonomy_proposal_queue.py` :: `list_recent_proposals` (L159)
-- `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L255)
+- `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L279)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
 - `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L359)

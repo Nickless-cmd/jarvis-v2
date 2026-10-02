@@ -146,3 +146,103 @@ def test_instrument_fix_uden_signatur_er_fejl():
     assert _execute_instrument_fix_proposal({})["status"] == "error"
     assert _execute_instrument_fix_proposal({"finding": {}})["status"] == "error"
     assert _execute_instrument_fix_proposal({"finding": "ikke-et-objekt"})["status"] == "error"
+
+
+# ── Den falske kvittering (2/10-2026) ─────────────────────────────────────
+# Foer blev proposalen sat til «executed» uanset hvad executoren svarede. Et
+# «stale»-svar (filen aendret under forslaget) blev derfor meldt som SUCCES.
+# Maalt samme dag: 3 af 5 source-edits skrev INTET til disken og meldte
+# alligevel «executed successfully».
+
+
+def test_executorens_STALE_svar_meldes_IKKE_som_success():
+    """Den falske kvittering er farligere end fejlen — den skjuler den."""
+    kaldt: dict[str, object] = {}
+
+    def executor(payload):
+        return {"status": "stale", "error": "file changed under proposal: base=a now=b"}
+
+    def fake_resolve(pid, **kwargs):
+        kaldt.update(kwargs)
+        return {"proposal_id": pid, **kwargs}
+
+    proposal = {
+        "proposal_id": "proposal-stale",
+        "status": "pending",
+        "kind": "test-stale",
+        "payload": {},
+    }
+
+    with patch(
+        "core.services.autonomy_proposal_queue.get_autonomy_proposal",
+        return_value=proposal,
+    ), patch(
+        "core.services.autonomy_proposal_queue.resolve_autonomy_proposal",
+        side_effect=fake_resolve,
+    ), patch.dict(
+        "core.services.autonomy_proposal_queue._PROPOSAL_EXECUTORS",
+        {"test-stale": executor},
+        clear=False,
+    ):
+        result = approve_proposal("proposal-stale")
+
+    assert result["status"] == "failed", "et stale-svar blev meldt som success"
+    assert kaldt["status"] == "failed", "proposal-status blev ikke sat til failed"
+    assert "stale" in str(kaldt["resolution_note"]), "aarsagen forsvandt ud af noten"
+
+
+def test_executorens_ERROR_svar_meldes_IKKE_som_success():
+    """Samme vagt for det raa error-svar."""
+
+    def executor(payload):
+        return {"status": "error", "error": "finding not found: abc"}
+
+    def fake_resolve(pid, **kwargs):
+        return {"proposal_id": pid, **kwargs}
+
+    proposal = {
+        "proposal_id": "proposal-err",
+        "status": "pending",
+        "kind": "test-err",
+        "payload": {},
+    }
+
+    with patch(
+        "core.services.autonomy_proposal_queue.get_autonomy_proposal",
+        return_value=proposal,
+    ), patch(
+        "core.services.autonomy_proposal_queue.resolve_autonomy_proposal",
+        side_effect=fake_resolve,
+    ), patch.dict(
+        "core.services.autonomy_proposal_queue._PROPOSAL_EXECUTORS",
+        {"test-err": executor},
+        clear=False,
+    ):
+        result = approve_proposal("proposal-err")
+
+    assert result["status"] == "failed"
+    assert result["error"] == "finding not found: abc"
+
+
+def test_list_proposals_viser_FULD_noegle():
+    """Den viste noegle skal kunne bruges direkte i approve_proposal.
+
+    Her stod [:18] — «prop-» er 5 tegn, saa der blev vist 13 af 16 hex, og
+    praecis den streng brugeren kunne kopiere gav «not-found».
+    """
+    from core.tools.simple_tools_native import _exec_list_proposals
+
+    fuld = "prop-0123456789abcdef"
+    surface = {
+        "items": [
+            {"proposal_id": fuld, "kind": "x", "title": "t", "status": "pending"}
+        ]
+    }
+
+    with patch(
+        "core.services.autonomy_proposal_queue.build_autonomy_proposal_surface",
+        return_value=surface,
+    ):
+        out = _exec_list_proposals({})
+
+    assert fuld in str(out.get("text") or ""), "noeglen er klippet — approve svarer not-found"

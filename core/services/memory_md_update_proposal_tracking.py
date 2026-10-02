@@ -238,12 +238,17 @@ def _extract_memory_md_update_proposals() -> list[dict[str, object]]:
         witness_status = str(item.get("status") or "")
         if witness_status not in {"fresh", "carried"}:
             continue
-        domain_key = _domain_from_canonical_key(str(item.get("canonical_key") or ""))
+        canonical_key = str(item.get("canonical_key") or "")
+        domain_key = _domain_from_canonical_key(canonical_key)
         if not domain_key:
             continue
         # 2026-09-04 (memory repair, R3): en domain-key der er en hel brugerbesked
         # ("nej-check-lige-github-der-skulle-v-re-leake") er ikke stabil kontekst.
-        if _looks_like_sentence(domain_key):
+        #
+        # 2/10-2026: maales paa den RAA hale, ikke paa `domain_key`. Foldningen i
+        # `_domain_from_canonical_key` fjerner smaaordene, og det er dem vagten
+        # taeller — saa den afvaebnede sig selv. Se `_raw_tail_from_canonical_key`.
+        if _looks_like_sentence(_raw_tail_from_canonical_key(canonical_key)):
             continue
         proposal_type = "stable-context-update"
         proposal_confidence = _build_proposal_confidence(
@@ -460,6 +465,23 @@ def _domain_from_canonical_key(canonical_key: str) -> str:
     """
     parts = [part for part in canonical_key.split(":") if part]
     return normalize_candidate_domain(parts[-1]) if parts else ""
+
+
+def _raw_tail_from_canonical_key(canonical_key: str) -> str:
+    """Sidste led af nøglen UDEN foldning — til sætnings-tjekket.
+
+    `_domain_from_canonical_key` folder halen gennem `normalize_candidate_domain`
+    for at samle to formuleringer af samme opgave i ét domæne. Foldningen
+    fjerner småordene, og det er netop dem `_looks_like_sentence` tæller på:
+    målt 2/10-2026 blev «det-er-fordi-du-prompt-er-rodet» (7 dele → sætning) til
+    «fordi-prompt-rodet» (3 dele → ikke sætning), så en hel brugerbesked slap
+    gennem vagten og blev et stabilt-kontekst-forslag.
+
+    Spørgsmålet «er denne nøgle en hel brugerbesked?» er en egenskab ved den RÅ
+    nøgle, ikke ved det foldede domæne. Derfor måles den her, før foldningen.
+    """
+    parts = [part for part in canonical_key.split(":") if part]
+    return parts[-1] if parts else ""
 
 
 def _memory_kind_from_canonical_key(canonical_key: str) -> str:

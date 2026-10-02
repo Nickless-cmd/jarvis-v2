@@ -340,9 +340,9 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 | function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L417) |
 | function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L463) |
 | function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L479) |
-| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L552) |
-| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L558) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L563) |
+| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L574) |
+| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L580) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L585) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

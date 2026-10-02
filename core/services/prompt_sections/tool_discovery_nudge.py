@@ -528,6 +528,28 @@ def tool_discovery_nudge_section(
     if traef is None:
         return ""   # det NORMALE svar: 50 af 60 aegte beskeder
 
+    # ── Peg kun hvis det BEDSTE svar er usynligt (2/10-2026) ─────────────
+    # Maalt paa 600 af Bjoerns egne beskeder: 100 nudges fyrede, og 6 af dem
+    # pegede paa det FORKERTE vaerktoej. Alle 6 var samme sag — «godkend
+    # prop-0b5e…» gav `approve_plan` (1,64), fordi «godkend» var det eneste
+    # faelles ord, mens det rigtige svar, `approve_proposal` (3,42), allerede
+    # stod SYNLIGT for ham og derfor var filtreret ud af kandidaterne.
+    # Uden dette led vinder en svag usynlig pr. automatik, netop naar den
+    # staerke er synlig — og saa peger sektionen paa det forkerte.
+    # Reglen fjernede praecis de 6 og beholdt alle 94 rigtige. Maalt pris:
+    # +0,10 ms pr. besked (matcheren er rene strengoperationer).
+    try:
+        synlige = set(kerne) | {
+            navn for navn in registreret if _staar_i_katalog(navn, katalog)
+        }
+        bedste_alt = _matches(besked, list(registreret))
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: feltmaal fejlede: %s", exc)
+        bedste_alt = None
+        synlige = set()
+    if bedste_alt is not None and bedste_alt.navn in synlige:
+        return ""   # svaret staar allerede foran ham — der er intet at pege paa
+
     # ANDET LED: ordmatchen fandt HVILKET vaerktoej; en lille lokal model
     # afgoer OM beskeden er en bestilling. Maalt paa 35 aegte bud: praecision
     # 17 % -> 100 %, 26 af 26 forkerte afvist. Se core.services.local_intent_gate.

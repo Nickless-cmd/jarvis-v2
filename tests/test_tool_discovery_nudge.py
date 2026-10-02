@@ -795,3 +795,41 @@ def test_kernen_hentes_ikke_paa_HVER_tur(monkeypatch):
     _AEGTE_KERNENS_NAVNE()
     _AEGTE_KERNENS_NAVNE()
     assert n[0] == 1, f"kernen blev hentet {n[0]} gange"
+
+
+# ---------------------------------------------------------------------------
+# Peg kun naar det BEDSTE svar er usynligt (2/10-2026)
+# ---------------------------------------------------------------------------
+
+
+def _to_godkend(monkeypatch):
+    """`approve_proposal` staar i kataloget (synligt), `approve_plan` er usynlig."""
+    monkeypatch.setattr(
+        T, "_registrerede_navne",
+        lambda: {"approve_proposal": "Godkend et forslag",
+                 "approve_plan": "Godkend en plan"},
+    )
+    monkeypatch.setattr(T, "_katalog_tekst", lambda: "approve_proposal")
+
+
+def test_peger_IKKE_naar_det_bedste_svar_er_synligt(monkeypatch):
+    """Maalt 2/10-2026 paa 600 aegte beskeder: 6 af 100 nudges pegede paa det
+    forkerte vaerktoej. Alle 6 var samme sag — «godkend prop-0b5e…» gav
+    `approve_plan` (1,64), fordi «godkend» var det eneste faelles ord, mens det
+    rigtige svar `approve_proposal` (3,42) allerede stod synligt og derfor var
+    filtreret ud af kandidaterne. En svag usynlig maa ikke vinde pr. automatik
+    naar den staerke er synlig — saa peger sektionen paa det forkerte."""
+    _to_godkend(monkeypatch)
+    _stub(monkeypatch, [("approve_proposal", 3.42), ("approve_plan", 1.64)])
+    assert T.tool_discovery_nudge_section("godkend prop-abc123", "s1") == ""
+
+
+def test_peger_STADIG_naar_det_bedste_svar_er_usynligt(monkeypatch):
+    """Modstykket: er den usynlige selv det bedste, skal den stadig frem.
+    Ellers ville reglen ovenfor kunne sluge hele sektionen."""
+    _to_godkend(monkeypatch)
+    _stub(monkeypatch, [("approve_plan", 1.64)])
+    # Beskeden skal over _MIN_MESSAGE_CHARS (15) — «godkend planen» er 14 og
+    # blev sprunget over foer opslaget, saa testen maalte laengden og ikke reglen.
+    ud = T.tool_discovery_nudge_section("kan du godkende planen", "s1")
+    assert "approve_plan" in ud

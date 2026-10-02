@@ -65,7 +65,7 @@ export const ChatCodeBlock = memo(function ChatCodeBlock({ code, lang, className
     : <pre><code className={className}>{code}</code></pre>
 
   return (
-    <div className="codeblock">
+    <div className="codeblock chat-codeblock">
       <div className="codeblock-bar">
         <span className="codeblock-lang">{lang || 'text'}</span>
         <button
@@ -75,7 +75,7 @@ export const ChatCodeBlock = memo(function ChatCodeBlock({ code, lang, className
           title={fejl ? 'Kunne ikke kopiere' : kopieret ? 'Kopieret' : 'Kopiér kode'}
           onClick={() => void kopiér()}
         >
-          {fejl ? 'Kunne ikke kopiere' : kopieret ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+          {fejl ? 'Kunne ikke kopiere' : kopieret ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
         </button>
       </div>
       {kode}

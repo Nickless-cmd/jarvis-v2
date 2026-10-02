@@ -1793,6 +1793,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   min-width: 28px; min-height: 28px; border-radius: 6px;
 }
 .codeblock-bar .chat-code-copy:hover { background: var(--bg-3); }
+.chat-codeblock .codeblock-bar { border-bottom: 0; }
+.jarvis-body .chat-codeblock pre { border: 0; border-radius: 0; margin: 0; }
 .codeblock pre, .codeblock > div { margin: 0; padding: 10px 12px; overflow-x: auto; font-size: 13px; }
 .codeblock pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 /* 29/9-2026: chat og panelkode skifter farver sammen med appens tema. */

@@ -36,6 +36,7 @@ import { randomUUID } from 'node:crypto'
 import * as geo from './geo'
 import { brugbarPlads, husk } from './vinduesplads'
 import * as jb from './jarvisBrowser'
+import { rendererCsp } from './rendererCsp'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'J.A.R.V.I.S.'
@@ -911,25 +912,11 @@ app.whenReady().then(() => {
   })
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => TILLADT.has(permission))
 
-  // Dev mode: Vite skal kunne injecte inline scripts til HMR.
-  // Prod mode: stram CSP — kun 'self', ingen inline/eval.
-  const csp = isDev
-    ? [
-        "default-src 'self' http://localhost:5174 ws://localhost:5174",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5174",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN} http://localhost:5174 ws://localhost:5174`,
-      ]
-    : [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN}`,
-      ]
+  // Shiki behøver WebAssembly i produktion; JavaScript eval er stadig lukket.
+  const csp = rendererCsp({
+    development: isDev,
+    connectOrigins: [apiOrigin, wsOrigin, LOGIN_API_ORIGIN, LOGIN_WS_ORIGIN],
+  })
 
   // Kombineret response-headers handler: CSP for vores egne HTML/JS,
   // plus CORS-headers-injection for vores betroede API-origin.

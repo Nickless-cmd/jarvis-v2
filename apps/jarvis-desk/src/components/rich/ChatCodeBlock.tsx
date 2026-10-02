@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Check, Copy } from 'lucide-react'
 import { highlightChatCode, type ChatHighlight } from '../../lib/chatCodeHighlight'
 import { skrivTilUdklipsholder } from '../../lib/udklipsholder'
 
@@ -67,8 +68,14 @@ export const ChatCodeBlock = memo(function ChatCodeBlock({ code, lang, className
     <div className="codeblock">
       <div className="codeblock-bar">
         <span className="codeblock-lang">{lang || 'text'}</span>
-        <button type="button" aria-label="Kopiér" onClick={() => void kopiér()}>
-          {fejl ? 'Kunne ikke kopiere' : kopieret ? 'Kopieret' : 'Kopiér'}
+        <button
+          type="button"
+          className="chat-code-copy"
+          aria-label={fejl ? 'Kunne ikke kopiere' : kopieret ? 'Kopieret' : 'Kopiér kode'}
+          title={fejl ? 'Kunne ikke kopiere' : kopieret ? 'Kopieret' : 'Kopiér kode'}
+          onClick={() => void kopiér()}
+        >
+          {fejl ? 'Kunne ikke kopiere' : kopieret ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
         </button>
       </div>
       {kode}

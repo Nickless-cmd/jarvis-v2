@@ -246,7 +246,10 @@ def scan_for_contradictions(*, hours: int = _SCAN_WINDOW_HOURS) -> dict:
     for msg in messages:
         content = str(msg.get("content") or "")
         session_id = str(msg.get("session_id") or "")
-        created_at = str(msg.get("created_at") or now)
+        # 2/10-2026: `msg.created_at` kommer fra chat-historikken i `+00:00`,
+        # mens huset skriver `Z`. To formater i ÉN tabel sorterer forskelligt
+        # som tekst — schema-vagten kalder det «den dyre». Normalisér på vejen ind.
+        created_at = str(msg.get("created_at") or now).replace("+00:00", "Z")
 
         statements = extract_statements(content)
         if not statements:

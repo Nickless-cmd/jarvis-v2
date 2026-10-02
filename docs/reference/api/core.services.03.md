@@ -454,10 +454,12 @@ _Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshe
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `build_candidate_review_digest` | `()` | Tæl de review-bare kandidater pr. type og find den ældste. Read-only, self-safe. | [src](../../../core/services/candidate_review_digest.py#L50) |
-| function | `format_candidate_review_digest` | `(digest)` | Kort, ærlig tekst. Kun tal der faktisk står i digest'en. | [src](../../../core/services/candidate_review_digest.py#L105) |
-| function | `tick_candidate_review_digest` | `()` | Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe. | [src](../../../core/services/candidate_review_digest.py#L122) |
-| function | `build_candidate_review_digest_surface` | `()` | State til Mission Control / health-visninger. | [src](../../../core/services/candidate_review_digest.py#L163) |
+| function | `_load_last_tick` | `()` | Læs sidste udsendelse fra disk — ikke fra en modul-global. | [src](../../../core/services/candidate_review_digest.py#L53) |
+| function | `_save_last_tick` | `(now)` | — | [src](../../../core/services/candidate_review_digest.py#L70) |
+| function | `build_candidate_review_digest` | `()` | Tæl de review-bare kandidater pr. type og find den ældste. Read-only, self-safe. | [src](../../../core/services/candidate_review_digest.py#L74) |
+| function | `format_candidate_review_digest` | `(digest)` | Kort, ærlig tekst. Kun tal der faktisk står i digest'en. | [src](../../../core/services/candidate_review_digest.py#L129) |
+| function | `tick_candidate_review_digest` | `()` | Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe. | [src](../../../core/services/candidate_review_digest.py#L146) |
+| function | `build_candidate_review_digest_surface` | `()` | State til Mission Control / health-visninger. | [src](../../../core/services/candidate_review_digest.py#L188) |
 
 ## `core/services/candidate_tracking.py`
 

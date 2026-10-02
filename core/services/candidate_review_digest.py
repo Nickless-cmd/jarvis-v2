@@ -30,6 +30,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
+from core.runtime.state_store import load_json, save_json
+
 logger = logging.getLogger(__name__)
 
 #: Én gang i ugen. Køen vokser ~87 rækker/dag; sjældnere end ugentligt gør
@@ -43,8 +45,30 @@ _MIN_TOTAL_TO_REPORT = 50
 #: `events_retention._CANDIDATE_TYPE_MAX_AGE`) — den er bogføring, ikke review.
 _REVIEW_TYPES = ("memory_promotion", "preference_update", "prompt_feedback_update")
 
-_last_tick_at: datetime | None = None
+_STATE_KEY = "candidate_review_digest"
+
 _last_result: dict[str, object] = {}
+
+
+def _load_last_tick() -> datetime | None:
+    """Læs sidste udsendelse fra disk — ikke fra en modul-global.
+
+    Målt 2/10-2026: `_last_tick_at` var en modul-global, så «ugentligt» blev
+    «ved hver genstart». Runtime genstarter flere gange om dagen, og hver gang
+    stod den på None igen — så køen blev annonceret på ny. Bjørn: «den dukker
+    op hele tiden». `memory_pruning_daemon` bærer samme fejl.
+    """
+    raw = load_json(_STATE_KEY, {})
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return datetime.fromisoformat(str(raw.get("last_tick_at") or ""))
+    except ValueError:  # tom eller ugyldig — behandl som «aldrig kørt»
+        return None
+
+
+def _save_last_tick(now: datetime) -> None:
+    save_json(_STATE_KEY, {"last_tick_at": now.isoformat()})
 
 
 def build_candidate_review_digest() -> dict[str, object]:
@@ -121,15 +145,16 @@ def format_candidate_review_digest(digest: dict[str, object]) -> str:
 
 def tick_candidate_review_digest() -> dict[str, object]:
     """Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe."""
-    global _last_tick_at, _last_result
+    global _last_result
 
     now = datetime.now(UTC)
-    if _last_tick_at is not None and (now - _last_tick_at) < timedelta(hours=_CADENCE_HOURS):
+    last_tick = _load_last_tick()
+    if last_tick is not None and (now - last_tick) < timedelta(hours=_CADENCE_HOURS):
         return {"sent": False, "reason": "cadence"}
 
     digest = build_candidate_review_digest()
     total = int(digest.get("total_proposed") or 0)
-    _last_tick_at = now
+    _save_last_tick(now)
 
     if total < _MIN_TOTAL_TO_REPORT:
         _last_result = {"sent": False, "reason": "below-threshold", "total": total}
@@ -162,7 +187,8 @@ def tick_candidate_review_digest() -> dict[str, object]:
 
 def build_candidate_review_digest_surface() -> dict[str, object]:
     """State til Mission Control / health-visninger."""
+    last_tick = _load_last_tick()
     return {
-        "last_tick_at": _last_tick_at.isoformat() if _last_tick_at else "",
+        "last_tick_at": last_tick.isoformat() if last_tick else "",
         "last_result": _last_result,
     }

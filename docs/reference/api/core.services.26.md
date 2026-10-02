@@ -236,11 +236,11 @@ _User Contradiction Tracker — detects when the user contradicts themselves._
 | function | `_classify_topic` | `(text)` | Simple keyword-based topic classification. | [src](../../../core/services/user_contradiction_tracker.py#L138) |
 | function | `_detect_contradictions_between` | `(new_statement, new_topic, existing, *, max_findings=…)` | Compare a new statement against existing stored statements. | [src](../../../core/services/user_contradiction_tracker.py#L170) |
 | function | `scan_for_contradictions` | `(*, hours=…)` | Main entry point — scan recent user messages for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L231) |
-| function | `build_user_contradiction_surface` | `(*, limit=…)` | Build signal surface for user contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L352) |
-| function | `record_user_statement` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a user statement. Thin wrapper around DB upsert. | [src](../../../core/services/user_contradiction_tracker.py#L427) |
-| function | `check_contradiction` | `(text, topic=…, user_id=…)` | Check a statement against existing stored statements for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L464) |
-| function | `detect_and_store_contradiction` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a statement AND detect/store contradictions in one call. | [src](../../../core/services/user_contradiction_tracker.py#L486) |
-| function | `get_user_contradictions` | `(*, limit=…, status=…, user_id=…)` | Get stored contradictions. Thin wrapper around DB query. | [src](../../../core/services/user_contradiction_tracker.py#L573) |
+| function | `build_user_contradiction_surface` | `(*, limit=…)` | Build signal surface for user contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L355) |
+| function | `record_user_statement` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a user statement. Thin wrapper around DB upsert. | [src](../../../core/services/user_contradiction_tracker.py#L430) |
+| function | `check_contradiction` | `(text, topic=…, user_id=…)` | Check a statement against existing stored statements for contradictions. | [src](../../../core/services/user_contradiction_tracker.py#L467) |
+| function | `detect_and_store_contradiction` | `(text, topic=…, session_id=…, source=…, user_id=…)` | Record a statement AND detect/store contradictions in one call. | [src](../../../core/services/user_contradiction_tracker.py#L489) |
+| function | `get_user_contradictions` | `(*, limit=…, status=…, user_id=…)` | Get stored contradictions. Thin wrapper around DB query. | [src](../../../core/services/user_contradiction_tracker.py#L576) |
 
 ## `core/services/user_emotional_resonance.py`
 _User Emotional Resonance — detect and respond to the user's mood._

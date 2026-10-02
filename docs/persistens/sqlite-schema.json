@@ -39610,7 +39610,7 @@
       ]
     },
     "session_inbox": {
-      "digest": "4a:43:77:94:75:26:b9:57:d4:9b:07:06:4f:d3:8b:f4:63:10:b7:c7:c1:ae:8a:9f:d6:8f:ab:1a:0a:39:d5:80",
+      "digest": "94:99:ac:d3:6d:46:f9:6b:f9:a5:69:49:73:b3:a7:42:ed:7b:c3:13:63:9e:57:b5:a7:49:10:01:ab:27:69:f5",
       "schema": {
         "columns": [
           {
@@ -39674,6 +39674,22 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace_name",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
             "pk": 0,
             "hidden": 0
           }

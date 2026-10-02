@@ -45,6 +45,13 @@ _SCHEDULE: dict[str, timedelta] = {
     "arc_rule_extraction": timedelta(days=7),  # weekly rule extraction from new arcs
     "signal_surface_gc": timedelta(hours=1),   # hourly trim of stale/old signal surfaces
     "decision_review": timedelta(hours=24),    # daily LLM-led self-review of active decisions
+    # 2/10-2026: hoerte foer paa `_HEARTBEAT_TICK_COUNTER % 60`, og den taeller
+    # nulstilles ved genstart — maalt 9 tik/6t betyder ~40 TIMER til 60, saa med
+    # tre genstarter paa ét doegn fyrede den aldrig. Her ligger den paa en durabel
+    # «last seen». Pollen er hyppigere end selve paamindelsen (registret har sin
+    # egen 24-timers klokke), saa en forfalden review meldes inden for 6 timer
+    # uden at kunne naevnes to gange paa en dag.
+    "shadow_review_reminder": timedelta(hours=6),
 }
 
 

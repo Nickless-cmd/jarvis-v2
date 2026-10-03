@@ -179,8 +179,11 @@ Disse gælder HVER opgave nedenfor.
   synkron — men vi behøver at fejlen kan SES.
 - **Læsning er uden mutation.** `due_wakeups()` fyrer og gemmer forfaldne
   vækninger, `build_tool_intent_approval_surface()` kan oprette/udløbe
-  godkendelser, og `background_jobs.liste()` kan starte en shell-daemon. Ingen
-  af dem må kaldes fra `byg_indbakke`; brug rene, scoped læsninger/snapshots.
+  godkendelser. `background_jobs.liste()` starter derimod **ikke** daemonen —
+  den spørger først når pid-filen peger på en ægte daemon — men den nulstiller
+  daemonens idle-ur, så en session-løs daemon ikke lukker ned mens panelet er
+  åbent. Heller ikke den er altså ren. Ingen af dem må kaldes fra
+  `byg_indbakke`; brug rene, scoped læsninger/snapshots.
 - **En leveret notifikation er ikke en afgjort opgave.** `delivered_at` i
   `session_inbox` betyder kun levering. `done`/`drop` og påmindelsestæller
   ligger durabelt per bruger og kilde-id, også når sessionen er inaktiv, og
@@ -544,7 +547,7 @@ muterende hjælpefunktioner kaldes af visningen):
 |---|---|
 | Åbne afgørelser | `inbox_items` scoped på eksplicit `bruger_id`; `session_inbox.pending_for_session` er kun leveringskø |
 | Vækninger | `self_wakeup.list_wakeups()` + eksplicit brugerfilter; `due_wakeups()` fyrer/gemmer og er ikke læsning |
-| Baggrundsjobs | read-only, brugerafgrænsede snapshots per jobtype; `background_jobs.liste()` kan starte shell-daemon og blander husets services med Jarvis-jobs |
+| Baggrundsjobs | brugerafgrænsede snapshots per jobtype; `background_jobs.liste()` starter ikke daemonen, men nulstiller dens idle-ur, og blander husets services med Jarvis-jobs |
 | Agenter | `agent_registry`/`agent_runs` kræver verificeret brugerproveniens; nuværende `list_agent_registry_entries()` filtrerer ikke bruger |
 | Planlagte engangsopgaver | `scheduled_tasks` med eksplicit brugerfilter; `list_pending_for_current_user()` læser alle ved tom kontekst |
 | Gentagende opgaver | `recurring_tasks` med eksplicit brugerfilter; `list_recurring_tasks()` bruger implicit kontekst |
@@ -987,6 +990,19 @@ fortsat åben.
    `list_pending_for_current_user()` kan læse alle ved tom kontekst. De
    erstattes i planen af eksplicit brugerafgrænsede, rene adaptere. Agent-
    posten må ikke gøres blokerende, før dens oprettende bruger kan bevises.
+
+   > **RETTET 3/10 (Jarvis) — én del af dette holder ikke mod koden.**
+   > `liste()` starter **ikke** daemonen: `_lokale_shell_sessioner()` spørger
+   > først når pid-filen peger på en ægte daemon — netop fordi «et panel der
+   > poller hvert femte sekund ville skabe den proces det påstod at
+   > observere». Den ægte bivirkning er en anden: **enhver** forespørgsel —
+   > også `list` — nulstiller daemonens `last_activity`, så en session-løs
+   > daemon ikke lukker ned af sig selv mens panelet er åbent. Konklusionen
+   > står altså (ikke ren læsning), men grunden er uret, ikke opstarten.
+   > Resten af punktet er bekræftet mod koden: `due_wakeups()` kalder
+   > `_save()`, `list_wakeups()` har nul bruger-filtrering, og begge
+   > frigivelsesgrunde i punkt 2 (`kig_tilbage`, `udløbet`) findes ordret i
+   > `r2_5_haandhaevelse._aaben_blok()`.
 4. **Vigtigt — kildetyper var byttet.** `scheduled_tasks` er engangsopgaver;
    `recurring_tasks` er gentagelser. Begge har nu egen plads i kilde- og
    sektionsbeskrivelsen. Dubletter må grupperes visuelt, men ikke miste

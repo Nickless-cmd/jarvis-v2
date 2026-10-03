@@ -203,7 +203,7 @@ def test_fuldfoert_job_giver_en_followup(isoleret_state, jobs, followups):
     ud = w.tik(uid="bjorn")
     assert ud["status"] == "ok" and ud["nye"] == 1
     assert len(followups) == 1
-    assert followups[0]["reason"] == "background-job-done"
+    assert followups[0]["source"] == "background-job-watch"
     assert "npm run build" in followups[0]["text"]
     assert "færdig" in followups[0]["text"]
 
@@ -255,17 +255,20 @@ def test_throttle_springer_andet_kald_over(isoleret_state, jobs, followups):
     assert andet["status"] == "skip" and andet["grund"] == "for-tidligt"
 
 
-def test_trigger_der_returnerer_none_meldes_som_fejl(isoleret_state, jobs, monkeypatch):
-    """`set_trigger_for_default_workspace` sluger sin egen fejl og giver
-    None. Uden et tjek ville vi melde «sendt» om en besked der ikke findes —
-    og jobbet er allerede markeret rapporteret."""
-    from core.runtime import heartbeat_triggers
-    monkeypatch.setattr(heartbeat_triggers, "set_trigger_for_default_workspace",
-                        lambda **_: None)
+def test_levering_der_fejler_meldes_som_fejl(isoleret_state, jobs, monkeypatch):
+    """`send_session_notification` kan svare uden at beskeden blev leveret.
+    Uden `delivery_succeeded`-tjekket ville vi melde «sendt» om en besked der
+    ikke findes — og jobbet er allerede markeret rapporteret, saa den kom
+    aldrig igen."""
+    from core.services import notification_bridge
+    monkeypatch.setattr(notification_bridge, "send_session_notification",
+                        lambda *a, **kw: {"status": "error"})
+    monkeypatch.setattr(notification_bridge, "delivery_succeeded",
+                        lambda _r: False)
     jobs["svar"] = {"jobs": [_job()]}
     ud = w.tik(uid="bjorn")
     assert ud["status"] == "fejl"
-    assert ud["grund"] == "trigger-blev-ikke-lagt"
+    assert ud["grund"] == "levering-error"
 
 
 def test_uden_bruger_roerer_den_ikke_broen(isoleret_state, jobs, monkeypatch):

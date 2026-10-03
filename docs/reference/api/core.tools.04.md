@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_results.py`
+_Rene result-formende helpers for workspace-capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_finalize_capability_result` | `(result)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L18) |
+| function | `_capability_status_family` | `(status)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L36) |
+| function | `_default_capability_detail` | `(*, status, execution_mode)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L52) |
+| function | `_requires_capability_approval` | `(summary)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L68) |
+| function | `_approval_result` | `(summary, *, approved, granted)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L72) |
+| function | `_preview_text` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L85) |
+| function | `_result_preview` | `(result)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L92) |
+| function | `_content_fingerprint` | `(text)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L106) |
+
 ## `core/tools/workspace_capabilities_verdict.py`
 _Approval-verdicts + proposal/execution-content for mutating/sudo exec._
 

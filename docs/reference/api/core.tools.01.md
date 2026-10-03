@@ -194,14 +194,14 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L325) |
-| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L331) |
-| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L341) |
-| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L357) |
-| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L452) |
-| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L487) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L541) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L546) |
+| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L335) |
+| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L341) |
+| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L351) |
+| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L367) |
+| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L462) |
+| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L497) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L551) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L556) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._
@@ -467,6 +467,17 @@ _Tools for Persistent Identity Sketch — read and update._
 | function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
 | function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
 
+## `core/tools/inbox_tools.py`
+_De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger` | `()` | Den autentificerede bruger. Tom streng når ingen er bundet. | [src](../../../core/tools/inbox_tools.py#L105) |
+| function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L125) |
+| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L155) |
+| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L170) |
+| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L190) |
+
 ## `core/tools/jarvis_brain_tools.py`
 _Visible Jarvis' værktøjer til hjernen._
 
@@ -517,12 +528,4 @@ _Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
 |---|---|---|---|---|
 | function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L55) |
 | function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L59) |
-
-## `core/tools/load_more_tools.py`
-_Lazy tool schema loader for visible-lane tool pruning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_name` | `(tool_def)` | — | [src](../../../core/tools/load_more_tools.py#L10) |
-| function | `_tool_load_more_tools` | `(arguments)` | Resolve tools to add to the next round and return their full schemas. | [src](../../../core/tools/load_more_tools.py#L15) |
 

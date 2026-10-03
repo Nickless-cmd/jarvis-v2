@@ -229,6 +229,15 @@ _Mål cold + warm import-tid for core.runtime.db._
 | function | `measure` | `(label)` | — | [src](../../../scripts/db_split_baseline.py#L18) |
 | function | `main` | `()` | — | [src](../../../scripts/db_split_baseline.py#L43) |
 
+## `scripts/deferred_restart.py`
+_Udskudt genstart — vent til turen er SLUT, genstart saa._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L49) |
+| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til runnet er doedt + margin. Returnerer sekunder ventet. | [src](../../../scripts/deferred_restart.py#L67) |
+| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L80) |
+
 ## `scripts/dispatcher_adoption.py`
 _Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._
 
@@ -414,11 +423,4 @@ _Interlanguage analysis — aggregate report over the practice corpus._
 | function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
 | function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
-
-## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
-_Binary: jarvis vs ollama_local — pre-check for Phase 4._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_binary_jarvis_vs_ollama.py#L40) |
 

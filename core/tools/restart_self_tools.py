@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,18 @@ RESTART_SELF_TOOL_DEFINITIONS = [
                         "type": "string",
                         "description": "Channel for confirmation after restart (discord, telegram, webchat). Default: discord",
                         "default": "discord",
+                    },
+                    "defer_until_idle": {
+                        "type": "boolean",
+                        "description": (
+                            "Vent til din EGEN tur er slut, og genstart saa. "
+                            "Brug denne naar genstarten ikke kan vente paa at "
+                            "du svarer — den draeber ALDRIG turen og giver "
+                            "derfor intet dublet-svar. I stedet for et antal "
+                            "sekunder venter den paa et faktum: at runnet ikke "
+                            "laengere er i live."
+                        ),
+                        "default": False,
                     },
                     "force": {
                         "type": "boolean",
@@ -175,7 +188,42 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     PENDING_RESTART_FILE.write_text(json.dumps(confirmation, indent=2))
     logger.info("restart_self: wrote confirmation to %s", PENDING_RESTART_FILE)
 
-    # 2. Build restart command with a short delay so response can reach user first
+    # 2. Build the restart command.
+    #
+    # 3/10-2026: her laa en FAST `sleep 3`. Kaldes vaerktoejet midt i en tur,
+    # draeber de 3 sekunder turen: runnet stemples `interrupted` og genoptages
+    # senere af recovery-dispatcheren — og Bjoern faar TO svar paa én besked
+    # (maalt 3/10 kl. 15:43). Med `defer_until_idle` venter vi i stedet paa et
+    # FAKTUM: at runnet ikke laengere er i live. Ingen sekunder at ramme
+    # forkert, ingen afbrudt tur.
+    if bool(args.get("defer_until_idle")):
+        try:
+            from core.services.run_autonomy_context import current_run_id
+            _rid = str(current_run_id() or "")
+        except Exception:
+            _rid = ""
+        _script = Path(__file__).resolve().parents[2] / "scripts" / "deferred_restart.py"
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, str(_script), _rid, ",".join(services), "5"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as e:
+            PENDING_RESTART_FILE.unlink(missing_ok=True)
+            return {"status": "error", "error": f"Failed to schedule deferred restart: {e}"}
+        logger.info("restart_self: deferred restart scheduled pid=%s run_id=%s", proc.pid, _rid)
+        return {
+            "status": "ok",
+            "scheduled": True,
+            "deferred": True,
+            "run_id": _rid,
+            "services": services,
+            "pid": proc.pid,
+            "channel": channel,
+            "note": "Genstarter naar turen er slut — ingen fast forsinkelse.",
+        }
     restart_cmds = " && ".join(f"sudo systemctl restart {svc}" for svc in services)
     full_cmd = f"sleep 3 && {restart_cmds}"
 

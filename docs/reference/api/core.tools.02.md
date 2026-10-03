@@ -439,13 +439,13 @@ _restart_self tool — fire-and-forget service restart that survives process dea
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L79) |
-| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L132) |
-| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L209) |
-| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L235) |
-| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L256) |
-| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L292) |
-| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L323) |
+| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L92) |
+| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L145) |
+| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L257) |
+| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L283) |
+| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L304) |
+| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L340) |
+| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L371) |
 
 ## `core/tools/screen_tool.py`
 _Screen control tool — Jarvis can turn monitors on/off/standby._

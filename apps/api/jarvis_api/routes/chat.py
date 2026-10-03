@@ -1347,9 +1347,22 @@ def chat_active_runs() -> dict:
                 sessions.append(item)
         return {"session_ids": sids, "sessions": sessions}
     # FLAG OFF -> run_follow.live_sessions (uaendret)
-    from core.services.run_follow import live_sessions
+    #
+    # 3/10-2026: grenen laeste friskhed fra in-memory follow-buffere
+    # (`last_frame_at`, 20 s). Under et langt vaerktoejskald publiceres ingen
+    # frames — saa et run der LEVEDE faldt ud af listen og kom tilbage
+    # bagefter. Det er praecis den defekt `aabne_run_ids` blev skrevet for at
+    # fjerne (se dens docstring, maalt 19/9-2026: Jarvis-figurens taleboble
+    # forsvandt midt i et svar). Grenen spoerger nu den SAMME autoritative
+    # kilde som flag-ON; kun klient-id-berigelsen mangler, saa flaget kan
+    # slaas fra uden at genindfoere defekten.
+    import core.services.run_event_log as rel
     try:
-        sids = live_sessions()
+        sids: list[str] = []
+        for rid in rel.aabne_run_ids(max_alder_s=_AKTIVE_RUNS_ALDER_LOFT_S):
+            sid = rel.session_for_run(rid)
+            if sid and sid not in sids:
+                sids.append(sid)
         return {"session_ids": sids, "sessions": [{"session_id": sid, "run_id": "", "status": "working"} for sid in sids]}
     except Exception:
         return {"session_ids": []}

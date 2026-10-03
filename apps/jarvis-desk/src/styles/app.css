@@ -3429,20 +3429,17 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Undtagelsen for miljoe-feltet staar i environment-inspector.css, hvor
    .env-panel bor — app.css maa ikke baere dens regler (test i tokens.test.ts). */
 
-/* Headeren goer plads naar skinnen er aabne — «de 4 ikoner ryk naar den
-   vises». Padding frem for et smallere gitter: views'ene kender ikke
-   skallens gitter, og en omlaegning ville flytte samtalen sidelaens hver
-   gang man aabnede en rude. */
-/* HELE fladen goer plads — ikke kun headeren.
-   Foerste udgave paddede kun .chatview-head, og saa laa skinnen oven paa
-   selve samtalen: «Redigerede 2 filer»-kortet var klippet midt over af
-   jobs-ruden. Det saa rigtigt ud i en test og forkert paa skaermen.
+/* SAMTALEN goer plads naar skinnen er aabne — HEADEREN goer IKKE.
+   Bjørn 3/10-2026: «når de åbner flytter de ikonerne i header til venstre,
+   det skal de ikk.. det skal være som når miljø panelet er åben». Headeren er
+   en titellinje OVEN over stakken — skinnen begynder ved 36 px, som er
+   headerens underkant — så ikonerne overlapper intet og skal bare stå stille.
+   Foer fik .chatview-head samme padding som fladerne nedenfor, og så rykkede
+   hvert ikon til venstre hver gang man aabnede en rude.
 
-   KUN .chatview-head: Code-visningen bruger samme klasse til sin header.
-   Foerste udgave havde ogsaa .codeview-head — en klasse der ikke findes i
-   nogen komponent. En regel der peger paa ingenting ser rigtig ud i en diff
-   og goer ingenting paa skaermen. */
-.har-skinne .chatview-head,
+   Fladerne nedenfor skal STADIG goere plads: uden dem laa skinnen oven paa
+   selve samtalen («Redigerede 2 filer»-kortet blev klippet midt over af
+   jobs-ruden). Det saa rigtigt ud i en test og forkert paa skaermen. */
 .har-skinne .transcript,
 .har-skinne .composer-area,
 .har-skinne .chat-empty { padding-right: calc(var(--skinne-bredde) + 16px); }
@@ -3578,8 +3575,12 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail-row.har-fejl.is-active .msg-rail-dash { background: var(--error-fg); opacity: 1; }
 /* Den NEDERSTE streg er teal og længere end de andre (Bjørn 16/9-2026). Står
    efter fejl-reglen med vilje, så i hvile viser den hvor samtalen slutter. Står
-   man PÅ en fejlet sidste tur, vinder rødt (fejl+aktiv har højere vægt). */
-.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 21px; background: var(--accent); }
+   man PÅ en fejlet sidste tur, vinder rødt (fejl+aktiv har højere vægt).
+   3/10-2026 (Bjørn): «den nederste pind er den der er igang — kan du lave den
+   lidt længere end de andre over?» Den var 21 mod is-active's 17, altså kun
+   4 px forskel — nok til at reglen fandtes, ikke nok til at man så den. Nu 28,
+   så den er 11 px længere end den aktive og 15 end en almindelig. */
+.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 28px; background: var(--accent); }
 /* Komprimering: prikket streg, så den kan skelnes fra et kapitel i hvile. */
 .msg-rail-row.er-komprimering .msg-rail-dash { height: 0; background: none;
   border-top: 2px dotted currentColor; border-radius: 0; }
@@ -3599,18 +3600,25 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail-row { align-items: flex-start; }
 .msg-rail-row .msg-rail-dash { margin-top: 4px; }
 .msg-rail-spm { display: block; }
-.msg-rail-svar {
-  display: block; margin-top: 2px;
-  color: var(--fg-3); font-size: 11px; line-height: 1.35;
-  /* To linjer er nok til at genkende svaret. Tre gjorde raekkerne saa hoeje
-     at stigen holdt op med at ligne en indholdsfortegnelse. */
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.msg-rail-row.is-active .msg-rail-svar { color: var(--fg-2); }
 .msg-rail-text { display: none; font-size: 12px; line-height: 1.3; max-width: 230px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-rail:hover .msg-rail-text { display: inline; }
+/* Svaret i et RENT kort ved den raekke musen er paa (Bjørn 3/10-2026). Før stod
+   svaret som en blok UNDER hver titel, saa hele listen viste titel + svar paa én
+   gang — en vaeg man ikke kunne skanne, fordi man ledte efter en titel og fik
+   to linjers svar oveni for hver raekke. Nu baerer panelet KUN titlerne, og
+   svaret kommer frem ét sted.
+   Kortet ligger uden for `.msg-rail-panel`, som har `overflow-y: auto` og ellers
+   ville klippe det. `pointer-events: none` fordi det ikke maa fange musen —
+   ellers flimrer hover'en mellem raekken og kortet. */
+.msg-rail-kort {
+  position: absolute; left: calc(100% + 8px); z-index: 30;
+  max-width: 280px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
+  box-shadow: 0 12px 34px rgba(0,0,0,.38);
+  color: var(--fg-2); font-size: 12px; line-height: 1.4;
+  pointer-events: none;
+}
 
 /* ── App-opdaterings-kort (§22.5) ── */
 .update-card { position: fixed; right: 18px; bottom: 18px; z-index: 200; display: flex; align-items: center; gap: 10px;
@@ -4421,11 +4429,11 @@ body.egen-ramme .chatview-head {
   min-height: 36px; padding-top: 0; padding-bottom: 0;
   padding-right: var(--vk-plads);
 }
-/* Med hoejre skinne aaben skal headeren gore plads til BEGGE — den regel
-   ovenfor er mere specifik end .har-skinne og ville ellers vinde over den. */
-body.egen-ramme .har-skinne .chatview-head {
-  padding-right: max(var(--vk-plads), calc(var(--skinne-bredde) + 16px));
-}
+/* 3/10-2026: undtagelsen der gav headeren skinnens bredde naar den var aaben
+   er FJERNET. Headeren goer ikke plads til skinnen laengere (se reglen
+   ovenfor), så undtagelsen havde intet at overskrive. Vinduesknapperne
+   beholder deres plads gennem `body.egen-ramme .chatview-head` ovenfor — den
+   regel roerer ikke skinnen. */
 
 /* PANELERNE I HOEJRE SIDE SKAL OGSAA HOLDE FRI (Bjoern 20/9-2026, fire
    skaermbilleder: «ikoner der overlapper» i alle paneler i hoejre side).

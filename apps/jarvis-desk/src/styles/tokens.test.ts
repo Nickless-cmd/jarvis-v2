@@ -326,15 +326,24 @@ describe('vinduets egen titelbjælke', () => {
     expect(vindueRegel).not.toMatch(/--sidebar-bredde:/)
   })
 
-  it('HELE fladen gør plads til skinnen — ikke kun headeren', () => {
-    // Første udgave paddede kun headeren, og skinnen lå oven på samtalen:
-    // «Redigerede 2 filer»-kortet blev klippet midt over af jobs-ruden.
+  it('samtalen gør plads til skinnen — headeren står stille', () => {
+    // Bjørn 3/10-2026: «når de åbner flytter de ikonerne i header til venstre,
+    // det skal de ikk.. det skal være som når miljø panelet er åben». Headeren
+    // er en titellinje over stakken og skal ikke rykke sig. Fladerne nedenfor
+    // skal STADIG gøre plads — uden dem lå skinnen oven på samtalen
+    // («Redigerede 2 filer»-kortet blev klippet midt over af jobs-ruden).
     // Find den regel der FAKTISK gør plads — ikke en kommentar der nævner
     // klassen. Uden det matchede regexen kommentaren lige over reglen.
-    const regel = app.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
-    for (const flade of ['.chatview-head', '.transcript', '.composer-area']) {
+    // Kommentarerne fjernes FØRST: regexen kan ikke skelne en selektor fra en
+    // kommentar der nævner klassen — den fælde stod her selv, for kommentaren
+    // ovenfor nævner .chatview-head netop for at forklare hvorfor den IKKE er
+    // med i reglen.
+    const udenKommentar = app.replace(/\/\*[\s\S]*?\*\//g, '')
+    const regel = udenKommentar.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
+    for (const flade of ['.transcript', '.composer-area']) {
       expect(regel, `${flade} gør ikke plads`).toContain(flade)
     }
+    expect(regel, 'headeren skal IKKE gøre plads — så rykker ikonerne sig').not.toContain('.chatview-head')
   })
 
   it('headeren ER titellinjen — pladsen til knapperne regnes ÉT sted', () => {
@@ -360,9 +369,13 @@ describe('vinduets egen titelbjælke', () => {
     expect(knap).toContain('border-radius: 50%')
   })
 
-  it('med aaben skinne goer headeren plads til BAADE knapper og skinne', () => {
-    const r = app.match(/body\.egen-ramme \.har-skinne \.chatview-head \{([^}]*)\}/)?.[1] ?? ''
-    expect(r).toContain('max(var(--vk-plads), calc(var(--skinne-bredde) + 16px))')
+  it('headeren gør IKKE plads til skinnen — kun til vinduesknapperne', () => {
+    // 3/10-2026: undtagelsen der gav headeren skinnens bredde er fjernet, så
+    // ikonerne står stille når en rude åbner. Vinduesknapperne beholder deres
+    // plads gennem den almindelige egen-ramme-regel.
+    expect(app).not.toMatch(/body\.egen-ramme \.har-skinne \.chatview-head \{/)
+    const head = [...app.matchAll(/body\.egen-ramme \.chatview-head \{([^}]*)\}/g)].map((m) => m[1]).join(' ')
+    expect(head).toContain('padding-right: var(--vk-plads)')
   })
 
   it('en flade med header har ingen ekstra bjaelke og intet skub', () => {
@@ -598,5 +611,31 @@ describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', (
   it('lækker ikke ud i miljø-panelets egne diff-tal', () => {
     expect(rv).not.toMatch(/^\.git-add/m)
     expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--ok\)/)
+  })
+})
+
+describe('railens nederste streg er længere end de andre (3/10-2026)', () => {
+  // Bjørn: «den nederste pind er den der er igang — kan du lave den lidt
+  // længere end de andre over?» Reglen fandtes i forvejen, men 21 mod 17 px var
+  // ikke til at se: forskellen var der på papiret og ikke på skærmen. Værnet
+  // måler derfor FORSKELLEN, ikke det ene tal — det er den der gør at man i
+  // hvile kan se hvor samtalen slutter.
+  const af = (re: RegExp) => Number(app.match(re)?.[1] ?? 0)
+  const sidste = af(/^\.msg-rail-row\.er-sidste \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const aktiv = af(/^\.msg-rail-row\.is-active \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const almindelig = af(/^\.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+
+  it('reglerne findes', () => {
+    expect(sidste, 'er-sidste-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(aktiv, 'is-active-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(almindelig, 'den almindelige streg mangler i app.css').toBeGreaterThan(0)
+  })
+
+  it('den sidste er mindst 8px bredere end den aktive', () => {
+    expect(sidste - aktiv, `kun ${sidste - aktiv}px forskel — den skal kunne ses`).toBeGreaterThanOrEqual(8)
+  })
+
+  it('og bredere end en almindelig streg', () => {
+    expect(sidste).toBeGreaterThan(almindelig)
   })
 })

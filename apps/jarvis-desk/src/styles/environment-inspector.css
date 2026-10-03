@@ -8,7 +8,14 @@
      højre-stakken. Reglen bor her, ikke i app.css (tokens.test.ts vogter). */
   background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
   padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
-.code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%; }
+.code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%;
+  /* Feltet er den ØVERSTE rude i stakken og beholder sin EGEN højde — ruden
+     under tager resten. Uden denne arvede den `flex: 1 1 0` fra
+     `.code-right-stack > *` og delte højden med job-ruden 50/50, så et kort
+     felt blev strakt ud over halve skærmen (Bjørn 3/10-2026: «de 3 paneler
+     skal kunne vises under miljøfeltet»). 0-2-0 mod 0-1-0, så den vinder
+     uanset fil-rækkefølgen. */
+  flex: 0 1 auto; }
 
 .env-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
 .env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: 6px; }

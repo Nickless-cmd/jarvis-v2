@@ -307,12 +307,12 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, harSvar, config, etiket, beskedId,
+  elementer, streaming, sidste, svarBegyndt, config, etiket, beskedId,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
   sidste: boolean
-  harSvar: boolean
+  svarBegyndt: boolean
   config?: ApiConfig
   beskedId?: string
   etiket?: string
@@ -329,7 +329,16 @@ function ArbejdsrundeImpl({
   const koerer = Boolean(seneste && streaming && (seneste.status ?? 'running') === 'running')
   // Et afsluttet kald afslutter ikke nødvendigvis Jarvis' arbejdsrunde. Hold
   // den sidste fortælling levende indtil en ny sektion eller svaret begynder.
-  const visShimmer = streaming && sidste && (koerer || !harSvar)
+  //
+  // 3/10-2026 (Bjørn): «i runde linjerne … skal shimmer fortsætte til første
+  // tænke i næste runde, ellers opstår der et par sekunders stilhed hvor du
+  // tænker». Fejlen var `harSvar`: den tæller ALT efter sidste værktøjskald som
+  // «svar» — også rundeopsummeringen (`tool_use_summary`), som lander lige når
+  // værktøjet er færdigt. Derfor døde shimmeren i præcis det vindue hvor
+  // modellen tænker på næste runde, og rækken stod død i et par sekunder.
+  // Det ægte signal er `finalAnswerStarted` (serverens `final_answer_start`):
+  // det siger «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
+  const visShimmer = streaming && sidste && (koerer || !svarBegyndt)
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
@@ -363,7 +372,7 @@ function ArbejdsrundeImpl({
 }
 
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
-  a.streaming === b.streaming && a.sidste === b.sidste && a.harSvar === b.harSvar
+  a.streaming === b.streaming && a.sidste === b.sidste && a.svarBegyndt === b.svarBegyndt
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
@@ -423,7 +432,7 @@ function RaekkeTranskriptImpl({
               if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                sidste={i === sektioner.length - 1} harSvar={svar.length > 0}
+                sidste={i === sektioner.length - 1} svarBegyndt={finalAnswerStarted}
                 config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
             })}
           </div>

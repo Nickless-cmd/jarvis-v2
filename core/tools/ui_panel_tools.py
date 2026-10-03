@@ -44,25 +44,29 @@ def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
     scope = str(args.get("scope") or "repo").strip().lower()
     if scope not in _SCOPES:
         return {"status": "error", "error": f"ukendt scope '{scope}' (gyldige: {', '.join(_SCOPES)})"}
-    if action == "close":
-        # Ingen persisteret panel-request — signalér blot desk'en at lukke.
-        return {"status": "ok", "panel": panel, "action": "close",
-                "note": "Desk-appen lukker panelet. (Kun synligt i jarvis-desk.)"}
-    rec = request_panel(panel, detail=detail, scope=scope, session_id=session_id)
+    # 3/10-2026: lukningen sendte INTET. Den returnerede «ok» og en note, men
+    # lagde ingen forespørgsel — så desk hørte aldrig om den, og panelet blev
+    # stående. Desk's `UiPanelWatcher` har hele tiden kunnet lukke
+    # (`req.action === 'close'` → `panel.close()`); kanalen manglede her.
+    # Nu går close gennem PRÆCIS samme request→ack-kontrakt som open.
+    rec = request_panel(
+        panel, detail=detail, scope=scope, session_id=session_id, action=action,
+    )
     rid = rec["id"]
     # VENT på desk-ack (status → 'opened'). Cross-proces via DB-backed store, så
     # ack'en fra api-procesen ses her uanset om vi kører i runtime- eller api-proces.
     deadline = time.monotonic() + _ACK_TIMEOUT_S
     while time.monotonic() < deadline:
         if get_request_status(rid) == "opened":
-            return {"status": "ok", "confirmed": True, "panel": panel, "action": "open",
-                    "request_id": rid, "note": "Desk-appen åbnede panelet (bekræftet)."}
+            gjort = "lukkede" if action == "close" else "åbnede"
+            return {"status": "ok", "confirmed": True, "panel": panel, "action": action,
+                    "request_id": rid, "note": f"Desk-appen {gjort} panelet (bekræftet)."}
         time.sleep(_ACK_POLL_S)
     # Ingen kvittering → ÆRLIG fejl i stedet for blind "ok".
-    return {"status": "unconfirmed", "confirmed": False, "panel": panel, "action": "open",
+    return {"status": "unconfirmed", "confirmed": False, "panel": panel, "action": action,
             "request_id": rid,
             "note": (f"Ingen desk-bekræftelse inden for {_ACK_TIMEOUT_S:.0f}s — panelet blev "
-                     "IKKE bekræftet åbnet. Desk-appen er måske lukket, ikke i fokus, eller "
+                     "IKKE bekræftet ændret. Desk-appen er måske lukket, ikke i fokus, eller "
                      "dette er ikke en owner-desk-session (fx Discord/web).")}
 
 

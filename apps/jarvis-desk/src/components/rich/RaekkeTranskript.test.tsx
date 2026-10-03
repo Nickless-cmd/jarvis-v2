@@ -281,11 +281,38 @@ describe('RaekkeTranskript', () => {
     ]
     const { container, rerender } = render(<RaekkeTranskript blocks={aktivt} streaming />)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
+    // 3/10-2026: svaret er begyndt — serveren siger det eksplicit med
+    // `final_answer_start`, og så folder arbejdet sammen. Fold ud for at se
+    // runden. Før blev «tekst efter sidste kald» brugt som gæt på det samme,
+    // og det gæt slog forkert i hullet mellem to runder.
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
-    ]} streaming rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
+    ]} streaming finalAnswerStarted rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Fandt fejlen i filen')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Læser app.ts')
+    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+  })
+
+  it('holder shimmeren i live gennem hullet mellem to runder (3/10-2026)', () => {
+    // Bjørn: «i runde linjerne … skal shimmer fortsætte til første tænke i
+    // næste runde, ellers opstår der et par sekunders stilhed hvor du tænker».
+    // Fejlen: `harSvar` talte rundeopsummeringen (`tool_use_summary`) med som
+    // «svar», og den lander lige når værktøjet er færdigt — altså i PRÆCIS det
+    // vindue hvor modellen tænker på næste runde. Rækken stod død i sekunder.
+    const { container } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'a.ts' }, 'done'),
+      { type: 'tool_use_summary', summary: 'Læste filen', preceding_tool_use_ids: ['read_file-1'] },
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
+  })
+
+  it('slukker først shimmeren naar det endelige svar begynder', () => {
+    // `render`-helperen ovenfor klikker selv foldelinjen ud når turen er
+    // sammenfoldet — så der skal IKKE klikkes igen her (det folder den ind).
+    const { container } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'a.ts' }, 'done'), tekst('Svar.'),
+    ]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
   })
 

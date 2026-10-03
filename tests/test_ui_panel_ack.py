@@ -20,6 +20,21 @@ def test_open_unconfirmed_on_timeout(isolated_runtime, monkeypatch):
     assert "IKKE bekræftet" in r["note"]
 
 
-def test_close_still_returns_signal(isolated_runtime):
+def test_close_venter_paa_desk_som_open(isolated_runtime, monkeypatch):
+    """3/10-2026: close var et «signal» ingen sendte.
+
+    Den gamle test hed «still returns signal» og låste netop fejlen: status
+    «ok» uden at noget gik til desk. Nu skal close BEKRÆFTES — ellers er svaret
+    «unconfirmed», præcis som for open.
+    """
+    monkeypatch.setattr(u, "get_request_status", lambda rid: "opened")
     r = u._exec_open_ui_panel({"panel": "right", "action": "close"})
-    assert r["status"] == "ok" and r["action"] == "close"
+    assert r["status"] == "ok" and r["action"] == "close" and r["confirmed"] is True
+
+
+def test_close_uden_desk_ack_er_aerligt_unconfirmed(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(u, "get_request_status", lambda rid: "pending")
+    monkeypatch.setattr(u, "_ACK_TIMEOUT_S", 0.15)
+    monkeypatch.setattr(u, "_ACK_POLL_S", 0.05)
+    r = u._exec_open_ui_panel({"panel": "right", "action": "close"})
+    assert r["status"] == "unconfirmed" and r["confirmed"] is False

@@ -3,6 +3,18 @@ import time
 from apps.api.jarvis_api.routes import chat
 
 
+def setup_function():
+    # 3/10-2026: filen ryddede ikke run-loggen mellem tests. `session_for_run`
+    # mockkes til at svare det SAMME for ethvert run, så et run der lå tilbage
+    # fra en tidligere test fik zombie-testen til at se sin session i listen.
+    # Filen alene var grøn; sammen med søsterfilen fejlede den.
+    import core.services.run_event_log as rel
+
+    rel._RUNS.clear()
+    rel._ALIASER.clear()
+    rel._ALIASER_OMVENDT.clear()
+
+
 def test_active_runs_adds_research_snapshot(monkeypatch):
     class Settings:
         server_authoritative_runs = True
@@ -80,3 +92,38 @@ def test_gammelt_aabent_run_droppes_af_alders_loftet(monkeypatch):
         assert "session-zombie" not in chat.chat_active_runs()["session_ids"]
     finally:
         rel._RUNS.pop("visible-zombie", None)
+
+
+# ── Alias-mismatchet (3/10-2026) ────────────────────────────────────────────
+# Målt med en poller mod det kørende endpoint: vinduet efter et svar var ~1 s på
+# serveren, men klientens 6 s-latch gjorde det til 5-7 s synligt — og op til 20+
+# når efterbehandlingen tog længere. Kilden var ikke vinduets længde, men at
+# klienten ikke KUNNE genkende sit eget run.
+
+
+def test_active_runs_svarer_med_klientens_eget_run_id(monkeypatch):
+    """Klientens guard er `run_id !== activeRunId`.
+
+    `activeRunId` kommer fra system_event(kind=run) = runnets EGET id. Svarede
+    endpointet med LOG-id'et, var de to aldrig ens — guarden var altid falsk, og
+    indikatoren tændte på klientens egen efterbehandling efter hvert svar.
+    """
+    import core.services.run_event_log as rel
+
+    class Settings:
+        server_authoritative_runs = True
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: Settings())
+    monkeypatch.setattr("core.services.research_store.active_for_session", lambda sid: None)
+
+    log_id, _ = rel.claim_or_create("session-klient-id")
+    rel.alias("visible-klientens-eget", log_id)
+    try:
+        data = chat.chat_active_runs()
+        item = next(s for s in data["sessions"] if s["session_id"] == "session-klient-id")
+        assert item["run_id"] == "visible-klientens-eget"
+        assert item["run_id"] != log_id
+    finally:
+        rel._RUNS.pop(log_id, None)
+        rel._ALIASER.pop("visible-klientens-eget", None)
+        rel._ALIASER_OMVENDT.pop(log_id, None)

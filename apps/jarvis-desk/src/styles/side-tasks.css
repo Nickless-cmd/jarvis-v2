@@ -75,3 +75,30 @@
 .sok-menu button:hover { background: var(--bg-3); }
 .sok-standard { color: var(--fg-3); font-size: 12px; }
 .sok-skille { height: 1px; background: var(--line); margin: 4px 6px; }
+
+/* ── Panelet i Arbejdsområde: ALLE opgaver, også de lukkede (3/10-2026) ──
+ *
+ * Bjørn: «desk har ikk noget panel der viser opgaver der er flagged selv om
+ * jeg har trykket dem væk». Kortet ovenfor viser kun de åbne; her står hele
+ * sporet, så «lukket» kan skelnes fra «blev den nogensinde gemt?».
+ */
+.sop-liste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sop-post {
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  background: var(--bg);
+}
+/* De lukkede træder tilbage — de er spor, ikke opgaver. */
+.sop-completed, .sop-dismissed { opacity: 0.68; }
+.sop-top { display: flex; align-items: baseline; gap: 8px; }
+.sop-status {
+  flex: none; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+  padding: 1px 7px;
+}
+/* «I gang» er den ene tilstand der venter på noget — den må kunne ses. */
+.sop-activated .sop-status { color: var(--accent); border-color: var(--accent); }
+.sop-titel { font-weight: 600; overflow-wrap: anywhere; }
+.sop-tldr { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+.sop-meta { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.sop-knapper { display: flex; gap: 8px; margin-top: 8px; }
+.sop-fejl { color: var(--ch-amber, #d08); margin: 0 0 8px; }

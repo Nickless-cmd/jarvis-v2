@@ -578,13 +578,17 @@ _Side-task flag — keep the main thread focused._
 | function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L93) |
 | function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L113) |
 | function | `list_open` | `()` | Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser. | [src](../../../core/services/side_tasks.py#L117) |
-| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, lukket_af=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L122) |
-| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L151) |
-| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L177) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L240) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L249) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L254) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L264) |
+| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L122) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, lukket_af=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L140) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L169) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L195) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L258) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L267) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L272) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L282) |
+| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L364) |
+| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L386) |
+| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Luk `activated` opgaver hvis arbejds-samtale har ligget stille. | [src](../../../core/services/side_tasks.py#L410) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._

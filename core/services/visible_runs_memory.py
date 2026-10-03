@@ -198,6 +198,24 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     except Exception:
         pass
 
+    # Side-opgave-fejningen (3/10-2026) hoerer netop HER: efterbehandlingen
+    # sker kun naar der ER aktivitet, saa en opgave lukkes inden for én
+    # stilstandsperiode efter hans sidste besked — uden en ny daemon til at
+    # polle. Huset har 40 der kun tikker naar han har travlt.
+    try:
+        import logging as _lg_side
+        from core.services.side_tasks import fej_faerdige
+        _side = fej_faerdige()
+        if _side.get("lukket"):
+            # Modulet har ingen modul-logger; hentes lokalt frem for at
+            # indfoere en global i en fil der klarer sig uden.
+            _lg_side.getLogger(__name__).info(
+                "side-opgaver lukket efter run: %s", _side)
+    except Exception:
+        import logging as _lg_side2
+        _lg_side2.getLogger(__name__).warning(
+            "side-opgave-fejning fejlede efter run", exc_info=True)
+
     event_bus.publish(
         "memory.visible_run_postprocess_completed",
         {

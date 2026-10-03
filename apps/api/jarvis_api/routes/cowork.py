@@ -94,18 +94,28 @@ async def cowork_opmaerksomhed_set(session_id: str) -> dict:
 
 
 @router.get("/side-tasks")
-async def cowork_side_tasks() -> dict:
-    """Jarvis' flaggede sideopgaver der stadig er åbne (pending + activated).
+async def cowork_side_tasks(scope: str = "open") -> dict:
+    """Jarvis' flaggede sideopgaver. `scope=open` (standard) er de åbne;
+    `scope=all` er ALLE, også de lukkede.
+
+    `all` kom 3/10-2026. Bjørn: «desk har ikk noget panel der viser opgaver
+    der er flagged selv om jeg har trykket dem væk». Ruten svarede kun med de
+    åbne, så en lukket opgave forsvandt sporløst — og man kunne ikke se
+    forskel på «lukket» og «blev den nogensinde gemt?». Standarden er stadig
+    `open`, så kortet i chatten er uændret.
 
     Kun ejeren: en opgaves prompt er selvstændige instruktioner og kan rumme
     privat kontekst fra den samtale den blev flagget i."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan se sideopgaverne")
-    from core.services.side_tasks import list_open
+    from core.services.side_tasks import list_alle, list_open
+    if str(scope or "").strip().lower() == "all":
+        items = await asyncio.to_thread(list_alle)
+        return {"side_tasks": items, "count": len(items), "scope": "all"}
     items = await asyncio.to_thread(list_open)
     items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
-    return {"side_tasks": items, "count": len(items)}
+    return {"side_tasks": items, "count": len(items), "scope": "open"}
 
 
 @router.post("/side-tasks/{side_task_id}/status")

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 from uuid import uuid4
 
 from core.runtime.state_store import load_json, save_json
@@ -117,6 +117,24 @@ def list_pending() -> list[dict[str, Any]]:
 def list_open() -> list[dict[str, Any]]:
     """Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser."""
     return [r for r in _load_all() if r.get("status") in _AABNE]
+
+
+def list_alle(*, maks: int = 50) -> list[dict[str, Any]]:
+    """ALLE opgaver, nyeste først — også de lukkede.
+
+    Bjørn 3/10-2026: «desk har ikk noget panel der viser opgaver der er
+    flagged selv om jeg har trykket dem væk». `/cowork/side-tasks` svarer kun
+    med de ÅBNE, så en opgave der blev lukket forsvandt sporløst — og dermed
+    kunne man ikke se forskel på «lukket» og «blev den nogensinde gemt?».
+
+    Målt samme dag: alle seks poster i hans fil var terminale, så kortet var
+    korrekt tomt — men umuligt at skelne fra tabt data. Det var selve
+    symptomet: persistensen VIRKEDE (bevist med to processer), men der var
+    ingen visning der kunne vise det.
+    """
+    poster = sorted(_load_all(), key=lambda r: str(r.get("created_at", "")),
+                    reverse=True)
+    return poster[:max(1, int(maks))]
 
 
 def resolve(side_task_id: str, *, decision: str,
@@ -333,3 +351,121 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 
+
+
+#: Hvor længe arbejds-samtalen skal have ligget stille før en `activated`
+#: opgave lukkes af sig selv. Ikke valgt blindt: en opgave kan tage flere ture,
+#: så en lukning ved første svar ville ramme midt i arbejdet — og `completed`
+#: er TERMINAL og kan ikke genåbnes. 30 minutter er et udgangspunkt der skal
+#: MÅLES efter ibrugtagning, ikke tros på: se tællingen i `fej_faerdige`.
+STILSTAND_MINUTTER: Final[float] = 30.0
+
+
+def _minutter_siden(tidsstempel: Any) -> float | None:
+    """Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses.
+
+    Fail mod `None`, altså «ved ikke», frem for 0 eller uendeligt: et
+    ulæseligt tidsstempel må hverken udløse en lukning eller blokere en.
+    """
+    if not tidsstempel:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(tidsstempel))
+    except (TypeError, ValueError):  # et ulaeseligt tidsstempel er «ved ikke»,
+        # ikke «for laenge siden»: fail-retningen staar i docstringen, og en
+        # lukning paa et gaet er uigenkaldelig (`completed` er terminal).
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    sekunder = (datetime.now(UTC) - ts).total_seconds()
+    if sekunder < 0:
+        return None
+    return sekunder / 60.0
+
+
+def _sidst_aktiv(session_id: str) -> str | None:
+    """Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`).
+
+    Verificeret live 3/10-2026: kolonnen følger den seneste besked præcist i
+    alle tre aktive samtaler. Én kolonne, ingen besked-gennemløb — samme stil
+    som `session_permission` og `session_view`, og modsat det udfaste
+    `get_chat_session` der henter hele historikken for ét metadata-felt.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT updated_at FROM chat_sessions WHERE session_id = ?", (sid,),
+            ).fetchone()
+        return str(r[0]) if r and r[0] else None
+    except Exception:
+        logger.warning("side-opgaver: kunne ikke laese aktivitet for %s",
+                       sid, exc_info=True)
+        return None
+
+
+def fej_faerdige(*, stilstand_minutter: float | None = None) -> dict[str, Any]:
+    """Luk `activated` opgaver hvis arbejds-samtale har ligget stille.
+
+    ## Hvorfor en fejer og ikke en lukning ved runnets slutning
+
+    Bjørn 3/10-2026: «opgaver markeres ikk automatisk sluttet». Linket til
+    arbejds-samtalen findes nu (`arbejds_session_for`), men intet lukkede
+    stadig noget.
+
+    En lukning ved FØRSTE færdige run ville ramme midt i et flerturs-arbejde,
+    og `completed` er terminal — den kan ikke genåbnes. Derfor måles i stedet
+    STILSTAND: har samtalen ikke sagt noget i et stykke tid, er arbejdet
+    forbi, uanset hvor mange ture det tog.
+
+    ## Hvorfor ingen ny daemon
+
+    Huset har 40 daemoner der kun tikker når han har travlt. Fejeren kaldes i
+    stedet fra to steder der allerede sker: opstart (som husets andre fejere i
+    `app.py`) og hver runs efterbehandling. Den sidste betyder at fejningen
+    sker netop når der ER aktivitet — og en opgave lukkes derfor inden for én
+    stilstandsperiode efter hans sidste besked, uden at nogen poller.
+
+    Returnerer en optælling, så tærsklen kan MÅLES frem for tros på: `set`
+    siger hvor mange der blev lukket, `venter` hvor mange der stadig tæller
+    ned, og `uden_link` hvor mange der ikke kan lukkes automatisk fordi de
+    blev startet før linket fandtes.
+
+    Kaster aldrig: en fejer må ikke kunne vælte en opstart eller et run.
+    """
+    graense = float(stilstand_minutter if stilstand_minutter is not None
+                    else STILSTAND_MINUTTER)
+    svar: dict[str, Any] = {"lukket": 0, "venter": 0, "uden_link": 0, "ids": []}
+    try:
+        for r in list_open():
+            if r.get("status") != "activated":
+                continue
+            sid = str(r.get("arbejds_session") or "").strip()
+            if not sid:
+                svar["uden_link"] += 1
+                continue
+            stille = _minutter_siden(_sidst_aktiv(sid))
+            if stille is None:
+                # Ved ikke → lad den staa. En opgave maa ikke lukkes paa et gaet.
+                svar["venter"] += 1
+                continue
+            if stille < graense:
+                svar["venter"] += 1
+                continue
+            tid = str(r.get("side_task_id") or "")
+            ud = resolve(tid, decision="completed",
+                         lukket_af=f"auto:stilstand {int(stille)}min")
+            if ud.get("status") == "ok":
+                svar["lukket"] += 1
+                svar["ids"].append(tid)
+                logger.info("side-opgave %s lukket automatisk — %s stille i %d min",
+                            tid, sid, int(stille))
+            else:
+                logger.warning("side-opgave %s kunne ikke lukkes: %s",
+                               tid, ud.get("error"))
+    except Exception:
+        logger.warning("side-opgave-fejning fejlede", exc_info=True)
+    return svar

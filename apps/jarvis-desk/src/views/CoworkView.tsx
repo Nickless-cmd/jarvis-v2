@@ -33,6 +33,7 @@ import { NotificationsSection } from '../components/settings/NotificationsSectio
 import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
 import { AboutPanel } from '../components/AboutPanel'
+import { SideOpgavePanel } from '../components/cowork/SideOpgavePanel'
 
 /** Arbejde pages reuse the existing feature components and their backend truth.
  * Zone aliases keep older open_ui_panel and command-palette calls working. */
@@ -123,6 +124,12 @@ export function CoworkView({
           {isOwner && (
             <CategorySection title="Arbejdskontrol">
               <WorkbenchSection config={config} sessionId={sessionId} />
+            </CategorySection>
+          )}
+          {isOwner && (
+            <CategorySection id="sideopgaver" title="Sideopgaver"
+              description="Alt Jarvis har flagget — også det du har trykket væk.">
+              <SideOpgavePanel config={config} />
             </CategorySection>
           )}
         </CategoryPage>

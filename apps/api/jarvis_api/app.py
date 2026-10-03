@@ -503,6 +503,16 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("intentions-fejning fejlede: %s", _exc)
             try:
+                # Side-opgaver (3/10-2026): en `activated` opgave hvis
+                # arbejds-samtale er gaaet i staa lukkes ikke af sig selv.
+                # Samme doven-tilstand som intentionerne ovenfor.
+                from core.services.side_tasks import fej_faerdige as _fej_side
+                _side = _fej_side()
+                if _side.get("lukket"):
+                    logger.info("side-opgaver lukket ved opstart: %s", _side)
+            except Exception as _exc:
+                logger.warning("side-opgave-fejning fejlede: %s", _exc)
+            try:
                 # Fase 8: et raad hvis proces doede staar i «deliberating» for
                 # evigt — `run_council_round`s finally naar ikke at koere.
                 from core.services.council_settlement import (

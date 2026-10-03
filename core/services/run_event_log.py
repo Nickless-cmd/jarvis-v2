@@ -128,6 +128,12 @@ def create(run_id: str, session_id: str, surface: str = "") -> None:
 # «run not found» midt i et run der koerte 32 s endnu (maalt 17/9 06:37).
 # Appen tolker 404 som «runnet blev faerdigt mens du var vaek» og giver op.
 _ALIASER: dict[str, str] = {}
+# Samme par, modsat vej: log-id -> runnets EGET id. Klienten kender kun sit
+# eget id (det faar den i system_event(kind=run)), saa et endpoint der svarer
+# med LOG-id'et giver den et id den ikke kan genkende — og dens «er det mit
+# eget run?»-guard fejler altid. Maalt 3/10-2026: liveness-linjen blinkede
+# 5-20 s efter hvert svar, fordi klienten taendte paa sin EGEN efterbehandling.
+_ALIASER_OMVENDT: dict[str, str] = {}
 
 
 def _hent(run_id: str) -> dict | None:
@@ -148,6 +154,21 @@ def alias(extern_id: str, log_id: str) -> None:
     with _lock:
         if lid in _RUNS:
             _ALIASER[ext] = lid
+            _ALIASER_OMVENDT[lid] = ext
+
+
+def klient_run_id(run_id: str) -> str:
+    """Det id KLIENTEN kender for dette run — aliaset hvis der findes et.
+
+    Loggen oprettes under et id; runnet laver sit eget og sender det til
+    klienten i ``system_event(kind=run)``. ``aabne_run_ids`` returnerer
+    LOG-id'et, saa et endpoint der svarer med det giver klienten et id den
+    ikke kan genkende — og dens «er det mit eget run?»-guard fejler altid.
+    Ukendt id (aliaset er endnu ikke sat) giver id'et selv: fail-open, som foer.
+    """
+    rid = (run_id or "").strip()
+    with _lock:
+        return _ALIASER_OMVENDT.get(rid) or rid
 
 
 def run_id_fra_ramme(frame: str) -> str | None:
@@ -412,6 +433,8 @@ def prune() -> None:
             _RUNS.pop(rid, None)
         for ext in [e for e, lid in _ALIASER.items() if lid not in _RUNS]:
             _ALIASER.pop(ext, None)
+        for lid in [l for l in _ALIASER_OMVENDT if l not in _RUNS]:
+            _ALIASER_OMVENDT.pop(lid, None)
 
 
 def subscriber_opened(run_id: str) -> None:

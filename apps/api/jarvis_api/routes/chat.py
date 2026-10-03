@@ -1327,7 +1327,12 @@ def chat_active_runs() -> dict:
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)
-                item = {"session_id": sid, "run_id": rid, "status": "working"}
+                # 3/10-2026: klientens EGET id, ikke log-id'et. Guarden i
+                # ChatView/CodeView sammenligner med det id klienten fik i
+                # system_event(kind=run); svarede vi med log-id'et, matchede de
+                # aldrig, og indikatoren taendte paa klientens EGEN efterbehandling
+                # (maalt: 5-20 s blink efter hvert svar).
+                item = {"session_id": sid, "run_id": rel.klient_run_id(rid), "status": "working"}
                 try:
                     from core.services.research_store import active_for_session
                     research = active_for_session(sid)

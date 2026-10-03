@@ -68,6 +68,7 @@
 
 .sessions {
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 8px 16px;
   flex: 1;
   min-height: 0;
@@ -3443,6 +3444,13 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .har-skinne .transcript,
 .har-skinne .composer-area,
 .har-skinne .chat-empty { padding-right: calc(var(--skinne-bredde) + 16px); }
+.har-skinne .composer-area .jump-to-latest {
+  left: 0;
+  right: calc(var(--skinne-bredde) + 16px);
+  width: max-content;
+  margin-inline: auto;
+  transform: none;
+}
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */
 .central-panel { background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
@@ -3618,6 +3626,20 @@ p.central-flag { margin: 0 0 6px; }
   box-shadow: 0 12px 34px rgba(0,0,0,.38);
   color: var(--fg-2); font-size: 12px; line-height: 1.4;
   pointer-events: none;
+}
+/* Bølgen markerer positionen uden at fylde railen med tekst. */
+.msg-rail-dash { position: relative; }
+.msg-rail-dash::before, .msg-rail-dash::after {
+  content: ''; position: absolute; left: 0; height: 2px;
+  border-radius: 2px; background: currentColor; opacity: 0;
+  transition: opacity .15s ease;
+}
+.msg-rail-dash::before { top: -5px; width: 9px; }
+.msg-rail-dash::after { top: 5px; width: 11px; }
+.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::before,
+.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::after { opacity: .7; }
+@media (prefers-reduced-motion: reduce) {
+  .msg-rail-dash, .msg-rail-dash::before, .msg-rail-dash::after { transition: none; }
 }
 
 /* ── App-opdaterings-kort (§22.5) ── */

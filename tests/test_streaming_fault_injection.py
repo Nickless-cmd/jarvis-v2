@@ -148,6 +148,7 @@ class _DriveResult:
 def _drive(monkeypatch, shape: str, *, run_id: str,
            provider: str = "deepseek", model: str = "deepseek-v4-flash",
            central_nerves: list | None = None, stop_after: int | None = None,
+           synthesis=None,
            **inject_kwargs) -> _DriveResult:
     """Driv ÉT minimalt agentisk followup-run gennem det ægte spor med en aktiv
     fejl-injektion. Returnerer opsamlet udfald.
@@ -185,7 +186,7 @@ def _drive(monkeypatch, shape: str, *, run_id: str,
     # to søskende den RIGTIGE udbyder — test-vagten stoppede den, men testen
     # rakte ud efter nettet (fundet 19/9-2026). De returnerer tomt, så den
     # deterministiske floor tager over, præcis som ved et fejlet syntese-kald.
-    monkeypatch.setattr(vf, "synthesize_final_answer", lambda *a, **k: "")
+    monkeypatch.setattr(vf, "synthesize_final_answer", synthesis or (lambda *a, **k: ""))
     monkeypatch.setattr(vf, "synthesize_continuation", lambda *a, **k: "")
     monkeypatch.setattr(vf, "synthesize_nonthinking_rescue", lambda *a, **k: "")
     monkeypatch.setattr(vr, "_execute_simple_tool_calls", _fake_exec_tools)
@@ -356,6 +357,24 @@ def test_kill_switch_flag_reads_from_config_when_no_env(monkeypatch) -> None:
 
 
 # ── (a) clean_fail_before_delta — BASELINE ───────────────────────────────────
+
+
+def test_final_synthesis_after_tool_round_emits_multiple_live_deltas(monkeypatch):
+    monkeypatch.setattr(vf, "stream_visible_followup",
+                        lambda **_kw: iter([vf.FollowupDone(text="")]))
+
+    def synthesize(*, on_delta=None, **_kw):
+        if on_delta:
+            on_delta("Første del ")
+            on_delta("og anden del.")
+        return "Første del og anden del."
+
+    res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,
+                 run_id="post-tool-stream", synthesis=synthesize)
+    deltas = [event.get("delta", "") for event in res.event_data("delta")]
+    assert "Første del" in deltas
+    assert " og anden del." in deltas
+    assert res.persisted_text.endswith("Første del og anden del.")
 
 
 def test_clean_fail_before_delta_ends_interrupted_no_retry(monkeypatch) -> None:

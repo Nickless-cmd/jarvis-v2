@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_network_visualizer.py`
+_Signal Network Visualizer — Jarvis' self-model as a living network._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_current_network_state` | `()` | Get current network state with nodes and edges. | [src](../../../core/services/signal_network_visualizer.py#L36) |
+| function | `describe_inner_network` | `()` | Get a description of the inner network. | [src](../../../core/services/signal_network_visualizer.py#L113) |
+| function | `get_signal_strengths` | `()` | Get signal strengths for each signal type. | [src](../../../core/services/signal_network_visualizer.py#L132) |
+| function | `format_network_for_prompt` | `()` | Format network state for prompt injection. | [src](../../../core/services/signal_network_visualizer.py#L149) |
+| function | `build_signal_network_visualizer_surface` | `()` | Build MC surface for signal network visualizer. | [src](../../../core/services/signal_network_visualizer.py#L157) |
+| function | `_emit_signal_network_visualizer_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/signal_network_visualizer.py#L175) |
+
 ## `core/services/signal_noise_guard.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -575,25 +587,4 @@ _Surprise detector — anomaly signals for the proactive/autonomous lane._
 | function | `_check_approval_starvation` | `()` | Check pending_approvals state for cards older than threshold. | [src](../../../core/services/surprise_detector.py#L116) |
 | function | `check_surprises` | `()` | Run all anomaly checks; return a summary of what fired. | [src](../../../core/services/surprise_detector.py#L151) |
 | function | `_exec_check_surprises` | `(_args)` | — | [src](../../../core/services/surprise_detector.py#L160) |
-
-## `core/services/sustained_attention.py`
-_Sustained Attention — ongoing projects that survive across ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/sustained_attention.py#L37) |
-| function | `_load` | `()` | — | [src](../../../core/services/sustained_attention.py#L41) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/sustained_attention.py#L55) |
-| function | `create_project` | `(*, name, description=…, why=…, priority=…, autonomy_level=…, context_snapshot=…)` | — | [src](../../../core/services/sustained_attention.py#L67) |
-| function | `add_progress` | `(project_id, note, *, context=…)` | — | [src](../../../core/services/sustained_attention.py#L105) |
-| function | `set_status` | `(project_id, status)` | — | [src](../../../core/services/sustained_attention.py#L124) |
-| function | `set_autonomy` | `(project_id, level)` | — | [src](../../../core/services/sustained_attention.py#L138) |
-| function | `list_projects` | `(*, status=…)` | — | [src](../../../core/services/sustained_attention.py#L150) |
-| function | `get_project` | `(project_id)` | — | [src](../../../core/services/sustained_attention.py#L157) |
-| function | `_hours_since` | `(iso_str)` | — | [src](../../../core/services/sustained_attention.py#L164) |
-| function | `_auto_pause_stale` | `(items)` | — | [src](../../../core/services/sustained_attention.py#L174) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/sustained_attention.py#L187) |
-| function | `build_sustained_attention_surface` | `()` | — | [src](../../../core/services/sustained_attention.py#L196) |
-| function | `_surface_summary` | `(active, paused, completed)` | — | [src](../../../core/services/sustained_attention.py#L229) |
-| function | `build_sustained_attention_prompt_section` | `()` | — | [src](../../../core/services/sustained_attention.py#L246) |
 

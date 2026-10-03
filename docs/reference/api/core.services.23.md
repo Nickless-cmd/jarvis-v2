@@ -311,6 +311,21 @@ _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark
 | function | `_generate` | `(turns)` | — | [src](../../../core/services/session_milestones.py#L104) |
 | function | `get_session_milestones` | `(session_id)` | Milepæle for rail'en: [{anchor_id, title}]. Cached pr. session+turn-antal; regenereres | [src](../../../core/services/session_milestones.py#L110) |
 
+## `core/services/session_model_pin.py`
+_Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_model_pin.py#L60) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L71) |
+| function | `_compact_epoch` | `(session_id)` | Compaction-markøren. Skifter den, er historikken skrevet om og cachen | [src](../../../core/services/session_model_pin.py#L75) |
+| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L88) |
+| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_model_pin.py#L99) |
+| function | `get_pinned` | `(session_id)` | Det låste (udbyder, model) — ``None`` når intet er låst, eller når | [src](../../../core/services/session_model_pin.py#L107) |
+| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L123) |
+| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L139) |
+| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L163) |
+
 ## `core/services/session_permission.py`
 _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
 
@@ -552,12 +567,13 @@ _Side-task flag — keep the main thread focused._
 | function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L53) |
 | function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L73) |
 | function | `list_open` | `()` | Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser. | [src](../../../core/services/side_tasks.py#L77) |
-| function | `resolve` | `(side_task_id, *, decision)` | — | [src](../../../core/services/side_tasks.py#L82) |
-| function | `side_tasks_prompt_section` | `()` | — | [src](../../../core/services/side_tasks.py#L103) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L125) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L134) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L139) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L149) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, lukket_af=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L82) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L111) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L137) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L180) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L189) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L194) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L204) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._
@@ -599,16 +615,4 @@ _Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
 | function | `_store_hot` | `(db, hot, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L126) |
 | function | `_reason` | `(crossed, movements, theta_abs)` | — | [src](../../../core/services/signal_delta_trigger.py#L133) |
 | function | `evaluate` | `(signals, scope=…)` | Decide whether a real change warrants a dispatch. | [src](../../../core/services/signal_delta_trigger.py#L141) |
-
-## `core/services/signal_network_visualizer.py`
-_Signal Network Visualizer — Jarvis' self-model as a living network._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_current_network_state` | `()` | Get current network state with nodes and edges. | [src](../../../core/services/signal_network_visualizer.py#L36) |
-| function | `describe_inner_network` | `()` | Get a description of the inner network. | [src](../../../core/services/signal_network_visualizer.py#L113) |
-| function | `get_signal_strengths` | `()` | Get signal strengths for each signal type. | [src](../../../core/services/signal_network_visualizer.py#L132) |
-| function | `format_network_for_prompt` | `()` | Format network state for prompt injection. | [src](../../../core/services/signal_network_visualizer.py#L149) |
-| function | `build_signal_network_visualizer_surface` | `()` | Build MC surface for signal network visualizer. | [src](../../../core/services/signal_network_visualizer.py#L157) |
-| function | `_emit_signal_network_visualizer_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/signal_network_visualizer.py#L175) |
 

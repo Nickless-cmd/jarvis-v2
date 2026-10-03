@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_observer.py`
+_Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
+| function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
+| function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
+
 ## `core/services/tool_outcome_memory.py`
 _Bridge tool execution outcomes into durable runtime action evidence._
 
@@ -565,15 +574,4 @@ _Worker-thread pump for the first visible model stream._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `pump_first_pass` | `(run, *, controller, tool_scope, loop, queue, sentinel, stream_fn=…)` | — | [src](../../../core/services/visible_first_pass_pump.py#L10) |
-
-## `core/services/visible_first_pass_text.py`
-_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
-| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
-| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
-| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
-| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
 

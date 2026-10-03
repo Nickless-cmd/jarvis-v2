@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15850 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15862 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,12 +51,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15850 functions/
 - [`core.services.20`](core.services.20.md) — `provider_registry_admin` … `research_contract`
 - [`core.services.21`](core.services.21.md) — `research_evidence_collector` … `runtime_self_model_affect`
 - [`core.services.22`](core.services.22.md) — `runtime_self_model_boundary` … `self_surprise_detection`
-- [`core.services.23`](core.services.23.md) — `self_surprise_expectation` … `signal_network_visualizer`
-- [`core.services.24`](core.services.24.md) — `signal_noise_guard` … `sustained_attention`
-- [`core.services.25`](core.services.25.md) — `system_cartographer` … `tool_observer`
-- [`core.services.26`](core.services.26.md) — `tool_outcome_memory` … `visible_first_pass_text`
-- [`core.services.27`](core.services.27.md) — `visible_followup` … `visible_terminal_policy`
-- [`core.services.28`](core.services.28.md) — `visible_text_scrub` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `self_surprise_expectation` … `signal_delta_trigger`
+- [`core.services.24`](core.services.24.md) — `signal_network_visualizer` … `surprise_detector`
+- [`core.services.25`](core.services.25.md) — `sustained_attention` … `tool_lexical_match`
+- [`core.services.26`](core.services.26.md) — `tool_observer` … `visible_first_pass_pump`
+- [`core.services.27`](core.services.27.md) — `visible_first_pass_text` … `visible_stream_gate`
+- [`core.services.28`](core.services.28.md) — `visible_terminal_policy` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

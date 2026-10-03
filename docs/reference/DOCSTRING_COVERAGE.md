@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8309/15850 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8320/15862 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 701 | 1281 | 54% |
-| `core.services` | 5544 | 10800 | 51% |
+| `core.services` | 5555 | 10812 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2231)
+## Undocumented public functions (2229)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L210)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -573,9 +573,9 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L641)
-- `core/runtime/settings.py` :: `load_settings` (L693)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1166)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L657)
+- `core/runtime/settings.py` :: `load_settings` (L710)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1183)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1435,13 +1435,13 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3503)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3351)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3640)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3506)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3354)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3643)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L152)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L100)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L127)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4869)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4872)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -1774,8 +1774,6 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
 - `core/services/side_tasks.py` :: `flag` (L53)
 - `core/services/side_tasks.py` :: `list_pending` (L73)
-- `core/services/side_tasks.py` :: `resolve` (L82)
-- `core/services/side_tasks.py` :: `side_tasks_prompt_section` (L103)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)
@@ -1973,19 +1971,19 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L550)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L547)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L557)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7003)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7028)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7232)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7228)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6999)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7141)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7193)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7110)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7051)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7083)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6961)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7249)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7014)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7029)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7054)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7258)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7254)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7025)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7167)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7219)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7136)
+- `core/services/visible_runs.py` :: `get_visible_work` (L7077)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7109)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6987)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7275)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7040)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L602)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
@@ -2012,9 +2010,9 @@ Generated from source. 8309/15850 functions/methods documented (52%). The list b
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)
 - `core/services/witness_signal_tracking.py` :: `track_runtime_witness_signals_for_visible_turn` (L29)
-- `core/services/workspace_trust.py` :: `clear_trust_context` (L114)
-- `core/services/workspace_trust.py` :: `current_trust_context` (L118)
-- `core/services/workspace_trust.py` :: `set_trust_context` (L110)
+- `core/services/workspace_trust.py` :: `clear_trust_context` (L194)
+- `core/services/workspace_trust.py` :: `current_trust_context` (L198)
+- `core/services/workspace_trust.py` :: `set_trust_context` (L190)
 - `core/services/world_facts.py` :: `build_world_fact_prompt_section` (L107)
 - `core/services/world_facts.py` :: `list_world_facts` (L98)
 - `core/services/world_facts.py` :: `record_world_fact` (L37)

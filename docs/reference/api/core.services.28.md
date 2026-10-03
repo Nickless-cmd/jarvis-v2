@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_terminal_policy.py`
+_Single source of truth for visible task terminal decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TerminalState` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L14) |
+| class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L23) |
+| class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L36) |
+| function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L51) |
+| function | `is_non_retryable_recovery_reason` | `(reason)` | A rejected provider request will fail again with the same checkpoint. | [src](../../../core/services/visible_terminal_policy.py#L55) |
+| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L60) |
+| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L99) |
+| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L138) |
+
 ## `core/services/visible_text_scrub.py`
 _Fjern runtime'ens interne markører fra den tekst brugeren ser._
 
@@ -274,13 +288,15 @@ _Trusted-folder gate for code/cowork workspaces._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/workspace_trust.py#L30) |
-| function | `is_trusted` | `(user_id, kind, root)` | True hvis (user_id, kind, root) er markeret betroet. | [src](../../../core/services/workspace_trust.py#L44) |
-| function | `list_trusted` | `(user_id, kind=…)` | De mapper brugeren har betroet — nyeste foerst. | [src](../../../core/services/workspace_trust.py#L57) |
-| function | `set_trusted` | `(user_id, kind, root, trusted)` | Markér/afmarkér et workspace som betroet. Returnerer den nye trust-tilstand. | [src](../../../core/services/workspace_trust.py#L87) |
-| function | `set_trust_context` | `(*, kind, root, trusted)` | — | [src](../../../core/services/workspace_trust.py#L110) |
-| function | `clear_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L114) |
-| function | `current_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L118) |
-| function | `guard_code_write` | `(tool_name)` | Returnér en fejl-besked hvis ``tool_name`` er en skrive-/exec-handling i et | [src](../../../core/services/workspace_trust.py#L122) |
+| function | `_opløst` | `(sti)` | Stien med symlinks fulgt — tom streng hvis den ikke kan opløses. | [src](../../../core/services/workspace_trust.py#L44) |
+| function | `er_under` | `(sti, rod)` | Ligger `sti` i eller under `rod`? | [src](../../../core/services/workspace_trust.py#L64) |
+| function | `is_trusted` | `(user_id, kind, root)` | True hvis (user_id, kind, root) er betroet — direkte ELLER som undermappe. | [src](../../../core/services/workspace_trust.py#L100) |
+| function | `list_trusted` | `(user_id, kind=…)` | De mapper brugeren har betroet — nyeste foerst. | [src](../../../core/services/workspace_trust.py#L137) |
+| function | `set_trusted` | `(user_id, kind, root, trusted)` | Markér/afmarkér et workspace som betroet. Returnerer den nye trust-tilstand. | [src](../../../core/services/workspace_trust.py#L167) |
+| function | `set_trust_context` | `(*, kind, root, trusted)` | — | [src](../../../core/services/workspace_trust.py#L190) |
+| function | `clear_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L194) |
+| function | `current_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L198) |
+| function | `guard_code_write` | `(tool_name)` | Returnér en fejl-besked hvis ``tool_name`` er en skrive-/exec-handling i et | [src](../../../core/services/workspace_trust.py#L202) |
 
 ## `core/services/world_facts.py`
 _Evidence-bounded world facts and their visible prompt representation._

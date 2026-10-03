@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_followup.py`
+_Provider-neutral agentic follow-up dispatcher._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `supported_followup_providers` | `()` | Provider ids with a working follow-up adapter. | [src](../../../core/services/visible_followup.py#L121) |
+| function | `stream_visible_followup` | `(*, provider, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, session_id=…, autonomous=…, trailing_messages=…)` | Dispatch to the provider's follow-up adapter; yield FollowupEvents. | [src](../../../core/services/visible_followup.py#L131) |
+| function | `synthesize_nonthinking_rescue` | `(*, provider, model, base_messages, exchanges)` | Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter | [src](../../../core/services/visible_followup.py#L217) |
+| function | `synthesize_final_answer` | `(*, provider, model, base_messages, exchanges)` | HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT | [src](../../../core/services/visible_followup.py#L301) |
+| function | `synthesize_continuation` | `(*, provider, model, base_messages, exchanges, partial_text, continuation_instruction=…)` | CUT-OFF-FORTSÆTTELSE (2026-08-20): når provideren lukkede streamen med | [src](../../../core/services/visible_followup.py#L377) |
+| function | `agentic_round_retry_enabled` | `()` | Er rund-niveau stream-retry (Fase 1) slået til? Default False. | [src](../../../core/services/visible_followup.py#L482) |
+| function | `provider_failover_enabled` | `()` | Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False. | [src](../../../core/services/visible_followup.py#L526) |
+| function | `pick_failover_target` | `(current_provider, current_model)` | Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2). | [src](../../../core/services/visible_followup.py#L545) |
+| function | `inject_fault` | `(shape, *, partial_deltas=…, drop_as_exception=…, http_status=…, fire_once=…, fail_times=…, recover_text=…)` | Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald. | [src](../../../core/services/visible_followup.py#L609) |
+| function | `clear_faults` | `()` | Fjern enhver aktiv injektion. Idempotent. TEST-ONLY. | [src](../../../core/services/visible_followup.py#L655) |
+| class | `fault_injection` | `` | Context-manager der registrerer en injektion + RYDDER den ved exit | [src](../../../core/services/visible_followup.py#L662) |
+| method | `fault_injection.__init__` | `(self, shape, **kwargs)` | — | [src](../../../core/services/visible_followup.py#L672) |
+| method | `fault_injection.__enter__` | `(self)` | — | [src](../../../core/services/visible_followup.py#L676) |
+| method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L680) |
+| function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L685) |
+| function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L718) |
+
 ## `core/services/visible_followup_adapters.py`
 _Per-provider follow-up adapters (split from ``visible_followup.py``)._
 
@@ -573,22 +595,4 @@ _Single source of truth for visible task terminal decisions._
 | function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L60) |
 | function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L99) |
 | function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L138) |
-
-## `core/services/visible_text_scrub.py`
-_Fjern runtime'ens interne markører fra den tekst brugeren ser._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_slut_paa_note` | `(tekst, start)` | Indeks EFTER den klamme der lukker noten der begynder på `start`. | [src](../../../core/services/visible_text_scrub.py#L52) |
-| function | `_foerste_markoer` | `(tekst, fra=…)` | Indeks på den tidligste interne markør fra `fra`, eller -1. | [src](../../../core/services/visible_text_scrub.py#L70) |
-| function | `fjern_interne_markoerer` | `(tekst)` | Teksten uden runtime-noter, med tomme linjer ryddet op efter sig. | [src](../../../core/services/visible_text_scrub.py#L77) |
-| function | `_ryd_tomrum` | `(tekst)` | Noten stod i sit eget afsnit. Fjerner man den, står der tre tomme | [src](../../../core/services/visible_text_scrub.py#L95) |
-| function | `_uden_markoerord` | `(tekst)` | Teksten med selve markoer-ordene fjernet, men indholdet bevaret. | [src](../../../core/services/visible_text_scrub.py#L103) |
-| class | `StroemSkrubber` | `` | Samme fjernelse, men på en strøm hvor markøren kan være delt over flere | [src](../../../core/services/visible_text_scrub.py#L110) |
-| method | `StroemSkrubber.__init__` | `(self)` | — | [src](../../../core/services/visible_text_scrub.py#L119) |
-| method | `StroemSkrubber.foed` | `(self, stykke)` | Den del af `stykke` der trygt kan sendes videre nu. | [src](../../../core/services/visible_text_scrub.py#L122) |
-| method | `StroemSkrubber.skyl` | `(self)` | Resten, når strømmen er slut. Uafsluttede noter ryger. | [src](../../../core/services/visible_text_scrub.py#L137) |
-| function | `fjern_interne_markoerer_stroem` | `(buffer)` | (klar-til-udsendelse, hale-der-skal-holdes-tilbage). | [src](../../../core/services/visible_text_scrub.py#L144) |
-| function | `_klap_tomrum_sammen` | `(tekst)` | Tre eller flere linjeskift bliver til ét afsnitsbrud. | [src](../../../core/services/visible_text_scrub.py#L191) |
-| function | `_muligt_praefiks` | `(buffer)` | Den slut-stump der kunne være starten på en markør — ellers «». | [src](../../../core/services/visible_text_scrub.py#L202) |
 

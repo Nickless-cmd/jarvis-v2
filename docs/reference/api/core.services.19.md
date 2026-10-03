@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_candidates.py`
+_Proactive candidates — the ONE queue for "Jarvis wants to tell Bjørn something"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_telemetri` | `(source, kind=…)` | Er dette intern telemetri frem for en besked Bjørn skal se? | [src](../../../core/services/proactive_candidates.py#L83) |
+| function | `_kerne` | `(text)` | Anmodningen selv — ikke skabelonen den er pakket ind i. | [src](../../../core/services/proactive_candidates.py#L88) |
+| function | `_kerne_similarity` | `(a, b)` | Jaccard mellem to kærners ord (0-1). | [src](../../../core/services/proactive_candidates.py#L100) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L108) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L112) |
+| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L121) |
+| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L128) |
+| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L132) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L154) |
+| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L162) |
+| function | `add_candidate` | `(*, source, text, priority=…, kind=…)` | Queue a message for Bjørn. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L171) |
+| function | `list_pending` | `(*, limit=…, priorities=…)` | — | [src](../../../core/services/proactive_candidates.py#L248) |
+| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L262) |
+| function | `expire_stale` | `(*, days=…, aabne_days=…)` | Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned` | [src](../../../core/services/proactive_candidates.py#L283) |
+| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L304) |
+| function | `relevant_for` | `(user_message, *, limit=…, min_coverage=…)` | Pending items lexically relevant to what Bjørn just wrote (best first). | [src](../../../core/services/proactive_candidates.py#L314) |
+| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L328) |
+| function | `build_since_last_line` | `(user_message, *, session_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L339) |
+| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L354) |
+| function | `bridge_candidates` | `()` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L382) |
+| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L397) |
+
 ## `core/services/proactive_context_governor.py`
 _Proactive context governor — auto-trigger compaction + sub-agent slicing._
 
@@ -669,28 +696,4 @@ _Hvilken model SVAREDE — ikke hvilken vi bad om._
 | function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
 | function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
 | function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
-
-## `core/services/provider_registry_admin.py`
-_Registret over udbydere og modeller — nu med en skrivevej._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fil` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L43) |
-| function | `_nu` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L48) |
-| function | `_laes` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L52) |
-| function | `_backup` | `()` | Kopiér den nuvaerende fil til side. Returnerer stien, eller "" hvis intet. | [src](../../../core/services/provider_registry_admin.py#L58) |
-| function | `_skriv` | `(registry)` | Skriv registret. Backup FOERST — en fortrydelse skal kunne lade sig goere. | [src](../../../core/services/provider_registry_admin.py#L80) |
-| function | `_sig_det_hoejt` | `(handling, detalje)` | En aendring i registret er en driftsbeslutning. Den skal kunne ses bagefter. | [src](../../../core/services/provider_registry_admin.py#L95) |
-| function | `fuld_registrering` | `()` | HELE registret — ikke de foerste 8 og 12. | [src](../../../core/services/provider_registry_admin.py#L108) |
-| function | `_valider_kvote_vinduer` | `(windows)` | — | [src](../../../core/services/provider_registry_admin.py#L189) |
-| function | `saet_kvote_politik` | `(*, provider, auth_profile, windows, expected_revision=…)` | Gem deklarerede kvoter paa den konkrete provider-profil. | [src](../../../core/services/provider_registry_admin.py#L234) |
-| function | `saet_model_aktiv` | `(*, provider, model, aktiv, grund=…)` | Slaa én model til eller fra. Pladsen, lanen og historien bevares. | [src](../../../core/services/provider_registry_admin.py#L275) |
-| function | `saet_udbyder_aktiv` | `(*, provider, aktiv, grund=…)` | Slaa en HEL udbyder til eller fra. | [src](../../../core/services/provider_registry_admin.py#L303) |
-| function | `fjern_model` | `(*, provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../core/services/provider_registry_admin.py#L328) |
-| function | `fjern_udbyder` | `(*, provider)` | Fjern en udbyder OG dens modeller fra registret. | [src](../../../core/services/provider_registry_admin.py#L342) |
-| function | `gendan_backup` | `(*, sti=…)` | Rul registret tilbage til en backup. Tom sti = den nyeste. | [src](../../../core/services/provider_registry_admin.py#L362) |
-| function | `backups` | `()` | Hvilke backups findes — nyeste foerst. | [src](../../../core/services/provider_registry_admin.py#L384) |
-| function | `tilfoej` | `(*, provider, model, lane=…, auth_mode=…, auth_profile=…, base_url=…, api_key=…)` | Tilfoej (eller gen-aktivér) en udbyder + model i registret. | [src](../../../core/services/provider_registry_admin.py#L398) |
-| function | `saet_lane` | `(*, provider, model, lane)` | Flyt en model til en anden lane (cheap, local, coding, visible …). | [src](../../../core/services/provider_registry_admin.py#L434) |
-| function | `saet_routing_bias` | `(*, provider, model, bias)` | Set a bounded, explicit soft routing factor on one Cheap Lane model. | [src](../../../core/services/provider_registry_admin.py#L457) |
 

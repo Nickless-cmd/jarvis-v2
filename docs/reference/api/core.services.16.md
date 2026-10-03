@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/malware_scan.py`
+_Malware-scanning af uploads/vedhæftninger (spec §15.3.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ScanReport` | `` | — | [src](../../../core/services/malware_scan.py#L21) |
+| method | `ScanReport.safe` | `(self)` | — | [src](../../../core/services/malware_scan.py#L27) |
+| method | `ScanReport.as_dict` | `(self)` | — | [src](../../../core/services/malware_scan.py#L30) |
+| function | `clamav_available` | `()` | — | [src](../../../core/services/malware_scan.py#L35) |
+| function | `scan_file` | `(path)` | Scan en fil med clamscan. Returnerer ScanReport. Blokerer aldrig på | [src](../../../core/services/malware_scan.py#L39) |
+| function | `is_upload_allowed` | `(path, *, block_on_unavailable=…)` | Politik-helper: må denne upload gemmes/behandles? (§15.3.1) | [src](../../../core/services/malware_scan.py#L68) |
+
 ## `core/services/markdown_structure.py`
 _Rekonstruér markdown-blokstruktur fra inline-markører._
 
@@ -625,15 +637,4 @@ _Findes den valgte model hos den valgte udbyder?_
 | function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L119) |
 | function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L133) |
 | function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L171) |
-
-## `core/services/model_probe.py`
-_Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_forbigaaende` | `(fejl)` | — | [src](../../../core/services/model_probe.py#L61) |
-| function | `_fulgte_resultatet` | `(svar)` | Bestået kræver TO ting: at svaret bærer det plantede faktum, og at det | [src](../../../core/services/model_probe.py#L132) |
-| function | `_score` | `(bestået, sprunget)` | Vægtene afspejler hvad agent-arbejde faktisk falder på. | [src](../../../core/services/model_probe.py#L150) |
-| function | `bedøm_kode` | `(tekst)` | True hvis svaret indeholder en Python-funktion der kan parses. | [src](../../../core/services/model_probe.py#L168) |
-| function | `probe_model` | `(*, provider, model, auth_profile=…, base_url=…, kald=…)` | Kør de fire prøver mod én model. Kaster aldrig. | [src](../../../core/services/model_probe.py#L199) |
 

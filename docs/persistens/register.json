@@ -56,6 +56,16 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "bg_jobs_rapporteret": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Færdige baggrunds-shells — set, ikke gættet.",
+      "registreret": "2026-10-03"
+    },
+    "bg_jobs_sidste_tjek": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Færdige baggrunds-shells — set, ikke gættet.",
+      "registreret": "2026-10-03"
+    },
     "body_memory": {
       "ejer": "core/services/body_memory.py",
       "beskrivelse": "Body Memory — Jarvis' kropslige erindringer.",

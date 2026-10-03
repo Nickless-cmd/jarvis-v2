@@ -391,6 +391,20 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
 
+    # Faerdige baggrunds-shells. Signalet (`<id>.rc`) har ligget der siden
+    # operator_background blev bygget — men ingen laeste det uden at spoerge,
+    # saa et job der blev faerdigt kl. 13:10 laa stille til nogen tilfaeldigt
+    # kiggede. Se modulet for hvorfor det hoerer i de ubetingede daemoner og
+    # ikke under en handling: `act_phase` dispatcher kun videre naar der ER
+    # prioriteter, og et fuldfoerelses-signal skal netop kunne komme naar der
+    # ellers er roligt.
+    try:
+        from core.services.background_job_watch import tik as _bg_watch_tik
+        _bg_watch_tik()
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     logger.debug("indre daemoner: %d koert, %d fejlet, %d brugere",
                  koert, fejlet, brugere)
     return {"koert": koert, "fejlet": fejlet, "brugere": brugere}

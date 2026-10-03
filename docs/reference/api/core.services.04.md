@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_agenda.py`
+_core/services/central_agenda.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
+| function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
+| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
+| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
+| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
+| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
+| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L110) |
+| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L124) |
+| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L138) |
+| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L166) |
+| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L185) |
+| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L192) |
+| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L201) |
+| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L213) |
+
 ## `core/services/central_agent_smith.py`
 _Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager sig selv på tværs af_
 
@@ -546,16 +567,4 @@ _Central governance flag-register (Backend A1)._
 | function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/central_governance.py#L259) |
 | function | `set_flag` | `(key, value, confirm=…)` | Skriv ét flag governeret. Kaster aldrig — returnerer status-dict. | [src](../../../core/services/central_governance.py#L273) |
 | function | `record_mutation` | `(area, key, value)` | Registrér en governeret mutation som eventbus-event + Central-nerve + persistent ledger. | [src](../../../core/services/central_governance.py#L339) |
-
-## `core/services/central_growth_observe.py`
-_core/services/central_growth_observe.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_family_delta` | `(fam)` | ÆGTE rate-signal: antal NYE events i familien siden sidste tick (cursor-baseret delta), | [src](../../../core/services/central_growth_observe.py#L31) |
-| function | `observe_inner_drive_activity` | `()` | Sampl inner-drive-aktivitet EGRESS-FRIT → kanonisk sink (cluster=autonomy). Rapporterer | [src](../../../core/services/central_growth_observe.py#L61) |
-| function | `observe_index_activity` | `()` | Sampl semantic-indexer-aktivitet (operationel, ikke privat) → NORMAL observe. Self-safe. | [src](../../../core/services/central_growth_observe.py#L75) |
-| function | `observe_sensory_activity` | `()` | Sansernes Arkiv → Centralen EGRESS-FRIT (§24.4): sansnings-AKTIVITET (rate + modalitet + | [src](../../../core/services/central_growth_observe.py#L106) |
-| function | `run_growth_observe_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sampl vækst-kapacitet (inner-drives + indexer + Sansernes Arkiv). Self-safe. | [src](../../../core/services/central_growth_observe.py#L141) |
-| function | `register_growth_observe_producer` | `()` | Registrér vækst-observationen som cadence-producer (~hvert 5 min). | [src](../../../core/services/central_growth_observe.py#L150) |
 

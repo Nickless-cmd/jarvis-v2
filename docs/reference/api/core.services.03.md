@@ -125,6 +125,21 @@ _Avoidance Detector — unbidden self-observation of patterns over time._
 | function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
 | function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
 
+## `core/services/background_job_watch.py`
+_Færdige baggrunds-shells — set, ikke gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L54) |
+| function | `_rapporterede` | `()` | {shell_id: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L58) |
+| function | `_husk` | `(ids)` | Skriv id'erne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L81) |
+| class | `BroUkendt` | `` | Vi kunne ikke se operatørens maskine. | [src](../../../core/services/background_job_watch.py#L98) |
+| function | `scan_finished` | `(*, uid)` | Nye fuldførte baggrunds-shells siden sidst. | [src](../../../core/services/background_job_watch.py#L109) |
+| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L140) |
+| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L151) |
+| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L166) |
+| function | `tik` | `(*, uid=…)` | Tjek for færdige shells og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L178) |
+
 ## `core/services/background_jobs.py`
 _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
@@ -588,25 +603,4 @@ _core/services/central_affect.py — affektiv tagging af Centralens nerver._
 | function | `classify_affect` | `(cluster, nerve, kind, value, flagged=…)` | Klassificér én nerve-observation til en affekt + intensitet. Self-safe. | [src](../../../core/services/central_affect.py#L77) |
 | function | `_recent_affect_records` | `(limit=…)` | Læs de seneste affekt-bærende records fra tidsserien (meta.affect). Self-safe. | [src](../../../core/services/central_affect.py#L131) |
 | function | `build_affect_surface` | `(records=…)` | Aggregér de seneste affekter til en fordeling + dominant. Self-safe. | [src](../../../core/services/central_affect.py#L155) |
-
-## `core/services/central_agenda.py`
-_core/services/central_agenda.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
-| function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
-| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
-| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
-| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
-| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
-| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L110) |
-| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L124) |
-| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L138) |
-| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L166) |
-| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L185) |
-| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L192) |
-| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L201) |
-| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L213) |
 

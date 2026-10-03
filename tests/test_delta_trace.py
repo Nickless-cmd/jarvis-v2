@@ -155,8 +155,18 @@ def test_BEGGE_maalepunkter_er_koblet():
     praecis derfor Codex ikke kunne afslutte maalingen."""
     ind = pathlib.Path("core/services/visible_model_adapters.py").read_text()
     ast.parse(ind)
-    assert "_dt_noter(delta)" in ind, "punkt «ind» er ikke koblet"
+    assert "_dt_noter(delta)" in ind, "punkt «ind» er ikke koblet paa foerste pas"
     assert '_dt.noter("ind"' in ind
+
+    # Og paa de AGENTISKE RUNDER, hvor det meste af teksten kommer fra.
+    # Maalt 3/10: to rigtige ture gav NUL «ind»-linjer mod to «ud», fordi
+    # sporet kun sad paa foerste pas. Runderne yielder `FollowupDelta` fra en
+    # anden fil — instrumenteringen sad paa den vej der producerer MINDST.
+    fu = pathlib.Path("core/services/visible_followup_adapters.py").read_text()
+    ast.parse(fu)
+    assert fu.count("_dt_ind(session_id") >= 2, (
+        "de agentiske runder er ikke daekket — og de leverer stoerstedelen "
+        "af teksten i en synlig tur")
 
     ud = pathlib.Path("apps/api/jarvis_api/routes/chat_stream_v2.py").read_text()
     ast.parse(ud)
@@ -207,6 +217,19 @@ def test_noeglen_maa_IKKE_komme_fra_en_contextvar():
         "adapterens arbejdstraad, og saa maaler sporet ingenting")
     assert '_dt.noter("ind", str(session_id' in ind, (
         "noeglen skal vaere adapterens egen session_id-PARAMETER")
+
+
+def test_followup_sporet_noegler_ogsaa_paa_SESSIONEN():
+    """Samme fejl maa ikke kunne snige sig ind ad bagdoeren."""
+    fu = pathlib.Path("core/services/visible_followup_adapters.py").read_text()
+    brugt: list[str] = []
+    for n in ast.walk(ast.parse(fu)):
+        if isinstance(n, ast.Name):
+            brugt.append(n.id)
+        elif isinstance(n, ast.Attribute):
+            brugt.append(n.attr)
+    assert "aktivt_run_id" not in brugt
+    assert '_dt.noter("ind", str(session_id' in fu
 
 
 def test_sentinel_tjekket_kommer_FOER_arbejdet():

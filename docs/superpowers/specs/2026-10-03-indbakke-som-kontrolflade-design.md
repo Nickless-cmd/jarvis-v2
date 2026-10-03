@@ -1073,6 +1073,34 @@ def test_flush_afleverer_en_henvisning_og_ikke_en_replik():
 - [ ] **Trin 6: Kør server- og klienttests; deploy klienterne før
       assistant-replikken fjernes. Commit i afhængighedsrækkefølge.**
 
+> **DELVIST GJORT 3/10-2026 (Opus) — og hvorfor kun delvist.**
+>
+> Trin 1-2 er lavet som en **mærkning**, ikke som en omlægning. Begrundelsen er
+> opgavens egen rækkefølge: desk og mobil skal kunne vise en kilde-mærket
+> notifikation med replay FØR `flush_session` holder op med at skrive
+> indholdet, og «ingen post må forsvinde» i mellemtiden. Den klient-udrulning
+> er ikke lavet, så leveringsvejen er uændret.
+>
+> **Men mærkningen kunne ikke vente.** `flush_session` skriver `role="assistant"`
+> med det rå indhold, og `_a_parts` er — ifølge `compose_exchange_text`s egen
+> docstring — både det persisterede svar OG næste rundes model-input. En umærket
+> notifikation i jeg-form læses derfor som noget Jarvis selv sagde. Det er
+> præcis formen bag Smiths løkke, og det bryder Bjørns stående regel fra samme
+> dag: alt der ikke er skrevet fra hans composer SKAL bære en kilde-mærkning.
+>
+> Leveringen bærer nu `visible_run_guard_notices.systemmaerket()` — husets ENE
+> mærkning, ikke en fjerde variant. Den tekst er samtidig den
+> `fjern_menneske_noter` genkender, så filtreringen virker på den uden videre.
+> `tests/test_session_inbox.py::test_en_leveret_notifikation_er_KILDE_MAERKET`
+> pinner det, og to mutationer (mærkning fjernet, mærkning erstatter indholdet)
+> fanges begge.
+>
+> **Hvad der mangler for at lukke Opgave 6:** en notifikations-komponent i desk
+> OG mobil der viser en durabel reference med replay ved reconnect, en test af
+> at bruger og model kan skelne den fra en brugermeddelelse, en klient-udrulning
+> — og først derefter skiftet fra replik til henvisning. Det er et klient-spor,
+> ikke et server-spor, og det hører i sin egen runde.
+
 ### Opgave 7: Mål det, før vi tror på det
 
 > **MANGLER (Jarvis 3/10):** opgaven beder mig skelne «udløb» fra de andre

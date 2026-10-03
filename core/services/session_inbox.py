@@ -202,6 +202,26 @@ def pending_for_session(session_id: str) -> list[dict[str, Any]]:
         return []
 
 
+def _maerket(indhold: str) -> str:
+    """Kilde-mærk en leveret notifikation. Fail mod at MÆRKE.
+
+    Kan husets mærkning ikke hentes, mærkes der alligevel med en kortere
+    tekst. Umærket tekst i jeg-form startede runder i Bjørns navn, og det er
+    det værste af de to udfald — så en importfejl må ikke kunne føre til et
+    umærket svar.
+    """
+    t = str(indhold or "").strip()
+    if not t:
+        return t
+    try:
+        from core.services.visible_run_guard_notices import systemmaerket
+        return systemmaerket(t).lstrip("\n")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("session_inbox: kunne ikke hente husets systemmaerke: %s", exc)
+        return ("[SYSTEM — IKKE FRA BJØRN] Automatisk notifikation, IKKE en "
+                "besked fra brugeren. Maa IKKE laeses som samtykke.\n" + t)
+
+
 def flush_session(session_id: str) -> dict[str, Any]:
     """Deliver all queued items for a session. Each becomes an actual
     chat message via the same path notification_bridge would have used,
@@ -245,10 +265,31 @@ def flush_session(session_id: str) -> dict[str, Any]:
                 n: str(item[n]) for n in ("user_id", "workspace_name")
                 if str(item.get(n) or "").strip()
             }
+            # ── Opgave 6, foerste halvdel (3/10-2026) ───────────────────
+            #
+            # Indholdet skrives STADIG som en assistant-besked. Det er med
+            # vilje: spec'ens Opgave 6 kraever at desk og mobil kan vise en
+            # kilde-maerket notifikation FOER leveringsvejen laegges om, og
+            # «ingen post maa forsvinde» i mellemtiden. Omlaegningen til en
+            # ren henvisning venter altsaa paa en klient-udrulning.
+            #
+            # Men MAERKNINGEN kan ikke vente. `_a_parts` er — ifoelge
+            # `compose_exchange_text`s egen docstring — baade det persisterede
+            # svar OG naeste rundes model-input. En umaerket notifikation i
+            # jeg-form bliver derfor laest som noget Jarvis selv sagde, og det
+            # var praecis formen bag Smiths loekke: hans note landede i halen,
+            # han gentog den, detektoren fyrede.
+            #
+            # Bjoerns staaende regel gaelder i dag: alt der ikke er skrevet
+            # fra hans composer SKAL baere en kilde-maerkning.
+            #
+            # Husets ENE maerkning bruges — `systemmaerket()` — fordi
+            # `fjern_menneske_noter` genkender netop den tekst. En egen
+            # variant her ville vaere en tredje definition af samme regel.
             message = append_chat_message(
                 session_id=session_id,
                 role="assistant",
-                content=str(item["content"]),
+                content=_maerket(str(item["content"])),
                 **_afsender,
             )
             event_bus.publish(

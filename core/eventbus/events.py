@@ -15,6 +15,16 @@ ALLOWED_EVENT_FAMILIES = {
     # `except`. Telemetrien forsvandt i tavshed — samme fejl som #159. Fundet ved
     # at måle ALLE publish-familier mod registret, ikke kun den ene jeg ledte efter.
     "skill_gate",  # visible_runs.py — skill-gate-nudgen
+    # Indbakken (Opgave 4 og 7, 3/10-2026). To familier, fordi de har to
+    # ejere: `inbox` er postens livscyklus (inbox_state), `inbox_gate` er
+    # gatens beslutninger. De skal kunne abonneres hver for sig.
+    #
+    # Jeg glemte dem, og min EGEN advarselslinje fangede det: hele Opgave 7s
+    # spor publicerede i tavshed, og maalingen ville have vist nul i ugevis.
+    # Det er praecis den fejlklasse publish_scan.py blev skrevet for — og det
+    # var den samme dag jeg laeste dens docstring.
+    "inbox",
+    "inbox_gate",
     # BEMÆRK: "central" står IKKE her med vilje. Det er egress-membranen
     # (§24.4, Rådet 1/7-2026): `central.observe()` kan bære private tanke-strenge,
     # og garantien er at `central` ikke er en registreret familie — så Event.create

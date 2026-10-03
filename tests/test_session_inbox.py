@@ -162,3 +162,65 @@ def test_flush_session_handles_deleted_session(tmp_db, monkeypatch):
     assert "note" in out
     # Pending list empty since items moved to 'dropped'
     assert pending_for_session("s-gone") == []
+
+
+# ── Opgave 6, første halvdel: kilde-mærkningen ──────────────────────────────
+
+def test_en_leveret_notifikation_er_KILDE_MAERKET(tmp_path, monkeypatch):
+    """Bjørns stående regel: alt der ikke er skrevet fra hans composer SKAL
+    bære en kilde-mærkning.
+
+    `flush_session` skriver indholdet som en **assistant-besked**, og
+    `_a_parts` er — ifølge `compose_exchange_text`s egen docstring — både det
+    persisterede svar OG næste rundes model-input. En umærket notifikation i
+    jeg-form bliver derfor læst som noget Jarvis selv sagde. Det var præcis
+    formen bag Smiths løkke: hans note landede i halen, han gentog den,
+    detektoren fyrede.
+
+    Omlægningen til en ren HENVISNING venter på en klient-udrulning (spec'ens
+    Opgave 6 trin 3-6). Mærkningen gør ikke.
+    """
+    from unittest.mock import patch
+    from core.services import session_inbox
+    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
+
+    skrevet: list[dict] = []
+    monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [
+        {"id": 1, "session_id": s, "content": "Jeg har ryddet op i databasen.",
+         "source": "jarvis-notify"}])
+    monkeypatch.setattr(session_inbox, "_connect", _tom_connect)
+    with patch("core.services.chat_sessions.append_chat_message",
+               side_effect=lambda **kw: skrevet.append(kw) or {"id": "m1"}), \
+         patch("core.services.chat_sessions.get_chat_session",
+               return_value={"id": "s1"}), \
+         patch("core.eventbus.bus.event_bus.publish", return_value=None):
+        session_inbox.flush_session("s1")
+    assert len(skrevet) == 1
+    indhold = str(skrevet[0]["content"])
+    assert SYSTEM_MAERKE in indhold, "notifikationen blev leveret UMAERKET"
+    # Indholdet er stadig med — maerkningen tilfoejer, den erstatter ikke.
+    assert "ryddet op i databasen" in indhold
+    # Og den skal eksplicit forbyde at laese den som samtykke. Uden den linje
+    # kan en systembesked blive et «ja».
+    assert "samtykke" in indhold
+
+
+class _tom_connect:
+    """En forbindelse der tager imod UPDATE'et uden en rigtig base.
+
+    `flush_session`s eneste skrivning til `session_inbox` er statusskiftet, og
+    det er ikke det denne test måler. En rigtig base ville tilføje en
+    skema-afhængighed til en test om tekst.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, *a, **k):
+        return self
+
+    def commit(self):
+        return None

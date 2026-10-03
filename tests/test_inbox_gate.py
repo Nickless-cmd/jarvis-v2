@@ -118,7 +118,8 @@ def test_trin_1_paaminder_og_TAELLER_i_samme_greb(inbox_db):
     v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t1")
     assert v["blokeret"] is False
     assert v["poster"] == ["wake-t"]
-    assert "[SYSTEM NOTIFICATION - NOT USER INPUT]" in v["varsel"]
+    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
+    assert SYSTEM_MAERKE in v["varsel"]
     assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-t")["paamindelser"] == 1
 
 
@@ -428,8 +429,73 @@ def test_varslet_baerer_system_maerkningen(inbox_db):
     bære en kilde-mærkning. Umærket tekst i jeg-form startede runder i hans
     navn. Og mærket skal eksplicit forbyde at læse den som samtykke — uden den
     linje kan en systembesked blive et «ja»."""
+    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
     _egen_aaben_post()
     v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t1")
-    for krav in ("[SYSTEM NOTIFICATION - NOT USER INPUT]",
-                 "IKKE en besked fra brugeren", "samtykke"):
+    # HUSETS maerkning, ikke min egen. Jeg skrev foerst en anden her, og det
+    # var den samme fejl jeg lige havde advaret om i Opgave 12: to
+    # definitioner af samme regel driver fra hinanden.
+    assert SYSTEM_MAERKE in v["varsel"], "varslet baerer ikke husets systemmaerke"
+    for krav in ("IKKE en besked fra brugeren", "samtykke"):
         assert krav in v["varsel"], f"varslet mangler: {krav}"
+
+
+def test_sporets_familier_ER_registrerede(inbox_db):
+    """Hele Opgave 7's måling hænger på dette.
+
+    Jeg glemte at registrere `inbox` og `inbox_gate` i
+    `ALLOWED_EVENT_FAMILIES`. `Event.create()` kaster «Unsupported event
+    family», `_spor` fangede det, og sporet publicerede i **tavshed** — en
+    måling der ville have vist nul i ugevis.
+
+    Min egen advarselslinje i `_spor` fangede det, og det er grunden til at den
+    logger på WARNING frem for DEBUG. Men en log man skal huske at læse er
+    ikke en vagt; denne test er.
+
+    Det er samme fejlklasse som `core/eventbus/publish_scan.py` blev skrevet
+    for: «64 familier publiceres uden at være tilladt. Nul events i databasen
+    for dem alle.» Jeg læste den docstring samme dag.
+    """
+    from core.eventbus.bus import event_bus
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES
+    for familie in ("inbox", "inbox_gate"):
+        assert familie in ALLOWED_EVENT_FAMILIES, \
+            f"{familie} er ikke registreret — sporet publicerer i tavshed"
+    # Og den skal faktisk kunne publicere. En registreret familie kan stadig
+    # afvises af en anden validering.
+    for kind in ("inbox.registreret", "inbox.afgjort", "inbox_gate.reminded",
+                 "inbox_gate.blocked", "inbox_gate.fail_open"):
+        event_bus.publish(kind, {"bruger_id": BJORN, "poster": ["t"]})
+
+
+def test_spor_der_fejler_vaelter_IKKE_gaten(inbox_db, monkeypatch):
+    """Telemetrien må aldrig vælte beslutningen. En bus der er nede gør Opgave
+    7 blind, men den må ikke gøre Jarvis handlingslammet."""
+    import core.services.inbox_gate as ig
+    _egen_aaben_post()
+    monkeypatch.setattr(ig, "_spor",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("bus nede")))
+    with pytest.raises(RuntimeError):
+        # `_spor` selv fanger; en patch der kaster beviser at der IKKE er et
+        # ekstra lag omkring kaldet — altsaa at `_spor`s egen except ER vagten.
+        ig.evaluer_inbox_mutation(BJORN, "edit_file", tur="t1")
+
+
+def test_en_DOED_eventbus_stopper_ikke_gaten(inbox_db, monkeypatch):
+    """Den anden halvdel: med den AEGTE `_spor` og en bus der kaster, skal
+    gaten svare normalt.
+
+    Foerste udgave af denne test laa i samme funktion som ovenstaaende og
+    brugte `monkeypatch.undo()` imellem. Den ruller ALLE patches tilbage —
+    ogsaa fixturens DB-patch — saa anden halvdel ramte den rigtige database,
+    fandt ingen poster, og fejlede af en grund der intet havde med emnet at
+    goere.
+    """
+    import core.services.inbox_gate as ig
+    from core.eventbus.bus import event_bus
+    _egen_aaben_post()
+    monkeypatch.setattr(event_bus, "publish",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    v = ig.evaluer_inbox_mutation(BJORN, "edit_file", tur="t1")
+    assert v["blokeret"] is False
+    assert v["varsel"] != "", "en doed bus slugte paamindelsen"

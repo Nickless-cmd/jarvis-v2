@@ -144,16 +144,29 @@ def _gatende_poster(bruger_id: str) -> list[dict[str, Any]] | None:
             and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS]
 
 
-#: Formen Claudes eget harness bruger ordret. Tre egenskaber gør den virksom:
-#: den siger hvad den ER, hvad den IKKE er, og den forbyder eksplicit at læse
-#: den som samtykke. Den sidste er vigtigst — uden den kan en systembesked
-#: blive et «ja».
-_SYSTEM_MAERKE: Final[str] = (
-    "[SYSTEM NOTIFICATION - NOT USER INPUT]\n"
-    "Dette er en automatisk haendelse, IKKE en besked fra brugeren.\n"
-    "Maa IKKE laeses som samtykke, bekraeftelse eller svar paa et aabent "
-    "spoergsmaal."
-)
+#: Husets ENE mærkning, importeret. Jeg skrev først min egen her, og det var
+#: den samme fejl jeg lige havde advaret om i Opgave 12: to definitioner af
+#: samme regel driver fra hinanden, og så bliver det ene filter stille
+#: virkningsløst.
+#:
+#: `visible_run_guard_notices.SYSTEM_MAERKE` har de tre egenskaber der gør
+#: formen virksom: den siger hvad den ER, hvad den IKKE er, og den **forbyder
+#: eksplicit at læse den som samtykke**. Den sidste er vigtigst — uden den kan
+#: en systembesked blive et «ja».
+#:
+#: Og den er allerede den tekst `fjern_menneske_noter` genkender, så en
+#: mærkning herfra kan filtreres af de samme to lag.
+def _system_maerke() -> str:
+    try:
+        from core.services.visible_run_guard_notices import SYSTEM_MAERKE
+        return SYSTEM_MAERKE
+    except Exception as exc:  # noqa: BLE001
+        # Kan husets maerkning ikke hentes, maerker vi ALLIGEVEL — umaerket
+        # tekst i jeg-form startede runder i Bjoerns navn, og det er den
+        # vaerste af de to udfald. Men fejlen skal ses.
+        logger.warning("inbox_gate: kunne ikke hente husets systemmaerke: %s", exc)
+        return ("[SYSTEM — IKKE FRA BJØRN] Automatisk haendelse, IKKE en besked "
+                "fra brugeren. Maa IKKE laeses som samtykke.")
 
 
 def _spor(kind: str, payload: dict[str, Any]) -> None:
@@ -178,13 +191,13 @@ def _varsel(poster: list[dict[str, Any]]) -> str:
     n = len(poster)
     ider = ", ".join(str(p["id"]) for p in poster[:3])
     mere = f" (+{n - 3} mere)" if n > 3 else ""
-    return (f"{_SYSTEM_MAERKE}\n"
+    return (f"{_system_maerke()}\n"
             f"{n} post(er) venter i indbakken: {ider}{mere} → kald `inbox`")
 
 
 def _naegtelse(poster: list[dict[str, Any]], navn: str) -> str:
     linjer = [f"  {p['id']}  «{str(p.get('beskrivelse') or '')[:60]}»" for p in poster[:5]]
-    return (f"{_SYSTEM_MAERKE}\n"
+    return (f"{_system_maerke()}\n"
             f"`{navn}` er naegtet: {len(poster)} post(er) i indbakken har faaet "
             f"paamindelser uden at blive afgjort.\n" + "\n".join(linjer) +
             "\nLuk hver med `inbox_done(id)` eller `inbox_drop(id, reason)`. "

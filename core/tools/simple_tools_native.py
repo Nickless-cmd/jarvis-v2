@@ -2714,16 +2714,40 @@ def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "text is required"}
     if len(text) > 2000:
         return {"status": "error", "error": "text exceeds 2000 character limit"}
+    # 3/10-2026: udgangen flyttet fra heartbeat-trigger-koeen til
+    # notification_bridge.
+    #
+    # Koeen er skrive-only: `consume_trigger` kaldes kun to steder i hele
+    # koden (heartbeat_delivery.py:78 og :350), begge bag
+    # `if ping_channel != "webchat"`, og begge tager kun HEAD. Maalt samme
+    # dag: en followup lagt her stod nummer 1.725 i 1.726 poster — den
+    # naaede aldrig frem. Vaerktoejet lovede «kom tilbage ved naeste tick»
+    # og leverede ingenting.
+    #
+    # `send_session_notification` har daemon-vagt: er sessionen aktiv,
+    # koees beskeden i session_inbox og flushes efter Bjoerns tur — praecis
+    # den «kom tilbage naar det passer» som dette vaerktoej lover.
+    # `push=False`: denne vej sendte ikke mobil-push foer.
     try:
-        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
     except Exception as exc:
-        return {"status": "error", "error": f"trigger module unavailable: {exc}"}
-    entry = set_trigger_for_default_workspace(
-        reason=reason, source="jarvis-self-followup", text=text
+        return {"status": "error", "error": f"notification bridge unavailable: {exc}"}
+    levering = send_session_notification(
+        text, source="jarvis-self-followup", push=False
     )
-    if entry is None:
-        return {"status": "error", "error": "failed to queue trigger"}
-    return {"status": "queued", "reason": reason, "created_at": entry.get("created_at", "")}
+    if not delivery_succeeded(levering):
+        return {
+            "status": "error",
+            "error": f"delivery-{levering.get('status') or 'error'}",
+        }
+    return {
+        "status": "queued",
+        "reason": reason,
+        "message_id": str((levering.get("message") or {}).get("id") or ""),
+    }
 
 
 def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:

@@ -28,20 +28,21 @@ def test_default_workspace_wrapper_resolves_and_sets(fake_workspace: Path) -> No
     assert heartbeat_triggers.peek_trigger(fake_workspace)["reason"] == "test"
 
 
-def test_aesthetic_insight_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
+def test_aesthetic_insight_koeer_ikke_paa_trigger_koeen(fake_workspace: Path, monkeypatch) -> None:
+    """3/10-2026: daemonen skrev til heartbeat-trigger-koeen, som aldrig
+    toemmes — 1.721 af 1.726 poster var dens, og ingen laeste dem. Indsigten
+    har sin egen kanal (`private_brain_records`), saa koeen skal staa tom."""
     # Stub the DB write and event bus so _store_insight runs cleanly in isolation
     import core.services.aesthetic_taste_daemon as daemon
 
-    monkeypatch.setattr(daemon, "insert_private_brain_record", lambda **kw: None)
+    gemt: list = []
+    monkeypatch.setattr(daemon, "insert_private_brain_record", lambda **kw: gemt.append(kw))
     monkeypatch.setattr(daemon.event_bus, "publish", lambda *a, **kw: None)
 
     daemon._store_insight("Jeg trækkes mod klarhed og ro.")
 
-    queued = heartbeat_triggers.peek_trigger(fake_workspace)
-    assert queued is not None
-    assert queued["reason"] == "aesthetic-insight"
-    assert queued["source"] == "aesthetic_taste_daemon"
-    assert "klarhed" in queued["text"]
+    assert heartbeat_triggers.peek_trigger(fake_workspace) is None
+    assert gemt, "indsigten skal stadig skrives til private_brain"
 
 
 def test_self_review_high_confidence_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
@@ -84,8 +85,26 @@ def test_self_review_low_confidence_does_not_queue(fake_workspace: Path) -> None
     assert heartbeat_triggers.peek_trigger(fake_workspace) is None
 
 
-def test_queue_followup_tool_queues_trigger(fake_workspace: Path) -> None:
+def test_queue_followup_gaar_gennem_notification_bridge(
+    fake_workspace: Path, monkeypatch
+) -> None:
+    """3/10-2026: vaerktoejet skrev til trigger-koeen, som aldrig toemmes — det
+    lovede «kom tilbage ved naeste tick» og leverede ingenting. Maalt samme
+    dag stod en besked lagt her nummer 1.725 af 1.726 poster.
+
+    Det gaar nu gennem `notification_bridge`, den vej der faktisk leverer (og
+    som har daemon-vagt: koeer ved aktiv session, flusher efter turen).
+    """
+    from core.services import notification_bridge
     from core.tools import simple_tools
+
+    sendt: list = []
+
+    def _send(content, *, source="", push=True, **_kw):
+        sendt.append({"source": source, "text": content})
+        return {"status": "ok", "message": {"id": "msg-test"}}
+
+    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
 
     result = simple_tools._exec_queue_followup({
         "reason": "follow-up",
@@ -93,11 +112,13 @@ def test_queue_followup_tool_queues_trigger(fake_workspace: Path) -> None:
     })
     assert result["status"] == "queued"
     assert result["reason"] == "follow-up"
+    assert len(sendt) == 1
+    assert sendt[0]["source"] == "jarvis-self-followup"
+    assert "X i morgen" in sendt[0]["text"]
 
-    queued = heartbeat_triggers.peek_trigger(fake_workspace)
-    assert queued is not None
-    assert queued["source"] == "jarvis-self-followup"
-    assert "X i morgen" in queued["text"]
+    assert heartbeat_triggers.peek_trigger(fake_workspace) is None, (
+        "vaerktoejet maa ikke laegge i trigger-koeen — den toemmes aldrig"
+    )
 
 
 def test_queue_followup_tool_rejects_empty(fake_workspace: Path) -> None:

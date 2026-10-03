@@ -117,21 +117,27 @@ describe('RaekkeTranskript', () => {
     const runde = container.querySelector('.rv-arbejdsknap')!
     expect(runde).toHaveAttribute('data-koerer')
     expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-arbejdsikon .rv-ikon-glimt')).toBeInTheDocument()
     expect(runde.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
-    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
+    expect(runde.querySelector('.rv-turC .rv-ikon-glimt')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
     expect(container.querySelector('.rv-turTekst')).toHaveClass('shimmer')
-    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
+    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
     expect(css).not.toMatch(/\.rv-(?:r|tur|arbejdsknap)\[data-koerer\]::after/)
+    expect(css).not.toContain('rv-ikon-lys')
+    expect(css).toContain('rv-glimt-venstre 1.8s linear infinite 300ms')
+    expect(css).toContain('rv-glimt-hoejre 1.8s linear infinite 300ms')
+    expect(css).toContain('rv-glimt-tekst 1.8s linear infinite 300ms')
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
     ]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '18')
+    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '14')
   })
 
   it('holder billedrækken åben og viser lightbox uden for rækken ved klik', async () => {

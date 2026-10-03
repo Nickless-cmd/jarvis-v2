@@ -47,3 +47,51 @@ def test_read_only_tool_result_cache_reuses_result_across_runs(
     assert second[0]["result_text"] == "cached file content"
     assert second[0]["cached"] is True
     assert calls == ["read_file"]
+
+
+def test_stale_cached_result_is_not_reused(isolated_runtime) -> None:
+    """Et svar fra i forgårs må ikke serveres i dag.
+
+    Målt 3/10-2026: `decision_list` uden argumenter ramte en post gemt
+    1/10 13:33 og svarede 7 aktive beslutninger, mens tabellen havde 24.
+    Friskheds-tjekket fandtes kun for `read_file`, så posten blev serveret
+    på ubestemt tid.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from core.services import agentic_tool_cache
+
+    agentic_tool_cache._save({})
+    records = agentic_tool_cache._load()
+    records[agentic_tool_cache._signature("decision_list", {})] = {
+        "tool_name": "decision_list",
+        "arguments": {},
+        "result_text": "gammelt svar",
+        "status": "ok",
+        "stored_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
+    }
+    agentic_tool_cache._save(records)
+
+    assert agentic_tool_cache.get_cached_result("decision_list", {}) is None
+
+
+def test_fresh_cached_result_is_still_reused(isolated_runtime) -> None:
+    """TTL'en må ikke slå cachen ihjel — et friskt svar genbruges stadig."""
+    from datetime import UTC, datetime
+
+    from core.services import agentic_tool_cache
+
+    agentic_tool_cache._save({})
+    records = agentic_tool_cache._load()
+    records[agentic_tool_cache._signature("decision_list", {})] = {
+        "tool_name": "decision_list",
+        "arguments": {},
+        "result_text": "frisk",
+        "status": "ok",
+        "stored_at": datetime.now(UTC).isoformat(),
+    }
+    agentic_tool_cache._save(records)
+
+    hit = agentic_tool_cache.get_cached_result("decision_list", {})
+    assert hit is not None
+    assert hit["result_text"] == "frisk"

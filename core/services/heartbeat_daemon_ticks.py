@@ -391,16 +391,21 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
 
-    # Faerdige baggrunds-shells. Signalet (`<id>.rc`) har ligget der siden
-    # operator_background blev bygget — men ingen laeste det uden at spoerge,
-    # saa et job der blev faerdigt kl. 13:10 laa stille til nogen tilfaeldigt
-    # kiggede. Se modulet for hvorfor det hoerer i de ubetingede daemoner og
-    # ikke under en handling: `act_phase` dispatcher kun videre naar der ER
-    # prioriteter, og et fuldfoerelses-signal skal netop kunne komme naar der
-    # ellers er roligt.
+    # Baggrundsjob-vagtposten hoerer IKKE her. Foerste udgave gjorde, og den
+    # var blind i drift (maalt 3/10-2026, fire min efter commit): `tik()` slaar
+    # brugeren op via `current_user_id()`, som er TOM uden for en request. Den
+    # svarede «ingen-bruger» hvert tik og gjorde intet. Fuldfoerelses-signalet
+    # ligger paa operatoerens maskine, og bro-kaldet kraever et bruger-id — som
+    # kun findes i `_tik_for_bruger`, hvor konteksten saettes. Flyttet derhen.
+    # CI-status. `ci` var roedt paa main i to doegn (3/10-2026, 30+ koersler)
+    # uden at nogen saa det — vagten fangede fejlen, men der fandtes ingen
+    # flade der sagde det. Den her spoerger selv GitHub Actions-API'et og
+    # husker hvilke koersler den har set. Samme sted som baggrunds-jobbene, af
+    # samme grund: en alarm der kun kan komme naar der i forvejen er travlt,
+    # er ikke en alarm.
     try:
-        from core.services.background_job_watch import tik as _bg_watch_tik
-        _bg_watch_tik()
+        from core.services.ci_status_watch import tik as _ci_watch_tik
+        _ci_watch_tik()
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
@@ -451,6 +456,18 @@ def _tik_for_bruger(arbejdsrum: str, bruger_id: str) -> tuple[int, int]:
         try:
             from core.services.relational_warmth import tick as _warmth_tick
             _warmth_tick(30.0)
+            koert += 1
+        except Exception:  # taelles frem for at slugges — se docstring
+            fejlet += 1
+
+        # Baggrundsjob-vagtposten. Den hoerer HER og ikke i de ubetingede
+        # daemoner: fuldfoerelses-signalet (`<id>.rc`) ligger paa operatoerens
+        # maskine, og bro-kaldet kraever et bruger-id — som kun findes i denne
+        # kontekst. I `tik_indre_daemoner` var `current_user_id()` tom, og
+        # vagtposten svarede «ingen-bruger» hvert tik uden at goere noget.
+        try:
+            from core.services.background_job_watch import tik as _bg_watch_tik
+            _bg_watch_tik(uid=bruger_id)
             koert += 1
         except Exception:  # taelles frem for at slugges — se docstring
             fejlet += 1

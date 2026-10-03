@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_model_epochs.py`
+_Hvilken model SVAREDE — ikke hvilken vi bad om._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/provider_model_epochs.py#L31) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
+| function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
+| function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
+
 ## `core/services/provider_registry_admin.py`
 _Registret over udbydere og modeller — nu med en skrivevej._
 
@@ -696,21 +706,4 @@ _Efterproev det et barn PAASTAAR — Fase 6._
 |---|---|---|---|---|
 | function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
 | function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L83) |
-
-## `core/services/research_contract.py`
-_Typed contracts and source normalization for explicit research runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L17) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L31) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L51) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L57) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L70) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L79) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L86) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
 

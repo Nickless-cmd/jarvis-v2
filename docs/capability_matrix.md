@@ -1,21 +1,21 @@
 # Capability Matrix
 
 Statisk audit af `core/services/` genereret af `scripts/capability_audit.py`.  
-Sidst kørt: 2026-10-03T13:30:21+00:00  
-Total services: 1101
+Sidst kørt: 2026-10-03T13:34:33+00:00  
+Total services: 1102
 
 ## Sammenfatning
 
 | Score | Antal | Andel |
 |---|---:|---:|
 | 🟢 LIVE | 500 | 45.4% |
-| 🟡 PARTIAL | 572 | 52.0% |
+| 🟡 PARTIAL | 573 | 52.0% |
 | 🟠 STALE | 15 | 1.4% |
 | 🔴 SUSPICIOUS | 13 | 1.2% |
 | ⚫ ORPHAN | 1 | 0.1% |
 
 **Median filstørrelse:** 211 linjer  
-**Totale linjer:** 339996  
+**Totale linjer:** 340488  
 **Services > 1000 linjer:** 34
 
 ## Boy Scout Candidates
@@ -96,7 +96,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/adaptive_planner_runtime.py` | 🟡 PARTIAL | 412 | 139d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.adaptive_learning_runtime, core.services.adaptive_reasoning_runtime | 1 | conftest.py | 9 | 7 | no | no | no |
 | `core/services/adaptive_reasoning_runtime.py` | 🟡 PARTIAL | 428 | 179d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.adaptive_learning_runtime, core.services.central_inner_life_digest | 1 | conftest.py | 10 | 8 | no | no | no |
 | `core/services/aesthetic_sense.py` | 🟡 PARTIAL | 271 | 164d | yes | apps.api.jarvis_api.routes.mission_control_introspection, core.services.chronicle_engine, core.services.heartbeat_runtime_influence | 1 | test_aesthetic_accumulation.py | 4 | 3 | yes | no | no |
-| `core/services/aesthetic_taste_daemon.py` | 🟡 PARTIAL | 193 | 80d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.aesthetic_sense, core.services.central_inner_life_digest | 5 | test_aesthetic_taste_event_gate.py, test_aesthetic_accumulation.py, test_aesthetic_taste_daemon.py | 13 | 7 | yes | no | no |
+| `core/services/aesthetic_taste_daemon.py` | 🟡 PARTIAL | 200 | 80d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.aesthetic_sense, core.services.central_inner_life_digest | 5 | test_aesthetic_taste_event_gate.py, test_aesthetic_accumulation.py, test_aesthetic_taste_daemon.py | 13 | 6 | yes | no | no |
 | `core/services/affect_modulation.py` | 🟢 LIVE | 610 | 6d | yes | core.services.agency_map, core.services.modulator_witness, core.services.prompt_contract | 6 | test_affect_modulation.py, test_affect_tone_hints.py, test_concept_perception_focus.py | 12 | 7 | yes | no | no |
 | `core/services/affective_meta_state.py` | 🟡 PARTIAL | 598 | 150d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.adaptive_planner_runtime, core.services.adaptive_reasoning_runtime | 3 | conftest.py, test_central_body_mood_feel.py, test_emotion_concepts.py | 25 | 10 | no | no | no |
 | `core/services/affective_state_renderer.py` | 🟡 PARTIAL | 197 | 88d | yes | core.services.prompt_sections.heartbeat_sections | 1 | test_affective_state_renderer_smoke.py | 2 | 7 | no | no | no |
@@ -122,7 +122,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/agent_todos.py` | 🟡 PARTIAL | 430 | 88d | yes | apps.api.jarvis_api.routes.cowork, apps.api.jarvis_api.routes.jarvisx_sessions, core.services.cowork_feed | 7 | test_agent_todos_cowork.py, test_agent_todos_ttl_pause.py, test_cowork_todo_routes.py | 15 | 2 | no | no | no |
 | `core/services/agent_transcript.py` | 🟢 LIVE | 389 | 27d | yes | core.services.agent_runtime_base, core.services.agent_runtime_spawn | 1 | test_agent_transcript.py | 3 | 0 | no | no | no |
 | `core/services/agentic_checkpoints.py` | 🟡 PARTIAL | 174 | 88d | yes | core.services.in_flight_runs, core.services.visible_runs | 3 | test_agentic_checkpoints.py, test_visible_runs_loop_not_blocked.py, test_visible_runs_provider_not_supported.py | 5 | 1 | no | no | no |
-| `core/services/agentic_tool_cache.py` | 🟡 PARTIAL | 101 | 88d | yes | core.services.simple_tool_executor | 7 | test_agentic_tool_cache.py, test_cache_project_and_fallback_surfaces.py, test_r2_5_haandhaevelse.py | 8 | 1 | no | no | no |
+| `core/services/agentic_tool_cache.py` | 🟡 PARTIAL | 129 | 88d | yes | core.services.simple_tool_executor | 7 | test_agentic_tool_cache.py, test_cache_project_and_fallback_surfaces.py, test_r2_5_haandhaevelse.py | 8 | 1 | no | no | no |
 | `core/services/agentic_working_conclusions.py` | 🟡 PARTIAL | 101 | 88d | yes | core.services.in_flight_runs, core.services.visible_runs | 1 | test_agentic_working_conclusions.py | 3 | 1 | no | no | no |
 | `core/services/agents.py` | 🟡 PARTIAL | 229 | 78d | yes | core.services.agent_runtime_spawn, core.services.central_agents_surface, core.services.council_deliberation_controller | 8 | test_agent_spawn_central_wiring.py, test_agents_result_nerve.py, test_central_agents_surface.py | 11 | 5 | no | no | no |
 | `core/services/agreement_streak.py` | 🟢 LIVE | 145 | 6d | yes | core.services.prompt_contract | 2 | test_agreement_streak.py, test_prompt_surface_helpers.py | 3 | 3 | no | no | no |
@@ -171,8 +171,8 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/autonomy_pressure_signal_tracking.py` | 🟡 PARTIAL | 865 | 172d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.dream_articulation, core.services.heartbeat_runtime | 1 | conftest.py | 12 | 15 | yes | no | no |
 | `core/services/autonomy_proposal_queue.py` | 🟢 LIVE | 685 | 0d | yes | apps.api.jarvis_api.routes.central_absorb_routes, apps.api.jarvis_api.routes.cowork, apps.api.jarvis_api.routes.mission_control_runs_ops | 3 | test_agent_cold_resume.py, test_autonomy_proposal_queue.py, test_central_absorb_extra_routes.py | 12 | 10 | yes | no | no |
 | `core/services/avoidance_detector.py` | 🟡 PARTIAL | 197 | 88d | yes | core.services.autonomous_outreach_daemon, core.services.creative_instinct_daemon, core.services.heartbeat_runtime | 1 | test_signal_and_idea_daemons.py | 6 | 1 | no | no | no |
-| `core/services/background_job_watch.py` | 🟢 LIVE | 236 | 0d | yes | core.services.heartbeat_daemon_ticks | 1 | test_background_job_watch.py | 2 | 6 | no | no | no |
-| `core/services/background_jobs.py` | 🟢 LIVE | 452 | 3d | yes | apps.api.jarvis_api.routes.jarvisx_processes, core.services.background_job_watch | 2 | test_background_job_watch.py, test_background_jobs.py | 4 | 6 | no | no | no |
+| `core/services/background_job_watch.py` | 🟢 LIVE | 340 | 0d | yes | core.services.heartbeat_daemon_ticks | 1 | test_background_job_watch.py | 2 | 6 | no | no | no |
+| `core/services/background_jobs.py` | 🟢 LIVE | 458 | 3d | yes | apps.api.jarvis_api.routes.jarvisx_processes, core.services.background_job_watch | 2 | test_background_job_watch.py, test_background_jobs.py | 4 | 6 | no | no | no |
 | `core/services/background_resume.py` | 🟢 LIVE | 196 | 27d | yes | core.services.visible_runs, core.tools.simple_tools_operator | 1 | test_background_resume.py | 3 | 3 | no | no | no |
 | `core/services/bash_sandbox.py` | 🟢 LIVE | 407 | 20d | yes | apps.api.jarvis_api.routes.workbench, core.runtime.profile_enforcement, core.services.effective_policy | 7 | test_bash_indespaerring_rapporteres.py, test_bash_sandbox.py, test_bash_sandbox_kan_koere.py | 12 | 5 | no | no | no |
 | `core/services/behavioral_decisions.py` | 🟢 LIVE | 347 | 6d | yes | core.services.central_agent_smith, core.services.creative_drift_daemon, core.services.decision_adherence_gate | 10 | test_behavioral_decisions.py, test_central_agent_smith.py, test_decision_adherence_gate.py | 21 | 6 | yes | no | no |
@@ -352,6 +352,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/chronicle_consolidation_proposal_tracking.py` | 🟠 STALE | 461 | 188d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.candidate_tracking, core.services.visible_runs | 1 | conftest.py | 4 | 6 | yes | no | no |
 | `core/services/chronicle_consolidation_signal_tracking.py` | 🟡 PARTIAL | 471 | 71d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.chronicle_consolidation_brief_tracking, core.services.runtime_cognitive_conductor | 1 | conftest.py | 6 | 9 | no | no | no |
 | `core/services/chronicle_engine.py` | 🟡 PARTIAL | 601 | 87d | yes | apps.api.jarvis_api.routes.mission_control_introspection, core.services.creative_journal_runtime, core.services.current_pull | 7 | test_chronicle_engine_narrative.py, test_chronicle_engine_prompt_injection.py, test_chronicle_engine.py | 26 | 18 | yes | no | no |
+| `core/services/ci_status_watch.py` | 🟡 PARTIAL | 301 | n/a | yes | core.services.heartbeat_daemon_ticks | 1 | test_ci_status_watch.py | 2 | 3 | no | no | no |
 | `core/services/claim_scanner.py` | 🟢 LIVE | 782 | 20d | yes | core.services.gate_adapters, core.services.visible_runs | 3 | test_claim_scanner.py, test_fabricated_gate_falsk_positiv.py, test_gate_adapters.py | 5 | 5 | no | no | no |
 | `core/services/clarification_classifier.py` | 🟡 PARTIAL | 136 | 142d | yes | core.services.prompt_contract, core.services.reasoning_classifier, core.tools.simple_tools | 1 | test_prompt_surface_helpers_2.py | 5 | 1 | yes | no | no |
 | `core/services/client_turn_absorb.py` | 🟡 PARTIAL | 88 | 79d | yes | apps.api.jarvis_api.routes.agent_loop | 1 | test_client_turn_absorb.py | 2 | 6 | no | no | no |
@@ -419,7 +420,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/creative_instinct_daemon.py` | 🟡 PARTIAL | 352 | 127d | yes | core.services.autonomous_work_daemon, core.services.dream_consolidation_daemon, core.services.heartbeat_daemon_ticks | 1 | test_signal_and_idea_daemons.py | 6 | 4 | no | no | no |
 | `core/services/creative_journal_runtime.py` | 🟡 PARTIAL | 689 | 142d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.current_pull, core.services.internal_cadence_inner_life | 4 | conftest.py, test_aesthetic_klangbraet.py, test_creative_journal_phase1.py | 10 | 14 | yes | no | no |
 | `core/services/creative_projects.py` | 🟢 LIVE | 208 | 7d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model_surfaces, core.services.seed_system | 3 | test_cache_project_and_fallback_surfaces.py, test_creative_projects.py, test_seed_system.py | 6 | 1 | no | no | no |
-| `core/services/crisis_marker_detector.py` | 🟡 PARTIAL | 344 | 152d | yes | core.services.creative_drift_daemon, core.services.governance_bootstrap, core.services.long_arc_synthesizer | 0 | — | 11 | 5 | yes | no | no |
+| `core/services/crisis_marker_detector.py` | 🟡 PARTIAL | 344 | 153d | yes | core.services.creative_drift_daemon, core.services.governance_bootstrap, core.services.long_arc_synthesizer | 0 | — | 11 | 5 | yes | no | no |
 | `core/services/cross_agent_memory.py` | 🟡 PARTIAL | 188 | 88d | yes | core.services.agent_runtime_spawn, core.tools.simple_tools, core.tools.simple_tools_definitions | 1 | test_cross_agent_memory.py | 4 | 1 | no | no | no |
 | `core/services/cross_session_gate.py` | 🟢 LIVE | 249 | 19d | yes | core.runtime.profile_enforcement, core.services.cross_session_threads, core.services.prompt_sections.cross_session_arc | 1 | test_cross_session_gate.py | 4 | 4 | no | no | no |
 | `core/services/cross_session_threads.py` | 🟢 LIVE | 239 | 19d | yes | core.services.autonomous_outreach_daemon, core.services.heartbeat_runtime, core.services.runtime_self_model_surfaces | 1 | test_autonomy_registry_surfaces.py | 5 | 2 | no | no | no |
@@ -600,7 +601,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/hallucination_guard.py` | 🟢 LIVE | 487 | 29d | yes | core.services.visible_model | 1 | test_hallucination_guard.py | 2 | 5 | no | no | no |
 | `core/services/hardware_body.py` | 🟡 PARTIAL | 291 | 89d | yes | apps.api.jarvis_api.routes.central_affect, apps.api.jarvis_api.routes.internal_runtime_surface, apps.api.jarvis_api.routes.system_health | 5 | test_hardware_body_smoke.py, test_somatic_raw_mode.py, test_hardware_body_tick.py | 19 | 5 | yes | no | no |
 | `core/services/heartbeat_action_hints.py` | 🟢 LIVE | 124 | 20d | yes | core.services.heartbeat_runtime | 1 | test_heartbeat_action_hints.py | 2 | 1 | no | no | no |
-| `core/services/heartbeat_daemon_ticks.py` | 🟢 LIVE | 459 | 0d | yes | core.services.heartbeat_phases | 1 | test_heartbeat_daemon_ticks.py | 2 | 48 | no | no | no |
+| `core/services/heartbeat_daemon_ticks.py` | 🟢 LIVE | 476 | 0d | yes | core.services.heartbeat_phases | 2 | test_background_job_watch.py, test_heartbeat_daemon_ticks.py | 3 | 49 | no | no | no |
 | `core/services/heartbeat_delivery.py` | 🟢 LIVE | 479 | 0d | yes | core.services.heartbeat_runtime | 1 | test_heartbeat_delivery.py | 2 | 9 | yes | no | no |
 | `core/services/heartbeat_manage_runtime_work.py` | 🟢 LIVE | 166 | 17d | yes | core.services.heartbeat_runtime | 1 | test_heartbeat_manage_runtime_work.py | 2 | 6 | no | no | no |
 | `core/services/heartbeat_phases.py` | 🟢 LIVE | 834 | 6d | yes | core.services.dreaming_session, core.services.heartbeat_runtime, core.services.identity_sketch | 10 | test_wakeup_guard_e2e.py, test_dreaming_session.py, test_gates.py | 18 | 34 | yes | no | no |
@@ -743,7 +744,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/non_visible_lane_execution.py` | 🟢 LIVE | 1332 | 2d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.cli.copilot_auth, core.cli.provider_config | 8 | conftest.py, test_agent_cost_single_site.py, test_daemon_llm_cache.py | 26 | 10 | yes | no | no |
 | `core/services/non_visible_rate_cap.py` | 🟡 PARTIAL | 81 | 78d | yes | core.services.non_visible_fallback | 3 | test_non_visible_fallback.py, test_non_visible_rate_cap.py, test_pool_shadow_gating.py | 4 | 0 | no | no | no |
 | `core/services/notes_connector.py` | 🟡 PARTIAL | 121 | 108d | yes | apps.api.jarvis_api.routes.account, core.tools.simple_tools, core.tools.simple_tools_definitions | 2 | test_account_export.py, test_notes_connector.py | 6 | 1 | no | no | no |
-| `core/services/notification_bridge.py` | 🟢 LIVE | 364 | 1d | yes | apps.api.jarvis_api.app, apps.api.jarvis_api.routes.chat, core.identity.owner_resolver | 11 | test_wakeup_guard_e2e.py, test_aktiv_session_vagten.py, test_candidate_review_digest.py | 29 | 9 | yes | no | no |
+| `core/services/notification_bridge.py` | 🟢 LIVE | 364 | 1d | yes | apps.api.jarvis_api.app, apps.api.jarvis_api.routes.chat, core.identity.owner_resolver | 14 | test_wakeup_guard_e2e.py, test_aktiv_session_vagten.py, test_background_job_watch.py | 34 | 9 | yes | no | no |
 | `core/services/notification_router.py` | 🟢 LIVE | 644 | 10d | yes | apps.api.jarvis_api.routes.presence, core.services.abuse_monitor, core.services.action_router | 13 | test_action_router.py, test_central_error_envelope.py, test_central_keymaker.py | 32 | 13 | no | no | no |
 | `core/services/notifikationer.py` | 🟢 LIVE | 201 | 7d | yes | apps.api.jarvis_api.routes.notifikationer, core.services.notification_router, core.services.notifikationer_hydrering | 8 | test_notification_router.py, test_notifikationer_haendelser.py, test_notifikationer_hydrering.py | 13 | 2 | yes | no | no |
 | `core/services/notifikationer_hydrering.py` | 🟢 LIVE | 190 | 7d | yes | apps.api.jarvis_api.routes.notifikationer | 3 | test_notifikationer_hydrering.py, test_notifikations_emittere.py, test_notifikations_kobling.py | 4 | 5 | no | no | no |
@@ -787,10 +788,10 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/personality_drift.py` | 🟡 PARTIAL | 198 | 88d | yes | core.services.central_soul_feel, core.services.crisis_marker_detector, core.services.governance_bootstrap | 2 | test_central_soul_feel.py, test_emotion_and_drift.py | 15 | 2 | no | no | no |
 | `core/services/personality_vector.py` | 🟢 LIVE | 576 | 7d | yes | apps.api.jarvis_api.routes.mission_control_introspection, core.services.heartbeat_phases, core.services.heartbeat_runtime | 3 | test_personality_tick_drift.py, test_jarvis_experimental.py, test_personality_vector.py | 7 | 8 | yes | no | no |
 | `core/services/pfsense_syslog.py` | 🟢 LIVE | 233 | 29d | yes | apps.api.jarvis_api.app, core.services.error_healers, core.services.infra_sense | 2 | test_infra_sense.py, test_pfsense_syslog.py | 5 | 1 | no | no | no |
-| `core/services/phone_wake.py` | 🟢 LIVE | 187 | 25d | yes | core.tools.phone_tools | 2 | test_phone_tools.py, test_phone_wake.py | 3 | 6 | no | no | no |
+| `core/services/phone_wake.py` | 🟢 LIVE | 187 | 26d | yes | core.tools.phone_tools | 2 | test_phone_tools.py, test_phone_wake.py | 3 | 6 | no | no | no |
 | `core/services/plan_proposals.py` | 🟢 LIVE | 798 | 19d | yes | apps.api.jarvis_api.routes.jarvisx_sessions, core.services.agent_todos, core.services.auto_improvement_proposer | 10 | test_auto_improvement_and_experiments.py, test_auto_improvement_proposer.py, test_gate_mutation.py | 28 | 5 | yes | no | no |
 | `core/services/plugin_ruleset.py` | 🟡 PARTIAL | 85 | 111d | yes | core.services.channel_inbound | 3 | test_override_e2e.py, test_plugin_ruleset.py, test_plugin_ruleset_store.py | 4 | 0 | no | no | no |
-| `core/services/plugin_ruleset_store.py` | 🟡 PARTIAL | 54 | 110d | yes | apps.api.jarvis_api.routes.plugins, core.services.channel_inbound | 2 | test_channel_inbound.py, test_plugin_ruleset_store.py | 4 | 1 | no | no | no |
+| `core/services/plugin_ruleset_store.py` | 🟡 PARTIAL | 54 | 111d | yes | apps.api.jarvis_api.routes.plugins, core.services.channel_inbound | 2 | test_channel_inbound.py, test_plugin_ruleset_store.py | 4 | 1 | no | no | no |
 | `core/services/policy_abstraction.py` | 🟢 LIVE | 512 | 28d | yes | core.runtime.db_schema, core.services.learning_pipeline_orchestrator | 1 | test_policy_abstraction.py | 3 | 4 | yes | no | no |
 | `core/services/post_tool_answer_guard.py` | 🟢 LIVE | 27 | 28d | yes | core.services.visible_runs | 2 | test_context_prompt_improvements.py, test_post_tool_answer_guard.py | 3 | 0 | no | no | no |
 | `core/services/precision_bias.py` | 🟡 PARTIAL | 302 | 93d | yes | core.services.cognitive_state_assembly, core.services.resonance_decay | 2 | test_internal_cognitive_surfaces.py, test_precision_bias.py | 4 | 3 | yes | no | no |
@@ -909,7 +910,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/run_trailing.py` | 🟢 LIVE | 94 | 0d | yes | core.services.first_pass_recovery, core.services.visible_followup, core.services.visible_run_steers | 2 | test_run_trailing.py, test_visible_run_steers.py | 6 | 0 | no | no | no |
 | `core/services/runtime_action_executor.py` | 🟢 LIVE | 574 | 10d | yes | core.services.heartbeat_runtime | 2 | test_runtime_action_executor.py, test_runtime_executive_flow.py | 3 | 15 | yes | no | no |
 | `core/services/runtime_action_outcome_tracking.py` | 🟡 PARTIAL | 152 | 169d | yes | core.services.heartbeat_runtime, core.services.living_executive, core.services.tool_outcome_memory | 2 | test_runtime_executive_flow.py, test_tool_outcome_memory.py | 5 | 5 | yes | no | no |
-| `core/services/runtime_action_registry.py` | 🟡 PARTIAL | 120 | 173d | yes | core.services.runtime_action_executor | 1 | test_runtime_action_registry_smoke.py | 2 | 0 | no | no | no |
+| `core/services/runtime_action_registry.py` | 🟡 PARTIAL | 120 | 174d | yes | core.services.runtime_action_executor | 1 | test_runtime_action_registry_smoke.py | 2 | 0 | no | no | no |
 | `core/services/runtime_awareness_signal_tracking.py` | 🟡 PARTIAL | 691 | 148d | yes | apps.api.jarvis_api.app, apps.api.jarvis_api.routes.central_self, apps.api.jarvis_api.routes.internal_runtime_surface | 1 | test_runtime_awareness_signal_tracking.py | 9 | 9 | yes | no | no |
 | `core/services/runtime_browser_body.py` | 🟡 PARTIAL | 167 | 172d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.heartbeat_manage_runtime_work, core.services.runtime_awareness_signal_tracking | 6 | test_browser_tools.py, test_heartbeat_execute_actions.py, test_heartbeat_manage_runtime_work.py | 12 | 2 | no | no | no |
 | `core/services/runtime_cognitive_conductor.py` | 🟡 PARTIAL | 1435 | 76d | yes | apps.api.jarvis_api.routes.mission_control_imports, core.services.attention_budget, core.services.cognitive_state_assembly | 4 | conftest.py, test_cognitive_conductor.py, test_emotional_memory_integration.py | 12 | 40 | no | no | no |
@@ -999,7 +1000,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/shared_language_extended.py` | 🟡 PARTIAL | 276 | 164d | yes | apps.api.jarvis_api.routes.mission_control_introspection, core.services.chronicle_engine | 0 | — | 2 | 2 | yes | no | no |
 | `core/services/shell_confinement_report.py` | 🟢 LIVE | 70 | 20d | yes | core.tools.bash_session, core.tools.operator_bash_session, core.tools.simple_tools_operator | 1 | test_shell_confinement_report.py | 5 | 1 | no | no | no |
 | `core/services/shutdown_window_daemon.py` | 🟡 PARTIAL | 196 | 167d | yes | core.services.heartbeat_runtime_influence | 0 | — | 1 | 3 | yes | no | no |
-| `core/services/side_tasks.py` | 🟢 LIVE | 306 | 0d | yes | apps.api.jarvis_api.routes.cowork, core.services.prompt_contract, core.tools.simple_tools | 3 | test_cowork_side_task_routes.py, test_side_tasks.py, test_turn_side_text_gc_surfaces.py | 7 | 1 | no | no | no |
+| `core/services/side_tasks.py` | 🟢 LIVE | 335 | 0d | yes | apps.api.jarvis_api.routes.cowork, core.services.prompt_contract, core.tools.simple_tools | 3 | test_cowork_side_task_routes.py, test_side_tasks.py, test_turn_side_text_gc_surfaces.py | 7 | 1 | no | no | no |
 | `core/services/signal_baseline.py` | 🟡 PARTIAL | 139 | 80d | yes | core.services.event_gate, core.services.signal_delta_trigger | 3 | test_event_gate.py, test_signal_baseline.py, test_signal_delta_trigger.py | 5 | 1 | no | no | no |
 | `core/services/signal_decay_daemon.py` | 🟡 PARTIAL | 104 | 168d | yes | core.services.central_soul_digest, core.services.cluster_daemon_families, core.services.daemon_manager | 2 | test_cluster_infra.py, test_signal_decay.py | 6 | 7 | yes | no | no |
 | `core/services/signal_delta_trigger.py` | 🟡 PARTIAL | 268 | 80d | yes | core.services.event_trigger_shadow | 4 | test_convene_judge_shadow.py, test_event_trigger_shadow_durable.py, test_signal_delta_trigger.py | 5 | 4 | no | no | no |

@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_execution.py`
+_Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekverings-_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_red` | `(nerve, reason, classification)` | — | [src](../../../core/services/gate_execution.py#L46) |
+| function | `_yellow` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L51) |
+| function | `_green` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L56) |
+| function | `_rapporter_fail_open` | `(nerve, hvad, exc)` | En SECURITY-gate der fejler ÅBENT må aldrig gøre det tavst. | [src](../../../core/services/gate_execution.py#L62) |
+| function | `_spor_run_id` | `()` | Hvilken koersel fyrede gaten. Self-safe: et manglende spor maa aldrig | [src](../../../core/services/gate_execution.py#L95) |
+| function | `_spor_session_id` | `()` | — | [src](../../../core/services/gate_execution.py#L102) |
+| function | `execution_gate` | `(ctx)` | Én SECURITY-gate, dispatch på ctx['action']. Returnér ét graderet Verdict. | [src](../../../core/services/gate_execution.py#L108) |
+| class | `ExecCheck` | `` | — | [src](../../../core/services/gate_execution.py#L209) |
+| function | `_to_check` | `(v)` | — | [src](../../../core/services/gate_execution.py#L216) |
+| function | `_decide` | `(nerve, ctx)` | Route gennem Den Intelligente Central (SECURITY). Defense-in-depth: hvis central- | [src](../../../core/services/gate_execution.py#L232) |
+| function | `check_command` | `(command, session_id=…, *, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L265) |
+| function | `check_file` | `(path, session_id=…, *, kind=…, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L272) |
+| function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L279) |
+| function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L284) |
+| function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L291) |
+| function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L325) |
+| function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L331) |
+| function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L408) |
+
 ## `core/services/gate_kernel.py`
 _GateKernel — central orchestrator for alle gates (spec 2026-06-21)._
 
@@ -503,7 +527,7 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 |---|---|---|---|---|
 | function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
-| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L424) |
+| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
 
 ## `core/services/heartbeat_delivery.py`
 _Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
@@ -513,11 +537,4 @@ _Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
 | function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
 | function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
 | function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L238) |
-
-## `core/services/heartbeat_manage_runtime_work.py`
-_Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `execute_manage_runtime_work` | `(*, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_manage_runtime_work.py#L18) |
 

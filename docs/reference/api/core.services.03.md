@@ -130,15 +130,17 @@ _Færdige baggrunds-shells — set, ikke gættet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L54) |
-| function | `_rapporterede` | `()` | {shell_id: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L58) |
-| function | `_husk` | `(ids)` | Skriv id'erne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L81) |
-| class | `BroUkendt` | `` | Vi kunne ikke se operatørens maskine. | [src](../../../core/services/background_job_watch.py#L98) |
-| function | `scan_finished` | `(*, uid)` | Nye fuldførte baggrunds-shells siden sidst. | [src](../../../core/services/background_job_watch.py#L109) |
-| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L140) |
-| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L151) |
-| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L166) |
-| function | `tik` | `(*, uid=…)` | Tjek for færdige shells og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L178) |
+| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L76) |
+| function | `_laes_tid` | `(vaerdi)` | ISO-tidsstempel fra state eller registry — eller None. | [src](../../../core/services/background_job_watch.py#L80) |
+| function | `_grundlinje` | `()` | Tidsstemplet for hvornår vagtposten vågnede. Sættes én gang. | [src](../../../core/services/background_job_watch.py#L94) |
+| function | `_rapporterede` | `()` | {noegle: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L114) |
+| function | `_husk` | `(noegler)` | Skriv noeglerne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L136) |
+| function | `_noegle` | `(job)` | Stabil identitet for et job. | [src](../../../core/services/background_job_watch.py#L153) |
+| function | `scan_finished` | `(*, uid)` | Nye fuldførte jobs siden sidst, plus om operator-siden var laesbar. | [src](../../../core/services/background_job_watch.py#L167) |
+| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L211) |
+| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L222) |
+| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L237) |
+| function | `tik` | `(*, uid=…)` | Tjek for færdige jobs og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L247) |
 
 ## `core/services/background_jobs.py`
 _Alle kørende baggrundsopgaver — uanset hvor de kører._
@@ -151,15 +153,15 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 | function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L131) |
 | function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L138) |
 | function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L152) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L181) |
-| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L188) |
-| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L226) |
-| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L249) |
-| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L305) |
-| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L366) |
-| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L397) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle fire kilder. | [src](../../../core/services/background_jobs.py#L410) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L442) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L187) |
+| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L194) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L232) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L255) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L311) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L372) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L403) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle fire kilder. | [src](../../../core/services/background_jobs.py#L416) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L448) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_manage_runtime_work.py`
+_Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `execute_manage_runtime_work` | `(*, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_manage_runtime_work.py#L18) |
+
 ## `core/services/heartbeat_phases.py`
 _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existing tick._
 
@@ -711,11 +718,4 @@ _Core-infra cadence producers (split from internal_cadence.py)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `register_core_producers` | `(register_producer)` | Register the core-infra producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_core.py#L19) |
-
-## `core/services/internal_cadence_inner_life.py`
-_Inner-life cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_inner_life_producers` | `(register_producer)` | Register the inner-life producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_inner_life.py#L24) |
 

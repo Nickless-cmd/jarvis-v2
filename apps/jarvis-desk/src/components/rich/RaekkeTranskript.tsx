@@ -48,10 +48,10 @@ function foersteLinje(s: string): string {
  *  Retningen skiftes ved at BYTTE ikonet frem for at rotere det, så stregen
  *  står skarp i begge tilstande — samme greb som forlægget
  *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
-function FoldPil({ aaben }: { aaben: boolean }) {
+function FoldPil({ aaben, className }: { aaben: boolean; className?: string }) {
   return aaben
-    ? <ChevronDown size={18} strokeWidth={1.75} />
-    : <ChevronRight size={18} strokeWidth={1.75} />
+    ? <ChevronDown className={className} size={14} strokeWidth={1.75} />
+    : <ChevronRight className={className} size={14} strokeWidth={1.75} />
 }
 
 function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
@@ -151,8 +151,9 @@ function Raekke({
             Paa hover falmer ikonet ud og en chevron ind over 100ms; ingen
             raekke-fill, praecis som forlaegget (DisclosureRow.module.css:63). */}
         <span className="rv-ikon" aria-hidden="true">
-          <Ikon className="rv-glyf" size={14} strokeWidth={1.75} />
-          <ChevronDown className="rv-hoverChev" size={14} strokeWidth={1.75} />
+          <Ikon className="rv-glyf" size={13} strokeWidth={1.75} />
+          <Ikon className="rv-ikon-glimt rv-glyf-glimt" size={13} strokeWidth={1.75} />
+          <ChevronDown className="rv-hoverChev" size={13} strokeWidth={1.75} />
         </span>
         {slags ? <span className="rv-slags">{slags}</span> : null}
         {sum !== '' && sum != null ? (
@@ -166,7 +167,7 @@ function Raekke({
           </>
         ) : <span className="rv-sum" />}
         {mrkat && <span className="rv-mrkat">{mrkat}</span>}
-        {foldbar && <span className="rv-chev" aria-hidden="true"><FoldPil aaben={aaben} /></span>}
+        {foldbar && <span className="rv-chev" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>}
       </div>
       {foldbar && aaben && <div className="rv-krop">{krop}</div>}
     </div>
@@ -314,12 +315,15 @@ function Arbejdsrunde({
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(visShimmer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
-        <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
+        <span className="rv-arbejdsikon" aria-hidden="true">
+          <Ikon size={13} strokeWidth={1.75} />
+          <Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} />
+        </span>
         <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
-        <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
+        <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
       <div className="rv-arbejdsdetaljer" hidden={!aaben}>
         {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
@@ -369,7 +373,7 @@ function RaekkeTranskriptImpl({
             {arbejdeKoerer && aabenManuelt === null
               ? <span className="rv-turTekst shimmer">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
-            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
+            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
             {aaben && sektioner.map((s, i) => {

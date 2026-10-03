@@ -130,3 +130,47 @@ def test_vagten_er_faktisk_koblet_paa_kørslen():
     assert "_rest = _skrub.skyl()" in kilde, "halen ville stå tilbage over en værktøjskørsel"
     assert kilde.count("_vts.fjern_interne_markoerer(") == 3
     assert "followup_text = _vts.fjern_interne_markoerer(followup_text)" in kilde
+
+
+def test_de_STREAMEDE_synteser_bruger_stroem_skrubberen():
+    """Et ANTAL er ikke nok — tre kald kunne alle sidde på den gemte tekst.
+
+    Det er præcis hvad der skete 3/10-2026. De to blokerende syntese-kald blev
+    erstattet med streamede (`stream_final_synthesis`, så syntesen ikke længere
+    kommer som et blink), og begge `fjern_interne_markoerer` faldt ud i samme
+    greb. `test_vagten_er_faktisk_koblet_paa_koerslen` fangede det — men dens
+    tal kunne være bragt i orden ved at skrubbe den færdige tekst tre gange, og
+    så ville strømmen stadig lække.
+
+    Og en strøm KAN ikke skrubbes med funktionen på den færdige tekst: en
+    markør kan være delt over to deltaer. `StroemSkrubber` er bygget til det,
+    og hovedstrømmen bruger den allerede.
+
+    Målt da fejlen stod: det eneste tilbageværende skrub ramte `followup_text`
+    — altså det PERSISTEREDE. Interne markører nåede skærmen live og forsvandt
+    bagefter fra tråden. Den asymmetri er værre end en konsekvent lækage, for
+    den kan ikke genfindes i historikken.
+    """
+    import ast
+    import pathlib
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+    træ = ast.parse(kilde)
+
+    # Hver løkke over `stream_final_synthesis` skal have en skrubber i sin
+    # egen krop. AST, ikke grep: en kommentar der nævner navnet må ikke tælle,
+    # og denne fils egne docstrings nævner dem alle.
+    strømme = [n for n in ast.walk(træ)
+               if isinstance(n, ast.AsyncFor)
+               and "stream_final_synthesis" in ast.unparse(n.iter)]
+    assert len(strømme) >= 2, \
+        f"forventede mindst to streamede synteser, fandt {len(strømme)}"
+    for n in strømme:
+        krop = ast.unparse(n)
+        assert ".foed(" in krop, \
+            "en streamet syntese sender RAA tekst ud — markoerer naar skaermen"
+        # Og halen skal skylles, ellers staar en markoer til sidst tilbageholdt
+        # for evigt og det sidste stykke svar forsvinder.
+        linje = n.lineno
+        omkring = "\n".join(kilde.splitlines()[linje - 1: linje + 40])
+        assert ".skyl()" in omkring, \
+            f"synteses-stroemmen ved linje {linje} skyller ikke sin hale"

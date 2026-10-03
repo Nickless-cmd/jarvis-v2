@@ -5247,6 +5247,20 @@ async def _stream_visible_run(
                     if _had_tools_r:
                         from core.services import visible_post_tool_synthesis as _vps
                         _rescued = ""
+                        # Syntesen STREAMER nu (3/10) frem for at komme i én
+                        # klump. Men da de to blokerende kald blev erstattet,
+                        # faldt begge `fjern_interne_markoerer` ud, og
+                        # `_synth_event.text` gik RÅ ud som delta. Målt: det
+                        # eneste tilbageværende skrub rammer `followup_text`,
+                        # altså det PERSISTEREDE — så interne markører nåede
+                        # skærmen live og forsvandt bagefter fra tråden.
+                        #
+                        # En strøm kan ikke skrubbes med funktionen på den
+                        # færdige tekst: markøren kan være delt over to
+                        # deltaer. `StroemSkrubber` er netop bygget til det, og
+                        # hovedstrømmen bruger den allerede — samme mekanisme
+                        # her, så de to ikke kan drive fra hinanden.
+                        _synth_skrub = _vts.StroemSkrubber()
                         try:
                             async for _synth_event in _vps.stream_final_synthesis(
                                 provider=run.provider, model=run.model,
@@ -5254,13 +5268,23 @@ async def _stream_visible_run(
                                 exchanges=_fu_ex_r,
                             ):
                                 if isinstance(_synth_event, _vps.SynthesisDelta):
-                                    if not run.autonomous:
+                                    _ren_s = _synth_skrub.foed(_synth_event.text)
+                                    if _ren_s and not run.autonomous:
                                         yield _sse("delta", {
                                             "type": "delta", "run_id": run.run_id,
-                                            "delta": _synth_event.text,
+                                            "delta": _ren_s,
                                         })
                                 else:
-                                    _rescued = _synth_event.text
+                                    _rescued = _vts.fjern_interne_markoerer(
+                                        _synth_event.text)
+                            # Halen: en markør der stod til sidst ville ellers
+                            # blive tilbageholdt for evigt.
+                            _rest_s = _synth_skrub.skyl()
+                            if _rest_s and not run.autonomous:
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _rest_s,
+                                })
                         except Exception:
                             _rescued = ""
                         if _rescued:
@@ -5308,6 +5332,8 @@ async def _stream_visible_run(
                     if is_hollow_post_tool_answer(_real_answer, _fu_ex_guard):
                         from core.services import visible_post_tool_synthesis as _vps
                         _synth_guard = ""
+                        # Samme skrub som sted 1 — se begrundelsen der.
+                        _guard_skrub = _vts.StroemSkrubber()
                         async for _synth_event in _vps.stream_final_synthesis(
                             provider=run.provider, model=run.model,
                             base_messages=locals().get("base_messages") or [],
@@ -5315,13 +5341,21 @@ async def _stream_visible_run(
                             min_chars=max(24, len(_real_answer.strip()) + 12),
                         ):
                             if isinstance(_synth_event, _vps.SynthesisDelta):
-                                if not run.autonomous:
+                                _ren_g = _guard_skrub.foed(_synth_event.text)
+                                if _ren_g and not run.autonomous:
                                     yield _sse("delta", {
                                         "type": "delta", "run_id": run.run_id,
-                                        "delta": _synth_event.text,
+                                        "delta": _ren_g,
                                     })
                             else:
-                                _synth_guard = _synth_event.text
+                                _synth_guard = _vts.fjern_interne_markoerer(
+                                    _synth_event.text)
+                        _rest_g = _guard_skrub.skyl()
+                        if _rest_g and not run.autonomous:
+                            yield _sse("delta", {
+                                "type": "delta", "run_id": run.run_id,
+                                "delta": _rest_g,
+                            })
                         if should_replace_with_synthesis(_real_answer, _synth_guard):
                             followup_text = _synth_guard
                             _real_answer = _synth_guard

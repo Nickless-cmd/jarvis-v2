@@ -439,6 +439,42 @@ def test_git_read_exec_commands_allow_git_c_repo_scoping(
     assert top_level_payload.get("execution_classification") == "git-read-allowed"
 
 
+def test_heartbeatets_kontekst_kommando_er_tilladt_med_status_short(
+    isolated_runtime,
+) -> None:
+    """3/10-2026: heartbeat'ens `inspect_repo_context` blev afvist i ugevis.
+
+    Allowlisten matcher en PRAECIS form — `("status",)` daekkede ikke
+    `status --short`. Fordi summeringen kraever mindst ét udfoert kald,
+    blokerede det HELE handlingen: 45 blokerede ticks siden 10/9, seneste
+    i dag. `--short` er en ren laesning og hoerer i allowlisten.
+    """
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    repo_root = Path("/media/projects/jarvis-v2")
+
+    short_status = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} status --short",
+    )
+    assert short_status["status"] == "executed"
+    short_payload = short_status.get("result") or {}
+    assert short_payload.get("execution_classification") == "git-read-allowed"
+    assert short_payload.get("execution_scope") == "git-read"
+
+    # Den samlede kommando heartbeat'en bygger — tre segmenter, ét svar.
+    komponeret = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=(
+            f"git -C {repo_root} status --short; "
+            f"git -C {repo_root} branch --show-current; "
+            f"git -C {repo_root} log --oneline -n 5"
+        ),
+    )
+    assert komponeret["status"] == "executed"
+
+
 def test_git_mutation_and_destructive_git_commands_do_not_execute(
     isolated_runtime,
 ) -> None:

@@ -560,7 +560,11 @@ def test_inspect_repo_context_invokes_bounded_repo_capabilities(
     )
 
     assert result["status"] == "executed"
-    assert calls[0][0] == "tool:list-project-files"
+    # 3/10-2026: `tool:list-project-files` fandtes ikke i runtime — kaldet blev
+    # erstattet af en bounded `find`-kommando, saa den foerste handling er nu
+    # ogsaa en kommando (og ikke et capability-id der svarer `not-found`).
+    assert calls[0][0] == "tool:run-non-destructive-command"
+    assert "find" in calls[0][1]
     assert calls[1][0] == "tool:read-repository-readme"
     assert calls[2][0] == "tool:run-non-destructive-command"
     assert "git -C" in calls[2][1]

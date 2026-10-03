@@ -3575,8 +3575,12 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail-row.har-fejl.is-active .msg-rail-dash { background: var(--error-fg); opacity: 1; }
 /* Den NEDERSTE streg er teal og længere end de andre (Bjørn 16/9-2026). Står
    efter fejl-reglen med vilje, så i hvile viser den hvor samtalen slutter. Står
-   man PÅ en fejlet sidste tur, vinder rødt (fejl+aktiv har højere vægt). */
-.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 21px; background: var(--accent); }
+   man PÅ en fejlet sidste tur, vinder rødt (fejl+aktiv har højere vægt).
+   3/10-2026 (Bjørn): «den nederste pind er den der er igang — kan du lave den
+   lidt længere end de andre over?» Den var 21 mod is-active's 17, altså kun
+   4 px forskel — nok til at reglen fandtes, ikke nok til at man så den. Nu 28,
+   så den er 11 px længere end den aktive og 15 end en almindelig. */
+.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 28px; background: var(--accent); }
 /* Komprimering: prikket streg, så den kan skelnes fra et kapitel i hvile. */
 .msg-rail-row.er-komprimering .msg-rail-dash { height: 0; background: none;
   border-top: 2px dotted currentColor; border-radius: 0; }

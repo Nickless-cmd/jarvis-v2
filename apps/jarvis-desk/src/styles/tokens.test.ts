@@ -613,3 +613,29 @@ describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', (
     expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--ok\)/)
   })
 })
+
+describe('railens nederste streg er længere end de andre (3/10-2026)', () => {
+  // Bjørn: «den nederste pind er den der er igang — kan du lave den lidt
+  // længere end de andre over?» Reglen fandtes i forvejen, men 21 mod 17 px var
+  // ikke til at se: forskellen var der på papiret og ikke på skærmen. Værnet
+  // måler derfor FORSKELLEN, ikke det ene tal — det er den der gør at man i
+  // hvile kan se hvor samtalen slutter.
+  const af = (re: RegExp) => Number(app.match(re)?.[1] ?? 0)
+  const sidste = af(/^\.msg-rail-row\.er-sidste \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const aktiv = af(/^\.msg-rail-row\.is-active \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const almindelig = af(/^\.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+
+  it('reglerne findes', () => {
+    expect(sidste, 'er-sidste-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(aktiv, 'is-active-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(almindelig, 'den almindelige streg mangler i app.css').toBeGreaterThan(0)
+  })
+
+  it('den sidste er mindst 8px bredere end den aktive', () => {
+    expect(sidste - aktiv, `kun ${sidste - aktiv}px forskel — den skal kunne ses`).toBeGreaterThanOrEqual(8)
+  })
+
+  it('og bredere end en almindelig streg', () => {
+    expect(sidste).toBeGreaterThan(almindelig)
+  })
+})

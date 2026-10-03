@@ -317,7 +317,12 @@ export function CodeView({
   const codePanelW = useResizableWidth({
     initial: 560, min: 300, max: 1000, side: 'left', storageKey: 'jarvis-desk:code-panel-w2',
   })
-  const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // MessageRow er memoiseret, men et nyt config-objekt ved hver elapsed-tick
+  // tvang ALLE gemte beskeder i lange code-samtaler til at rendere igen.
+  const config = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // Baggrundsjob: panelet henter selv naar det er aabent. HER hentes kun
   // TAELLEREN, saa ikonet kan sige om noget koerer uden at man skal aabne det.

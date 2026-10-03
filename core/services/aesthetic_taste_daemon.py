@@ -181,13 +181,20 @@ def _store_insight(insight: str) -> None:
         event_bus.publish("cognitive_taste.insight_noted", {"insight": insight})
     except Exception:
         pass
-    try:
-        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
-
-        set_trigger_for_default_workspace(
-            reason="aesthetic-insight",
-            source="aesthetic_taste_daemon",
-            text=insight,
-        )
-    except Exception:
-        pass
+    # 3/10-2026: skrivningen til heartbeat-trigger-koeen er FJERNET.
+    #
+    # Maalt: koeen konsumeres kun to steder i hele koden, begge bag
+    # `if ping_channel != "webchat"`, og begge tager kun HEAD. Paa
+    # normalvejen (webchat) toemmes den derfor ALDRIG — 1.726 poster,
+    # aeldste 26. april, nul fjernet.
+    #
+    # Denne daemon skrev 10,8 poster/dag og stod for 1.721 af dem. Det
+    # druknede alt andet i koeen: baggrundsjob-vagtposten, CI-vagtposten,
+    # `queue_followup` og self-review. Ingen af dem naaede frem.
+    #
+    # Indsigten gaar ikke tabt: den gemmes i private_brain_records
+    # (2.178 taste-insight-poster) og publiceres paa event_bus. Koeen var
+    # en tredje, redundant kanal der kun voksede.
+    #
+    # Rettes tilbage kun hvis koeen faar en aegte toemning — se
+    # side-eea886e1e9.

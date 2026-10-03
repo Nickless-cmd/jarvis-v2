@@ -104,8 +104,18 @@ function medSkillFlade(state: StreamState, p: { matches?: unknown; primary?: unk
 }
 
 /** De blokke en LIVE besked tegnes af: skill-fladen først, så strømmen. */
+const liveBlokkeCache = new WeakMap<ContentBlock[], {
+  skillFlade: Extract<ContentBlock, { type: 'skill_surface' }>
+  result: ContentBlock[]
+}>()
+
 export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'>): ContentBlock[] {
-  return state.skillFlade ? [state.skillFlade, ...state.blocks] : state.blocks
+  if (!state.skillFlade) return state.blocks
+  const cached = liveBlokkeCache.get(state.blocks)
+  if (cached?.skillFlade === state.skillFlade) return cached.result
+  const result = [state.skillFlade, ...state.blocks]
+  liveBlokkeCache.set(state.blocks, { skillFlade: state.skillFlade, result })
+  return result
 }
 
 /** Serverens udfald → linjens status. Alt der ikke kører mere, er færdigt:

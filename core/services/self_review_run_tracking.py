@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -22,6 +23,8 @@ from core.runtime.db import (
     update_runtime_self_review_run_status,
     upsert_runtime_self_review_run,
 )
+
+logger = logging.getLogger(__name__)
 
 _STALE_AFTER_DAYS = 14
 
@@ -234,18 +237,34 @@ def _persist_self_review_runs(
                 },
             )
             if str(persisted_item.get("confidence") or "").lower() == "high":
+                # 3/10-2026: udgangen flyttet fra heartbeat-trigger-koeen til
+                # notification_bridge — samme grund som vagtposterne.
+                #
+                # Koeen er skrive-only: `consume_trigger` kaldes kun to steder
+                # (heartbeat_delivery.py:78 og :350), begge bag
+                # `if ping_channel != "webchat"`, og begge tager kun HEAD. De
+                # fire `self-review-incident`-poster der laa i koeen var fra
+                # maj — de naaede aldrig frem.
+                #
+                # `send_session_notification` er den etablerede vej for en
+                # baggrundsproces der vil sige noget (wakeup_dispatcher.py:243,
+                # run_closure_gate.py:461, inner_voice_notifier.py:147).
+                # `push=False`: denne vej sendte ikke mobil-push foer, og
+                # flytningen maa ikke tilfoeje en ny push-kilde.
                 try:
-                    from core.runtime.heartbeat_triggers import (
-                        set_trigger_for_default_workspace,
+                    from core.services.notification_bridge import (
+                        send_session_notification,
                     )
 
-                    set_trigger_for_default_workspace(
-                        reason="self-review-incident",
-                        source="self_review_run_tracking",
-                        text=str(persisted_item.get("summary") or ""),
+                    send_session_notification(
+                        str(persisted_item.get("summary") or "")[:2000],
+                        source="self-review-run-tracking",
+                        push=False,
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning(
+                        "self_review_run_tracking: kunne ikke sende besked: %s", exc
+                    )
         elif persisted_item.get("was_updated"):
             event_bus.publish(
                 "self_review_run.updated",

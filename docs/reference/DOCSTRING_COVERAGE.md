@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8418/15983 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8419/15985 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8418/15983 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 715 | 1296 | 55% |
-| `core.services` | 5614 | 10878 | 51% |
+| `core.services` | 5615 | 10880 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -266,10 +266,10 @@ Generated from source. 8418/15983 functions/methods documented (52%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L207)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L229)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L235)
-- `core/eventbus/events.py` :: `Event.create` (L301)
-- `core/eventbus/events.py` :: `Event.family` (L297)
-- `core/eventbus/events.py` :: `Event.from_record` (L307)
-- `core/eventbus/events.py` :: `Event.validate` (L318)
+- `core/eventbus/events.py` :: `Event.create` (L311)
+- `core/eventbus/events.py` :: `Event.family` (L307)
+- `core/eventbus/events.py` :: `Event.from_record` (L317)
+- `core/eventbus/events.py` :: `Event.validate` (L328)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
@@ -1755,8 +1755,8 @@ Generated from source. 8418/15983 functions/methods documented (52%). The list b
 - `core/services/sensory_archive.py` :: `search` (L263)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L281)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L407)
+- `core/services/session_inbox.py` :: `pending_count` (L322)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L448)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L211)
 - `core/services/session_tool_pin.py` :: `clear` (L120)

@@ -433,10 +433,11 @@ _Indbakkens to-trins forudsætning i mutationspunktet._
 | function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
 | function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
 | function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L129) |
-| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L159) |
-| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L177) |
-| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L185) |
-| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L194) |
+| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L159) |
+| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L172) |
+| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L190) |
+| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L198) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L207) |
 
 ## `core/services/inbox_state.py`
 _Proveniens og bogføring for indbakken._

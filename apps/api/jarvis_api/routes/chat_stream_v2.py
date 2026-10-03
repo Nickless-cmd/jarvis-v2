@@ -501,7 +501,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                 flush=True,
             )
 
-        def _dt_ud(rid: str, ramme: str) -> None:
+        def _dt_ud(sid: str, ramme: str) -> None:
 
             """Notér én udgaaende ramme i delta-sporet.
 
@@ -522,7 +522,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
                     return
 
-                _dt.noter('ud', rid, len(ramme))
+                _dt.noter('ud', sid, len(ramme))
 
             except Exception:  # et spor maa aldrig afbryde streamen mod desk
 
@@ -557,7 +557,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         # Sammenholdt med punkt «ind» i adapteren afgoer det om
                         # en klump er modellens, vores egen kaedes eller desks
                         # visning. Slukket som standard; se `delta_trace`.
-                        _dt_ud(run_id, f)
+                        _dt_ud(session_id, f)
                         yield f
                         _last_emit = _xt.monotonic()
                     if saw_stop:
@@ -625,7 +625,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                 # selv koste tid; se `delta_trace`s hoved.
                 try:
                     from core.services import delta_trace as _dt_slut
-                    _dt_slut.afslut(run_id)
+                    _dt_slut.afslut(session_id, run_id=run_id)
                 except Exception:  # sporet maa ikke kunne forhindre oprydningen
                     pass
 

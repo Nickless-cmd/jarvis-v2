@@ -88,7 +88,15 @@ def taendt() -> bool:
 def noter(punkt: str, run_id: str, tegn: int) -> None:
     """Registrér én delta. No-op når sporet er slukket.
 
-    `punkt` er «ind» (fra udbyderen) eller «ud» (mod desk). Kaster aldrig.
+    `punkt` er «ind» (fra udbyderen) eller «ud» (mod desk).
+
+    NOEGLEN ER SESSIONEN, ikke run-id'et. Foerste udgave brugte run-id, og den
+    maalte INTET fra indgangen: maalt 3/10-2026 kom der nul «ind»-linjer mod
+    én «ud». Run-id'et hentes fra en ContextVar, og adapteren koerer i en
+    arbejdstraad hvor den ikke foelger med — saa noeglen var tom og hver
+    maaling blev droppet. Sessionen er derimod en parameter begge steder.
+
+    Kaster aldrig.
     """
     if not taendt():
         return
@@ -118,8 +126,12 @@ def _fordeling(huller: list[int]) -> tuple[int, int, int, int]:
     return median, p95, stoerst, huller.index(stoerst) + 1
 
 
-def afslut(run_id: str) -> dict[str, dict[str, float | int]]:
-    """Skriv opsummeringen for et run og ryd det. No-op når slukket.
+def afslut(noegle: str, *, run_id: str = "") -> dict[str, dict[str, float | int]]:
+    """Skriv opsummeringen og ryd den. No-op når slukket.
+
+    `noegle` er SESSIONEN — se `noter` for hvorfor det ikke er run-id'et.
+    `run_id` er kun med i den skrevne linje, så en tur kan slås op bagefter;
+    den indgår ikke i nøglen, fordi indgangen ikke kender den.
 
     Returnerer tallene, så en test kan hævde dem uden at læse stderr.
     """
@@ -127,7 +139,7 @@ def afslut(run_id: str) -> dict[str, dict[str, float | int]]:
         return {}
     svar: dict[str, dict[str, float | int]] = {}
     try:
-        rid = str(run_id or "")[:48]
+        rid = str(noegle or "")[:48]
         with _laas:
             noegler = [k for k in _spor if k[1] == rid]
             data = {k[0]: _spor.pop(k) for k in noegler}
@@ -150,8 +162,9 @@ def afslut(run_id: str) -> dict[str, dict[str, float | int]]:
             }
             svar[punkt] = tal
             import sys as _s
+            _mrk = str(run_id or "")[:32] or rid
             print(
-                f"DELTA-SPOR {punkt:<3} run={rid} n={tal['n']} "
+                f"DELTA-SPOR {punkt:<3} run={_mrk} n={tal['n']} "
                 f"tegn={tal['tegn']} varighed={tal['varighed_s']}s "
                 f"median={median}ms p95={p95}ms max={stoerst}ms@{hvor}",
                 file=_s.stderr, flush=True)

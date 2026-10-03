@@ -160,9 +160,9 @@ def test_BEGGE_maalepunkter_er_koblet():
 
     ud = pathlib.Path("apps/api/jarvis_api/routes/chat_stream_v2.py").read_text()
     ast.parse(ud)
-    assert "_dt_ud(run_id, f)" in ud, "punkt «ud» er ikke koblet"
+    assert "_dt_ud(session_id, f)" in ud, "punkt «ud» er ikke koblet"
     assert "_dt.noter('ud'" in ud
-    assert "afslut(run_id)" in ud, "opsummeringen kaldes aldrig"
+    assert "afslut(session_id" in ud, "opsummeringen kaldes aldrig"
 
 
 def test_udgangen_taeller_kun_TEKST_rammer():
@@ -173,9 +173,47 @@ def test_udgangen_taeller_kun_TEKST_rammer():
     assert "'text_delta' not in ramme" in ud
 
 
-def test_run_id_slaas_kun_op_naar_sporet_er_TAENDT():
-    """Et slukket spor maa ikke koste et kontekst-opslag per token."""
+def test_noeglen_maa_IKKE_komme_fra_en_contextvar():
+    """Den fejl der gjorde den foerste maaling ubrugelig.
+
+    Maalt 3/10-2026, foerste koersel efter udrulning: NUL «ind»-linjer mod én
+    «ud». Indgangen noeglede paa `aktivt_run_id()`, som henter fra en
+    ContextVar (`run_autonomy_context`) — og gatens globale fallback er,
+    ifoelge dens egen kommentar, «tom i jarvis-api, hvor de synlige ture
+    koerer». Adapteren koerer i en arbejdstraad, hvor ContextVar'en ikke
+    foelger med. Noeglen var tom, og `noter` droppede hver eneste maaling.
+
+    Husets `contextvar_async_generator_gap` og `tool_scope_ctxvar_lost`
+    beskriver to tidligere udgaver af samme fejlform. Vagten her er grunden
+    til at den ikke skal findes en fjerde gang ved at laese en tom journal.
+    """
     ind = pathlib.Path("core/services/visible_model_adapters.py").read_text()
-    i_taendt = ind.index("if not _dt.taendt():")
-    i_opslag = ind.index("from core.services.session_context_resolve import aktivt_run_id")
-    assert i_taendt < i_opslag, "run-id slaas op FOER sentinel-tjekket"
+    traeet = ast.parse(ind)
+
+    # AST, ikke strengsoegning: ordet `aktivt_run_id` staar med vilje i
+    # docstringen ovenfor som forklaring paa fejlen, og en grep ville faelde
+    # sin egen begrundelse. Samme fejl som en taelling af «urgent=True» der
+    # ramte dens egne kommentarer, maalt samme dag.
+    brugt: list[str] = []
+    for n in ast.walk(traeet):
+        if isinstance(n, ast.Name):
+            brugt.append(n.id)
+        elif isinstance(n, ast.Attribute):
+            brugt.append(n.attr)
+        elif isinstance(n, ast.ImportFrom):
+            brugt.extend(a.name for a in n.names)
+    assert "aktivt_run_id" not in brugt, (
+        "indgangen noegler paa et kontekst-opslag igen — det er tomt i "
+        "adapterens arbejdstraad, og saa maaler sporet ingenting")
+    assert '_dt.noter("ind", str(session_id' in ind, (
+        "noeglen skal vaere adapterens egen session_id-PARAMETER")
+
+
+def test_sentinel_tjekket_kommer_FOER_arbejdet():
+    """Et slukket spor maa ikke koste noget per token."""
+    for fil, mark in (
+        ("core/services/visible_model_adapters.py", '_dt.noter("ind"'),
+        ("apps/api/jarvis_api/routes/chat_stream_v2.py", "_dt.noter('ud'"),
+    ):
+        kilde = pathlib.Path(fil).read_text()
+        assert kilde.index("_dt.taendt()") < kilde.index(mark), fil

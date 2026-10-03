@@ -257,14 +257,24 @@ def _stream_openai_compatible_model(
     providere ignorerer (de har ikke thinking-mode).
     """
     def _dt_noter(tekst: str) -> None:
-        """Notér én delta i delta-sporet. Slaar kun run-id op naar sporet er
-        TAENDT — et slukket spor maa ikke koste et opslag per token."""
+        """Notér én delta i delta-sporet.
+
+        NOEGLEN ER SESSIONEN, ikke run-id'et. Foerste udgave brugte
+        `aktivt_run_id()`, og den maalte INTET: maalt 3/10-2026 kom der nul
+        «ind»-linjer mod én «ud». Run-id'et hentes fra en ContextVar
+        (`run_autonomy_context`), og gatens globale fallback er — ifoelge dens
+        egen kommentar — «tom i jarvis-api, hvor de synlige ture koerer».
+        Adapteren koerer i en arbejdstraad, hvor ContextVar'en ikke foelger
+        med, saa nøglen var tom og hver maaling blev droppet.
+
+        `session_id` er derimod en parameter til denne funktion. Den findes
+        ogsaa i udgangen, saa de to punkter kan sammenlignes.
+        """
         try:
             from core.services import delta_trace as _dt
             if not _dt.taendt():
                 return
-            from core.services.session_context_resolve import aktivt_run_id
-            _dt.noter("ind", aktivt_run_id(""), len(tekst))
+            _dt.noter("ind", str(session_id or ""), len(tekst))
         except Exception:  # et spor maa aldrig vaelte en tur; den tavse vej er
             # her den rigtige, fordi alternativet er at miste svaret.
             pass

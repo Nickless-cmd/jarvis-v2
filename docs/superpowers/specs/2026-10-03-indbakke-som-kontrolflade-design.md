@@ -76,8 +76,8 @@ Tre konklusioner:
 | R2.5 (blocking) | 7.610 evalueringer | **543 blokeringer → 460 frigivelser ≈ 85 %** |
 
 `r2_5_gate.evaluated` stod på 7.610 med seneste 3/10; `blocked` 543,
-`mutation_refused` 467, `released` 460. *(Genmålt 3/10 kl. 11:5x: evaluated er
-nu **7.643** — tallene vokser, datoen står, og det er pointen.)* Forskellen er
+`mutation_refused` 467, `released` 460. *(RETTET 3/10 (Jarvis): genmålt — evaluated er nu **7.643**. Tallene
+vokser, datoen står, og det er pointen.)* Forskellen er
 ikke gradvis:
 
 **R2 spørger. R2.5 nægter.** Den ene ignoreres fire gange ud af fem; den anden
@@ -446,7 +446,7 @@ kilde_ejer: str = "huset")`. Begge defaults bevarer nuværende adfærd.
 > (`notification_bridge.py:216`, som `inbox_enqueue`). Tallet skal enten
 > begrundes eller fjernes — jeg har ikke kunnet genskabe elleve.
 >
-> **Og læseren skal med.** `pending_for_session`'s SELECT henter i dag kun
+> **RETTET 3/10 (Jarvis): og læseren skal med.** `pending_for_session`'s SELECT henter i dag kun
 > `id, content, source, urgent, queued_at, user_id, workspace_name`. Uden de to
 > nye kolonner i SELECT'en læser Trin 1-testen `post["kraever_handling"]` på en
 > nøgle der ikke findes — det er `built_but_not_connected` i miniature: kolonnen

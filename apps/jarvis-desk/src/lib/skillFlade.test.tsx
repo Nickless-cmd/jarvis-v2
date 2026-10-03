@@ -27,6 +27,16 @@ describe('skill_surface i strømmen', () => {
     expect(liveBlokke(s).map((b) => b.type)).toEqual(['skill_surface', 'text'])
   })
 
+  it('bevarer blok-arrayets identitet ved timer-ticks uden nyt indhold', () => {
+    let s = streamReducer(initialStreamState(), start('r1'))
+    s = streamReducer(s, { type: 'skill_surface', matches, primary: true })
+    const foerste = liveBlokke(s)
+    expect(liveBlokke({ blocks: s.blocks, skillFlade: s.skillFlade })).toBe(foerste)
+
+    s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'hej' } })
+    expect(liveBlokke(s)).not.toBe(foerste)
+  })
+
   it('nyt run nulstiller, samme run (replay) beholder', () => {
     let s = streamReducer(initialStreamState(), start('r1'))
     s = streamReducer(s, { type: 'skill_surface', matches, primary: true })

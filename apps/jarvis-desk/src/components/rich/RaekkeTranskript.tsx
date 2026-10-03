@@ -54,9 +54,9 @@ function FoldPil({ aaben, className }: { aaben: boolean; className?: string }) {
     : <ChevronRight className={className} size={14} strokeWidth={1.75} />
 }
 
-function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
+const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
   return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
-}
+})
 
 const KOMMANDOER = new Set(['bash', 'bash_session_run', 'bash_session_open', 'bash_session_close', 'bash_output', 'run_in_background', 'session_run'])
 
@@ -306,8 +306,8 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && a.config === b.config && a.beskedId === b.beskedId
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
-function Arbejdsrunde({
-  elementer, streaming, sidste, harSvar, config, rundeEtiketter, beskedId,
+function ArbejdsrundeImpl({
+  elementer, streaming, sidste, harSvar, config, etiket, beskedId,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
@@ -315,7 +315,7 @@ function Arbejdsrunde({
   harSvar: boolean
   config?: ApiConfig
   beskedId?: string
-  rundeEtiketter: Record<string, string>
+  etiket?: string
 }) {
   const [aaben, setAaben] = useState(false)
   const foldRef = useRef<HTMLButtonElement>(null)
@@ -330,7 +330,6 @@ function Arbejdsrunde({
   // Et afsluttet kald afslutter ikke nødvendigvis Jarvis' arbejdsrunde. Hold
   // den sidste fortælling levende indtil en ny sektion eller svaret begynder.
   const visShimmer = streaming && sidste && (koerer || !harSvar)
-  const etiket = [...vaerktoejer].reverse().map((t) => rundeEtiketter[t.id]).find(Boolean)
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
@@ -361,6 +360,19 @@ function Arbejdsrunde({
       <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
     </div>
   )
+}
+
+const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
+  a.streaming === b.streaming && a.sidste === b.sidste && a.harSvar === b.harSvar
+  && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
+  && sammeArbejdsElementer(a.elementer, b.elementer))
+
+function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string>): string | undefined {
+  for (let i = elementer.length - 1; i >= 0; i--) {
+    const e = elementer[i]
+    if (e?.slags === 'blok' && e.blok.type === 'tool_use' && etiketter[e.blok.id]) return etiketter[e.blok.id]
+  }
+  return undefined
 }
 
 function RaekkeTranskriptImpl({
@@ -412,7 +424,7 @@ function RaekkeTranskriptImpl({
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
                 sidste={i === sektioner.length - 1} harSvar={svar.length > 0}
-                config={config} rundeEtiketter={etiketter} beskedId={beskedId} />
+                config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
             })}
           </div>
         </>

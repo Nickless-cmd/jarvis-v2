@@ -2568,10 +2568,21 @@ async def _stream_visible_run(
                 _ds_active: dict[str, str] = {}
                 from core.services import decision_signal_staging as _dss
 
+                # Klasse-2-advarsler til MODELLEN — ikke i _a_parts, saa Bjoern
+                # ikke ser en dublet. Begrundelser: visible_run_guard_notices.
+                _vaerns_advarsler: list[str] = []
+                from core.services import visible_run_guard_notices as _gn
+
                 def _exchange_text() -> str:
                     """Assistant-turen til modellen = rent svar (_a_parts) + efemere
-                    decision-noter. _a_parts forbliver ren (persist + resolution-tjek)."""
-                    return _dss.compose_exchange_text(_a_parts, _ds_active)
+                    decision-noter. _a_parts forbliver ren (persist + resolution-tjek).
+
+                    3/10: klasse-3-noter filtreres UD paa vejen til modellen — se
+                    visible_run_guard_notices. Listen selv roeres ikke.
+                    """
+                    _rene = _gn.fjern_menneske_noter(_a_parts)
+                    _tekst = _dss.compose_exchange_text(_rene, _ds_active)
+                    return _tekst + "".join(_vaerns_advarsler)
 
                 # Udskilt til visible_followup_results (Boy Scout, 18/9-2026) —
                 # og baerer nu kaldets status, saa en fejl ogsaa er en fejl i den
@@ -3760,10 +3771,7 @@ async def _stream_visible_run(
                                 # truncated on the exhausting attempt) + an honest
                                 # note so the user never gets a blank loss. The
                                 # interruption nerve still fires below.
-                                _exhaust_note = (
-                                    "\n\n_(Forbindelsen blev ved med at glippe — "
-                                    "jeg prøvede igen et par gange men måtte give op. "
-                                    "Her er hvad jeg nåede; sig til, så fortsætter jeg.)_")
+                                _exhaust_note = _gn.forbindelsen_glippede()  # klasse 3
                                 _a_parts.append(_exhaust_note)
                                 _all_followup_parts.append(_exhaust_note)
                                 yield _sse("delta", {
@@ -4092,6 +4100,7 @@ async def _stream_visible_run(
                             _hp_note = _hp_note_fn(str(_active_model or ""))
                             _a_parts.append(_hp_note)
                             _all_followup_parts.append(_hp_note)
+                            _vaerns_advarsler.append(_gn.tomt_loefte_advarsel())  # klasse 2
                             yield _sse("delta", {
                                 "type": "delta", "run_id": run.run_id, "delta": _hp_note,
                             })
@@ -4201,11 +4210,7 @@ async def _stream_visible_run(
                             ):
                                 _run_degenerated = True
                                 _agentic_loop_exit_reason = "pending-tool-intent"
-                                _stop_note = (
-                                    "\n\n_(Jeg stoppede her fordi løkken tvang en "
-                                    "afslutning — ikke fordi jeg var færdig. Sig til, "
-                                    "så tager jeg den derfra.)_"
-                                )
+                                _stop_note = _gn.loekken_tvang_en_afslutning()  # klasse 3
                                 _a_parts.append(_stop_note)
                                 _all_followup_parts.append(_stop_note)
                                 yield _sse("delta", {
@@ -4376,10 +4381,11 @@ async def _stream_visible_run(
                                     "agentic_loop_rounds_completed": _agentic_round + 1,
                                 },
                             )
-                            _empty_guard_msg = (
-                                f"⚠ I ran {_MAX_EMPTY_TEXT_ROUNDS} rounds without producing text. "
-                                "Something went wrong — try again."
-                            )
+                            # Klasse 1 — holder runnet i gang; naar modellen med vilje.
+                            _empty_guard_msg = _gn.ingen_tekst_i_runder(_MAX_EMPTY_TEXT_ROUNDS)
+                            _vaerns_advarsler.append(_gn.systemmaerket(
+                                "Et vaern afsluttede runden efter runder uden tekst. "
+                                "Det var runtimens beslutning, ikke brugerens."))
                             yield _sse("delta", {
                                 "type": "delta",
                                 "run_id": run.run_id,
@@ -4528,11 +4534,7 @@ async def _stream_visible_run(
                             )
                             # Yield a visible text message so the user always sees
                             # something in chat instead of "[Tool calls only]".
-                            _guard_msg = (
-                                "⚠ Jeg faldt i et tool-call loop — "
-                                f"{_consecutive_tool_only_rounds} runder uden synligt svar. "
-                                "Her er hvad jeg fandt:"
-                            )
+                            _guard_msg = _gn.tool_call_loekke(_consecutive_tool_only_rounds)  # klasse 3
                             yield _sse("delta", {
                                 "type": "delta",
                                 "run_id": run.run_id,

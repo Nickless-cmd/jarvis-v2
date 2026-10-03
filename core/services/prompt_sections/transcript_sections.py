@@ -299,6 +299,27 @@ def _build_structured_transcript_messages(
     except Exception:
         pass
 
+    # 3/10-2026: samme behandling af vaerns-noterne. Fire af dem er i jeg-form,
+    # tre bar en invitation («Sig til»), og alle fem naaede modellen fordi de
+    # appender til `_a_parts` — som ER naeste rundes model-input. Filtreret i
+    # samme tur af `_exchange_text`; her paa tvaers af ture, saa en note gemt i
+    # gaar ikke bliver et moenster modellen efterligner i dag.
+    try:
+        from core.services.visible_run_guard_notices import (
+            fjern_menneske_noter_fra_historik,
+        )
+        history = fjern_menneske_noter_fra_historik(history)
+        if not history:
+            return []
+    except Exception:
+        # Modulet har ingen modul-logger, saa den hentes her. Et bart
+        # `logger.warning` ville kaste NameError INDE i handleren og goere en
+        # filterfejl til et nedbrud — praecis den fejlform vagten mod tavse
+        # undtagelser findes for.
+        import logging
+        logging.getLogger(__name__).warning(
+            "transcript: kunne ikke filtrere vaerns-noter", exc_info=True)
+
     # Cache-bevidst microcompact (19/9-2026): gamle tool-resultater stubbes bag
     # en KLAEBENDE graense, der kun rykker naar cachen maalt er kold (≥ 3 t).
     # Den gamle regel stubbede efter 60 min — midt i en varm cache — og slap

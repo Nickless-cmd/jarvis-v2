@@ -274,6 +274,16 @@ ALLOWED_EVENT_FAMILIES = {
     #    blev lukket, men eventet naaede ALDRIG bussen. Fandt vagten
     #    tests/test_publish_scan.py::test_ingen_NYE_utilsluttede_familier. ──
     "central_instrument",
+    # ── 3. okt 2026: SJETTE gang samme moenster (prompt 4/9, tool_discovery 6/9,
+    #    r2_5_gate 19/9, app 20/9, central_instrument 29/9).
+    #    `mobile.stream_tempo` blev publiceret fra
+    #    apps/api/jarvis_api/routes/presence.py:76 (opus 1/10, 791a00e3f) men
+    #    familien stod ikke her → hvert ping med stream-tempo kastede ValueError,
+    #    og kaldestedets `except` slugte den i en logger.warning. Maalt 3/10:
+    #    NUL mobile.*-events nogensinde — hele maale-featureen har vaeret tavs
+    #    siden den landede. Fundet ved at tjekke CI efter en tag-push: vagten
+    #    var ROED i to doegn, 30+ ci-koersler i traek, uden at nogen saa det. ──
+    "mobile",
 }
 
 

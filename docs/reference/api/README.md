@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15850 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15859 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,28 +35,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15850 functions/
 - [`core.services.04`](core.services.04.md) — `central_agenda` … `central_governance`
 - [`core.services.05`](core.services.05.md) — `central_growth_observe` … `central_prompt_composer`
 - [`core.services.06`](core.services.06.md) — `central_prompt_explore` … `chat_crypto`
-- [`core.services.07`](core.services.07.md) — `chat_sessions` … `cognitive_core_experiments`
-- [`core.services.08`](core.services.08.md) — `cognitive_episodes` … `council_memory_daemon`
-- [`core.services.09`](core.services.09.md) — `council_memory_service` … `decision_gate`
-- [`core.services.10`](core.services.10.md) — `decision_ghosts` … `dream_bias_engine`
-- [`core.services.11`](core.services.11.md) — `dream_carry_over` … `epistemic_pragmatic`
-- [`core.services.12`](core.services.12.md) — `epistemic_runtime_state` … `gate_execution`
-- [`core.services.13`](core.services.13.md) — `gate_kernel` … `heartbeat_manage_runtime_work`
-- [`core.services.14`](core.services.14.md) — `heartbeat_phases` … `internal_cadence_inner_life`
-- [`core.services.15`](core.services.15.md) — `internal_cadence_maintenance` … `mail_checker_daemon`
-- [`core.services.16`](core.services.16.md) — `malware_scan` … `model_pair_resolver`
-- [`core.services.17`](core.services.17.md) — `model_probe` … `outbound_nudges`
-- [`core.services.18`](core.services.18.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `proactive_candidates` … `provider_model_epochs`
-- [`core.services.20`](core.services.20.md) — `provider_registry_admin` … `research_contract`
-- [`core.services.21`](core.services.21.md) — `research_evidence_collector` … `runtime_self_model_affect`
-- [`core.services.22`](core.services.22.md) — `runtime_self_model_boundary` … `self_surprise_detection`
-- [`core.services.23`](core.services.23.md) — `self_surprise_expectation` … `signal_network_visualizer`
-- [`core.services.24`](core.services.24.md) — `signal_noise_guard` … `sustained_attention`
-- [`core.services.25`](core.services.25.md) — `system_cartographer` … `tool_observer`
-- [`core.services.26`](core.services.26.md) — `tool_outcome_memory` … `visible_first_pass_text`
-- [`core.services.27`](core.services.27.md) — `visible_followup` … `visible_terminal_policy`
-- [`core.services.28`](core.services.28.md) — `visible_text_scrub` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `chat_sessions` … `cognitive_chronicle`
+- [`core.services.08`](core.services.08.md) — `cognitive_core_experiments` … `council_deliberation_controller`
+- [`core.services.09`](core.services.09.md) — `council_memory_daemon` … `decision_evidence`
+- [`core.services.10`](core.services.10.md) — `decision_gate` … `dream_articulation`
+- [`core.services.11`](core.services.11.md) — `dream_bias_engine` … `env_block`
+- [`core.services.12`](core.services.12.md) — `epistemic_pragmatic` … `gate_eval`
+- [`core.services.13`](core.services.13.md) — `gate_execution` … `heartbeat_delivery`
+- [`core.services.14`](core.services.14.md) — `heartbeat_manage_runtime_work` … `internal_cadence_core`
+- [`core.services.15`](core.services.15.md) — `internal_cadence_inner_life` … `loyalty_gradient_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `mail_checker_daemon` … `model_context`
+- [`core.services.17`](core.services.17.md) — `model_pair_resolver` … `orb_phase`
+- [`core.services.18`](core.services.18.md) — `outbound_nudges` … `private_temporal_curiosity_state_tracking`
+- [`core.services.19`](core.services.19.md) — `private_temporal_promotion_signal_tracking` … `provider_health_check`
+- [`core.services.20`](core.services.20.md) — `provider_model_epochs` … `report_claim_guard`
+- [`core.services.21`](core.services.21.md) — `research_contract` … `runtime_self_model`
+- [`core.services.22`](core.services.22.md) — `runtime_self_model_affect` … `self_review_unified`
+- [`core.services.23`](core.services.23.md) — `self_surprise_detection` … `signal_delta_trigger`
+- [`core.services.24`](core.services.24.md) — `signal_network_visualizer` … `surprise_detector`
+- [`core.services.25`](core.services.25.md) — `sustained_attention` … `tool_lexical_match`
+- [`core.services.26`](core.services.26.md) — `tool_observer` … `visible_first_pass_pump`
+- [`core.services.27`](core.services.27.md) — `visible_first_pass_text` … `visible_stream_gate`
+- [`core.services.28`](core.services.28.md) — `visible_terminal_policy` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

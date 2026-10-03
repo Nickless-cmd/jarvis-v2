@@ -81,6 +81,21 @@
       "beskrivelse": "Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed.",
       "registreret": "2026-10-02"
     },
+    "ci_watch_grundlinje": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
+    },
+    "ci_watch_set": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
+    },
+    "ci_watch_sidste_tjek": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
+    },
     "computer_use_policy": {
       "ejer": "core/services/computer_use_policy.py",
       "beskrivelse": "Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.",

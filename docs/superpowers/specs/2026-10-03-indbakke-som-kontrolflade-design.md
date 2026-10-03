@@ -92,6 +92,17 @@ oveni at den fylder. Samme familie som fundet om prompt-åbneren: 12 % af
 kaldene stod for 39 % af al miss. Flyttes tilstanden til en flade han *læser*,
 får vi tre ting: mindre prompt, stabilt prefix, og kontrollen til ham.
 
+**MEN dette tal er ikke målt endnu, og det skal det være før vi tror på det.**
+Bjørn pegede på at både de FASTE dele og den dynamiske hale kunne blive mindre.
+Jeg tilbød at måle hvor stor en andel af halen der er ventende-tilstand, og
+gjorde det ikke — så gevinsten står her som en påstand. Det er præcis mønsteret
+«nytten blev talt uden prisen», som kostede os et dynamisk værktøjssæt engang.
+
+Derfor er det Opgave 0 nedenfor, og den skal køres FØR noget bygges: den afgør
+om dette er en økonomisk sag (prompten skrumper målbart) eller en kontrol-sag
+(den skrumper ikke, men han får styringen). Begge er gyldige — men de skal
+bygges forskelligt, og vi skal vide hvilken vi er i.
+
 ---
 
 ## Global Constraints
@@ -114,6 +125,14 @@ Disse gælder HVER opgave nedenfor.
   som gælder Claudes egne notifikationer.)
 - **Alle tre nye tærskler/intervaller skal måles efter ibrugtagning**, ikke sættes
   blindt. R2's punkt 2 ventede fra juni på en måling der aldrig blev lavet.
+- **En post må ikke kunne forsvinde tavst.** Køen ligger i SQLite og er durabel,
+  men en fejlet skrivning må ikke blive en værdi der ser ud som succes — det er
+  husets hyppigste fejlform (`swallowed_error_becomes_a_value`). `enqueue` har
+  allerede en typet `{"status": "error"}`; kalderen SKAL læse den, og en
+  handlingskrævende post der ikke blev skrevet skal logges på WARNING.
+  Det offentlige materiale (agent-inbox) bruger ack+retry med eksponentiel
+  backoff til samme formål; vi behøver det ikke, fordi skrivningen er lokal og
+  synkron — men vi behøver at fejlen kan SES.
 - Dansk i kommentarer og docstrings, som resten af huset.
 
 ---
@@ -154,6 +173,9 @@ PÅ VEJ (5)
   wake-9f3a2  om 40m   «mål om cheap-lane holder»
   wake-c81d4  om 6t    «skygge-review af event_trigger»   ⚠ booket 3 gange
 
+VAKTE DENNE TUR
+  wake-6e201  fyrede 07:30  «følg op på Michelles brief»   → inbox_done
+
 VENTER PÅ BJØRN (1)                        ← synlig, gater IKKE
   appr-4b2   siden 2/10 18:40   «commit til main på agent-reduktion»
 
@@ -178,6 +200,19 @@ task-notifikationer bærer — den form er bevist i drift:
    et gæt, og det er dér en kontekst sprænges.
 6. **Ejer** (`[dig]` / `[huset]`). Afgør om posten må gate. Står i visningen, så
    reglen er synlig og ikke skjult i kode.
+
+### Sektionen «VAKTE DENNE TUR»
+
+Bjørn bad om «hvad har vækket ham», og det er **ikke** det samme som at liste
+fyrede vækninger. Når en vækning starter en tur, skal turen vide HVILKEN —
+ellers står Jarvis med en opgave uden at vide hvorfor han er i gang. Den
+sektion er tom i en tur han selv startede, og har præcis én linje i en tur en
+vækning udløste.
+
+Det er også det billigste sted at lukke bogførings-hullet: 141 bookinger mod
+171 lukninger betyder at nogle lukkes uden at være bookede. En vækning der
+navngiver sig selv ved turens start kan markeres præcist i stedet for i
+løs hukommelse.
 
 ### Og to felter der ikke findes i dag
 
@@ -226,20 +261,47 @@ er den vigtige post den der falder udenfor.
 R2.5 har allerede blokér / nægt-mutation / frigiv og model-differentierede
 tærskler. Den skal kende **én forudsætning mere**, ikke en ny mekanisme.
 
+Bjørns formulering 3/10 var **to-trins**: «først bede ham checke indbox, og hvis
+ignoreret eskalerer som den gør nu». Første udkast af denne spec kollapsede det
+til øjeblikkelig blokering — det var min vurdering sat i stedet for hans form,
+og uden at sige det. To-trins er bedre: den høflige anmodning koster ingenting,
+og blokeringen fanger dem der ignorerer den. Det er præcis måden R2 og R2.5
+allerede forholder sig til hinanden.
+
 ```text
-R2.5 evaluerer en mutation
-  → er der uverificerede mutationer over tier-tærsklen?      (findes i dag)
-  → ER DER ULÆSTE HANDLINGSKRÆVENDE INDBAKKE-POSTER?         (nyt)
+TRIN 1 — R2 (advisory, koster ingenting)
+  nye handlingskrævende poster siden sidst?
+       ja → én linje i svaret: «N venter i indbakken → `inbox`»
+            Ingen blokering. Mutationen slipper igennem.
+            Tælleren `indbakke_paamindet` +1 for posten.
+
+TRIN 2 — R2.5 (blocking, efter N ignorerede påmindelser)
+  er der poster med `indbakke_paamindet >= _INDBAKKE_PAAMINDELSER_FOER_BLOK`?
        nej  → slip igennem
-       ja   → nægt mutationen, nævn posterne ved id og beskrivelse,
+       ja   → nægt mutationen, nævn posterne ved id OG beskrivelse,
               og nævn `inbox` som den frigivende handling
-  → frigives af: `inbox` (læsning) + `inbox_done`/`inbox_drop` på hver post
+  → frigives af: `inbox_done` eller `inbox_drop` på HVER af dem
 ```
+
+`_INDBAKKE_PAAMINDELSER_FOER_BLOK` sættes til **2** som startværdi og er en
+`settings`-værdi, ikke en konstant — så den kan ændres uden deploy, og Opgave 7
+måler om 2 er det rigtige tal. Begrundelse for netop 2: R2's heed-rate er 15 %,
+så én påmindelse vil blive ignoreret i ~85 % af tilfældene; tre ville gøre
+blokeringen så sjælden at den ikke virker.
+
+Hvorfor trin 1 ikke er gratis støj: den fyrer kun på poster der er NYE siden
+sidste runde, ikke på hele indbakken hver gang. Uden den afgrænsning er vi
+tilbage i de 47 advarsler om dagen der gav banner blindness.
 
 Tre regler i koblingen:
 
 - **Læse-værktøjer slipper altid igennem.** Som i dag for uverificerede
   mutationer: han skal kunne komme fri.
+- **Bjørn skrev «fjerne tool til læst». Jeg har læst det som NÆGT, ikke FJERN**,
+  og grunden er målt: fjernes et værktøj fra sættet, ændres prompt-prefixet, og
+  et skiftende sæt kostede 92 % → 26 % cache-hit. R2.5 nægter i forvejen uden at
+  fjerne noget — samme virkning for Jarvis, nul cache-pris. Er fortolkningen
+  forkert, er det denne linje der skal rettes.
 - **Frigivelse kræver en afgørelse per post, ikke blot et blik.** `inbox` alene
   frigiver ikke; hver handlingskrævende post skal lukkes med `done` eller `drop`.
   Ellers bliver læsningen en formalitet, og vi er tilbage i banner blindness —
@@ -292,6 +354,36 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 ---
 
 ## Opgaver
+
+### Opgave 0: Mål prompten FØR vi bygger
+
+**Filer:** ny `scripts/maal_ventende_i_prompten.py`; ingen test (måleværktøj).
+
+Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
+
+- [ ] **Trin 1:** Byg en ægte synlig prompt på CT105 med
+      `build_visible_chat_prompt_assembly(...)` — samme vej som
+      `verify_visual_before_done` kræver, ikke en rekonstruktion.
+- [ ] **Trin 2:** Klassificér hver sektion som `ventende-tilstand` eller
+      `andet`. Ventende-tilstand = vækninger, åbne opgaver, igangværende jobs,
+      hvad der vakte ham, agent-status. Rapportér tokens og andel, både for de
+      FASTE sektioner og for den dynamiske hale — Bjørn pegede på begge.
+- [ ] **Trin 3:** Mål hvor ofte de sektioner ÆNDRER sig mellem to ture. En
+      sektion der fylder meget men står stille er et cache-problem; en der
+      fylder lidt men ændrer sig hver tur er et andet.
+- [ ] **Trin 4: LÅS tallet i denne spec** med dato, som R2's baseline blev låst
+      13/6. Et tal uden en dato er en påstand.
+- [ ] **Trin 5:** Afgør hvilken sag vi er i:
+      - **over ~8 % af halen** → økonomisk sag. Byg hele specen; gevinsten
+        betaler for sig selv i cache alene.
+      - **under ~8 %** → kontrol-sag. Byg Opgave 1, 3, 4 og 6 (handlings-klasse,
+        bogføring, gate, henvisning) og UDSKYD Opgave 2's fulde visning — så er
+        en kompakt visning nok, og prompten skal ikke skrumpes.
+
+      De 8 % er ikke et måltal, det er en skillelinje valgt ud fra at historikken
+      bruger 3,1 % af et 1M-vindue: er ventende-tilstand større end historikken,
+      er den værd at flytte for sin egen skyld.
+- [ ] **Trin 6: Commit** måleværktøjet og det låste tal.
 
 ### Opgave 1: Handlings-klassen i køen
 
@@ -517,8 +609,10 @@ tærsklerne blev først sat da nogen regnede efter. Skygge-registrets 24-timers
 vindue stod 78 dage. Denne opgave findes for at det ikke gentager sig.
 
 - [ ] **Trin 1:** Script der rapporterer, per døgn: hvor mange poster blev
-      handlingskrævende, hvor mange gange nægtede R2.5 på `ulaest-indbakke`, og
-      hvor mange af dem blev frigivet (heed-rate for netop den forudsætning).
+      handlingskrævende, hvor mange gange fyrede TRIN 1 (påmindelsen), hvor
+      mange gange nægtede TRIN 2, og hvor mange af dem blev frigivet. Begge
+      heed-rater skal stå hver for sig — trin 1's og trin 2's — og de afgør om
+      `_INDBAKKE_PAAMINDELSER_FOER_BLOK = 2` er det rigtige tal.
 - [ ] **Trin 2:** Kør det, og LÅS en baseline i specen her, med dato.
 - [ ] **Trin 3:** Registrér vinduet i `shadow_experiment_registry` med
       `review_after_hours`, så påmindelsen (rettet 2/10 med en durabel klokke)
@@ -529,13 +623,42 @@ vindue stod 78 dage. Denne opgave findes for at det ikke gentager sig.
 
 ## Selvgennemgang
 
-**Dækning:** hvert aspekt fra samtalen har en opgave — handlings-klassen (1),
-visningen med alder/dubletter (2), bogføringen (3), R2.5 (4), værktøjerne (5),
-henvisning-i-stedet-for-replik (6), målingen (7). De syv huller jeg selv
-navngav er afgjort i tabellen «Hvad der ER med».
+### Den kritiske runde fandt fire ting det første udkast manglede
+
+Første udkast kørte kun den mekaniske gennemgang (dækning, pladsholdere,
+type-konsistens) og fandt én ægte fejl: et opdigtet funktionsnavn. Da Bjørn
+spurgte om jeg havde kørt en KRITISK gennemgang mod hele samtalen, fandt den
+fire mere. De er alle rettet ovenfor, og de står her fordi mønsteret er værd at
+huske.
+
+**1. Jeg havde overskrevet hans design uden at sige det.** Han sagde to-trins:
+«først bede ham checke … og hvis ignoreret eskalerer». Jeg kollapsede det til
+øjeblikkelig blokering. Det er den værste af de fire, fordi det er min vurdering
+sat i stedet for hans erklærede form — og hans er bedre.
+
+**2. «Hvad har vækket ham» var slet ikke med.** Han bad om det ordret. Jeg
+listede fyrede vækninger, hvilket ikke er det samme som at turen VED hvilken der
+startede den. Nu en egen sektion.
+
+**3. Prompt-gevinsten stod som en påstand.** Jeg tilbød at måle hvor stor en
+andel af halen der er ventende-tilstand, gjorde det ikke, og skrev alligevel
+gevinsten ind. Det er «nytten talt uden prisen». Nu er det Opgave 0, og den
+afgør om resten er en økonomisk eller en kontrol-sag.
+
+**4. Jeg havde ikke sagt at «fjerne tool til læst» var en FORTOLKNING.** Jeg
+læste det som nægt-ikke-fjern, med en målt begrundelse — men en fortolkning der
+ikke er mærket som sådan kan ikke rettes af den der skrev originalen.
+
+**Dækning efter rettelserne:** hvert aspekt fra samtalen har en opgave —
+prompt-målingen (0), handlings-klassen (1), visningen med «vakte denne tur»,
+alder og dubletter (2), bogføringen (3), to-trins R2/R2.5 (4), værktøjerne (5),
+henvisning-i-stedet-for-replik (6), og efter-målingen af begge heed-rater (7).
+De syv huller jeg selv navngav er afgjort i tabellen «Hvad der ER med».
 
 **Pladsholdere:** ingen. De tre åbne beslutninger blev truffet 3/10 og står i
-Global Constraints og i skrive-kontrakten.
+Global Constraints og i skrive-kontrakten. Opgave 0's tal er med vilje IKKE
+udfyldt — det er en måling der skal køres, ikke en antagelse der skal gættes, og
+trin 4 siger at den skal låses med en dato.
 
 **Typer:** `kraever_handling: bool`, `kilde_ejer: str` (Opgave 1) bruges uændret
 i Opgave 2 og 4. `byg_indbakke(bruger_id, *, nu_ts)` konsumeres af Opgave 4 med

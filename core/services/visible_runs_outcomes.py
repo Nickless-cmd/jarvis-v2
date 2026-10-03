@@ -599,6 +599,50 @@ def _guarantee_visible_outcome(run: "_vr.VisibleRun") -> None:
         pass
 
 
+def _stemple_afslutning_synkront(
+    run_id: str, *, status: str, finished_at: str, error: str | None = None
+) -> None:
+    """Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen.
+
+    Målt 3/10-2026: fire af dagens syv ``interrupted``-stempler sad på ture der
+    HAVDE svaret. Rækkefølgen var: svaret skrives til ``chat_messages``
+    (synkront), ``finished_at`` beregnes — og rækken i ``visible_runs`` skrives
+    i en daemon-tråd bagefter. Ramte en nedlukning vinduet imellem, spurgte
+    ``run_er_terminal`` «er runnet slut?» om en række der stadig stod ``running``
+    med tom ``finished_at``, fik «nej», og stemplede et færdigt run som afbrudt.
+
+    Vinduet er ikke mikroskopisk: kommentaren i ``set_last_visible_run_outcome``
+    måler selv tråden til at kunne dække 1-15 s under WAL-pres.
+
+    Ét UPDATE — ikke de tre INSERTs der blev flyttet til tråden 18/7. Det er kun
+    ``visible_runs``-rækken som ``run_er_terminal`` læser der skal stå rigtigt;
+    projektionerne (``visible_work_units``, ``visible_work_notes``) må fortsat
+    følge i tråden. Ét UPDATE er hurtigt nok til at være synkront — det var de
+    tre INSERTs under ét write-lock der ikke var.
+
+    Rører KUN en række der ikke er afsluttet (``finished_at = ''``), så hverken
+    et rigtigt udfald eller et sweep-stempel kan overskrives herfra. Self-safe:
+    kaster aldrig.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return
+    try:
+        with connect() as conn:
+            conn.execute(
+                "UPDATE visible_runs SET status = ?, finished_at = ?, error = ? "
+                "WHERE run_id = ? AND finished_at = ''",
+                (
+                    str(status or ""),
+                    finished_at,
+                    (_vr._bounded_error(error) if error else None),
+                    rid,
+                ),
+            )
+    except Exception:
+        logger.debug("kunne ikke stemple afslutning synkront for %s", rid, exc_info=True)
+
+
 def set_last_visible_run_outcome(
     run: "_vr.VisibleRun",
     *,
@@ -650,6 +694,14 @@ def set_last_visible_run_outcome(
     # load-bearing del (in-memory _LAST_VISIBLE_RUN_OUTCOME + empty-completion-guard) er
     # ALLEREDE kørt synkront ovenfor; DB-projektionen (MC-dashboard/visible_runs) behøver
     # ikke blokere svaret. Kør den i en daemon-tråd så streamen lukker med det samme.
+    # ── LUK RACE-VINDUET (3/10-2026) ────────────────────────────────────────
+    # Rækken skrives i en daemon-tråd herunder for ikke at blokere svaret. Men
+    # `run_er_terminal` læser netop DEN række — og nedluknings-sweepen spørger
+    # den. Står rækken stadig `running` med tom `finished_at` når sweepen
+    # spørger, stempler den et run der lige har svaret som afbrudt.
+    # Ét synkront UPDATE lukker vinduet; den tunge projektion bliver i tråden.
+    _stemple_afslutning_synkront(
+        run.run_id, status=status, finished_at=finished_at, error=error)
     import threading as _t_outcome
     _t_outcome.Thread(
         target=_persist_visible_run_outcome,

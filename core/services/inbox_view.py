@@ -360,6 +360,52 @@ def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return ud
 
 
+# ── Opgave 10: loft og rangorden ────────────────────────────────────────────
+#
+# BESLUTNINGEN (trin 1): **8 linjer per sektion, ældste først**, og den
+# blokerende sektion har INTET loft.
+#
+# Hvorfor et loft overhovedet: argumentet der udelukkede kandidat-backloggen
+# («1.896 poster ville drukne den dag ét») gælder også INDE i sektionerne. Seks
+# sektioner uden loft er den samme kurve, bare senere.
+#
+# Hvorfor ældste først: forfald er postens vigtigste egenskab, og en post der
+# har ventet tre dage er mere presserende end en der kom i morges. Sortering på
+# «mest handlingskrævende» ville kræve en rangering vi ikke har målt endnu.
+#
+# Hvorfor «VENTER PÅ DIG» er undtaget: en SKJULT blokerende post er en usynlig
+# blokering. Et gate-loft blev afvist af samme grund — «rammes et loft af støj,
+# er den vigtige post den der falder udenfor». Et visnings-loft er kun
+# forsvarligt fordi det SIGER hvor mange der er skjult; dér hvor det ikke kan
+# sige det meningsfuldt, gælder det ikke.
+_SEKTION_LOFT: Final[int] = 8
+
+#: Sektioner uden loft. Præcis én, og den er den eneste der kan gate.
+_UDEN_LOFT: Final[frozenset[str]] = frozenset({"venter_paa_dig"})
+
+
+def _ordn(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ældste først, med id som sekundær nøgle.
+
+    Den sekundære nøgle er ikke pynt: poster med SAMME alder ville ellers
+    flakke mellem ture, og en visning der flakker buster prompt-cachen fra sit
+    eget sted og alt efter den. `None` i alder sorterer sidst — et uparsabelt
+    tidsstempel skal ikke kunne snige sig øverst.
+    """
+    return sorted(
+        poster,
+        key=lambda p: (-(p.get("alder_dage") if p.get("alder_dage") is not None else -1),
+                       str(p.get("id") or "")))
+
+
+def _med_loft(navn: str, poster: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """(viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed."""
+    ordnet = _ordn(poster)
+    if navn in _UDEN_LOFT or len(ordnet) <= _SEKTION_LOFT:
+        return ordnet, 0
+    return ordnet[:_SEKTION_LOFT], len(ordnet) - _SEKTION_LOFT
+
+
 # ── Visningen ───────────────────────────────────────────────────────────────
 
 def byg_indbakke(
@@ -501,17 +547,25 @@ def byg_indbakke(
             ejer=db_inbox.EJER_HUSET, nu_ts=nu,
             alder_dage=_alder_dage(str(a.get("created_at") or ""), nu)))
 
-    return {
+    ud: dict[str, Any] = {
         "status": "ok",
         "bruger_id": bruger_id,
+        # «VAKTE» har pr. definition nul eller én linje og behoever intet loft.
         "vakte": vakte,
-        "venter_paa_dig": _dubletter_sammen(venter_paa_dig),
-        "i_gang": _dubletter_sammen(i_gang),
-        "paa_vej": _dubletter_sammen(paa_vej),
-        "planlagte": _dubletter_sammen(planlagte),
-        "venter_paa_bjorn": venter_paa_bjorn,
         "backlog_tal": int(k.backlog_tal() or 0),
     }
+    for navn, poster in (("venter_paa_dig", venter_paa_dig), ("i_gang", i_gang),
+                         ("paa_vej", paa_vej), ("planlagte", planlagte),
+                         ("venter_paa_bjorn", venter_paa_bjorn)):
+        # Dubletter FOERST, saa loftet taeller grupper og ikke raa poster —
+        # ellers kunne tre bookinger af samme vaekning spise tre af de otte
+        # pladser og skubbe noget andet ud.
+        vist, skjult = _med_loft(navn, _dubletter_sammen(poster))
+        ud[navn] = vist
+        # Kun naar der ER noget skjult. «+0 mere» er en loegn i formen af et tal.
+        if skjult:
+            ud[f"{navn}_skjult"] = skjult
+    return ud
 
 
 __all__ = ["Kilder", "byg_indbakke"]

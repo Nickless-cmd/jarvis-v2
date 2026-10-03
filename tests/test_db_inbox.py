@@ -235,3 +235,218 @@ def test_maks_loftet_respekteres_og_er_mindst_en(db):
     # «ingen graense» i SQL — det ville give hele tabellen.
     assert len(db_inbox.liste(bruger_id=BRUGER, maks=0)) == 1
     assert len(db_inbox.liste(bruger_id=BRUGER, maks=-7)) == 1
+
+
+# ── Opgave 8: udløb ─────────────────────────────────────────────────────────
+
+def _i(sek: float) -> str:
+    from datetime import UTC, datetime, timedelta
+    return (datetime.now(UTC) + timedelta(seconds=sek)).isoformat()
+
+
+def test_en_UDLOEBET_post_gater_ikke_men_kan_stadig_laeses(db):
+    """Udløb er en TERMINAL tilstand, ikke en sletning. `kraever_handling`
+    falder, så en post ikke kan gate i det uendelige ved at ingen rører den."""
+    _opret("job-u")
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-u", expires_at=_i(-60))
+    assert db_inbox.er_udloebet(db_inbox.hent(bruger_id=BRUGER, kilde_id="job-u")) is True
+    db_inbox.fej_udloebne()
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-u")
+    assert p["status"] == db_inbox.STATUS_UDLOEBET
+    assert p["kraever_handling"] is False
+    assert p["afgjort_grund"] == "udloebet", "Opgave 7 kan ikke skelne udloeb fra andet"
+
+
+def test_en_post_UDEN_frist_udloeber_ALDRIG(db):
+    """Tom `expires_at` er et bevidst valg. Og den må ikke fejes: tom streng
+    sorterer FØR enhver ISO-dato, så uden `expires_at != ''` i WHERE ville HVER
+    post uden frist blive fejet."""
+    _opret("job-evig")
+    assert db_inbox.er_udloebet(db_inbox.hent(bruger_id=BRUGER, kilde_id="job-evig")) is False
+    assert db_inbox.fej_udloebne()["fejet"] == 0
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-evig")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_en_UPARSABEL_frist_BEVARER_posten(db):
+    """Fald mod at bevare. Godkendelsernes præcedens gør det modsatte
+    (`except ValueError: expires_at = now`, altså «udløbet NU»), og det er
+    forkert her: en skrivefejl i et tidsstempel må ikke lukke en forpligtelse."""
+    _opret("job-skrald")
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-skrald",
+                         expires_at="i morgen engang")
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-skrald")
+    assert db_inbox.er_udloebet(p) is False
+    assert p["status"] == db_inbox.STATUS_AABEN
+
+
+def test_en_FREMTIDIG_frist_udloeber_ikke(db):
+    _opret("job-frem")
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-frem", expires_at=_i(3600))
+    assert db_inbox.fej_udloebne()["fejet"] == 0
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-frem")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_et_NAIVT_tidsstempel_laeses_som_UTC_i_BEGGE_retninger(db):
+    """Ellers sammenlignes æbler og pærer. `db_governance` gør det samme.
+
+    BEGGE sider af nu, og det er ikke overdrevet: min første udgave målte kun
+    den ene, og en mutation der læste naive stempler som UTC+12 slap igennem.
+    Jeg havde fortegnet galt — en POSITIV offset gør et naivt stempel
+    *tidligere* i UTC, så en post 1 time gammel blev 13 timer gammel og stadig
+    var «udløbet». Testen bestod for den forkerte grund.
+
+    Med et stempel på hver side af nu flipper mindst ét svar ved enhver forkert
+    zone, uanset fortegn.
+    """
+    from datetime import UTC, datetime, timedelta
+    nu = datetime.now(UTC)
+    fortid = (nu - timedelta(hours=6)).replace(tzinfo=None).isoformat()
+    fremtid = (nu + timedelta(hours=6)).replace(tzinfo=None).isoformat()
+    assert db_inbox.er_udloebet({"expires_at": fortid, "kilde_id": "x"}, nu) is True
+    assert db_inbox.er_udloebet({"expires_at": fremtid, "kilde_id": "x"}, nu) is False
+
+
+def test_udloeb_PRAECIS_paa_graensen_er_udloebet(db):
+    """Én side valgt og pinnet."""
+    from datetime import UTC, datetime
+    nu = datetime.now(UTC)
+    assert db_inbox.er_udloebet({"expires_at": nu.isoformat(), "kilde_id": "x"}, nu) is True
+
+
+def test_fejeren_koert_TO_gange_taeller_ikke_samme_post_to_gange(db):
+    _opret("job-to")
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-to", expires_at=_i(-60))
+    assert db_inbox.fej_udloebne()["fejet"] == 1
+    assert db_inbox.fej_udloebne()["fejet"] == 0, "fejeren taalte samme post igen"
+
+
+def test_fejeren_roerer_ikke_en_AFGJORT_post(db):
+    """En post jeg selv har kvitteret må ikke få sin status skrevet om til
+    `udloebet` — det ville skjule at jeg traf en beslutning."""
+    _opret("job-mit")
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-mit", expires_at=_i(-60))
+    db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-mit",
+                    ny_status=db_inbox.STATUS_DONE, grund="kvitteret")
+    db_inbox.fej_udloebne()
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-mit")["status"] == db_inbox.STATUS_DONE
+
+
+# ── Opgave 9: kildens terminale tilstand ────────────────────────────────────
+
+def test_exit_0_NEDGRADERER_posten_uden_at_nogen_kaldte_done(db):
+    """Den blokerede ligevægt: intet lukkede et job der er exit 0 af sig selv."""
+    _opret("job-ok")
+    r = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-ok", exit_kode=0)
+    assert r["status"] == "ok"
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-ok")
+    assert p["status"] == db_inbox.STATUS_AFSLUTTET_AF_KILDE
+    assert p["kraever_handling"] is False
+    # NEDGRADERING, ikke sletning — beviset staar.
+    assert p["afgjort_grund"] == "kilden meldte exit 0"
+
+
+def test_exit_1_lukker_IKKE_posten(db):
+    """En fejlet opgave er netop en der kræver handling — det er hele grunden
+    til at panelet findes."""
+    _opret("job-fejl")
+    r = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-fejl", exit_kode=1)
+    assert r["status"] == "ikke_afgjort"
+    assert "exit 1" in r["grund"]
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-fejl")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_en_FORSVUNDET_kilde_er_hverken_lukket_eller_gatende_for_evigt(db):
+    """`None` er «kilden er forsvundet», ikke «færdig». Posten står åben, og
+    visningen giver den `status_ukendt` — sin egen klasse."""
+    _opret("job-vaek")
+    r = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-vaek", exit_kode=None)
+    assert r["status"] == "ikke_afgjort"
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-vaek")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_kilden_meldt_TO_gange_er_idempotent(db):
+    _opret("job-2x")
+    a = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-2x", exit_kode=0)
+    b = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-2x", exit_kode=0)
+    assert a["status"] == "ok"
+    assert b == {"status": "allerede", "id": "job-2x",
+                 "havde": db_inbox.STATUS_AFSLUTTET_AF_KILDE}
+
+
+def test_kilden_kan_ikke_GENAABNE_en_post_jeg_har_lukket(db):
+    _opret("job-lukket")
+    db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-lukket",
+                    ny_status=db_inbox.STATUS_DONE, grund="kvitteret")
+    r = db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="job-lukket", exit_kode=0)
+    assert r["status"] == "allerede" and r["havde"] == db_inbox.STATUS_DONE
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-lukket")["afgjort_grund"] == "kvitteret"
+
+
+def test_en_UKENDT_kilde_melder_ukendt(db):
+    _opret("varm-op")
+    assert db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id="nix",
+                                       exit_kode=0)["status"] == "ukendt"
+
+
+# ── Opgave 11: retention ────────────────────────────────────────────────────
+
+def _afgjort_for(kilde_id: str, dage: float):
+    from datetime import UTC, datetime, timedelta
+    ts = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET status = ?, afgjort_at = ? WHERE kilde_id = ?",
+                  (db_inbox.STATUS_DONE, ts, kilde_id))
+
+
+def test_en_LUKKET_post_uden_for_vinduet_falder_ud_af_den_aktive_visning(db):
+    _opret("job-gammel")
+    _afgjort_for("job-gammel", db_inbox._RETENTION_DAGE + 1)
+    aktiv = [p["id"] for p in db_inbox.liste_aktiv(bruger_id=BRUGER)]
+    assert "job-gammel" not in aktiv
+    # Men den kan stadig FINDES. «Vaek fra forsiden» er ikke «slettet».
+    alle = [p["id"] for p in db_inbox.liste(bruger_id=BRUGER, kun_aabne=False)]
+    assert "job-gammel" in alle
+
+
+def test_en_NYLIGT_lukket_post_er_stadig_i_den_aktive_visning(db):
+    _opret("job-ny")
+    _afgjort_for("job-ny", 1)
+    assert "job-ny" in [p["id"] for p in db_inbox.liste_aktiv(bruger_id=BRUGER)]
+
+
+def test_retention_fjerner_IKKE_en_post_der_stadig_gater(db):
+    """Uanset alder. En åben post har ingen aldersgrænse her — kunne vinduet
+    fjerne den, ville en blokering kunne skjule sig selv ved at blive gammel."""
+    _opret("job-aaben")
+    from datetime import UTC, datetime, timedelta
+    gammel = (datetime.now(UTC) - timedelta(days=365)).isoformat()
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = 'job-aaben'",
+                  (gammel,))
+    assert "job-aaben" in [p["id"] for p in db_inbox.liste_aktiv(bruger_id=BRUGER)]
+
+
+def test_en_post_UDEN_lukke_tidspunkt_bevares(db):
+    """Mangler tidsstemplet, må den ikke falde ud af vinduet ved et uheld."""
+    _opret("job-intet-ts")
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET status = ?, afgjort_at = '' "
+                  "WHERE kilde_id = 'job-intet-ts'", (db_inbox.STATUS_DONE,))
+    assert "job-intet-ts" in [p["id"] for p in db_inbox.liste_aktiv(bruger_id=BRUGER)]
+
+
+def test_NUL_poster_uden_for_vinduet_lader_visningen_uaendret(db):
+    for i in range(3):
+        _opret(f"job-{i}")
+    assert len(db_inbox.liste_aktiv(bruger_id=BRUGER)) == 3
+
+
+def test_liste_aktiv_afviser_tom_bruger(db):
+    _opret("job-x")
+    assert db_inbox.liste_aktiv(bruger_id="") == []

@@ -210,6 +210,57 @@ Disse gælder HVER opgave nedenfor.
   efter procesgenstart.
 - Dansk i kommentarer og docstrings, som resten af huset.
 
+### Beslutningerne fra Opgave 8-13, låst 3/10-2026 (Opus)
+
+Hver af de seks opgaver åbner med «Beslutning først (trin 1)». Her er svarene,
+med den begrundelse der gør dem efterprøvelige.
+
+**Opgave 8 — udløb: BYGGES, som beregnet tilstand PLUS en fejer.**
+Beregningen dræber posten med det samme, uden at noget job skal køre; fejeren
+sikrer at en post ingen slår op igen også får sin terminale tilstand SKREVET, så
+Opgave 7 kan tælle den. Begrundelsen er godkendelsernes egen historie:
+`sweep_expired_intents` blev TILFØJET fordi den beregnede form ikke var nok
+(målt 10/9: fire rækker 23-115 dage over frist, alle stadig `pending`).
+Fald-retningen er **BEVAR**: tom frist udløber aldrig, uparsabel tekst bevarer
+posten og logges. Det er modsat godkendelsernes præcedens
+(`except ValueError: expires_at = now`), og med vilje — en skrivefejl i et
+tidsstempel må ikke kunne lukke en forpligtelse.
+
+**Opgave 9 — hvem lukker en færdig post: (b), en indholdsregel nedgraderer.**
+Ikke (a), fordi kilderne er mange og nogle (supervisor-jobs, scout-agenter) har
+intet sted at skrive til. Ikke (c), fordi det ER den blokerede ligevægt.
+Nedgradering, ikke sletning: posten bliver `afsluttet_af_kilde` og kan stadig
+findes. `exit != 0` lukker **ikke** — en fejlet opgave er netop en der kræver
+handling. En forsvundet kilde (`exit_kode is None`) lukker heller ikke; den
+hører i `status_ukendt`, sin egen klasse.
+
+**Opgave 10 — loft og rangorden: 8 linjer per sektion, ældste først.**
+«VENTER PÅ DIG» har **intet** loft, og testen beviser at loftet ikke GÆLDER dér
+— ikke bare at det er stort nok. En skjult blokerende post er en usynlig
+blokering, og det er præcis grunden til at et *gate*-loft blev afvist. Ældste
+først, fordi forfald er postens vigtigste egenskab; en rangering på «mest
+handlingskrævende» kræver en måling vi ikke har. Sekundær nøgle på id, så
+poster med samme alder ikke flakker mellem ture og buster prompt-cachen.
+Dubletter grupperes FØR loftet, ellers kunne tre bookinger af samme vækning
+spise tre af de otte pladser.
+
+**Opgave 11 — retention: en LÆSE-REGEL på 30 dage, ingen sletning.**
+En lukket post ældre end vinduet forsvinder fra den aktive visning men kan
+stadig findes — «væk fra forsiden» er ikke «slettet». Sletning af et bevis
+kræver sin egen begrundelse, og den har vi ikke: tabellen vokser med én række
+per kilde per bruger, altså hundreder, ikke de 1.896 kandidater der druknede
+den anden flade. En post der stadig gater fjernes aldrig, uanset alder.
+
+**Opgave 12 — tællerens ene kilde: IKKE delt med skill-gaten.**
+De tæller forskellige ting: skill-gaten tæller *kald i turen*, indbakke-gaten
+tæller *leverede påmindelser pr. post*. Den sidste er durabel i
+`inbox_items.paamindelser` og skal overleve en procesgenstart — en turs
+kald-liste kan ikke bære den. Men udpakningen til det ægte værktøjsnavn
+genbruges fra den ENE definition (`kaldt_vaerktoej.pak_ud`), og en AST-vagt
+holder den dér.
+
+**Opgave 13 — prosa-løfter: NAVNGIVET FRAVALG.** Se tabellen «Hvad der ER med».
+
 ---
 
 ## Filstruktur
@@ -485,8 +536,37 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 | Godkendelser | **ind** som «venter på Bjørn», gater ikke | Han skal kunne SE at en tråd venter på dig, uden at din svartid bliver hans blokering |
 | Kandidat-backlog | **ude**, kun ét tal med en adresse | 1.896 poster, 99 % gentagelser, ville drukne den dag ét |
 | Kanalbeskeder (Discord/Telegram/mobil) | **ude**, med en vagt | Det er samtale, ikke opgaver. En udelukkelse uden vagt glider — se Opgave 2, trin 9 |
+| Løfter givet i PROSA («jeg tjekker det i morgen») | **ude**, navngivet fravalg (Opgave 13, låst 3/10) | Se begrundelsen under tabellen |
 | Forældreløse poster | **ind** som typet status | Et job hvis proces er væk skal ikke stå som «i gang» i tre dage |
 | Flere brugere | nøglet per bruger; kun verificerede Bjørn-poster gater i denne fase | `list_wakeups` og agent-registret er ikke i sig selv brugerfiltrerede; ukendt ejer må ikke lækkes eller gate |
+
+#### Hvorfor prosa-løfter er et fravalg (Opgave 13, låst 3/10-2026)
+
+Det er den mest almindelige ægte fejl: «jeg tjekker det i morgen», sagt i en
+samtale og aldrig registreret. Og den er ude. Begrundelsen er at **proveniensen
+ikke kan bevises for en sætning.**
+
+Opgave 1's krav gælder: ejer er bevis, ikke et flag. For en vækning er beviset
+konkret — der findes et tool-kald, i et run der kører, for en autentificeret
+bruger. For en sætning i en samtale findes intet af det. Den der ville oprette
+posten er Jarvis' egen fortolkning af sin egen tekst, og så er «verificeret
+ejer» blevet præcis det kalder-valgte flag hele skrive-kontrakten er bygget imod.
+
+Konsekvensen hvis vi byggede det alligevel: en model der læser sin egen hale og
+opretter en gatende post ud af en sætning den selv skrev. Det er Smiths løkke i
+en ny form — hans note landede i halen, han gentog den, detektoren fyrede — bare
+med en blokering i stedet for en gentagelse.
+
+**Hvad man gør i stedet:** et løfte der skal huskes bookes som en vækning.
+`schedule_self_wakeup` er ét kald, det bærer sin egen proveniens, og det er
+allerede den levende arbejdsgang (141+171 kald). Fravalget koster altså ikke
+evnen — det koster kun automatikken, og automatikken var den usikre del.
+
+**Vagten:** `tests/test_inbox_view.py::test_kanalbeskeder_hoerer_ikke_i_indbakken`
+dækker den også. Kanalbeskeder ER prosaens transport: `chat_messages`,
+`discord` og `telegram` er alle AST-forbudte i `inbox_view`, så en fremtidig
+prosa-læser kan ikke snige sig ind uden at vælte vagten. En udelukkelse uden
+vagt glider — og her glider den ikke.
 
 ---
 

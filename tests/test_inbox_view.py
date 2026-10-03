@@ -443,3 +443,114 @@ def test_kildernes_standarder_er_SENT_bundne():
             "standarden er bundet til en KOPI — en patch af modulet naar den ikke"
     finally:
         iv._aegte_jobs = _rigtig
+
+
+# ── Opgave 10: loft og rangorden ────────────────────────────────────────────
+
+def _mange(n: int, sektion: str = "paa_vej") -> dict:
+    """n poster i `paa_vej`, med faldende alder så ordenen kan måles."""
+    return _kilder(vaekninger=[
+        {"wakeup_id": f"wake-{i:02d}", "status": "pending", "user_id": BJORN,
+         "prompt": f"opgave nr {i}", "scheduled_at": _iso(TID - i * DAG)}
+        for i in range(n)])
+
+
+def test_en_sektion_over_loftet_viser_loftet_OG_en_taelling_af_resten():
+    """Argumentet der udelukkede kandidat-backloggen («1.896 poster ville
+    drukne den dag ét») gælder også INDE i sektionerne."""
+    from core.services.inbox_view import _SEKTION_LOFT
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_mange(_SEKTION_LOFT + 5))
+    assert len(v["paa_vej"]) == _SEKTION_LOFT
+    assert v["paa_vej_skjult"] == 5
+
+
+def test_de_viste_er_de_AELDSTE():
+    """Forfald er postens vigtigste egenskab. En post der har ventet tre dage
+    er mere presserende end en der kom i morges."""
+    from core.services.inbox_view import _SEKTION_LOFT
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_mange(_SEKTION_LOFT + 3))
+    aldre = [p["alder_dage"] for p in v["paa_vej"]]
+    assert aldre == sorted(aldre, reverse=True), f"ikke aeldste foerst: {aldre}"
+    assert aldre[0] == _SEKTION_LOFT + 2, "den aeldste blev skjult"
+
+
+def test_PRAECIS_loftet_giver_INGEN_skjult_linje():
+    """«+0 mere» er en løgn i formen af et tal."""
+    from core.services.inbox_view import _SEKTION_LOFT
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_mange(_SEKTION_LOFT))
+    assert len(v["paa_vej"]) == _SEKTION_LOFT
+    assert "paa_vej_skjult" not in v
+
+
+def test_loftet_PLUS_EN_skjuler_praecis_den_rigtige():
+    from core.services.inbox_view import _SEKTION_LOFT
+    n = _SEKTION_LOFT + 1
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_mange(n))
+    assert v["paa_vej_skjult"] == 1
+    vist = {p["id"] for p in v["paa_vej"]}
+    # Den YNGSTE er den skjulte — wake-00 har alder 0.
+    assert "wake-00" not in vist
+    assert f"wake-{n - 1:02d}" in vist, "den aeldste blev skjult i stedet"
+
+
+def test_den_BLOKERENDE_sektion_afkortes_ALDRIG():
+    """En skjult blokerende post er en usynlig blokering. Testen beviser at
+    loftet ikke GÆLDER dér — ikke bare at det er stort nok."""
+    from core.services.inbox_view import _SEKTION_LOFT, _UDEN_LOFT
+    n = _SEKTION_LOFT * 3
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id=f"job-{i:02d}", kildetype="job", beskrivelse=f"nr {i}",
+              created_at=_iso(TID - i * DAG)) for i in range(n)]))
+    assert "venter_paa_dig" in _UDEN_LOFT
+    assert len(v["venter_paa_dig"]) == n, "en blokerende post blev skjult"
+    assert "venter_paa_dig_skjult" not in v
+
+
+def test_TOMME_sektioner_er_tomme_lister_ikke_overskrifter():
+    """En overskrift med nul linjer fylder i prompten og siger ingenting.
+    Værktøjet udelader dem; visningen leverer dem som tomme lister."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder())
+    for navn in ("venter_paa_dig", "i_gang", "paa_vej", "planlagte"):
+        assert v[navn] == []
+        assert f"{navn}_skjult" not in v
+
+
+def test_SAMME_alder_giver_en_DETERMINISTISK_orden():
+    """Poster med samme alder ville ellers flakke mellem ture — og en visning
+    der flakker buster prompt-cachen fra sit eget sted og alt efter den."""
+    kilder = _kilder(vaekninger=[
+        {"wakeup_id": f"wake-{b}", "status": "pending", "user_id": BJORN,
+         "prompt": f"opgave {b}", "scheduled_at": _iso(TID)}
+        for b in ("c", "a", "b")])
+    a = [p["id"] for p in byg_indbakke(BJORN, nu_ts=TID, kilder=kilder)["paa_vej"]]
+    b = [p["id"] for p in byg_indbakke(BJORN, nu_ts=TID, kilder=kilder)["paa_vej"]]
+    assert a == b == ["wake-a", "wake-b", "wake-c"], f"ordenen flakkede: {a} vs {b}"
+
+
+def test_et_UPARSABELT_tidsstempel_sorterer_SIDST_ikke_foerst():
+    """Alderen er `None`. Sorterede den øverst, kunne et ødelagt tidsstempel
+    skubbe en reelt gammel post ud under loftet."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(vaekninger=[
+        {"wakeup_id": "wake-skrald", "status": "pending", "user_id": BJORN,
+         "prompt": "uden tid", "scheduled_at": "aldrig"},
+        {"wakeup_id": "wake-gammel", "status": "pending", "user_id": BJORN,
+         "prompt": "tre dage", "scheduled_at": _iso(TID - 3 * DAG)}]))
+    assert [p["id"] for p in v["paa_vej"]] == ["wake-gammel", "wake-skrald"]
+
+
+def test_dubletter_taelles_FOER_loftet():
+    """Ellers kunne tre bookinger af samme vækning spise tre af de otte
+    pladser og skubbe noget andet ud."""
+    from core.services.inbox_view import _SEKTION_LOFT
+    poster = []
+    for i in range(3):
+        poster.append({"wakeup_id": f"wake-dub{i}", "status": "pending",
+                       "user_id": BJORN, "prompt": "SAMME TEKST",
+                       "scheduled_at": _iso(TID)})
+    for i in range(_SEKTION_LOFT):
+        poster.append({"wakeup_id": f"wake-u{i:02d}", "status": "pending",
+                       "user_id": BJORN, "prompt": f"unik {i}",
+                       "scheduled_at": _iso(TID - i * DAG)})
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(vaekninger=poster))
+    # 8 unikke + 1 gruppe = 9 grupper, altsaa én skjult — ikke tre.
+    assert v["paa_vej_skjult"] == 1, f"loftet taalte raa poster: {v.get('paa_vej_skjult')}"

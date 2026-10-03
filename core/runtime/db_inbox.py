@@ -27,12 +27,15 @@ Tre ting i skemaet er valgt mod målte fejl i huset:
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
 from datetime import UTC, datetime
 from typing import Any, Final
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 # Åben = kan stadig gate (hvis ejeren er verificeret). Alt andet er terminalt.
 STATUS_AABEN: Final[str] = "aaben"
@@ -94,6 +97,7 @@ def _ensure_skema(conn: sqlite3.Connection) -> None:
             )
             """
         )
+        _ensure_kolonner(conn)
         # Visningen spørger altid «åbne poster for DENNE bruger», og gaten
         # spørger det samme. Indekset bærer bruger først, fordi det er den
         # kolonne der ALDRIG er fri.
@@ -104,6 +108,34 @@ def _ensure_skema(conn: sqlite3.Connection) -> None:
             """
         )
         _skema_klar = True
+
+
+#: Kolonner tilfoejet EFTER foerste udgave. Mønstret er husets:
+#: `ALTER TABLE` i en idempotent ensure, ikke en migrations-fil.
+#:
+#: `expires_at` (Opgave 8): TOM streng = udløber ALDRIG, og det er et bevidst
+#: valg frem for NULL. Tom streng sorterer FØR enhver ISO-dato, så en `<`-
+#: sammenligning i SQL ville gøre hver post uden udløb til «udløbet» — derfor
+#: har hver forespørgsel om udløb også et `expires_at != ''`.
+_SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
+    ("expires_at", "TEXT NOT NULL DEFAULT ''"),
+)
+
+
+def _ensure_kolonner(conn: sqlite3.Connection) -> None:
+    """Tilføj kolonner der kom senere. Idempotent; kaster ikke på en dublet."""
+    kendte = {r[1] for r in conn.execute("PRAGMA table_info(inbox_items)")}
+    for navn, type_ in _SENERE_KOLONNER:
+        if navn in kendte:
+            continue
+        try:
+            conn.execute(f"ALTER TABLE inbox_items ADD COLUMN {navn} {type_}")
+        except sqlite3.OperationalError as exc:
+            # En anden proces kan have tilfoejet den mellem PRAGMA og ALTER.
+            # «duplicate column» er altsaa et NORMALT udfald her, ikke en fejl
+            # — men alt ANDET skal ses.
+            if "duplicate column" not in str(exc).lower():
+                logger.warning("db_inbox: kunne ikke tilfoeje %s: %s", navn, exc)
 
 
 def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
@@ -133,7 +165,22 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "created_at": str(r["created_at"] or ""),
         "afgjort_at": str(r["afgjort_at"] or ""),
         "afgjort_grund": str(r["afgjort_grund"] or ""),
+        "expires_at": _felt(r, "expires_at"),
     }
+
+
+def _felt(r: sqlite3.Row, navn: str) -> str:
+    """Læs en kolonne der måske ikke findes i DENNE række endnu.
+
+    En proces der kører den gamle kode kan have læst rækken før `ALTER TABLE`
+    nåede at køre. Fald mod tom streng — altså «udløber aldrig» — frem for at
+    kaste: en manglende kolonne må ikke kunne vælte en visning.
+    """
+    try:
+        v = r[navn]
+    except (IndexError, KeyError):  # kolonnen findes ikke i DENNE raekke endnu
+        return ""
+    return "" if v is None else str(v)
 
 
 def opret_eller_hent(
@@ -322,3 +369,209 @@ def noter_paamindelse(*, bruger_id: str, kilde_id: str, tur: str) -> dict[str, A
         ).fetchone()
     return {"status": "ok", "id": kilde_id,
             "paamindelser": int(r["paamindelser"]) if r else 0}
+
+
+# ── Opgave 8: udløb ─────────────────────────────────────────────────────────
+#
+# BESLUTNINGEN (trin 1): udløb bygges, og det bygges som **beregnet tilstand
+# PLUS en fejer** — ikke beregnet alene.
+#
+# Præcedensen er godkendelsernes, men den siger det modsatte af hvad dens form
+# antyder. `db_governance` beregner `effective_approval_state` ved læsning,
+# præcis som en «doven» løsning ville. Og `sweep_expired_intents` blev
+# TILFØJET bagefter, med sin egen begrundelse:
+#
+#   «Udloebet er DOVENT: det sker naar den samme intention slaas op paa ny. En
+#    intention ingen spoerger til igen bliver derfor staaende `pending` for
+#    evigt. MAALT 10/9-2026: fire raekker med udloeb 23, 50, 115 og 115 dage
+#    tilbage i tiden, alle stadig `pending`.»
+#
+# Fejeren findes altså fordi beregningen ikke var nok. Indbakken er mindre
+# udsat, fordi visningen læser alle åbne poster hver tur — men «hver tur»
+# gælder kun for en bruger hvis session faktisk kører. En post der tilhører en
+# inaktiv bruger rammes af samme kurve, bare langsommere.
+#
+# Beregningen er det der DRÆBER posten (med det samme, uden at noget job skal
+# køre). Fejeren er det der sikrer at en post ingen læser også får sin
+# terminale tilstand SKREVET, så Opgave 7 kan tælle den.
+
+#: ISO-grænsen SKAL dannes med `strftime('%Y-%m-%dT%H:%M:%S', …)`, ikke med
+#: `datetime('now', …)`. `created_at` er ISO **med `T`**, og `T` sorterer EFTER
+#: mellemrum — så `datetime('now')` som grænse slipper hele dagen igennem.
+#: Den fælde er ramt FIRE gange i dette hus.
+_ISO_NU = "strftime('%Y-%m-%dT%H:%M:%S','now')"
+
+
+def er_udloebet(post: dict[str, Any], nu: datetime | None = None) -> bool:
+    """Er posten udløbet? Beregnet, så den dør uden at et job skal køre.
+
+    Fald-retningen er **BEVAR**, ikke udløb:
+
+    * tom `expires_at` ⇒ udløber ALDRIG. Et bevidst valg: en post uden frist
+      skal kunne stå til nogen afgør den.
+    * uparsabel tekst ⇒ posten bevares, og det logges på WARNING. Godkendelsernes
+      egen præcedens gør det modsatte (`except ValueError: expires_at = now`,
+      altså «udløbet NU»), og det er forkert her: en skrivefejl i et
+      tidsstempel må ikke kunne lukke en forpligtelse.
+    * naivt tidsstempel ⇒ læses som UTC, samme som `db_governance` gør. Ellers
+      sammenlignes æbler og pærer.
+    * `expires_at == nu` ⇒ **udløbet**. Én side valgt og pinnet.
+    """
+    s = str(post.get("expires_at") or "").strip()
+    if not s:
+        return False
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        logger.warning("db_inbox: uparsabelt expires_at %r paa %r — posten BEVARES",
+                       s[:40], str(post.get("kilde_id") or "")[:40])
+        return False
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return d <= (nu or datetime.now(UTC))
+
+
+def saet_udloeb(*, bruger_id: str, kilde_id: str, expires_at: str) -> dict[str, Any]:
+    """Sæt (eller fjern, med tom streng) en posts frist."""
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET expires_at = ? WHERE bruger_id = ? AND kilde_id = ?",
+            (str(expires_at or ""), bruger_id, kilde_id))
+    if cur.rowcount == 0:
+        return {"status": "ukendt", "id": kilde_id}
+    return {"status": "ok", "id": kilde_id, "expires_at": str(expires_at or "")}
+
+
+def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
+    """Skriv den terminale tilstand for åbne poster hvis frist er passeret.
+
+    Fejeren gør ikke posten død — beregningen har allerede gjort det. Den
+    sikrer at en post INGEN slår op igen også får sin tilstand skrevet, så
+    Opgave 7 kan skelne `udloebet` fra `released` uden årsag.
+
+    Kørt to gange tæller den ikke samme post to gange: `status = 'aaben'` i
+    WHERE gør skrivningen idempotent.
+    """
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            # `expires_at != ''` er ikke pynt: tom streng sorterer FØR enhver
+            # ISO-dato, så uden den ville HVER post uden frist blive fejet.
+            f"UPDATE inbox_items SET status = ?, kraever_handling = 0, "
+            f"afgjort_at = ?, afgjort_grund = ? "
+            f"WHERE status = ? AND expires_at != '' AND expires_at <= {_ISO_NU} "
+            f"AND id IN (SELECT id FROM inbox_items WHERE status = ? "
+            f"           AND expires_at != '' AND expires_at <= {_ISO_NU} LIMIT ?)",
+            (STATUS_UDLOEBET, _nu(), "udloebet", STATUS_AABEN, STATUS_AABEN,
+             max(int(maks), 1)))
+        n = cur.rowcount
+    if n:
+        logger.info("db_inbox: fejede %d udloebet post(er)", n)
+    return {"status": "ok", "fejet": int(n or 0)}
+
+
+# ── Opgave 9: kildens terminale tilstand ────────────────────────────────────
+#
+# BESLUTNINGEN (trin 1): mulighed **(b)** — en indholdsregel nedgraderer posten
+# når kilden er terminal. Ikke (a), fordi kilderne er mange og nogle af dem
+# (supervisor-jobs, scout-agenter) ikke har noget sted at skrive til. Ikke (c),
+# fordi det ER den blokerede ligevægt: intet lukker et job der er exit 0 af sig
+# selv, og så står posten og gater indtil nogen rører den i hånden.
+#
+# **Nedgradering, ikke sletning.** Posten bliver `afsluttet_af_kilde` og kan
+# stadig ses og findes. Beviset slettes ikke.
+
+
+def meld_kilde_faerdig(
+    *, bruger_id: str, kilde_id: str, exit_kode: int | None,
+) -> dict[str, Any]:
+    """Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT.
+
+    Kanterne, hver for sig, fordi en nedgradering der rammer forkert er værre
+    end ingen:
+
+    * `exit_kode != 0` ⇒ posten lukkes **IKKE**. En fejlet opgave er netop en
+      der kræver handling, og det er hele grunden til at panelet findes.
+    * `exit_kode is None` ⇒ kilden er forsvundet, ikke færdig. Posten står
+      åben; visningen giver den `status_ukendt`, som er sin egen klasse.
+    * meldt to gange ⇒ idempotent, og tælleren i Opgave 7 må ikke tælle
+      dobbelt. `status = 'aaben'` i WHERE sørger for begge.
+    * allerede `done` af mig ⇒ kildens melding genåbner den ikke.
+    * mens den gater ⇒ `kraever_handling = 0` i SAMME `UPDATE`, så nægtelsen
+      forsvinder i samme greb. Ellers blokerer en død post.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    if exit_kode is None:
+        return {"status": "ikke_afgjort", "id": kilde_id, "grund": "kilden er forsvundet"}
+    if int(exit_kode) != 0:
+        return {"status": "ikke_afgjort", "id": kilde_id,
+                "grund": f"exit {int(exit_kode)} — en fejlet opgave kraever handling"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
+            "afgjort_at = ?, afgjort_grund = ? "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ?",
+            (STATUS_AFSLUTTET_AF_KILDE, _nu(), "kilden meldte exit 0",
+             bruger_id, kilde_id, STATUS_AABEN))
+        if cur.rowcount == 0:
+            r = conn.execute(
+                "SELECT status FROM inbox_items WHERE bruger_id = ? AND kilde_id = ?",
+                (bruger_id, kilde_id)).fetchone()
+            if r is None:
+                return {"status": "ukendt", "id": kilde_id}
+            return {"status": "allerede", "id": kilde_id, "havde": str(r["status"])}
+    return {"status": "ok", "id": kilde_id, "ny_status": STATUS_AFSLUTTET_AF_KILDE}
+
+
+# ── Opgave 11: retention ────────────────────────────────────────────────────
+#
+# BESLUTNINGEN (trin 1): retention er en **LÆSE-REGEL**, ikke en sletning.
+#
+# En lukket post ældre end vinduet forsvinder fra den aktive visning, men kan
+# stadig FINDES — «væk fra forsiden» er ikke «slettet». Sletning af et bevis
+# kræver sin egen begrundelse, og den har vi ikke: `inbox_items` vokser med en
+# række per kilde per bruger, altså i størrelsesordenen hundreder, ikke de 1.896
+# kandidater der druknede den anden flade.
+#
+# Tredive dage: længe nok til at man kan se tilbage på en uge der gik skævt,
+# kort nok til at den aktive visning ikke bærer en måneds historie.
+
+_RETENTION_DAGE: Final[int] = 30
+
+
+def liste_aktiv(*, bruger_id: str, maks: int = 500) -> list[dict[str, Any]]:
+    """Den AKTIVE visning: åbne poster plus nyligt lukkede.
+
+    Kanterne:
+
+    * en post der stadig **gater** ⇒ altid med, uanset alder. Den er åben, og
+      åbne poster har ingen aldersgrænse her.
+    * en post **uden** lukke-tidspunkt ⇒ bevares. Mangler tidsstemplet, må den
+      ikke falde ud af vinduet ved et uheld.
+    * vinduets grænse ⇒ `afgjort_at == graense` er **inde**. Én side valgt.
+    * `strftime`, ikke `datetime('now', …)`: tidsstemplerne er ISO med `T`, og
+      `T` sorterer efter mellemrum, så den anden form slipper hele dagen
+      igennem. Fjerde gang den fælde rammes i dette hus.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    if not bruger_id:
+        return []
+    with connect() as conn:
+        _ensure_skema(conn)
+        rows = conn.execute(
+            f"SELECT * FROM inbox_items WHERE bruger_id = ? AND ("
+            f"  status = ?"
+            f"  OR afgjort_at = ''"
+            f"  OR afgjort_at >= strftime('%Y-%m-%dT%H:%M:%S','now','-{_RETENTION_DAGE} days')"
+            f") ORDER BY id ASC LIMIT ?",
+            (bruger_id, STATUS_AABEN, max(int(maks), 1))).fetchall()
+    return [_post_fra_raekke(r) for r in rows]

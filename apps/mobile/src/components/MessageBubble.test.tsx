@@ -19,6 +19,21 @@ jest.mock('../state/AuthContext', () => {
 const base = { id: 'm1', created_at: new Date().toISOString() }
 
 describe('MessageBubble', () => {
+  it('giver ombrudt assistenttekst en kompakt linjehøjde på selve Text-elementet', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base, role: 'assistant',
+      content: 'Den gjorde det tre. Så enten overlever tælleren ikke mellem runderne, eller også starter hver af mine tekstblokke en ny tur.'
+    } as ChatMessage} />)
+    const text = screen.getByText(/Den gjorde det tre/)
+    const textgroup = text.parent!
+    expect(textgroup.type).toBe('Text')
+    expect(textgroup.props.style).toEqual(expect.objectContaining({
+      fontSize: 15,
+      lineHeight: 19,
+      includeFontPadding: false,
+    }))
+  })
+
   it('stream og gemt svar bruger samme kompakte afsnitsafstand', async () => {
     const content = 'Første sætning.\n\nAnden sætning.\n\nTredje sætning.'
     const a = await render(<MessageBubble message={{ ...base, id: 'stream-1', role: 'assistant', content } as ChatMessage} />)

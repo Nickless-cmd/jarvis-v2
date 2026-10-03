@@ -552,7 +552,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys
 // baggrund (= hvid boks med næsten-hvid tekst) og afsnit klistrer sammen.
 const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
-  body: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 26 },
+  // `body` bliver en View i react-native-markdown-display og kan ikke give
+  // linjehøjde videre til Text. Det er textgroup, der faktisk ombryder prosa.
+  body: {},
+  textgroup: { color: tokens.color.fg1, fontSize: 15, lineHeight: 19, includeFontPadding: false },
   paragraph: { marginTop: 0, marginBottom: 3 },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },

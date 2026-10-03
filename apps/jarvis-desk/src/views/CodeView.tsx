@@ -47,7 +47,7 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, type CompactionStats } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
@@ -474,7 +474,17 @@ export function CodeView({
   const tilbage = useTilbagespol({ config: config, sessionId, genindlaes: () => sessions.refresh() })
   useEffect(() => { tilbage.glem() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
+  const koe = useSendeKoe({
+    arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o),
+    // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
+    // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
+    steer: async (text) => {
+      const runId = stream.activeRunId
+      if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
+    },
+    kanSteer: !!stream.activeRunId,
+  })
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
@@ -1229,7 +1239,10 @@ export function CodeView({
           </div>
           <JumpToLatest synlig={!scroll.atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
           <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
-          <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
+          <KoeChip
+            items={koe.items} busy={stream.status === 'working'} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+            onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
+          />
           {composer}
         </div>
       </div>

@@ -1190,8 +1190,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
   overflow-y: auto;
   /* Havde ingen egen baggrund og laa gennemsigtig over chatten. Samme
-     panelfarve som miljoefeltet — de er to ruder i samme stak. */
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+     panelfarve som miljoefeltet — de er to ruder i samme stak.
+     3/10-2026 (Bjørn): sticky-notens grå (--overlay-bg) er nu fladen for
+     HELE stakken, ikke --bg-2. Se .env-panel. */
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
 }
 .jobs-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -1473,15 +1475,37 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .msg-user-images { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-bottom: 6px; }
 
 /* follow-up kø-chip over composeren */
+/* follow-up kø over composeren. 3/10-2026 (Bjørn): «que beskeder mangler styr
+   funktion lige som i mobilen» — listen rummer nu FLERE beskeder, og hver
+   række har rediger / flyt op-ned / send nu / fjern. Ingen af dem afbryder
+   turen der kører. */
 .queued-chip {
-  display: flex; align-items: center; gap: 8px; max-width: 820px; margin: 0 auto 6px;
+  display: flex; flex-direction: column; gap: 4px;
+  max-width: 820px; margin: 0 auto 6px;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px;
   padding: 6px 10px; font-size: 12.5px; color: var(--fg-2);
 }
-.queued-label { color: var(--accent-text); font-weight: 600; flex: 0 0 auto; }
+.queued-label { color: var(--accent-text); font-weight: 600; }
+.queued-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.queued-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0; border-top: 1px solid var(--line);
+}
+.queued-item:first-child { border-top: none; }
 .queued-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.queued-cancel { background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 16px; line-height: 1; flex: 0 0 auto; }
-.queued-cancel:hover { color: var(--fg-1); }
+.queued-input {
+  flex: 1; min-width: 0; background: var(--field-bg, var(--bg-3)); color: var(--fg-1);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font: inherit;
+}
+.queued-input:focus { outline: none; border-color: var(--accent); }
+.queued-actions { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.queued-actions button {
+  background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 0;
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px;
+}
+.queued-actions button:hover:not(:disabled) { color: var(--fg-1); background: var(--bg-3); }
+.queued-actions button:disabled { opacity: .3; cursor: default; }
+.queued-fejl { margin: 2px 0 0; color: var(--error-fg); font-size: 12px; }
 /* Tilbagespoling (Claude Desktop §8): over skrivefeltet, med Fortryd. */
 .tilbagespol-banner {
   display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
@@ -4448,7 +4472,9 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .changes-panel {
   display: flex; flex-direction: column; gap: 2px;
   padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+  /* 3/10-2026 (Bjørn): sticky-notens grå (--overlay-bg) er fladen for hele
+     højre-stakken — se .jobs-panel og .env-panel. */
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
   overflow-y: auto;
 }
 .changes-head {
@@ -4842,7 +4868,8 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .jbrowser {
   display: flex; flex-direction: column; min-height: 0;
   padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+  /* 3/10-2026: samme flade som resten af stakken (--overlay-bg). */
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
 }
 .jbrowser-tom { margin: 0; padding: 6px 2px 10px; color: var(--fg-3); font-size: 13px; }
 .jbrowser-faner {

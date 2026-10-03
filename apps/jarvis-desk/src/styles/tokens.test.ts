@@ -167,16 +167,18 @@ describe('design-tokens', () => {
     const miljø = læs('environment-inspector.css')
     const regel = miljø.match(/^\.env-panel \{([\s\S]*?)\}/m)?.[1] ?? ''
     expect(regel, '.env-panel findes ikke i environment-inspector.css').toBeTruthy()
-    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin
-  // mellem dem (#1A1A19 → #252524) — det er sådan jobs-kortene træder frem.
+  // mellem dem (#20201F → #252524) — det er sådan jobs-kortene træder frem.
+  // 3/10-2026: panelet flyttede fra --bg-2 til --overlay-bg (Bjørn: sticky-
+  // notens grå skal hele stakken have), så det øverste trin er nu #20201F.
   it('kort ligger over deres panel, ikke i det', () => {
     const kort = app.match(/^\.jobs-kort \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     const panel = app.match(/^\.jobs-panel \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     expect(kort.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-3')
-    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   it('holder tekst og accent læsbare i mørkt tema', () => {

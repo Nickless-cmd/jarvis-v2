@@ -16,21 +16,66 @@ describe('køen (§14 punkt 8)', () => {
     const { result, rerender } = renderHook((p: { arbejder: boolean }) => useSendeKoe({ arbejder: p.arbejder, online: true, send }), { initialProps: { arbejder: true } })
     act(() => result.current.sendEllerKoe('hej', opts))
     expect(send).not.toHaveBeenCalled()
-    expect(result.current.koet?.text).toBe('hej')
+    expect(result.current.items[0]?.text).toBe('hej')
     rerender({ arbejder: false })
     expect(send).toHaveBeenCalledWith('hej', opts)
   })
 
   it('at fjerne den fra køen afbryder IKKE turen — og sender den ikke', () => {
     const send = vi.fn()
-    const afbryd = vi.fn()
     const { result, rerender } = renderHook((p: { arbejder: boolean }) => useSendeKoe({ arbejder: p.arbejder, online: true, send }), { initialProps: { arbejder: true } })
     act(() => result.current.sendEllerKoe('hej', opts))
-    const chip = render(<KoeChip koet={result.current.koet} online onAnnuller={result.current.annuller} />)
-    act(() => { fireEvent.click(chip.getByRole('button', { name: 'Fjern fra kø' })) })
+    act(() => result.current.fjern(result.current.items[0]!.id))
     rerender({ arbejder: false })
     expect(send).not.toHaveBeenCalled()
-    expect(afbryd).not.toHaveBeenCalled()
+  })
+
+  // 3/10-2026 (Bjørn): «que beskeder mangler styr funktion lige som i mobilen
+  // … så det findes allerede». Køen er nu en LISTE med rediger / flyt / send
+  // nu / fjern — og ingen af dem må afbryde turen der kører.
+  it('redigerer teksten uden at sende den', () => {
+    const send = vi.fn()
+    const { result } = renderHook(() => useSendeKoe({ arbejder: true, online: true, send }))
+    act(() => result.current.sendEllerKoe('foerste', opts))
+    act(() => result.current.rediger(result.current.items[0]!.id, 'aendret'))
+    expect(result.current.items[0]?.text).toBe('aendret')
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('flytter beskeden i køen', () => {
+    const send = vi.fn()
+    const { result } = renderHook(() => useSendeKoe({ arbejder: true, online: true, send }))
+    act(() => result.current.sendEllerKoe('a', opts))
+    act(() => result.current.sendEllerKoe('b', opts))
+    const [a, b] = result.current.items.map((i) => i.id)
+    act(() => result.current.flyt(b!, -1))
+    expect(result.current.items.map((i) => i.text)).toEqual(['b', 'a'])
+    act(() => result.current.flyt(a!, 1))
+    expect(result.current.items.map((i) => i.text)).toEqual(['b', 'a'])
+  })
+
+  it('«send nu» midt i et run bruger steer — ikke en ny kørsel', async () => {
+    const send = vi.fn()
+    const steer = vi.fn().mockResolvedValue(undefined)
+    const { result } = renderHook(() => useSendeKoe({ arbejder: true, online: true, send, steer, kanSteer: true }))
+    act(() => result.current.sendEllerKoe('midt i', opts))
+    await act(async () => { await result.current.sendNu(result.current.items[0]!.id) })
+    expect(steer).toHaveBeenCalledWith('midt i')
+    expect(send).not.toHaveBeenCalled()
+    expect(result.current.items).toHaveLength(0)
+  })
+
+  it('chippen viser handlingerne og kalder dem', () => {
+    const send = vi.fn()
+    const { result } = renderHook(() => useSendeKoe({ arbejder: true, online: true, send }))
+    act(() => result.current.sendEllerKoe('hej', opts))
+    const onRediger = vi.fn(); const onFjern = vi.fn(); const onFlyt = vi.fn(); const onSendNu = vi.fn()
+    const chip = render(<KoeChip items={result.current.items} busy kanSteer online
+      onRediger={onRediger} onFjern={onFjern} onFlyt={onFlyt} onSendNu={onSendNu} />)
+    act(() => { fireEvent.click(chip.getByRole('button', { name: 'Fjern fra kø' })) })
+    expect(onFjern).toHaveBeenCalled()
+    act(() => { fireEvent.click(chip.getByRole('button', { name: 'Send nu til det kørende run' })) })
+    expect(onSendNu).toHaveBeenCalled()
   })
 })
 

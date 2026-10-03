@@ -46,7 +46,7 @@ import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { useRaekkevisning } from '../lib/visningsPref'
-import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -526,7 +526,17 @@ export function ChatView({
     } catch { /* pollen forliger tilstanden */ }
   }
 
-  const koe = useSendeKoe({ arbejder: streaming, online, send: doSend })
+  const koe = useSendeKoe({
+    arbejder: streaming, online, send: doSend,
+    // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
+    // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
+    steer: async (text) => {
+      const runId = stream.activeRunId
+      if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
+    },
+    kanSteer: !!stream.activeRunId,
+  })
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
@@ -620,7 +630,7 @@ export function ChatView({
   )
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !koe.koet && !bgActive)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && koe.items.length === 0 && !bgActive)
 
   const ensureSessionId = async () => {
     if (sessionId) return sessionId
@@ -1112,7 +1122,10 @@ export function ChatView({
         </div>
         <JumpToLatest synlig={!scroll.atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
         <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
-        <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
+        <KoeChip
+          items={koe.items} busy={streaming} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+          onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
+        />
         {composer}
       </div>
     </div>

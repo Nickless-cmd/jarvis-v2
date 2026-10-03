@@ -408,6 +408,20 @@ def aktiv_kaede_nr(session_id: str) -> int:
     return max(0, int(nyeste.get("recovery_attempt") or 0))
 
 
+def _genoptagelse_opbrugt(rec: dict[str, Any]) -> bool:
+    """Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang.
+
+    Samme regel som `visible_terminal_policy.decide_terminal` og
+    `claim_due_recovery` bruger — men de to skriver aldrig status-feltet om,
+    saa `recovering` blev staaende som et loefte der ikke kunne holdes.
+    """
+    if str(rec.get("status") or "") != "recovering":
+        return False
+    return int(rec.get("recovery_attempt") or 0) >= max(
+        0, int(rec.get("recovery_limit") or 3)
+    )
+
+
 def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
     """Hvad er der at genoptage for DENNE samtale? `None` = ingenting.
 
@@ -436,6 +450,50 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
     ]
     if not kandidater:
         return None
+    # 3/10-2026: et `recovering`-run hvis genoptagelses-budget er BRUGT OP er
+    # ikke «i gang» — det er opgivet. Policy-laget ved det allerede
+    # (`visible_terminal_policy.decide_terminal`: forsoeg >= loft →
+    # FAILED_TERMINAL), og dispatcheren goer det samme naar vinduet udloeber
+    # (se `claim_due_recovery`). Men status-feltet blev staaende som
+    # `recovering`, og DETTE lag laeste det som «der er noget at genoptage» —
+    # for evigt, med loeftet «checkpointet er bevaret til genoptagelse».
+    #
+    # Maalt 3/10-2026: 13 poster i én samtale, alle `shutdown` 3/3. Banneret
+    # stod over composeren ved HVER afsluttet tur, fordi klienten spoerger
+    # igen hver gang en tur slutter — og `_kvitter_varsel` kun ramte
+    # `failed_terminal`, saa en `recovering`-post blev aldrig brugt op.
+    # Vi lukker dem nu: saa kvitteres de, og `_ryd_afsluttede` rydder dem.
+    opbrugte = [r for r in kandidater if _genoptagelse_opbrugt(r)]
+    if opbrugte:
+        # Én begivenhed (typisk én genstart), ikke tretten. Kun den nyeste faar
+        # ordet; resten lukkes tavst. Han fik «runtime genstarter» da det skete,
+        # og et banner pr. draebt forsoeg er stoj — ikke et svar.
+        nyeste_opbrugte = max(
+            opbrugte,
+            key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""),
+        )
+        for _rec in opbrugte:
+            rid = str(_rec.get("run_id") or _rec.get("task_id") or "")
+            try:
+                settle_terminal(
+                    rid,
+                    status="failed_terminal",
+                    reason="genoptagelses-forsoegene-opbrugt",
+                )
+            except Exception:
+                logger.warning(
+                    "kunne ikke lukke en opbrugt genoptagelse %s", rid,
+                    exc_info=True,
+                )
+            # Kopien skal matche filen: `settle_terminal` skrev den nye
+            # `exit_reason`, og beskeden laeses fra KOPIEN. Glemmer jeg det,
+            # lover `recovery_notice` genoptagelse paa grund af den GAMLE
+            # grund («shutdown») — praecis den fejl testen fandt.
+            _rec["status"] = "failed_terminal"
+            _rec["exit_reason"] = "genoptagelses-forsoegene-opbrugt"
+            _rec["notice_pending"] = _rec is nyeste_opbrugte
+            if _rec is not nyeste_opbrugte:
+                _kvitter_varsel(rid)
     # Den nyeste først: en samtale kan have en gammel post der aldrig blev ryddet.
     rec = max(kandidater, key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""))
     status = str(rec.get("status") or "")

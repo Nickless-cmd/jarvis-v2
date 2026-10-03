@@ -137,3 +137,61 @@ def test_opslaget_kaster_aldrig(monkeypatch):
     monkeypatch.setattr(db, "connect",
                         lambda: (_ for _ in ()).throw(RuntimeError("nede")))
     assert rst._aktive_koersler() == []
+
+
+def test_defer_until_idle_venter_paa_FAKTUM_ikke_paa_sekunder(monkeypatch):
+    """Kernen (3/10-2026). Her laa en FAST `sleep 3`. Kaldes vaerktoejet midt i
+    en tur, draeber de tre sekunder turen: runnet stemples `interrupted`,
+    recovery-dispatcheren genoptager det senere — og Bjoern faar TO svar paa
+    én besked (maalt kl. 15:43).
+
+    Med `defer_until_idle` sendes runnets EGET id med, og genstarten venter paa
+    et faktum — at runnet ikke laengere er i live — i stedet for et tal nogen
+    skal ramme rigtigt. Jeg skrev systemd-timer-kommandoen i haanden tre gange
+    paa én dag og ramte forkert én gang (60 s der naesten draebte turen).
+
+    3/10-2026, rettelse af MIG SELV: denne test satte `_aktive_koersler` til
+    TOM, saa vagten slap den igennem — og jeg opdagede foerst i drift at
+    vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur der
+    kaldte det. Testen var indrettet efter koden i stedet for efter
+    virkeligheden. Nu koerer der et aktivt run i testen, praecis som i drift.
+    """
+    monkeypatch.setattr(rst, "_aktive_koersler",
+                        lambda *a, **k: [{"run_id": "visible-min-tur",
+                                          "preview": "tag begge to"}])
+    kaldt: list = []
+    monkeypatch.setattr(rst.subprocess, "Popen",
+                        lambda cmd, **k: kaldt.append(cmd)
+                        or type("P", (), {"pid": 7})())
+    from core.services import run_autonomy_context as rac
+    monkeypatch.setattr(rac, "current_run_id", lambda: "visible-min-tur")
+
+    ud = rst._exec_restart_self({"services": ["jarvis-api"], "defer_until_idle": True})
+
+    assert ud["status"] != "afvist", (
+        "den udskudte genstart blev afvist af den vagt den selv venter paa — "
+        "saa naarede den aldrig sin egen sti"
+    )
+    assert ud["status"] == "ok" and ud["deferred"] is True
+    assert ud["run_id"] == "visible-min-tur"
+    assert kaldt, "den udskudte genstart blev ikke sat i gang"
+    flad = " ".join(kaldt[0])
+    assert "deferred_restart.py" in flad, kaldt[0]
+    assert "visible-min-tur" in kaldt[0], (
+        "runnets EGET id skal med — ellers ved scriptet ikke hvad det venter paa"
+    )
+    assert "sleep 3" not in flad, "den faste forsinkelse maa ikke overleve"
+
+
+def test_uden_defer_bruges_den_gamle_vej(monkeypatch):
+    """Kontrollen: den udskudte sti maa ikke stjaele den direkte. Uden flaget
+    skal `sleep 3`-vejen stadig koere — ellers har jeg byttet én defekt ud med
+    en anden."""
+    monkeypatch.setattr(rst, "_aktive_koersler", lambda *a, **k: [])
+    kaldt: list = []
+    monkeypatch.setattr(rst.subprocess, "Popen",
+                        lambda cmd, **k: kaldt.append(cmd)
+                        or type("P", (), {"pid": 8})())
+    ud = rst._exec_restart_self({"services": ["jarvis-api"]})
+    assert ud.get("deferred") is not True
+    assert "sleep 3" in " ".join(kaldt[0])

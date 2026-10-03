@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/prompt_dump_readable.py`
+_Læsbar version af et prompt-dump (30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_readable.py#L36) |
+| function | `_text` | `(m)` | — | [src](../../../scripts/prompt_dump_readable.py#L43) |
+| function | `_split_user` | `(t)` | (bjoern-tegn, tool-resultat-tegn, rest) inde i ÉN user-besked. | [src](../../../scripts/prompt_dump_readable.py#L52) |
+| function | `_kind` | `(i, m)` | (kategori-noegle, menneske-etikette) for én besked. | [src](../../../scripts/prompt_dump_readable.py#L69) |
+| function | `_pct` | `(n, total)` | — | [src](../../../scripts/prompt_dump_readable.py#L93) |
+| function | `build` | `(dump, full=…)` | — | [src](../../../scripts/prompt_dump_readable.py#L97) |
+| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_readable.py#L253) |
+
 ## `scripts/prompt_dump_split.py`
 _Splitter et prompt-dump fra /tmp/jarvis-prompt-dumps/latest.json i sektioner._
 

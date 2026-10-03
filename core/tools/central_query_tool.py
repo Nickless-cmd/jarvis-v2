@@ -146,7 +146,21 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 "diagnose": {k: s.get("diagnose", {}).get(k)
                              for k in ("decide_ok", "observe_ok", "degraded")},
                 "open_breakers": len(s.get("open_breakers") or []),
+                # 3/10-2026: `unresolved_incidents` blandede to ting i ét tal.
+                # `gate_enforce` (severity=info) er gaten der melder at den
+                # HÅNDHÆVEDE en regel — en begivenhed, ikke en defekt. Målt:
+                # 51 uløste, hvoraf 42 var governance og 4 var errors. Tallet
+                # fik 51 til at se ud som 51 problemer. Nu staar begge dele
+                # særskilt, og summen er uændret for bagudkompatibilitet.
                 "unresolved_incidents": len(s.get("incidents") or []),
+                "unresolved_errors": len([
+                    i for i in (s.get("incidents") or [])
+                    if str(i.get("severity")) in ("error", "severe")
+                ]),
+                "unresolved_governance_events": len([
+                    i for i in (s.get("incidents") or [])
+                    if str(i.get("kind")) == "gate_enforce"
+                ]),
                 "anomalies": {"counts": _anom.get("counts", {}), "recent": _recent},
                 "known_signals": s.get("known_signals") or [],
                 "config_drift": bool(s.get("config_drift")),

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
+_Binary: jarvis vs ollama_local — pre-check for Phase 4._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_binary_jarvis_vs_ollama.py#L40) |
+
 ## `scripts/interlanguage_classifier_final.py`
 _Phase 3 FINAL classifier — pre-registered method, full 7-day data._
 
@@ -460,17 +467,4 @@ _Primary lane cache warmer._
 | function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L503) |
 | function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L583) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L657) |
-
-## `scripts/prompt_dump_readable.py`
-_Læsbar version af et prompt-dump (30/9-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_chars` | `(obj)` | — | [src](../../../scripts/prompt_dump_readable.py#L36) |
-| function | `_text` | `(m)` | — | [src](../../../scripts/prompt_dump_readable.py#L43) |
-| function | `_split_user` | `(t)` | (bjoern-tegn, tool-resultat-tegn, rest) inde i ÉN user-besked. | [src](../../../scripts/prompt_dump_readable.py#L52) |
-| function | `_kind` | `(i, m)` | (kategori-noegle, menneske-etikette) for én besked. | [src](../../../scripts/prompt_dump_readable.py#L69) |
-| function | `_pct` | `(n, total)` | — | [src](../../../scripts/prompt_dump_readable.py#L93) |
-| function | `build` | `(dump, full=…)` | — | [src](../../../scripts/prompt_dump_readable.py#L97) |
-| function | `main` | `()` | — | [src](../../../scripts/prompt_dump_readable.py#L253) |
 

@@ -149,6 +149,12 @@ def recovery_notice(reason: str, *, continuing: bool = True) -> dict[str, object
         # lover «checkpointet er bevaret» om noget der netop ER opgivet.
         "genoptagelses-vinduet udloeb": (
             "Opgaven naaede aldrig at blive genoptaget inden for et doegn."),
+        # 3/10-2026: genoptagelsen blev FORSOEGT og budgettet brugt op (typisk
+        # `shutdown` midt i et forsoeg). Uden denne faldt den tilbage paa
+        # standardteksten, der lover at checkpointet kan genoptages — om
+        # netop det der er opgivet.
+        "genoptagelses-forsoegene-opbrugt": (
+            "Forsoegene paa at genoptage opgaven blev brugt op."),
     }
     raa = str(reason or "")
     if raa.startswith("opgivet efter aftale"):
@@ -162,7 +168,9 @@ def recovery_notice(reason: str, *, continuing: bool = True) -> dict[str, object
     detail = descriptions.get(raa, "Det aktuelle run-segment sluttede foer opgaven.")
     if raa == "shutdown" and continuing:
         action = "Checkpointet er bevaret til genoptagelse efter genstart."
-    elif raa == "genoptagelses-vinduet udloeb":
+    elif raa in {"genoptagelses-vinduet udloeb", "genoptagelses-forsoegene-opbrugt"}:
+        # Begge er OPGIVET: der er intet at vente paa. Beskeden skal sige hvad
+        # han kan goere i stedet — ikke love at checkpointet kan genoptages.
         action = "Skriv den igen hvis den stadig skal laves."
     else:
         action = "Jarvis fortsaetter automatisk fra sit checkpoint." if continuing else (

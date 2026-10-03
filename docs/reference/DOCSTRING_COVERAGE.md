@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8349/15893 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8352/15897 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8349/15893 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 701 | 1281 | 54% |
-| `core.services` | 5584 | 10843 | 51% |
+| `core.services` | 5585 | 10844 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8349/15893 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 230 | 516 | 44% |
+| `scripts` | 232 | 519 | 44% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2229)
+## Undocumented public functions (2230)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L213)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1158,7 +1158,7 @@ Generated from source. 8349/15893 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L769)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L827)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
@@ -2125,6 +2125,7 @@ Generated from source. 8349/15893 functions/methods documented (52%). The list b
 - `scripts/db_path_fixture_audit.py` :: `main` (L20)
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
+- `scripts/deferred_restart.py` :: `main` (L80)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)

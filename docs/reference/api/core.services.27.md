@@ -95,9 +95,9 @@ _Per-provider follow-up adapters (split from ``visible_followup.py``)._
 | method | `OpenAICompatFollowupAdapter._build_request` | `(self, *, model, messages, tool_definitions, temperature=…, top_p=…, tool_choice=…, extra_body=…, spor=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L674) |
 | method | `OpenAICompatFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Turn accumulated exchanges into OpenAI-compat tool messages. | [src](../../../core/services/visible_followup_adapters.py#L846) |
 | method | `OpenAICompatFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, session_id=…, autonomous=…, trailing_messages=…, _length_retry=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L897) |
-| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1374) |
-| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges, *, trailing_messages=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1388) |
-| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, trailing_messages=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1430) |
+| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1377) |
+| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges, *, trailing_messages=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1391) |
+| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, trailing_messages=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1433) |
 
 ## `core/services/visible_followup_events.py`
 _Follow-up event/carrier types + the adapter protocol (split from_
@@ -287,7 +287,8 @@ _SSE / Chat-Completions stream parsing + small cost/token utilities._
 | function | `_finalize_openai_tool_calls` | `(tool_calls)` | Normalize OpenAI-style tool_calls so arguments is a dict, not a JSON string. | [src](../../../core/services/visible_model_sse.py#L102) |
 | function | `_merge_openai_tool_call_deltas` | `(accumulator, event)` | Merge OpenAI SSE tool_calls delta chunks into a per-index accumulator. | [src](../../../core/services/visible_model_sse.py#L130) |
 | function | `_chat_completion_stream_is_terminal` | `(event)` | — | [src](../../../core/services/visible_model_sse.py#L167) |
-| function | `_iter_sse_events` | `(response, *, provider=…, model=…)` | Hærdet SSE-decoder (spec §1A + §11.1 A11). | [src](../../../core/services/visible_model_sse.py#L177) |
+| function | `_raa_linjer` | `(response, maale_noegle=…)` | Rå linjer fra streamen — og, når sporet er tændt, HVOR tiden gik. | [src](../../../core/services/visible_model_sse.py#L177) |
+| function | `_iter_sse_events` | `(response, *, provider=…, model=…, maale_noegle=…)` | Hærdet SSE-decoder (spec §1A + §11.1 A11). | [src](../../../core/services/visible_model_sse.py#L226) |
 
 ## `core/services/visible_model_types.py`
 _Value/result classes and typed exceptions for the visible model lane._

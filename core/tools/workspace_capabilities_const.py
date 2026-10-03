@@ -75,6 +75,10 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
 }
 GIT_READ_EXEC_ALLOWLIST = {
     ("status",),
+    # 3/10-2026: allowlisten matcher en PRAECIS form — `("status",)` daekkede
+    # ikke `status --short`, saa heartbeat'ens kontekst-indsamling blev afvist
+    # som `blocked-git-command`. `--short` er en ren laesning; den hoerer her.
+    ("status", "--short"),
     ("diff", "--stat"),
     ("diff", "--name-only"),
     ("branch", "--show-current"),

@@ -4853,10 +4853,18 @@ def _execute_heartbeat_internal_action(
         }
     if action_type == "inspect_repo_context":
         invocations = [
+            # 3/10-2026: `tool:list-project-files` fandtes ikke i nogen TOOLS.md —
+            # hverken skabelonen eller en bruger-workspace. Kaldet svarede
+            # `not-found`, og fordi summeringen kraever mindst ét udfoert kald,
+            # blokerede det HELE handlingen (45 blokerede ticks siden 10/9).
+            # `find` er i NON_DESTRUCTIVE_EXEC_ALLOWLIST, saa en bounded listning
+            # kan udtrykkes som kommando i stedet for et capability-id der ikke
+            # eksisterer nogen steder.
             invoke_workspace_capability(
-                "tool:list-project-files",
+                "tool:run-non-destructive-command",
                 run_id=tick_id,
                 name="default",
+                command_text=f"find {PROJECT_ROOT} -maxdepth 1 -mindepth 1 | head -60",
             ),
             invoke_workspace_capability(
                 "tool:read-repository-readme",

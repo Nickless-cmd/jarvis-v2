@@ -175,9 +175,10 @@ _Skill-fladen nævner et skill — og intet kræver et svar (2/10-2026)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `skill_gate_guard_enabled` | `()` | Default TRUE (Bjørn bad om det 2/10-2026). Env vinder, så den kan slås | [src](../../../core/services/skill_gate_guard.py#L44) |
-| function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L57) |
-| function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L91) |
+| function | `skill_gate_guard_enabled` | `()` | Default TRUE (Bjørn bad om det 2/10-2026). Env vinder, så den kan slås | [src](../../../core/services/skill_gate_guard.py#L47) |
+| function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
+| function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L94) |
+| function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L109) |
 
 ## `core/services/skill_relevance_surface.py`
 _Slå skills op FOR ham i stedet for at bede ham huske at slå op._

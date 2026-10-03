@@ -8,11 +8,18 @@ export const POLL_MS = 6000
 
 /** Hvad fladen kan gøre med en opgave. `worktree` findes kun hvor der er et
  *  git-arbejdsområde at lave den i (code-fladen på en mappe). */
+/**
+ * Hver handler returnerer id'et på den samtale der løser opgaven — eller
+ * `undefined` hvis den ikke kunne startes. Serveren knytter opgaven til den
+ * session, så lukke-instruksen kan stå i præcis den samtale.
+ */
+export type ArbejdsSession = string | undefined
+
 export interface SideOpgaveHandlinger {
-  startLokalt: (t: SideTask) => Promise<void>
-  baggrund: (t: SideTask) => Promise<void>
-  loesHer: (t: SideTask) => void | Promise<void>
-  worktree?: (t: SideTask) => Promise<void>
+  startLokalt: (t: SideTask) => Promise<ArbejdsSession>
+  baggrund: (t: SideTask) => Promise<ArbejdsSession>
+  loesHer: (t: SideTask) => ArbejdsSession | Promise<ArbejdsSession>
+  worktree?: (t: SideTask) => Promise<ArbejdsSession>
 }
 
 type Valg = 'worktree' | 'lokalt' | 'baggrund' | 'her' | 'faerdig'
@@ -92,13 +99,15 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
         await setSideTaskStatus(config, t.side_task_id, 'completed')
         setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
       } else {
-        if (v === 'worktree') await handlinger.worktree!(t)
-        else if (v === 'lokalt') await handlinger.startLokalt(t)
-        else if (v === 'baggrund') await handlinger.baggrund(t)
-        else await handlinger.loesHer(t)
-        // Startet = i gang. Den bliver stående til nogen afslutter den.
-        if (t.status !== 'activated') {
-          await setSideTaskStatus(config, t.side_task_id, 'activated')
+        let arbejds: ArbejdsSession
+        if (v === 'worktree') arbejds = await handlinger.worktree!(t)
+        else if (v === 'lokalt') arbejds = await handlinger.startLokalt(t)
+        else if (v === 'baggrund') arbejds = await handlinger.baggrund(t)
+        else arbejds = await handlinger.loesHer(t)
+        // Startet = i gang, OG knyttet til den samtale der løser den — så
+        // lukke-instruksen kan stå netop dér.
+        if (t.status !== 'activated' || arbejds) {
+          await setSideTaskStatus(config, t.side_task_id, 'activated', arbejds)
           setOpgaver((l) => l.map((x) => (x.side_task_id === t.side_task_id ? { ...x, status: 'activated' } : x)))
         }
       }

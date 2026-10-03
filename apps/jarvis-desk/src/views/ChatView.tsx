@@ -643,19 +643,25 @@ export function ChatView({
 
   // Sideopgave-kortet (CC's «Suggested task») flyder over inputfeltet.
   const sideCfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null
+  // Handlerne returnerer den samtale der LØSER opgaven, så kortet kan knytte
+  // de to sammen (Bjørn 3/10: «måtte jeg minde ham om at markere den flaggede
+  // opgave færdig»). Uden linket kan ingen lukke opgaven.
   const sideHandlinger = {
     startLokalt: async (t: SideTask) => {
       if (!sideCfg) return
       const sid = await startSideOpgave(sideCfg, t, { kind: 'chat' })
       await sessions.refresh()
       sessions.select(sid)
+      return sid
     },
     baggrund: async (t: SideTask) => {
       if (!sideCfg) return
-      await startSideOpgave(sideCfg, t, { kind: 'chat' })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat' })
       void sessions.refresh()
+      return sid
     },
-    loesHer: (t: SideTask) => resend(t.prompt),
+    // «Løs her» kører i den AKTUELLE samtale — den er arbejdet.
+    loesHer: (t: SideTask) => { void resend(t.prompt); return sessionId ?? undefined },
   }
 
   // Øverst i chatten, højrestillet over samtalen — som CC's «Suggested task»

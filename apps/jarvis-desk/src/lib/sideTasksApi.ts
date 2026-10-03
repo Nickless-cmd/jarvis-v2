@@ -22,9 +22,15 @@ export async function getSideTasks(config: ApiConfig): Promise<SideTask[]> {
   return d.side_tasks ?? []
 }
 
-export async function setSideTaskStatus(config: ApiConfig, id: string, status: SideTaskAfslutning): Promise<void> {
+export async function setSideTaskStatus(
+  config: ApiConfig, id: string, status: SideTaskAfslutning, session?: string,
+): Promise<void> {
+  // `session` er samtalen der LØSER opgaven. Uden den kan serveren ikke knytte
+  // turen til opgaven, og så er der ingen der kan lukke den (Bjørn 3/10: «måtte
+  // jeg minde ham om at markere den flaggede opgave færdig»).
   const r = await apiFetch<{ status?: string; error?: string }>(
-    config, `/cowork/side-tasks/${encodeURIComponent(id)}/status`, { method: 'POST', body: { status } },
+    config, `/cowork/side-tasks/${encodeURIComponent(id)}/status`,
+    { method: 'POST', body: session ? { status, session } : { status } },
   )
   // Serveren svarer 200 med {status:'error'} for en ukendt eller allerede
   // afsluttet opgave. Det er en fejl for brugeren, ikke en succes.

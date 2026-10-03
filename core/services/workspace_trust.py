@@ -41,8 +41,81 @@ def _ensure_table(conn) -> None:
     )
 
 
+def _opløst(sti: str) -> str:
+    """Stien med symlinks fulgt — tom streng hvis den ikke kan opløses.
+
+    `realpath` er hele sikkerheden i arven nedenfor: en symlink INDE i en
+    betroet mappe, der peger på `/etc`, har en sti der ser ud som om den ligger
+    under roden, men opløses til `/etc` og falder dermed udenfor. Uden
+    opløsningen ville en ren streng-sammenligning gøre enhver betroet mappe til
+    en vej ud af sandkassen.
+    """
+    try:
+        import os.path
+        s = str(sti or "").strip()
+        if not s:
+            return ""
+        return os.path.realpath(os.path.expanduser(s))
+    except Exception:  # kan stien ikke oploeses, arver den INGEN tillid. Fail
+        # mod det lukkede: en sti vi ikke kan afgoere maa ikke blive betroet.
+        return ""
+
+
+def er_under(sti: str | None, rod: str | None) -> bool:
+    """Ligger `sti` i eller under `rod`?
+
+    Grænsen tjekkes på mappe-niveau, ikke som præfiks: `/media/x-ondsindet` må
+    ikke matche `/media/x`, og det ville en bar `startswith` sige ja til.
+
+    ABSOLUTTE stier (workstation-scope) opløses med `realpath`, så en symlink
+    ud af roden ikke følger med. RELATIVE stier (container-scope) er logiske
+    navne inde i repoet — de normaliseres kun, for `realpath` på en relativ sti
+    afhænger af processens arbejdsmappe, og det må en tillids-afgørelse ikke.
+
+    Blandede former sammenlignes ikke: uden en fælles rod er svaret et gæt, og
+    et gæt om tillid skal være NEJ.
+    """
+    import os.path
+    a = str(sti or "").strip()
+    b = str(rod or "").strip()
+    if not a or not b:
+        return False
+    a_abs, b_abs = os.path.isabs(os.path.expanduser(a)), os.path.isabs(os.path.expanduser(b))
+    if a_abs != b_abs:
+        return False
+    if a_abs:
+        barn, foraelder = _opløst(a), _opløst(b)
+    else:
+        barn, foraelder = os.path.normpath(a), os.path.normpath(b)
+    if not barn or not foraelder:
+        return False
+    # «.» ville ellers aegte enhver relativ sti som sit barn.
+    if foraelder in (".", ""):
+        return False
+    if barn == foraelder:
+        return True
+    return barn.startswith(foraelder.rstrip(os.sep) + os.sep)
+
+
 def is_trusted(user_id: str | None, kind: str | None, root: str | None) -> bool:
-    """True hvis (user_id, kind, root) er markeret betroet."""
+    """True hvis (user_id, kind, root) er betroet — direkte ELLER som undermappe.
+
+    ## Arven (3/10-2026)
+
+    Bjørn: «det først melder desk trusted folder fejl». Målt: `is_trusted`
+    krævede et NØJAGTIGT match på `root`, så en side-opgave der startede i sin
+    egen git-worktree under repoet — `.worktrees/side-fix-…` — blev afvist,
+    selvom repo-roden var betroet. Mappen fandtes ikke da han trykkede tillid
+    på repoet, og den kan ikke findes på forhånd, fordi navnet dannes af
+    opgavens titel.
+
+    En betroet mappe betyder «jeg stoler på hvad der ligger her» — og det
+    inkluderer de mapper værktøjerne selv opretter under den. Samme regel som
+    en editor der åbner et projekt: du betror projektet, ikke hver undermappe.
+
+    Opløsningen i `er_under` er grænsen: en symlink ud af roden følger IKKE
+    med, så arven kan ikke bruges til at nå uden for det betroede træ.
+    """
     if not kind or not root:
         return False
     with connect() as conn:
@@ -51,7 +124,14 @@ def is_trusted(user_id: str | None, kind: str | None, root: str | None) -> bool:
             "SELECT 1 FROM workspace_trust WHERE user_id = ? AND kind = ? AND root = ?",
             (user_id or "", kind, root),
         ).fetchone()
-    return row is not None
+        if row is not None:
+            return True
+        # Arven: er den under en mappe brugeren HAR betroet i samme scope?
+        betroede = conn.execute(
+            "SELECT root FROM workspace_trust WHERE user_id = ? AND kind = ?",
+            (user_id or "", kind),
+        ).fetchall()
+    return any(er_under(root, str(r[0])) for r in betroede)
 
 
 def list_trusted(user_id: str | None, kind: str | None = None) -> list[dict[str, str]]:

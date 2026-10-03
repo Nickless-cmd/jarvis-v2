@@ -355,6 +355,22 @@ class RuntimeSettings:
     # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
     # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
     session_tool_pin_enabled: bool = True
+    #: Samme laas, ét lag op: ÉN model pr. session (3/10-2026).
+    #:
+    #: Bjoern: «stortset alle mine beskeder kolder starter». Maalt paa CT105:
+    #: runderne INDE i en tur ligger paa 95-96,5 % hit, mens aabneren ligger
+    #: paa 50-56 % — og hit-tallene gentager sig (16.512 x2, 19.584 x4,
+    #: 10.112 x2) paa input fra 41k til 126k. Samme signatur som ovenfor.
+    #:
+    #: Aarsagen var at TRE modeller betjente nabo-ture i samme samtale
+    #: (deepseek-flash, deepseek-v4-flash, glm-5.2:cloud). DeepSeek cacher per
+    #: model, saa to modeller deler ingen cache uanset byte-stabilitet — og
+    #: modelnavnet staar ved tegn ~80 i systembeskeden. Timer med ÉN model gav
+    #: 95,1 og 96,5 % hit; timer med to faldt til 50,4 %.
+    #:
+    #: Et EKSPLICIT valg fra klienten vinder altid og laases i stedet.
+    #: Saet False for at vaelge pr. tur igen (gammel adfaerd, uden deploy).
+    session_model_pin_enabled: bool = True
     #: Samme vaerktoejskasse i BEGGE trin af en tur (30/9-2026).
     #:
     #: Foerste pas brugte `select_tools_for_visible` (48 vaerktoejer), de
@@ -680,6 +696,7 @@ _TIDLIGERE_UINDLAESTE = (
     "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
+    "session_model_pin_enabled",
     "visible_tools_unified", "visible_tools_frozen",
     "markdown_split_lange_linjer",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",

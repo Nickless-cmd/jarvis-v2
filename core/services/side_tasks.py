@@ -79,7 +79,11 @@ def list_open() -> list[dict[str, Any]]:
     return [r for r in _load_all() if r.get("status") in _AABNE]
 
 
-def resolve(side_task_id: str, *, decision: str) -> dict[str, Any]:
+def resolve(side_task_id: str, *, decision: str,
+            arbejds_session: str | None = None,
+            lukket_af: str = "") -> dict[str, Any]:
+    """Flyt en opgaves status. `arbejds_session` knytter den til den samtale
+    der løser den — se `arbejds_session_for` for hvorfor det er nødvendigt."""
     decision = (decision or "").strip().lower()
     if decision not in {"dismissed", "activated", "completed"}:
         return {"status": "error", "error": "decision must be 'completed', 'dismissed' or 'activated'"}
@@ -96,14 +100,56 @@ def resolve(side_task_id: str, *, decision: str) -> dict[str, Any]:
                 "error": f"side task {side_task_id} is already {found.get('status')} and cannot be reopened"}
     found["status"] = decision
     found["resolved_at"] = datetime.now(UTC).isoformat()
+    if arbejds_session:
+        found["arbejds_session"] = str(arbejds_session)
+    if lukket_af:
+        found["lukket_af"] = str(lukket_af)[:60]
     _save_all(items)
     return {"status": "ok", "side_task_id": side_task_id, "new_status": decision}
 
 
-def side_tasks_prompt_section() -> str | None:
+def arbejds_session_for(session_id: str) -> dict[str, Any] | None:
+    """Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``.
+
+    ## Hvorfor den findes
+
+    Bjørn 3/10-2026: «op til trods løste han opgave og så måtte jeg minde ham
+    om at markere den flaggede opgave færdig».
+
+    Målt: desk starter opgaven i en NY samtale (`startSideOpgave` → ny session
+    → `sendLoesrevet`) og sætter status til `activated`. Men den nye sessions
+    id blev aldrig gemt på opgaven, så INTET kunne bagefter vide at den samtale
+    hørte til opgave X. Dermed kunne hverken runtimen eller Jarvis selv lukke
+    den — den stod som «(i gang)» i prompten indtil et menneske greb ind.
+
+    Det er samme blokerede ligevægt som indbakke-spec'ens §2: en tilstand uden
+    nogen der lukker den. Linket her er leddet der manglede.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    for r in _load_all():
+        if r.get("status") in _AABNE and str(r.get("arbejds_session") or "") == sid:
+            return r
+    return None
+
+
+def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
+    """Listen over åbne side-opgaver — og en eksplicit lukke-instruks når
+    DENNE samtale er den der løser én af dem.
+
+    Bjørn 3/10-2026: «måtte jeg minde ham om at markere den flaggede opgave
+    færdig». Listen viste opgaven som «(i gang)», men intet sagde hvis ansvar
+    det var at lukke den, eller at netop denne samtale VAR arbejdet. En liste
+    uden et ansvar bliver stående.
+
+    `session_id` er valgfri, så gamle kaldere ikke brækker — men uden den kan
+    afsnittet ikke sige hvilken opgave turen hører til.
+    """
     aabne = list_open()
     if not aabne:
         return None
+    mit = arbejds_session_for(str(session_id or "")) if session_id else None
     aabne.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
     bullets = []
     for r in aabne[:_MAX_SHOWN]:
@@ -116,10 +162,19 @@ def side_tasks_prompt_section() -> str | None:
         tag = " (i gang)" if r.get("status") == "activated" else ""
         bullets.append(f"  [{sid}]{tag} {title}{suffix}")
     extra = f"  (+{len(aabne) - _MAX_SHOWN} mere)" if len(aabne) > _MAX_SHOWN else ""
-    return (
-        "Flaggede side-tasks (deferred):\n"
-        + "\n".join(bullets) + extra
-    )
+    afsnit = "Flaggede side-tasks (deferred):\n" + "\n".join(bullets) + extra
+    if mit is not None:
+        # Lukke-instruksen. Den staar KUN i den samtale opgaven blev startet
+        # for, saa den ikke bliver stoej i alle andre ture.
+        afsnit += (
+            f"\n\nDENNE samtale er arbejdet paa [{mit.get('side_task_id')}] "
+            f"«{mit.get('title')}». Naar den er loest, skal DU lukke den:\n"
+            "  dismiss_side_task(side_task_id=\"" + str(mit.get("side_task_id")) + "\", "
+            "decision=\"completed\")\n"
+            "Kan den ikke loeses, sig hvad der mangler og lad den staa aaben. "
+            "Ingen anden lukker den for dig."
+        )
+    return afsnit
 
 
 def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:

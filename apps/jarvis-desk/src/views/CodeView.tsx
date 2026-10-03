@@ -796,31 +796,36 @@ export function CodeView({
   const sideWs = { workspaceKind: kind, workspaceRoot: effRoot }
   const sideHandlinger: SideOpgaveHandlinger = {
     startLokalt: async (t) => {
-      if (!sideCfg) return
+      if (!sideCfg) return undefined
       const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
       await sessions.refresh()
       sessions.select(sid)
+      return sid
     },
     baggrund: async (t) => {
-      if (!sideCfg) return
-      await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      if (!sideCfg) return undefined
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
       void sessions.refresh()
+      return sid
     },
+    // «Løs her» kører i den AKTUELLE samtale — den er arbejdet.
     loesHer: (t) => {
       const prefs = readModelPrefs()
-      return doSend(t.prompt, {
+      void doSend(t.prompt, {
         planMode: false, permission, attachments: [],
         model: prefs.model, providerChoice: prefs.providerChoice, thinkingMode: readThinkingMode(),
       })
+      return sessionId ?? undefined
     },
     ...(kind === 'workstation' && effRoot ? {
       worktree: async (t) => {
-        if (!sideCfg) return
+        if (!sideCfg) return undefined
         const sti = await worktreeTilOpgave(sideCfg, effRoot, t)
         setWsPath(sti)
         const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti })
         await sessions.refresh()
         sessions.select(sid)
+        return sid
       },
     } : {}),
   }

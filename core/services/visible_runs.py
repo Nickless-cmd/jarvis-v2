@@ -926,6 +926,23 @@ def start_visible_run(
             yield _sse("done", {"type": "done", "status": "failed"})
         logger.warning("visible-run afvist: %s", _model_problem)
         return _afvis_model()
+
+    # ÉN model pr. session (3/10-2026) — se `session_model_pin`. Laasen sidder
+    # EFTER par-valideringen, saa det der laases altid er et gyldigt par, og
+    # et eksplicit valg fra klienten vinder stadig: det laases i stedet, saa
+    # hans valg ogsaa holder paa NAESTE tur.
+    try:
+        from core.services import session_model_pin as _smp
+        if provider_override or model_override:
+            _smp.pin(normalized_session_id, _vis_provider, _vis_model)
+            _pin_kilde = "eksplicit"
+        else:
+            _vis_provider, _vis_model, _pin_kilde = _smp.resolve(
+                normalized_session_id, _vis_provider, _vis_model)
+        logger.info("visible-model session=%s %s/%s kilde=%s",
+                    normalized_session_id, _vis_provider, _vis_model, _pin_kilde)
+    except Exception:
+        logger.warning("model-laas fejlede — bruger routerens valg", exc_info=True)
     # Adaptiv tænkning (12. jul): 'think' fik deepseek til at ræsonnere ~9s FØR svar på
     # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
     # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:
@@ -1900,6 +1917,15 @@ async def _stream_visible_run(
             user_message = friendly_provider_error_message(exc)
             stage_error = f"first-pass-provider-error: {raw_message}"
             logger.warning("visible_runs first-pass provider error: %s", raw_message)
+            # Slip model-laasen (3/10-2026). Uden dette ville en model der er
+            # nede kile sessionen fast: hver tur ville vaelge den igen, fejle,
+            # og laasen aldrig aendre sig. Naeste tur laaser routerens nye valg.
+            try:
+                from core.services import session_model_pin as _smp_rel
+                _smp_rel.release(str(run.session_id or ""),
+                                 grund=f"provider-fejl: {raw_message[:80]}")
+            except Exception:
+                logger.warning("kunne ikke slippe model-laasen", exc_info=True)
             _update_visible_execution_trace(
                 run,
                 {

@@ -119,8 +119,16 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     status = str((payload or {}).get("status") or "").strip().lower()
     if status not in ("activated", "completed", "dismissed"):
         raise HTTPException(status_code=400, detail="status skal være 'activated', 'completed' eller 'dismissed'")
+    # `session` (3/10-2026): den samtale der LOESER opgaven. Uden den kan
+    # hverken runtimen eller Jarvis selv vide at en given tur er arbejdet paa
+    # opgaven — og saa stod den som «i gang» til et menneske greb ind.
+    arbejds_session = str((payload or {}).get("session") or "").strip() or None
     from core.services.side_tasks import resolve
-    return await asyncio.to_thread(resolve, side_task_id, decision=status)
+    return await asyncio.to_thread(
+        resolve, side_task_id, decision=status,
+        arbejds_session=arbejds_session,
+        lukket_af="desk" if status in ("completed", "dismissed") else "",
+    )
 
 
 @router.get("/plans")

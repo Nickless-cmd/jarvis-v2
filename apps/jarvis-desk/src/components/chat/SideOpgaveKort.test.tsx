@@ -17,9 +17,10 @@ const opg = (id: string, title: string, extra: Record<string, unknown> = {}) => 
 })
 type Mock = ReturnType<typeof vi.fn>
 const h = (): SideOpgaveHandlinger & { startLokalt: Mock; baggrund: Mock; loesHer: Mock; worktree: Mock } => ({
-  startLokalt: vi.fn().mockResolvedValue(undefined),
-  baggrund: vi.fn().mockResolvedValue(undefined),
-  loesHer: vi.fn(),
+  // Handlerne returnerer id'et paa den samtale der LOESER opgaven (3/10-2026).
+  startLokalt: vi.fn().mockResolvedValue('chat-ny'),
+  baggrund: vi.fn().mockResolvedValue('chat-bg'),
+  loesHer: vi.fn().mockReturnValue('chat-her'),
   worktree: vi.fn().mockResolvedValue(undefined),
 })
 
@@ -73,7 +74,12 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${navn}`) }))
     await waitFor(() => expect(hh[handling as 'startLokalt']).toHaveBeenCalledWith(expect.objectContaining({ side_task_id: 'a' })))
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated'))
+    // Arbejds-sessionen skal FOELGE MED. Uden den kan serveren ikke knytte
+    // turen til opgaven, og saa er der ingen der kan lukke den — det var
+    // praecis fejlen Bjoern saa 3/10 («maatte jeg minde ham om at markere
+    // den flaggede opgave faerdig»).
+    const forventet = { startLokalt: 'chat-ny', baggrund: 'chat-bg', loesHer: 'chat-her' }[handling as 'startLokalt']
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated', forventet))
     expect(await screen.findByText('i gang')).toBeInTheDocument()
   })
 

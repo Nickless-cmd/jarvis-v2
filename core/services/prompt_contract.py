@@ -2150,7 +2150,10 @@ def _build_visible_chat_prompt_assembly_impl(
         _sec_err("upcoming scheduled tasks", _e)
     try:
         from core.services.side_tasks import side_tasks_prompt_section
-        _awareness_add(80, "flagged side-tasks", side_tasks_prompt_section())
+        # session_id med (3/10-2026): uden den kan afsnittet ikke sige at DENNE
+        # samtale er arbejdet paa opgaven — og saa blev den aldrig lukket.
+        _awareness_add(80, "flagged side-tasks",
+                       side_tasks_prompt_section(session_id))
     except Exception as _e:
         _sec_err("flagged side-tasks", _e)
 

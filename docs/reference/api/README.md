@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15985 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15986 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -55,8 +55,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15985 functions/
 - [`core.services.24`](core.services.24.md) — `shutdown_window_daemon` … `structured_content_flag`
 - [`core.services.25`](core.services.25.md) — `subagent_digest` … `tool_dansk_bro`
 - [`core.services.26`](core.services.26.md) — `tool_embeddings` … `value_formation`
-- [`core.services.27`](core.services.27.md) — `verification_gate` … `visible_runs_memory`
-- [`core.services.28`](core.services.28.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `verification_gate` … `visible_runs_learning_signals`
+- [`core.services.28`](core.services.28.md) — `visible_runs_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

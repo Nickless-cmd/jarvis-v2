@@ -5245,23 +5245,26 @@ async def _stream_visible_run(
                     _had_tools_r = any(
                         getattr(_ex, "tool_calls", None) for _ex in _fu_ex_r)
                     if _had_tools_r:
+                        from core.services import visible_post_tool_synthesis as _vps
+                        _rescued = ""
                         try:
-                            _rescued = await asyncio.to_thread(
-                                _vf.synthesize_final_answer,
+                            async for _synth_event in _vps.stream_final_synthesis(
                                 provider=run.provider, model=run.model,
                                 base_messages=locals().get("base_messages") or [],
                                 exchanges=_fu_ex_r,
-                            )
+                            ):
+                                if isinstance(_synth_event, _vps.SynthesisDelta):
+                                    if not run.autonomous:
+                                        yield _sse("delta", {
+                                            "type": "delta", "run_id": run.run_id,
+                                            "delta": _synth_event.text,
+                                        })
+                                else:
+                                    _rescued = _synth_event.text
                         except Exception:
                             _rescued = ""
-                        _rescued = _vts.fjern_interne_markoerer(_rescued)
                         if _rescued:
                             followup_text = _rescued
-                            if not run.autonomous:
-                                yield _sse("delta", {
-                                    "type": "delta", "run_id": run.run_id,
-                                    "delta": _rescued,
-                                })
                             _observe_streamed_text_recovered(
                                 run, chars=len(_rescued), source="finalize_synthesis")
 
@@ -5303,21 +5306,25 @@ async def _stream_visible_run(
                     )
                     _fu_ex_guard = locals().get("_followup_exchanges") or []
                     if is_hollow_post_tool_answer(_real_answer, _fu_ex_guard):
-                        _synth_guard = await asyncio.to_thread(
-                            _vf.synthesize_final_answer,
+                        from core.services import visible_post_tool_synthesis as _vps
+                        _synth_guard = ""
+                        async for _synth_event in _vps.stream_final_synthesis(
                             provider=run.provider, model=run.model,
                             base_messages=locals().get("base_messages") or [],
                             exchanges=_fu_ex_guard,
-                        )
+                            min_chars=max(24, len(_real_answer.strip()) + 12),
+                        ):
+                            if isinstance(_synth_event, _vps.SynthesisDelta):
+                                if not run.autonomous:
+                                    yield _sse("delta", {
+                                        "type": "delta", "run_id": run.run_id,
+                                        "delta": _synth_event.text,
+                                    })
+                            else:
+                                _synth_guard = _synth_event.text
                         if should_replace_with_synthesis(_real_answer, _synth_guard):
-                            _synth_guard = _vts.fjern_interne_markoerer(_synth_guard)
                             followup_text = _synth_guard
                             _real_answer = _synth_guard
-                            if not run.autonomous:
-                                yield _sse("delta", {
-                                    "type": "delta", "run_id": run.run_id,
-                                    "delta": _synth_guard,
-                                })
                 except Exception:
                     pass
                 if not _real_answer and _outcome_state.status == "completed":

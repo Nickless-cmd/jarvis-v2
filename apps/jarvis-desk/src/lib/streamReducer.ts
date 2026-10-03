@@ -10,6 +10,9 @@ export interface StreamState {
   provider: string
   lane: string
   blocks: ContentBlock[]
+  provisionalText: string
+  provisionalBlockIndex: number | null
+  provisionalMissingBlockIndex: number | null
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   finalAnswerStarted: boolean // serveren har bekræftet slutsvar før første synlige delta
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
@@ -33,7 +36,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -109,7 +112,17 @@ const liveBlokkeCache = new WeakMap<ContentBlock[], {
   result: ContentBlock[]
 }>()
 
-export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'>): ContentBlock[] {
+export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'> & Partial<Pick<StreamState, 'provisionalText' | 'provisionalBlockIndex'>>): ContentBlock[] {
+  if (state.provisionalText) {
+    const blocks = state.provisionalBlockIndex == null
+      ? state.blocks.filter((b): b is ContentBlock => !!b)
+      : state.blocks.filter((b, index): b is ContentBlock => !!b && index !== state.provisionalBlockIndex)
+    return [
+      ...(state.skillFlade ? [state.skillFlade] : []),
+      ...blocks,
+      { type: 'text', text: state.provisionalText },
+    ]
+  }
   if (!state.skillFlade) return state.blocks
   const cached = liveBlokkeCache.get(state.blocks)
   if (cached?.skillFlade === state.skillFlade) return cached.result
@@ -179,6 +192,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         provider: event.message.provider || state.provider,
         lane: event.message.lane || state.lane,
         blocks: _sameRun ? state.blocks : [],
+        provisionalText: _sameRun ? state.provisionalText : '',
+        provisionalBlockIndex: _sameRun ? state.provisionalBlockIndex : null,
+        provisionalMissingBlockIndex: _sameRun ? state.provisionalMissingBlockIndex : null,
         workingStep: _sameRun ? state.workingStep : null,
         // Et NYT run rydder genoptagelses-varslet. Foer var `message_delta`
         // med stop_reason end_turn/completed den eneste vej ud — og en tvungen
@@ -240,12 +256,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         }
         return { ...state, blocks }
       }
-      return { ...state, blocks }
+      return {
+        ...state, blocks,
+        provisionalBlockIndex: cb.type === 'text' && state.provisionalText
+          ? event.index : state.provisionalBlockIndex,
+      }
     }
 
     case 'content_block_delta': {
       const existing = state.blocks[event.index]
-      if (!existing) return state // delta uden forudgående start → ignorér (edge-case)
+      if (!existing) return event.delta.type === 'text_delta' && state.provisionalText
+        ? { ...state, provisionalMissingBlockIndex: event.index }
+        : state
       const blocks = state.blocks.slice()
       const d = event.delta
       if (d.type === 'text_delta' && existing.type === 'text') blocks[event.index] = { ...existing, text: existing.text + d.text }
@@ -260,6 +282,33 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      if (event.kind === 'provisional_text_delta') {
+        const runId = String(event.payload?.run_id ?? '')
+        if (!runId || (state.status === 'working' && state.activeRunId && runId !== state.activeRunId)
+          || (state.status === 'done' && state.activeRunId === runId)) return state
+        const delta = String(event.payload?.delta ?? '')
+        if (!delta) return state
+        // Ved sen tilkobling kan message_start være faldet ud af relay-bufferen.
+        // Deltaens run-id er nok til at starte en ny live-visning.
+        const nytRun = !!state.activeRunId && state.activeRunId !== runId
+        return {
+          ...state, status: 'working', activeRunId: runId,
+          blocks: nytRun ? [] : state.blocks,
+          provisionalText: (nytRun ? '' : state.provisionalText) + delta,
+          provisionalBlockIndex: nytRun ? null : state.provisionalBlockIndex,
+          provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
+          finalAnswerStarted: nytRun ? false : state.finalAnswerStarted,
+        }
+      }
+      if (event.kind === 'provisional_text_commit') {
+        if (String(event.payload?.run_id ?? '') !== state.activeRunId) return state
+        const blocks = state.blocks.slice()
+        if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+          blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+        }
+        return { ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
+          provisionalMissingBlockIndex: null }
+      }
       if (event.kind === 'final_answer_start') {
         const rid = String(event.payload?.run_id ?? '')
         return rid && rid === state.activeRunId
@@ -351,7 +400,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // stod ellers og pulserede under et færdigt svar.
       const blocks = lukTanker(state.blocks, Date.now()).map((b) =>
         b && b.type === 'tool_use' && (b.status ?? 'running') === 'running' ? { ...b, status: 'done' as const } : b)
-      return { ...state, status: 'done', blocks }
+      if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+        blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+      }
+      return { ...state, status: 'done', blocks, provisionalText: '',
+        provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 
     case 'tool_round_label':

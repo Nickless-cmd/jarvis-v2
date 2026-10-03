@@ -106,6 +106,8 @@ export interface StreamContextValue {
   /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
   blocks: ContentBlock[]
+  provisionalText: string
+  provisionalBlockIndex: number | null
   /**
    * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
    * Skrevet af en lille lokal model på serveren, leveret ved næste rundes start.
@@ -540,6 +542,8 @@ export function StreamProvider({
       activeProvider: state.provider,
       activeLane: state.lane,
       blocks: state.blocks,
+      provisionalText: state.provisionalText,
+      provisionalBlockIndex: state.provisionalBlockIndex,
       rundeEtiketter: state.rundeEtiketter,
       tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
@@ -569,7 +573,7 @@ export function StreamProvider({
       visGenoptagelsesVarsel,
       rydGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
+    [status, state.model, state.provider, state.lane, state.blocks, state.provisionalText, state.provisionalBlockIndex, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

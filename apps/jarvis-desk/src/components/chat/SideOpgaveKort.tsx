@@ -143,7 +143,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
             <X size={15} />
           </button>
         </div>
-        <h4 className="sok-titel">{t.title}</h4>
+        <h4 className="sok-titel" title={t.title}>{t.title}</h4>
         <p className="sok-tekst" title={t.prompt}>{beskrivelse}</p>
         {fejl ? <p className="sok-fejl" role="alert">{fejl}</p> : null}
         <div className="sok-fod">

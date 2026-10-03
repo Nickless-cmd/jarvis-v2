@@ -40,7 +40,7 @@ import os
 import threading
 import time  # noqa: F401 — re-exported for backward-compat (pre-split facade symbol)
 from dataclasses import dataclass  # noqa: F401 — re-exported (pre-split facade symbol)
-from typing import Iterator, Protocol, runtime_checkable  # noqa: F401 — Protocol/runtime_checkable re-exported
+from typing import Callable, Iterator, Protocol, runtime_checkable  # noqa: F401 — Protocol/runtime_checkable re-exported
 
 # Re-export shared failure taxonomy (some callers import these from here).
 from core.services.stream_failure_kind import (  # noqa: F401
@@ -304,6 +304,7 @@ def synthesize_final_answer(
     model: str,
     base_messages: list[dict],
     exchanges: list["ToolExchange"],
+    on_delta: Callable[[str], None] | None = None,
 ) -> str:
     """HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT
     syntese-kald der TVINGER prosa fra HVILKEN SOM HELST model/lane, når den
@@ -365,6 +366,8 @@ def synthesize_final_answer(
         ):
             if isinstance(_ev, FollowupDelta):
                 _delta_parts.append(_ev.delta)
+                if on_delta and _ev.delta:
+                    on_delta(_ev.delta)
             elif isinstance(_ev, FollowupDone):
                 _done_text = str(_ev.text or "")
             elif isinstance(_ev, FollowupFailed):

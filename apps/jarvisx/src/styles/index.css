@@ -132,10 +132,16 @@ textarea, input,
 /* Markdown chat content polish */
 .prose-jarvisx {
   font-size: 0.9rem;
-  line-height: 1.55;
+  /* 3/10-2026: 1,55 → 1,375 — samme forhold som mobilens fix (fd7f04d3f: 16/22),
+   * desk'ens .jarvis-body (8da6df159) og apps/ui's .message-content. Målt 3/10
+   * på to skærmbilleder: 24 px linjepitch mod Claudes 20-21 px ved samme
+   * tekststørrelse. 0,9rem = 14,4 px × 1,375 = 19,8 px. */
+  line-height: 1.375;
   color: inherit;
 }
-.prose-jarvisx p { margin: 0.4em 0; }
+/* 0,625em = 9 px ved 14,4 px — mobilens 10 px ved 16 px, samme forhold.
+ * Modvægt til den strammere linjehøjde, så afsnittene ikke smelter sammen. */
+.prose-jarvisx p { margin: 0.625em 0; }
 .prose-jarvisx p:first-child { margin-top: 0; }
 .prose-jarvisx p:last-child { margin-bottom: 0; }
 .prose-jarvisx h1, .prose-jarvisx h2, .prose-jarvisx h3 {

@@ -178,11 +178,15 @@ export const MessageBubble = memo(function MessageBubble({
     ? []
     : kilderPrDomaene(kilderFraBlokke(kildeBlokke, message.content))
 
-  // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
-  const enter = useRef(new Animated.Value(0)).current
+  // Et færdigt svar afløser en live-boble med et nyt id. Hvis den får samme
+  // mount-animation, blinker hele teksten væk netop når streamen stopper.
+  const animateEntrance = streaming || isUser
+  const enter = useRef(new Animated.Value(animateEntrance ? 0 : 1)).current
   useEffect(() => {
-    Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
-  }, [enter])
+    if (animateEntrance) {
+      Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
+    }
+  }, [enter, animateEntrance])
   const enterScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] })
 
   // Kun assistentens EGNE filer. Dine uploads har deres egen række over boblen
@@ -548,8 +552,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys
 // baggrund (= hvid boks med næsten-hvid tekst) og afsnit klistrer sammen.
 const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
-  body: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 26 },
-  paragraph: { marginTop: 0, marginBottom: tokens.spacing.sm },
+  // `body` bliver en View i react-native-markdown-display og kan ikke give
+  // linjehøjde videre til Text. Det er textgroup, der faktisk ombryder prosa.
+  body: {},
+  textgroup: { color: tokens.color.fg1, fontSize: 15, lineHeight: 19, includeFontPadding: false },
+  paragraph: { marginTop: 0, marginBottom: 3 },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },
   em: { fontStyle: 'italic' },

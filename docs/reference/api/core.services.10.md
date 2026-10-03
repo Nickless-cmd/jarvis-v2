@@ -201,8 +201,8 @@ _Delta-sporet: hvor i kæden bliver streamen klumpet? (3/10-2026)_
 |---|---|---|---|---|
 | function | `taendt` | `()` | Er sporet slået til? Enhver tvivl → nej, så det aldrig koster noget. | [src](../../../core/services/delta_trace.py#L79) |
 | function | `noter` | `(punkt, run_id, tegn)` | Registrér én delta. No-op når sporet er slukket. | [src](../../../core/services/delta_trace.py#L88) |
-| function | `_fordeling` | `(huller)` | (median, p95, max, indeks-for-max) i millisekunder. | [src](../../../core/services/delta_trace.py#L110) |
-| function | `afslut` | `(run_id)` | Skriv opsummeringen for et run og ryd det. No-op når slukket. | [src](../../../core/services/delta_trace.py#L121) |
+| function | `_fordeling` | `(huller)` | (median, p95, max, indeks-for-max) i millisekunder. | [src](../../../core/services/delta_trace.py#L118) |
+| function | `afslut` | `(noegle, *, run_id=…)` | Skriv opsummeringen og ryd den. No-op når slukket. | [src](../../../core/services/delta_trace.py#L129) |
 
 ## `core/services/desire_daemon.py`
 _Desire daemon — emergent appetites based on Jarvis' actual experiences._

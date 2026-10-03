@@ -263,21 +263,39 @@ def tik() -> dict[str, Any]:
         return {"status": "ok", "nye": 0}
 
     tekst = "CI gik rødt på main:\n" + "\n".join(_beskriv(r) for r in nye)
+    # 3/10-2026: udgangen flyttet fra heartbeat-trigger-koeen til
+    # notification_bridge — samme grund som i `background_job_watch`.
+    #
+    # Koeen toemmes aldrig: `consume_trigger` kaldes kun bag
+    # `ping_channel != "webchat"` og kun fra head. En CI-alarm der ikke kan
+    # naa frem er ikke en alarm — og det var hele grunden til at vagtposten
+    # blev bygget (ci var roedt i to doegn uden at nogen saa det).
+    #
+    # `send_session_notification` er den etablerede vej for en
+    # baggrundsproces der vil sige noget. `push=False`: denne vej sendte
+    # ikke mobil-push foer.
     try:
-        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
 
-        lagt = set_trigger_for_default_workspace(
-            reason="ci-failed",
-            source="ci_status_watch",
-            text=tekst[:2000],
+        levering = send_session_notification(
+            tekst[:2000],
+            source="ci-status-watch",
+            push=False,
         )
     except Exception as exc:
-        logger.warning("ci_status_watch: kunne ikke laegge followup: %s", exc)
+        logger.warning("ci_status_watch: kunne ikke sende besked: %s", exc)
         return {"status": "fejl", "nye": len(nye), "grund": str(exc)[:120]}
-    if lagt is None:
-        # Funktionen sluger sin EGEN fejl og returnerer None (fx naar
-        # arbejdsrummet ikke kan slaaes op). Uden det her tjek ville vi melde
-        # «sendt» om en besked der aldrig blev lagt — og runnene er allerede
-        # markeret sete, saa de ville ikke komme igen.
-        return {"status": "fejl", "nye": len(nye), "grund": "trigger-blev-ikke-lagt"}
+    # "queued" ER en succes — se `_DELIVERY_OK_STATUSES`.
+    if not delivery_succeeded(levering):
+        # Uden det her tjek ville vi melde «sendt» om en alarm der aldrig
+        # blev leveret — og runnene er allerede markeret sete, saa de ville
+        # ikke komme igen.
+        return {
+            "status": "fejl",
+            "nye": len(nye),
+            "grund": f"levering-{levering.get('status') or 'error'}",
+        }
     return {"status": "ok", "nye": len(nye), "tekst": tekst}

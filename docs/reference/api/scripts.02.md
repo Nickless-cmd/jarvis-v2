@@ -158,12 +158,14 @@ _Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_er_ventende` | `(navn)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L80) |
-| function | `_del_ved_halen` | `(tekst)` | (stabilt prefix, dynamisk hale). Halen er det EFTER sentinel'en. | [src](../../../scripts/maal_ventende_i_prompten.py#L85) |
-| function | `_byg` | `(provider, model, besked, session_id)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L100) |
-| function | `_maal_en_del` | `(navn, tekst)` | Sektionér én del (prefix eller hale) og del tokens i ventende/andet. | [src](../../../scripts/maal_ventende_i_prompten.py#L108) |
-| function | `_maal_aendring` | `(tekster)` | Hvilke sektioner ændrede sig mellem bygningerne? | [src](../../../scripts/maal_ventende_i_prompten.py#L134) |
-| function | `main` | `()` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L186) |
+| function | `_label_of` | `(tekst)` | Identisk med `prompt_contract._label_of` — med vilje samme regel. | [src](../../../scripts/maal_ventende_i_prompten.py#L70) |
+| function | `split_system_by_sections` | `(tekst)` | (navn, tegn, tokens) per blok, navngivet som runtimen navngiver sine dele. | [src](../../../scripts/maal_ventende_i_prompten.py#L77) |
+| function | `_er_ventende` | `(navn)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L114) |
+| function | `_del_ved_halen` | `(tekst)` | (stabilt prefix, dynamisk hale). Halen er det EFTER sentinel'en. | [src](../../../scripts/maal_ventende_i_prompten.py#L119) |
+| function | `_byg` | `(provider, model, besked, session_id)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L134) |
+| function | `_maal_en_del` | `(navn, tekst)` | Sektionér én del (prefix eller hale) og del tokens i ventende/andet. | [src](../../../scripts/maal_ventende_i_prompten.py#L142) |
+| function | `_maal_aendring` | `(tekster)` | Hvilke sektioner ændrede sig mellem bygningerne? | [src](../../../scripts/maal_ventende_i_prompten.py#L170) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L228) |
 
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._

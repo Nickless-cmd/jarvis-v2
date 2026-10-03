@@ -164,6 +164,12 @@ def _supervisor_jobs() -> list[dict[str, Any]]:
             "pid": p.get("pid"),
             "sekunder": int(sek) if isinstance(sek, (int, float)) else None,
             "exit_code": p.get("exit_code"),
+            # 3/10-2026: `stopped_at` med, fordi registret er et ARKIV uden
+            # oprydning — processer fra maj ligger side om side med dem der
+            # døde i dag. Uden et tidspunkt kan en læser ikke skelne dem, og
+            # en vagtpost ville melde en proces der døde for fire måneder
+            # siden som om den lige var færdig.
+            "stopped_at": p.get("stopped_at"),
             "can_pause": bool(p.get("can_pause")),
         })
     return jobs

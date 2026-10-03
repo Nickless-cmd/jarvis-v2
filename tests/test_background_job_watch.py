@@ -1,9 +1,17 @@
 """Tester for baggrundsjob-vagtposten — hullet der blev lukket 3/10-2026.
 
-Kernen er ikke at den kan læse en liste. Det er at den kan SKELNE mellem
-«der var ingen nye» og «vi kunne ikke se» — for kun den ene må blive til en
-besked til Bjørn. En vagt der siger «alt er fint» når broen tier er den
-samme fejlklasse som `test_publish_scan` blev skrevet for at fange.
+Kernen er ikke at den kan læse en liste. Det er to ting den skal kunne:
+
+1. SKELNE mellem «der var ingen nye» og «vi kunne ikke se». En vagt der siger
+   «alt er fint» når broen tier er den samme fejlklasse som
+   `test_publish_scan` blev skrevet for at fange.
+2. Skelne DELVIS blindhed fra total. Anden udgave (samme dag) fangede at
+   første udgave kastede HELE listen naar broen tav — ogsaa supervisor-jobs,
+   der ligger lokalt og er laesbare uden bro. Det er samme fejl spejlet: en
+   flade der siger «intet» naar den godt kunne se noget.
+
+Og grundlinjen: `process_supervisor`-registret er et arkiv uden oprydning.
+Uden den ville foerste koersel melde en proces der doede i maj.
 """
 from __future__ import annotations
 
@@ -13,10 +21,21 @@ import pytest
 
 from core.services import background_job_watch as w
 
+#: Foer/efter-grundlinje. Faste strenge, saa testen ikke afhaenger af hvornaar
+#: den koerer — og saa de to skriveres uenige ISO-format (`Z` mod `+00:00`)
+#: begge bliver rørt.
+_GAMMEL = "2026-05-02T06:14:18.585536Z"      # foer grundlinjen
+_GRUNDLINJE = "2026-10-03T10:00:00+00:00"
+_NY = "2026-10-03T11:00:00Z"                  # efter grundlinjen
+
 
 def _job(jid: str = "bg_aaaaaaaaaaaa", kode: int | None = 0,
-         navn: str = "byg") -> dict:
-    return {"id": jid, "kilde": "operator", "navn": navn, "exit_code": kode}
+         navn: str = "byg", kilde: str = "operator",
+         stopped_at: str | None = None) -> dict:
+    j = {"id": jid, "kilde": kilde, "navn": navn, "exit_code": kode}
+    if stopped_at is not None:
+        j["stopped_at"] = stopped_at
+    return j
 
 
 @pytest.fixture
@@ -35,6 +54,14 @@ def isoleret_state(monkeypatch):
 
     monkeypatch.setattr(state_store, "med_laas", _laas)
     return gemt
+
+
+@pytest.fixture
+def fast_grundlinje(isoleret_state):
+    """Grundlinjen sat til et fast tidspunkt, saa supervisor-testene kan
+    afgoere foer/efter uden at vente paa uret."""
+    isoleret_state[w._GRUNDLINJE] = {"foerste_ved": _GRUNDLINJE}
+    return isoleret_state
 
 
 @pytest.fixture
@@ -70,33 +97,91 @@ def followups(monkeypatch):
 # ── scan_finished: hvad tæller som fuldført ─────────────────────────────
 
 
-def test_kun_operator_kilden_taelles(isoleret_state, jobs):
+def test_operator_og_supervisor_taelles_shells_og_agenter_ikke(fast_grundlinje, jobs):
+    """To kilder baerer et fuldfoerelses-bevis: operatoer-shells (`.rc`) og
+    supervisor-processer (exit-kode + stop-tid). Aabne shell-sessioner og
+    scout-agenter har ingen exit-kode at maale paa — de skal ikke taelles."""
     jobs["svar"] = {"jobs": [
-        {"id": "sup-1", "kilde": "supervisor", "navn": "worker", "exit_code": 0},
-        _job(),
+        _job(jid="shell-1", kilde="shell"),
+        _job(jid="agent-1", kilde="agent"),
+        _job(jid="sup-1", kilde="supervisor", stopped_at=_NY),
+        _job(jid="bg_aaaaaaaaaaaa"),
     ]}
-    nye = w.scan_finished(uid="bjorn")
-    assert [j["id"] for j in nye] == ["bg_aaaaaaaaaaaa"]
+    nye = w.scan_finished(uid="bjorn")["nye"]
+    assert [j["id"] for j in nye] == ["sup-1", "bg_aaaaaaaaaaaa"]
 
 
 def test_igangvaerende_job_er_ikke_fuldfoert(isoleret_state, jobs):
     """`exit_code is None` betyder «kører endnu», ikke «færdig uden fejl».
     Den forskel er hele grunden til at feltet er `None` og ikke `0`."""
     jobs["svar"] = {"jobs": [_job(kode=None)]}
-    assert w.scan_finished(uid="bjorn") == []
+    assert w.scan_finished(uid="bjorn")["nye"] == []
 
 
 def test_samme_job_siges_kun_en_gang(isoleret_state, jobs):
     jobs["svar"] = {"jobs": [_job()]}
-    assert len(w.scan_finished(uid="bjorn")) == 1
-    assert w.scan_finished(uid="bjorn") == []
+    assert len(w.scan_finished(uid="bjorn")["nye"]) == 1
+    assert w.scan_finished(uid="bjorn")["nye"] == []
 
 
 def test_fejlet_job_rapporteres_med_koden(isoleret_state, jobs):
     jobs["svar"] = {"jobs": [_job(kode=2, navn="npm run build")]}
-    nye = w.scan_finished(uid="bjorn")
+    nye = w.scan_finished(uid="bjorn")["nye"]
     assert len(nye) == 1
     assert nye[0]["exit_code"] == 2
+
+
+# ── grundlinjen: arkivet maa ikke meldes som nyheder ────────────────────
+#
+# `process_supervisor` rydder ikke sit register. Maalt 3/10-2026: ni poster,
+# nyeste stop 16. september, to fra maj. Uden en grundlinje ville foerste
+# koersel melde dem alle som om de lige var blevet faerdige.
+
+
+def test_supervisor_post_fra_foer_grundlinjen_er_historik(fast_grundlinje, jobs):
+    """Posten har en exit-kode og ser fuldfoert ud — men den stoppede for fem
+    maaneder siden. Den er arkiv, ikke begivenhed."""
+    jobs["svar"] = {"jobs": [
+        _job(jid="gammel", kilde="supervisor", stopped_at=_GAMMEL),
+    ]}
+    assert w.scan_finished(uid="bjorn")["nye"] == []
+
+
+def test_supervisor_post_efter_grundlinjen_meldes(fast_grundlinje, jobs):
+    jobs["svar"] = {"jobs": [
+        _job(jid="ny", kilde="supervisor", stopped_at=_NY),
+    ]}
+    assert [j["id"] for j in w.scan_finished(uid="bjorn")["nye"]] == ["ny"]
+
+
+def test_supervisor_uden_stop_tid_springes_over(fast_grundlinje, jobs):
+    """Kan posten ikke dateres, kan vi ikke afgoere om den er ny. Vi tier —
+    en ufuldstaendig post maa ikke blive en falsk nyhed."""
+    jobs["svar"] = {"jobs": [
+        _job(jid="udateret", kilde="supervisor", stopped_at=None),
+    ]}
+    assert w.scan_finished(uid="bjorn")["nye"] == []
+
+
+def test_genstartet_navn_med_nyt_stop_meldes_igen(fast_grundlinje, jobs):
+    """Supervisor-NAVNE genbruges: `grid-bot` kan startes, do og startes igen.
+    Noeglen baerer derfor ogsaa stop-tidspunktet — ellers ville anden doed
+    blive laest som «allerede rapporteret»."""
+    jobs["svar"] = {"jobs": [_job(jid="grid-bot", kilde="supervisor", stopped_at=_NY)]}
+    assert len(w.scan_finished(uid="bjorn")["nye"]) == 1
+
+    jobs["svar"] = {"jobs": [
+        _job(jid="grid-bot", kilde="supervisor", stopped_at="2026-10-03T12:00:00Z"),
+    ]}
+    assert len(w.scan_finished(uid="bjorn")["nye"]) == 1, (
+        "en ny doed for samme navn er en ny begivenhed"
+    )
+
+
+def test_grundlinjen_saettes_en_gang_og_bliver_staaende(fast_grundlinje):
+    foer = w._grundlinje()
+    assert foer.isoformat() == _GRUNDLINJE.replace("Z", "+00:00")
+    assert w._grundlinje() == foer
 
 
 # ── tik: beskeden må kun komme naar vi VED det ──────────────────────────
@@ -130,6 +215,26 @@ def test_bridge_ok_false_er_ogsaa_blindhed(isoleret_state, jobs, followups):
     ud = w.tik(uid="bjorn")
     assert ud["status"] == "ukendt"
     assert followups == []
+
+
+def test_blind_bro_kaster_ikke_de_lokale_jobs(isoleret_state, jobs, followups):
+    """Anden udgave, 3/10-2026. Foerste udgave kastede HELE listen naar broen
+    tav — ogsaa supervisor-jobs, der ligger paa serveren og er laesbare uden
+    bro. Det er samme fejl spejlet: «intet» naar vi godt kunne se noget.
+
+    Den skal melde det den SAA, og sige at den ikke kunne se resten."""
+    jobs["svar"] = {
+        "jobs": [_job(jid="lokal", kilde="supervisor", stopped_at=_NY)],
+        "bridge_ok": False,
+    }
+    fast = {"foerste_ved": _GAMMEL}
+    isoleret_state[w._GRUNDLINJE] = fast
+
+    ud = w.tik(uid="bjorn")
+    assert ud["nye"] == 1, "den lokale fuldfoerelse maa ikke gaa tabt"
+    assert ud["status"] == "ukendt", "men status er aerlig: vi kunne ikke se alt"
+    assert len(followups) == 1
+    assert "kunne ikke ses" in followups[0]["text"]
 
 
 def test_throttle_springer_andet_kald_over(isoleret_state, jobs, followups):
@@ -216,4 +321,3 @@ def test_hooket_sender_bruger_id_med(monkeypatch):
     assert kaldt == ["1246415163603816499"], (
         "vagtposten skal have bruger-id'et med — ellers er bro-kaldet blindt"
     )
-

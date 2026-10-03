@@ -345,6 +345,11 @@
       "ejer": "core/services/agent_self_evaluation.py",
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
+    },
+    "bg_jobs_grundlinje": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",
+      "registreret": "2026-10-03"
     }
   }
 }

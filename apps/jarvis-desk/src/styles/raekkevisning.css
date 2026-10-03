@@ -65,7 +65,7 @@
   background: none; border: 0; padding: 0; margin: 0;
   width: 100%; text-align: left; font: inherit; color: inherit;
 }
-/* Ikonboks 16×16, glyf 14, margin-right 6 → indhold starter ved 22px. */
+/* Ikonboks 16×16, glyf 13, margin-right 6 → indhold starter ved 22px. */
 .raekkevisning .rv-ikon {
   position: relative; z-index: 1;
   flex: none; width: 16px; height: 16px; margin-right: 6px;
@@ -80,6 +80,7 @@
   opacity: 0; transition: opacity 100ms ease;
 }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-glyf { opacity: 0; }
+.raekkevisning .rv-r[data-foldbar]:hover .rv-glyf-glimt { opacity: 0; }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-hoverChev { opacity: 1; }
 /* Målt: titel og sammenfatning er BEGGE 13px/24px vægt 400, ét gråtrin fra
    hinanden. Intet er fremhævet — det er dét der gør den rolig. */
@@ -114,9 +115,9 @@
    >»). Boksens bredde holdes UÆNDRET, så rækkens højde og tekstens kant ikke
    rykker sig ved skiftet. */
 .raekkevisning .rv-chev {
-  flex: none; margin-left: 4px; width: 18px;
+  flex: none; margin-left: 4px; width: 16px; height: 16px;
   display: flex; align-items: center; justify-content: center;
-  position: relative; top: 2px;
+  position: relative;
   color: var(--fg-3); transition: color 100ms ease;
 }
 .raekkevisning .rv-r[data-foldbar] { cursor: pointer; }
@@ -148,19 +149,39 @@
 .raekkevisning .rv-r[data-kind='opgave'] .rv-ikon { color: var(--ok); }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
-/* Shimmeren klippes til tekstens glyffer. Ikonerne får kun en rolig lysning;
-   en separat SVG-maske gav et synligt hop, og en række-overlay malede en
-   grå flade helt ude til højre for teksten. */
-.raekkevisning .rv-r[data-koerer] .rv-ikon svg,
-.raekkevisning .rv-r[data-koerer] .rv-chev svg,
-.raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
-.raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
-.raekkevisning .rv-tur[data-koerer] .rv-turC svg {
-  animation: rv-ikon-lys 2.25s ease-in-out infinite;
+/* Ét sweep gennem venstre ikon, tekst og foldpil. Det lyse SVG-lag er klippet
+   til stregen i selve ikonet, så der ikke tegnes en flade hen over rækken. */
+.raekkevisning .rv-ikon-glimt {
+  position: absolute; inset: 0; margin: auto;
+  color: #eafff3; opacity: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  -webkit-mask-size: 50% 100%; mask-size: 50% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
-@keyframes rv-ikon-lys {
-  0%, 100% { opacity: .6; }
-  50% { opacity: 1; }
+.raekkevisning [data-koerer] .rv-ikon-glimt { opacity: 1; }
+.raekkevisning [data-koerer] .rv-arbejdsikon .rv-ikon-glimt,
+.raekkevisning .rv-r[data-koerer] .rv-ikon .rv-ikon-glimt {
+  animation: rv-glimt-venstre 1.8s linear infinite 300ms;
+}
+.raekkevisning [data-koerer] .rv-turC .rv-ikon-glimt,
+.raekkevisning .rv-r[data-koerer] .rv-chev .rv-ikon-glimt {
+  animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
+}
+.raekkevisning [data-koerer] .shimmer {
+  animation: rv-glimt-tekst 1.8s linear infinite 300ms;
+}
+@keyframes rv-glimt-venstre {
+  0%, 3% { -webkit-mask-position: -100% 0; mask-position: -100% 0; }
+  18%, 100% { -webkit-mask-position: 200% 0; mask-position: 200% 0; }
+}
+@keyframes rv-glimt-tekst {
+  0%, 18% { background-position: -100% 0; }
+  68%, 100% { background-position: 200% 0; }
+}
+@keyframes rv-glimt-hoejre {
+  0%, 68% { -webkit-mask-position: -100% 0; mask-position: -100% 0; }
+  83%, 100% { -webkit-mask-position: 200% 0; mask-position: 200% 0; }
 }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
@@ -197,8 +218,8 @@
 .raekkevisning .rv-turC {
   /* `flex: none` som arbejdsknappen allerede havde: uden den kan ikonet
      klemmes fladt når turens tekst er lang. */
-  flex: none; display: flex; width: 18px; align-items: center; justify-content: center;
-  position: relative; top: 2px;
+  flex: none; display: flex; width: 16px; height: 16px; align-items: center; justify-content: center;
+  position: relative;
   color: var(--fg-3);
 }
 .raekkevisning .rv-gruppe {
@@ -217,12 +238,16 @@
   font-size: 14px; line-height: 26px; font-weight: 400; cursor: pointer;
 }
 .raekkevisning .rv-arbejdsknap:hover .rv-turC { color: var(--fg-1); }
-.raekkevisning .rv-arbejdsikon { flex: none; color: var(--fg-3); }
+.raekkevisning .rv-arbejdsikon {
+  flex: none; position: relative; display: inline-flex;
+  width: 16px; height: 16px; align-items: center; justify-content: center;
+  color: var(--fg-3);
+}
 .raekkevisning .rv-arbejdsfortaelling {
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--rv-tertiary);
 }
-.raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; font-size: 12px; white-space: nowrap; }
+.raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; white-space: nowrap; }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 
 .raekkevisning .rv-arbejdsdetaljer {
@@ -504,16 +529,19 @@
    inde i den — desks egne klasser, pinnet af tokens.test.ts. Sattes der en
    `color` paa selve `.rv-diffstat`, ville den ikke overskrive boernenes,
    men den ville goere det uklart hvem der bestemmer. */
-.raekkevisning .rv-diffstat { font: 11px var(--font-mono); }
+.raekkevisning .rv-diffstat {
+  font-family: inherit; font-size: 12px; line-height: 1.2; font-weight: 400;
+  opacity: .82;
+}
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .raekkevisning .rv-r[data-koerer] .rv-ikon svg,
-  .raekkevisning .rv-r[data-koerer] .rv-chev svg,
-  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
-  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
-  .raekkevisning .rv-tur[data-koerer] .rv-turC svg { animation: none; }
+  .raekkevisning [data-koerer] .rv-ikon-glimt { display: none; animation: none; }
+  .raekkevisning [data-koerer] .shimmer {
+    animation: none; background: none; color: var(--fg-3);
+    -webkit-text-fill-color: currentColor;
+  }
   .msg-block[data-just-completed] .raekkevisning .rv-svar,
   .msg-block[data-just-completed] .raekkevisning .rv-turTekst { animation: none; }
 }

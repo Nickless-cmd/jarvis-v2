@@ -144,12 +144,32 @@ Disse gælder HVER opgave nedenfor.
   regel fra Bjørn 3/10-2026, og den gælder hver post, hvert gate-varsel og hver
   påmindelse denne spec indfører — ikke kun indbakken.
 
-  Baggrunden er målt samme dag: tre værn i `visible_runs.py` skriver i jeg-form
-  MED en invitation og lander i `_all_followup_parts`, altså i det næste runde
-  læser — `_exhaust_note` (l.3763), `_hp_note` (l.4092), `_stop_note` (l.4204).
-  Alle tre indeholder ordene «Sig til». Næste runde ser en opfordring i første
-  person og kan læse den som om den var givet; det startede runder i Bjørns navn
-  og kostede ekstra runder.
+  Baggrunden er målt samme dag: FEM værn i `visible_runs.py` appender til
+  `_a_parts`, og `_a_parts` er — ifølge `compose_exchange_text`s egen docstring —
+  både det persisterede svar OG næste rundes model-input. Fire er i jeg-form, og
+  tre bærer ordene «Sig til»: `_exhaust_note`, `_hp_note`, `_stop_note`. Næste
+  runde ser en opfordring i første person og kan læse den som om den var givet;
+  det startede runder i Bjørns navn og kostede ekstra runder.
+
+  > **RETTET 3/10 (Opus).** Første udgave af dette afsnit sagde
+  > `_all_followup_parts`, «altså i det næste runde læser», og angav linjenumre.
+  > Begge dele var forkerte. `_all_followup_parts` bruges KUN til `partial_text`
+  > ved cutoff og trunkeres ved retry; `_a_parts` er model-input. Konsekvensen er
+  > at problemet var **større** end først meldt: alle fem noter nåede modellen,
+  > ikke tre. Jeg stolede på navnet («followup» → «næste runde») i stedet for at
+  > følge variablen til dens forbrug. Linjenumre er fjernet frem for rettet —
+  > de skred fire gange på én dag.
+
+  > **GJORT 3/10 (Opus), deployet.** Rettelsen er bygget og kører:
+  > `core/services/visible_run_guard_notices.py` holder teksterne ÉT sted og
+  > deler værnene i tre klasser efter hvad de skal udrette — 1) skal handle
+  > (runnet dør uden den), 2) skal advare næste runde, 3) kun til mennesket.
+  > Klasse 3 filtreres ud af model-input i `_exchange_text` og strippes fra
+  > historikken i `transcript_sections`, mens listen selv aldrig muteres, så
+  > Bjørn beholder noten i det gemte svar. Klasse 1 og 2 når modellen MÆRKET.
+  > Reglen nedenfor er altså ikke længere kun et krav til denne spec — den har
+  > en implementering at følge, og `tests/test_visible_run_guard_notices.py`
+  > pinner begge filter-lag.
 
   Formen der virker er den Claudes eget harness bruger ordret:
 
@@ -327,8 +347,23 @@ Princippet i én sætning: **det du selv har lovet kommer tilbage til dig; huset
 kan informere, men ikke kræve.** Det er svaret på «han har ingen kontrol» — gaten
 er hans egne forpligtelser, ikke husets krav.
 
-Og det er grunden til at loftet ikke blev valgt: rammes et dagligt loft af støj,
-er den vigtige post den der falder udenfor.
+Og det er grunden til at et **dagligt gate-loft** ikke blev valgt: rammes et
+loft på hvor mange poster der må gate af støj, er den vigtige post den der
+falder udenfor. Ejerskab er den bedre akse — huset kan informere, men ikke kræve.
+
+> **PRÆCISERET 3/10 (Opus):** denne sætning sagde bare «loftet», og Opgave 10
+> indfører et loft. To forskellige mekanismer med samme ord, og modsatte domme i
+> samme dokument. De er adskilte nu:
+>
+> | Ord | Hvad | Dom |
+> |---|---|---|
+> | **gate-loft** | hvor mange poster der må blokere mutationer per døgn | **afvist** — støj ville skubbe den vigtige post udenfor |
+> | **visnings-loft** | hvor mange linjer en sektion viser, med «+N mere» | **valgt**, se Opgave 10 |
+>
+> De kan begge være rigtige, fordi de fejler i hver sin retning: et gate-loft
+> kan skjule en blokering man SKAL se, mens et visnings-loft kun skjuler linjer
+> — og kun hvis det siger hvor mange. Derfor kræver Opgave 10 trin 5 at den
+> blokerende sektion aldrig afkortes tavst.
 
 ---
 
@@ -459,6 +494,11 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 
 Opgave 8–13 (tilføjet 3/10) bygger på Opgave 1–2 (postens lager og visningen) og
 Opgave 4 (tælleren). De tilføjer livscyklus og oprydning — ikke nye kilder.
+
+Opgave 14 er **sidst og obligatorisk**: e2e-verifikation på CT105, usmocket.
+Den afhænger af alle de andre og kan ikke køres i forvejen — og uden den er
+«bygget» kun en påstand. En grøn suite beviser at enhederne virker, ikke at
+de er forbundet.
 
 ### Opgave 0: Mål prompten FØR vi bygger
 
@@ -664,6 +704,41 @@ def test_en_anden_brugers_poster_siver_ALDRIG_ind():
       `due_wakeups`, `build_tool_intent_approval_surface` eller joblister der
       starter en daemon. Test både direkte og indirekte kildeadaptere.
       Begrundelse i testen: `a_read_surface_can_create_what_it_reads`.
+- [ ] **Trin 8: Testen for at posten bærer en HENVISNING og aldrig payload**
+
+> **TILFØJET 3/10 (Opus):** Opgave 2 sprang fra trin 7 til trin 9 — der var
+> intet trin 8. Hullet var ikke kun nummerering: «indbakken afleverer
+> henvisninger, aldrig payload» står tre steder i spec'en (Global Constraints,
+> filstrukturen, visningens overskrift) og havde **ingen vagt**. Spec'ens egen
+> standard gælder for den selv: *en udelukkelse uden vagt glider.*
+
+```python
+def test_posten_baerer_en_henvisning_og_aldrig_payload(inbox_db):
+    """Et jobs output kan være 112 kB. Lander det i visningen, lander det i
+    promptens hale — og så er kontrolfladen blevet den byrde den skulle lette.
+    Testen pinner BEGGE retninger: med fil og uden."""
+    post(kilde="job", output_sti="tasks/bglj7.output", output_bytes=114_688)
+    post(kilde="wake", kilde_id="wake-6e201")
+
+    linje = byg_indbakke(bruger="bjorn")["venter_paa_dig"]
+    # Henvisning OG størrelse — størrelsen er det der gør valget mellem
+    # `tail -5` og hele filen muligt uden at åbne noget.
+    assert "tasks/bglj7.output" in linje[0] and "112 kB" in linje[0]
+    # Og intet af indholdet.
+    assert "Traceback" not in linje[0]
+    assert len(linje[0]) < 200, "en linje per post — ikke et uddrag"
+    # Uden fil: typet kilde-id, ingen opdigtet sti. Skemaet må ikke KRÆVE
+    # en outputfil der ikke findes.
+    assert "wake-6e201" in linje[1]
+    assert ".output" not in linje[1] and "None" not in linje[1]
+```
+
+      Kanterne der skal med som egne cases:
+      - fil der **er forsvundet** siden posten blev skrevet → henvisningen vises, størrelsen mangler, og det siges — ikke `0 B`, som ikke kan skelnes fra en tom fil
+      - fil på **0 bytes** → `0 B`, og det er et ægte svar
+      - sti **uden for** brugerens autoriserede workspace → posten vises, stien gør ikke (Global Constraints)
+      - meget lang beskrivelse → afkortes i linjen, aldrig i den gemte post
+
 - [ ] **Trin 9: Vagten mod at kanalbeskeder siver ind**
 
 ```python
@@ -733,9 +808,14 @@ def test_done_paa_en_vaekning_markerer_den_brugt():
 > **MANGLER (Jarvis 3/10):** tælleren skal læse **den samme liste prompten blev
 > bygget fra**. Skill-gaten så ikke sine egne kald 3/10, fordi den læste
 > `_a_tool_calls` — der bærer transport-navnet `call_loaded_tool` — mens
-> event-loggen stod på den anden side af udpakningen i
-> `simple_tool_executor.py`. Det er dagens egen fejlklasse. Se §5 i «Seks
-> mangler».
+> udpakningen til det ægte navn sker i `core/tools/kaldt_vaerktoej.pak_ud`,
+> kaldt fra `_prepare_call`, altså efter listen er fyldt. Det er dagens egen
+> fejlklasse. Se §5 i «Seks mangler».
+>
+> **RETTET 3/10 (Opus):** denne note sagde først at udpakningen stod i
+> `simple_tool_executor.py`. Den fil *kalder* kun `pak_ud`; den ene definition
+> er `core/tools/kaldt_vaerktoej.py:76`. Samme fejlklasse som de fem Jarvis
+> rettede: et sted der lød rigtigt frem for det sted koden står.
 
 **Filer:** ny `core/services/inbox_gate.py`, integration i
 `core/services/simple_tool_executor.py` ved siden af R2.5; test
@@ -908,12 +988,46 @@ Bygges den, gælder tre ting: udløb er en **terminal tilstand**, ikke en sletni
 at ingen rører den; og udløbet skrives til sporet, så Opgave 7 kan skelne
 `udloebet` fra `released` uden årsag.
 
-- [ ] **Trin 1: Lås beslutningen** i Global Constraints (bygges, eller afvises med begrundelse).
+> **RETTET 3/10 (Opus) — præcedensen er ikke den den ser ud som.**
+> Trin 4 sagde først: beregnet tilstand på læse-tidspunktet, «samme form som
+> godkendelsernes `expired`-beregning, **ikke** en baggrundsjob der skal køre
+> for at posten dør». Beregningen findes præcis som beskrevet
+> (`db_governance.py:74`) — men dens egen historie siger det modsatte af det
+> jeg udledte. `sweep_expired_intents`' docstring:
+>
+> > «Udloebet er DOVENT: det sker naar den samme intention slaas op paa ny. En
+> > intention ingen spoerger til igen bliver derfor staaende `pending` for
+> > evigt. MAALT 10/9-2026: fire raekker med udloeb 23, 50, 115 og 115 dage
+> > tilbage i tiden, alle stadig `pending`.»
+>
+> Fejeren blev altså **tilføjet** fordi den beregnede form ikke var nok — og
+> trin 4 forbød netop den rettelse. Jeg læste mekanismens form og sprang dens
+> målte fejl over; det er samme fejl som
+> `selvhelbredelse_skjuler_sin_egen_aarsag`, blot i omvendt retning.
+>
+> Indbakken er mindre udsat, fordi visningen læser alle åbne poster hver tur.
+> Men «hver tur» gælder kun for en bruger hvis session faktisk kører. En post
+> der tilhører en inaktiv bruger rammes af samme kurve, bare langsommere — og
+> det er præcis §4's argument om retention, en etage nede.
+>
+> **Beslutningen i trin 1 er derfor: beregnet PLUS en fejer**, ikke beregnet
+> alene. Fejeren er ikke det der *dræber* posten (det gør beregningen, med det
+> samme) — den er det der sikrer at en post ingen læser også får sin terminale
+> tilstand skrevet, så Opgave 7 kan tælle den.
+
+- [ ] **Trin 1: Lås beslutningen** i Global Constraints (bygges, eller afvises med begrundelse). Bygges den, skal den bære BEGGE dele, med fejerens begrundelse.
 - [ ] **Trin 2: Test at en post med passeret `expires_at` ikke længere gater**, og at den stadig kan læses.
 - [ ] **Trin 3: Kør, se den fejle.**
-- [ ] **Trin 4: Implementér** udløb som en **beregnet** tilstand på læse-tidspunktet — samme form som godkendelsernes `expired`-beregning, ikke en baggrundsjobb der skal køre for at posten dør.
-- [ ] **Trin 5: Test at udløb er idempotent** og at en genstart ikke nulstiller det.
-- [ ] **Trin 6: Kør hele suiten. Commit.**
+- [ ] **Trin 4: Implementér** udløb som en **beregnet** tilstand på læse-tidspunktet — så posten dør uden at nogen job skal køre — OG en fejer efter mønstret i `sweep_expired_intents`, så en post ingen slår op igen ikke står `pending` for evigt.
+- [ ] **Trin 5: Kanterne** — hver af disse er en vej udløbet kan blive tavst forkert:
+      - `expires_at` **mangler** (NULL) → posten udløber ALDRIG, og det skal være et bevidst valg, ikke en tom streng der sorterer forkert
+      - `expires_at` som tom streng eller uparsabel tekst → posten må ikke blive «udløbet» ved et uheld; fail mod at BEVARE den, og log på WARNING
+      - tidsstemplet er ISO **med `T`** — `datetime('now',…)` som grænse slipper hele dagen igennem, fordi `T` sorterer efter mellemrum. Brug `strftime('%Y-%m-%dT%H:%M:%S','now',…)` og tæl rækker med OG uden filteret. Den fælde er ramt tre gange i dette hus.
+      - naiv vs. tidszone-bærende tidsstempel (`db_governance.py:69` tilføjer UTC når `tzinfo is None` — gør det samme, ellers sammenlignes æbler og pærer)
+      - udløb **præcis** på grænsen (`expires_at == now`) → vælg én side og pin den
+      - en post der stadig **gater** må ikke kunne udløbe uden at nægtelsen forsvinder samme sted; ellers blokerer en død post
+- [ ] **Trin 6: Test at udløb er idempotent** og at en genstart ikke nulstiller det — og at fejeren kørt to gange ikke tæller samme post to gange.
+- [ ] **Trin 7: Kør hele suiten. Commit.**
 
 ### Opgave 9: Standardtilstanden — hvem lukker en post der er færdig?
 
@@ -934,8 +1048,14 @@ begrundelsen stå — for det er præcis den blokerede ligevægt.
 - [ ] **Trin 2: Test at en post hvis kildearbejde er afsluttet (exit 0) ikke længere gater** — uden at `inbox_done` blev kaldt.
 - [ ] **Trin 3: Kør, se den fejle.**
 - [ ] **Trin 4: Implementér** kildens terminale tilstand som **nedgradering**, ikke sletning: posten bliver `afsluttet_af_kilde` og kan stadig ses. Beviset slettes ikke.
-- [ ] **Trin 5: Test at nedgraderingen er idempotent**, og at en post der IKKE er færdig ikke nedgraderes af en fejlende kilde.
-- [ ] **Trin 6: Kør hele suiten. Commit.**
+- [ ] **Trin 5: Kanterne** — en nedgradering der rammer forkert er værre end ingen:
+      - kilden er færdig med **exit != 0** → posten må IKKE lukkes; en fejlet opgave er netop en der kræver handling
+      - kilden er **forsvundet** (procesbevis mangler, «STATUS UKENDT») → hverken lukket eller gatende-for-evigt; den hører i sin egen klasse, se visningens `job-a71f3`
+      - kilden melder færdig **to gange** → idempotent, og tælleren i Opgave 7 må ikke tælle den dobbelt
+      - posten er allerede `done` af mig → kildens melding må ikke genåbne den
+      - kilden melder færdig **mens** posten gater en mutation → nægtelsen skal forsvinde i samme greb, ellers blokerer en død post
+- [ ] **Trin 6: Test at nedgraderingen er idempotent**, og at en post der IKKE er færdig ikke nedgraderes af en fejlende kilde.
+- [ ] **Trin 7: Kør hele suiten. Commit.**
 
 ### Opgave 10: Loft og rangorden i visningen
 
@@ -955,7 +1075,13 @@ tavshed.
 - [ ] **Trin 3: Kør, se den fejle.**
 - [ ] **Trin 4: Implementér** loft, orden og «+N mere»-linje.
 - [ ] **Trin 5: Test at den blokerende sektion («VENTER PÅ DIG») aldrig kan afkortes tavst** — en skjult blokerende post er en usynlig blokering.
-- [ ] **Trin 6: Kør hele suiten. Commit.**
+- [ ] **Trin 6: Kanterne** — et loft der lyver er værre end intet loft:
+      - **præcis** loftet antal poster → ingen «+0 mere»-linje
+      - loft + 1 → «+1 mere», og den rigtige post er den der blev skjult
+      - **tom** sektion → sektionen vises slet ikke, frem for en overskrift med nul linjer
+      - poster med **samme** alder → ordenen skal være deterministisk (sekundær nøgle på id), ellers flakker visningen mellem ture og buster prompt-cachen
+      - en afkortet **blokerende** sektion → må ikke kunne forekomme; testen skal bevise at loftet ikke gælder dér, ikke bare at det er stort nok
+- [ ] **Trin 7: Kør hele suiten. Commit.**
 
 ### Opgave 11: Retention — hvad sker der med de lukkede poster?
 
@@ -975,7 +1101,13 @@ ikke fylder i den aktive visning, kan være nok.
 - [ ] **Trin 3: Kør, se den fejle.**
 - [ ] **Trin 4: Implementér** retention som en **læse-regel** (vindue), og kun sletning hvis beslutningen kræver det. Sletning af et bevis kræver sin egen begrundelse.
 - [ ] **Trin 5: Test at retention ikke kan fjerne en post der stadig gater**, uanset alder.
-- [ ] **Trin 6: Kør hele suiten. Commit.**
+- [ ] **Trin 6: Kanterne** — retention sletter beviser, så hver vej skal pinnes:
+      - en post der stadig **gater** → aldrig fjernet, uanset alder (trin 5)
+      - en post **uden** lukke-tidspunkt → falder ikke ud af vinduet ved et uheld; mangler tidsstemplet, bevares posten
+      - vinduets **grænse** (`lukket_at == graense`) → vælg én side og pin den; og tidsstemplet er ISO med `T`, så brug `strftime('%Y-%m-%dT%H:%M:%S','now',…)` frem for `datetime('now',…)`
+      - **nul** poster uden for vinduet → den aktive visning er uændret, og intet slettes
+      - en post der er faldet ud af den aktive visning → skal stadig kunne **findes**; «væk fra forsiden» er ikke «slettet»
+- [ ] **Trin 7: Kør hele suiten. Commit.**
 
 ### Opgave 12: Tælleren skal læse promptens eget artefakt
 
@@ -984,19 +1116,60 @@ ikke fylder i den aktive visning, kan være nok.
 > side af udpakningen i `core/services/simple_tool_executor.py`. Gaten fyrede på
 > en forkert præmis i timevis.
 
-**Filer:** `core/services/visible_runs.py` (tælleren i R2.5-forudsætningen,
-Opgave 4); test `tests/test_skill_invokering_spor.py`.
+**Filer:** `core/services/inbox_gate.py` og integrationen i
+`core/services/simple_tool_executor.py` — altså PRÆCIS de filer Opgave 4
+opretter; test `tests/test_inbox_gate.py`.
 
-**Beslutning først (trin 1):** hvilken funktion er den **ene** sandhed for «hvad
-så modellen denne tur»? Opgave 4's leverings-tæller skal læse den samme liste
-prompten blev bygget fra — ikke en proxy der ligner.
+> **RETTET 3/10 (Opus):** denne linje sagde `core/services/visible_runs.py`
+> «(tælleren i R2.5-forudsætningen, Opgave 4)». Det modsagde Opgave 4, der
+> lægger tælleren i ny `inbox_gate.py` plus `simple_tool_executor.py`. Samme
+> tæller, to hjem — og den ene af dem er en fil på 7.600+ linjer, hvor
+> Boy Scout-reglen ville kræve en udskillelse først. Opgave 4 vinder:
+> tælleren bor der, hvor nægtelsen sker.
+>
+> Rører en opgave alligevel en fil over 2.000 linjer, gælder trin 3a fra
+> Opgave 5 uændret: udskil nærmeste naturlige enhed FØR ændringen.
 
-- [ ] **Trin 1: Lås beslutningen** — navngiv funktionen.
-- [ ] **Trin 2: Test at tælleren og prompt-byggeren læser samme liste:** injicér et kald gennem `call_loaded_tool`, og bevis at tælleren ser det **ægte** navn.
-- [ ] **Trin 3: Kør, se den fejle** (den er blind i dag; `prop-36aa612b6d7c49f1` er forslaget der retter det).
-- [ ] **Trin 4: Implementér** udpakning på læse-tidspunktet, så tælleren ser det navn modellen faktisk kaldte.
-- [ ] **Trin 5: Test at de to lister er identiske** for en tur med både direkte kald og `call_loaded_tool`-kald.
-- [ ] **Trin 6: Kør hele suiten. Commit.**
+> **OVERHALET 3/10 (Opus) — beslutningen er truffet, præcedensen findes.**
+> Trin 1 og 3 kunne ikke længere udføres som skrevet. Jarvis rettede
+> skill-gatens udgave kl. 12:26:51 (`730e00121`), og den kørende proces har den
+> (units startet 12:28:52). «Kør, se den fejle» kan altså ikke reproduceres på
+> skill-gaten, og `prop-36aa612b6d7c49f1` er indhentet af virkeligheden.
+>
+> Værre var at rettelsen gik ind **utestet**: ingen testfil nævnte den nye kode.
+> Coverage-gaten slap den igennem, fordi det var en ændring i en eksisterende
+> fil og ikke en ny vagt. Dagens egen fejlklasse var altså rettet uden at noget
+> pinnede rettelsen.
+>
+> Begge dele er nu gjort: indsamlingen er udskilt til
+> `skill_gate_guard.samle_kaldte_navne(followup_exchanges, runde_kald)` —
+> Boy Scout, da den sad inline i en 7.600-linjers generator — og
+> `tests/test_skill_gate_guard.py` pinner elleve kanter. Mutations-tjekket viser
+> at begge huller fanges hvis de lægges tilbage.
+>
+> **Svaret på trin 1 er derfor givet:** `core/tools/kaldt_vaerktoej.pak_ud` er
+> den ENE definition af det ægte navn, og `samle_kaldte_navne` er mønstret for
+> at læse en turs kald. Opgave 12 er ikke bortfaldet — den handler om
+> indbakkens tæller — men den **arver** et løst problem i stedet for at løse det.
+
+**Beslutning først (trin 1):** hvilken liste er indbakke-tællerens ene sandhed —
+og er det overhovedet den samme som skill-gatens? Skill-gaten tæller *kald*;
+indbakke-gaten tæller *leverede påmindelser*. Lås om de deler kilde eller ikke,
+og skriv hvorfor.
+
+- [ ] **Trin 1: Lås beslutningen** — navngiv listen, og om den deles med skill-gaten.
+- [ ] **Trin 2: Test at tælleren ser det ÆGTE navn** når påmindelsen kom ad en indpakket vej: genbrug `samle_kaldte_navne`s mønster, kald ikke `pak_ud` igen i et nyt modul.
+- [ ] **Trin 3: Kør, se den fejle.**
+- [ ] **Trin 4: Implementér** læsningen gennem den ene kilde fra trin 1.
+- [ ] **Trin 5: Kanterne** — hver af disse har kostet en fejl i huset og skal have sin egen case:
+      - argumenter som JSON-**streng** (sådan sender udbyderne dem), som dict, og helt fraværende
+      - **ugyldig** JSON → transport-navnet bliver stående, ikke «et skill blev brugt»
+      - gyldig JSON der ikke er et objekt (`[1,2]`, `"tekst"`, `null`) → samme retning
+      - indpakket kald **uden** indre navn, og med indre navn == transport-navnet (ingen rekursion)
+      - skrald i listen (`None`, streng, tal, manglende `function`) → springes over, kaster ikke
+      - **begge** kilder læses, også når den ene er tom — og den AKTUELLE runde er med
+- [ ] **Trin 6: Vagt mod at reglen gentages** (AST): ingen anden fil end `kaldt_vaerktoej` må definere udpakningen. To definitioner kan drive fra hinanden, og det er præcis hvordan et filter bliver stille virkningsløst.
+- [ ] **Trin 7: Kør hele suiten. Commit.**
 
 ### Opgave 13: Et løfte givet i prosa — navngivet fravalg eller indgang
 
@@ -1016,6 +1189,99 @@ vagt glider.**
 - [ ] **Trin 2a (fravalg):** skriv det som navngivet fravalg i tabellen, med begrundelse — på linje med kanalbeskederne.
 - [ ] **Trin 2b (indgang):** beskriv hvem der må registrere, hvordan proveniens bevises for en sætning (samme krav som Opgave 1: ejer er bevis, ikke et flag), og hvordan en fejlagtig registrering trækkes tilbage.
 - [ ] **Trin 3: Commit.**
+
+---
+
+### Opgave 14: E2E-verifikation på CT105 — usmocket, i produktionen
+
+> **TILFØJET 3/10 (Opus).** Opgave 0 og 7 *måler*, men intet verificerer at
+> kæden holder usmocket. Huset har to målte grunde til at det ikke er nok:
+> 577 grønne tests missede to fejl som fem minutter på telefonen fandt (kold mod
+> varm kodesti), og min lokale DB gav det **modsatte** svar om følelsesankrene
+> end CT105 gjorde. En suite der er grøn beviser at enhederne virker — ikke at
+> de er forbundet.
+>
+> Og den mest sandsynlige fejl her er husets hyppigste: `built_but_not_connected`.
+> Indbakken kan være korrekt og fuldstændig, og **ingen prompt læser den**.
+
+**Filer:** ny `scripts/e2e_indbakke.py` (verifikationsværktøj, ingen test af sig
+selv — den ER testen); kører mod CT105.
+
+**Forudsætninger der skal bevises FØR målingen tælles:**
+
+- [ ] **Trin 1: Begge units kører den kode du tror.** `jarvis-api` har
+      `runtime_services=False` og `jarvis-runtime` `True` — de kører samme app
+      med forskellige ansvar, så en ændring kan være live i den ene og død i
+      den anden. Bevis det med tidsstempler, ikke med tillid:
+
+```bash
+ssh bs@10.0.0.39 'cd /media/projects/jarvis-v2 && git log -1 --format="kode:  %h %ad" --date=format:"%H:%M:%S"
+for u in jarvis-api jarvis-runtime; do printf "%-15s %s\n" $u "$(systemctl show -p ActiveEnterTimestamp --value $u)"; done'
+```
+
+      Er en unit startet FØR commit'en, måler du den gamle kode. Genstart kun
+      bag vagten — ét kald, betingelsen som TEST, aldrig to kommandoer:
+
+```bash
+ssh bs@10.0.0.39 'n=$(sqlite3 ~/.jarvis-v2/state/jarvis.db "select count(*) from visible_runs where status in (\"running\",\"streaming\",\"queued\") and run_id like \"visible-%\""); [ "$n" = 0 ] && sudo -n systemctl restart jarvis-api jarvis-runtime || echo "IKKE genstartet: $n aktive"'
+```
+
+**Kæden, led for led. Hvert led skal måles i PRODUKTIONEN, ikke i en fixture:**
+
+- [ ] **Trin 2: En ægte kilde skriver en post.** Book en rigtig vækning gennem
+      `schedule_self_wakeup` og læs rækken i `inbox_items` på CT105. Et
+      `enqueue`-kald fra et script beviser kun skrivningen — ikke proveniensen,
+      som er hele gate-betingelsen. Verificér at `kilde_ejer` blev udledt af
+      run-/tool-id og ikke af et flag.
+- [ ] **Trin 3: Posten står i visningen.** `byg_indbakke` kørt på CT105's egen
+      interpreter (`/home/bs/miniconda3/envs/ai/bin/python`), ikke min — mine
+      proces-starter arver en anden profil, og «den kører hos mig» beviser
+      intet om hans.
+- [ ] **Trin 4: PROMPTEN bærer den.** Det afgørende led, og det der oftest
+      mangler. Byg den rigtige synlige prompt for en rigtig session og bevis at
+      indbakke-sektionen står i den — med samme tekst visningen gav. Mål
+      samtidig Opgave 0's tal igen: blev halen mindre, eller kom indbakken
+      oveni?
+- [ ] **Trin 5: Gaten nægter en ægte mutation.** Med en åben handlingskrævende
+      post: forsøg en rigtig mutation og bevis nægtelsen — og at den **navngiver
+      post-id'et**. En blokering uden adresse er en blokering man ikke kan rette.
+      Ingen mock på sømmen: en mock på præcis den grænse der kan brække kan
+      aldrig se fejlen.
+- [ ] **Trin 6: To-trins-eskaleringen i rigtig tid.** Første og anden
+      påmindelse, derefter nægtelsen. Tælleren skal overleve en **procesgenstart**
+      midt imellem — den fejl har huset målt før: en volatil tæller nulstillede
+      sig, og påmindelsen kom aldrig.
+- [ ] **Trin 7: `inbox_done` lukker den, og visningen falder.** Posten forsvinder
+      fra «VENTER PÅ DIG», nægtelsen ophører i samme greb, og posten kan stadig
+      findes. Bevis ALLE tre.
+- [ ] **Trin 8: Intet er sivet ind i chatten.** Ingen post må være skrevet som en
+      assistant-besked — det var fejlen bag Smiths løkke. Tæl rækker i
+      `chat_messages` for sessionen før og efter hele forløbet: differensen skal
+      være de beskeder DU sendte, intet andet.
+- [ ] **Trin 9: Mål det der ikke skete.** De tre tal huset kender som tavse
+      fejlformer:
+      - **ingen** poster uden læser: hver post i `inbox_items` skal kunne nås af en visning for sin bruger — en kø ingen læser er `seks_kognitive_systemer_uden_skriver` i spejlvendt form
+      - **ingen** gatende post uden kilde i visningen (Skrive-kontraktens betingelse 2)
+      - **ingen** falsk nudge: ankeret er målt 3/10 — run `visible-e4fff62ad24140` fik `cognitive_state.skill_invoked(code-review)` 09:57:42 UTC og `skill_gate.nudge` 09:58:48, altså **66 sekunder efter i samme run**. Rettelsen er live siden 12:28:52 CEST. Genmål:
+
+```sql
+select substr(created_at,12,8) tid, kind,
+       substr(json_extract(payload_json,'$.run_id'),1,22) run
+from events
+where kind in ('skill_gate.nudge','cognitive_state.skill_invoked')
+  and created_at > strftime('%Y-%m-%dT%H:%M:%S','now','-1 day')
+order by created_at;
+```
+
+      Et par hvor en nudge følger en invokering **i samme run** er en regression.
+
+- [ ] **Trin 10: Skriv tallene ind i spec'en** — ikke i en commit-besked der
+      forsvinder. Et måleresultat ingen kan finde igen er ikke en måling.
+      Mislykkedes et led, står det med sit led-nummer og hvad der manglede.
+
+**Fail-retningen for hele opgaven:** et led der ikke kan måles er et led der
+**ikke** virker, indtil nogen beviser andet. Tavshed tælles aldrig som bestået —
+det er præcis hvad de 46/71 «aktive» systemer og den grønne ledger gjorde.
 
 ---
 
@@ -1389,3 +1655,100 @@ bærende afsnit, og et punkt kan vise sig allerede dækket længere inde.
 §1 og §5 deler rødder med to af Codex' fund — at `session_inbox` er en
 leveringskø og ikke opgavetilstand, og at læsefladerne ikke er rene. De står
 selvstændigt her, men de er ikke hans alene, og de er ikke mine alene.
+
+---
+
+## Opus' endelige review — 3/10-2026
+
+Bjørn: «Kør et endelig review på den.» Otte fund, alle verificeret mod koden
+frem for mod spec'ens egen prosa. Rettelserne står **inline** ved hvert sted,
+markeret `RETTET`/`TILFØJET`/`OVERHALET`/`PRÆCISERET`, og hvert punkt herunder
+peger på hvor.
+
+### De to der ville koste tid
+
+**F1 — Opgave 4 og 12 modsagde hinanden om hvor tælleren bor.** Opgave 4 lægger
+den i ny `inbox_gate.py` plus `simple_tool_executor.py`; Opgave 12's Filer-linje
+sagde `visible_runs.py`. Samme tæller, to hjem — og det ene er en fil på 7.600+
+linjer, hvor Boy Scout ville kræve en udskillelse først. Opgave 4 vinder:
+tælleren bor hvor nægtelsen sker. **→ Opgave 12, Filer.**
+
+**F2 — Opgave 8 kopierede en præcedens' form og sprang dens målte fejl over.**
+Trin 4 foreskrev beregnet udløb «ikke en baggrundsjob», med godkendelserne som
+forlæg. Beregningen findes (`db_governance.py:74`) — men `sweep_expired_intents`'
+docstring fortæller hvad formen kostede: *«Udloebet er DOVENT … MAALT 10/9-2026:
+fire raekker med udloeb 23, 50, 115 og 115 dage tilbage i tiden, alle stadig
+`pending`.»* Fejeren blev tilføjet fordi beregningen ikke var nok, og trin 4
+forbød netop den rettelse. Nu: beregnet **plus** fejer. **→ Opgave 8, trin 1/4.**
+
+### De overhalede
+
+**F3 — Opgave 12's præmis var rettet, og rettelsen var utestet.** Jarvis fiksede
+skill-gatens navne-maskering 12:26:51 (`730e00121`), og processen har den
+(startet 12:28:52), så «kør, se den fejle» kunne ikke reproduceres. Men ingen
+testfil nævnte den nye kode — coverage-gaten slap den igennem, fordi det var en
+ændring i en eksisterende fil og ikke en ny vagt. Begge dele er gjort:
+indsamlingen er udskilt til `skill_gate_guard.samle_kaldte_navne` (Boy Scout —
+den sad inline i generatoren) og `tests/test_skill_gate_guard.py` pinner elleve
+kanter. **→ Opgave 12.**
+
+**F4 — To opgaver pegede på det forkerte sted for udpakningen.** Opgave 4 og 12
+sagde `simple_tool_executor.py`. Den fil *kalder* kun `pak_ud`; den ene
+definition er `core/tools/kaldt_vaerktoej.py:76`. Samme fejlklasse som de fem
+Jarvis rettede. **→ Opgave 4's MANGLER-note; Opgave 12, Filer.**
+
+**F5 — Global Constraints' værns-afsnit var både forkert og forældet.** Det sagde
+`_all_followup_parts`, «altså i det næste runde læser». Omvendt: `_a_parts` er
+model-input, og konsekvensen var at problemet var **større** end meldt — alle fem
+noter nåede modellen, ikke tre. Linjenumrene var også skredet. Og hele problemet
+er nu rettet og deployet (`visible_run_guard_notices`, tre klasser, begge
+filter-lag). **→ Global Constraints.**
+
+### De mindre
+
+**F6 — Opgave 2 havde intet Trin 8.** Hullet var ikke kun nummerering: reglen
+«henvisninger, aldrig payload» står tre steder i spec'en og havde **ingen vagt**.
+Trin 8 er nu den vagt, med fire kanter. **→ Opgave 2, trin 8.**
+
+**F7 — «Loft» betød to ting med modsatte domme.** Gate-loft (afvist) mod
+visnings-loft (valgt, Opgave 10). De er adskilt i en tabel, med begrundelsen for
+at begge domme kan være rigtige: de fejler i hver sin retning.
+**→ Skrive-kontrakten.**
+
+**F8 — Boy Scout manglede i Opgave 12.** Reglen stod kun i Opgave 5 trin 3a.
+Den gælder nu alle opgaver der rører en fil over 2.000 linjer. **→ Opgave 12.**
+
+### Hvad der ændrede sig udover rettelserne
+
+Bjørn bad om at testene «tager højde for edges … og e2e verifikation». To ting
+er derfor tilføjet:
+
+**Kanter som egne trin** i Opgave 8, 9, 10, 11 og 12 — 28 cases i alt, hver med
+den fejl den stammer fra. De mest kostbare er tre: `T` i ISO-tidsstempler (ramt
+tre gange her), et argument der er gyldig JSON men ikke et objekt, og en
+nedgradering der rammer en post der fejlede frem for en der lykkedes.
+
+**Opgave 14: e2e-verifikation på CT105, usmocket** — ti led fra en ægte kilde,
+gennem visningen og **prompten**, til nægtelsen og lukningen. Den fandtes ikke:
+Opgave 0 og 7 måler, men intet beviste at kæden er forbundet. Fail-retningen er
+sat eksplicit: et led der ikke kan måles virker ikke, indtil nogen beviser andet.
+
+### Hvad der holdt
+
+Alle fem af Jarvis' rettelser er landet inline og markeret, ikke kun i bunden.
+De seks sektioner er konsistente mellem visningen og Opgave 2 trin 3. Opgave 0's
+8 %-tal er korrekt udfordret frem for gentaget. Opgave 13's henvisning til
+Opgave 2 trin 9 er gyldig. Og `expire_tool_intent_approval_request` findes hvor
+Opgave 8 siger — det var dens *historie*, ikke dens existens, der var problemet.
+
+**Dommen er uændret fra Jarvis': arkitekturen holder.** F1 og F2 var ikke
+test-eksempler, men de rører ikke arkitekturen — de rører hvor noget bor, og
+hvilken halvdel af en præcedens man kopierer.
+
+### Og én ting om min egen måling
+
+Jeg brugte `head -8` på en grep og konkluderede kort at
+`expire_tool_intent_approval_request` ikke fandtes. Den stod på linje 223,
+uden for vinduet. Det er `limit_vindue_faelden` igen, i en gennemgang hvis hele
+formål var at fange præcis den slags. Derfor er hvert fund ovenfor verificeret
+med en kommando der ikke kan afskære sit eget svar.

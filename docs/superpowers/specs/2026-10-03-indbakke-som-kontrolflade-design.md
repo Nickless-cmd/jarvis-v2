@@ -160,21 +160,27 @@ forveksles — en læseflade der kan skrive er præcis fælden fra
 Fire sektioner. Én linje per post. Aldrig payload.
 
 ```
-VENTER PÅ DIG (2)                          ← KUN denne gater R2.5
+VAKTE DENNE TUR                            ← hvorfor er jeg i gang
+  wake-6e201  fyrede 07:30  «følg op på Michelles brief»   → inbox_done
+
+VENTER PÅ DIG (3)                          ← KUN denne gater R2.5
   wake-6e201  booket 1/10 09:12  fyrede 2/10 07:30  3d forfalden
               «følg op på Michelles brief»                    [dig]
   job-bglj7   kørte 16m, exit 1, 4 fejl
               «hele suiten på raads-branchen»  → tasks/bglj7.output (112 kB)
+  job-a71f3   FORÆLDRELØS — processen er væk, stod «kører» i 2d
+              «mobil-build»                   → inbox_drop    [dig]
 
 I GANG (1)
   job-b1vvm   kører 3m    «suite på branchen»    (intet output endnu)
 
-PÅ VEJ (5)
+PÅ VEJ (2)                                 ← engangs-vækninger
   wake-9f3a2  om 40m   «mål om cheap-lane holder»
   wake-c81d4  om 6t    «skygge-review af event_trigger»   ⚠ booket 3 gange
 
-VAKTE DENNE TUR
-  wake-6e201  fyrede 07:30  «følg op på Michelles brief»   → inbox_done
+PLANLAGTE (2)                              ← GENTAGER sig, ikke engangs
+  rec-67e42   hver 1440m   næste 4/10 07:30   «Michelles morgenbrief»
+  rec-6456e   hver 360m    næste 3/10 13:18   «vejr-opslag»
 
 VENTER PÅ BJØRN (1)                        ← synlig, gater IKKE
   appr-4b2   siden 2/10 18:40   «commit til main på agent-reduktion»
@@ -200,6 +206,17 @@ task-notifikationer bærer — den form er bevist i drift:
    et gæt, og det er dér en kontekst sprænges.
 6. **Ejer** (`[dig]` / `[huset]`). Afgør om posten må gate. Står i visningen, så
    reglen er synlig og ikke skjult i kode.
+
+### Hvorfor «PÅ VEJ» og «PLANLAGTE» er adskilt
+
+En vækning er ENGANGS; en planlagt opgave GENTAGER sig. Blandes de, ser seks
+kommende poster ud som seks stykker arbejde — men fem af dem er den samme
+opgave der kommer igen. Michelles morgenbrief er ÉN post der fyrer hver 1440.
+minut, ikke en ny hver dag.
+
+Det er samme fejl som dubletterne, blot i fremtiden: uden adskillelsen vil
+indbakken overdrive hvor meget der venter, og så bliver den noget man lukker i
+stedet for at læse.
 
 ### Sektionen «VAKTE DENNE TUR»
 
@@ -347,7 +364,7 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 | Planlagte opgaver | **ind**, ADSKILT fra vækninger | De gentager sig (hver 1440. min); en vækning er engangs |
 | Godkendelser | **ind** som «venter på Bjørn», gater ikke | Han skal kunne SE at en tråd venter på dig, uden at din svartid bliver hans blokering |
 | Kandidat-backlog | **ude**, kun ét tal med en adresse | 1.896 poster, 99 % gentagelser, ville drukne den dag ét |
-| Kanalbeskeder (Discord/Telegram/mobil) | **ude** | Det er samtale, ikke opgaver. Grænsen trækkes bevidst, ellers glider den |
+| Kanalbeskeder (Discord/Telegram/mobil) | **ude**, med en vagt | Det er samtale, ikke opgaver. En udelukkelse uden vagt glider — se Opgave 2, trin 9 |
 | Forældreløse poster | **ind** som typet status | Et job hvis proces er væk skal ikke stå som «i gang» i tre dage |
 | Flere brugere | nøglet per bruger; KUN Bjørns i denne spec | De andres workspaces er krypterede og må ikke læses |
 
@@ -467,8 +484,14 @@ def test_en_forfalden_post_baerer_sit_forfald_som_et_TAL():
 ```
 
 - [ ] **Trin 2: Kør, se den fejle** (`ImportError`).
-- [ ] **Trin 3: Implementér** `byg_indbakke` med de fire sektioner, alder/forfald
-      og dublet-tælling på (type, beskrivelse).
+- [ ] **Trin 3: Implementér** `byg_indbakke` med de SEKS sektioner — `vakte`,
+      `venter_paa_dig`, `i_gang`, `paa_vej`, `planlagte`, `venter_paa_bjorn` —
+      plus `backlog_tal`, alder/forfald og dublet-tælling på (type, beskrivelse).
+
+      *Første udkast skrev «de fire sektioner». Det var forkert allerede da, og
+      blev mere forkert da «VAKTE DENNE TUR» kom til i rettelsesrunden — en
+      modsigelse jeg selv indførte mens jeg lukkede huller. Tallet står nu med
+      navnene, så det ikke kan drive igen.*
 - [ ] **Trin 4: Testen for dubletter**
 
 ```python
@@ -481,11 +504,59 @@ def test_tre_identiske_vaekninger_vises_som_EN_med_et_tal():
     assert "booket 3 gange" in v["paa_vej"][0]["linje"]
 ```
 
-- [ ] **Trin 5: Testen for at visningen IKKE kan skrive** (kilde-vagt, AST):
+- [ ] **Trin 5: Testen for forældreløse poster**
+
+```python
+def test_et_job_hvis_proces_er_vaek_staar_som_FORAELDRELOEST():
+    """Uden dette står et dødt job som «kører» i dagevis. Det er samme fejl som
+    det stale `connected=True` i discord-gatewayen: en tilstand ingen opdaterer
+    fordi den der skulle, selv døde."""
+    v = byg_indbakke("bjorn", nu_ts=TID, kilder=_fake(
+        job_status="kører", job_pid_lever=False, job_sidst_set=TID - 2*86400))
+    post = v["venter_paa_dig"][0]
+    assert post["status"] == "foraeldreloes"
+    assert post["id"] not in [x["id"] for x in v["i_gang"]], (
+        "et dødt job stod stadig under «I GANG»"
+    )
+```
+
+      Forældreløs = status siger `kører`, men processen svarer ikke OG posten er
+      ældre end `_FORAELDRELOES_EFTER_S`. Den havner i `venter_paa_dig`, fordi
+      den kræver en beslutning (`inbox_drop`) — ikke i `i_gang`, hvor den ville
+      lyve. Tærsklen er en settings-værdi og måles i Opgave 7.
+
+- [ ] **Trin 6: Testen for bruger-isolation**
+
+```python
+def test_en_anden_brugers_poster_siver_ALDRIG_ind():
+    """Husstanden har flere brugere, og de andres workspaces er krypterede.
+    En indbakke der blander dem er et databrud, ikke en fejl i visningen."""
+    v = byg_indbakke("bjorn", nu_ts=TID, kilder=_fake(
+        poster=[("bjorn", "wake-mine"), ("anden", "wake-andens")]))
+    alle = [x["id"] for sek in v.values() if isinstance(sek, list) for x in sek]
+    assert alle == ["wake-mine"], f"en anden brugers post kom med: {alle}"
+```
+
+- [ ] **Trin 7: Testen for at visningen IKKE kan skrive** (kilde-vagt, AST):
       `byg_indbakke` og dens hjælpere må ikke kalde `enqueue`,
       `append_chat_message`, `set_runtime_state_value` eller `schedule_*`.
       Begrundelse i testen: `a_read_surface_can_create_what_it_reads`.
-- [ ] **Trin 6: Kør alle, PASS. Commit.**
+- [ ] **Trin 9: Vagten mod at kanalbeskeder siver ind**
+
+```python
+def test_kanalbeskeder_hoerer_ikke_i_indbakken():
+    """En udelukkelse uden en vagt glider. Discord/Telegram/mobil er SAMTALE,
+    ikke opgaver; kom de ind, ville indbakken blive en anden indbakke."""
+    import ast, pathlib
+    kilde = pathlib.Path("core/services/inbox_view.py").read_text()
+    tekst = ast.unparse(ast.parse(kilde))
+    for forbudt in ("discord", "telegram", "chat_messages"):
+        assert forbudt not in tekst.lower(), (
+            f"inbox_view læser {forbudt} — kanalbeskeder er samtale, ikke opgaver"
+        )
+```
+
+- [ ] **Trin 10: Kør alle, PASS. Commit.**
 
 ### Opgave 3: Bogføringen
 
@@ -649,9 +720,44 @@ afgør om resten er en økonomisk eller en kontrol-sag.
 læste det som nægt-ikke-fjern, med en målt begrundelse — men en fortolkning der
 ikke er mærket som sådan kan ikke rettes af den der skrev originalen.
 
+### Anden runde: de syv huller var NAEVNT, ikke bygget
+
+Bjørn spurgte derefter om listen af syv huller jeg selv havde navngivet var med.
+Svaret var: de stod i beslutnings-tabellen, men **tre af dem havde ingen opgave
+der byggede dem**, og to var selvmodsigelser jeg havde indført.
+
+En tabel der siger «ind» er ikke en implementering. Det er præcis
+`built_but_not_connected` i spec-form.
+
+**To selvmodsigelser i mit eget dokument:**
+
+- Tabellen sagde planlagte opgaver er «ind, ADSKILT fra vækninger» — men
+  visningen havde **ingen sektion** til dem. Nu har den en, med begrundelsen for
+  hvorfor engangs og gentagende skal være adskilt.
+- Trin 3 sagde «de fire sektioner», mens skitsen havde fem. **Jeg indførte den
+  modsigelse i den FØRSTE rettelsesrunde**, da jeg tilføjede «VAKTE DENNE TUR»
+  uden at opdatere tællingen. Nu står tallet med navnene, så det ikke kan drive.
+
+**Tre huller uden implementering:**
+
+- **Forældreløse poster** stod som «ind som typet status» uden et trin. Nu
+  trin 5 med en test: et job hvis proces er væk må ikke stå som «kører» i
+  dagevis. Samme fejl som det stale `connected=True` i discord-gatewayen.
+- **Bruger-isolation** fandtes kun som `bruger_id` i en signatur. Nu trin 6 med
+  en test — husstandens andre workspaces er krypterede, så en blanding er et
+  databrud og ikke en visningsfejl.
+- **Kanalbeskeder** var udelukket uden en vagt. En udelukkelse uden vagt glider.
+  Nu trin 9: en AST-vagt der fejler hvis `inbox_view` begynder at læse discord,
+  telegram eller `chat_messages`.
+
+**Mønsteret i begge runder** er værd at holde fast: jeg skrev beslutningerne ned
+og troede dermed de var dækket. Det er samme fejl som de seks tomme vagter vi
+fjernede i dag — noget der ser ud som dækning, men ikke måler eller bygger noget.
+
 **Dækning efter rettelserne:** hvert aspekt fra samtalen har en opgave —
-prompt-målingen (0), handlings-klassen (1), visningen med «vakte denne tur»,
-alder og dubletter (2), bogføringen (3), to-trins R2/R2.5 (4), værktøjerne (5),
+prompt-målingen (0), handlings-klassen (1), visningen med seks sektioner,
+«vakte denne tur», forældreløse, bruger-isolation, kanal-vagt, alder og
+dubletter (2), bogføringen (3), to-trins R2/R2.5 (4), værktøjerne (5),
 henvisning-i-stedet-for-replik (6), og efter-målingen af begge heed-rater (7).
 De syv huller jeg selv navngav er afgjort i tabellen «Hvad der ER med».
 

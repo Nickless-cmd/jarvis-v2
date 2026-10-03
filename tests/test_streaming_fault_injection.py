@@ -64,6 +64,33 @@ def _reset_provider_circuit_breaker():
     _cb.reset_all()
 
 
+@pytest.fixture(autouse=True)
+def _retry_switches_pinned_off(monkeypatch):
+    """Pin begge kill-switches OFF for HVER test i denne fil.
+
+    Filens baseline-tests asserterer PRE-Fase-1-adfærd (et forbigående blip
+    dræber turen; partiel tekst persisteres). De assertioner holder KUN med
+    switchen slået fra — men testene læste tidligere miljøet i stedet for at
+    styre det.
+
+    Målt 3/10-2026: runtime-miljøet bærer ``JARVIS_AGENTIC_ROUND_RETRY=1`` (og
+    config har både retry og failover True). Tre baseline-tests målte derfor
+    tavst Fase-1-stien: deres fire-once-injektion blev brugt på første forsøg,
+    og RETRY'EN nåede den ÆGTE udbyder. Test-vagten stoppede kaldet, men kørslen
+    gik til nettet, og de tre tests stod røde på main.
+
+    Med defaulten pinnet OFF her er filen hermetisk i BEGGE retninger:
+    Fase-1-testene melder sig eksplicit TIL via ``_retry_on``/``_failover_on``,
+    og de fixtures asserterer selv den resulterende tilstand — så en forkert
+    fixture-rækkefølge fejler HØJT i stedet for tavst at måle det forkerte.
+    """
+    monkeypatch.setenv(vf._AGENTIC_ROUND_RETRY_ENV, "0")
+    monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "0")
+    assert vf.agentic_round_retry_enabled() is False
+    assert vf.provider_failover_enabled() is False
+    yield
+
+
 # ── Test-harness: driv det ÆGTE _stream_visible_run-spor hermetisk ───────────
 
 
@@ -380,8 +407,14 @@ def test_final_synthesis_after_tool_round_emits_multiple_live_deltas(monkeypatch
 def test_clean_fail_before_delta_ends_interrupted_no_retry(monkeypatch) -> None:
     """En clean HTTP-502-fejl FØR nogen delta → turen ender afbrudt (intet retry).
 
-    BASELINE: ingen rund-retry findes endnu, så et forbigående blip dræber turen.
-    Fase 1 skal i stedet retry'e runden og lade turen overleve."""
+    BASELINE, målt med kill-switchen OFF (pinnet af ``_retry_switches_pinned_off``):
+    uden rund-retry dræber et forbigående blip turen, og årsagen der når klienten
+    er udbyder-fejlen selv — «HTTP 502», ikke en generisk «intern fejl».
+
+    Fase 1 er siden landet (``1a032dd71``) og retry'er runden i stedet. Den
+    adfærd måles i ``test_PRIMARY_partial_then_drop_retry_survives_no_dup`` og
+    ``test_exhaustion_emits_partial_and_interrupts_never_blank``; denne test
+    vogter den kontrakt kill-switchen lover når den slås FRA."""
     res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,
                  run_id="clean-fail")
 
@@ -414,15 +447,18 @@ def test_clean_fail_fires_followup_failed_nerve(monkeypatch) -> None:
 
 
 def test_partial_then_drop_C11_partial_text_persists(monkeypatch) -> None:
-    """C11 BASELINE (dette er buggen; Fase 1 inverterer det):
+    """C11-BASELINE, målt med kill-switchen OFF (pinnet af ``_retry_switches_pinned_off``):
 
-    En runde der STREAMER partiel tekst og SÅ dropper → den partielle tekst står
-    BÅDE live OG i det persisterede svar, selvom runden fejlede. Deltas appendes
-    til _all_followup_parts (visible_runs.py:2211) og trunkeres ALDRIG ved fejl;
-    de føder det persisterede svar (visible_runs.py:3043).
+    En runde der STREAMER partiel tekst og SÅ dropper → uden rund-retry findes
+    der ingen trunkering, så den partielle tekst står BÅDE live OG i det
+    persisterede svar, selvom runden fejlede.
 
-    EFTER Fase 1 (C11-fix): den partielle tekst skal KASSERES (snapshot+trunkér)
-    og turen skal OVERLEVE via retry. Denne assertion FLIPPES da."""
+    Fase 1's C11-fix (``1a032dd71``, visible_runs.py:~3829) trunkerer
+    ``_all_followup_parts`` tilbage til rundens snapshot FØR retry'en, så den
+    fejlede tekst kasseres. Den inverterede assertion bor i
+    ``test_PRIMARY_partial_then_drop_retry_survives_no_dup``; denne test holder
+    den gamle adfærd fast som den kontrakt kill-switchen OFF lover (spejlet af
+    ``test_flag_off_partial_then_drop_identical_to_baseline``)."""
     partials = ("partial-", "svar-", "før-drop")
     res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
                  run_id="partial-drop-c11",
@@ -472,7 +508,11 @@ def test_partial_then_drop_raised_no_longer_centrally_silent(monkeypatch) -> Non
 def test_partial_then_drop_yielded_DOES_fire_nerve(monkeypatch) -> None:
     """Kontrast til ovenstående: hvis drop'et yields som FollowupFailed (i stedet
     for at raise), FYRER note_round_failed. Beviser at hullet er sti-specifikt
-    (raise vs yield), ikke generelt — så Fase 1's fix-mål er præcist lokaliseret."""
+    (raise vs yield), ikke generelt — så Fase 1's fix-mål er præcist lokaliseret.
+
+    Kører med kill-switchen OFF (pinnet), så C11-baseline gælder: den partielle
+    tekst persisteres. Med retry TIL ville den være kasseret — den vej måles i
+    ``test_PRIMARY_partial_then_drop_retry_survives_no_dup``."""
     res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
                  run_id="partial-drop-yield",
                  drop_as_exception=False)

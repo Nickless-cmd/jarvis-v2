@@ -100,6 +100,38 @@ def _billeder_efter_tool_svarene(messages: list[dict], billeder: list[dict]) -> 
     messages.extend(billeder)
 
 
+
+def _dt_ind(session_id: str, tekst: str) -> None:
+    """Notér én delta i delta-sporets punkt «ind» — fra UDBYDEREN.
+
+    ## Hvorfor den er her og ikke kun i `visible_model_adapters`
+
+    Første udgave af sporet sad kun på første pas. Målt 3/10-2026 gav to
+    rigtige ture NUL «ind»-linjer mod to «ud» — fordi det meste af teksten i
+    en synlig tur kommer fra de AGENTISKE RUNDER, og de yielder `FollowupDelta`
+    herfra, ikke `VisibleModelDelta` derovre. Instrumenteringen sad på den vej
+    der producerer mindst.
+
+    Nøglen er sessionen, ikke run-id'et: run-id'et lever i en ContextVar der
+    ikke følger med ind i arbejdstråden (målt samme dag, egen commit).
+
+    IKKE DÆKKET: ollama-adapterens `stream_followup` (samme fil, det andet
+    `FollowupDelta`-sted). Den har intet `session_id` i sin signatur, og et
+    kontekst-opslag ville være netop den fejl der gjorde den første måling
+    ubrugelig. Den betjener de autonome ture på ollama — ikke Bjørns synlige
+    bane, som kører `deepseek/deepseek-v4-flash`. Skal den dækkes, skal
+    session-id'et trådes eksplicit igennem.
+    """
+    try:
+        from core.services import delta_trace as _dt
+        if not _dt.taendt():
+            return
+        _dt.noter("ind", str(session_id or ""), len(tekst))
+    except Exception:  # et spor maa aldrig vaelte en runde; alternativet er
+        # at miste svaret, og det er altid vaerre end en manglende maaling.
+        pass
+
+
 class OllamaFollowupAdapter:
     """Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint.
 
@@ -1044,6 +1076,7 @@ class OpenAICompatFollowupAdapter:
                         )
                         if safe:
                             parts.append(safe)
+                            _dt_ind(session_id, safe)
                             yield FollowupDelta(delta=safe)
                     reasoning_delta = _extract_chat_completion_reasoning(event)
                     if reasoning_delta:
@@ -1247,6 +1280,7 @@ class OpenAICompatFollowupAdapter:
         # — en tilbageholdt prefix der aldrig blev en rigtig opener er legitim brugertekst.
         if _dsml_buffer and not _dsml_in_block:
             parts.append(_dsml_buffer)
+            _dt_ind(session_id, _dsml_buffer)
             yield FollowupDelta(delta=_dsml_buffer)
             _dsml_buffer = ""
         elif _dsml_buffer and _dsml_in_block:

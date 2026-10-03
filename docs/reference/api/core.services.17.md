@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_context.py`
+_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
+| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
+| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
+| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
+
 ## `core/services/model_pair_resolver.py`
 _Findes den valgte model hos den valgte udbyder?_
 
@@ -616,11 +626,4 @@ _Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine.
 | function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L149) |
 | function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L156) |
 | function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L182) |
-
-## `core/services/orb_phase.py`
-_Desktop orb phase — writes current Jarvis pipeline state to a temp file._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `set_phase` | `(phase)` | Write orb phase. Silently ignores any I/O errors. | [src](../../../core/services/orb_phase.py#L17) |
 

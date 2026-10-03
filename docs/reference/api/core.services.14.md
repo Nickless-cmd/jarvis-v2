@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_delivery.py`
+_Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
+| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
+| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L238) |
+
 ## `core/services/heartbeat_manage_runtime_work.py`
 _Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._
 
@@ -711,11 +720,4 @@ _Central-wiring cadence producers (split from internal_cadence.py)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `register_central_wiring_producers` | `()` | Run the Central-wiring registration blocks (unchanged order/behavior). | [src](../../../core/services/internal_cadence_central_wiring.py#L15) |
-
-## `core/services/internal_cadence_core.py`
-_Core-infra cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_core_producers` | `(register_producer)` | Register the core-infra producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_core.py#L19) |
 

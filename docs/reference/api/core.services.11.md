@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_articulation.py`
+_Bounded dream articulation light._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_dream_articulation` | `(*, trigger=…, last_visible_at=…)` | Run one bounded dream-articulation pass. | [src](../../../core/services/dream_articulation.py#L23) |
+| function | `build_dream_articulation_from_inputs` | `(*, idle_consolidation, inner_voice_state, emergent_surface, witness_surface, loop_runtime, embodied_state, goal_surface=…, relation_surface=…, autonomy_surface=…, now=…)` | — | [src](../../../core/services/dream_articulation.py#L165) |
+| function | `build_dream_articulation_surface` | `()` | — | [src](../../../core/services/dream_articulation.py#L332) |
+| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/dream_articulation.py#L364) |
+| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/dream_articulation.py#L397) |
+| function | `_latest_dream_articulation_signal` | `()` | Return the latest dream hypothesis signal. | [src](../../../core/services/dream_articulation.py#L423) |
+| function | `_classify_candidate_state` | `(*, idle_consolidation, emergent_surface, witness_surface, loop_runtime)` | — | [src](../../../core/services/dream_articulation.py#L444) |
+| function | `_build_anchor` | `(*, idle_consolidation, witness_summary, emergent_summary, loop_summary)` | — | [src](../../../core/services/dream_articulation.py#L461) |
+| function | `_build_signal_type` | `(*, candidate_state, loop_summary)` | — | [src](../../../core/services/dream_articulation.py#L480) |
+| function | `_title_suffix` | `(anchor)` | — | [src](../../../core/services/dream_articulation.py#L485) |
+| function | `_build_summary` | `(*, candidate_state, source_inputs, body)` | — | [src](../../../core/services/dream_articulation.py#L489) |
+| function | `_build_rationale` | `(*, consolidation, voice_result, witness_summary, emergent_summary)` | — | [src](../../../core/services/dream_articulation.py#L502) |
+| function | `_build_support_summary` | `(*, source_inputs, candidate_state)` | — | [src](../../../core/services/dream_articulation.py#L522) |
+| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/dream_articulation.py#L534) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/dream_articulation.py#L561) |
+
 ## `core/services/dream_bias_engine.py`
 _Dream bias engine — Lag 2 distillation + bias state._
 
@@ -655,17 +676,4 @@ _API-endpoint forbrugs-statistik (parallel til tool_usage_store). Centralen hold
 | function | `usage_buckets` | `()` | Klassificér endpoints most/often/sometimes/rare/never. Registrerede-men-aldrig-kaldte | [src](../../../core/services/endpoint_usage_store.py#L108) |
 | function | `dead_endpoints` | `()` | Registrerede endpoints der ALDRIG er kaldt. Kandidater til oprydning / smartere design. | [src](../../../core/services/endpoint_usage_store.py#L121) |
 | function | `observe_stats` | `()` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde endpoints. | [src](../../../core/services/endpoint_usage_store.py#L129) |
-
-## `core/services/env_block.py`
-_Hvor står jeg, og hvordan ser træet ud? — miljø-blok pr. tur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_enabled` | `()` | — | [src](../../../core/services/env_block.py#L48) |
-| function | `_git` | `(cwd, *args)` | Tidsbegrænset git-kald. None ved ENHVER fejl. | [src](../../../core/services/env_block.py#L56) |
-| function | `collect_env` | `(cwd=…)` | Saml miljøet. Alle felter er strenge; tomme når de ikke kunne læses. | [src](../../../core/services/env_block.py#L68) |
-| function | `_husk_vist_hash` | `(kort_hash)` | — | [src](../../../core/services/env_block.py#L99) |
-| function | `vist_hash` | `()` | Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen. | [src](../../../core/services/env_block.py#L109) |
-| function | `render_env_block` | `(cwd=…)` | Én kort blok til halen. Tom streng når slukket eller intet kunne læses. | [src](../../../core/services/env_block.py#L118) |
-| function | `_workspace_rod` | `()` | Den ABSOLUTTE sti til den aktuelle brugers workspace. | [src](../../../core/services/env_block.py#L141) |
 

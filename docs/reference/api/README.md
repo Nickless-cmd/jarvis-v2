@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15884 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15888 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,25 +38,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15884 functions/
 - [`core.services.07`](core.services.07.md) — `chat_sessions` … `cognitive_chronicle`
 - [`core.services.08`](core.services.08.md) — `cognitive_core_experiments` … `council_deliberation_controller`
 - [`core.services.09`](core.services.09.md) — `council_memory_daemon` … `decision_evidence`
-- [`core.services.10`](core.services.10.md) — `decision_gate` … `dream_articulation`
-- [`core.services.11`](core.services.11.md) — `dream_bias_engine` … `env_block`
-- [`core.services.12`](core.services.12.md) — `epistemic_pragmatic` … `gate_eval`
-- [`core.services.13`](core.services.13.md) — `gate_execution` … `heartbeat_delivery`
-- [`core.services.14`](core.services.14.md) — `heartbeat_manage_runtime_work` … `internal_cadence_core`
-- [`core.services.15`](core.services.15.md) — `internal_cadence_inner_life` … `loyalty_gradient_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `mail_checker_daemon` … `model_context`
-- [`core.services.17`](core.services.17.md) — `model_pair_resolver` … `orb_phase`
-- [`core.services.18`](core.services.18.md) — `outbound_nudges` … `private_temporal_curiosity_state_tracking`
-- [`core.services.19`](core.services.19.md) — `private_temporal_promotion_signal_tracking` … `provider_health_check`
-- [`core.services.20`](core.services.20.md) — `provider_model_epochs` … `report_claim_guard`
-- [`core.services.21`](core.services.21.md) — `research_contract` … `runtime_self_model`
-- [`core.services.22`](core.services.22.md) — `runtime_self_model_affect` … `self_review_unified`
-- [`core.services.23`](core.services.23.md) — `self_surprise_detection` … `signal_decay_daemon`
-- [`core.services.24`](core.services.24.md) — `signal_delta_trigger` … `surprise_daemon`
-- [`core.services.25`](core.services.25.md) — `surprise_detector` … `tool_intent_runtime`
-- [`core.services.26`](core.services.26.md) — `tool_lexical_match` … `veto_gate`
-- [`core.services.27`](core.services.27.md) — `visible_first_pass_pump` … `visible_self_state_summary`
-- [`core.services.28`](core.services.28.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `decision_gate` … `dream_adoption_candidate_tracking`
+- [`core.services.11`](core.services.11.md) — `dream_articulation` … `endpoint_usage_store`
+- [`core.services.12`](core.services.12.md) — `env_block` … `gate_enforcement`
+- [`core.services.13`](core.services.13.md) — `gate_eval` … `heartbeat_daemon_ticks`
+- [`core.services.14`](core.services.14.md) — `heartbeat_delivery` … `internal_cadence_central_wiring`
+- [`core.services.15`](core.services.15.md) — `internal_cadence_core` … `loop_runtime`
+- [`core.services.16`](core.services.16.md) — `loyalty_gradient_signal_tracking` … `model_catalogue_sweep`
+- [`core.services.17`](core.services.17.md) — `model_context` … `operator_channel`
+- [`core.services.18`](core.services.18.md) — `orb_phase` … `private_state_snapshot_tracking`
+- [`core.services.19`](core.services.19.md) — `private_temporal_curiosity_state_tracking` … `provider_error_guard`
+- [`core.services.20`](core.services.20.md) — `provider_health_check` … `repeated_requests`
+- [`core.services.21`](core.services.21.md) — `report_claim_guard` … `runtime_self_knowledge`
+- [`core.services.22`](core.services.22.md) — `runtime_self_model` … `self_review_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `self_review_unified` … `signal_baseline`
+- [`core.services.24`](core.services.24.md) — `signal_decay_daemon` … `subjective_time`
+- [`core.services.25`](core.services.25.md) — `surprise_daemon` … `tool_intent_approval_runtime`
+- [`core.services.26`](core.services.26.md) — `tool_intent_runtime` … `versioneret_json_svar`
+- [`core.services.27`](core.services.27.md) — `veto_gate` … `visible_runs_watchdog`
+- [`core.services.28`](core.services.28.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/env_block.py`
+_Hvor står jeg, og hvordan ser træet ud? — miljø-blok pr. tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_enabled` | `()` | — | [src](../../../core/services/env_block.py#L48) |
+| function | `_git` | `(cwd, *args)` | Tidsbegrænset git-kald. None ved ENHVER fejl. | [src](../../../core/services/env_block.py#L56) |
+| function | `collect_env` | `(cwd=…)` | Saml miljøet. Alle felter er strenge; tomme når de ikke kunne læses. | [src](../../../core/services/env_block.py#L68) |
+| function | `_husk_vist_hash` | `(kort_hash)` | — | [src](../../../core/services/env_block.py#L99) |
+| function | `vist_hash` | `()` | Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen. | [src](../../../core/services/env_block.py#L109) |
+| function | `render_env_block` | `(cwd=…)` | Én kort blok til halen. Tom streng når slukket eller intet kunne læses. | [src](../../../core/services/env_block.py#L118) |
+| function | `_workspace_rod` | `()` | Den ABSOLUTTE sti til den aktuelle brugers workspace. | [src](../../../core/services/env_block.py#L141) |
+
 ## `core/services/epistemic_pragmatic.py`
 _Epistemic/Pragmatic Balance — action-mode modulation._
 
@@ -603,15 +616,4 @@ _Governed per-gate enforce-kill-switch for PRE-eksekverings-gates._
 |---|---|---|---|---|
 | function | `is_enforced` | `(nerve, klass)` | True hvis gatens håndhævelse er aktiv. | [src](../../../core/services/gate_enforcement.py#L32) |
 | function | `note_suppressed_block` | `(nerve, cluster, reason, *, detected_text=…, trigger_pattern=…, source_file=…, source_line=…, session_id=…, run_id=…)` | En gate ville have blokeret, men håndhævelsen er governed-OFF → registrér det som | [src](../../../core/services/gate_enforcement.py#L47) |
-
-## `core/services/gate_eval.py`
-_Gate-eval & paritets-harness (unified-gate Task 0.2)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_as_verdict` | `(name, raw)` | Normalisér en gate-returværdi til Verdict (genbruger kernens parser). | [src](../../../core/services/gate_eval.py#L21) |
-| function | `replay` | `(turns, gate_fn, *, name=…)` | Kør gate_fn over hver turns `ctx` og returnér normaliserede verdicts. | [src](../../../core/services/gate_eval.py#L26) |
-| function | `parity` | `(turns, old_fn, new_fn)` | Sammenlign to gate-implementeringer pr. turn. Grøn paritet = nul mismatches. | [src](../../../core/services/gate_eval.py#L38) |
-| function | `score` | `(turns, gate_fn, *, label_key=…)` | Mål en gates beslutning mod ground-truth-labels pr. turn. | [src](../../../core/services/gate_eval.py#L52) |
-| function | `load_fixtures` | `(path)` | Læs et jsonl-fixturset (én turn pr. linje). Tomme/kommenterede linjer ignoreres. | [src](../../../core/services/gate_eval.py#L73) |
 

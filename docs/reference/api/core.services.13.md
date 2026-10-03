@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_eval.py`
+_Gate-eval & paritets-harness (unified-gate Task 0.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_as_verdict` | `(name, raw)` | Normalisér en gate-returværdi til Verdict (genbruger kernens parser). | [src](../../../core/services/gate_eval.py#L21) |
+| function | `replay` | `(turns, gate_fn, *, name=…)` | Kør gate_fn over hver turns `ctx` og returnér normaliserede verdicts. | [src](../../../core/services/gate_eval.py#L26) |
+| function | `parity` | `(turns, old_fn, new_fn)` | Sammenlign to gate-implementeringer pr. turn. Grøn paritet = nul mismatches. | [src](../../../core/services/gate_eval.py#L38) |
+| function | `score` | `(turns, gate_fn, *, label_key=…)` | Mål en gates beslutning mod ground-truth-labels pr. turn. | [src](../../../core/services/gate_eval.py#L52) |
+| function | `load_fixtures` | `(path)` | Læs et jsonl-fixturset (én turn pr. linje). Tomme/kommenterede linjer ignoreres. | [src](../../../core/services/gate_eval.py#L73) |
+
 ## `core/services/gate_execution.py`
 _Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekverings-_
 
@@ -528,13 +539,4 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 | function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
 | function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
-
-## `core/services/heartbeat_delivery.py`
-_Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
-| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
-| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L238) |
 

@@ -204,12 +204,29 @@ def _aegte_proces_lever(pid: int | None) -> bool | None:
 
 @dataclass(slots=True)
 class Kilder:
-    """Rene, bruger-afgrænsede læsninger. Ingen af dem muterer."""
-    poster: Callable[[str], list[dict[str, Any]]] = _aegte_poster
-    vaekninger: Callable[[str], list[dict[str, Any]]] = _aegte_vaekninger
-    jobs: Callable[[str], list[dict[str, Any]]] = _aegte_jobs
-    godkendelser: Callable[[str], list[dict[str, Any]]] = _aegte_godkendelser
-    proces_lever: Callable[[int | None], bool | None] = _aegte_proces_lever
+    """Rene, bruger-afgrænsede læsninger. Ingen af dem muterer.
+
+    Standardværdierne er SENT bundne — `lambda b: _aegte_jobs(b)`, ikke
+    `_aegte_jobs`. Forskellen er ikke kosmetisk: en dataclass-default er en
+    KOPI af funktionsobjektet, fanget da klassen blev defineret, så en patch af
+    `inbox_view._aegte_jobs` følger IKKE med. Mine egne værktøjstests nåede
+    derfor de ægte vækninger og jobs fra udviklingsmaskinen — fire poster hvor
+    testen forventede nul — og `slots=True` gjorde at klasse-attributten heller
+    ikke kunne patches.
+
+    Med den sene binding er modulet den ene kilde, og en test (eller en
+    fremtidig anden adapter) kan bytte ÉN læsning uden at kende klassen.
+    """
+    poster: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda b: _aegte_poster(b))
+    vaekninger: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda b: _aegte_vaekninger(b))
+    jobs: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda b: _aegte_jobs(b))
+    godkendelser: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda b: _aegte_godkendelser(b))
+    proces_lever: Callable[[int | None], bool | None] = field(
+        default=lambda p: _aegte_proces_lever(p))
     #: Vækningen der startede DENNE tur. Skal komme fra dispatcherens
     #: registrerede årsag — ikke gættes fra den seneste fyrede vækning, for så
     #: ville en tur han selv startede arve en tilfældig vækning som sin grund.

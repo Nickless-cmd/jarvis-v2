@@ -441,6 +441,12 @@ from core.services.cross_agent_memory import (
     CROSS_AGENT_TOOL_DEFINITIONS,
     _exec_cross_agent_recall,
 )
+from core.tools.inbox_tools import (
+    INBOX_TOOL_DEFINITIONS,
+    _exec_inbox,
+    _exec_inbox_done,
+    _exec_inbox_drop,
+)
 from core.services.self_wakeup import (
     SELF_WAKEUP_TOOL_DEFINITIONS,
     _exec_schedule_self_wakeup,
@@ -1834,6 +1840,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "cross_agent_recall": _exec_cross_agent_recall,
     "schedule_self_wakeup": _exec_schedule_self_wakeup,
     "list_self_wakeups": _exec_list_self_wakeups,
+    # Indbakken (Opgave 5). Navnet bor FEM steder — skema, eksekutor,
+    # dispatch, desk og mobil — og 2/10 ramte jeg tre af de fem i
+    # foerste forsoeg. De tre nye staar samlet, saa de kan taelles.
+    "inbox": _exec_inbox,
+    "inbox_done": _exec_inbox_done,
+    "inbox_drop": _exec_inbox_drop,
     "cancel_self_wakeup": _exec_cancel_self_wakeup,
     "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
     "add_wakeup_extra": _exec_add_wakeup_extra,

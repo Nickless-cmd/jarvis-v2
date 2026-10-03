@@ -91,6 +91,16 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Indbakken (Opgave 5, 3/10-2026). ALLE roller, ikke owner-only:
+    # isolationen haandhaeves paa `bruger_id` i db_inbox, saa hver bruger ser
+    # og afgoer kun sine EGNE poster. Var de owner-only, kunne et
+    # husstandsmedlem hverken se eller lukke det der venter paa dem — og en
+    # post de ikke kan lukke er en post der staar for evigt.
+    #
+    # `inbox` er en LAESNING og skal altid slippe igennem gaten; uden den
+    # kunne han ikke se hvad der blokerer. `inbox_done`/`inbox_drop` er de
+    # eneste to veje en blokerende post frigives.
+    "inbox", "inbox_done", "inbox_drop",
     # Undersoegelse — laese-kun agent, aendrer intet (omdøbt fra `explore` 17/9-2026;
     # det gamle navn står her som alias, så et kald med det ikke afvises af scope)
     "scout_agent", "explore",
@@ -158,6 +168,16 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 # Code-mode allowlist. Owner = container + workstation + dispatch; member/guest =
 # kun workstation (operator-bridge, sandboxet til deres egen maskine).
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Indbakken (Opgave 5, 3/10-2026). ALLE roller, ikke owner-only:
+    # isolationen haandhaeves paa `bruger_id` i db_inbox, saa hver bruger ser
+    # og afgoer kun sine EGNE poster. Var de owner-only, kunne et
+    # husstandsmedlem hverken se eller lukke det der venter paa dem — og en
+    # post de ikke kan lukke er en post der staar for evigt.
+    #
+    # `inbox` er en LAESNING og skal altid slippe igennem gaten; uden den
+    # kunne han ikke se hvad der blokerer. `inbox_done`/`inbox_drop` er de
+    # eneste to veje en blokerende post frigives.
+    "inbox", "inbox_done", "inbox_drop",
     # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
     "read_attachment",
     # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026): vis diff'en

@@ -196,6 +196,16 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "home_assistant", "internal_api", "list_agents", "list_events",
     "list_initiatives", "list_plans", "list_proposals", "list_recurring",
     "list_scheduled_tasks", "list_self_wakeups", "list_signal_surfaces", "look_around",
+    # Indbakken (Opgave 5, 3/10-2026). Alle TRE skal sendes, og det er en
+    # bevidst pris paa tre skemaer i det cachebare prefix.
+    #
+    # Grunden: naegtelsen fra `inbox_gate` siger «kald inbox» og «luk med
+    # inbox_done/inbox_drop». Var de ikke sendt, skulle han hente dem midt
+    # i turen — og en hentning midt i turen kostede MAALT 92 % -> 26 %
+    # cache-hit, fordi tools staar FOER beskederne. En blokering man kun
+    # kan komme ud af ved at buste sin egen cache er en blokering man
+    # ikke kan komme ud af.
+    "inbox", "inbox_done", "inbox_drop",
     "load_more_tools",  # escape-hatch til de ~316 ikke-sendte tools — SKAL altid være på
     # App-self-control: Jarvis styrer jarvis-desk indefra (skift mode, åbn paneler).
     # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.

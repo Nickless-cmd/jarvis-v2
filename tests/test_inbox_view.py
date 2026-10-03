@@ -421,3 +421,25 @@ def test_en_FEJLENDE_kilde_toemmer_ikke_hele_visningen():
         # en fejl. De aegte adaptere logger og returnerer tomt hver for sig —
         # det er dér fald-retningen hoerer, ikke i byg_indbakke.
         byg_indbakke(BJORN, nu_ts=TID, kilder=k)
+
+
+def test_kildernes_standarder_er_SENT_bundne():
+    """En dataclass-default er en KOPI af funktionsobjektet, fanget da klassen
+    blev defineret. Var de bundet direkte (`= _aegte_jobs`), ville en patch af
+    `inbox_view._aegte_jobs` ikke følge med — og `slots=True` gør at
+    klasse-attributten heller ikke kan patches.
+
+    Det kostede en runde: mine værktøjstests nåede de ÆGTE vækninger og jobs
+    fra udviklingsmaskinen, fire poster hvor de forventede nul. En test der
+    læser levende tilstand måler noget andet hver gang.
+    """
+    import core.services.inbox_view as iv
+    k = Kilder()
+    assert k.jobs("x") is not None
+    _rigtig = iv._aegte_jobs
+    try:
+        iv._aegte_jobs = lambda _b: [{"id": "job-patchet"}]
+        assert [j["id"] for j in Kilder().jobs("x")] == ["job-patchet"], \
+            "standarden er bundet til en KOPI — en patch af modulet naar den ikke"
+    finally:
+        iv._aegte_jobs = _rigtig

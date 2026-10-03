@@ -123,6 +123,8 @@ export const LISTE_NAVNE = [
   'central_query', 'read_chronicles', 'read_memory_topic', 'eventbus_recent',
   'list_signal_surfaces', 'list_self_wakeups', 'list_agents',
   'list_scheduled_tasks', 'list_side_tasks',
+  // Indbakken (Opgave 5, 3/10-2026) — samme commit som desk.
+  'inbox',
 ] as const
 
 const LISTE = new Set<string>(LISTE_NAVNE)

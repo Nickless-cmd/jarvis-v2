@@ -100,6 +100,7 @@ from core.services.agent_skill_library import (AGENT_SKILL_TOOL_DEFINITIONS)
 from core.services.agent_observation_compressor import (AGENT_OBSERVATION_TOOL_DEFINITIONS)
 from core.services.cross_agent_memory import (CROSS_AGENT_TOOL_DEFINITIONS)
 from core.services.self_wakeup import (SELF_WAKEUP_TOOL_DEFINITIONS)
+from core.tools.inbox_tools import (INBOX_TOOL_DEFINITIONS)
 from core.services.wakeup_dispatcher import (WAKEUP_DISPATCHER_TOOL_DEFINITIONS)
 from core.services.crisis_marker_detector import (CRISIS_MARKER_TOOL_DEFINITIONS)
 from core.services.identity_drift_proposer import (IDENTITY_DRIFT_TOOL_DEFINITIONS)
@@ -3504,6 +3505,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_OBSERVATION_TOOL_DEFINITIONS,
     *CROSS_AGENT_TOOL_DEFINITIONS,
     *SELF_WAKEUP_TOOL_DEFINITIONS,
+    *INBOX_TOOL_DEFINITIONS,
     *WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
     *CRISIS_MARKER_TOOL_DEFINITIONS,
     *IDENTITY_DRIFT_TOOL_DEFINITIONS,

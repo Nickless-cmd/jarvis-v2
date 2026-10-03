@@ -793,7 +793,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .jarvis-body > *:first-child { margin-top: 0; }
 .jarvis-body > *:last-child { margin-bottom: 0; }
-.jarvis-body p { margin: 0 0 0.6em 0; }
+.jarvis-body p { margin: 0 0 0.2em 0; }
 .jarvis-body strong { color: var(--fg-0, #f0f2f7); font-weight: 600; }
 .jarvis-body em { color: var(--fg-2); }
 .jarvis-body h1, .jarvis-body h2, .jarvis-body h3,

@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageBubble } from './MessageBubble'
 import type { ChatMessage } from '../lib/types'
+import { Animated } from 'react-native'
 
 // Boblen kan nu bære Jarvis' EGNE filer, og `MessageAttachments` henter sin
 // konfiguration gennem `useAuth` — som kaster uden for en AuthProvider. Samme
@@ -18,6 +19,42 @@ jest.mock('../state/AuthContext', () => {
 const base = { id: 'm1', created_at: new Date().toISOString() }
 
 describe('MessageBubble', () => {
+  it('stream og gemt svar bruger samme kompakte afsnitsafstand', async () => {
+    const content = 'Første sætning.\n\nAnden sætning.\n\nTredje sætning.'
+    const a = await render(<MessageBubble message={{ ...base, id: 'stream-1', role: 'assistant', content } as ChatMessage} />)
+    const b = await render(<MessageBubble message={{ ...base, id: 'm1', role: 'assistant', content } as ChatMessage} />)
+    const margins = (root: any) => {
+      const out: number[] = []
+      const walk = (node: any) => {
+        if (!node || typeof node !== 'object') return
+        if (node.props?.style?.width === '100%' && node.props.style.marginBottom !== undefined) {
+          out.push(node.props.style.marginBottom)
+        }
+        for (const child of node.children ?? []) walk(child)
+      }
+      walk(root)
+      return out
+    }
+    expect(margins(a.toJSON())).toEqual(margins(b.toJSON()))
+    expect(margins(b.toJSON())).toHaveLength(3)
+    expect(Math.max(...margins(b.toJSON()))).toBeLessThanOrEqual(3)
+  })
+
+  it('starter ikke indgangsanimationen igen når streamen bliver gemt', async () => {
+    const spring = jest.spyOn(Animated, 'spring')
+    try {
+      await render(<MessageBubble message={{
+        ...base, id: 'saved-assistant', role: 'assistant', content: 'Færdigt svar.',
+      } as ChatMessage} />)
+      expect(spring).not.toHaveBeenCalled()
+      await render(<MessageBubble message={{
+        ...base, id: 'stream-assistant', role: 'assistant', content: 'Live svar.',
+      } as ChatMessage} />)
+      expect(spring).toHaveBeenCalled()
+    } finally {
+      spring.mockRestore()
+    }
+  })
   it('rendrer bruger + assistent uden crash', async () => {
     const user = { ...base, role: 'user', content: 'hej' } as ChatMessage
     const asst = { ...base, role: 'assistant', content: '**hej** verden' } as ChatMessage

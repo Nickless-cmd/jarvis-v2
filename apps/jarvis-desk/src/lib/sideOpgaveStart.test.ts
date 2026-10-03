@@ -17,7 +17,7 @@ describe('sideOpgaveStart', () => {
 
   it('ny samtale med titlen, prompten som foerste besked, paa samme flade og i samme arbejdsomraade', async () => {
     expect(await startSideOpgave(cfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: '/r' })).toBe('s-ny')
-    expect(createSession).toHaveBeenCalledWith(cfg, t.title, 'code')
+    expect(createSession).toHaveBeenCalledWith(cfg, t.title, 'code', undefined)
     expect(sendLoesrevet).toHaveBeenCalledWith(cfg, { sessionId: 's-ny', message: 'Find ud af hvorfor', mode: 'code', workspaceKind: 'workstation', workspaceRoot: '/r' })
   })
 
@@ -25,6 +25,14 @@ describe('sideOpgaveStart', () => {
     expect(worktreeNavn('Fix two failing visible-run tests')).toBe('side-fix-two-failing-visible-run-tests')
     expect(worktreeNavn('Ryd op i Ærøs gamle ÅBNE filer!')).toBe('side-ryd-op-i-aeroes-gamle-aabne-filer')
     expect(worktreeNavn('!!!')).toBe('side-opgave')
+  })
+
+  it('tilladelses-niveauet ARVES fra den samtale opgaven startes fra', async () => {
+    // Bjoern 3/10: «composer arver ikk permissions». Uden `arvFra` fik den nye
+    // samtale `ask` fra serveren, og PermissionContext overskrev hans «fuld
+    // adgang» i samme oejeblik samtalen blev valgt.
+    await startSideOpgave(cfg, t, { kind: 'code', arvFra: 's-foraelder' })
+    expect(createSession).toHaveBeenCalledWith(cfg, t.title, 'code', 's-foraelder')
   })
 
   it('worktree-stien goeres hel — serveren svarer relativt', async () => {

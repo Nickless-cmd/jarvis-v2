@@ -105,6 +105,9 @@ from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.visning import router as visning_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
+from apps.api.jarvis_api.routes.chat_workspace_trust import (
+    router as chat_workspace_trust_router,
+)
 from apps.api.jarvis_api.routes.review import router as review_router
 from apps.api.jarvis_api.routes.mobile_memory import router as mobile_memory_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
@@ -905,6 +908,8 @@ def create_app() -> FastAPI:
     app.include_router(files_router)
     app.include_router(visning_router)
     app.include_router(chat_router)
+    # Boy-scout split 3/10-2026: samme /chat-praefiks, egne tillids-ruter.
+    app.include_router(chat_workspace_trust_router)
     app.include_router(review_router)
     app.include_router(mobile_memory_router)
     app.include_router(chat_stream_v2_router)

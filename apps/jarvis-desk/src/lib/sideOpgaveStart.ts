@@ -13,9 +13,15 @@ import type { SideTask } from './sideTasksApi'
 export async function startSideOpgave(
   config: ApiConfig,
   t: SideTask,
-  opts: { kind: 'chat' | 'code'; workspaceKind?: 'container' | 'workstation'; workspaceRoot?: string },
+  opts: {
+    kind: 'chat' | 'code'
+    workspaceKind?: 'container' | 'workstation'
+    workspaceRoot?: string
+    /** Samtalen opgaven startes FRA — den nye arver dens tilladelses-niveau. */
+    arvFra?: string | null
+  },
 ): Promise<string> {
-  const s = await createSession(config, t.title, opts.kind)
+  const s = await createSession(config, t.title, opts.kind, opts.arvFra)
   await sendLoesrevet(config, {
     sessionId: s.id, message: t.prompt, mode: opts.kind,
     workspaceKind: opts.workspaceKind, workspaceRoot: opts.workspaceRoot,

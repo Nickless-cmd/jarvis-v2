@@ -377,11 +377,15 @@ export async function createSession(
   // code-session lavet her skal også være en code-session dér — ellers står
   // den i chat-listen på mobilen og mangler i code-listen.
   kind: 'chat' | 'code' = 'chat',
+  // Hvilken samtale den nye ARVER tilladelses-niveau fra (3/10-2026). Uden
+  // den fik en ny samtale `ask` fra serveren, og PermissionContext overskrev
+  // brugerens «fuld adgang» i samme øjeblik samtalen blev valgt.
+  inheritFrom?: string | null,
 ): Promise<ChatSession> {
   // Serveren returnerer { session: {...} } — unwrap så .id ikke bliver undefined.
   const raw = await apiFetch<{ session: ChatSession } | ChatSession>(config, '/chat/sessions', {
     method: 'POST',
-    body: { title, kind },
+    body: inheritFrom ? { title, kind, inherit_from: inheritFrom } : { title, kind },
   })
   return (raw as { session?: ChatSession }).session ?? (raw as ChatSession)
 }

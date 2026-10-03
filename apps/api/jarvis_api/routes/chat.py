@@ -879,28 +879,6 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     return svar
 
 
-@router.get("/workspace-trust")
-def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
-    """Er det aktuelle workspace betroet for den indloggede bruger?"""
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import is_trusted
-    uid = current_user_id() or None
-    return {"kind": kind, "root": root, "trusted": is_trusted(uid, kind, root)}
-
-
-@router.get("/workspace-trust/list")
-def list_workspace_trust(kind: str = "") -> dict:
-    """De mapper brugeren har betroet — grundlaget for workstation-vaelgeren.
-
-    Uden den her kunne desk kun spoerge «er DENNE mappe betroet?», og en
-    vaelger skal kende kandidaterne foer den kan vise dem.
-    """
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import list_trusted
-    uid = current_user_id() or None
-    return {"folders": list_trusted(uid, kind or None)}
-
-
 @router.get("/git/branches")
 async def chat_git_branches(kind: str = "container", root: str = "") -> dict:
     """Alle branches i workspacet. Blokerende git offloades til en traad."""
@@ -953,24 +931,6 @@ async def chat_git_worktree(request: GitWorktreeRequest) -> dict:
         create_worktree, kind=request.kind, root=request.root,
         navn=request.name, sti=request.path, uid=uid,
     )
-
-
-class WorkspaceTrustRequest(BaseModel):
-    kind: str = "container"
-    root: str = ""
-    trusted: bool = True
-
-
-@router.post("/workspace-trust")
-def set_workspace_trust(request: WorkspaceTrustRequest) -> dict:
-    """Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode)."""
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import set_trusted
-    if not request.root.strip():
-        raise HTTPException(status_code=400, detail="root må ikke være tom")
-    uid = current_user_id() or None
-    trusted = set_trusted(uid, request.kind, request.root, request.trusted)
-    return {"kind": request.kind, "root": request.root, "trusted": trusted}
 
 
 class ChatStreamRequest(BaseModel):
@@ -1265,6 +1225,9 @@ class ChatSessionCreateRequest(BaseModel):
     # `workspace_kind` ovenfor. To felter med næsten samme navn, to helt
     # forskellige spørgsmål.
     kind: str = "chat"
+    # Hvilken samtale den nye arver tilladelses-niveau fra (3/10-2026).
+    # Tom = ingen arv, altsaa `ask` som foer. Se `session_permission.arv_permission`.
+    inherit_from: str = ""
 
 
 class ChatSessionRenameRequest(BaseModel):
@@ -1613,12 +1576,30 @@ def chat_model_context(provider: str = "", model: str = "") -> dict:
 def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     """Opret en ny chat-session (valgfrit bundet til et code-mode workspace).
     Returnerer {session: ...}."""
-    return {"session": create_chat_session(
+    ny = create_chat_session(
         title=request.title,
         workspace_kind=request.workspace_kind or None,
         workspace_root=request.workspace_root or None,
         kind=request.kind or "chat",
-    )}
+    )
+    # Tilladelses-arven (3/10-2026). Bjoern: «composer arver ikk permissions».
+    # En ny samtale havde ingen vaerdi i `approval_mode`, saa serveren svarede
+    # `ask` — og desks PermissionContext laeser netop serveren naar samtalen
+    # skifter, saa den overskrev hans «fuld adgang». Arven sker KUN her, ved
+    # oprettelsen, og kun fra en samtale der findes.
+    #
+    # `_kraev_adgang` paa foraelderen: man maa ikke arve et niveau fra en
+    # samtale man ikke selv har adgang til.
+    _arv = str(getattr(request, "inherit_from", "") or "").strip()
+    if _arv:
+        _kraev_adgang(_arv)
+        from core.services.session_permission import arv_permission
+        _sid = str((ny or {}).get("id") or (ny or {}).get("session_id") or "")
+        _res = arv_permission(_sid, _arv)
+        if _res.get("arvet"):
+            ny = dict(ny)
+            ny["approval_mode"] = _res.get("approval_mode")
+    return {"session": ny}
 
 
 @router.get("/sessions/{session_id}")
@@ -2004,3 +1985,15 @@ def chat_client_tool_result(run_id: str, body: dict) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="No pending client tool for call_id")
     return {"ok": True, "run_id": run_id, "call_id": call_id, "resolved": True}
+
+
+# ── Boy-scout split 3/10-2026: workspace-tillid flyttet ────────────────────
+# De tre `/chat/workspace-trust`-ruter bor nu i `chat_workspace_trust.py`
+# (samme URL, samme adfaerd). Navnene re-eksporteres her, saa eksisterende
+# imports fra `routes.chat` ikke braekker. Ryd op naar call-sites er fulgt med.
+from apps.api.jarvis_api.routes.chat_workspace_trust import (  # noqa: E402,F401
+    WorkspaceTrustRequest,
+    get_workspace_trust,
+    list_workspace_trust,
+    set_workspace_trust,
+)

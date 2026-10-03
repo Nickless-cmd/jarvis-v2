@@ -83,3 +83,96 @@ def test_stort_bogstav_i_niveau_er_gyldigt(db):
     stille blive afvist som ukendt — det normaliseres."""
     assert sp.saet_permission("s1", "TRUST")["status"] == "ok"
     assert sp.hent_permission("s1") == "trust"
+
+
+# ── Arven ved oprettelse (3/10-2026) ──────────────────────────────────────
+#
+# Bjoern: «composer arver ikk permissions». Maalt: en side-opgave startes i en
+# NY samtale, som ingen vaerdi har i `approval_mode`. `hent_permission` svarer
+# derfor `ask`, og desks PermissionContext laeser netop serveren naar samtalen
+# skifter — saa den OVERSKRIVER brugerens lokale «fuld adgang» med `ask`. Han
+# havde givet adgang; den forsvandt i oprettelsen.
+
+
+def _opret(db, sid: str) -> None:
+    import sqlite3
+    c = sqlite3.connect(db)
+    c.execute("INSERT INTO chat_sessions (session_id, title) VALUES (?, '')", (sid,))
+    c.commit()
+    c.close()
+
+
+def test_trust_arves_til_den_nye_samtale(db):
+    """Selve fejlen han saa."""
+    sp.saet_permission("s1", "trust")
+    _opret(db, "s2")
+    ud = sp.arv_permission("s2", "s1")
+    assert ud == {"approval_mode": "trust", "arvet": True, "fra": "s1"}
+    assert sp.hent_permission("s2") == "trust"
+
+
+def test_ask_arves_IKKE_eksplicit(db):
+    """`ask` ER standarden, saa en skrivning ville kun vaere stoej. Og arven
+    maa aldrig loefte et niveau NED — det er en mutation uden en anmodning."""
+    _opret(db, "s2")
+    ud = sp.arv_permission("s2", "s1")
+    assert ud["arvet"] is False
+    assert ud["grund"] == "foraelderen staar paa standarden"
+    assert sp.hent_permission("s2") == "ask"
+
+
+def test_arven_overskriver_ikke_et_eksisterende_valg_nedad(db):
+    """Barnet staar paa `trust`, foraelderen paa `ask` → barnet beholder sit.
+    Arven er en gave ved foedslen, ikke en loebende synkronisering."""
+    _opret(db, "s2")
+    sp.saet_permission("s2", "trust")
+    sp.arv_permission("s2", "s1")
+    assert sp.hent_permission("s2") == "trust"
+
+
+def test_et_senere_skift_i_foraelderen_flytter_IKKE_barnet(db):
+    """Ellers kunne et `trust`-klik i én samtale haeve privilegier i en anden,
+    bagudvirkende. Arven sker KUN ved oprettelsen."""
+    sp.saet_permission("s1", "trust")
+    _opret(db, "s2")
+    sp.arv_permission("s2", "s1")
+    sp.saet_permission("s1", "ask")
+    assert sp.hent_permission("s2") == "trust", "barnet foelger ikke foraelderen"
+
+
+def test_ingen_foraelder_giver_standarden(db):
+    _opret(db, "s2")
+    for fra in ("", "   ", None):
+        ud = sp.arv_permission("s2", fra)
+        assert ud["arvet"] is False and ud["approval_mode"] == "ask"
+
+
+def test_arv_til_sig_selv_er_ingen_arv(db):
+    sp.saet_permission("s1", "trust")
+    ud = sp.arv_permission("s1", "s1")
+    assert ud["arvet"] is False
+
+
+def test_en_ukendt_foraelder_giver_standarden_og_kaster_ikke(db):
+    _opret(db, "s2")
+    ud = sp.arv_permission("s2", "findes-ikke")
+    assert ud["arvet"] is False
+    assert sp.hent_permission("s2") == "ask"
+
+
+def test_arven_kaster_ALDRIG(db, monkeypatch):
+    """En mislykket arv maa ikke kunne forhindre at samtalen bliver oprettet.
+    Fail-retningen er `ask`, som er den sikre."""
+    monkeypatch.setattr(sp, "hent_permission",
+                        lambda _s: (_ for _ in ()).throw(RuntimeError("i stykker")))
+    ud = sp.arv_permission("s2", "s1")
+    assert ud == {"approval_mode": "ask", "arvet": False, "grund": "fejl"}
+
+
+def test_en_ukendt_NY_samtale_kan_ikke_arve(db):
+    """`saet_permission` afviser en samtale der ikke findes — arven skal melde
+    det frem for at paastaa at niveauet gaelder."""
+    sp.saet_permission("s1", "trust")
+    ud = sp.arv_permission("findes-heller-ikke", "s1")
+    assert ud["arvet"] is False
+    assert ud["approval_mode"] == "ask"

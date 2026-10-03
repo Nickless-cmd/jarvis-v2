@@ -797,14 +797,14 @@ export function CodeView({
   const sideHandlinger: SideOpgaveHandlinger = {
     startLokalt: async (t) => {
       if (!sideCfg) return undefined
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs, arvFra: sessionId })
       await sessions.refresh()
       sessions.select(sid)
       return sid
     },
     baggrund: async (t) => {
       if (!sideCfg) return undefined
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs, arvFra: sessionId })
       void sessions.refresh()
       return sid
     },
@@ -822,7 +822,7 @@ export function CodeView({
         if (!sideCfg) return undefined
         const sti = await worktreeTilOpgave(sideCfg, effRoot, t)
         setWsPath(sti)
-        const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti })
+        const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti, arvFra: sessionId })
         await sessions.refresh()
         sessions.select(sid)
         return sid

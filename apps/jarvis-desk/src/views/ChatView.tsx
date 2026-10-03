@@ -649,14 +649,14 @@ export function ChatView({
   const sideHandlinger = {
     startLokalt: async (t: SideTask) => {
       if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat' })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
       await sessions.refresh()
       sessions.select(sid)
       return sid
     },
     baggrund: async (t: SideTask) => {
       if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat' })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
       void sessions.refresh()
       return sid
     },

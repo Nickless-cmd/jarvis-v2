@@ -50,6 +50,33 @@ def _save_all(items: list[dict[str, Any]]) -> None:
     save_json(_STATE_KEY, items)
 
 
+def _age_label(created_at: Any) -> str | None:
+    """Kort alders-tag, fx ``3 dage`` eller ``5t`` — eller None hvis ukendt.
+
+    Uden det ser en opgave der har ligget åben i ti dage lige så frisk ud som
+    en fra i morges. En glemt opgave er ikke en ventende opgave, og forskellen
+    skal kunne ses på prompten — der er ingen automatik der lukker dem
+    (målt 3/10-2026: ``resolve()`` kaldes kun eksplicit).
+    """
+    if not created_at:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(created_at))
+    except (TypeError, ValueError):  # ugyldig dato er ikke en fejl — vi udelader bare alderen
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    seconds = (datetime.now(UTC) - ts).total_seconds()
+    if seconds < 0:
+        return None
+    if seconds < 3600:
+        return f"{int(seconds // 60)}min"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}t"
+    dage = int(seconds // 86400)
+    return "1 dag" if dage == 1 else f"{dage} dage"
+
+
 def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = None) -> dict[str, Any]:
     title = (title or "").strip()
     prompt = (prompt or "").strip()
@@ -114,7 +141,9 @@ def side_tasks_prompt_section() -> str | None:
         tldr = str(r.get("tldr", "")).strip()
         suffix = f" — {tldr}" if tldr else ""
         tag = " (i gang)" if r.get("status") == "activated" else ""
-        bullets.append(f"  [{sid}]{tag} {title}{suffix}")
+        alder = _age_label(r.get("created_at"))
+        alder_tag = f" ({alder})" if alder else ""
+        bullets.append(f"  [{sid}]{tag} {title}{suffix}{alder_tag}")
     extra = f"  (+{len(aabne) - _MAX_SHOWN} mere)" if len(aabne) > _MAX_SHOWN else ""
     return (
         "Flaggede side-tasks (deferred):\n"

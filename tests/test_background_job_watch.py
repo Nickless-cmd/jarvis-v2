@@ -82,15 +82,26 @@ def jobs(monkeypatch):
 
 @pytest.fixture
 def followups(monkeypatch):
-    """Stub for trigger-køen. Returnerer listen af lagte beskeder."""
+    """Stub for notification_bridge. Returnerer listen af sendte beskeder.
+
+    3/10-2026: vagtposten skrev foer til heartbeat-trigger-koeen, som aldrig
+    toemmes — `consume_trigger` kaldes kun bag `ping_channel != "webchat"` og
+    kun fra head, saa beskeden stod nummer 1.725 af 1.726 poster. Den gaar nu
+    gennem `notification_bridge`, den vej der faktisk leverer. Fixturen foelger
+    kilden.
+
+    OBS: de tests der laeser `followups[0]["reason"]` skal skifte til
+    `["source"]`, og `test_trigger_der_returnerer_none_meldes_som_fejl` skal
+    omskrives til at stubbe en leveringsfejl i stedet for en None-retur.
+    """
     lagt: list = []
-    from core.runtime import heartbeat_triggers
+    from core.services import notification_bridge
 
-    def _set(*, reason, source, text=""):
-        lagt.append({"reason": reason, "source": source, "text": text})
-        return {"created_at": "2026-10-03T13:00:00+00:00"}
+    def _send(content, *, source="", push=True, **_kw):
+        lagt.append({"source": source, "text": content})
+        return {"status": "ok", "message": {"id": "msg-test"}}
 
-    monkeypatch.setattr(heartbeat_triggers, "set_trigger_for_default_workspace", _set)
+    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
     return lagt
 
 

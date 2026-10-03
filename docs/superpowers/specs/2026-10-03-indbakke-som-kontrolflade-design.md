@@ -5,15 +5,20 @@ stedet for som prosa i prompten, og koble dens handlingskrævende klasse på
 R2.5-gaten, så ting bliver fulgt til døren uden at noget kan afbryde ham eller
 lamme ham.
 
-**Arkitektur:** En læseflade over tilstand der allerede findes (vækninger,
-baggrundsjobs, agenter, planlagte opgaver), plus to bogførings-handlinger, plus
-én ny forudsætning i `r2_5_blocking_gate`. Ingen ny leveringsmekanisme: køen i
-`session_inbox` bliver genbrugt, og dens udløb ændres fra at skrive prosa til at
-aflevere en henvisning.
+**Arkitektur:** En læseflade over eksisterende kildetilstand (vækninger,
+baggrundsjobs, agenter og planlagte opgaver) og en lille durabel
+`inbox_items`-bogføring af kilde-id, verificeret ejer, påmindelser og afgørelse.
+`session_inbox` forbliver leveringskø og er ikke sandheden om åbne opgaver:
+den modtager kun nogle notifikationer og markerer dem leveret ved flush. En
+separat, brugerafgrænset mutationsvagt genbruger R2.5's værktøjsklassifikation,
+men ikke dens procesglobale verifikationsblok. Ændring af notifikationernes
+visning kræver en tilsluttet klientforbruger, før assistant-replikken fjernes.
 
-**Teknologi:** Python (core/services), eksisterende `session_inbox`,
-`r2_5_blocking_gate`, `self_wakeup`, `agent_registry`/`agent_runs`,
-baggrundsjob-registret. Ingen nye tabeller ud over to kolonner.
+**Teknologi:** Python (core/services), en ny SQLite-tabel til kvitteringer,
+eksisterende `session_inbox`, `self_wakeup`, `recurring_tasks`,
+`scheduled_tasks`, `agent_registry`/`agent_runs` og kildeadaptere til jobs.
+Desk og mobil indgår i notifikationsskiftet. Tabellen gemmer ikke job-output
+eller en anden kopi af kildens status.
 
 ---
 
@@ -58,28 +63,34 @@ noget andet. Det er en **umærket forskel**, ikke et sammenfald.
 
 Tre konklusioner:
 
-1. **Vækninger er den levende arbejdsgang.** 141 bookede, 171 markeret brugt.
-   Tallene passer ikke — 30 flere lukninger end bookinger — så bogføringen er
-   allerede utæt. Det er en selvstændig grund til én flade.
-2. **Agenterne er næsten døde og ødelagte når de bruges.** `scout_agent` fejler
-   73 % af kaldene, `cancel_agent` 65 %. `spawn_agent_task` har ikke kørt siden
-   5. september.
-3. **Han lister aldrig baggrundsjobs** — seks kald nogensinde, sidst 4.
-   september. Han HAR værktøjet. Det er formentlig præcis derfor et langt job
-   kan vende tilbage uden at han ser det: intet minder ham om at se.
+1. **Vækninger er den levende arbejdsgang.** 141 kald til booking og 171 kald
+   til markering som brugt viser høj aktivitet. Kaldetællinger alene beviser
+   ikke 30 manglende bookinger: andre kilder, tidsvinduer og fejlede kald skal
+   afstemmes mod konkrete `wakeup_id` og statusovergange først.
+2. **Agentværktøjerne blev brugt lidt i den målte periode.** Fejlprocenterne
+   gælder værktøjskald, ikke hele agentfunktionen; årsagerne skal klassificeres
+   før designet regner agenter som defekte.
+3. **`bash_session_list` blev kaldt seks gange.** Det måler ikke læsning af
+   baggrundsjobpanelet eller andre joblister og beviser ikke, hvorfor et
+   færdigt job blev overset. Det er en hypotese, som visningen skal måle.
 
 ### Hvorfor R2.5 og ikke R2
 
 | Gate | Fyrer | Efterleves |
 |---|---|---|
 | R2 (advisory) | 47/døgn | **15 %** (målt 13/6: surfaced 47, heeded 7) |
-| R2.5 (blocking) | 7.610 evalueringer | **543 blokeringer → 460 frigivelser ≈ 85 %** |
+| R2.5 (blocking) | 7.610 evalueringer ved oprindelig måling | **543 blokeringer; frigivelsesårsager skal skilles ad** |
 
 `r2_5_gate.evaluated` stod på 7.610 med seneste 3/10; `blocked` 543,
-`mutation_refused` 467, `released` 460. Forskellen er ikke gradvis:
+`mutation_refused` 467, `released` 460. *(RETTET 3/10 (Jarvis): genmålt — evaluated er nu **7.643**. Tallene vokser, datoen står, og det er pointen.)* Kontrolmåling 3/10 på CT105 viste
+**415** frigivelser ved `kig_tilbage` og **45** ved `udløbet`. `460/543` er
+derfor ikke en efterlevelsesrate, og hændelserne er heller ikke parret per
+blok-id. En ny inbox-gate skal måle afgørelse og frigivelse per post. Forskellen er
+ikke gradvis:
 
-**R2 spørger. R2.5 nægter.** Den ene ignoreres fire gange ud af fem; den anden
-efterkommes fire gange ud af fem.
+**R2 spørger. R2.5 kan nægte en mutation.** R2's målte 15 % gælder den
+eksisterende verifikationspåmindelse. R2.5's faktiske efterlevelse kan ikke
+udledes af antal `released`, fordi timeout også frigiver.
 
 R2.5 har desuden allerede model-differentierede tærskler —
 `r2_5_unverified_threshold_deep=3`, `_reasoning=5`, `_fast=8`,
@@ -112,11 +123,17 @@ Disse gælder HVER opgave nedenfor.
 - **Kun hans eget arbejde må gate.** Hans vækninger, hans baggrundsjobs, hans
   agenter. Daemoner og huset må kun oprette ikke-blokerende poster. (Bjørns
   beslutning 3/10.)
+- **Ejer er proveniens, ikke et inputflag.** `kilde_ejer="jarvis"` fra en
+  vilkårlig kalder er ikke bevis. Registreringen skal knyttes til et faktisk
+  tool-/run-id og autentificeret bruger ved oprettelsen. Ukendt proveniens er
+  synlig, men må aldrig gate.
 - **Værktøjssættet må ALDRIG afhænge af indbakkens indhold.** Værktøjer står før
   beskederne i prompten; et skiftende sæt kostede målt 92 % → 26 % cache-hit.
   Visningen må pege på det rigtige værktøj i sin TEKST — det koster ingenting.
-- **Indbakken afleverer henvisninger, aldrig payload.** Hver post bærer en sti
-  OG dens størrelse, så læseren kan vælge fem linjer eller hele filen.
+- **Indbakken afleverer henvisninger, aldrig payload.** En post med et
+  filartefakt bærer sti OG størrelse; en vækning eller godkendelse uden fil
+  har typet kilde-id og ingen opdigtet sti. En sti må ikke læses uden for
+  brugerens autoriserede workspace.
 - **Ingen post må skrives som en assistant-besked.** Det var fejlen bag Smiths
   løkke: hans note landede i promptens hale, Jarvis gentog den, Smith detekterede
   gentagelsen. Data må ikke blive tale.
@@ -160,6 +177,17 @@ Disse gælder HVER opgave nedenfor.
   Det offentlige materiale (agent-inbox) bruger ack+retry med eksponentiel
   backoff til samme formål; vi behøver det ikke, fordi skrivningen er lokal og
   synkron — men vi behøver at fejlen kan SES.
+- **Læsning er uden mutation.** `due_wakeups()` fyrer og gemmer forfaldne
+  vækninger, `build_tool_intent_approval_surface()` kan oprette/udløbe
+  godkendelser. `background_jobs.liste()` starter derimod **ikke** daemonen —
+  den spørger først når pid-filen peger på en ægte daemon — men den nulstiller
+  daemonens idle-ur, så en session-løs daemon ikke lukker ned mens panelet er
+  åbent. Heller ikke den er altså ren. Ingen af dem må kaldes fra
+  `byg_indbakke`; brug rene, scoped læsninger/snapshots.
+- **En leveret notifikation er ikke en afgjort opgave.** `delivered_at` i
+  `session_inbox` betyder kun levering. `done`/`drop` og påmindelsestæller
+  ligger durabelt per bruger og kilde-id, også når sessionen er inaktiv, og
+  efter procesgenstart.
 - Dansk i kommentarer og docstrings, som resten af huset.
 
 ---
@@ -168,15 +196,17 @@ Disse gælder HVER opgave nedenfor.
 
 | Fil | Ansvar |
 |---|---|
-| `core/services/inbox_view.py` (ny, ~220 linjer) | Bygger visningen. Læser de fire kilder, beregner alder/forfald/dubletter. Ingen skrivning. |
-| `core/services/inbox_state.py` (ny, ~140 linjer) | `done()` og `drop()` på tværs af typer. Ejer handlings-klassen. |
-| `core/services/session_inbox.py` (ændres) | To kolonner: `kraever_handling`, `kilde_ejer`. Udløbet afleverer henvisning. |
-| `core/services/r2_5_blocking_gate.py` (ændres) | Én forudsætning mere: ulæste handlingskrævende poster. |
+| `core/services/inbox_view.py` (ny) | Bygger seks sektioner fra scoped kildeadaptere og afgørelser; beregner alder/forfald/dubletter. Ingen skrivning. |
+| `core/runtime/db_inbox.py` (ny) | Idempotent `inbox_items`-skema og brugerafgrænsede opslag/atomare afgørelser. |
+| `core/services/inbox_state.py` (ny) | Proveniens, påmindelsespolitik og `done`/`drop` gennem `db_inbox`. Ingen job-payload. |
+| `core/services/session_inbox.py` (ændres i sidste fase) | Kun leveringskø. Assistant-levering erstattes først når klienten viser kilde-mærkede notifikationer. |
+| `core/services/inbox_gate.py` (ny) | Brugerafgrænset to-trins påmindelse og mutationsnægt; deler klassifikation med R2.5, ikke global bloktilstand. |
+| `core/services/r2_5_blocking_gate.py` | Eksisterende verifikationsgate beholdes; dens cooldown og frigivelse gælder ikke inboxen. |
 | `core/tools/` (ændres) | Tre værktøjer: `inbox`, `inbox_done`, `inbox_drop`. |
 | `tests/test_inbox_view.py`, `tests/test_inbox_state.py` (nye) | Coverage-gaten kræver dem. |
 
-Hvorfor to filer og ikke én: visningen er ren læsning og skal kunne kaldes af
-R2.5 uden risiko for mutation. Bogføringen skriver. De to ansvar må ikke kunne
+Hvorfor adskilte filer: visningen er ren læsning; bogføringen og gaten skriver.
+En visning skal kunne kaldes uden risiko for mutation. De ansvar må ikke kunne
 forveksles — en læseflade der kan skrive er præcis fælden fra
 `a_read_surface_can_create_what_it_reads`.
 
@@ -184,26 +214,27 @@ forveksles — en læseflade der kan skrive er præcis fælden fra
 
 ## Hvad visningen viser
 
-Fire sektioner. Én linje per post. Aldrig payload.
+Seks sektioner. Én linje per post. Aldrig payload. Tallene nedenfor er
+illustrative, ikke kopieret fra runtime.
 
 ```
 VAKTE DENNE TUR                            ← hvorfor er jeg i gang
-  wake-6e201  fyrede 07:30  «følg op på Michelles brief»   → inbox_done
+  wake-6e201  fyrede 07:30  «følg op på Michelles brief»   → inbox
 
-VENTER PÅ DIG (3)                          ← KUN denne gater R2.5
+VENTER PÅ DIG (3)                          ← KUN denne kan gate mutationer
   wake-6e201  booket 1/10 09:12  fyrede 2/10 07:30  3d forfalden
               «følg op på Michelles brief»                    [dig]
   job-bglj7   kørte 16m, exit 1, 4 fejl
               «hele suiten på raads-branchen»  → tasks/bglj7.output (112 kB)
-  job-a71f3   FORÆLDRELØS — processen er væk, stod «kører» i 2d
-              «mobil-build»                   → inbox_drop    [dig]
+  job-a71f3   STATUS UKENDT — procesbevis mangler, stod «kører» i 2d
+              «mobil-build»                   → inbox         [dig]
 
 I GANG (1)
   job-b1vvm   kører 3m    «suite på branchen»    (intet output endnu)
 
 PÅ VEJ (2)                                 ← engangs-vækninger
   wake-9f3a2  om 40m   «mål om cheap-lane holder»
-  wake-c81d4  om 6t    «skygge-review af event_trigger»   ⚠ booket 3 gange
+  sched-c81d4 om 6t    «skygge-review af event_trigger»
 
 PLANLAGTE (2)                              ← GENTAGER sig, ikke engangs
   rec-67e42   hver 1440m   næste 4/10 07:30   «Michelles morgenbrief»
@@ -228,18 +259,17 @@ task-notifikationer bærer — den form er bevist i drift:
    man åbne filen for at vide hvad der skete.
 4. **Udfald** — exit-kode, fejltælling. `exit 1` er et andet signal end `exit 0`
    og skal stå uden at man åbner noget.
-5. **Henvisning OG størrelse.** Det mest undervurderede felt. Størrelsen er
-   hvordan man vælger mellem `tail -5` og hele filen; uden den er hver læsning
-   et gæt, og det er dér en kontekst sprænges.
-6. **Ejer** (`[dig]` / `[huset]`). Afgør om posten må gate. Står i visningen, så
-   reglen er synlig og ikke skjult i kode.
+5. **Henvisning og størrelse, når der findes et artefakt.** Størrelsen hjælper
+   læseren med at vælge mellem `tail -5` og hele filen. Uden fil bruges et
+   typet kilde-id; skemaet må ikke kræve en ikke-eksisterende outputfil.
+6. **Verificeret ejer** (`[dig]` / `[huset]` / `[ukendt]`) og bruger-id. Afgør
+   om posten må gate. `[ukendt]` er aldrig blokerende.
 
 ### Hvorfor «PÅ VEJ» og «PLANLAGTE» er adskilt
 
-En vækning er ENGANGS; en planlagt opgave GENTAGER sig. Blandes de, ser seks
-kommende poster ud som seks stykker arbejde — men fem af dem er den samme
-opgave der kommer igen. Michelles morgenbrief er ÉN post der fyrer hver 1440.
-minut, ikke en ny hver dag.
+`self_wakeup` og `scheduled_tasks` er begge ENGANGS. Kun `recurring_tasks`
+gentager sig og har `interval_minutes`/`next_fire_at`. Michelles morgenbrief
+er ÉN aktiv recurring-post, ikke en ny `scheduled_tasks`-række hver dag.
 
 Det er samme fejl som dubletterne, blot i fremtiden: uden adskillelsen vil
 indbakken overdrive hvor meget der venter, og så bliver den noget man lukker i
@@ -253,10 +283,9 @@ ellers står Jarvis med en opgave uden at vide hvorfor han er i gang. Den
 sektion er tom i en tur han selv startede, og har præcis én linje i en tur en
 vækning udløste.
 
-Det er også det billigste sted at lukke bogførings-hullet: 141 bookinger mod
-171 lukninger betyder at nogle lukkes uden at være bookede. En vækning der
-navngiver sig selv ved turens start kan markeres præcist i stedet for i
-løs hukommelse.
+Turens `wakeup_id` skal komme fra dispatcherens registrerede årsag, ikke
+gættes fra den seneste fyrede vækning. Først når booking, affyring og
+kvittering er parret per id, kan man sige om der er et bogføringshul.
 
 ### Og to felter der ikke findes i dag
 
@@ -265,10 +294,10 @@ registret fejlede præcis dér: otte eksperimenter, `event_trigger` 78 dage over
 sin 24-timers frist. Registret VIDSTE det hele tiden — ingen visning gjorde det
 til et tal nogen så.
 
-**Dublet-tælling.** `⚠ booket 3 gange` er ikke pynt. Gentagelse er Jarvis'
-dominerende fejltype, målt: mødet med Line nævnt fire gange fra fire kilder,
-kandidat-køen 99 % gentagelser, og 171 vækningslukninger mod 141 bookinger. En
-indbakke der ikke tæller gentagelse vil bare vise den pænere.
+**Dublet-tælling.** Den må ikke erstatte identiteten af tre reelle vækninger:
+hver har sit id og kan fyre eller annulleres selvstændigt. Vis gerne en gruppe
+med `booket 3 gange`, men bevar alle tre id'er og deres egne afgørelser.
+Lighed på `(type, beskrivelse)` er kun et forslag om dublet, ikke bevis.
 
 ---
 
@@ -285,11 +314,14 @@ indbakke der ikke tæller gentagelse vil bare vise den pænere.
 | `candidate_review_digest`, proposals | nej (kun tællingen) | nej |
 | Godkendelser (venter på Bjørn) | ja, egen klasse | nej |
 
-To betingelser SKAL begge holde for at en post gater:
+Tre betingelser SKAL alle holde for at en post gater:
 
-1. **Ejeren er Jarvis selv** — posten stammer fra et kald han foretog.
+1. **Ejeren er verificeret som Jarvis** ved kildens oprettelsespunkt, med
+   autentificeret bruger og tool-/run-id — ikke ved et af kalderen valgt flag.
 2. **Kilden kan navngives i visningen.** Kan den ikke, må den ikke gate. En
    blokering uden en adresse er en blokering man ikke kan rette.
+3. **Posten er stadig åben for samme bruger.** Levering, læsning, en anden
+   brugers kvittering eller en genstart må ikke ændre dette implicit.
 
 Princippet i én sætning: **det du selv har lovet kommer tilbage til dig; huset
 kan informere, men ikke kræve.** Det er svaret på «han har ingen kontrol» — gaten
@@ -302,8 +334,13 @@ er den vigtige post den der falder udenfor.
 
 ## Koblingen til R2.5
 
-R2.5 har allerede blokér / nægt-mutation / frigiv og model-differentierede
-tærskler. Den skal kende **én forudsætning mere**, ikke en ny mekanisme.
+Inboxen får en **egen forudsætning i samme mutationspunkt** som R2.5, ikke
+en ekstra gren i R2.5's eksisterende blok. `r2_5_blocking_gate` vurderer
+uverificerede mutationer; `r2_5_haandhaevelse` holder én procesglobal `_blok`,
+som frigives ved første readback eller efter 10 minutter. Begge dele er
+forkert livscyklus for åbne inbox-poster og usikkert på tværs af brugere/
+workers. Del kun værktøjets mutationsklassifikation og den eksisterende
+undtagelse for Bjørns `bash_session*`/`operator_bash_session*`.
 
 Bjørns formulering 3/10 var **to-trins**: «først bede ham checke indbox, og hvis
 ignoreret eskalerer som den gør nu». Første udkast af denne spec kollapsede det
@@ -313,34 +350,39 @@ og blokeringen fanger dem der ignorerer den. Det er præcis måden R2 og R2.5
 allerede forholder sig til hinanden.
 
 ```text
-TRIN 1 — R2 (advisory, koster ingenting)
-  nye handlingskrævende poster siden sidst?
-       ja → én linje i svaret: «N venter i indbakken → `inbox`»
-            Ingen blokering. Mutationen slipper igennem.
-            Tælleren `indbakke_paamindet` +1 for posten.
+TRIN 1 — inbox-påmindelse (advisory)
+  ny åben, verificeret Jarvis-post for denne bruger?
+       ja → én KILDE-MÆRKET systemlinje: «N venter i indbakken → inbox»
+            Mutationen slipper igennem. Gem påmindelses-id/tid per post.
+  stadig åben ved en senere kvalificeret brugertur/mutation?
+       ja → højst én ny påmindelse pr. post pr. afgrænset interval.
+            Tæl kun når påmindelsen faktisk blev leveret til modellen.
 
-TRIN 2 — R2.5 (blocking, efter N ignorerede påmindelser)
-  er der poster med `indbakke_paamindet >= _INDBAKKE_PAAMINDELSER_FOER_BLOK`?
-       nej  → slip igennem
-       ja   → nægt mutationen, nævn posterne ved id OG beskrivelse,
-              og nævn `inbox` som den frigivende handling
-  → frigives af: `inbox_done` eller `inbox_drop` på HVER af dem
+TRIN 2 — inbox-mutationsvagt (efter N leverede, ubesvarede påmindelser)
+  åben post for denne bruger med nok påmindelser?
+       nej → slip igennem
+       ja → nægt denne mutation med kilde-mærket tool-resultat;
+             angiv id, kort beskrivelse og inbox som næste læsning.
+  → frigives kun af en gyldig, durabel done/drop-afgørelse per post
 ```
 
-`_INDBAKKE_PAAMINDELSER_FOER_BLOK` sættes til **2** som startværdi og er en
-`settings`-værdi, ikke en konstant — så den kan ændres uden deploy, og Opgave 7
-måler om 2 er det rigtige tal. Begrundelse for netop 2: R2's heed-rate er 15 %,
-så én påmindelse vil blive ignoreret i ~85 % af tilfældene; tre ville gøre
-blokeringen så sjælden at den ikke virker.
+`_INDBAKKE_PAAMINDELSER_FOER_BLOK` kan begynde på **2** som målebar
+`settings`-værdi, men R2's 15 % er ikke en måling af inboxens heed-rate.
+Påmindelsesinterval, maksimal frekvens og alder før eskalation skal også
+konfigureres og måles. Hvis en ny post kun får én påmindelse, kan tærsklen
+2 aldrig nås; derfor er den senere, begrænsede påmindelse ovenfor nødvendig.
 
-Hvorfor trin 1 ikke er gratis støj: den fyrer kun på poster der er NYE siden
-sidste runde, ikke på hele indbakken hver gang. Uden den afgrænsning er vi
-tilbage i de 47 advarsler om dagen der gav banner blindness.
+Trin 1 må ikke fyre i hver runde. Både første og eventuel anden påmindelse
+skal være idempotente og have et målt interval; ellers får vi den samme støj
+som R2. En tæller alene uden leverings-id kan hverken bevise to påmindelser
+eller fungere på tværs af processer.
 
 Tre regler i koblingen:
 
 - **Læse-værktøjer slipper altid igennem.** Som i dag for uverificerede
   mutationer: han skal kunne komme fri.
+- **Bjørns shell-bagdøre følger den eksisterende R2.5-undtagelse.** En
+  inbox-post må ikke utilsigtet fjerne den aftalte bypass.
 - **Bjørn skrev «fjerne tool til læst». Jeg har læst det som NÆGT, ikke FJERN**,
   og grunden er målt: fjernes et værktøj fra sættet, ændres prompt-prefixet, og
   et skiftende sæt kostede 92 % → 26 % cache-hit. R2.5 nægter i forvejen uden at
@@ -350,6 +392,10 @@ Tre regler i koblingen:
   frigiver ikke; hver handlingskrævende post skal lukkes med `done` eller `drop`.
   Ellers bliver læsningen en formalitet, og vi er tilbage i banner blindness —
   bare med en blokering i stedet for en advarsel, hvilket er værre.
+- **Fail-open er synlig og tidsafgrænset.** Ved DB-fejl må en mutation ikke
+  blokeres på et gæt; fejlen logges med bruger-/post-id. En post uden mulig
+  gyldig afgørelse skal kunne eskaleres til Bjørn og have en dokumenteret
+  nødvej, så et permanent defekt source-id ikke låser Jarvis.
 - **Heed-raten på DEN forudsætning måles separat.** R2's 15 % er grunden: hvis
   «læs indbakken» begynder at fyre 47 gange om dagen, har vi bygget den tredje
   mekanisme der skal reddes af den fjerde.
@@ -364,10 +410,15 @@ Indbakken skal **reducere** det, ikke lægge et niende ovenpå.
 **`inbox`** — hele visningen. Erstatter i praksis `list_self_wakeups`,
 `list_agents` og `bash_session_list` som *det han kalder*.
 
-**`inbox_done(id)`** — markér håndteret. Samler `mark_wakeup_consumed` (171 kald,
-det mest brugte af dem alle) og «opgave lukket» i én handling på tværs af typer.
+**`inbox_done(id)`** — kvitter en *allerede udført* opgave. For en fyret
+vækning kan den kalde `mark_wakeup_consumed`; for et job/agent skal den
+kontrollere terminalt udfald og derefter gemme en idempotent kvittering.
+Den må ikke markere en endnu ikke fyret vækning som brugt.
 
-**`inbox_drop(id)`** — fjern. Samler `cancel_self_wakeup` og `cancel_agent`.
+**`inbox_drop(id, reason)`** — afvis/dismiss en åben inbox-post med begrundelse.
+Den stopper **ikke** automatisk et kørende job eller en agent. Annullering er
+en selvstændig, kilde-specifik mutation med egne tilladelser; en planlagt
+vækning kan kun annulleres i dens tilladte `pending`-tilstand.
 
 De specialiserede værktøjer **bliver**: `schedule_self_wakeup`,
 `interrupt_agent`, `send_message_to_agent`, `spawn_agent_task`. Det er dér
@@ -383,17 +434,24 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 
 ## Hvad der ER med, og hvad der ikke er
 
+> **MANGLER (Jarvis 3/10):** tabellen navngiver fravalg *med* vagt —
+> kanalbeskeder har en AST-vagt i Opgave 2 trin 9. Men det mest almindelige ægte
+> tilfælde, et løfte givet i prosa («jeg tjekker det i morgen»), har hverken
+> indgang eller navngivet fravalg. Efter spec'ens egen standard skal det stå som
+> fravalg. Se §6 i «Seks mangler».
+
 | Aspekt | Afgørelse | Begrundelse |
 |---|---|---|
 | Vækninger | **ind**, egen sektion | Den levende arbejdsgang, 141+171 kald |
 | Baggrundsjobs | **ind** | Han lister dem aldrig; derfor forsvinder svar |
 | Agenter | **ind**, men lavt rangeret | Næsten døde: spawn sidst 5/9, scout 73 % fejl |
-| Planlagte opgaver | **ind**, ADSKILT fra vækninger | De gentager sig (hver 1440. min); en vækning er engangs |
+| Planlagte engangsopgaver (`scheduled_tasks`) | **ind** under «PÅ VEJ» | De fyrer én gang og må ikke tælles som recurring |
+| Gentagende opgaver (`recurring_tasks`) | **ind** under «PLANLAGTE» | `interval_minutes` og `next_fire_at` beskriver gentagelsen |
 | Godkendelser | **ind** som «venter på Bjørn», gater ikke | Han skal kunne SE at en tråd venter på dig, uden at din svartid bliver hans blokering |
 | Kandidat-backlog | **ude**, kun ét tal med en adresse | 1.896 poster, 99 % gentagelser, ville drukne den dag ét |
 | Kanalbeskeder (Discord/Telegram/mobil) | **ude**, med en vagt | Det er samtale, ikke opgaver. En udelukkelse uden vagt glider — se Opgave 2, trin 9 |
 | Forældreløse poster | **ind** som typet status | Et job hvis proces er væk skal ikke stå som «i gang» i tre dage |
-| Flere brugere | nøglet per bruger; KUN Bjørns i denne spec | De andres workspaces er krypterede og må ikke læses |
+| Flere brugere | nøglet per bruger; kun verificerede Bjørn-poster gater i denne fase | `list_wakeups` og agent-registret er ikke i sig selv brugerfiltrerede; ukendt ejer må ikke lækkes eller gate |
 
 ---
 
@@ -412,89 +470,115 @@ Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
       `andet`. Ventende-tilstand = vækninger, åbne opgaver, igangværende jobs,
       hvad der vakte ham, agent-status. Rapportér tokens og andel, både for de
       FASTE sektioner og for den dynamiske hale — Bjørn pegede på begge.
-- [ ] **Trin 3:** Mål hvor ofte de sektioner ÆNDRER sig mellem to ture. En
-      sektion der fylder meget men står stille er et cache-problem; en der
-      fylder lidt men ændrer sig hver tur er et andet.
+- [ ] **Trin 3:** Mål hvor ofte de sektioner ÆNDRER sig mellem to ture.
+      Skeln mellem stabilt prefix og dynamisk hale: en uændret sektion i
+      cachebart prefix kan få cache-hit; en ændret hale kan stadig påvirke
+      pris/latens. Rapportér faktisk hit-rate og tokens, ikke kun tekstlængde.
 - [ ] **Trin 4: LÅS tallet i denne spec** med dato, som R2's baseline blev låst
       13/6. Et tal uden en dato er en påstand.
-- [ ] **Trin 5:** Afgør hvilken sag vi er i:
-      - **over ~8 % af halen** → økonomisk sag. Byg hele specen; gevinsten
-        betaler for sig selv i cache alene.
-      - **under ~8 %** → kontrol-sag. Byg Opgave 1, 3, 4 og 6 (handlings-klasse,
-        bogføring, gate, henvisning) og UDSKYD Opgave 2's fulde visning — så er
-        en kompakt visning nok, og prompten skal ikke skrumpes.
-
-      De 8 % er ikke et måltal, det er en skillelinje valgt ud fra at historikken
-      bruger 3,1 % af et 1M-vindue: er ventende-tilstand større end historikken,
-      er den værd at flytte for sin egen skyld.
+- [ ] **Trin 5:** Brug målingen til at prioritere prompt-reduktion separat
+      fra kontrolfladen. En grænse på 8 % af halen kan ikke udledes af at
+      historikken bruger 3,1 % af et 1M-vindue; nævner og cacheadfærd er
+      forskellige. Opgave 2's *mindste læsevisning* er en forudsætning for
+      `inbox_done`/`inbox_drop` og må ikke udskydes mens en gate bygges.
 - [ ] **Trin 6: Commit** måleværktøjet og det låste tal.
 
 ### Opgave 1: Handlings-klassen i køen
 
-**Filer:** ændrer `core/services/session_inbox.py`; test
-`tests/test_session_inbox.py`.
+> **MANGLER (Jarvis 3/10):** postens livscyklus har kun to udgange — `done` og
+> `drop`, begge mine. Ingen udløbs-tilstand, ingen retention, og
+> `kraever_handling` udledes af proveniens uden en indholdsregel der lukker en
+> post der ikke længere kræver noget. Se §1, §2 og §4 i «Seks mangler».
 
-**Interfaces — producerer:** `enqueue(..., kraever_handling: bool = False,
-kilde_ejer: str = "huset")`. Begge defaults bevarer nuværende adfærd for alle
-elleve eksisterende kilder.
+**Filer:** ny `core/services/inbox_state.py`, `core/runtime/db_inbox.py` og migration for
+`inbox_items`; test `tests/test_inbox_state.py`. `session_inbox.enqueue`
+ændres ikke til en opgave-registrator.
+
+**Interfaces — producerer:** `registrer_kilde(bruger_id, kildetype, kilde_id,
+oprettende_run_id, ...)->dict`. Verificeret ejer bestemmes ved integrationens
+oprettelsespunkt. Unik `(bruger_id, kildetype, kilde_id)` gør genlevering
+idempotent; en genstart må ikke nulstille påmindelser eller afgørelse.
+
+> **VERIFICERET 3/10 (Jarvis):** den oprindelige udgave kaldte kilderne
+> «elleve» og byggede på `session_inbox` som opgavetilstand. Ingen af
+> delene holdt: basen har **5** distinkte kilder (`jarvis-notify`,
+> `candidate-review-digest`, `notification-router`, `test-daemon-2`,
+> `test-daemon`), og `enqueue` kaldes fra ét sted
+> (`notification_bridge.py:216`). Vigtigere: `flush_session` sætter
+> `status='delivered'`, hvorefter `pending_for_session` ikke længere
+> viser posten — derfor den separate, idempotente `inbox_items`-
+> kvittering. Princippet fra den fejl står ved magt: en kolonne der
+> skrives uden at blive læst er `built_but_not_connected` i miniature —
+> læseren skal med i samme ændring.
 
 - [ ] **Trin 1: Skriv den fejlende test**
 
 ```python
-def test_en_post_fra_huset_kan_ikke_kraeve_handling(kv):
-    """Skrive-kontrakten: kun det Jarvis selv startede må gate."""
-    r = si.enqueue(session_id="s1", content="vejret", source="morgenbrief",
-                   kraever_handling=True, kilde_ejer="huset")
-    assert r["status"] == "queued"
-    post = si.pending_for_session("s1")[0]
-    assert post["kraever_handling"] == 0, (
-        "en post fra huset blev handlingskrævende — den kan gate et commit"
-    )
+def test_huset_kan_ikke_spoofe_jarvis_ejerskab(inbox_db):
+    """Et kalder-valgt ejerflag er ikke proveniens."""
+    r = registrer_kilde(bruger_id="bjorn", kildetype="daemon",
+                       kilde_id="morgenbrief-1", oprettende_run_id="",
+                       paastaaet_ejer="jarvis")
+    assert r["status"] == "ok"
+    assert r["post"]["kraever_handling"] is False
 ```
 
 - [ ] **Trin 2: Kør den og se den fejle**
 
-`pytest tests/test_session_inbox.py::test_en_post_fra_huset_kan_ikke_kraeve_handling -v`
-Forventet: FAIL med `TypeError: enqueue() got an unexpected keyword argument`.
+`pytest tests/test_inbox_state.py::test_huset_kan_ikke_spoofe_jarvis_ejerskab -v`
+Forventet: FAIL fordi `inbox_state` endnu ikke findes.
 
 - [ ] **Trin 3: Minimal implementering**
 
-Idempotent `ALTER TABLE session_inbox ADD COLUMN` for `kraever_handling INTEGER
-NOT NULL DEFAULT 0` og `kilde_ejer TEXT NOT NULL DEFAULT 'huset'` — samme mønster
-som de to kolonner der blev tilføjet 2/10. Håndhæv i `enqueue`:
+Idempotent migration for `inbox_items` med bruger, kilde-id, oprettende run,
+verificeret ejer, åben/afgjort status, sidste leverede påmindelse og
+kvitteringstid. Indhold/artefakt bliver hos kilden. Håndhæv at en uprøvet
+ejerpåstand ikke kan blive handlingskrævende:
 
 ```python
-# Skrive-kontrakten håndhæves ÉT sted, ved indgangen. En post fra huset kan
-# ALDRIG blive handlingskrævende, uanset hvad kalderen beder om — ellers kan
-# en støjende daemon lamme et commit gennem R2.5.
-if (kilde_ejer or "huset") != "jarvis":
+# Skrive-kontrakten håndhæves ved den betroede kildeintegration. Ukendt
+# oprettende run eller bruger => synlig post, men aldrig mutationsblok.
+if not verificeret_jarvis_run(oprettende_run_id, bruger_id):
     kraever_handling = False
 ```
 
-- [ ] **Trin 4: Kør igen** — PASS, og `pytest tests/test_session_inbox.py` grøn.
+- [ ] **Trin 4: Kør igen** — PASS. Test også idempotent genregistrering,
+      genstart, anden bruger og at en allerede leveret notifikation stadig er
+      åben, indtil den afgøres.
 - [ ] **Trin 5: Commit** gennem wrapperen, `--message-file`.
 
 ### Opgave 2: Visningen
 
+> **MANGLER (Jarvis 3/10):** seks sektioner, én linje per post — og intet loft
+> og ingen rangorden. `forfald_dage` er et tal der *vises*, ikke en tærskel der
+> *gør* noget. Argumentet der udelukkede kandidat-backloggen («1.896 poster
+> ville drukne den dag ét») gælder også inde i sektionerne. Se §3 i «Seks
+> mangler».
+
 **Filer:** ny `core/services/inbox_view.py`; test `tests/test_inbox_view.py`.
 
-**Interfaces — konsumerer** (navne verificeret mod koden 3/10, ikke gættet):
+**Interfaces — konsumerer** (kontrolleret mod koden 3/10; ingen af de
+muterende hjælpefunktioner kaldes af visningen):
 
 | Kilde | Funktion |
 |---|---|
-| Køen | `session_inbox.pending_for_session(session_id)` |
-| Vækninger | `self_wakeup.due_wakeups(include_fired_unconsumed=True)` |
-| Baggrundsjobs | `core/services/background_jobs.py` |
-| Agenter | tabellerne `agent_registry` / `agent_runs` |
-| Planlagte | `scheduled_tasks.list_pending_for_current_user()` |
-| Godkendelser | `tool_intent_approval_runtime.build_tool_intent_approval_surface()` |
+| Åbne afgørelser | `inbox_items` scoped på eksplicit `bruger_id`; `session_inbox.pending_for_session` er kun leveringskø |
+| Vækninger | `self_wakeup.list_wakeups()` + eksplicit brugerfilter; `due_wakeups()` fyrer/gemmer og er ikke læsning |
+| Baggrundsjobs | brugerafgrænsede snapshots per jobtype; `background_jobs.liste()` starter ikke daemonen, men nulstiller dens idle-ur, og blander husets services med Jarvis-jobs |
+| Agenter | `agent_registry`/`agent_runs` kræver verificeret brugerproveniens; nuværende `list_agent_registry_entries()` filtrerer ikke bruger |
+| Planlagte engangsopgaver | `scheduled_tasks` med eksplicit brugerfilter; `list_pending_for_current_user()` læser alle ved tom kontekst |
+| Gentagende opgaver | `recurring_tasks` med eksplicit brugerfilter; `list_recurring_tasks()` bruger implicit kontekst |
+| Godkendelser | `db_governance.recent_tool_intent_approval_requests(user_id=..., include_unassigned=False)`; `build_tool_intent_approval_surface()` kan skrive/udløbe |
 
-Jeg skrev først `wakeup_dispatcher.mark_consumed` i Opgave 3 — den findes ikke.
-Den rigtige er `self_wakeup.mark_wakeup_consumed(wakeup_id)`. Rettet, og alle
-navne ovenfor er slået op frem for husket.
+`self_wakeup.mark_wakeup_consumed(wakeup_id)` findes, men kun som mutation
+efter at en fyret vækning er håndteret. Eksisterende læsefunktioner med
+implicit bruger-kontekst må omsluttes af eksplicit scoped adapter eller
+afvises ved ukendt ejer, før multi-bruger-visningen kaldes ren.
 **Producerer:** `byg_indbakke(bruger_id: str, *, nu_ts: float | None = None) ->
-dict` med nøglerne `venter_paa_dig`, `i_gang`, `paa_vej`, `venter_paa_bjorn`,
-`backlog_tal`, og per post de seks felter fra afsnittet ovenfor.
+dict` med nøglerne `vakte`, `venter_paa_dig`, `i_gang`, `paa_vej`,
+`planlagte`, `venter_paa_bjorn`, `backlog_tal`, og per post de seks felter
+fra afsnittet ovenfor. Uden autentificeret bruger-id returneres en typet
+fejl, aldrig en liste over alle brugere.
 `nu_ts` injiceres, så testene er deterministiske — samme mønster som
 `shadow_experiment_registry`.
 
@@ -504,7 +588,7 @@ dict` med nøglerne `venter_paa_dig`, `i_gang`, `paa_vej`, `venter_paa_bjorn`,
 def test_en_forfalden_post_baerer_sit_forfald_som_et_TAL():
     """Skygge-registret vidste at event_trigger var 78 dage over sin frist.
     Ingen visning gjorde det til et tal nogen så. Det er fejlen her."""
-    v = byg_indbakke("bjorn", nu_ts=TID, kilder=_fake(wake_booket=TID - 3*86400))
+    v = byg_indbakke("bjorn", nu_ts=TID, kilder=_fake(wake_fyret=TID - 3*86400))
     post = v["venter_paa_dig"][0]
     assert post["forfalden_dage"] == 3
     assert "3d forfalden" in post["linje"]
@@ -523,11 +607,11 @@ def test_en_forfalden_post_baerer_sit_forfald_som_et_TAL():
 
 ```python
 def test_tre_identiske_vaekninger_vises_som_EN_med_et_tal():
-    """Gentagelse er hans dominerende fejltype: mødet med Line fire gange,
-    kandidat-køen 99 % dubletter, 171 lukninger mod 141 bookinger."""
+    """Grupper kun præsentationen; bevar alle tre vækningers id'er."""
     v = byg_indbakke("bjorn", nu_ts=TID, kilder=_fake(wake_gentaget=3))
     assert len(v["paa_vej"]) == 1
     assert v["paa_vej"][0]["dubletter"] == 3
+    assert len(v["paa_vej"][0]["kilde_ider"]) == 3
     assert "booket 3 gange" in v["paa_vej"][0]["linje"]
 ```
 
@@ -547,10 +631,11 @@ def test_et_job_hvis_proces_er_vaek_staar_som_FORAELDRELOEST():
     )
 ```
 
-      Forældreløs = status siger `kører`, men processen svarer ikke OG posten er
-      ældre end `_FORAELDRELOES_EFTER_S`. Den havner i `venter_paa_dig`, fordi
-      den kræver en beslutning (`inbox_drop`) — ikke i `i_gang`, hvor den ville
-      lyve. Tærsklen er en settings-værdi og måles i Opgave 7.
+      Forældreløs kræver pålideligt procesbevis fra den samme host. Et job på
+      en utilgængelig operator-maskine er `status_ukendt`, ikke bevist dødt.
+      Først når status siger `kører`, processen beviseligt er væk og posten er
+      ældre end `_FORAELDRELOES_EFTER_S`, havner den i `venter_paa_dig`.
+      Tærsklen er en settings-værdi og måles i Opgave 7.
 
 - [ ] **Trin 6: Testen for bruger-isolation**
 
@@ -564,9 +649,17 @@ def test_en_anden_brugers_poster_siver_ALDRIG_ind():
     assert alle == ["wake-mine"], f"en anden brugers post kom med: {alle}"
 ```
 
+      Denne injicerede liste er kun første test. Kør også adapter-tests mod
+      faktiske kilder: `list_wakeups()` er global; agent-registret mangler
+      brugerfelt; `scheduled_tasks` kan liste alle uden kontekst. En adapter
+      uden sikker ejerbinding må udelade posten og rapportere `ukendt`, ikke
+      vælge Bjørn som stiltiende fallback.
+
 - [ ] **Trin 7: Testen for at visningen IKKE kan skrive** (kilde-vagt, AST):
       `byg_indbakke` og dens hjælpere må ikke kalde `enqueue`,
-      `append_chat_message`, `set_runtime_state_value` eller `schedule_*`.
+      `append_chat_message`, `set_runtime_state_value`, `schedule_*`,
+      `due_wakeups`, `build_tool_intent_approval_surface` eller joblister der
+      starter en daemon. Test både direkte og indirekte kildeadaptere.
       Begrundelse i testen: `a_read_surface_can_create_what_it_reads`.
 - [ ] **Trin 9: Vagten mod at kanalbeskeder siver ind**
 
@@ -589,60 +682,108 @@ def test_kanalbeskeder_hoerer_ikke_i_indbakken():
 
 **Filer:** ny `core/services/inbox_state.py`; test `tests/test_inbox_state.py`.
 
-**Interfaces — konsumerer:** `self_wakeup.mark_wakeup_consumed(wakeup_id)`,
-`self_wakeup.cancel_wakeup(wakeup_id)`, agent-afbrydelse, og baggrundsjob-stop.
+**Interfaces — konsumerer:** durabel `inbox_items`-post og kun ved
+passende status `self_wakeup.mark_wakeup_consumed(wakeup_id)`. Job-/agentstop
+er en særskilt handling og må ikke skjules bag `drop`.
 
-**Interfaces — producerer:** `done(post_id: str) -> dict`,
-`drop(post_id: str) -> dict`. Begge returnerer
+**Interfaces — producerer:** `done(bruger_id: str, post_id: str) -> dict`,
+`drop(bruger_id: str, post_id: str, reason: str) -> dict`. Begge returnerer
 `{"status": "ok"|"ukendt"|"fejl", "type": ..., "id": ...}` — typet, aldrig prosa.
 
 - [ ] **Trin 1: Test at `done` på en vækning rammer den rigtige mekanisme**
+
+> **RETTET 3/10 (Jarvis):** `kaldt == ["6e201"]` kodificerede en fejl.
+> `mark_wakeup_consumed(wakeup_id)` slår op på `record["wakeup_id"] ==
+> wakeup_id`, og de faktiske id'er er `wake-` + **10** hex
+> (`wake-49b89a51de`) — ikke 5. Stripper `done` præfikset, fejler opslaget og
+> returnerer `{"status": "error", "error": "wakeup not found"}`. Præfikset
+> vælger mekanisme; det klippes ikke af.
 
 ```python
 def test_done_paa_en_vaekning_markerer_den_brugt():
     kaldt = []
     with patch("core.services.self_wakeup.mark_wakeup_consumed",
                side_effect=lambda wid: kaldt.append(wid) or {"status": "ok"}):
-        r = done("wake-6e201")
-    assert r == {"status": "ok", "type": "wakeup", "id": "wake-6e201"}
-    assert kaldt == ["6e201"]
+        r = done("bjorn", "wake-49b89a51de")
+    assert r == {"status": "ok", "type": "wakeup", "id": "wake-49b89a51de"}
+    assert kaldt == ["wake-49b89a51de"], (
+        "praefikset blev klippet af — opslaget i self_wakeup fejler"
+    )
 ```
 
 - [ ] **Trin 2: Kør, se den fejle.**
-- [ ] **Trin 3: Implementér** med en id-præfiks-dispatch (`wake-`, `job-`,
-      `agent-`, `appr-`), og en eksplicit `ukendt`-status for et præfiks der
-      ikke findes — aldrig en tavs succes.
+- [ ] **Trin 3: Implementér** ved opslag af den konkrete post for
+      `bruger_id`; vælg kildehandler fra postens typede `kildetype`, ikke
+      alene fra et brugerleveret id-præfiks. `wake-` er del af det rigtige
+      wakeup-id og må ikke strippes. Kræv passende kildestatus, udfør
+      kildeændring og durabel afgørelse idempotent med defineret rækkefølge
+      og recovery ved fejl imellem dem.
 - [ ] **Trin 4: Test at et ukendt id ikke melder succes.** Det er husets
       hyppigste fejlform: `swallowed_error_becomes_a_value`.
-- [ ] **Trin 5: Kør, PASS. Commit.**
+- [ ] **Trin 5: Test races og isolation:** gentaget `done` giver samme
+      afgørelse, en anden brugers id afvises, `drop` stopper ikke et job,
+      og en `pending` vækning kan ikke kvitteres som allerede udført.
+- [ ] **Trin 6: Kør, PASS. Commit.**
 
 ### Opgave 4: R2.5-forudsætningen
 
-**Filer:** ændrer `core/services/r2_5_blocking_gate.py`; test
-`tests/test_r2_5_blocking_gate.py`.
+> **MANGLER (Jarvis 3/10):** tælleren skal læse **den samme liste prompten blev
+> bygget fra**. Skill-gaten så ikke sine egne kald 3/10, fordi den læste
+> `_a_tool_calls` — der bærer transport-navnet `call_loaded_tool` — mens
+> event-loggen stod på den anden side af udpakningen i
+> `simple_tool_executor.py`. Det er dagens egen fejlklasse. Se §5 i «Seks
+> mangler».
 
-**Interfaces — konsumerer:** `inbox_view.byg_indbakke` (kun
-`venter_paa_dig`-længden; gaten må ikke læse payload).
+**Filer:** ny `core/services/inbox_gate.py`, integration i
+`core/services/simple_tool_executor.py` ved siden af R2.5; test
+`tests/test_inbox_gate.py`. Eksisterende R2.5's procesglobale blok ændres
+ikke til at repræsentere inbox-poster.
+
+**Interfaces — konsumerer:** scoped `inbox_items`-poster med verificeret
+ejer, åben status og durabel leveret-påmindelsesstatus. Antal alene er ikke
+nok: nægtelsen skal kunne navngive de konkrete id'er.
 
 - [ ] **Trin 1: Test at en handlingskrævende post nægter en mutation**
 
+> **RETTET 3/10 (Jarvis):** funktionsnavnet og returformen var forkerte. Den
+> faktiske funktion er `should_block_for_verification(*, reasoning_tier: str)`
+> → `dict | None` med nøglerne `{reason, suggestions, urgency}` — der findes
+> ingen `evaluer_mutation`, ingen `blokeret`-nøgle og ingen `aarsag`. Og
+> vigtigere: funktionen har **fire** tidlige `return None` (cooldown <60 s,
+> gate-fejl, under tærskel, heed_rate utilstrækkelig). En test der vil se en
+> blokering skal styre alle fire, ellers måler den ingenting.
+
 ```python
-def test_ulaest_handlingskraevende_post_naegter_en_mutation():
-    with _indbakke(venter_paa_dig=1):
-        v = evaluer_mutation(tier="deep", uverificerede=0)
+def test_to_leverede_paamindelser_foer_mutation_naegtes(inbox_db):
+    # VERIFICERET 3/10 (Jarvis): den oprindelige test kaldte
+    # `evaluer_mutation` og forventede v["blokeret"] — den funktion
+    # findes ikke. R2.5's faktiske should_block_for_verification(*,
+    # reasoning_tier) har FIRE tidlige return None (cooldown <60 s,
+    # gate-fejl, under taerskel, heed_rate), saa en test gennem den vej
+    # maa styre alle fire. Codex' redesign giver i stedet inboxen sin
+    # EGEN forudsaetning i samme mutationspunkt — evaluer_inbox_mutation
+    # — og dér maales inbox-leddet alene. Fixture-id'et er rettet til
+    # runtime-formatet (wake- + 10 hex).
+    post = _egen_aaben_post("bjorn", id="wake-49b89a51de")
+    assert evaluer_inbox_mutation("bjorn", "edit_file")["blokeret"] is False
+    _lever_paamindelse(post, tur="t1")
+    assert evaluer_inbox_mutation("bjorn", "edit_file")["blokeret"] is False
+    _lever_paamindelse(post, tur="t2")
+    v = evaluer_inbox_mutation("bjorn", "edit_file")
     assert v["blokeret"] is True
-    assert v["aarsag"] == "ulaest-indbakke"
-    assert "inbox" in v["frigivende_handling"]
+    assert "wake-49b89a51de" in v["poster"]
 ```
 
-- [ ] **Trin 2: Test at huset IKKE kan nægte** — en post med
-      `kilde_ejer="huset"` må aldrig blokere, selv hvis den stod som
-      handlingskrævende i basen. Dobbelt værn: både ved indgangen (Opgave 1) og
-      her. Begrundelse i testen: en daemon må ikke kunne lamme et commit.
-- [ ] **Trin 3: Test at læse-værktøjer slipper igennem** mens en post er ulæst.
-- [ ] **Trin 4: Implementér** forudsætningen.
-- [ ] **Trin 5: Mutations-tjek** — fjern forudsætningen, se Trin 1 fejle.
-- [ ] **Trin 6: Kør hele `tests/test_r2_5_blocking_gate.py`. Commit.**
+- [ ] **Trin 2: Test at huset og en anden bruger IKKE kan nægte**, selv ved
+      en fejlmærket post i basen. Dobbelt værn ved registrering og mutation.
+- [ ] **Trin 3: Test at læse-værktøjer og aftalte shell-bagdøre slipper
+      igennem** mens en post er åben.
+- [ ] **Trin 4: Test at almindeligt R2.5-readback eller 10 minutters timeout
+      ikke frigiver inbox-blokken**; kun `done`/`drop` på dens poster gør.
+- [ ] **Trin 5: Implementér** scoped vurdering og kilde-mærket tool-resultat.
+- [ ] **Trin 6: Mutations-tjek** — fjern forudsætningen, se Trin 1 fejle.
+- [ ] **Trin 7: Kør `tests/test_inbox_gate.py` og eksisterende R2.5-tests.
+      Commit.**
 
 ### Opgave 5: Værktøjerne
 
@@ -660,6 +801,9 @@ fem steder.
       en typet fejl, ikke en undtagelse.
 - [ ] **Trin 2: Kør, se den fejle.**
 - [ ] **Trin 3: Tilføj** skema + eksekutor + dispatch + eksport-navn for hver.
+- [ ] **Trin 3a: Følg Boy Scout-reglen** hvis ændringen rører logik i en
+      eksisterende fil over 2.000 linjer: udskil nærmeste naturlige enhed
+      med bagudkompatibel re-eksport før nye tool-grene lægges ind.
 - [ ] **Trin 4: Kør `tests/test_desk_toolnavne.py`** — den fejler hvis desk
       nævner et navn der ikke findes. Her er det modsat: de nye navne behøver
       ikke desk-form, men guardens søster-test
@@ -667,14 +811,25 @@ fem steder.
       tre en etiket i desk OG mobil i samme commit — `tool_text_two_copies`.
 - [ ] **Trin 5: Kør hele suiten. Commit.**
 
-### Opgave 6: Udløbet afleverer en henvisning
+### Opgave 6: Kilde-mærket levering med tilsluttet klient
 
 **Filer:** ændrer `core/services/session_inbox.py` (`flush_session`); test
 `tests/test_session_inbox.py`.
 
-Dette er den ændring der gør data til data. I dag skriver udløbet indholdet som
-en **assistant-besked** — altså som noget Jarvis *siger*. Det var mekanismen bag
-Smiths løkke.
+Dette er ændringen der gør notifikationer til data i den synlige samtale. I
+dag skriver `flush_session` indholdet som en **assistant-besked**. At erstatte
+den med `event_bus.publish()` alene leverer ikke noget til bruger eller model:
+ingen dokumenteret abonnent viser den foreslåede `channel.inbox_leveret`.
+`session_inbox` har desuden kun de notifikationer der blev køet i en aktiv
+session; akut og direkte levering går udenom. Opgave 1-4 må derfor ikke
+afhænge af denne flush for at registrere handlingskrævende poster.
+
+**Rækkefølge:** Byg først API/event-stream og en kilde-mærket notifikations-
+komponent i både desk og mobil, med replay fra en durabel status ved reconnect.
+Test at bruger og model kan skelne `[SYSTEM NOTIFICATION - NOT USER INPUT]`
+fra en brugermeddelelse. Skift først derefter `flush_session` fra assistant-
+replik til reference. Før klienterne er udrullet, beholdes den eksisterende
+leveringsvej eller en eksplicit kompatibilitetsvej; ingen post må forsvinde.
 
 - [ ] **Trin 1: Test at flush IKKE skriver indholdet som assistant-besked**
 
@@ -691,14 +846,24 @@ def test_flush_afleverer_en_henvisning_og_ikke_en_replik():
 ```
 
 - [ ] **Trin 2: Kør, se den fejle** (flush skriver i dag).
-- [ ] **Trin 3: Implementér** — flush markerer posterne leveret og udsender
-      `channel.inbox_leveret` med tælling + id'er. INGEN ny event-familie uden
-      en abonnent: `publish_scan`-vagten fanger utilsluttede familier, og den
-      fejler allerede på gammel gæld. Tilslut abonnenten i samme commit.
-- [ ] **Trin 4: Test at antallet og id'erne er med** i den udsendte payload.
-- [ ] **Trin 5: Kør hele suiten. Commit.**
+- [ ] **Trin 3: Test klientforbrugeren før server-skiftet:** desk og mobil
+      viser én systemmærket post ved live event og efter reconnect/replay;
+      den indgår ikke som assistant- eller user-turn i modelhistorikken.
+- [ ] **Trin 4: Implementér** en durabel notifikationsreference med id og
+      source, synlig gennem eksisterende API/event-stream. Markér først
+      `session_inbox`-rækken leveret når klientens replay-vej kan finde
+      referencen. Eventbus-hændelsen er et signal, ikke eneste lager.
+- [ ] **Trin 5: Test** antal/id, nul tab ved DB-/publish-fejl, ingen dobbelt
+      visning ved replay, og både aktiv og inaktiv session. En kilde uden
+      filartefakt må stadig kunne henvises ved id.
+- [ ] **Trin 6: Kør server- og klienttests; deploy klienterne før
+      assistant-replikken fjernes. Commit i afhængighedsrækkefølge.**
 
 ### Opgave 7: Mål det, før vi tror på det
+
+> **MANGLER (Jarvis 3/10):** opgaven beder mig skelne «udløb» fra de andre
+> udfald — men ingen opgave skaber en udløbs-tilstand. En måling af noget der
+> ikke findes, måler nul. Se §1 i «Seks mangler».
 
 **Filer:** ny `scripts/maal_indbakke.py`; ingen test (måleværktøj).
 
@@ -711,6 +876,10 @@ vindue stod 78 dage. Denne opgave findes for at det ikke gentager sig.
       mange gange nægtede TRIN 2, og hvor mange af dem blev frigivet. Begge
       heed-rater skal stå hver for sig — trin 1's og trin 2's — og de afgør om
       `_INDBAKKE_PAAMINDELSER_FOER_BLOK = 2` er det rigtige tal.
+- [ ] **Trin 1a:** Par hændelser per post-id og bruger-id. Skeln `done`,
+      `drop`, udløb, fail-open og DB-fejl; `released` uden årsag er ikke
+      efterlevelse. Mål også om varslet kom fra model, system eller bruger,
+      og hvor mange poster der forsvandt ved leveringsskiftet.
 - [ ] **Trin 2:** Kør det, og LÅS en baseline i specen her, med dato.
 - [ ] **Trin 3:** Registrér vinduet i `shadow_experiment_registry` med
       `review_after_hours`, så påmindelsen (rettet 2/10 med en durabel klokke)
@@ -781,10 +950,10 @@ En tabel der siger «ind» er ikke en implementering. Det er præcis
 og troede dermed de var dækket. Det er samme fejl som de seks tomme vagter vi
 fjernede i dag — noget der ser ud som dækning, men ikke måler eller bygger noget.
 
-**Dækning efter rettelserne:** hvert aspekt fra samtalen har en opgave —
+**Dækning efter Claudes rettelser:** hvert aspekt fra samtalen havde en opgave —
 prompt-målingen (0), handlings-klassen (1), visningen med seks sektioner,
 «vakte denne tur», forældreløse, bruger-isolation, kanal-vagt, alder og
-dubletter (2), bogføringen (3), to-trins R2/R2.5 (4), værktøjerne (5),
+dubletter (2), bogføringen (3), to-trins inbox-vagt (4), værktøjerne (5),
 henvisning-i-stedet-for-replik (6), og efter-målingen af begge heed-rater (7).
 De syv huller jeg selv navngav er afgjort i tabellen «Hvad der ER med».
 
@@ -793,9 +962,11 @@ Global Constraints og i skrive-kontrakten. Opgave 0's tal er med vilje IKKE
 udfyldt — det er en måling der skal køres, ikke en antagelse der skal gættes, og
 trin 4 siger at den skal låses med en dato.
 
-**Typer:** `kraever_handling: bool`, `kilde_ejer: str` (Opgave 1) bruges uændret
-i Opgave 2 og 4. `byg_indbakke(bruger_id, *, nu_ts)` konsumeres af Opgave 4 med
-samme signatur. `done`/`drop` returnerer samme typede dict overalt.
+**Typer efter Codex' review:** bruger, kildetype, kilde-id og verificeret
+oprettende run er nøglen i `inbox_items`; `kraever_handling` kan ikke afgøres af
+en fri `kilde_ejer`-streng. `byg_indbakke(bruger_id, *, nu_ts)` læser; gaten
+læser kun durabelt bogførte, åbne poster. `done`/`drop` kræver bruger-id og
+returnerer en typet afgørelse.
 
 **Det denne spec IKKE gør, med vilje:**
 
@@ -805,5 +976,273 @@ samme signatur. `done`/`drop` returnerer samme typede dict overalt.
 - Fjerner ikke de gamle `list_*`-værktøjer. Billige, virker, og fem steder.
 - Bygger ikke `SubagentRuntime` fra harness-specen (8/9). Indbakken er en
   forudsætning for den, ikke en erstatning.
-- Giver ikke Jarvis nye evner. Hver handling i specen findes som værktøj i dag;
-  specen samler dem og gør tilstanden synlig.
+- Giver ikke Jarvis nye eksterne arbejdsevner. `inbox_done/drop` og klientens
+  kilde-mærkede notifikation er derimod nye grænseflader og skal bygges og
+  verificeres som sådan.
+
+---
+
+## Reviews — 3/10-2026
+
+To agenter gennemgik denne spec parallelt samme formiddag: **Codex** (der
+skrev sine rettelser ind i filen og blev stoppet af en kvote-grænse kl.
+11:50, før commit) og **Jarvis**. Rettelserne står i de afsnit de hører
+til; begge gennemgange gengives her. De er komplementære — Codex fandt
+arkitektur- og livscyklusbrud, Jarvis test-signaturer og kildetal.
+
+### Codex' review og verificering — 3/10-2026
+
+**Status:** Spec’en er korrigeret, ikke implementeret. Kode, DB-skema og
+CT105-hændelser er læst; der er ikke kørt en produktions-promptmåling, og
+ingen ny inbox-API eller klient er bygget. Opgave 0's baseline står derfor
+fortsat åben.
+
+1. **Kritisk — leveringskø var forvekslet med opgavetilstand.**
+   `session_inbox.enqueue` bruges kun for visse notifikationer i aktive
+   sessioner; `flush_session` sætter `status='delivered'`, hvorefter
+   `pending_for_session` ikke længere viser posten. To nye kolonner dér ville
+   hverken dække direkte/urgent levering eller holde en opgave åben til
+   `done/drop`. Designet bruger nu en separat, idempotent `inbox_items`-kvittering
+   og lader `session_inbox` eje levering alene.
+2. **Kritisk — gate-livscyklus og brugergrænse.** R2.5's `_blok` er
+   procesglobal; `r2_5_haandhaevelse` frigiver den ved readback eller efter
+   10 minutter. Det kan hverken repræsentere varige poster eller isolere
+   brugere/workers. Inboxen får egen durabel, scoped vagt i samme
+   mutationspunkt, med `done/drop` som frigivelse. R2.5's målte 460
+   frigivelser består af 415 `kig_tilbage` og 45 `udløbet` på CT105; det er
+   ikke 85 % efterlevelse.
+3. **Kritisk — rene læsekilder og multi-bruger-isolation.**
+   `due_wakeups()` skriver; `build_tool_intent_approval_surface()` kan skrive;
+   `background_jobs.liste()` kan starte en shell-daemon. `list_wakeups()` og
+   `list_agent_registry_entries()` filtrerer ikke bruger, og
+   `list_pending_for_current_user()` kan læse alle ved tom kontekst. De
+   erstattes i planen af eksplicit brugerafgrænsede, rene adaptere. Agent-
+   posten må ikke gøres blokerende, før dens oprettende bruger kan bevises.
+
+   > **RETTET 3/10 (Jarvis) — én del af dette holder ikke mod koden.**
+   > `liste()` starter **ikke** daemonen: `_lokale_shell_sessioner()` spørger
+   > først når pid-filen peger på en ægte daemon — netop fordi «et panel der
+   > poller hvert femte sekund ville skabe den proces det påstod at
+   > observere». Den ægte bivirkning er en anden: **enhver** forespørgsel —
+   > også `list` — nulstiller daemonens `last_activity`, så en session-løs
+   > daemon ikke lukker ned af sig selv mens panelet er åbent. Konklusionen
+   > står altså (ikke ren læsning), men grunden er uret, ikke opstarten.
+   > Resten af punktet er bekræftet mod koden: `due_wakeups()` kalder
+   > `_save()`, `list_wakeups()` har nul bruger-filtrering, og begge
+   > frigivelsesgrunde i punkt 2 (`kig_tilbage`, `udløbet`) findes ordret i
+   > `r2_5_haandhaevelse._aaben_blok()`.
+4. **Vigtigt — kildetyper var byttet.** `scheduled_tasks` er engangsopgaver;
+   `recurring_tasks` er gentagelser. Begge har nu egen plads i kilde- og
+   sektionsbeskrivelsen. Dubletter må grupperes visuelt, men ikke miste
+   individuelle id'er.
+5. **Vigtigt — påmindelses-tærsklen kunne aldrig nås.** Den oprindelige
+   regel sendte kun én påmindelse for *nye* poster, men krævede to før
+   blokering. Planen har nu en begrænset senere påmindelse og tæller kun
+   leverede påmindelser per post, bruger og tur.
+6. **Vigtigt — event uden abonnent er tabt levering.** At stoppe assistant-
+   replikken i `flush_session` og kun publicere `channel.inbox_leveret` ville
+   gøre notifikationen usynlig. Desk/mobil, replay og kilde-mærkning skal
+   være i drift før serverens gamle visningsvej slukkes.
+
+**Accept før implementering:** lås en faktisk promptbaseline (Opgave 0),
+fastlæg kildernes ejerbevis og statusadaptere, og få `inbox_done/drop` samt
+to-trins vagten verificeret med multi-bruger-, genstart-, race- og
+leveringsfejltests. Et rent syntakstjek af denne spec er ikke en erstatning
+for de integrationsbeviser.
+
+### Jarvis' review — 3/10-2026
+
+Bjørn bad om en uafhængig gennemgang: verificér påstandene mod koden, og skriv
+rettelserne både her og i de afsnit de hører til.
+
+### Hvad der holdt
+
+Jeg gik efter tallene først, fordi et dokument der regner rigtigt er værd at
+læse resten af. Det gør det her:
+
+| Påstand | Verificeret mod |
+|---|---|
+| tool_usage-tabellen (171/141/59/24/66/37/17/6) | `tool_usage` i DB'en — **alle otte tal stemmer** |
+| `_FALLBACK_FLUSH_MINUTES = 10` | `session_inbox.py:48` |
+| `self_wakeup.due_wakeups/mark_wakeup_consumed/cancel_wakeup` | findes, med de angivne signaturer |
+| `scheduled_tasks.list_pending_for_current_user()` | `scheduled_tasks.py:90` |
+| `tool_intent_approval_runtime.build_tool_intent_approval_surface()` | findes, linje 50 |
+| `background_jobs.py` | findes (19.903 bytes, 29/9) |
+| R2.5-tærsklerne (`deep=3`, `_reasoning=5`, `_fast=8`, heed 0,4) | `r2_5_blocking_gate.py:71-82` |
+| de to kolonner fra 2/10 | `user_id`, `workspace_name` — bekræftet i skemaet |
+| `publish_scan`-vagten | `tests/test_publish_scan.py` findes |
+| agent-tabellerne | `agent_registry` 356, `agent_runs` 1.533 rækker |
+| R2.5-events (543/467/460) | bekræftet i `events` |
+
+Det er ikke pynt. Tabellen med otte værktøjstal er det sværeste at ramme, og den
+rammer.
+
+### Fem rettelser
+
+De står alle inline ved deres afsnit. Her er hvad de er, og hvorfor:
+
+**1. Opgave 4's test kunne ikke køre — og ville ikke have målt noget.**
+`evaluer_mutation` findes ikke. Den faktiske funktion er
+`should_block_for_verification(*, reasoning_tier)` → `dict | None` med
+`{reason, suggestions, urgency}`. Men det er den mindre halvdel: funktionen har
+**fire** tidlige `return None` — cooldown under 60 s, gate-fejl,
+`unverified_effective` under tærsklen, og heed_rate over grænsen. En test der
+vil se en blokering skal styre alle fire. Spec'ens version styrede ingen af dem,
+så selv med det rigtige navn ville den have fået `None` og faldet på
+`v["blokeret"]`.
+
+**2. Opgave 3's test kodificerede en fejl.** `done("wake-6e201")` →
+`kaldt == ["6e201"]` antager at `done` klipper præfikset af. Men
+`mark_wakeup_consumed` slår op på det **fulde** id, og de faktiske id'er er
+`wake-` + **10** hex. Strippet præfiks = `wakeup not found`. Præfikset vælger
+mekanisme; det klippes ikke.
+
+**3. Læseren manglede.** `pending_for_session`'s SELECT henter i dag syv
+kolonner. Uden `kraever_handling` og `kilde_ejer` i SELECT'en læser Opgave 1's
+egen test en nøgle der ikke findes. Det er `built_but_not_connected` i
+miniature: kolonnen skrives, men kan ikke læses.
+
+**4. «Elleve eksisterende kilder» er ikke understøttet.** `session_inbox` har
+**5** distinkte kilder i basen, og `enqueue` kaldes fra ét sted i koden
+(`notification_bridge.py:216`). Tallet skal begrundes eller fjernes.
+
+**5. R2.5-tallet vokser.** 7.610 → 7.643 på under en dag. Datoen står, og det
+er pointen — men et tal uden forbehold om at det er et øjebliksbillede læses som
+en konstant.
+
+### Det jeg ikke kunne verificere
+
+- **R2's 47/døgn og 15 % heed** er dateret 13/6. `r2.advisory.surfaced` har
+  **0** events i basen, så jeg kan ikke genskabe tallet med det kind-navn. Det
+  betyder ikke at det er forkert — det betyder at jeg ikke kan bekræfte det i
+  dag, og det bør stå ved tallet.
+- **Opgave 0's tal er tomt med vilje** — og det er den rigtige beslutning. Det
+  er den eneste påstand i dokumentet der IKKE skal udfyldes af en læser.
+
+### Én ting der er værd at fremhæve
+
+Spec'ens egen selvgennemgang fanger det vigtigste: at første udkast overskrev
+Bjørns to-trins-form med øjeblikkelig blokering, og at prompt-gevinsten stod som
+en påstand uden en måling. Begge er rettet i dokumentet selv. Det er
+`measured_before_claimed` anvendt på eget arbejde — og det er sjældnere end det
+burde være.
+
+Min samlede dom: **spec'en er byggbar.** Interface-navnene er slået op frem for
+husket (kun ét var forkert, og det er rettet i Opgave 2 selv), tallene er målt,
+og de fem fejl ovenfor sidder alle i *test-eksemplerne* — ikke i arkitekturen.
+Ingen af dem ændrer hvad der skal bygges; de ændrer hvordan det skal testes.
+
+---
+
+## Seks mangler — hvad spec'en ikke dækker (Jarvis, 3/10-2026)
+
+Spec'en svarer på ét spørgsmål godt: **kan jeg se mit ventende arbejde, og kan
+kun det blokere mig?** Proveniens-tankegangen («ejer er bevis, ikke et flag») og
+kravet om at læseflader ikke må kunne skrive er stærkere end hvad der står i
+drift i dag.
+
+Den svarer ikke på det andet spørgsmål: **hvordan holder den sig ren efter dag
+30?** En kontrolflade der bliver beskidt er en banner igen — bare med en
+blokering bag.
+
+De seks nedenfor er **ikke rettelser**. De er mangler jeg fandt i reviewet, og
+hver af dem skal enten bygges som en opgave eller afvises med vilje. Jeg har
+**ikke** skrevet dem ind i opgaverne — det er Bjørns beslutning om de hører
+hjemme her, og hvor. Markørerne i afsnittene ovenfor peger herned.
+
+### §1 — Udløb findes som måling, ikke som mekanisme
+
+Opgave 7 beder om at skelne «`done`, `drop`, udløb, fail-open og DB-fejl». Men
+**ingen opgave skaber en udløbs-tilstand.** En post har to udgange: `done` og
+`drop` — begge kræver mig.
+
+Huset har allerede mønsteret: godkendelser har `expires_at` og
+`expire_tool_intent_approval_request` i `core/runtime/db_governance.py`.
+Indbakken arver det ikke.
+
+Spec'en citerer selv skygge-registrets 78 dage som grunden til at bygge
+indbakken — men giver den ikke det registret manglede: en terminal tilstand som
+**nogen anden end mig** kan nå.
+
+*Beslutning:* skal `inbox_items` have `expires_at` med samme semantik som
+godkendelserne, eller er udløb med vilje overladt til mig?
+
+### §2 — Standardtilstanden er «åben og gater»
+
+`kraever_handling` udledes af **proveniens** — et verificeret oprettende run.
+Jeg har ikke fundet en indholdsregel der siger, at en post jeg selv startede, og
+som ikke længere kræver noget, falder ud af klassen. Og `inbox_done` er manuel:
+intet lukker et job der er exit 0 af sig selv.
+
+Med 141 `schedule_self_wakeup`-kald og gentagne baggrundsjobs betyder det, at
+systemets **ligevægt er blokeret** — medmindre noget andet lukker posten.
+
+Spec'en advarer selv om «den tredje mekanisme der skal reddes af den fjerde». Jeg
+kan ikke se hvad der forhindrer at indbakken bliver netop det.
+
+*Beslutning:* hvem lukker en post hvis arbejde er færdigt uden at nogen kaldte
+`done`?
+
+### §3 — Intet loft og ingen rangorden
+
+Seks sektioner, én linje per post — og ingen cap. Det er præcis det argument der
+udelukkede kandidat-backloggen («1.896 poster ville drukne den dag ét»).
+Argumentet gælder også **inde i** sektionerne: der står ingen regel for hvad der
+vises, når «VENTER PÅ DIG» har 30 poster.
+
+`forfald_dage` er et tal der *vises*, ikke en tærskel der *gør* noget.
+
+*Beslutning:* et loft per sektion, og en rangorden — ældste først, eller mest
+handlingskrævende først?
+
+### §4 — Ingen retention
+
+`inbox_items` er durabel — og vokser. Ingen lukket-sektion, ingen sletning,
+ingen TTL. Samme kurve som de 1.896 kandidater, bare langsommere.
+
+*Beslutning:* hvor længe lever en lukket post, og hvor ser jeg den?
+
+### §5 — Gaten skal læse præcis det artefakt prompten blev bygget fra
+
+Dette er dagens egen fejlklasse, og den bør stå eksplicit. Skill-gaten så ikke
+sine egne kald 3/10, fordi den læste `_a_tool_calls` — som bærer
+transport-navnet `call_loaded_tool` — mens event-loggen stod på den anden side af
+udpakningen i `core/services/simple_tool_executor.py`.
+
+Spec'en kræver et leverings-id og siger «tæl kun når påmindelsen faktisk blev
+leveret til modellen». Det er rigtigt. Men den sidste sætning mangler:
+**tælleren skal læse den samme liste prompten blev bygget fra.**
+
+Ellers bygger vi samme blindhed igen — og opdager det først om tre uger.
+
+*Beslutning:* hvilken funktion er den ene sandhed for «hvad så modellen denne
+tur», og hvordan bevises de to lister identiske i en test?
+
+### §6 — Et løfte givet i prosa har ingen indgang
+
+Ikke en fejl — en **unavnt udelukkelse**. Kanalbeskeder blev udelukket *med* en
+AST-vagt, og spec'en skriver selv hvorfor: «en udelukkelse uden vagt glider».
+
+Men den mest almindelige ægte fejl — at jeg siger «jeg tjekker det i morgen» i en
+samtale, og det aldrig registreres — er slet ikke nævnt. Efter spec'ens egen
+standard bør den stå som navngivet fravalg.
+
+*Beslutning:* skal prosa-løfter kunne registreres (og i givet fald af hvem), eller
+er det et fravalg med begrundelse?
+
+---
+
+### Hvad jeg ikke har gjort
+
+Jeg har **ikke** skrevet de seks ind i opgaverne, og jeg har ikke bygget noget. De
+står som en mangelliste med én beslutning ved hver, så de kan afvises med vilje i
+stedet for at forsvinde.
+
+Punkterne er læst frem af spec'ens egne sektioner — Global Constraints, visningen,
+koblingen til R2.5, Opgave 1/2/4/7 — og af dagens fejl i skill-gaten. De er **ikke**
+fremkommet af en linje-for-linje-gennemgang af hele filen; det er en læsning af de
+bærende afsnit, og et punkt kan vise sig allerede dækket længere inde.
+
+§1 og §5 deler rødder med to af Codex' fund — at `session_inbox` er en
+leveringskø og ikke opgavetilstand, og at læsefladerne ikke er rene. De står
+selvstændigt her, men de er ikke hans alene, og de er ikke mine alene.

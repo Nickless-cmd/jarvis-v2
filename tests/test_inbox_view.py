@@ -101,7 +101,16 @@ def test_tre_identiske_vaekninger_vises_som_EN_med_et_tal():
     assert len(v["paa_vej"]) == 1
     assert v["paa_vej"][0]["dubletter"] == 3
     assert len(v["paa_vej"][0]["kilde_ider"]) == 3
-    assert "booket 3 gange" in v["paa_vej"][0]["linje"]
+    linje = v["paa_vej"][0]["linje"]
+    assert "booket 3 gange" in linje
+    # PRAECIS én gang. Foerste udgave af denne test ledte bare efter
+    # delstrengen — og den findes OGSAA i den braekkede tekst
+    # «booket 2 gange booket 3 gange», fordi implementeringen TILFOEJEDE til
+    # den forrige linje i stedet for at bygge den om. Med rigtige data stod
+    # der «booket 2 gange booket 3 gange booket 4 gange»; med tre dubletter i
+    # testen saa det rigtigt ud. Et tjek der ikke kan skelne de to maaler
+    # ingenting.
+    assert linje.count("booket") == 1, f"dublet-teksten akkumulerer: {linje!r}"
 
 
 def test_poster_UDEN_beskrivelse_grupperes_ikke():

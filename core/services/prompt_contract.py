@@ -1293,6 +1293,22 @@ def _build_visible_chat_prompt_assembly_impl(
     # — Jarvis konfronteres med uindfriede løfter før alt andet. Dynamisk →
     # cache-sikkert her. None hvis ingen åbne løfter.
     _awareness_add(0, "åbne løfter (Bjørn-gate)", _pending_promises_section(session_id))
+    # Indbakken (3/10-2026) — SAMME klasse som løfterne ovenfor: det han selv
+    # har startet, og det eneste der kan nægte en mutation. Derfor priority 0,
+    # lige ved siden af dem.
+    #
+    # Dette er den LÆSER hele kæden manglede. Opgave 14's e2e målte det:
+    # «led 4: PROMPTEN baerer indbakken — FEJL», og Opgave 0 målte det samme
+    # fra den anden side (0 tokens ventende tilstand). Uden denne linje er
+    # lager, visning, gate og værktøjer korrekte og uden virkning.
+    #
+    # I HALEN, ikke i prefixet: indbakken ændrer sig hver tur, og et skiftende
+    # prefix kostede målt 92 % → 26 % cache-hit.
+    try:
+        from core.services.inbox_prompt_section import inbox_prompt_section
+        _awareness_add(0, "indbakke", inbox_prompt_section())
+    except Exception as _e:
+        _sec_err("indbakke", _e)
     if current_pull_hint:
         _awareness_add(1, "current pull (inner desire)", current_pull_hint)
     # Indre liv (2026-06-22): protected entity-bearing block — latest inner

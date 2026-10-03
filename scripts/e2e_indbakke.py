@@ -333,27 +333,52 @@ def _trin_9_tavse_fejlformer(led: Led, bruger: str) -> None:
                     uden_adresse.append(p["id"])
         fund["gatende_uden_beskrivelse"] = uden_adresse
 
-        # 3. Ingen falsk nudge: en nudge der foelger en invokering i SAMME run.
+        # 3. Ingen FALSK nudge. Kravet er praecist, og min foerste udgave af
+        #    dette tjek var det ikke: den spurgte «begge slags i samme run»,
+        #    og det flagger to ting der ikke er fejl.
+        #
+        #    Maalt 3/10 22:45, de to runs den foerste udgave flaggede:
+        #      visible-e4fff62: invokeret 09:57:42 → nudge 09:58:48
+        #          = aegte falsk nudge, men FOER rettelsen gik live 12:28:52.
+        #          Historisk, ikke en regression.
+        #      visible-220564e: nudge 16:34:41 → invokeret 16:34:47
+        #          = gaten der VIRKER. Den naevnte skillet, og han brugte det
+        #          seks sekunder efter. Succes-tilfaeldet, flagget som fejl.
+        #
+        #    Et aggregat laest uden at spoerge hvilke raekker det daekkede.
+        #    Kravet er: en nudge hvis tidsstempel ligger EFTER en invokering i
+        #    samme run, OG efter at rettelsen gik live.
+        _RETTELSEN_LIVE = "2026-10-03T12:28:52"
         with connect() as conn:
             par = conn.execute(
-                "SELECT substr(created_at,12,8) tid, kind, "
+                "SELECT created_at, kind, "
                 "json_extract(payload_json,'$.run_id') run FROM events "
                 "WHERE kind IN ('skill_gate.nudge','cognitive_state.skill_invoked') "
-                "AND created_at > strftime('%Y-%m-%dT%H:%M:%S','now','-1 day') "
-                "ORDER BY created_at").fetchall()
-        pr_run: dict[str, list[str]] = {}
+                "AND created_at > ? "
+                "ORDER BY created_at", (_RETTELSEN_LIVE,)).fetchall()
+        pr_run: dict[str, list[tuple[str, str]]] = {}
         for r in par:
-            pr_run.setdefault(str(r["run"]), []).append(str(r["kind"]))
-        falske = [run for run, ks in pr_run.items()
-                  if "cognitive_state.skill_invoked" in ks
-                  and "skill_gate.nudge" in ks]
-        fund["runs_med_baade_nudge_og_invokering"] = falske
+            pr_run.setdefault(str(r["run"]), []).append(
+                (str(r["created_at"]), str(r["kind"])))
+        falske = []
+        for run, haendelser in pr_run.items():
+            foerste_invokering = next(
+                (t for t, k in haendelser
+                 if k == "cognitive_state.skill_invoked"), None)
+            if not foerste_invokering:
+                continue
+            # En nudge EFTER den foerste invokering i samme run.
+            if any(k == "skill_gate.nudge" and t > foerste_invokering
+                   for t, k in haendelser):
+                falske.append(run)
+        fund["falske_nudges_efter_rettelsen"] = falske
+        fund["vindue_fra"] = _RETTELSEN_LIVE
     except Exception as exc:  # noqa: BLE001
         led(9, "de tre tavse fejlformer", UMAALT, str(exc))
         return
     rent = (fund["poster_uden_laeser"] == 0
             and not fund["gatende_uden_beskrivelse"]
-            and not fund["runs_med_baade_nudge_og_invokering"])
+            and not fund["falske_nudges_efter_rettelsen"])
     led(9, "de tre tavse fejlformer", OK if rent else FEJL, fund)
 
 

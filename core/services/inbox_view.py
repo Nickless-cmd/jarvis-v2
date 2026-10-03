@@ -342,7 +342,13 @@ def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ud: list[dict[str, Any]] = []
     indeks: dict[tuple[str, str], int] = {}
     for p in poster:
-        n = (str(p.get("kildetype") or ""), str(p.get("beskrivelse") or ""))
+        # Grupper paa den AFKORTEDE beskrivelse. Maalt 3/10: 174 fyrede
+        # «Resume interrupted visible run <id>»-vaekninger blev IKKE grupperet,
+        # fordi hvert id er unikt i den GEMTE tekst — men de er den samme sag,
+        # og i linjen ser de ens ud. En gruppering der ikke samler dem lader
+        # husets stoej fylde hele sektionen.
+        n = (str(p.get("kildetype") or ""),
+             _kort(str(p.get("beskrivelse") or ""), _BESKRIVELSE_LOFT))
         if not n[1]:
             ud.append(p)        # uden beskrivelse er der intet at gruppere på
             continue
@@ -354,9 +360,18 @@ def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
         g = ud[i]
         g["dubletter"] += 1
         g["kilde_ider"].append(p["id"])
+        # BYG linjen om fra grundformen. Foerste udgave TILFOEJEDE til den
+        # forrige, og med rigtige data stod der
+        # «… booket 2 gange booket 3 gange booket 4 gange» — én gang per
+        # dublet. 38 groenne tests saa det ikke, fordi de alle havde praecis
+        # TRE dubletter og testede antallet, ikke teksten.
+        grund = g.get("_grundlinje")
+        if grund is None:
+            grund = g["linje"].replace(g["ejer_maerke"], "").rstrip()
+            g["_grundlinje"] = grund
         g["linje"] = _kort(
-            g["linje"].replace(g["ejer_maerke"], "").rstrip()
-            + f"  booket {g['dubletter']} gange  {g['ejer_maerke']}", _LINJE_LOFT)
+            f"{grund}  booket {g['dubletter']} gange  {g['ejer_maerke']}",
+            _LINJE_LOFT)
     return ud
 
 

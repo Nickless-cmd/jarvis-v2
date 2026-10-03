@@ -424,3 +424,52 @@ def test_owner_UDEN_bruger_id_gater_kun_for_sit_EGET_workspace(inbox_db):
     assert mit["post"]["kraever_handling"] is True
     assert andens["post"]["kraever_handling"] is False, \
         "owner-rollen gatede i en ANDEN brugers navn"
+
+
+# ── Den manglende skriver (Opgave 1's oprettelsespunkt) ─────────────────────
+
+def test_schedule_self_wakeup_REGISTRERER_i_indbakken(inbox_db, tmp_path, monkeypatch):
+    """Uden dette kald var indbakken korrekt og TOM.
+
+    `inbox_items` havde ingen skriver, og hele kæden — visning, gate,
+    værktøjer — ville virke upåklageligt på nul rækker. Det er husets
+    hyppigste fejl, og den er sværest at se netop når koden er rigtig: jeg
+    havde bygget fem opgaver færdigt før jeg opdagede at ingen kilde skrev.
+
+    Oprettelsespunktet er det ENESTE sted hvor tool-kald, levende run og
+    autentificeret bruger findes samtidig. Et minut senere kan proveniensen
+    ikke bevises af nogen.
+    """
+    from core.services import self_wakeup
+    monkeypatch.setattr(self_wakeup, "_STORE", tmp_path / "wakeups.json",
+                        raising=False)
+    monkeypatch.setattr(self_wakeup, "_load", lambda: [])
+    gemt: list = []
+    monkeypatch.setattr(self_wakeup, "_save", lambda r: gemt.extend(r))
+    with _som_bjorn():
+        r = self_wakeup.schedule_self_wakeup(
+            delay_seconds=300, prompt="foelg op paa Michelles brief",
+            user_id=BJORN)
+    assert r["status"] == "ok"
+    wid = r["wakeup"]["wakeup_id"]
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id=wid)
+    assert post is not None, "vaekningen blev gemt men ALDRIG registreret"
+    assert post["kildetype"] == "wakeup"
+    assert post["beskrivelse"].startswith("foelg op paa Michelles brief")
+    assert post["verificeret_ejer"] == inbox_state.EJER_JARVIS
+    assert post["kraever_handling"] is True
+
+
+def test_en_FEJLENDE_registrering_ruller_IKKE_vaekningen_tilbage(
+        inbox_db, tmp_path, monkeypatch):
+    """Vækningen er GEMT. En fejl i indbakken må ikke tage den med — men den
+    må heller ikke være tavs, for så står en forpligtelse uden sin post."""
+    from core.services import self_wakeup
+    monkeypatch.setattr(self_wakeup, "_load", lambda: [])
+    monkeypatch.setattr(self_wakeup, "_save", lambda r: None)
+    monkeypatch.setattr("core.services.inbox_state.registrer_kilde",
+                        lambda **kw: (_ for _ in ()).throw(RuntimeError("db nede")))
+    with _som_bjorn():
+        r = self_wakeup.schedule_self_wakeup(delay_seconds=300, prompt="x",
+                                             user_id=BJORN)
+    assert r["status"] == "ok", "vaekningen blev rullet tilbage af en indbakke-fejl"

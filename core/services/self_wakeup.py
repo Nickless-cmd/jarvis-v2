@@ -127,6 +127,43 @@ def schedule_self_wakeup(
     except Exception:
         pass
 
+    # ── Indbakken (Opgave 1, 3/10-2026) ─────────────────────────────────────
+    #
+    # DETTE er oprettelsespunktet spec'en mener med «verificeret ejer bestemmes
+    # ved integrationens oprettelsespunkt». Her — og kun her — er alle tre dele
+    # til stede samtidig: et tool-kald, et levende run, og en autentificeret
+    # bruger. Et minut senere findes ingen af dem, og så kan proveniensen ikke
+    # bevises af nogen.
+    #
+    # Uden dette kald ville indbakken være korrekt og tom: `inbox_items` havde
+    # ingen skriver, og hele kæden — visning, gate, værktøjer — ville virke
+    # upåklageligt på nul rækker. Det er husets hyppigste fejl, og den er
+    # sværest at se netop når koden er rigtig.
+    try:
+        from core.services.inbox_state import registrer_kilde
+        from core.services.session_context_resolve import aktivt_run_id
+        _ib = registrer_kilde(
+            # Vaekningen hoerer til den bruger den blev booket FOR. Er
+            # `user_id` tom (ejerens egen, ubundne vej), falder vi til
+            # workspacet — samme asymmetri som resten af indbakken, og
+            # `registrer_kilde` afgoer alligevel selv om ejerskabet KAN bevises.
+            bruger_id=(record.get("user_id")
+                       or record.get("workspace_name") or ""),
+            kildetype="wakeup",
+            kilde_id=wakeup_id,
+            oprettende_run_id=aktivt_run_id(""),
+            beskrivelse=prompt[:200] or reason[:200],
+        )
+        if _ib.get("status") != "ok":
+            logger.warning("self_wakeup: %s blev IKKE registreret i indbakken: %s",
+                           wakeup_id, _ib.get("error"))
+    except Exception as exc:  # noqa: BLE001
+        # Vaekningen er GEMT. En fejl i indbakke-registreringen maa ikke
+        # rulle den tilbage — men den maa heller ikke vaere tavs, for saa
+        # staar en forpligtelse uden sin post, og det er usynligt.
+        logger.warning("self_wakeup: kunne ikke registrere %s i indbakken: %s",
+                       wakeup_id, exc)
+
     return {"status": "ok", "wakeup": record}
 
 

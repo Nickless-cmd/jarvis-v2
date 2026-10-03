@@ -56,4 +56,18 @@ describe('transcriptets MessageRow får ingen nye props ved hver render', () => 
     besoeg(sf, false)
     expect(syndere).toEqual([])
   })
+
+  it('CodeView holder API-config stabil mellem stream-opdateringer', async () => {
+    const fs = await import('node:fs'); const path = await import('node:path'); const ts = await import('typescript')
+    const kilde = fs.readFileSync(path.resolve(__dirname, '../views/CodeView.tsx'), 'utf8')
+    const sf = ts.createSourceFile('CodeView.tsx', kilde, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let config: import('typescript').VariableDeclaration | undefined
+    const besoeg = (node: import('typescript').Node) => {
+      if (ts.isVariableDeclaration(node) && node.name.getText(sf) === 'config') config = node
+      ts.forEachChild(node, besoeg)
+    }
+    besoeg(sf)
+    expect(config?.initializer && ts.isCallExpression(config.initializer) && config.initializer.expression.getText(sf)).toBe('useMemo')
+    expect(config?.initializer?.getText(sf)).toContain('settings?.apiBaseUrl, settings?.authToken')
+  })
 })

@@ -1,11 +1,57 @@
 import { describe, it, expect } from 'vitest'
-import { streamReducer, initialStreamState } from './streamReducer'
+import { streamReducer, initialStreamState, liveBlokke } from './streamReducer'
 import type { StreamEvent } from './sseProtocol'
 
 const reduce = (events: StreamEvent[]) =>
   events.reduce(streamReducer, initialStreamState())
 
 describe('streamReducer', () => {
+  it('viser syntese mellem værktøjsrunder fra hver provisional delta uden dublet ved commit', () => {
+    const start: StreamEvent = {
+      type: 'message_start',
+      message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    }
+    const system = (kind: string, payload: Record<string, unknown>): StreamEvent =>
+      ({ type: 'system_event', kind, payload })
+    let state = streamReducer(initialStreamState(), start)
+    state = streamReducer(state, { type: 'content_block_start', index: 0,
+      content_block: { type: 'tool_use', id: 'tool-1', name: 'bash', input: {} } })
+    state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Første ' }))
+    expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første ' })
+    state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'syntese' }))
+    expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første syntese' })
+    expect(streamReducer(state, system('provisional_text_delta', { run_id: 'other', delta: 'forkert' }))).toBe(state)
+
+    state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
+    state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Første syntese' } })
+    expect(liveBlokke(state).filter((b) => b.type === 'text')).toHaveLength(1)
+    state = streamReducer(state, system('provisional_text_commit', { run_id: 'r1' }))
+    expect(liveBlokke(state).filter((b) => b.type === 'text')).toEqual([{ type: 'text', text: 'Første syntese' }])
+    state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Næste ' }))
+    expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Næste ' })
+    state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'svar' }))
+    state = streamReducer(state, system('final_answer_start', { run_id: 'r1' }))
+    state = streamReducer(state, { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } })
+    state = streamReducer(state, { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'Næste svar' } })
+    expect(liveBlokke(state).filter((b) => b.type === 'text').map((b) => b.type === 'text' && b.text))
+      .toEqual(['Første syntese', 'Næste svar'])
+    state = streamReducer(state, { type: 'message_stop' })
+    expect(liveBlokke(state).filter((b) => b.type === 'text').map((b) => b.type === 'text' && b.text))
+      .toEqual(['Første syntese', 'Næste svar'])
+  })
+
+  it('genoptager en ny rundes tekst selv hvis message_start mangler efter reconnect', () => {
+    const old = reduce([
+      { type: 'message_start', message: { id: 'old', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'Gammelt' } },
+      { type: 'message_stop' },
+    ])
+    const next = streamReducer(old, { type: 'system_event', kind: 'provisional_text_delta', payload: { run_id: 'new', delta: 'Nyt ' } })
+    expect(next.activeRunId).toBe('new')
+    expect(next.status).toBe('working')
+    expect(liveBlokke(next)).toEqual([{ type: 'text', text: 'Nyt ' }])
+  })
+
   it('folder kun på det aktuelle runs bekræftede slutsvar og nulstiller ved nyt run', () => {
     const start = (id: string): StreamEvent => ({
       type: 'message_start',

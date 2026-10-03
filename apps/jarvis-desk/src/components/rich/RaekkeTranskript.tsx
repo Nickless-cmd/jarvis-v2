@@ -394,7 +394,7 @@ function RaekkeTranskriptImpl({
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
 }) {
-  const { arbejde, svar, kald, sekunder } = opdel(blocks)
+  const { arbejde, svar, kald, sekunder } = opdel(blocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null

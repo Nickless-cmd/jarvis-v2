@@ -119,7 +119,7 @@ function erLeverance(b: ContentBlock): boolean {
  * Del en assistent-besked op. Rækkefølgen bevares nøjagtigt — en syntese
  * skal stå mellem de to kald den faktisk stod imellem.
  */
-export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
+export function opdel(blokke: readonly ContentBlock[], underArbejde = false): RaekkeOpdeling {
   // Skillelinjen: indekset EFTER det sidste vaerktoejskald. Findes der ingen
   // kald, er hele beskeden svar, og arbejdsomraadet forbliver tomt.
   let sidsteKald = -1
@@ -138,6 +138,13 @@ export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
     if (!b) continue
 
     if (i > sidsteKald) {
+      // En tekst efter et værktøj er først et slutsvar, når serveren sender
+      // final_answer_start. Indtil da kan næste runde stadig følge efter.
+      if (b.type === 'text' && underArbejde && sidsteKald >= 0) {
+        const tekst = b.text.trim()
+        if (tekst) arbejde.push({ slags: 'mellemsvar', tekst })
+        continue
+      }
       // Efter det sidste kald: TEKST er svar. Arbejdsblokke er stadig
       // arbejde — se skillelinjen i hovedkommentaren. Alt andet (fx
       // `tool_use_summary`) falder i svaret, saa intet forsvinder tavst.

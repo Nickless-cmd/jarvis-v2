@@ -5,6 +5,7 @@ import { RaekkeTranskript } from './RaekkeTranskript'
 import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { initialStreamState, liveBlokke, streamReducer } from '../../lib/streamReducer'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -48,6 +49,30 @@ function render(ui: ReactElement) {
   }
   return view
 }
+
+it('tegner mellem-syntesen mens deltas ankommer og uden spring ved bekræftelse', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  })
+  state = streamReducer(state, { type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 't1', name: 'bash', input: {} } })
+  const view = render(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  const push = (delta: string) => {
+    state = streamReducer(state, { type: 'system_event', kind: 'provisional_text_delta', payload: { run_id: 'r1', delta } })
+    view.rerender(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  }
+  push('Jeg fandt ')
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt')
+  push('årsagen.')
+  expect(view.container.querySelectorAll('.rv-mellem')).toHaveLength(1)
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt årsagen.')
+  state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Jeg fandt årsagen.' } })
+  state = streamReducer(state, { type: 'system_event', kind: 'provisional_text_commit', payload: { run_id: 'r1' } })
+  view.rerender(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  expect(view.container.querySelectorAll('.rv-mellem')).toHaveLength(1)
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt årsagen.')
+})
 
 describe('underagent-rækken', () => {
   const SCOUT: ContentBlock[] = [{

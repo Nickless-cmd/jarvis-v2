@@ -405,6 +405,19 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
 
+    # CI-status. `ci` var roedt paa main i to doegn (3/10-2026, 30+ koersler)
+    # uden at nogen saa det — vagten fangede fejlen, men der fandtes ingen
+    # flade der sagde det. Den her spoerger selv GitHub Actions-API'et og
+    # husker hvilke koersler den har set. Samme sted som baggrunds-jobbene, af
+    # samme grund: en alarm der kun kan komme naar der i forvejen er travlt,
+    # er ikke en alarm.
+    try:
+        from core.services.ci_status_watch import tik as _ci_watch_tik
+        _ci_watch_tik()
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     logger.debug("indre daemoner: %d koert, %d fejlet, %d brugere",
                  koert, fejlet, brugere)
     return {"koert": koert, "fejlet": fejlet, "brugere": brugere}

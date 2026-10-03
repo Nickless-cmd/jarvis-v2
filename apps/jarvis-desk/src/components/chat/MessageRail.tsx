@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useSkinneSynlig } from '../../lib/railSynlighed'
 import { Pin } from 'lucide-react'
 
@@ -32,6 +32,13 @@ export interface RailAnchor {
  * hvor gik det galt.
  *
  * I hvile vises kun streger; hover folder titlerne ud. Klik scroller.
+ *
+ * **Svar-kortet (3/10-2026).** Før stod svaret som en blok UNDER hver titel, og
+ * hele listen viste titel + svar på én gang. Bjørn: «panelet folder stadig ud,
+ * men kun med titler — svaret vises i et rent kort ved den linje musen er på».
+ * Han havde ret i at væggen ikke kunne skannes: man ledte efter en titel, men
+ * fik to linjers svar oveni for hver eneste række. Nu bærer panelet KUN
+ * titlerne, og svaret kommer frem ét sted — ved den række man peger på.
  */
 export function MessageRail({
   containerRef,
@@ -48,6 +55,11 @@ export function MessageRail({
   // Hooks staar FOER enhver betinget return; en hook efter et `return null`
   // braekker visningen, og hverken tsc eller testene ser det (17/9-2026).
   const synlig = useSkinneSynlig(containerRef)
+  // Hvilken række musen staar paa, og hvor kortet skal staa. `top` maales —
+  // ikke gaettes: panelet ruller (max-height + overflow-y), og `offsetTop`
+  // ville staa stille mens raekken flyttede sig.
+  const [kort, setKort] = useState<{ svar: string; top: number } | null>(null)
+  const railRef = useRef<HTMLElement>(null)
 
   // Positionen: det SIDSTE anker der er rullet forbi toppen — altså
   // overskriften på det afsnit man står i. En ren «er den synlig»-test
@@ -100,8 +112,24 @@ export function MessageRail({
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  /** Kortet staar VED den raekke musen er paa. Maalt mod railens egen kant, saa
+   *  det foelger raekken ogsaa naar panelet er rullet. En raekke uden svar
+   *  rydder kortet — ellers blev det forrige svar staaende ved den nye linje. */
+  const visKort = (row: HTMLElement, svar?: string) => {
+    const rail = railRef.current
+    if (!svar || !rail) { setKort(null); return }
+    const r = row.getBoundingClientRect()
+    const b = rail.getBoundingClientRect()
+    setKort({ svar, top: r.top - b.top })
+  }
+
   return (
-    <nav className="msg-rail" aria-label="Spring til besked">
+    <nav
+      className="msg-rail"
+      aria-label="Spring til besked"
+      ref={railRef}
+      onMouseLeave={() => setKort(null)}
+    >
       <div className="msg-rail-panel">
         {anchors.map((a, i) => (
           <button
@@ -112,6 +140,7 @@ export function MessageRail({
             className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}${a.slags === 'komprimering' ? ' er-komprimering' : ''}${a.slags === 'fastgjort' ? ' er-fastgjort' : ''}${i === anchors.length - 1 ? ' er-sidste' : ''}`}
             aria-current={a.id === aktivId ? 'true' : undefined}
             onClick={() => jump(a.id)}
+            onMouseEnter={(e) => visKort(e.currentTarget, a.svar)}
           >
             <span className="msg-rail-dash" aria-hidden />
             <span className="msg-rail-text" title={a.slags === 'fastgjort' ? `Fastgjort: ${a.label}` : a.label}>
@@ -119,15 +148,17 @@ export function MessageRail({
                 {a.slags === 'fastgjort' ? <Pin size={9} className="msg-rail-pin" aria-hidden /> : null}
                 {a.label}
               </span>
-              {/* Svaret staar UNDER spoergsmaalet og daempet. Etiketten alene
-                  svarer paa «hvad spurgte jeg om»; det man leder efter naar man
-                  scroller tilbage er som regel «fik jeg det jeg skulle bruge».
-                  (spec punkt 3.2, 29/9-2026) */}
-              {a.svar ? <span className="msg-rail-svar">{a.svar}</span> : null}
             </span>
           </button>
         ))}
       </div>
+      {/* Kortet ligger UDEN FOR panelet med vilje: panelet har
+          `overflow-y: auto`, og et kort der stak ud til højre ville blive
+          klippet af dets scroll-boks. `pointer-events: none` staar i CSS'en, så
+          det ikke fanger musen og får hover'en til at flimre. */}
+      {kort ? (
+        <div className="msg-rail-kort" style={{ top: kort.top }}>{kort.svar}</div>
+      ) : null}
     </nav>
   )
 }

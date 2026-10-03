@@ -105,34 +105,39 @@ describe('MessageRail — bredde', () => {
   })
 })
 
-/* ── Hvilende tilstand må ikke ændre sig (spec punkt 3.2) ───────────────────
+/* ── Svar-kortet (Bjørn 3/10-2026) ─────────────────────────────────────────
  *
- * Svar-uddraget lever KUN i den udfoldede tilstand. Rækken er 10px i hvile, og
- * skinnen er 26px bred — det er den form Bjørn har tunet, og et preview må
- * ikke koste den. Testen findes fordi `align-items: flex-start` og en
- * `margin-top` på stregen blev sat i samme ombæring: gik de galt, ville
- * stregerne rykke sig i hvile uden at nogen test så det.
+ * Før stod svaret som en blok UNDER hver titel, og hele listen viste titel +
+ * svar på én gang. Bjørn: «panelet folder stadig ud, men kun med titler —
+ * svaret vises i et rent kort ved den linje musen er på».
+ *
+ * Testene her låser BEGGE sider af den beslutning: at panelet ikke længere
+ * bærer svaret, og at kortet kommer frem ved hover. Den gamle test hed
+ * «svaret står i sin egen linje under spørgsmålet» og låste netop den væg der
+ * blev klaget over.
  */
-describe('MessageRail — svar-uddraget', () => {
+describe('MessageRail — svar-kortet', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
-  it('svaret står i sin egen linje under spørgsmålet', () => {
-    render(
-      <HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />,
-    )
-    const spm = document.querySelector('.msg-rail-spm')
-    const svar = document.querySelector('.msg-rail-svar')
-    expect(spm?.textContent).toContain('besked a')
-    expect(svar?.textContent).toBe('det korte svar')
-    // Rækkefølgen betyder noget: spørgsmålet først.
-    expect(spm).toBeTruthy(); expect(svar).toBeTruthy()
-    expect(spm!.compareDocumentPosition(svar!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  it('panelet viser KUN titler — svaret står ikke under spørgsmålet', () => {
+    render(<HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />)
+    expect(document.querySelector('.msg-rail-spm')?.textContent).toContain('besked a')
+    expect(document.querySelector('.msg-rail-svar')).toBeNull()
+    // Og kortet findes ikke, før musen er der.
+    expect(document.querySelector('.msg-rail-kort')).toBeNull()
   })
 
-  it('en tur UDEN svar får ingen tom linje', () => {
-    // En tom `<span>` ville stadig tage plads og gøre rækken højere.
+  it('hover på en række viser svaret i et kort', () => {
+    render(<HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />)
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort')?.textContent).toBe('det korte svar')
+  })
+
+  it('en tur UDEN svar giver intet kort', () => {
+    // Ellers blev det forrige svar stående ved den nye linje.
     render(<HarnessMedSvar ids={['a', 'b']} svar="" />)
-    expect(document.querySelector('.msg-rail-svar')).toBeNull()
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort')).toBeNull()
   })
 
   it('spørgsmålet står stadig i `title`, så det kan læses uklippet', () => {

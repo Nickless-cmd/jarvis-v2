@@ -527,7 +527,7 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 |---|---|---|---|---|
 | function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
-| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L437) |
+| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
 
 ## `core/services/heartbeat_delivery.py`
 _Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._

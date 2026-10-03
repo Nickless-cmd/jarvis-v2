@@ -434,6 +434,12 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 
 ## Hvad der ER med, og hvad der ikke er
 
+> **MANGLER (Jarvis 3/10):** tabellen navngiver fravalg *med* vagt —
+> kanalbeskeder har en AST-vagt i Opgave 2 trin 9. Men det mest almindelige ægte
+> tilfælde, et løfte givet i prosa («jeg tjekker det i morgen»), har hverken
+> indgang eller navngivet fravalg. Efter spec'ens egen standard skal det stå som
+> fravalg. Se §6 i «Seks mangler».
+
 | Aspekt | Afgørelse | Begrundelse |
 |---|---|---|
 | Vækninger | **ind**, egen sektion | Den levende arbejdsgang, 141+171 kald |
@@ -478,6 +484,11 @@ Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
 - [ ] **Trin 6: Commit** måleværktøjet og det låste tal.
 
 ### Opgave 1: Handlings-klassen i køen
+
+> **MANGLER (Jarvis 3/10):** postens livscyklus har kun to udgange — `done` og
+> `drop`, begge mine. Ingen udløbs-tilstand, ingen retention, og
+> `kraever_handling` udledes af proveniens uden en indholdsregel der lukker en
+> post der ikke længere kræver noget. Se §1, §2 og §4 i «Seks mangler».
 
 **Filer:** ny `core/services/inbox_state.py`, `core/runtime/db_inbox.py` og migration for
 `inbox_items`; test `tests/test_inbox_state.py`. `session_inbox.enqueue`
@@ -537,6 +548,12 @@ if not verificeret_jarvis_run(oprettende_run_id, bruger_id):
 - [ ] **Trin 5: Commit** gennem wrapperen, `--message-file`.
 
 ### Opgave 2: Visningen
+
+> **MANGLER (Jarvis 3/10):** seks sektioner, én linje per post — og intet loft
+> og ingen rangorden. `forfald_dage` er et tal der *vises*, ikke en tærskel der
+> *gør* noget. Argumentet der udelukkede kandidat-backloggen («1.896 poster
+> ville drukne den dag ét») gælder også inde i sektionerne. Se §3 i «Seks
+> mangler».
 
 **Filer:** ny `core/services/inbox_view.py`; test `tests/test_inbox_view.py`.
 
@@ -710,6 +727,13 @@ def test_done_paa_en_vaekning_markerer_den_brugt():
 
 ### Opgave 4: R2.5-forudsætningen
 
+> **MANGLER (Jarvis 3/10):** tælleren skal læse **den samme liste prompten blev
+> bygget fra**. Skill-gaten så ikke sine egne kald 3/10, fordi den læste
+> `_a_tool_calls` — der bærer transport-navnet `call_loaded_tool` — mens
+> event-loggen stod på den anden side af udpakningen i
+> `simple_tool_executor.py`. Det er dagens egen fejlklasse. Se §5 i «Seks
+> mangler».
+
 **Filer:** ny `core/services/inbox_gate.py`, integration i
 `core/services/simple_tool_executor.py` ved siden af R2.5; test
 `tests/test_inbox_gate.py`. Eksisterende R2.5's procesglobale blok ændres
@@ -836,6 +860,10 @@ def test_flush_afleverer_en_henvisning_og_ikke_en_replik():
       assistant-replikken fjernes. Commit i afhængighedsrækkefølge.**
 
 ### Opgave 7: Mål det, før vi tror på det
+
+> **MANGLER (Jarvis 3/10):** opgaven beder mig skelne «udløb» fra de andre
+> udfald — men ingen opgave skaber en udløbs-tilstand. En måling af noget der
+> ikke findes, måler nul. Se §1 i «Seks mangler».
 
 **Filer:** ny `scripts/maal_indbakke.py`; ingen test (måleværktøj).
 
@@ -1103,3 +1131,118 @@ Min samlede dom: **spec'en er byggbar.** Interface-navnene er slået op frem for
 husket (kun ét var forkert, og det er rettet i Opgave 2 selv), tallene er målt,
 og de fem fejl ovenfor sidder alle i *test-eksemplerne* — ikke i arkitekturen.
 Ingen af dem ændrer hvad der skal bygges; de ændrer hvordan det skal testes.
+
+---
+
+## Seks mangler — hvad spec'en ikke dækker (Jarvis, 3/10-2026)
+
+Spec'en svarer på ét spørgsmål godt: **kan jeg se mit ventende arbejde, og kan
+kun det blokere mig?** Proveniens-tankegangen («ejer er bevis, ikke et flag») og
+kravet om at læseflader ikke må kunne skrive er stærkere end hvad der står i
+drift i dag.
+
+Den svarer ikke på det andet spørgsmål: **hvordan holder den sig ren efter dag
+30?** En kontrolflade der bliver beskidt er en banner igen — bare med en
+blokering bag.
+
+De seks nedenfor er **ikke rettelser**. De er mangler jeg fandt i reviewet, og
+hver af dem skal enten bygges som en opgave eller afvises med vilje. Jeg har
+**ikke** skrevet dem ind i opgaverne — det er Bjørns beslutning om de hører
+hjemme her, og hvor. Markørerne i afsnittene ovenfor peger herned.
+
+### §1 — Udløb findes som måling, ikke som mekanisme
+
+Opgave 7 beder om at skelne «`done`, `drop`, udløb, fail-open og DB-fejl». Men
+**ingen opgave skaber en udløbs-tilstand.** En post har to udgange: `done` og
+`drop` — begge kræver mig.
+
+Huset har allerede mønsteret: godkendelser har `expires_at` og
+`expire_tool_intent_approval_request` i `core/runtime/db_governance.py`.
+Indbakken arver det ikke.
+
+Spec'en citerer selv skygge-registrets 78 dage som grunden til at bygge
+indbakken — men giver den ikke det registret manglede: en terminal tilstand som
+**nogen anden end mig** kan nå.
+
+*Beslutning:* skal `inbox_items` have `expires_at` med samme semantik som
+godkendelserne, eller er udløb med vilje overladt til mig?
+
+### §2 — Standardtilstanden er «åben og gater»
+
+`kraever_handling` udledes af **proveniens** — et verificeret oprettende run.
+Jeg har ikke fundet en indholdsregel der siger, at en post jeg selv startede, og
+som ikke længere kræver noget, falder ud af klassen. Og `inbox_done` er manuel:
+intet lukker et job der er exit 0 af sig selv.
+
+Med 141 `schedule_self_wakeup`-kald og gentagne baggrundsjobs betyder det, at
+systemets **ligevægt er blokeret** — medmindre noget andet lukker posten.
+
+Spec'en advarer selv om «den tredje mekanisme der skal reddes af den fjerde». Jeg
+kan ikke se hvad der forhindrer at indbakken bliver netop det.
+
+*Beslutning:* hvem lukker en post hvis arbejde er færdigt uden at nogen kaldte
+`done`?
+
+### §3 — Intet loft og ingen rangorden
+
+Seks sektioner, én linje per post — og ingen cap. Det er præcis det argument der
+udelukkede kandidat-backloggen («1.896 poster ville drukne den dag ét»).
+Argumentet gælder også **inde i** sektionerne: der står ingen regel for hvad der
+vises, når «VENTER PÅ DIG» har 30 poster.
+
+`forfald_dage` er et tal der *vises*, ikke en tærskel der *gør* noget.
+
+*Beslutning:* et loft per sektion, og en rangorden — ældste først, eller mest
+handlingskrævende først?
+
+### §4 — Ingen retention
+
+`inbox_items` er durabel — og vokser. Ingen lukket-sektion, ingen sletning,
+ingen TTL. Samme kurve som de 1.896 kandidater, bare langsommere.
+
+*Beslutning:* hvor længe lever en lukket post, og hvor ser jeg den?
+
+### §5 — Gaten skal læse præcis det artefakt prompten blev bygget fra
+
+Dette er dagens egen fejlklasse, og den bør stå eksplicit. Skill-gaten så ikke
+sine egne kald 3/10, fordi den læste `_a_tool_calls` — som bærer
+transport-navnet `call_loaded_tool` — mens event-loggen stod på den anden side af
+udpakningen i `core/services/simple_tool_executor.py`.
+
+Spec'en kræver et leverings-id og siger «tæl kun når påmindelsen faktisk blev
+leveret til modellen». Det er rigtigt. Men den sidste sætning mangler:
+**tælleren skal læse den samme liste prompten blev bygget fra.**
+
+Ellers bygger vi samme blindhed igen — og opdager det først om tre uger.
+
+*Beslutning:* hvilken funktion er den ene sandhed for «hvad så modellen denne
+tur», og hvordan bevises de to lister identiske i en test?
+
+### §6 — Et løfte givet i prosa har ingen indgang
+
+Ikke en fejl — en **unavnt udelukkelse**. Kanalbeskeder blev udelukket *med* en
+AST-vagt, og spec'en skriver selv hvorfor: «en udelukkelse uden vagt glider».
+
+Men den mest almindelige ægte fejl — at jeg siger «jeg tjekker det i morgen» i en
+samtale, og det aldrig registreres — er slet ikke nævnt. Efter spec'ens egen
+standard bør den stå som navngivet fravalg.
+
+*Beslutning:* skal prosa-løfter kunne registreres (og i givet fald af hvem), eller
+er det et fravalg med begrundelse?
+
+---
+
+### Hvad jeg ikke har gjort
+
+Jeg har **ikke** skrevet de seks ind i opgaverne, og jeg har ikke bygget noget. De
+står som en mangelliste med én beslutning ved hver, så de kan afvises med vilje i
+stedet for at forsvinde.
+
+Punkterne er læst frem af spec'ens egne sektioner — Global Constraints, visningen,
+koblingen til R2.5, Opgave 1/2/4/7 — og af dagens fejl i skill-gaten. De er **ikke**
+fremkommet af en linje-for-linje-gennemgang af hele filen; det er en læsning af de
+bærende afsnit, og et punkt kan vise sig allerede dækket længere inde.
+
+§1 og §5 deler rødder med to af Codex' fund — at `session_inbox` er en
+leveringskø og ikke opgavetilstand, og at læsefladerne ikke er rene. De står
+selvstændigt her, men de er ikke hans alene, og de er ikke mine alene.

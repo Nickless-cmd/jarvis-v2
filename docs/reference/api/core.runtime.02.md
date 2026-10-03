@@ -23,14 +23,21 @@ _Lageret bag indbakken: `inbox_items`._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/runtime/db_inbox.py#L61) |
-| function | `_ensure_skema` | `(conn)` | DDL ÉN gang pr. proces — se modulets docstring om den eksklusive lås. | [src](../../../core/runtime/db_inbox.py#L65) |
-| function | `_post_fra_raekke` | `(r)` | Rækken som en typet post. `output_bytes` bevarer sin NULL. | [src](../../../core/runtime/db_inbox.py#L109) |
-| function | `opret_eller_hent` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, verificeret_ejer=…, kraever_handling=…, beskrivelse=…, output_sti=…, output_bytes=…)` | Idempotent registrering. Findes posten, returneres DEN — urørt. | [src](../../../core/runtime/db_inbox.py#L139) |
-| function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L192) |
-| function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L207) |
-| function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L235) |
-| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L286) |
+| function | `_nu` | `()` | — | [src](../../../core/runtime/db_inbox.py#L64) |
+| function | `_ensure_skema` | `(conn)` | DDL ÉN gang pr. proces — se modulets docstring om den eksklusive lås. | [src](../../../core/runtime/db_inbox.py#L68) |
+| function | `_ensure_kolonner` | `(conn)` | Tilføj kolonner der kom senere. Idempotent; kaster ikke på en dublet. | [src](../../../core/runtime/db_inbox.py#L125) |
+| function | `_post_fra_raekke` | `(r)` | Rækken som en typet post. `output_bytes` bevarer sin NULL. | [src](../../../core/runtime/db_inbox.py#L141) |
+| function | `_felt` | `(r, navn)` | Læs en kolonne der måske ikke findes i DENNE række endnu. | [src](../../../core/runtime/db_inbox.py#L172) |
+| function | `opret_eller_hent` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, verificeret_ejer=…, kraever_handling=…, beskrivelse=…, output_sti=…, output_bytes=…)` | Idempotent registrering. Findes posten, returneres DEN — urørt. | [src](../../../core/runtime/db_inbox.py#L186) |
+| function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L239) |
+| function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L254) |
+| function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L282) |
+| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L333) |
+| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L405) |
+| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L434) |
+| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L450) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L490) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L551) |
 
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._

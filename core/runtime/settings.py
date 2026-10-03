@@ -371,6 +371,20 @@ class RuntimeSettings:
     #: Et EKSPLICIT valg fra klienten vinder altid og laases i stedet.
     #: Saet False for at vaelge pr. tur igen (gammel adfaerd, uden deploy).
     session_model_pin_enabled: bool = True
+    #: Indbakke-gaten (Opgave 4, 3/10-2026). To trin, som Bjoern formulerede
+    #: det: «foerst bede ham checke indbox, og hvis ignoreret eskalerer som
+    #: den goer nu». Foerste udkast af spec'en kollapsede det til oejeblikkelig
+    #: blokering — det var en vurdering sat i stedet for hans form.
+    #:
+    #: Kontakten er her, fordi en gate der skaerer skal kunne slukkes uden et
+    #: deploy. False = indbakken paaminder aldrig og blokerer aldrig.
+    inbox_gate_enabled: bool = True
+    #: Hvor mange LEVEREDE, ubesvarede paamindelser foer en mutation naegtes.
+    #:
+    #: 2 er et STARTPUNKT, ikke en maaling. R2's 15 % er ikke inboxens
+    #: heed-rate, og Opgave 7 skal maale begge trins rater hver for sig foer
+    #: tallet kan forsvares. Det staar som en settings-vaerdi netop derfor.
+    inbox_paamindelser_foer_blok: int = 2
     #: Samme vaerktoejskasse i BEGGE trin af en tur (30/9-2026).
     #:
     #: Foerste pas brugte `select_tools_for_visible` (48 vaerktoejer), de
@@ -697,6 +711,7 @@ _TIDLIGERE_UINDLAESTE = (
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
     "session_model_pin_enabled",
+    "inbox_gate_enabled", "inbox_paamindelser_foer_blok",
     "visible_tools_unified", "visible_tools_frozen",
     "markdown_split_lange_linjer",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",

@@ -153,6 +153,18 @@ _Engangs-oprydning: luk flows hvis opgave allerede er afsluttet._
 | function | `luk` | `(conn, foraeldede)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L92) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L109) |
 
+## `scripts/maal_ventende_i_prompten.py`
+_Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_ventende` | `(navn)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L80) |
+| function | `_del_ved_halen` | `(tekst)` | (stabilt prefix, dynamisk hale). Halen er det EFTER sentinel'en. | [src](../../../scripts/maal_ventende_i_prompten.py#L85) |
+| function | `_byg` | `(provider, model, besked, session_id)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L100) |
+| function | `_maal_en_del` | `(navn, tekst)` | Sektionér én del (prefix eller hale) og del tokens i ventende/andet. | [src](../../../scripts/maal_ventende_i_prompten.py#L108) |
+| function | `_maal_aendring` | `(tekster)` | Hvilke sektioner ændrede sig mellem bygningerne? | [src](../../../scripts/maal_ventende_i_prompten.py#L134) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L186) |
+
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._
 
@@ -443,28 +455,4 @@ _phone_home_auto — hold phone_adb_address i runtime.json opdateret._
 | function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L143) |
 | function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L156) |
 | function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L190) |
-
-## `scripts/primary_cache_warmer.py`
-_Primary lane cache warmer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_konfigureret_model` | `()` | Den model den SYNLIGE lane bruger lige nu. | [src](../../../scripts/primary_cache_warmer.py#L63) |
-| function | `_discover_active_workspaces` | `()` | Find aktive bruger-workspaces der skal cache-warmes. | [src](../../../scripts/primary_cache_warmer.py#L101) |
-| function | `_fetch_system_prompt` | `(workspace_name=…)` | Hent primary lane system prompt. | [src](../../../scripts/primary_cache_warmer.py#L138) |
-| function | `_save_prompt_to_file` | `(content)` | Gem prompt til fil så standalone kald kan bruge det senere. | [src](../../../scripts/primary_cache_warmer.py#L199) |
-| function | `_check_dedup` | `(*, force=…)` | Tjek om et kald er for nyligt. | [src](../../../scripts/primary_cache_warmer.py#L212) |
-| function | `_touch_last_run` | `()` | — | [src](../../../scripts/primary_cache_warmer.py#L236) |
-| function | `_fetch_warmer_tools` | `()` | Hent samme pruned tools-array som visible-chats sender. | [src](../../../scripts/primary_cache_warmer.py#L246) |
-| function | `_build_payload` | `(system_prompt)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L284) |
-| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L308) |
-| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L315) |
-| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L387) |
-| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L441) |
-| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L460) |
-| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L476) |
-| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L486) |
-| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L503) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L583) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L657) |
 

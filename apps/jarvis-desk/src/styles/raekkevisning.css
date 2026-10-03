@@ -537,8 +537,8 @@
    `color` paa selve `.rv-diffstat`, ville den ikke overskrive boernenes,
    men den ville goere det uklart hvem der bestemmer. */
 .raekkevisning .rv-diffstat {
-  font-family: inherit; font-size: 12px; line-height: 1.2; font-weight: 400;
-  opacity: .82;
+  font-family: inherit; font-size: 13px; line-height: 1.2; font-weight: 500;
+  opacity: 1;
 }
 /* Bjørn 3/10-2026: «diff +/- plus tal skal være større … og så kraftigere
    grøn/rød farve». Farven sættes på BØRNENE (`git-add`/`git-del`), ikke på
@@ -546,8 +546,8 @@
    forælderen slår ikke børnenes, og så stod der to steder der bestemte.
    Scopet til runde-linjernes diff-tal, så miljø-panelets egne `git-add`/
    `git-del` beholder `--ok`/`--error-fg`. */
-
-
+.raekkevisning .rv-diffstat .git-add { color: var(--rv-tilf); }
+.raekkevisning .rv-diffstat .git-del { color: var(--rv-fjern); }
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 

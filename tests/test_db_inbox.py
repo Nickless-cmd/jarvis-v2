@@ -1,0 +1,237 @@
+"""Lageret bag indbakken — `inbox_items`' eget skema og dens atomare skrivninger.
+
+`tests/test_inbox_state.py` måler REGLERNE (proveniens, bogføring) gennem
+servicelaget. Denne fil måler **lageret selv**: skemaet, `UNIQUE`-betingelsen,
+`INSERT OR IGNORE`-idempotensen, de to `UPDATE ... WHERE status = 'aaben'` der
+gør afgørelse og påmindelse atomare, og ensure-én-gang-per-proces.
+
+Hvorfor begge filer: et servicelag kan være rigtigt oven på et lager der taber
+en skrivning i et kapløb, og en race ses ikke gennem en facade. Her kører to
+rigtige forbindelser mod den samme fil.
+"""
+from __future__ import annotations
+
+import sqlite3
+import threading
+from contextlib import contextmanager
+
+import pytest
+
+from core.runtime import db_inbox
+
+BRUGER = "bjorn"
+
+
+@pytest.fixture
+def db(monkeypatch, tmp_path):
+    sti = tmp_path / "inbox.db"
+
+    @contextmanager
+    def _connect():
+        k = sqlite3.connect(sti, timeout=5.0)
+        k.row_factory = sqlite3.Row
+        try:
+            yield k
+            k.commit()
+        finally:
+            k.close()
+
+    monkeypatch.setattr(db_inbox, "connect", _connect)
+    monkeypatch.setattr(db_inbox, "_skema_klar", False)
+    return sti
+
+
+def _opret(kilde_id: str, **kw):
+    return db_inbox.opret_eller_hent(
+        bruger_id=kw.pop("bruger_id", BRUGER),
+        kildetype=kw.pop("kildetype", "job"),
+        kilde_id=kilde_id, **kw)
+
+
+# ── Skemaet ─────────────────────────────────────────────────────────────────
+
+def test_skemaet_oprettes_doven_og_baerer_de_felter_visningen_kraever(db):
+    """Visningen har seks felter per post (spec'ens afsnit «Felterne»). Mangler
+    én i skemaet, opdager man det først når visningen bygges — og så er det en
+    fejl i den anden fil."""
+    _opret("job-1")
+    with db_inbox.connect() as c:
+        kolonner = {r[1] for r in c.execute("PRAGMA table_info(inbox_items)")}
+    for n in ("bruger_id", "kildetype", "kilde_id", "oprettende_run_id",
+              "verificeret_ejer", "kraever_handling", "status", "beskrivelse",
+              "output_sti", "output_bytes", "paamindelser",
+              "sidste_paamindelse_tur", "created_at", "afgjort_at"):
+        assert n in kolonner, f"skemaet mangler {n}"
+
+
+def test_UNIQUE_er_paa_bruger_OG_kildetype_OG_kilde_id(db):
+    """Tre dele, ikke én. Samme kilde-id for to brugere er to poster; samme
+    kilde-id med to kildetyper er også to. Var `UNIQUE` kun på kilde_id, kunne
+    en brugers post blokere en andens registrering helt tavst."""
+    _opret("delt", bruger_id=BRUGER, kildetype="job")
+    _opret("delt", bruger_id="anden", kildetype="job")
+    _opret("delt", bruger_id=BRUGER, kildetype="wakeup")
+    with db_inbox.connect() as c:
+        n = c.execute("SELECT count(*) FROM inbox_items WHERE kilde_id = 'delt'").fetchone()[0]
+    assert n == 3
+
+
+def test_ensure_koerer_DDL_en_gang_pr_proces(db, monkeypatch):
+    """`CREATE TABLE IF NOT EXISTS` tager eksklusiv lås. Målt 9/9-2026 gav en
+    ensure kaldt pr. brugerbesked «database is locked» med ~50 % frekvens.
+    Vagten her er at flaget sættes, så anden skrivning springer DDL'en over."""
+    assert db_inbox._skema_klar is False
+    _opret("job-a")
+    assert db_inbox._skema_klar is True
+    # `sqlite3.Connection.execute` kan ikke patches (immutable type), og en
+    # wrapper om forbindelsen ville maale MIN wrapper. `set_trace_callback` er
+    # sqlites egen: den ser hver saetning der faktisk naar motoren, inklusive
+    # dem der koeres af andre lag.
+    ddl: list[str] = []
+
+    @contextmanager
+    def _sporende_connect():
+        k = sqlite3.connect(db, timeout=5.0)
+        k.row_factory = sqlite3.Row
+        k.set_trace_callback(
+            lambda sql: ddl.append(sql.strip()[:30])
+            if "CREATE TABLE" in sql or "CREATE INDEX" in sql else None)
+        try:
+            yield k
+            k.commit()
+        finally:
+            k.close()
+
+    monkeypatch.setattr(db_inbox, "connect", _sporende_connect)
+    _opret("job-b")
+    db_inbox.liste(bruger_id=BRUGER)
+    db_inbox.hent(bruger_id=BRUGER, kilde_id="job-b")
+    assert ddl == [], f"DDL koerte igen: {ddl}"
+
+
+# ── Idempotens og kapløb ────────────────────────────────────────────────────
+
+def test_opret_to_gange_giver_SAMME_raekke_urort(db):
+    a = _opret("job-i", beskrivelse="foerste")
+    b = _opret("job-i", beskrivelse="anden-tekst-der-ikke-maa-vinde")
+    assert a["post"]["created_at"] == b["post"]["created_at"]
+    assert b["post"]["beskrivelse"] == "foerste", \
+        "en genregistrering overskrev den oprindelige post"
+    with db_inbox.connect() as c:
+        assert c.execute("SELECT count(*) FROM inbox_items").fetchone()[0] == 1
+
+
+def test_to_TRAADE_der_opretter_samtidigt_giver_EN_raekke(db):
+    """Genlevering kan komme fra to processer. Taber en tråd kapløbet om
+    indsættelsen, skal dens opslag finde den andens række — det ER det
+    idempotente svar, og uden det ville den ene få en typet fejl."""
+    _opret("varm-op")                      # skema klar foer traadene
+    svar: list[dict] = []
+    laas = threading.Barrier(2)
+
+    def _kør():
+        laas.wait()
+        svar.append(_opret("job-samtidig"))
+
+    t = [threading.Thread(target=_kør) for _ in range(2)]
+    for x in t:
+        x.start()
+    for x in t:
+        x.join()
+    assert [s["status"] for s in svar] == ["ok", "ok"], svar
+    with db_inbox.connect() as c:
+        n = c.execute("SELECT count(*) FROM inbox_items WHERE kilde_id='job-samtidig'"
+                      ).fetchone()[0]
+    assert n == 1
+
+
+def test_afgoer_to_gange_overskriver_IKKE_den_foerste_afgoerelse(db):
+    _opret("job-d")
+    a = db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-d",
+                        ny_status=db_inbox.STATUS_DONE, grund="kvitteret")
+    b = db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-d",
+                        ny_status=db_inbox.STATUS_DROP, grund="noget andet")
+    assert a["status"] == "ok"
+    assert b == {"status": "allerede", "id": "job-d", "havde": db_inbox.STATUS_DONE}
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-d")["afgjort_grund"] == "kvitteret"
+
+
+def test_afgoer_paa_et_UKENDT_id_melder_ukendt_ikke_ok(db):
+    assert db_inbox.afgoer(bruger_id=BRUGER, kilde_id="nix",
+                           ny_status=db_inbox.STATUS_DONE) == {"status": "ukendt",
+                                                               "id": "nix"}
+
+
+def test_afgoer_afviser_en_ikke_terminal_status(db):
+    _opret("job-s")
+    for s in (db_inbox.STATUS_AABEN, "noget-opdigtet", ""):
+        r = db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-s", ny_status=s)
+        assert r["status"] == "fejl", f"{s!r} slap igennem som terminal"
+
+
+# ── Påmindelses-tælleren ────────────────────────────────────────────────────
+
+def test_paamindelse_paa_en_LUKKET_post_taeller_ikke(db):
+    """En afgjort post må ikke kunne samle påmindelser. Kunne den, ville
+    Opgave 7's heed-rate blive målt på poster der aldrig gatede."""
+    _opret("job-p")
+    db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-p",
+                    ny_status=db_inbox.STATUS_DROP, grund="nej")
+    r = db_inbox.noter_paamindelse(bruger_id=BRUGER, kilde_id="job-p", tur="t1")
+    assert r == {"status": "ikke_aaben", "id": "job-p", "havde": db_inbox.STATUS_DROP}
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-p")["paamindelser"] == 0
+
+
+def test_paamindelse_paa_ukendt_id_melder_ukendt(db):
+    _opret("varm-op")
+    assert db_inbox.noter_paamindelse(bruger_id=BRUGER, kilde_id="nix",
+                                      tur="t1")["status"] == "ukendt"
+
+
+def test_paamindelse_uden_tur_er_en_TYPET_fejl(db):
+    """Uden tur-nøgle kan samme runde tælle sig op til tærsklen. En tom tur er
+    derfor ikke «ingen nøgle» — det er en fejl."""
+    _opret("job-n")
+    assert db_inbox.noter_paamindelse(bruger_id=BRUGER, kilde_id="job-n",
+                                      tur="")["status"] == "fejl"
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-n")["paamindelser"] == 0
+
+
+# ── Bruger-afgrænsningen ────────────────────────────────────────────────────
+
+def test_liste_uden_bruger_giver_TOM_liste(db):
+    _opret("job-1")
+    _opret("job-2", bruger_id="anden")
+    assert db_inbox.liste(bruger_id="") == []
+    assert db_inbox.liste(bruger_id="   ") == []
+
+
+def test_liste_kun_aabne_er_standard_og_kan_slaas_af(db):
+    _opret("job-aaben")
+    _opret("job-lukket")
+    db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-lukket",
+                    ny_status=db_inbox.STATUS_DONE)
+    aabne = [p["id"] for p in db_inbox.liste(bruger_id=BRUGER)]
+    alle = [p["id"] for p in db_inbox.liste(bruger_id=BRUGER, kun_aabne=False)]
+    assert aabne == ["job-aaben"]
+    assert sorted(alle) == ["job-aaben", "job-lukket"], \
+        "en lukket post kunne ikke FINDES — «vaek fra forsiden» er ikke «slettet»"
+
+
+def test_afgoer_og_hent_afviser_tom_bruger(db):
+    _opret("job-x")
+    assert db_inbox.afgoer(bruger_id="", kilde_id="job-x",
+                           ny_status=db_inbox.STATUS_DONE)["status"] == "fejl"
+    assert db_inbox.hent(bruger_id="", kilde_id="job-x") is None
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-x")["status"] == \
+        db_inbox.STATUS_AABEN
+
+
+def test_maks_loftet_respekteres_og_er_mindst_en(db):
+    for i in range(5):
+        _opret(f"job-{i}")
+    assert len(db_inbox.liste(bruger_id=BRUGER, maks=3)) == 3
+    # `max(int(maks), 1)`: et loft paa 0 eller negativt maa ikke blive til
+    # «ingen graense» i SQL — det ville give hele tabellen.
+    assert len(db_inbox.liste(bruger_id=BRUGER, maks=0)) == 1
+    assert len(db_inbox.liste(bruger_id=BRUGER, maks=-7)) == 1

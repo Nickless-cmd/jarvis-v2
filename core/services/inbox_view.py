@@ -1,0 +1,500 @@
+"""Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload.
+
+Opgave 2 i `docs/superpowers/specs/2026-10-03-indbakke-som-kontrolflade-design.md`.
+
+## Denne fil skriver ikke
+
+Det er ikke en stilregel, det er filens eneste ansvar. Tre af husets kilder ser
+ud som læsninger og er det ikke:
+
+* `self_wakeup.due_wakeups()` **fyrer og gemmer** forfaldne vækninger.
+* `build_tool_intent_approval_surface()` kan oprette og udløbe godkendelser.
+* `background_jobs.liste()` starter ikke daemonen, men dens `_shell_sessioner()`
+  nulstiller daemonens idle-ur, så en session-løs daemon ikke lukker ned mens
+  panelet er åbent.
+
+Ingen af dem kaldes herfra. Jobbene læses gennem `_supervisor_jobs`,
+`_scout_jobs` og `_tool_jobs` — de tre rene — og shell-sessionerne er med vilje
+helt ude: de er Bjørns aftalte bagdør og hører ikke i en flade der kan gate.
+`tests/test_inbox_view.py` har en AST-vagt om præcis den liste, fordi
+«en læseflade der kan skrive» er den fælde en hel memory er skrevet om.
+
+## Kilderne er injicérbare
+
+`Kilder` samler de syv læsninger som felter. Testene sender en fake ind, så de
+er deterministiske uden at mocke halve moduler — og `nu_ts` injiceres af samme
+grund: forfald i dage kan ikke testes mod en klokke der går.
+
+## Ejer-mærket afgør ALT om gating
+
+En post bærer `[dig]`, `[huset]` eller `[ukendt]`. Kun `[dig]` kan gate, og
+`[ukendt]` kan det aldrig. Visningen regner det ikke ud — den viser hvad
+`inbox_items.verificeret_ejer` blev sat til ved oprettelsen, hvor konteksten
+kunne bevise det. En visning der selv udnævnte en ejer ville være et flag
+forklædt som et bevis.
+"""
+from __future__ import annotations
+
+import logging
+import os
+import os.path
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any, Final
+
+from core.runtime import db_inbox
+
+logger = logging.getLogger(__name__)
+
+#: Hvor længe et job må stå `kører` med beviseligt død proces, før det flyttes
+#: fra «I GANG» til «VENTER PÅ DIG» som `foraeldreloes`. Måles i Opgave 7.
+#: Lavt sat med vilje: et dødt job der står «kører» i dagevis er netop fejlen —
+#: men under et minut kan en pid-læsning ramme et hul mellem fork og registrering.
+_FORAELDRELOES_EFTER_S: Final[float] = 300.0
+
+EJER_MAERKE: Final[dict[str, str]] = {
+    db_inbox.EJER_JARVIS: "[dig]",
+    db_inbox.EJER_HUSET: "[huset]",
+    db_inbox.EJER_UKENDT: "[ukendt]",
+}
+
+#: Linjen er ÉN linje. Spec'ens egen test: `len(linje) < 200`. Loftet findes
+#: fordi en post med et jobs output på 112 kB ville trække hele filen med ind i
+#: promptens hale, hvis beskrivelsen ikke blev afkortet.
+_LINJE_LOFT: Final[int] = 200
+_BESKRIVELSE_LOFT: Final[int] = 70
+
+
+def _kort(tekst: str, loft: int) -> str:
+    """Afkort på et ordskel. Den GEMTE post afkortes aldrig — kun linjen."""
+    t = " ".join(str(tekst or "").split())
+    if len(t) <= loft:
+        return t
+    skaaret = t[:loft].rsplit(" ", 1)[0]
+    return (skaaret or t[:loft]) + "…"
+
+
+def _bytes_tekst(b: int | None) -> str:
+    """`None` ⇒ «stoerrelse ukendt», aldrig «0 B».
+
+    De to kan ikke mappes sammen: `0 B` er en ægte tom fil og et gyldigt svar,
+    mens `None` er «filen er væk siden posten blev skrevet». Stod der `0 B` for
+    en forsvundet fil, ville man åbne en fil der ikke findes — og tro at jobbet
+    ikke skrev noget.
+    """
+    if b is None:
+        return "stoerrelse ukendt"
+    b = int(b)
+    if b < 1024:
+        return f"{b} B"
+    if b < 1024 * 1024:
+        return f"{b // 1024} kB"
+    return f"{b // (1024 * 1024)} MB"
+
+
+def _alder_dage(fra_iso: str, nu_ts: float) -> int | None:
+    """Hele dage siden `fra_iso`. `None` når tidsstemplet ikke kan læses.
+
+    Fald mod `None`, ikke mod 0: et uparsabelt tidsstempel der blev 0 dage ville
+    se ud som «lige nu», og en forfalden post ville forsvinde i støjen. Det er
+    samme retning som `fejlretningen_skal_standse` — fald mod det der kan ses.
+    """
+    s = str(fra_iso or "").strip()
+    if not s:
+        return None
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        # Uparsabelt skal SES. Sker det systematisk, mangler hver post sit
+        # forfald, og uden linjen ville det aldrig stå nogen steder.
+        logger.warning("inbox_view: kunne ikke laese tidsstempel %r", s[:40])
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return max(0, int((nu_ts - d.timestamp()) // 86400))
+
+
+# ── Kilderne ────────────────────────────────────────────────────────────────
+
+def _aegte_poster(bruger_id: str) -> list[dict[str, Any]]:
+    return db_inbox.liste(bruger_id=bruger_id)
+
+
+def _aegte_vaekninger(bruger_id: str) -> list[dict[str, Any]]:
+    """`list_wakeups()` er GLOBAL — den har intet brugerfilter.
+
+    Derfor filtreres her, eksplicit, på postens eget `user_id`. En post uden
+    ejer udelades og tælles som `ukendt`; den må ikke få Bjørn som stiltiende
+    fallback, for så ville en anden brugers vækning dukke op i hans indbakke.
+    """
+    try:
+        from core.services import self_wakeup
+        alle = self_wakeup.list_wakeups(limit=200)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_view: kunne ikke laese vaekninger: %s", exc)
+        return []
+    ud = []
+    for r in alle:
+        uid = str(r.get("user_id") or "").strip()
+        if uid and uid != bruger_id:
+            continue
+        ud.append(r)
+    return ud
+
+
+def _aegte_jobs(bruger_id: str) -> list[dict[str, Any]]:
+    """De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne."""
+    from core.services import background_jobs
+    ud: list[dict[str, Any]] = []
+    for navn in ("_supervisor_jobs", "_scout_jobs", "_tool_jobs"):
+        fn = getattr(background_jobs, navn, None)
+        if fn is None:
+            continue
+        try:
+            ud += list(fn() or [])
+        except Exception as exc:  # noqa: BLE001
+            # Én kilde der fejler må ikke tømme panelet — men den skal ses,
+            # ellers forsvinder en hel jobtype tavst.
+            logger.warning("inbox_view: %s fejlede: %s", navn, exc)
+    return ud
+
+
+def _aegte_godkendelser(bruger_id: str) -> list[dict[str, Any]]:
+    """`recent_tool_intent_approval_requests` med EKSPLICIT bruger.
+
+    `include_unassigned=False`: en godkendelse uden tildelt bruger hører ikke i
+    nogens indbakke. Og `build_tool_intent_approval_surface()` bruges IKKE —
+    den kan oprette og udløbe.
+    """
+    try:
+        from core.runtime.db_governance import recent_tool_intent_approval_requests
+        return list(recent_tool_intent_approval_requests(
+            limit=50, user_id=bruger_id, include_unassigned=False) or [])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_view: kunne ikke laese godkendelser: %s", exc)
+        return []
+
+
+def _aegte_proces_lever(pid: int | None) -> bool | None:
+    """Lever processen? `None` = kan ikke afgøres HER.
+
+    Forældreløs kræver pålideligt procesbevis fra den SAMME host. Et job på en
+    utilgængelig operator-maskine er `status_ukendt`, ikke bevist dødt — og det
+    er forskellen mellem «ryd op» og «du må kigge selv».
+    """
+    if not pid:
+        return None
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:  # processen findes IKKE — bevist doed
+        return False
+    except PermissionError:  # findes, men en anden brugers — den LEVER
+        return True
+    except Exception as exc:  # noqa: BLE001
+        # Alt andet er «kan ikke afgoeres»: en ugyldig pid, en kerne der
+        # naegter, en host vi ikke naar. Det er sin EGEN klasse, og den maa
+        # ikke blive «doed» — forskellen er «ryd op» mod «du maa kigge selv».
+        logger.debug("inbox_view: proces-bevis for pid %r kunne ikke afgoeres: %s",
+                     pid, exc)
+        return None
+    return True
+
+
+@dataclass(slots=True)
+class Kilder:
+    """Rene, bruger-afgrænsede læsninger. Ingen af dem muterer."""
+    poster: Callable[[str], list[dict[str, Any]]] = _aegte_poster
+    vaekninger: Callable[[str], list[dict[str, Any]]] = _aegte_vaekninger
+    jobs: Callable[[str], list[dict[str, Any]]] = _aegte_jobs
+    godkendelser: Callable[[str], list[dict[str, Any]]] = _aegte_godkendelser
+    proces_lever: Callable[[int | None], bool | None] = _aegte_proces_lever
+    #: Vækningen der startede DENNE tur. Skal komme fra dispatcherens
+    #: registrerede årsag — ikke gættes fra den seneste fyrede vækning, for så
+    #: ville en tur han selv startede arve en tilfældig vækning som sin grund.
+    turens_wakeup_id: Callable[[], str] = lambda: ""
+    backlog_tal: Callable[[], int] = lambda: 0
+    planlagte: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda _b: [])
+    gentagende: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda _b: [])
+
+
+# ── Postens seks felter ─────────────────────────────────────────────────────
+
+def _post(
+    *,
+    post_id: str,
+    status: str,
+    beskrivelse: str,
+    ejer: str,
+    nu_ts: float,
+    kildetype: str = "",
+    udfald: str = "",
+    output_sti: str = "",
+    output_bytes: int | None = None,
+    har_artefakt: bool = False,
+    forfalden_dage: int | None = None,
+    alder_dage: int | None = None,
+    tid_tekst: str = "",
+) -> dict[str, Any]:
+    """Byg én post med de seks felter — og ÉN linje, uden payload.
+
+    Felt 5 er «henvisning og størrelse, NÅR der findes et artefakt». Uden fil
+    bruges det typede kilde-id, og der opdigtes ingen sti: skemaet må ikke kræve
+    en outputfil der ikke findes.
+    """
+    maerke = EJER_MAERKE.get(ejer, EJER_MAERKE[db_inbox.EJER_UKENDT])
+    dele = [post_id, status]
+    if tid_tekst:
+        dele.append(tid_tekst)
+    if forfalden_dage is not None and forfalden_dage > 0:
+        dele.append(f"{forfalden_dage}d forfalden")
+    if udfald:
+        dele.append(udfald)
+    dele.append(f"«{_kort(beskrivelse, _BESKRIVELSE_LOFT)}»")
+    if har_artefakt:
+        dele.append(f"→ {output_sti} ({_bytes_tekst(output_bytes)})")
+    dele.append(maerke)
+    linje = _kort("  ".join(d for d in dele if d), _LINJE_LOFT)
+    return {
+        "id": post_id,
+        "kildetype": kildetype,
+        "status": status,
+        "beskrivelse": str(beskrivelse or ""),   # den GEMTE afkortes ikke
+        "udfald": udfald,
+        "output_sti": output_sti if har_artefakt else "",
+        "output_bytes": output_bytes if har_artefakt else None,
+        "ejer": ejer,
+        "ejer_maerke": maerke,
+        "forfalden_dage": forfalden_dage,
+        "alder_dage": alder_dage,
+        "kraever_handling": ejer == db_inbox.EJER_JARVIS,
+        "dubletter": 1,
+        "kilde_ider": [post_id],
+        "linje": linje,
+    }
+
+
+def _indenfor_workspace(sti: str, bruger_id: str) -> bool:
+    """Må stien vises? Uden for brugerens autoriserede workspace: nej.
+
+    Global Constraint: «En sti må ikke læses uden for brugerens autoriserede
+    workspace.» Posten vises stadig — stien gør ikke. En absolut sti uden for
+    workspacet er netop den vej en anden brugers krypterede mappe kunne blive
+    navngivet i Bjørns indbakke.
+    """
+    s = str(sti or "").strip()
+    if not s:
+        return False
+    if ".." in s.split("/"):
+        return False
+    if not s.startswith("/"):
+        return True            # relativ sti = inde i arbejdsområdet
+    try:
+        from core.identity.workspace_context import current_workspace_name
+        navn = str(current_workspace_name() or "").strip()
+    except Exception:  # noqa: BLE001 — kan vi ikke afgøre det, viser vi ikke stien
+        return False
+    if not navn:
+        return False
+    return os.path.normpath(s).startswith(f"/home/bs/.jarvis-v2/workspaces/{navn}")
+
+
+def _min_post(r: dict[str, Any], bruger_id: str) -> bool:
+    """Er denne rå kilde-post min?
+
+    En post UDEN ejer slipper igennem — men den får `[ukendt]` og kan aldrig
+    gate. En post med en ANDEN ejer slippes aldrig. Den asymmetri er valgt:
+    `list_wakeups()` er global og har ejerløse poster, og skjulte vi dem,
+    forsvandt reel tilstand fra fladen; men en fremmed ejer er et databrud.
+    """
+    uid = str(r.get("user_id") or r.get("bruger_id") or "").strip()
+    return not uid or uid == bruger_id
+
+
+def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er.
+
+    Dublet-tællingen må ikke erstatte identiteten: tre reelle vækninger har hver
+    sit id og kan fyre eller annulleres selvstændigt. Lighed på (type,
+    beskrivelse) er et FORSLAG om dublet, ikke et bevis — derfor bæres alle tre
+    `kilde_ider` med, og afgørelser rammer stadig den enkelte.
+    """
+    ud: list[dict[str, Any]] = []
+    indeks: dict[tuple[str, str], int] = {}
+    for p in poster:
+        n = (str(p.get("kildetype") or ""), str(p.get("beskrivelse") or ""))
+        if not n[1]:
+            ud.append(p)        # uden beskrivelse er der intet at gruppere på
+            continue
+        i = indeks.get(n)
+        if i is None:
+            indeks[n] = len(ud)
+            ud.append(p)
+            continue
+        g = ud[i]
+        g["dubletter"] += 1
+        g["kilde_ider"].append(p["id"])
+        g["linje"] = _kort(
+            g["linje"].replace(g["ejer_maerke"], "").rstrip()
+            + f"  booket {g['dubletter']} gange  {g['ejer_maerke']}", _LINJE_LOFT)
+    return ud
+
+
+# ── Visningen ───────────────────────────────────────────────────────────────
+
+def byg_indbakke(
+    bruger_id: str,
+    *,
+    nu_ts: float | None = None,
+    kilder: Kilder | None = None,
+) -> dict[str, Any]:
+    """Seks sektioner for ÉN bruger. Uden bruger-id: en typet fejl.
+
+    Aldrig en liste over alle brugere. Husstanden har flere brugere, og de
+    andres workspaces er krypterede — en indbakke der blander dem er et
+    databrud, ikke en fejl i visningen.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    if not bruger_id:
+        return {"status": "fejl", "error": "bruger_id kraeves"}
+    k = kilder or Kilder()
+    nu = float(nu_ts if nu_ts is not None else time.time())
+
+    vakte: list[dict[str, Any]] = []
+    venter_paa_dig: list[dict[str, Any]] = []
+    i_gang: list[dict[str, Any]] = []
+    paa_vej: list[dict[str, Any]] = []
+    planlagte: list[dict[str, Any]] = []
+    venter_paa_bjorn: list[dict[str, Any]] = []
+
+    turens_wake = str(k.turens_wakeup_id() or "").strip()
+
+    # 1. De durable poster. DE er sandheden om hvad der kræver handling —
+    #    kilderne nedenfor bidrager med tilstand, ikke med gating.
+    for p in k.poster(bruger_id):
+        if p.get("status") != db_inbox.STATUS_AABEN:
+            continue
+        sti = str(p.get("output_sti") or "")
+        vis_sti = _indenfor_workspace(sti, bruger_id)
+        post = _post(
+            post_id=str(p["id"]), status=str(p.get("status") or ""),
+            beskrivelse=str(p.get("beskrivelse") or ""),
+            ejer=str(p.get("verificeret_ejer") or db_inbox.EJER_UKENDT),
+            kildetype=str(p.get("kildetype") or ""),
+            output_sti=sti if vis_sti else "",
+            output_bytes=p.get("output_bytes"),
+            har_artefakt=bool(sti) and vis_sti,
+            alder_dage=_alder_dage(str(p.get("created_at") or ""), nu),
+            forfalden_dage=_alder_dage(str(p.get("created_at") or ""), nu),
+            nu_ts=nu,
+        )
+        if post["id"] == turens_wake:
+            vakte.append(post)
+        venter_paa_dig.append(post)
+
+    # 2. Vækninger. `pending` → PÅ VEJ; `fired` uden kvittering → VENTER PÅ DIG.
+    for r in k.vaekninger(bruger_id):
+        # DOBBELT bruger-filter, med vilje. Den ægte adapter filtrerer også —
+        # men filteret lå ALENE der, og min egen test afslørede hvad det betød:
+        # en kilde der glemmer filteret lækker en anden brugers vækning direkte
+        # ind i visningen. Det er et databrud, ikke en visningsfejl, og det er
+        # for dyrt at lade hænge på én vagt i et lag der kan udskiftes.
+        if not _min_post(r, bruger_id):
+            continue
+        wid = str(r.get("wakeup_id") or "").strip()
+        if not wid or any(wid in p["kilde_ider"] for p in venter_paa_dig):
+            continue                      # den durable post bærer den allerede
+        st = str(r.get("status") or "")
+        if st not in ("pending", "fired"):
+            continue
+        ejer = (db_inbox.EJER_JARVIS if str(r.get("user_id") or "") == bruger_id
+                else db_inbox.EJER_UKENDT)
+        forfald = _alder_dage(str(r.get("fired_at") or ""), nu) if st == "fired" else None
+        post = _post(
+            post_id=wid, status=st, kildetype="wakeup",
+            beskrivelse=str(r.get("prompt") or r.get("reason") or ""),
+            ejer=ejer, forfalden_dage=forfald,
+            alder_dage=_alder_dage(str(r.get("scheduled_at") or ""), nu),
+            tid_tekst=("fyrede " + str(r.get("fired_at") or "")[11:16]) if st == "fired" else "",
+            nu_ts=nu)
+        (venter_paa_dig if st == "fired" else paa_vej).append(post)
+        if wid == turens_wake:
+            vakte.append(post)
+
+    # 3. Jobs. Et dødt job må IKKE stå som «kører» — men «kan ikke afgøres» er
+    #    sin egen klasse, ikke et bevis på død.
+    for j in k.jobs(bruger_id):
+        if not _min_post(j, bruger_id):
+            continue
+        jid = str(j.get("id") or "").strip()
+        if not jid or any(jid in p["kilde_ider"] for p in venter_paa_dig):
+            continue
+        st = str(j.get("status") or "")
+        sek = int(j.get("sekunder") or 0)
+        lever = k.proces_lever(j.get("pid"))
+        exit_kode = j.get("exit_code")
+        udfald = "" if exit_kode in (None, "") else f"exit {exit_kode}"
+        sti = str(j.get("output_sti") or j.get("output") or "")
+        vis_sti = _indenfor_workspace(sti, bruger_id)
+        faelles = {
+            "post_id": jid, "kildetype": "job",
+            "beskrivelse": str(j.get("navn") or j.get("beskrivelse") or ""),
+            "ejer": db_inbox.EJER_UKENDT, "udfald": udfald,
+            "output_sti": sti if vis_sti else "",
+            "output_bytes": j.get("output_bytes"),
+            "har_artefakt": bool(sti) and vis_sti, "nu_ts": nu,
+        }
+        if st in ("kører", "running") and lever is False and sek >= _FORAELDRELOES_EFTER_S:
+            venter_paa_dig.append(_post(status="foraeldreloes", **faelles))
+        elif st in ("kører", "running") and lever is None:
+            venter_paa_dig.append(_post(status="status_ukendt", **faelles))
+        elif st in ("kører", "running"):
+            i_gang.append(_post(status="koerer",
+                                tid_tekst=f"{sek // 60}m" if sek else "", **faelles))
+        elif udfald and str(exit_kode) not in ("0",):
+            venter_paa_dig.append(_post(status="fejlet", **faelles))
+
+    # 4. Planlagte engangsopgaver → PÅ VEJ. Gentagende → PLANLAGTE.
+    #    De er adskilt fordi `scheduled_tasks` fyrer ÉN gang mens
+    #    `recurring_tasks` har interval og næste affyring. Blandedes de, ville
+    #    indbakken overdrive hvor meget der venter — og så bliver den noget man
+    #    lukker i stedet for at læse.
+    for t in k.planlagte(bruger_id):
+        paa_vej.append(_post(
+            post_id=str(t.get("id") or ""), status="planlagt", kildetype="scheduled",
+            beskrivelse=str(t.get("beskrivelse") or t.get("prompt") or ""),
+            ejer=db_inbox.EJER_UKENDT, nu_ts=nu))
+    for t in k.gentagende(bruger_id):
+        planlagte.append(_post(
+            post_id=str(t.get("id") or ""), status="gentagende", kildetype="recurring",
+            beskrivelse=str(t.get("beskrivelse") or t.get("prompt") or ""),
+            ejer=db_inbox.EJER_HUSET, nu_ts=nu,
+            tid_tekst=f"hver {t.get('interval_minutes')}m" if t.get("interval_minutes") else ""))
+
+    # 5. Godkendelser: synlige, gater ALDRIG. Hans svartid må ikke blive
+    #    Jarvis' blokering.
+    for a in k.godkendelser(bruger_id):
+        venter_paa_bjorn.append(_post(
+            post_id=str(a.get("request_id") or a.get("id") or ""),
+            status=str(a.get("effective_approval_state") or a.get("approval_state") or ""),
+            kildetype="approval", beskrivelse=str(a.get("summary") or a.get("tool") or ""),
+            ejer=db_inbox.EJER_HUSET, nu_ts=nu,
+            alder_dage=_alder_dage(str(a.get("created_at") or ""), nu)))
+
+    return {
+        "status": "ok",
+        "bruger_id": bruger_id,
+        "vakte": vakte,
+        "venter_paa_dig": _dubletter_sammen(venter_paa_dig),
+        "i_gang": _dubletter_sammen(i_gang),
+        "paa_vej": _dubletter_sammen(paa_vej),
+        "planlagte": _dubletter_sammen(planlagte),
+        "venter_paa_bjorn": venter_paa_bjorn,
+        "backlog_tal": int(k.backlog_tal() or 0),
+    }
+
+
+__all__ = ["Kilder", "byg_indbakke"]

@@ -524,7 +524,58 @@ Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
       historikken bruger 3,1 % af et 1M-vindue; nævner og cacheadfærd er
       forskellige. Opgave 2's *mindste læsevisning* er en forudsætning for
       `inbox_done`/`inbox_drop` og må ikke udskydes mens en gate bygges.
-- [ ] **Trin 6: Commit** måleværktøjet og det låste tal.
+- [x] **Trin 6: Commit** måleværktøjet og det låste tal.
+
+> **MÅLT OG LÅST 3/10-2026 kl. 19:01-19:07 UTC (Opus).** Værktøjet er
+> `scripts/maal_ventende_i_prompten.py`, kørt på CT105 med husets egen
+> interpreter mod hans levende samtale `chat-cec7edd712e24998a3e08bd1e61beb51`
+> (2.687 beskeder), deepseek-flash, tre bygninger med tur-cachen ryddet imellem.
+>
+> | Del | Tokens | Ventende tilstand | Andel |
+> |---|---|---|---|
+> | Stabilt prefix (før `DYNAMIC_TAIL_SENTINEL`) | 15.068 | 0 | **0,0 %** |
+> | Dynamisk hale | 9.039 | 0 | **0,0 %** |
+> | System i alt | 23.936 | 0 | **0,0 %** |
+>
+> Ændring over tre bygninger: 9 af 107 dele skiftede, **ingen** af dem ventende.
+>
+> **Tallet er nul, og det er ikke en målefejl — det er svaret.** Jeg efterprøvede
+> det direkte frem for at tro på et aggregat:
+>
+> * Systemet havde præcis ÉN ventende vækning: `wake-cf0577f5bb`, «Slet
+>   prevacuum-backuppen». Hverken dens id eller dens tekst står i prompten.
+> * Ordet «WAKE» optræder **0 gange**. Ordet «wakeup» optræder 9 gange — og alle
+>   ni er **værktøjsbeskrivelser** (`schedule_self_wakeup`, `list_self_wakeups`,
+>   `cancel_self_wakeup`, `operator_wakeup`). Ikke én er en ventende post.
+> * De to baggrundsjobs i registret står `exited` siden 18/7 og 28/5. Syv
+>   side-opgaver er alle terminale.
+>
+> Prompten fortæller ham altså at han HAR et værktøj til at liste vækninger. Den
+> fortæller ham aldrig at han har en der venter.
+>
+> **Det vender spec'ens egen præmis om.** Afsnittet «Hvorfor prompten bliver
+> mindre» hviler på at ventende tilstand ligger spredt i prompten og kan samles.
+> Den ligger ikke i prompten. Indbakken vil derfor **lægge til**, ikke trække fra
+> — og Trin 5's «brug målingen til at prioritere prompt-reduktion» har intet at
+> prioritere.
+>
+> Men indbakkens værdi bliver større, ikke mindre: den er ikke en optimering,
+> den er den **manglende læseflade**. Jarvis har en forpligtelse han selv har
+> booket, og han kan ikke se den. Det er `seks_kognitive_systemer_uden_skriver`
+> spejlvendt — en kø ingen læser.
+>
+> **Konsekvenser for de øvrige opgaver:**
+> 1. Budgettet for indbakke-sektionen skal sættes som en TILFØJELSE til halen
+>    (9.039 tokens i dag), ikke som en besparelse. Opgave 10's visnings-loft er
+>    derfor ikke kosmetik — det er den eneste pris-kontrol der findes.
+> 2. Opgave 14 trin 4 («blev halen mindre, eller kom indbakken oveni?») har sit
+>    svar på forhånd: den kommer oveni. Leddet skal måle HVOR MEGET.
+> 3. Den første målte fejl var min egen: første kørsel 18:57 sagde også 0,0 %,
+>    men af en helt anden og forkert grund — segmenteringen matchede kun
+>    `[SECTION]`-overskrifter og fandt 9 dele i en prompt runtimen delte i 60, så
+>    51 dele faldt i en kategori der ikke kunne klassificeres. To nuller med
+>    samme tal og modsat gyldighed. Derfor rapporterer værktøjet nu altid de
+>    største UKLASSIFICEREDE dele: et nul skal kunne efterprøves.
 
 ### Opgave 1: Handlings-klassen i køen
 

@@ -6,10 +6,13 @@ import { useChatScroll } from '../lib/useChatScroll'
 import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
+import { PlansPanel } from '../components/panel/PlansPanel'
+import { PrPanel } from '../components/panel/PrPanel'
 import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
-import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
+import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
@@ -754,6 +757,11 @@ export function ChatView({
   // bliver vist der i».)
   const [jobsOpen, setJobsOpen] = useState(false)
   const [browserOpen, setBrowserOpen] = useState(false)
+  // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
+  // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
+  const [artifactsOpen, setArtifactsOpen] = useState(false)
+  const [plansOpen, setPlansOpen] = useState(false)
+  const [prOpen, setPrOpen] = useState(false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
@@ -772,8 +780,8 @@ export function ChatView({
   // skærmen for denne samtale, og hvordan åbnes/lukkes panelerne. Tilstanden
   // læses gennem en ref, så opslaget ser NU — ikke hvad der gjaldt ved
   // registreringen.
-  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open, browserOpen })
-  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open, browserOpen }
+  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open, browserOpen, artifactsOpen, plansOpen, prOpen })
+  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open, browserOpen, artifactsOpen, plansOpen, prOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -781,7 +789,7 @@ export function ChatView({
       flade: 'chat',
       aabne: () => {
         const t = skaermNu.current
-        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview', t.browserOpen && 'browser'].filter(Boolean) as string[]
+        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview', t.browserOpen && 'browser', t.artifactsOpen && 'artifact', t.plansOpen && 'plan', t.prOpen && 'pr'].filter(Boolean) as string[]
       },
       vis: (p, a) => {
         if (p === 'diff') { setChangesOpen(true); if (a.path) setFokusFil(a.path); return null }
@@ -793,7 +801,10 @@ export function ChatView({
         }
         if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') return 'Terminalen findes kun i kode-tilstand.'
-        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+        if (p === 'artifact') { setArtifactsOpen(true); return null }
+        if (p === 'plan') { setPlansOpen(true); return null }
+        if (p === 'pr') { setPrOpen(true); return null }
+        return `Ukendt panel: ${p}`
       },
       // Lukker Jarvis en rude gennem kanalen, skal dens FULDE visning også
       // slippe. Uden det blev `fuldRude` stående på en rude der var væk, og
@@ -807,6 +818,9 @@ export function ChatView({
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file') panel.close()
         else if (p === 'browser') setBrowserOpen(false)
+        else if (p === 'artifact') setArtifactsOpen(false)
+        else if (p === 'plan') setPlansOpen(false)
+        else if (p === 'pr') setPrOpen(false)
         return null
       },
     })
@@ -817,7 +831,7 @@ export function ChatView({
   // browserOpen SKAL være med: uden den åbnede skinnen kun hvis ændringer
   // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
   // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
-  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen)
+  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen)
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
@@ -865,6 +879,9 @@ export function ChatView({
           onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
         />
       )}
+      {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
+      {plansOpen && cfgSkinne && <PlansPanel config={cfgSkinne} onClose={() => setPlansOpen(false)} />}
+      {prOpen && cfgSkinne && <PrPanel config={cfgSkinne} onClose={() => setPrOpen(false)} />}
     </div>
   ) : null
 

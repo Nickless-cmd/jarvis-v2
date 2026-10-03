@@ -1155,6 +1155,19 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .artifact-body a { color: var(--accent-text); text-decoration: none; }
 .artifact-body a:hover { text-decoration: underline; }
 .artifact-body strong { color: var(--fg-0, #fff); font-weight: 650; }
+
+/* ── Artifact-, plan- og PR-paneler ved samtalen (3/10-2026) ─────────────
+   De tre blev afvist statisk i `IKKE_I_DESK` («Desk har intet plan-panel»),
+   men komponenterne fandtes hele tiden. Nu er de rigtige paneler: `plan`
+   genbruger PlansPane, `artifact` genbruger ArtifactsView, og herunder er
+   kun det nye — PR-tilstanden og artefakt-visningens plads i panelet. */
+.artifact-body.artefakter-body { padding: 0; }
+.artifact-body.artefakter-body > * { max-width: none; margin: 0; }
+.pr-status { display: flex; flex-direction: column; gap: 10px; }
+.pr-raekke { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.pr-noegle { color: var(--muted); }
+.pr-vaerdi { color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.pr-hint { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .artifact-body blockquote { margin: 0 0 14px; padding: 4px 0 4px 16px; border-left: 3px solid var(--line); color: var(--fg-2); }
 .artifact-body hr { border: none; border-top: 1px solid var(--line); margin: 24px auto; }
 .artifact-body code { background: var(--bg-3); padding: 1.5px 5px; border-radius: 4px; font-size: 0.88em; }

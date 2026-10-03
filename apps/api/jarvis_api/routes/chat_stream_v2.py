@@ -626,6 +626,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                 try:
                     from core.services import delta_trace as _dt_slut
                     _dt_slut.afslut(session_id, run_id=run_id)
+                    _dt_slut.afslut_laesning(session_id, run_id=run_id)
                 except Exception:  # sporet maa ikke kunne forhindre oprydningen
                     pass
 

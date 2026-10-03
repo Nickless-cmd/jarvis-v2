@@ -1058,7 +1058,10 @@ class OpenAICompatFollowupAdapter:
 
         try:
             with urllib_request.urlopen(req, timeout=180) as response:
-                for event in _iter_sse_events(response):
+                # Maale-noeglen er sessionen — se `delta_trace.noter`. Uden den
+                # maaler laese-sporet ingenting.
+                for event in _iter_sse_events(
+                        response, maale_noegle=str(session_id or "")):
                     if _ttfb_ms is None:
                         _ttfb_ms = int((_time.monotonic() - _t0) * 1000)
                     # include_usage: DeepSeek sender en afsluttende chunk med usage.

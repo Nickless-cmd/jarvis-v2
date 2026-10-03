@@ -240,3 +240,116 @@ def test_sentinel_tjekket_kommer_FOER_arbejdet():
     ):
         kilde = pathlib.Path(fil).read_text()
         assert kilde.index("_dt.taendt()") < kilde.index(mark), fil
+
+
+# ── Tre-vejs-opdelingen: nettet, os selv, eller planlaeggeren ─────────────
+#
+# Delta-sporets to punkter viste at klumpen allerede findes naar vi modtager.
+# Men det kunne betyde to vidt forskellige ting, og de kraever hver sin
+# rettelse: udbyderen sender i stoed, ELLER vores egen traad bliver sultet og
+# behandler en ophobet buffer paa én gang. Et tidsstempel per event kan ikke
+# skelne dem — der er intet mellem en raa linje og en delta. Tre tal kan.
+
+
+def test_blokeret_tid_peger_paa_NETTET(taendt, ur):
+    """Laa vi og ventede paa readline, kom data langsomt udefra."""
+    for _ in range(5):
+        dt.noter_laesning("s1", blokeret_s=2.0, behandlet_s=0.001)
+        ur["t"] += 2.0
+    ud = dt.afslut_laesning("s1")
+    assert ud["n"] == 5
+    assert ud["blokeret_s"] == 10.0
+    assert ud["uforklaret_s"] < 0.1, "tiden er gjort rede for"
+
+
+def test_uforklaret_tid_peger_paa_PLANLAEGGEREN(taendt, ur):
+    """Hverken ventet paa nettet eller brugt CPU — saa var traaden sat af.
+    Det er den sultede traad, og den ville LIGNE et stoed udefra."""
+    for _ in range(4):
+        dt.noter_laesning("s1", blokeret_s=0.001, behandlet_s=0.001)
+        ur["t"] += 5.0          # fem sekunders UR-tid per laesning
+    ud = dt.afslut_laesning("s1")
+    assert ud["blokeret_s"] < 0.1 and ud["behandlet_s"] < 0.1
+    assert ud["uforklaret_s"] >= 14.0, "den sultede traad er ikke synlig"
+
+
+def test_behandlet_tid_peger_paa_OS_SELV(taendt, ur):
+    for _ in range(3):
+        dt.noter_laesning("s1", blokeret_s=0.0, behandlet_s=3.0)
+        ur["t"] += 3.0
+    ud = dt.afslut_laesning("s1")
+    assert ud["behandlet_s"] == 9.0
+    assert ud["uforklaret_s"] < 0.1
+
+
+def test_det_stoerste_enkelt_ophold_bevares(taendt, ur):
+    """Et gennemsnit ville skjule det ene lange ophold — samme grund som
+    `max` i delta-fordelingen."""
+    for i in range(10):
+        dt.noter_laesning("s1", blokeret_s=0.01 if i != 4 else 30.0, behandlet_s=0.0)
+        ur["t"] += 0.01 if i != 4 else 30.0
+    assert dt.afslut_laesning("s1")["maks_blok_ms"] == 30000
+
+
+def test_EN_laesning_giver_ingen_opsummering(taendt, ur):
+    dt.noter_laesning("s1", blokeret_s=1.0, behandlet_s=0.0)
+    assert dt.afslut_laesning("s1") == {}
+
+
+def test_laesesporet_er_no_op_naar_slukket():
+    dt._laes.clear()
+    dt.noter_laesning("s1", blokeret_s=1.0, behandlet_s=1.0)
+    assert dt._laes == {}
+    assert dt.afslut_laesning("s1") == {}
+
+
+def test_laesesporet_kaster_aldrig(taendt, monkeypatch):
+    monkeypatch.setattr(dt.time, "monotonic",
+                        lambda: (_ for _ in ()).throw(RuntimeError("i stykker")))
+    dt.noter_laesning("s1", blokeret_s=1.0, behandlet_s=0.0)
+    assert dt.afslut_laesning("s1") == {}
+
+
+def test_maale_loekken_er_KOBLET_og_gratis_naar_slukket():
+    """Tre ting paa én gang: at maalingen findes, at den kan SKELNE de tre
+    slags tid, og at den aldrig koster funktionalitet."""
+    sse = pathlib.Path("core/services/visible_model_sse.py").read_text()
+    ast.parse(sse)
+    assert "def _raa_linjer(" in sse, "linje-kilden er ikke skilt fra parsningen"
+    assert "_raa_linjer(response, maale_noegle)" in sse, "parsningen bruger den ikke"
+    assert sse.count("# A11 pkt. 1: decode UDEN at rejse.") == 1, (
+        "parsningen findes to steder — to sandheder kan drive fra hinanden")
+    assert "response.readline()" in sse
+    assert "noter_laesning(" in sse, "laese-sporet er ikke koblet"
+    # Ikke bare at `thread_time` NAEVNES — den staar to steder, saa en
+    # mutation af selve beregningen slap igennem en ren navne-soegning.
+    assert "_t.thread_time() - cpu_sidst" in sse, (
+        "uden traadens CPU-tid kan vores egen tid ikke skilles fra "
+        "planlaeggerens — og saa maaler opdelingen ingenting")
+    assert "behandlet_s=behandlet" in sse, "CPU-tiden naar ikke sporet"
+
+
+def test_en_response_UDEN_readline_falder_tilbage_uden_maaling():
+    """Den fejl der faldt syv tests. En fake-response er iterérbar uden at
+    have `readline`; en eksplicit laese-loekke gav da NUL events. En maaling
+    maa aldrig koste funktionalitet."""
+    from core.services.visible_model_sse import _raa_linjer
+    linjer = [b"data: {\"a\": 1}\n", b"\n"]
+    assert list(_raa_linjer(iter(linjer), "en-noegle")) == linjer
+    assert list(_raa_linjer(iter(linjer), "")) == linjer
+
+    sse = pathlib.Path("core/services/visible_model_sse.py").read_text()
+    assert 'callable(getattr(response, "readline", None))' in sse, (
+        "fallbacken mangler — en iterator uden readline ville give nul events")
+
+
+def test_sentinel_tjekket_kommer_FOER_maalingen():
+    """Et slukket spor maa ikke koste noget per linje."""
+    sse = pathlib.Path("core/services/visible_model_sse.py").read_text()
+    assert sse.index("_dt_sse.taendt()") < sse.index("while True:")
+
+    fu = pathlib.Path("core/services/visible_followup_adapters.py").read_text()
+    assert "maale_noegle=str(session_id" in fu, "noeglen sendes ikke med"
+
+    ud = pathlib.Path("apps/api/jarvis_api/routes/chat_stream_v2.py").read_text()
+    assert "afslut_laesning(session_id" in ud, "opsummeringen skrives aldrig"

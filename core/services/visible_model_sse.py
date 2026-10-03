@@ -174,8 +174,58 @@ def _chat_completion_stream_is_terminal(event: dict) -> bool:
     )
 
 
+def _raa_linjer(response, maale_noegle: str = ""):
+    """Rå linjer fra streamen — og, når sporet er tændt, HVOR tiden gik.
+
+    ## Hvorfor den er skilt ud
+
+    Delta-sporets to punkter viste at klumpen allerede findes når vi modtager.
+    Men det kan betyde to vidt forskellige ting, som kræver hver sin rettelse:
+    udbyderen sender i stød, ELLER vores egen tråd bliver sultet og behandler
+    en ophobet buffer på én gang. Et tidsstempel per event kan ikke skelne dem
+    — der er intet mellem en rå linje og en delta.
+
+    Tre tal kan: tid blokeret i `readline` (nettet), trådens egen CPU-tid (os
+    selv), og resten (planlæggeren). Se `delta_trace.noter_laesning`.
+
+    Linje-KILDEN er skilt fra parsningen med vilje, så der kun findes ÉN
+    parsning. Første forsøg lagde målingen ind i parse-løkken og erstattede
+    `for raw_line in response` med `response.readline()` — og SYV tests faldt,
+    fordi en fake-response er iterérbar uden at have `readline`. Her falder vi
+    tilbage til den gamle vej, helt uden måling, når `readline` mangler: en
+    måling må aldrig koste funktionalitet.
+    """
+    maal = None
+    if maale_noegle and callable(getattr(response, "readline", None)):
+        try:
+            from core.services import delta_trace as _dt_sse
+            if _dt_sse.taendt():
+                maal = _dt_sse
+        except Exception:  # kan sporet ikke indlaeses, maaler vi ikke — en
+            # maaling maa aldrig vaere grunden til at en stream doer.
+            maal = None
+    if maal is None:
+        yield from response
+        return
+
+    import time as _t
+    cpu_sidst = 0.0
+    while True:
+        behandlet = max(0.0, _t.thread_time() - cpu_sidst) if cpu_sidst else 0.0
+        foer = _t.monotonic()
+        linje = response.readline()
+        if not linje:
+            return
+        efter = _t.monotonic()
+        cpu_sidst = _t.thread_time()
+        maal.noter_laesning(maale_noegle, blokeret_s=efter - foer,
+                            behandlet_s=behandlet)
+        yield linje
+
+
 def _iter_sse_events(
     response, *, provider: str = "openai", model: str = "",
+    maale_noegle: str = "",
 ) -> Iterator[dict]:
     """Hærdet SSE-decoder (spec §1A + §11.1 A11).
 
@@ -191,7 +241,7 @@ def _iter_sse_events(
     saw_done = False
     saw_malformed = False
 
-    for raw_line in response:
+    for raw_line in _raa_linjer(response, maale_noegle):
         # A11 pkt. 1: decode UDEN at rejse.
         line = safe_decode_line(raw_line).strip()
         if not line:

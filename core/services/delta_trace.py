@@ -171,3 +171,91 @@ def afslut(noegle: str, *, run_id: str = "") -> dict[str, dict[str, float | int]
     except Exception:
         logger.warning("delta-spor: opsummeringen fejlede", exc_info=True)
     return svar
+
+
+#: Raa læse-statistik pr. nøgle: hvor tiden faktisk gik.
+_laes: dict[str, dict[str, float]] = {}
+
+
+def noter_laesning(noegle: str, *, blokeret_s: float, behandlet_s: float) -> None:
+    """Registrér ÉN læsning fra udbyderens stream — og hvor tiden gik.
+
+    ## Hvad den afgør
+
+    Delta-sporets to punkter viste at klumpen allerede findes når vi modtager:
+    «ud» følger «ind» på samme indeks med 5 ms. Men det kunne betyde to vidt
+    forskellige ting, og de kræver hver sin rettelse:
+
+      1. **Udbyderen/nettet sender i stød.** Saa er teksten samlet naar den
+         rammer os, og ingen server-side ændring kan faa den til at flyde.
+      2. **Vores egen traad bliver sultet.** Mange SSE-events hober sig op i
+         socket-bufferen mens traaden venter paa CPU'en, og naar den endelig
+         koerer, behandles de alle paa én gang. Det LIGNER et stoed udefra,
+         men er vores. Huset har `visible_assembly_gil_contention` som en
+         maalt tidligere udgave.
+
+    Et enkelt tidsstempel per event kan ikke skelne dem, fordi der intet er
+    mellem en raa linje og en delta. Tre tal kan:
+
+        blokeret     tid vi laa og ventede paa nettet  (readline)
+        behandlet    tid vi selv brugte paa at parse
+        uforklaret   resten — hverken ventet eller arbejdet
+
+    `uforklaret` er den sultede traad. Er den stor, var vi hverken i nettet
+    eller i vores egen kode — vi var sat af planlæggeren.
+
+    No-op når sporet er slukket. Kaster aldrig.
+    """
+    if not taendt():
+        return
+    try:
+        k = str(noegle or "")[:48]
+        if not k:
+            return
+        nu = time.monotonic()
+        with _laas:
+            if len(_laes) > _MAKS_RUNS:
+                _laes.clear()
+            r = _laes.setdefault(k, {
+                "n": 0.0, "blokeret": 0.0, "behandlet": 0.0,
+                "maks_blok": 0.0, "foerst": nu, "sidst": nu,
+            })
+            r["n"] += 1
+            r["blokeret"] += max(0.0, float(blokeret_s))
+            r["behandlet"] += max(0.0, float(behandlet_s))
+            r["maks_blok"] = max(r["maks_blok"], float(blokeret_s))
+            r["sidst"] = nu
+    except Exception:
+        logger.debug("delta-spor: kunne ikke notere laesning", exc_info=True)
+
+
+def afslut_laesning(noegle: str, *, run_id: str = "") -> dict[str, float]:
+    """Skriv læse-opsummeringen og ryd den. No-op når slukket."""
+    if not taendt():
+        return {}
+    try:
+        k = str(noegle or "")[:48]
+        with _laas:
+            r = _laes.pop(k, None)
+        if not r or r["n"] < 2:
+            return {}
+        samlet = max(0.0, r["sidst"] - r["foerst"])
+        uforklaret = max(0.0, samlet - r["blokeret"] - r["behandlet"])
+        tal = {
+            "n": int(r["n"]), "samlet_s": round(samlet, 1),
+            "blokeret_s": round(r["blokeret"], 1),
+            "behandlet_s": round(r["behandlet"], 1),
+            "uforklaret_s": round(uforklaret, 1),
+            "maks_blok_ms": int(r["maks_blok"] * 1000),
+        }
+        import sys as _s
+        print(
+            f"DELTA-SPOR raa run={str(run_id or k)[:32]} n={tal['n']} "
+            f"samlet={tal['samlet_s']}s blokeret={tal['blokeret_s']}s "
+            f"behandlet={tal['behandlet_s']}s uforklaret={tal['uforklaret_s']}s "
+            f"maks_blok={tal['maks_blok_ms']}ms",
+            file=_s.stderr, flush=True)
+        return tal
+    except Exception:
+        logger.warning("delta-spor: laese-opsummeringen fejlede", exc_info=True)
+        return {}

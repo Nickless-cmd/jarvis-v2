@@ -167,16 +167,18 @@ describe('design-tokens', () => {
     const miljø = læs('environment-inspector.css')
     const regel = miljø.match(/^\.env-panel \{([\s\S]*?)\}/m)?.[1] ?? ''
     expect(regel, '.env-panel findes ikke i environment-inspector.css').toBeTruthy()
-    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin
-  // mellem dem (#1A1A19 → #252524) — det er sådan jobs-kortene træder frem.
+  // mellem dem (#20201F → #252524) — det er sådan jobs-kortene træder frem.
+  // 3/10-2026: panelet flyttede fra --bg-2 til --overlay-bg (Bjørn: sticky-
+  // notens grå skal hele stakken have), så det øverste trin er nu #20201F.
   it('kort ligger over deres panel, ikke i det', () => {
     const kort = app.match(/^\.jobs-kort \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     const panel = app.match(/^\.jobs-panel \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     expect(kort.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-3')
-    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   it('holder tekst og accent læsbare i mørkt tema', () => {
@@ -536,5 +538,65 @@ describe('headerens menuer ligger over højre-ruderne (19/9-2026)', () => {
     const stak = Number(app.match(/\.code-right-stack \{[\s\S]*?z-index: (\d+);/)?.[1] ?? 999)
     expect(z).toBeGreaterThan(stak)
     expect(z).toBeGreaterThan(30)
+  })
+})
+
+/**
+ * Diff-tallene i runde-linjerne (3/10-2026).
+ *
+ * Bjørn: «diff +/- plus tal skal være større det er meget småt og så kraftigere
+ * grøn/rød farve altså i runde linjerne».
+ *
+ * To ting gjorde dem svage, og de skal måles hver for sig:
+ *   1. `opacity: .82` på `.rv-diffstat` vaskede farven ud uanset hvilken
+ *      grøn/rød der blev sat — den sad på FORÆLDREN.
+ *   2. Farven kom fra `--ok`/`--error-fg`, som er dæmpede.
+ *
+ * Testen låser at farven sættes på BØRNENE og ikke på forælderen. Sætter man
+ * `color` på `.rv-diffstat` selv, overskriver den ikke børnenes — og så ser
+ * reglen rigtig ud i en diff og gør ingenting på skærmen.
+ */
+describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', () => {
+  const rv = læs('raekkevisning.css')
+  const regel = rv.match(/\.raekkevisning \.rv-diffstat \{([^}]*)\}/)?.[1] ?? ''
+
+  it('findes overhovedet', () => {
+    expect(regel, '.rv-diffstat-reglen blev ikke fundet').toBeTruthy()
+  })
+
+  it('tallene er større end de 12px de var', () => {
+    const px = Number(regel.match(/font-size:\s*([\d.]+)px/)?.[1] ?? 0)
+    expect(px, `font-size er ${px}px`).toBeGreaterThanOrEqual(13)
+  })
+
+  it('opaciteten vasker ikke farven ud', () => {
+    expect(regel).toMatch(/opacity:\s*1\b/)
+    expect(regel).not.toMatch(/opacity:\s*\.8/)
+  })
+
+  it('grøn og rød sættes på BØRNENE — ikke på forælderen', () => {
+    expect(rv).toMatch(/\.raekkevisning \.rv-diffstat \.git-add \{ color: var\(--rv-tilf\)/)
+    expect(rv).toMatch(/\.raekkevisning \.rv-diffstat \.git-del \{ color: var\(--rv-fjern\)/)
+    // En color på forælderen ville ikke slå børnenes, og så stod der to steder
+    // der bestemte. Den må ikke snige sig ind.
+    expect(regel).not.toMatch(/^\s*color:/m)
+  })
+
+  it('begge farver er defineret i BEGGE temaer', () => {
+    const moerk = rv.match(/\.raekkevisning \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    const lys = rv.match(/:root\[data-theme='light'\] \.raekkevisning,[\s\S]*?\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    for (const [navn, blok] of [['mørkt', moerk], ['lyst', lys]] as const) {
+      expect(blok, `${navn} tema-blok mangler`).toBeTruthy()
+      for (const v of ['--rv-tilf', '--rv-fjern']) {
+        expect(blok, `${v} mangler i ${navn} tema`).toMatch(new RegExp(`${v}:\\s*#[0-9a-f]{6}`, 'i'))
+      }
+    }
+  })
+
+  // Miljø-panelet har sine EGNE `git-add`/`git-del` (environment-inspector.css).
+  // Overstyringen må ikke lække derud, for Bjørn pegede på runde-linjerne.
+  it('lækker ikke ud i miljø-panelets egne diff-tal', () => {
+    expect(rv).not.toMatch(/^\.git-add/m)
+    expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--ok\)/)
   })
 })

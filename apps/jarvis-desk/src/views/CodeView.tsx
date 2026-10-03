@@ -32,9 +32,12 @@ import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
+import { PlansPanel } from '../components/panel/PlansPanel'
+import { PrPanel } from '../components/panel/PrPanel'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
-import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
+import { registrerSkaerm } from '../lib/skaermRegister'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
@@ -44,7 +47,7 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, type CompactionStats } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
@@ -332,6 +335,11 @@ export function CodeView({
   // Jarvis' browser. Den kom med i chat-fladen 21/9 og blev glemt her —
   // samme hoejre-stak, samme plads i raekken, saa de to flader ikke skilles ad.
   const [browserOpen, setBrowserOpen] = useState(false)
+  // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
+  // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
+  const [artifactsOpen, setArtifactsOpen] = useState(false)
+  const [plansOpen, setPlansOpen] = useState(false)
+  const [prOpen, setPrOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
@@ -345,8 +353,8 @@ export function CodeView({
   // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
   const [codeFane, setCodeFane] = useState<PanelTab>('files')
   const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
-  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen })
-  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen }
+  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen })
+  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -358,6 +366,7 @@ export function CodeView({
           t.changesOpen && 'diff', t.jobsOpen && 'tasks',
           t.filesOpen && (t.codeFane === 'terminal' ? 'terminal' : 'file'),
           t.browserOpen && 'browser',
+          t.artifactsOpen && 'artifact', t.plansOpen && 'plan', t.prOpen && 'pr',
         ].filter(Boolean) as string[]
       },
       vis: (p, a) => {
@@ -372,7 +381,10 @@ export function CodeView({
         }
         if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') { setFilesOpen(true); setAabenFane({ fane: 'terminal', n: Date.now() }); return null }
-        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+        if (p === 'artifact') { setArtifactsOpen(true); return null }
+        if (p === 'plan') { setPlansOpen(true); return null }
+        if (p === 'pr') { setPrOpen(true); return null }
+        return `Ukendt panel: ${p}`
       },
       // Lukker Jarvis en rude gennem kanalen, skal dens FULDE visning også
       // slippe. Uden det blev `fuldRude` stående på en rude der var væk, og
@@ -386,6 +398,9 @@ export function CodeView({
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file' || p === 'terminal') setFilesOpen(false)
         else if (p === 'browser') setBrowserOpen(false)
+        else if (p === 'artifact') setArtifactsOpen(false)
+        else if (p === 'plan') setPlansOpen(false)
+        else if (p === 'pr') setPrOpen(false)
         return null
       },
     })
@@ -459,7 +474,17 @@ export function CodeView({
   const tilbage = useTilbagespol({ config: config, sessionId, genindlaes: () => sessions.refresh() })
   useEffect(() => { tilbage.glem() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
+  const koe = useSendeKoe({
+    arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o),
+    // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
+    // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
+    steer: async (text) => {
+      const runId = stream.activeRunId
+      if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
+    },
+    kanSteer: !!stream.activeRunId,
+  })
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
@@ -1019,7 +1044,7 @@ export function CodeView({
     </div>
   )
 
-  const skinneAaben = jobsOpen || changesOpen || browserOpen
+  const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen
   // Skinnen lå før INDE i den aktive samtales JSX. Det betød at de tre
   // knapper i headeren var levende at se på og fuldstændig døde at trykke på,
   // så længe samtalen var tom — chat-fladen har altid tegnet sin skinne begge
@@ -1062,6 +1087,9 @@ export function CodeView({
             onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
           />
         )}
+        {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
+        {plansOpen && <PlansPanel config={config} onClose={() => setPlansOpen(false)} />}
+        {prOpen && <PrPanel config={config} onClose={() => setPrOpen(false)} />}
       </div>
   ) : null
 
@@ -1211,7 +1239,10 @@ export function CodeView({
           </div>
           <JumpToLatest synlig={!scroll.atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
           <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
-          <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
+          <KoeChip
+            items={koe.items} busy={stream.status === 'working'} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+            onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
+          />
           {composer}
         </div>
       </div>

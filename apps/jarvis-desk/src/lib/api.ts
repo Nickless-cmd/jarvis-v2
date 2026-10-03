@@ -1124,6 +1124,17 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
   }
 }
 
+/** Mid-flight steer (3/10-2026): injicér en bruger-besked i et KØRENDE run.
+ *  Agent-loopet samler den op ved næste runde-grænse — det afbryder derfor
+ *  ikke turen. Bruges af køens «Send nu». Spejler mobilens `steerRun`;
+ *  serveren svarer {ok, run_id, queued} og 404 hvis runnet ikke er aktivt. */
+export async function steerRun(config: ApiConfig, runId: string, content: string): Promise<void> {
+  await apiFetch(config, `/chat/runs/${encodeURIComponent(runId)}/steer`, {
+    method: 'POST',
+    body: { content },
+  })
+}
+
 /** Hent authentificeret bruger + rolle. Serveren returnerer felterne
  *  user_id / user_display_name / role — normaliseres her til WhoAmI. */
 export async function whoami(config: ApiConfig): Promise<WhoAmI> {

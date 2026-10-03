@@ -292,23 +292,46 @@ def tik(*, uid: str = "") -> dict[str, Any]:
     tekst = "Baggrundsjob færdig:\n" + "\n".join(_beskriv(j) for j in nye)
     if blind:
         tekst += "\n(operatørens maskine kunne ikke ses — flere kan mangle)"
+    # 3/10-2026: udgangen flyttet fra heartbeat-trigger-koeen til
+    # notification_bridge.
+    #
+    # Koeen er skrive-only: `consume_trigger` kaldes kun to steder i hele
+    # koden (heartbeat_delivery.py:78 og :350), begge bag
+    # `if ping_channel != "webchat"`, og begge tager kun HEAD. Maalt samme
+    # dag stod denne besked nummer 1.725 i 1.726 poster — den naaede aldrig
+    # frem. Vagten gjorde alt rigtigt; udgangen fandtes ikke.
+    #
+    # `send_session_notification` er den etablerede vej for en
+    # baggrundsproces der vil sige noget: wakeup_dispatcher.py:243,
+    # run_closure_gate.py:461 og inner_voice_notifier.py:147 bruger den.
+    # Den har daemon-vagt (koeer ved aktiv session, flusher efter turen).
+    # `push=False`: denne vej sendte ikke mobil-push foer, og flytningen maa
+    # ikke tilfoeje en ny push-kilde.
     try:
-        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
 
-        post = set_trigger_for_default_workspace(
-            reason="background-job-done",
-            source="background_job_watch",
-            text=tekst[:2000],
+        levering = send_session_notification(
+            tekst[:2000],
+            source="background-job-watch",
+            push=False,
         )
     except Exception as exc:
-        logger.warning("background_job_watch: kunne ikke laegge followup: %s", exc)
+        logger.warning("background_job_watch: kunne ikke sende besked: %s", exc)
         return {"status": "fejl", "nye": len(nye), "grund": str(exc)[:120]}
-    if post is None:
-        # Funktionen sluger sin EGEN fejl og returnerer None (fx naar
-        # arbejdsrummet ikke kan slaaes op). Uden det her tjek ville vi melde
-        # «sendt» om en besked der aldrig blev lagt — og jobbet er allerede
-        # markeret som rapporteret, saa den ville ikke komme igen.
-        return {"status": "fejl", "nye": len(nye), "grund": "trigger-blev-ikke-lagt"}
+    # "queued" ER en succes — se `_DELIVERY_OK_STATUSES`. Et "queued" laest
+    # som fejl kostede en dobbelt-levering 23/9.
+    if not delivery_succeeded(levering):
+        # Uden det her tjek ville vi melde «sendt» om en besked der aldrig
+        # blev leveret — og jobbet er allerede markeret rapporteret, saa den
+        # ville ikke komme igen.
+        return {
+            "status": "fejl",
+            "nye": len(nye),
+            "grund": f"levering-{levering.get('status') or 'error'}",
+        }
     return {
         "status": "ukendt" if blind else "ok",
         "nye": len(nye),

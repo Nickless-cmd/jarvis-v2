@@ -169,9 +169,16 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         provider: event.message.provider,
         lane: event.message.lane,
         blocks: _sammeRun ? state.blocks : [],
-        provisionalText: '',
-        provisionalBlockIndex: null,
-        provisionalMissingBlockIndex: null,
+        // Samme vagt som `blocks` — og som desk har haft siden 1/10.
+        // Et tomt eller identisk run-id må IKKE rive den LIVE foreløbige
+        // tekst væk. Uden vagten forsvandt den streamende syntese ved en
+        // genforbindelse/replay, og `provisionalBlockIndex = null` gjorde
+        // at blokken ikke længere blev filtreret — så kom teksten igen som
+        // ÉT hug. Det er præcis dumpet `blocks`-vagten blev indført mod;
+        // rettelsen 1/10 ramte kun `blocks` og glemte de tre felter her.
+        provisionalText: _sammeRun ? state.provisionalText : '',
+        provisionalBlockIndex: _sammeRun ? state.provisionalBlockIndex : null,
+        provisionalMissingBlockIndex: _sammeRun ? state.provisionalMissingBlockIndex : null,
         // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
         skillFlade: _sammeRun ? state.skillFlade : undefined,
         workingStep: null,

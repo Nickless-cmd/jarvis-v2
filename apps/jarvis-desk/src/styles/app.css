@@ -3429,20 +3429,17 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Undtagelsen for miljoe-feltet staar i environment-inspector.css, hvor
    .env-panel bor — app.css maa ikke baere dens regler (test i tokens.test.ts). */
 
-/* Headeren goer plads naar skinnen er aabne — «de 4 ikoner ryk naar den
-   vises». Padding frem for et smallere gitter: views'ene kender ikke
-   skallens gitter, og en omlaegning ville flytte samtalen sidelaens hver
-   gang man aabnede en rude. */
-/* HELE fladen goer plads — ikke kun headeren.
-   Foerste udgave paddede kun .chatview-head, og saa laa skinnen oven paa
-   selve samtalen: «Redigerede 2 filer»-kortet var klippet midt over af
-   jobs-ruden. Det saa rigtigt ud i en test og forkert paa skaermen.
+/* SAMTALEN goer plads naar skinnen er aabne — HEADEREN goer IKKE.
+   Bjørn 3/10-2026: «når de åbner flytter de ikonerne i header til venstre,
+   det skal de ikk.. det skal være som når miljø panelet er åben». Headeren er
+   en titellinje OVEN over stakken — skinnen begynder ved 36 px, som er
+   headerens underkant — så ikonerne overlapper intet og skal bare stå stille.
+   Foer fik .chatview-head samme padding som fladerne nedenfor, og så rykkede
+   hvert ikon til venstre hver gang man aabnede en rude.
 
-   KUN .chatview-head: Code-visningen bruger samme klasse til sin header.
-   Foerste udgave havde ogsaa .codeview-head — en klasse der ikke findes i
-   nogen komponent. En regel der peger paa ingenting ser rigtig ud i en diff
-   og goer ingenting paa skaermen. */
-.har-skinne .chatview-head,
+   Fladerne nedenfor skal STADIG goere plads: uden dem laa skinnen oven paa
+   selve samtalen («Redigerede 2 filer»-kortet blev klippet midt over af
+   jobs-ruden). Det saa rigtigt ud i en test og forkert paa skaermen. */
 .har-skinne .transcript,
 .har-skinne .composer-area,
 .har-skinne .chat-empty { padding-right: calc(var(--skinne-bredde) + 16px); }
@@ -4421,11 +4418,11 @@ body.egen-ramme .chatview-head {
   min-height: 36px; padding-top: 0; padding-bottom: 0;
   padding-right: var(--vk-plads);
 }
-/* Med hoejre skinne aaben skal headeren gore plads til BEGGE — den regel
-   ovenfor er mere specifik end .har-skinne og ville ellers vinde over den. */
-body.egen-ramme .har-skinne .chatview-head {
-  padding-right: max(var(--vk-plads), calc(var(--skinne-bredde) + 16px));
-}
+/* 3/10-2026: undtagelsen der gav headeren skinnens bredde naar den var aaben
+   er FJERNET. Headeren goer ikke plads til skinnen laengere (se reglen
+   ovenfor), så undtagelsen havde intet at overskrive. Vinduesknapperne
+   beholder deres plads gennem `body.egen-ramme .chatview-head` ovenfor — den
+   regel roerer ikke skinnen. */
 
 /* PANELERNE I HOEJRE SIDE SKAL OGSAA HOLDE FRI (Bjoern 20/9-2026, fire
    skaermbilleder: «ikoner der overlapper» i alle paneler i hoejre side).

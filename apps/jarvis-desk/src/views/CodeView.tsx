@@ -1045,14 +1045,51 @@ export function CodeView({
   )
 
   const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen
+  // Miljø-feltet og ruderne deler ÉN højre-stak: feltet øverst, ruden under.
+  // Før skjulte hver rude feltet, så de to aldrig stod sammen — Bjørn
+  // 3/10-2026: «så skal de 3 paneler kunne vises under miljøfeltet». Filer og
+  // preview er andre flader og skjuler det stadig, og i den tomme samtale er
+  // der ingen stak at stakke under.
+  const miljoeVises = envOpen && !filesOpen && !panel.open && !isEmpty && !fuldRude
+  const stackAaben = miljoeVises || skinneAaben
   // Skinnen lå før INDE i den aktive samtales JSX. Det betød at de tre
   // knapper i headeren var levende at se på og fuldstændig døde at trykke på,
   // så længe samtalen var tom — chat-fladen har altid tegnet sin skinne begge
   // steder. Nu gør code det samme (Bjørn 21/9-2026).
-  const skinne = config && skinneAaben ? (
+  const skinne = config && stackAaben ? (
       <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
         {/* Traekgrebet — se ChatView for hvorfor det ikke er med i fuld rude. */}
         {!fuldRude && <SkinneGreb />}
+        {miljoeVises && (
+          <EnvironmentPanel
+            config={config}
+            kind={kind}
+            root={effRoot}
+            onVaelgMappe={pickFolder}
+            onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
+            refreshKey={gitRefresh}
+            working={stream.status === 'working' || bgWorking}
+            kontekstTokens={gauge.tokens}
+            totalTokens={envTotalTokens}
+            evidence={environmentEvidence}
+            onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
+            onOpenSource={(source) => {
+              const tool = source.toolUseId
+                ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)
+                : undefined
+              panel.openTarget({ type: 'source', source, tool })
+            }}
+            onOpenTool={(tool) => panel.openTarget({ type: 'tool', tool })}
+            sessionId={sessionId}
+            hasHistory={visibleMessages.length > 0}
+            isOwner={isOwner}
+            onChanged={() => setGitRefresh((n) => n + 1)}
+            gitMissing={gitMissing}
+            installingTool={installingTool}
+            onInstallTool={onInstallTool}
+            komprimerVed={gauge.denominator}
+          />
+        )}
         {changesOpen && (!fuldRude || fuldRude === 'changes') && (
           <ChangesPanel
             config={config}
@@ -1126,38 +1163,6 @@ export function CodeView({
         {headerActive}
         {sideKort}
         {skinne}
-        {config && envOpen && !jobsOpen && !changesOpen && !browserOpen && !filesOpen && !panel.open && (
-          <div className="code-right-stack">
-            <EnvironmentPanel
-              config={config}
-              kind={kind}
-              root={effRoot}
-              onVaelgMappe={pickFolder}
-              onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
-              refreshKey={gitRefresh}
-              working={stream.status === 'working' || bgWorking}
-              kontekstTokens={gauge.tokens}
-              totalTokens={envTotalTokens}
-              evidence={environmentEvidence}
-              onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
-              onOpenSource={(source) => {
-                const tool = source.toolUseId
-                  ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)
-                  : undefined
-                panel.openTarget({ type: 'source', source, tool })
-              }}
-              onOpenTool={(tool) => panel.openTarget({ type: 'tool', tool })}
-              sessionId={sessionId}
-              hasHistory={visibleMessages.length > 0}
-              isOwner={isOwner}
-              onChanged={() => setGitRefresh((n) => n + 1)}
-              gitMissing={gitMissing}
-              installingTool={installingTool}
-              onInstallTool={onInstallTool}
-              komprimerVed={gauge.denominator}
-            />
-          </div>
-        )}
         {trustBanner}
         <div className="transcript-wrap">
         <MessageRail

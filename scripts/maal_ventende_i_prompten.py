@@ -42,14 +42,48 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-# Genbrug frem for at skrive det igen: sektions-splittet og token-tællingen
-# findes allerede og bruges af `measure_prompt_payload`. To kopier af samme
+# Token-tællingen genbruges fra `measure_prompt_payload`. To kopier af samme
 # regel driver fra hinanden, og så måler de to scripts forskelligt uden at
 # nogen kan se hvilket der er sandt.
-from scripts.measure_prompt_payload import (  # noqa: E402
-    count_tokens,
-    split_system_by_sections,
-)
+from scripts.measure_prompt_payload import count_tokens  # noqa: E402
+
+
+# ── Segmenteringen: runtimens EGEN regel, ikke en anden ─────────────────────
+#
+# Første udgave brugte `measure_prompt_payload.split_system_by_sections`, der
+# matcher `[SECTION]`-overskrifter. Målt på CT105 18:57: den fandt NI sektioner
+# i en prompt runtimen selv delte i **60**. De 51 øvrige faldt i `[<preamble>]`
+# — og `[<preamble>]` matcher intet mønster, så rapporten sagde **0 % ventende
+# tilstand** mens `Flaggede side-tasks`, `Siden vi sidst snakkede` og
+# `[OPERATIONAL]` stod lige der i prompten.
+#
+# Det er præcis den fejl `prompt_contract._label_of` blev skrevet for at rette,
+# med sin egen kommentar: «Den fejl er værre end ingen måling: et kort der
+# peger forkert får en til at skære det forkerte sted.» Så brug DENS regel —
+# et stykkes første linje ER dets overskrift — frem for en anden.
+#
+# Runtimen samler delene med "\n\n". At splitte på den samme streng kan dele
+# ét stykke i flere blokke, men hver blok bærer stadig sin egen første linje,
+# så intet bliver navnløst. Og `uklassificeret_top` nedenfor viser hvad der
+# faldt i «andet», så en manglende klassifikation kan SES frem for at gøre
+# andelen tavst for lav.
+def _label_of(tekst: str) -> str:
+    """Identisk med `prompt_contract._label_of` — med vilje samme regel."""
+    head = (tekst or "").lstrip().split("\n", 1)[0].strip()
+    head = head.lstrip("#").strip().rstrip(":").strip()
+    return (head[:48] or "(uden overskrift)").replace(" ", "_")
+
+
+def split_system_by_sections(tekst: str) -> list[tuple[str, int, int]]:
+    """(navn, tegn, tokens) per blok, navngivet som runtimen navngiver sine dele."""
+    if not tekst:
+        return []
+    ud: list[tuple[str, int, int]] = []
+    for blok in tekst.split("\n\n"):
+        if not blok.strip():
+            continue
+        ud.append((_label_of(blok), len(blok), count_tokens(blok)))
+    return ud
 
 # ── Klassifikationen ────────────────────────────────────────────────────────
 #
@@ -126,7 +160,9 @@ def _maal_en_del(navn: str, tekst: str) -> dict:
         # 3,1 % af et 1M-vindue; nævner og cacheadfærd er forskellige.»
         "andel_ventende_pct": round(100.0 * v_toks / i_alt, 1) if i_alt else 0.0,
         "ventende": sorted(ventende, key=lambda p: -int(p["tokens"])),
-        "andet_top": sorted(andet, key=lambda p: -int(p["tokens"]))[:10],
+        # Hvad faldt i «andet», stoerst foerst? Det er her en ventende
+        # sektion skjuler sig naar moenster-saettet er forfaldet.
+        "uklassificeret_top": sorted(andet, key=lambda p: -int(p["tokens"]))[:12],
         "antal_sektioner": len(sektioner),
     }
 
@@ -142,14 +178,20 @@ def _maal_aendring(tekster: list[str]) -> dict:
     if len(tekster) < 2:
         return {"maalt": False, "grund": "kun én bygning — kør med --ture 2 eller mere"}
 
-    import re
+    # SAMME segmentering som ovenfor. Foerste udgave brugte
+    # `[SECTION]`-regexen her og blok-splittet der; de to halvdele af
+    # rapporten maalte altsaa forskellige ting, og aendrings-tallet daekkede
+    # kun 8 af 60 dele.
     per_bygning: list[dict[str, str]] = []
     for t in tekster:
         d: dict[str, str] = {}
-        matches = list(re.finditer(r"^(\[[A-Z][A-Z0-9 _\-/]+\])\s*$", t, re.MULTILINE))
-        for i, m in enumerate(matches):
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(t)
-            d[m.group(1)] = t[m.start():end]
+        for blok in t.split("\n\n"):
+            if blok.strip():
+                # Samme navn to gange i én prompt: behold BEGGE ved at
+                # haenge indholdet sammen, saa en aendring i den anden ikke
+                # skjules af at den foerste var stabil.
+                navn = _label_of(blok)
+                d[navn] = d.get(navn, "") + blok
         per_bygning.append(d)
 
     alle_navne = sorted({n for d in per_bygning for n in d})
@@ -255,10 +297,13 @@ def main() -> int:
               f"i {d['antal_sektioner']} sektioner")
         print(f"    ventende tilstand: {d['tokens_ventende']} tokens "
               f"= {d['andel_ventende_pct']} %")
-        for s in d["ventende"][:8]:
+        for s in d["ventende"][:10]:
             print(f"      {s['tokens']:>6}  {s['sektion']}")
         if not d["ventende"]:
             print("      (ingen)")
+        print(f"    stoerste UKLASSIFICEREDE (tjek om en ventende skjuler sig):")
+        for s in d["uklassificeret_top"][:8]:
+            print(f"      {s['tokens']:>6}  {s['sektion']}")
     if ae.get("maalt"):
         print(f"\n  ÆNDRING over {ae['bygninger']} bygninger: "
               f"{ae['ustabile']}/{ae['sektioner_i_alt']} sektioner skiftede, "

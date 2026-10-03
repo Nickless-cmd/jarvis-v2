@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8338/15882 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8340/15884 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8338/15882 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 701 | 1281 | 54% |
-| `core.services` | 5573 | 10832 | 51% |
+| `core.services` | 5575 | 10834 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1985,7 +1985,7 @@ Generated from source. 8338/15882 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7275)
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L7040)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L602)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L646)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L156)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)

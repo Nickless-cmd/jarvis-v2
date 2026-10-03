@@ -68,6 +68,52 @@ def _besked_fra(record: dict[str, object]) -> str:
     return "Fortsæt hvor du slap."
 
 
+def _samtalen_gik_videre(session_id: str, efter: str) -> bool:
+    """Er brugeren gået videre, siden den her kørsel døde?
+
+    Målt 3/10-2026: `visible-6d1c15e7` døde 13:24:48 uden at svare. Den blev
+    genoptaget 13:43:31 — og en fortsættelse får HELE samtale-historikken med,
+    så den svarede på Bjørns NYESTE besked, som en levende kørsel havde
+    besvaret 26 sekunder før. Fra hans side: ét spørgsmål, to svar.
+
+    `recover_due_once` havde kun ét værn — «kører der noget LIGE NU». Det
+    spørgsmål er sandt i et kort vindue og falsk igen bagefter; det ser ikke at
+    samtalen er gået videre imens posten ventede.
+
+    Reglen: har brugeren skrevet noget NYT i denne samtale efter posten døde,
+    er opgaven forladt. Det er ikke et tab — skrev han noget, findes der et
+    nyere run der bærer hans spørgsmål, og det bliver genoptaget for sig selv
+    hvis det også dør. Vi dropper kun det gamle.
+
+    `datetime()` og ikke en rå streng-sammenligning: den læser både `+00:00` og
+    `Z`, og giver NULL på et tidsstempel den ikke forstår — altså nul rækker,
+    altså «nej, gå videre». Kan vi ikke læse basen, svarer vi også NEJ og
+    genoptager: et run må aldrig dø tavst, så tvivlen falder ud til fordel for
+    at prøve.
+    """
+    sid = str(session_id or "").strip()
+    if not sid or not str(efter or "").strip():
+        return False
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            raekke = conn.execute(
+                """
+                SELECT COUNT(*) FROM chat_messages
+                WHERE session_id = ?
+                  AND role = 'user'
+                  AND datetime(created_at) > datetime(?)
+                """,
+                (sid, str(efter)),
+            ).fetchone()
+    except Exception:
+        logger.warning(
+            "recovery-dispatcher: kunne ikke se om samtalen gik videre (%s) — genoptager",
+            sid[:28], exc_info=True)
+        return False
+    return bool(raekke and int(raekke[0]) > 0)
+
+
 def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     """Tag ÉN forfalden opgave og start dens fortsættelse.
 
@@ -93,6 +139,43 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             task_id, generation, owner=ejer, reason="ingen session",
             retry_after_s=BACKOFF_SECONDS)
         return {"started": 0, "released": 1, "claimed": task_id, "error": "no-session"}
+
+    # ER SAMTALEN GÅET VIDERE? (3/10-2026)
+    #
+    # Kravet her er ikke «kører der noget nu» — det spørgsmål stilles nedenfor,
+    # og det er kun sandt i det korte vindue hvor en tur faktisk kører. Det her
+    # er historisk: skrev brugeren noget, EFTER posten døde?
+    #
+    # Uden det stod posten i kø i 19 minutter mens Bjørn og jeg talte sammen;
+    # da samtalen endelig var fri, blev den genoptaget og svarede på hans
+    # nyeste besked — som var besvaret for længst.
+    #
+    # `settle_terminal` og ikke `release_recovery_claim`: gav vi kravet tilbage,
+    # ville næste tick tage det igen og droppe det igen, i det uendelige.
+    # `cancelled` frem for `failed_terminal`, fordi `failed_terminal` sætter
+    # `notice_pending` — og en forældet opgave skal ikke give Bjørn et varsel.
+    if _samtalen_gik_videre(
+        session_id, str(krav.get("settled_at") or krav.get("interrupted_at") or "")
+    ):
+        try:
+            in_flight_runs.settle_terminal(
+                task_id, status="cancelled",
+                reason="samtalen gik videre efter afbrydelsen",
+                expected_generation=generation, expected_owner=ejer)
+        except Exception:
+            # Kunne vi ikke lukke den, må kravet ikke blive hængende hos os.
+            logger.warning("recovery-dispatcher: kunne ikke lukke forældet opgave "
+                           "%s — giver kravet tilbage", task_id[:24], exc_info=True)
+            in_flight_runs.release_recovery_claim(
+                task_id, generation, owner=ejer, reason="kunne ikke lukke forældet opgave",
+                retry_after_s=BACKOFF_SECONDS)
+            return {"started": 0, "released": 1, "claimed": task_id,
+                    "error": "settle-fejlede"}
+        logger.info(
+            "recovery-dispatcher: %s droppet — brugeren skrev nyt i %s efter kørslen døde",
+            task_id[:24], session_id[:28])
+        return {"started": 0, "released": 1, "claimed": task_id,
+                "error": "samtalen-gik-videre"}
 
     besked = _besked_fra(krav)
     # SIDSTE SLUTRUNDE (opgave 3/4). Er genoptagelserne brugt op, beder

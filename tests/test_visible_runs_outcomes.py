@@ -193,3 +193,120 @@ def test_tekstbloggene_normaliseres_ogsaa():
     ])
     assert "\n| a | b |\n| c | d |" in ud[0]["text"]
     assert ud[1] == {"type": "tool_use", "id": "t1", "name": "bash", "input": {}}
+
+
+# ── Race-vinduet ved afslutning (3/10-2026) ─────────────────────────────────
+# `set_last_visible_run_outcome` laegger DB-projektionen i en daemon-traad.
+# Men `run_er_terminal` — som nedluknings-sweepen spoerger — laeser netop
+# `visible_runs`-raekken. Stod den stadig `running` med tom `finished_at` da
+# sweepen spoergte, blev et run der HAVDE svaret stemplet `interrupted`.
+# Maalt 3/10-2026: fire af dagens syv interrupted-stempler sad paa ture der
+# havde svaret, og svaret kom paa SAMME sekund som stemplet.
+#
+# Fixet er ét synkront UPDATE foer traaden starter. Testene her laaser begge
+# sider: raekken SKAL staa afsluttet naar funktionen vender tilbage — ogsaa
+# naar traaden aldrig naar at koere — og et rigtigt udfald maa aldrig
+# overskrives.
+
+
+def _indsæt_koerende(run_id: str, *, status: str = "running",
+                     finished_at: str = "") -> None:
+    from core.runtime.db import connect
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO visible_runs (run_id, lane, provider, model, status,"
+            " finished_at) VALUES (?,?,?,?,?,?)",
+            (run_id, "visible", "deepseek", "deepseek-v4-flash", status, finished_at))
+        conn.commit()
+
+
+def _laes_raekke(run_id: str):
+    from core.runtime.db import connect
+    with connect() as conn:
+        return conn.execute(
+            "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
+            (run_id,)).fetchone()
+
+
+def _vis_run(run_id: str):
+    import core.services.visible_runs as vr
+    return vr.VisibleRun(run_id=run_id, lane="visible", provider="deepseek",
+                         model="deepseek-v4-flash", user_message="hej",
+                         session_id="chat-race")
+
+
+@pytest.fixture
+def uden_traad(monkeypatch):
+    """Traaden naar ALDRIG at koere — den vaerste udgave af raceren."""
+    monkeypatch.setattr(
+        vro, "_persist_visible_run_outcome", lambda *a, **kw: None)
+    return None
+
+
+class TestAfslutningSkrivesSynkront:
+    def test_raekken_staar_afsluttet_selv_om_traaden_aldrig_koerer(
+            self, isolated_runtime, uden_traad) -> None:
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed",
+            text_preview="Svar sendt.")
+        status, finished = _laes_raekke("visible-race")
+        assert status == "completed"
+        assert finished, "finished_at staar stadig tom — race-vinduet er aabent"
+
+    def test_sweepen_ser_den_som_terminal(self, isolated_runtime, uden_traad) -> None:
+        """Det er DENNE egenskab sweepen spoerger om. Er den True, kalder
+        sweepen `mark_completed` og stempler aldrig turen som afbrudt."""
+        from core.services.visible_runs_outcomes import (
+            run_er_terminal, set_last_visible_run_outcome,
+        )
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        assert run_er_terminal("visible-race") is True
+
+    def test_interrupted_stemplet_kan_ikke_laengere_ramme_den(
+            self, isolated_runtime, uden_traad) -> None:
+        from core.services.visible_runs_outcomes import (
+            set_last_visible_run_outcome, stamp_visible_run_interrupted,
+        )
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        assert stamp_visible_run_interrupted(
+            "visible-race", reason="api-nedlukning") is False
+        assert _laes_raekke("visible-race")[0] == "completed"
+
+    def test_et_afsluttet_run_overskrives_ikke(
+            self, isolated_runtime, uden_traad) -> None:
+        """En raekke der ALLEREDE har et udfald maa ikke roeres — heller ikke
+        af et senere, fejlagtigt kald."""
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        _indsæt_koerende("visible-race", status="failed",
+                         finished_at="2026-10-03T12:00:00+00:00")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        status, finished = _laes_raekke("visible-race")
+        assert status == "failed"
+        assert finished == "2026-10-03T12:00:00+00:00"
+
+    def test_uden_raekke_kaster_det_ikke(self, isolated_runtime, uden_traad) -> None:
+        """Start-raekken skrives af `persist_visible_run_start`, men en tur kan
+        naa hertil uden den. Et UPDATE der rammer nul raekker er ikke en fejl."""
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        set_last_visible_run_outcome(
+            _vis_run("visible-findes-ikke"), status="completed",
+            text_preview="Svar.")
+        assert _laes_raekke("visible-findes-ikke") is None
+
+    def test_db_fejl_draeber_ikke_svaret(
+            self, isolated_runtime, uden_traad, monkeypatch) -> None:
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+
+        def _braek():
+            raise RuntimeError("databasen svarer ikke")
+
+        monkeypatch.setattr(vro, "connect", _braek)
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")

@@ -342,6 +342,7 @@ _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
 | function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L52) |
 | function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L61) |
 | function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L79) |
+| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L96) |
 
 ## `core/services/session_persistence_flag.py`
 _Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._

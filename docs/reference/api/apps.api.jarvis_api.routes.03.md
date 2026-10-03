@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/oauth.py`
+_OAuth connect-flow til plugin-connectors (16. jun 2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_close_page` | `(ok, msg)` | — | [src](../../../apps/api/jarvis_api/routes/oauth.py#L17) |
+| function | `oauth_start` | `(provider)` | Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L32) |
+| function | `oauth_callback` | `(provider, code=…, state=…, error=…)` | Browser-callback. Verificér state → byt code → gem token krypteret pr. bruger. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L53) |
+
 ## `apps/api/jarvis_api/routes/openai_auth.py`
 
 | Kind | Name | Signature | Summary | Source |

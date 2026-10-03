@@ -277,9 +277,9 @@
 | GET | `/chat/tree` | dict | chat |
 | GET | `/chat/visible-providers` | dict | chat |
 | POST | `/chat/warm` | dict | chat_stream_v2 |
-| GET | `/chat/workspace-trust` | dict | chat |
-| POST | `/chat/workspace-trust` | dict | chat |
-| GET | `/chat/workspace-trust/list` | dict | chat |
+| GET | `/chat/workspace-trust` | dict | chat_workspace_trust |
+| POST | `/chat/workspace-trust` | dict | chat_workspace_trust |
+| GET | `/chat/workspace-trust/list` | dict | chat_workspace_trust |
 | GET | `/companion/presence` | dict | companion |
 | GET | `/companion/senses` | dict | companion |
 | GET | `/companion/thoughts` | dict | companion |

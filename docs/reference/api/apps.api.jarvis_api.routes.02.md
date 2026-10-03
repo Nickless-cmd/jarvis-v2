@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/cheap_balancer.py`
+_Mission Control endpoints for cheap_lane_balancer telemetry + controls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_state` | `()` | Return full snapshot: pool, slot states, recent calls. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L12) |
+| function | `reset` | `(slot_id)` | Clear breaker, cooldown, and consecutive_failures for a slot. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L19) |
+| function | `disable` | `(slot_id)` | Force a slot's weight to 0 (excluded from selection until enabled). | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L26) |
+| function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
+| function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
+| function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
+| function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
+| function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
+
 ## `apps/api/jarvis_api/routes/cheap_lane_control.py`
 _Owner-only read surface for the Cheap Lane control center._
 
@@ -713,13 +727,4 @@ _Push-valg per slags. Scoper til den auth'ede bruger._
 | function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
 | function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
 | function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
-
-## `apps/api/jarvis_api/routes/oauth.py`
-_OAuth connect-flow til plugin-connectors (16. jun 2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_close_page` | `(ok, msg)` | — | [src](../../../apps/api/jarvis_api/routes/oauth.py#L17) |
-| function | `oauth_start` | `(provider)` | Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L32) |
-| function | `oauth_callback` | `(provider, code=…, state=…, error=…)` | Browser-callback. Verificér state → byt code → gem token krypteret pr. bruger. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L53) |
 

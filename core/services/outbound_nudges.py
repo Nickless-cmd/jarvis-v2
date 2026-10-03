@@ -202,6 +202,15 @@ def route_for(*, source: str, kind: str) -> str:
         return "midway"
     if src in _TELEMETRY_SOURCES or knd in _TELEMETRY_KINDS:
         return "telemetry"
+    # Den kanoniske liste bor nu i `proactive_candidates` (værnet ved indgangen).
+    # Her læses den SAMME regel, så ruten og `push_nudge`s kvittering ikke siger
+    # «bridge» om noget indgangen alligevel afviser som telemetri.
+    try:
+        from core.services.proactive_candidates import er_telemetri
+        if er_telemetri(src, knd):
+            return "telemetry"
+    except ImportError:  # kan ikke importeres → den smallere regel ovenfor gælder
+        return "bridge"
     return "bridge"
 
 

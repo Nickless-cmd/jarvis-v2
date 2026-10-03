@@ -49,6 +49,61 @@ _STOP = frozenset({
 _SHOWN: dict[str, tuple[float, list[str]]] = {}
 _SHOWN_TTL_S = 900.0
 
+#: Kilder der er INTERN telemetri — ikke beskeder til Bjørn. Målt 3/10-2026:
+#: `wakeup_dispatcher` (179) og `heartbeat` (64) udgjorde 243 af 311 rækker
+#: (78 %) i køen. Princippet stod allerede i docstringen øverst («telemetry
+#: ("run finished") never becomes a candidate — it is an event»); det var bare
+#: ikke håndhævet for disse to. Værnet ligger her ved INDGANGEN af samme grund
+#: som `thought_leak_guard`: ét sted dækker alle seks kaldesteder — også dem
+#: der kalder `add_candidate` udenom `outbound_nudges`' router.
+_TELEMETRI_KILDER = frozenset({"wakeup_dispatcher", "heartbeat"})
+_TELEMETRI_KINDS = frozenset({"heartbeat_ping"})
+
+#: Et spørgsmål der ER stillet og ikke besvaret skal ikke hænge for evigt.
+#: Målt 3/10-2026: 155 `surfaced` + 118 `mentioned` — den ældste fra 4/9,
+#: 29 dage gammel — og `expire_stale` ramte kun `pending`. Et ubesvaret
+#: spørgsmål forblev altså «åbent» i al evighed.
+_STILLET_EXPIRE_DAYS = 14
+
+#: Loft over hvor mange ÅBNE kandidater der må ligge pr. `kind`. Målt samme dag:
+#: 37 åbne `rule_proposal:request` — de samme tre rutiner stillet igen og igen i
+#: ny ordlyd. Ord-sammenligning kan ikke fange dansk↔engelsk («Send morning
+#: briefing to Michelle» vs «Send dagligt morgenvejr til Mikkel» deler ét ord),
+#: så loftet er det deterministiske sikkerhedsnet: ét tal, én regel, ingen
+#: semantik.
+_MAX_AABNE_PER_KIND = 3
+
+#: Hvor ens to kærner skal være for at være «samme spørgsmål». Ord-Jaccard.
+_SAMME_KERNE = 0.5
+
+#: Den underliggende anmodning i et regel-forslag, ikke skabelonen omkring.
+_CITERET_RE = re.compile(r"«([^»]{4,300})»")
+
+
+def er_telemetri(source: str, kind: str = "") -> bool:
+    """Er dette intern telemetri frem for en besked Bjørn skal se?"""
+    return str(source or "") in _TELEMETRI_KILDER or str(kind or "") in _TELEMETRI_KINDS
+
+
+def _kerne(text: str) -> str:
+    """Anmodningen selv — ikke skabelonen den er pakket ind i.
+
+    Et regel-forslag har formen «Du har bedt om det samme N gange …:
+    «<anmodning>». …». Sammenligner man HELE teksten, deler to forskellige
+    rutiner skabelonens ord og ligner hinanden; sammenligner man kun den
+    citerede anmodning, er de to forskellige.
+    """
+    m = _CITERET_RE.search(str(text or ""))
+    return m.group(1) if m else str(text or "")
+
+
+def _kerne_similarity(a: str, b: str) -> float:
+    """Jaccard mellem to kærners ord (0-1)."""
+    ta, tb = _terms(a), _terms(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -119,6 +174,11 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
     body = " ".join(str(text or "").split()).strip()
     if len(body) < 8:
         return {"status": "skipped", "reason": "empty"}
+    if er_telemetri(source, kind):
+        # Intern telemetri er et EVENT, ikke en besked. Uden dette stod
+        # self-wakeups og heartbeat-pings side om side med rigtige spørgsmål
+        # til Bjørn — med samme prioritet og samme hentning.
+        return {"status": "skipped", "reason": "telemetry"}
     # Laekage-vaern ved INDGANGEN (8/9-2026). Uden det stod den indre daemons
     # telemetri og generatorens egen output-kontrakt som Jarvis' tanker i den
     # proaktive kanal. Her frem for ved visningen, saa ét vaern daekker alle
@@ -143,6 +203,27 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         ).fetchone()
         if dup is not None:
             return {"status": "duplicate", "candidate_id": dup[0]}
+        # Samme spørgsmål i NY ordlyd? Skabelonen ændrer sig (tal, ordvalg), så
+        # `norm_text` alene fanger den ikke — målt 3/10: «natlig sanseregistrering»
+        # blev stillet 6 gange og morgenbriefen 5, hver med sit eget norm_text.
+        # Her sammenlignes KÆRNEN (den citerede anmodning) i stedet for hele
+        # spørgsmålet, og UDEN 24-timers-vinduet: et åbent forslag blokerer indtil
+        # det er afsluttet eller udløbet.
+        aabne = conn.execute(
+            "SELECT candidate_id, text FROM proactive_candidates "
+            "WHERE kind = ? AND status IN ('pending', 'surfaced', 'mentioned') "
+            "ORDER BY created_at DESC LIMIT 200",
+            (str(kind or "")[:50],),
+        ).fetchall()
+        kerne = _kerne(body)
+        for row in aabne:
+            if _kerne_similarity(kerne, _kerne(str(row[1] or ""))) >= _SAMME_KERNE:
+                return {"status": "duplicate", "candidate_id": row[0]}
+        if len(aabne) >= _MAX_AABNE_PER_KIND:
+            # Sikkerhedsnettet når ord-sammenligningen ikke rækker: dansk↔engelsk
+            # deler næsten ingen ord, så «samme rutine, ny formulering» slipper
+            # igennem kærne-tjekket. Tre ubesvarede er nok til at han ikke svarer.
+            return {"status": "skipped", "reason": "kind-cap"}
         cid = f"pc-{uuid4().hex[:12]}"
         conn.execute(
             "INSERT INTO proactive_candidates (candidate_id, source, kind, text, norm_text, priority, "
@@ -199,17 +280,25 @@ def mark(candidate_ids: list[str], status: str, *, run_id: str = "") -> int:
         return int(cur.rowcount or 0)
 
 
-def expire_stale(*, days: int = _EXPIRE_DAYS) -> int:
-    cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+def expire_stale(*, days: int = _EXPIRE_DAYS, aabne_days: int = _STILLET_EXPIRE_DAYS) -> int:
+    """Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned`
+    efter `aabne_days` — de er allerede VIST, men blev aldrig afsluttet."""
     now = _now_iso()
     with connect() as conn:
         ensure_table(conn)
         cur = conn.execute(
             "UPDATE proactive_candidates SET status='expired', updated_at=? WHERE status='pending' AND created_at < ?",
-            (now, cutoff),
+            (now, (datetime.now(UTC) - timedelta(days=days)).isoformat()),
         )
+        n = int(cur.rowcount or 0)
+        cur = conn.execute(
+            "UPDATE proactive_candidates SET status='expired', updated_at=? "
+            "WHERE status IN ('surfaced', 'mentioned') AND created_at < ?",
+            (now, (datetime.now(UTC) - timedelta(days=aabne_days)).isoformat()),
+        )
+        n += int(cur.rowcount or 0)
         conn.commit()
-        return int(cur.rowcount or 0)
+        return n
 
 
 def counts() -> dict[str, int]:

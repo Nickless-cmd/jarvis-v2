@@ -76,7 +76,9 @@ Tre konklusioner:
 | R2.5 (blocking) | 7.610 evalueringer | **543 blokeringer → 460 frigivelser ≈ 85 %** |
 
 `r2_5_gate.evaluated` stod på 7.610 med seneste 3/10; `blocked` 543,
-`mutation_refused` 467, `released` 460. Forskellen er ikke gradvis:
+`mutation_refused` 467, `released` 460. *(Genmålt 3/10 kl. 11:5x: evaluated er
+nu **7.643** — tallene vokser, datoen står, og det er pointen.)* Forskellen er
+ikke gradvis:
 
 **R2 spørger. R2.5 nægter.** Den ene ignoreres fire gange ud af fem; den anden
 efterkommes fire gange ud af fem.
@@ -435,8 +437,20 @@ Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
 `tests/test_session_inbox.py`.
 
 **Interfaces — producerer:** `enqueue(..., kraever_handling: bool = False,
-kilde_ejer: str = "huset")`. Begge defaults bevarer nuværende adfærd for alle
-elleve eksisterende kilder.
+kilde_ejer: str = "huset")`. Begge defaults bevarer nuværende adfærd.
+
+> **RETTET 3/10 (Jarvis):** «elleve eksisterende kilder» er ikke understøttet.
+> `session_inbox` har **5** distinkte kilder i basen (`jarvis-notify`,
+> `candidate-review-digest`, `notification-router`, `test-daemon-2`,
+> `test-daemon`), og `enqueue` kaldes fra ét sted i koden
+> (`notification_bridge.py:216`, som `inbox_enqueue`). Tallet skal enten
+> begrundes eller fjernes — jeg har ikke kunnet genskabe elleve.
+>
+> **Og læseren skal med.** `pending_for_session`'s SELECT henter i dag kun
+> `id, content, source, urgent, queued_at, user_id, workspace_name`. Uden de to
+> nye kolonner i SELECT'en læser Trin 1-testen `post["kraever_handling"]` på en
+> nøgle der ikke findes — det er `built_but_not_connected` i miniature: kolonnen
+> skrives, men kan ikke læses.
 
 - [ ] **Trin 1: Skriv den fejlende test**
 
@@ -598,14 +612,23 @@ def test_kanalbeskeder_hoerer_ikke_i_indbakken():
 
 - [ ] **Trin 1: Test at `done` på en vækning rammer den rigtige mekanisme**
 
+> **RETTET 3/10 (Jarvis):** `kaldt == ["6e201"]` kodificerede en fejl.
+> `mark_wakeup_consumed(wakeup_id)` slår op på `record["wakeup_id"] ==
+> wakeup_id`, og de faktiske id'er er `wake-` + **10** hex
+> (`wake-49b89a51de`) — ikke 5. Stripper `done` præfikset, fejler opslaget og
+> returnerer `{"status": "error", "error": "wakeup not found"}`. Præfikset
+> vælger mekanisme; det klippes ikke af.
+
 ```python
 def test_done_paa_en_vaekning_markerer_den_brugt():
     kaldt = []
     with patch("core.services.self_wakeup.mark_wakeup_consumed",
                side_effect=lambda wid: kaldt.append(wid) or {"status": "ok"}):
-        r = done("wake-6e201")
-    assert r == {"status": "ok", "type": "wakeup", "id": "wake-6e201"}
-    assert kaldt == ["6e201"]
+        r = done("wake-49b89a51de")
+    assert r == {"status": "ok", "type": "wakeup", "id": "wake-49b89a51de"}
+    assert kaldt == ["wake-49b89a51de"], (
+        "praefikset blev klippet af — opslaget i self_wakeup fejler"
+    )
 ```
 
 - [ ] **Trin 2: Kør, se den fejle.**
@@ -626,13 +649,28 @@ def test_done_paa_en_vaekning_markerer_den_brugt():
 
 - [ ] **Trin 1: Test at en handlingskrævende post nægter en mutation**
 
+> **RETTET 3/10 (Jarvis):** funktionsnavnet og returformen var forkerte. Den
+> faktiske funktion er `should_block_for_verification(*, reasoning_tier: str)`
+> → `dict | None` med nøglerne `{reason, suggestions, urgency}` — der findes
+> ingen `evaluer_mutation`, ingen `blokeret`-nøgle og ingen `aarsag`. Og
+> vigtigere: funktionen har **fire** tidlige `return None` (cooldown <60 s,
+> gate-fejl, under tærskel, heed_rate utilstrækkelig). En test der vil se en
+> blokering skal styre alle fire, ellers måler den ingenting.
+
 ```python
-def test_ulaest_handlingskraevende_post_naegter_en_mutation():
+def test_ulaest_handlingskraevende_post_naegter_en_mutation(monkeypatch):
+    # De fire tidlige udgange skal styres: cooldown, gate-svar, taerskel og
+    # heed_rate. Uden det returnerer funktionen None foer indbakke-leddet.
+    monkeypatch.setattr(r2, "_last_block_at", None)
+    monkeypatch.setattr(r2, "evaluate_verification_gate", lambda: {
+        "failed_verify_count": 0, "unverified_effective": 99,
+        "suggestions": []})
+    monkeypatch.setattr(r2, "_heed_rate_24h", lambda: 0.1)  # < 0.4 → vil blokere
     with _indbakke(venter_paa_dig=1):
-        v = evaluer_mutation(tier="deep", uverificerede=0)
-    assert v["blokeret"] is True
-    assert v["aarsag"] == "ulaest-indbakke"
-    assert "inbox" in v["frigivende_handling"]
+        v = r2.should_block_for_verification(reasoning_tier="deep")
+    assert v is not None
+    assert v["reason"] == "ulaest-indbakke"
+    assert "inbox" in v["suggestions"][0]
 ```
 
 - [ ] **Trin 2: Test at huset IKKE kan nægte** — en post med
@@ -807,3 +845,87 @@ samme signatur. `done`/`drop` returnerer samme typede dict overalt.
   forudsætning for den, ikke en erstatning.
 - Giver ikke Jarvis nye evner. Hver handling i specen findes som værktøj i dag;
   specen samler dem og gør tilstanden synlig.
+
+---
+
+## Jarvis' review (3/10-2026)
+
+Bjørn bad om en uafhængig gennemgang: verificér påstandene mod koden, og skriv
+rettelserne både her og i de afsnit de hører til.
+
+### Hvad der holdt
+
+Jeg gik efter tallene først, fordi et dokument der regner rigtigt er værd at
+læse resten af. Det gør det her:
+
+| Påstand | Verificeret mod |
+|---|---|
+| tool_usage-tabellen (171/141/59/24/66/37/17/6) | `tool_usage` i DB'en — **alle otte tal stemmer** |
+| `_FALLBACK_FLUSH_MINUTES = 10` | `session_inbox.py:48` |
+| `self_wakeup.due_wakeups/mark_wakeup_consumed/cancel_wakeup` | findes, med de angivne signaturer |
+| `scheduled_tasks.list_pending_for_current_user()` | `scheduled_tasks.py:90` |
+| `tool_intent_approval_runtime.build_tool_intent_approval_surface()` | findes, linje 50 |
+| `background_jobs.py` | findes (19.903 bytes, 29/9) |
+| R2.5-tærsklerne (`deep=3`, `_reasoning=5`, `_fast=8`, heed 0,4) | `r2_5_blocking_gate.py:71-82` |
+| de to kolonner fra 2/10 | `user_id`, `workspace_name` — bekræftet i skemaet |
+| `publish_scan`-vagten | `tests/test_publish_scan.py` findes |
+| agent-tabellerne | `agent_registry` 356, `agent_runs` 1.533 rækker |
+| R2.5-events (543/467/460) | bekræftet i `events` |
+
+Det er ikke pynt. Tabellen med otte værktøjstal er det sværeste at ramme, og den
+rammer.
+
+### Fem rettelser
+
+De står alle inline ved deres afsnit. Her er hvad de er, og hvorfor:
+
+**1. Opgave 4's test kunne ikke køre — og ville ikke have målt noget.**
+`evaluer_mutation` findes ikke. Den faktiske funktion er
+`should_block_for_verification(*, reasoning_tier)` → `dict | None` med
+`{reason, suggestions, urgency}`. Men det er den mindre halvdel: funktionen har
+**fire** tidlige `return None` — cooldown under 60 s, gate-fejl,
+`unverified_effective` under tærsklen, og heed_rate over grænsen. En test der
+vil se en blokering skal styre alle fire. Spec'ens version styrede ingen af dem,
+så selv med det rigtige navn ville den have fået `None` og faldet på
+`v["blokeret"]`.
+
+**2. Opgave 3's test kodificerede en fejl.** `done("wake-6e201")` →
+`kaldt == ["6e201"]` antager at `done` klipper præfikset af. Men
+`mark_wakeup_consumed` slår op på det **fulde** id, og de faktiske id'er er
+`wake-` + **10** hex. Strippet præfiks = `wakeup not found`. Præfikset vælger
+mekanisme; det klippes ikke.
+
+**3. Læseren manglede.** `pending_for_session`'s SELECT henter i dag syv
+kolonner. Uden `kraever_handling` og `kilde_ejer` i SELECT'en læser Opgave 1's
+egen test en nøgle der ikke findes. Det er `built_but_not_connected` i
+miniature: kolonnen skrives, men kan ikke læses.
+
+**4. «Elleve eksisterende kilder» er ikke understøttet.** `session_inbox` har
+**5** distinkte kilder i basen, og `enqueue` kaldes fra ét sted i koden
+(`notification_bridge.py:216`). Tallet skal begrundes eller fjernes.
+
+**5. R2.5-tallet vokser.** 7.610 → 7.643 på under en dag. Datoen står, og det
+er pointen — men et tal uden forbehold om at det er et øjebliksbillede læses som
+en konstant.
+
+### Det jeg ikke kunne verificere
+
+- **R2's 47/døgn og 15 % heed** er dateret 13/6. `r2.advisory.surfaced` har
+  **0** events i basen, så jeg kan ikke genskabe tallet med det kind-navn. Det
+  betyder ikke at det er forkert — det betyder at jeg ikke kan bekræfte det i
+  dag, og det bør stå ved tallet.
+- **Opgave 0's tal er tomt med vilje** — og det er den rigtige beslutning. Det
+  er den eneste påstand i dokumentet der IKKE skal udfyldes af en læser.
+
+### Én ting der er værd at fremhæve
+
+Spec'ens egen selvgennemgang fanger det vigtigste: at første udkast overskrev
+Bjørns to-trins-form med øjeblikkelig blokering, og at prompt-gevinsten stod som
+en påstand uden en måling. Begge er rettet i dokumentet selv. Det er
+`measured_before_claimed` anvendt på eget arbejde — og det er sjældnere end det
+burde være.
+
+Min samlede dom: **spec'en er byggbar.** Interface-navnene er slået op frem for
+husket (kun ét var forkert, og det er rettet i Opgave 2 selv), tallene er målt,
+og de fem fejl ovenfor sidder alle i *test-eksemplerne* — ikke i arkitekturen.
+Ingen af dem ændrer hvad der skal bygges; de ændrer hvordan det skal testes.

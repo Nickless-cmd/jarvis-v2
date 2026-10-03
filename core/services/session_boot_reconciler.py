@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Final
 
 from core.services import in_flight_runs
 
@@ -60,6 +60,28 @@ def _container_start(nu: datetime | None = None) -> datetime | None:
         return (nu or datetime.now(UTC)) - timedelta(seconds=sekunder)
     except Exception:
         return None
+
+
+#: Hvor gammel en `running`-raekke skal vaere, naar beviset ogsaa er at den
+#: ALDRIG har kostet noget.
+#:
+#: Maalt paa CT105 3/10-2026, og maalt i BEGGE baner — den synlige maaling alene
+#: ville ikke daekke de autonome raekker grenen ogsaa rammer:
+#:   * 64 af 64 gennemfoerte SYNLIGE runs (seks timer) havde en `costs`-raekke.
+#:   * 20 af 20 gennemfoerte AUTONOME runs (et doegn) havde en. Den eneste
+#:     autonome uden var `failed` — den kom aldrig til sit foerste kald.
+#:
+#: Tallet der saetter graensen er dog ikke de 100 %, men VENTETIDEN paa den
+#: foerste omkostning: median 45 s, og det laengste maalte 291 s. Tredive
+#: minutter er altsaa seks gange det vaerste observerede — margin nok til at en
+#: langsom opstart ikke forveksles med en raekke der aldrig kom i gang.
+_UDEN_OMKOSTNING_MINUTTER: Final[float] = 30.0
+
+
+def _uden_omkostning_graense(nu: datetime | None = None) -> datetime:
+    """Graensen for den tredje gren — se `_UDEN_OMKOSTNING_MINUTTER`."""
+    n = nu or datetime.now(UTC)
+    return n - timedelta(minutes=_UDEN_OMKOSTNING_MINUTTER)
 
 
 def _drift_graense(nu: datetime | None = None) -> datetime:
@@ -253,8 +275,26 @@ def _ryd_visible_drift(enforced: bool) -> int:
                 " OR ((status = 'running' OR status = 'recovering')"
                 "     AND (finished_at IS NULL OR finished_at = '')"
                 "     AND started_at < ?)"
+                # TREDJE GREN (3/10-2026): et run der ALDRIG har kostet noget.
+                #
+                # De seks timer ovenfor er sat fordi fravaer fra `in_flight_runs`
+                # er et svagt bevis. Men en raekke uden ÉN eneste `costs`-post
+                # baerer sit eget, uafhaengige bevis: den har aldrig lavet et
+                # model-kald. Maalt samme dag: 64 af 64 gennemfoerte runs havde
+                # omkostninger; zombien `visible-5c75993a` havde nul, og stod
+                # `running` i 61 minutter mens samtalen fortsatte.
+                #
+                # To uafhaengige fravaer er staerkere end ét, og derfor maa
+                # alderen vaere kortere. Det betyder noget i praksis: en saadan
+                # raekke blokerer genstarts-vagten fra foerste minut, saa seks
+                # timer er seks timer uden deploy.
+                " OR ((status = 'running' OR status = 'recovering')"
+                "     AND (finished_at IS NULL OR finished_at = '')"
+                "     AND started_at < ?"
+                "     AND NOT EXISTS ("
+                "         SELECT 1 FROM costs c WHERE c.run_id = visible_runs.run_id))"
                 ") LIMIT 200",
-                (graense,),
+                (graense, _uden_omkostning_graense().isoformat()),
             ).fetchall()
     except Exception as exc:
         logger.warning("session_boot_reconciler: visible-drift-opslag fejlede: %s", exc)

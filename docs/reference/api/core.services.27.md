@@ -254,6 +254,22 @@ _Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
 | function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
 | function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
 
+## `core/services/visible_run_guard_notices.py`
+_Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `forbindelsen_glippede` | `()` | P6 graceful-degrade: forbindelsen svigtede gentagne gange. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L85) |
+| function | `loekken_tvang_en_afslutning` | `()` | Løkken tvang en afslutning med et ventende tool-intent. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L94) |
+| function | `tool_call_loekke` | `(runder)` | Flere runder med værktøjskald og intet synligt svar. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L103) |
+| function | `ingen_tekst_i_runder` | `(runder)` | Runder uden tekst overhovedet — KLASSE 1, den holder runnet i gang. | [src](../../../core/services/visible_run_guard_notices.py#L112) |
+| function | `tomt_loefte_advarsel` | `()` | Advarslen til NÆSTE runde om et tomt løfte. Klasse 2 — MÆRKET. | [src](../../../core/services/visible_run_guard_notices.py#L128) |
+| function | `systemmaerket` | `(tekst)` | Mærk en vilkårlig runtime-besked som fra systemet. Klasse 1 og 2. | [src](../../../core/services/visible_run_guard_notices.py#L151) |
+| function | `er_menneske_note` | `(tekst)` | Er dette en klasse-3-note — altså til Bjørn og ikke til modellen? | [src](../../../core/services/visible_run_guard_notices.py#L183) |
+| function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
+| function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
+| function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
+
 ## `core/services/visible_run_interruption.py`
 _Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
 
@@ -388,31 +404,31 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1306) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1312) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1333) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6538) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6610) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6643) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6650) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6654) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6680) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6711) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6723) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6767) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6825) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6899) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6952) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6990) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6994) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7005) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7019) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7042) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7074) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7101) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7132) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7184) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7219) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7223) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7240) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7290) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6540) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6612) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6645) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6652) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6656) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6682) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6713) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6725) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6769) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6827) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6901) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6954) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6992) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6996) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7007) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7021) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7044) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7076) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7103) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7134) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7186) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7221) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7225) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7242) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7292) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -575,15 +591,4 @@ _Fjern runtime'ens interne markører fra den tekst brugeren ser._
 | function | `fjern_interne_markoerer_stroem` | `(buffer)` | (klar-til-udsendelse, hale-der-skal-holdes-tilbage). | [src](../../../core/services/visible_text_scrub.py#L144) |
 | function | `_klap_tomrum_sammen` | `(tekst)` | Tre eller flere linjeskift bliver til ét afsnitsbrud. | [src](../../../core/services/visible_text_scrub.py#L191) |
 | function | `_muligt_praefiks` | `(buffer)` | Den slut-stump der kunne være starten på en markør — ellers «». | [src](../../../core/services/visible_text_scrub.py#L202) |
-
-## `core/services/visible_thinking_trace.py`
-_Hvor længe tænkte han? — målt ét sted, læst ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_evict_if_needed` | `()` | Hold kortet lille. Ældste post ryger — kaldes altid under _lock. | [src](../../../core/services/visible_thinking_trace.py#L31) |
-| function | `mark_start` | `(run_id)` | Første tænke-blok i turen. Senere kald ignoreres. | [src](../../../core/services/visible_thinking_trace.py#L38) |
-| function | `mark_end` | `(run_id)` | Seneste tænke-blok lukkede. Sidste lukning vinder — se mark_start. | [src](../../../core/services/visible_thinking_trace.py#L54) |
-| function | `take_seconds` | `(run_id)` | Varigheden i sekunder, og RYD posten. None hvis der ikke blev tænkt. | [src](../../../core/services/visible_thinking_trace.py#L66) |
-| function | `peek_seconds` | `(run_id)` | Som take_seconds, men uden at rydde. Til observation/test. | [src](../../../core/services/visible_thinking_trace.py#L90) |
 

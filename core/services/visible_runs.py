@@ -4257,6 +4257,7 @@ async def _stream_visible_run(
                                 from core.services.skill_gate_guard import (
                                     build_nudge as _sg_nudge,
                                     is_unanswered_skill_match as _sg_unanswered,
+                                    samle_kaldte_navne as _sg_navne,
                                     skill_gate_guard_enabled as _sg_enabled,
                                 )
                                 from core.services.skill_relevance_surface import (
@@ -4268,48 +4269,17 @@ async def _stream_visible_run(
                                     for m in (_sg_ev.get("matches") or [])
                                     if m.get("primary") and str(m.get("name") or "")
                                 ]
-                                # Navnet i `_a_tool_calls` er modellens RÅ navn. Et
-                                # skill hentet med `call_loaded_tool` står derfor med
-                                # TRANSPORT-navnet: udpakningen til det ægte navn sker
-                                # i `simple_tool_executor`, altså efter listen er fyldt.
-                                # Målt 3/10-2026: vagten fyrede derfor falskt på hver
-                                # tur hvor skillet var kaldt ad den vej — den så
-                                # `call_loaded_tool` og konkluderede «intet skill kaldt».
-                                # `kaldt_vaerktoej`s docstring lover at «resten af kæden
-                                # ser det ÆGTE navn»; her gjorde den ikke.
-                                #
-                                # Samme dag, senere: der var TO huller, ikke ét.
-                                # (1) navnet ovenfor. (2) `_a_tool_calls` er PER-RUNDE
-                                # (nulstilles ved runde-start), mens rundens exchange
-                                # først lægges i `_followup_exchanges` EFTER denne gate.
-                                # Gaten manglede derfor den aktuelle rundes kald helt.
-                                # Nu læses begge kilder, og udpakningen genbruger
-                                # `pak_ud`, så der er ÉN definition af det ægte navn.
-                                from core.tools.kaldt_vaerktoej import (
-                                    pak_ud as _sg_pak_ud,
-                                )
-                                _sg_alle_kald = [
-                                    _tc
-                                    for _sg_ex in _followup_exchanges
-                                    for _tc in (getattr(_sg_ex, "tool_calls", []) or [])
-                                ] + list(_a_tool_calls or [])
-                                _sg_kaldte: list[str] = []
-                                for _tc in _sg_alle_kald:
-                                    _sg_fn = _tc.get("function") or {}
-                                    _sg_a = _sg_fn.get("arguments")
-                                    if isinstance(_sg_a, str):
-                                        try:
-                                            _sg_a = json.loads(_sg_a)
-                                        except ValueError:
-                                            # Ugyldig JSON → transport-navnet bliver
-                                            # stående. Vagten ser da et ukendt navn frem
-                                            # for at tro at der blev kaldt et skill.
-                                            _sg_a = {}
-                                    if not isinstance(_sg_a, dict):
-                                        _sg_a = {}
-                                    _sg_n, _ = _sg_pak_ud(
-                                        str(_sg_fn.get("name") or ""), _sg_a)
-                                    _sg_kaldte.append(_sg_n)
+                                # Navne-indsamlingen er udskilt til
+                                # `skill_gate_guard.samle_kaldte_navne` 3/10-2026:
+                                # den havde TO huller (transport-navnet, og den
+                                # aktuelle rundes kald der mangler fordi
+                                # `_a_tool_calls` er per-runde mens exchangen
+                                # lægges EFTER gaten) — begge fundet i produktion
+                                # frem for af en test, fordi koden sad inline i
+                                # denne generator. Kanterne er nu pinnede i
+                                # `tests/test_skill_gate_guard.py`.
+                                _sg_kaldte = _sg_navne(
+                                    _followup_exchanges, _a_tool_calls)
                                 if _sg_enabled() and _sg_unanswered(
                                     primary_matches=_sg_primaere,
                                     called_tool_names=_sg_kaldte,

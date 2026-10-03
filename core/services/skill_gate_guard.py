@@ -29,8 +29,11 @@ kaster ville vælte hver tur den rører.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+from collections.abc import Iterable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -101,3 +104,75 @@ def build_nudge(primary_matches: list[str] | tuple[str, ...] | None) -> str:
         f'skill_invoke("{foerste}") og læs SKILL.md — eller skriv én linje om '
         f"hvorfor den manuelle vej er bedre her."
     )
+
+
+def samle_kaldte_navne(
+    followup_exchanges: Iterable[Any] | None,
+    runde_kald: Iterable[Any] | None,
+) -> list[str]:
+    """De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket.
+
+    Udskilt fra `visible_runs._stream_visible_run` 3/10-2026. Den stod inline i
+    en 7.600-linjers async-generator og kunne derfor ikke testes; de to huller
+    nedenfor blev da også begge fundet i produktion frem for af en test.
+
+    ## Hvorfor to kilder
+
+    `runde_kald` (`_a_tool_calls`) er **per runde** og nulstilles ved runde-start,
+    mens rundens exchange først lægges i `followup_exchanges` EFTER gaten kører.
+    Læser man kun det ene, mangler man altid den AKTUELLE runde — og det var
+    hul 2: målt 3/10-2026 fyrede `skill_gate.nudge` 66 sekunder efter et
+    `skill_invoke("code-review")` i samme run.
+
+    ## Hvorfor udpakning
+
+    Navnet i et kald er modellens RÅ navn. Et skill hentet med
+    `call_loaded_tool` står derfor med TRANSPORT-navnet, og udpakningen til det
+    ægte navn sker først i `_prepare_call`, altså efter denne liste er fyldt.
+    `kaldt_vaerktoej`s docstring lover at «resten af kæden ser det ÆGTE navn» —
+    her gjorde den ikke, og vagten konkluderede «intet skill kaldt». Det var
+    hul 1.
+
+    `pak_ud` er den ENE definition af det ægte navn; den kaldes her frem for at
+    gentage reglen, så de to ikke kan drive fra hinanden.
+
+    ## Fail-retningen
+
+    Kan et navn ikke afgøres, bliver TRANSPORT-navnet stående. Vagten ser da et
+    ukendt navn — altså «intet skill kaldt», som er status quo — frem for at
+    tro at et skill blev brugt. Et falsk «skill kaldt» ville slå vagten fra i
+    tavshed, og det er den dyre retning. Kaster aldrig: en vagt der kaster
+    vælter hver tur den rører.
+    """
+    from core.tools.kaldt_vaerktoej import pak_ud
+
+    navne: list[str] = []
+    try:
+        raa: list[Any] = []
+        for ex in followup_exchanges or []:
+            raa.extend(getattr(ex, "tool_calls", None) or [])
+        raa.extend(list(runde_kald or []))
+        for kald in raa:
+            if not isinstance(kald, dict):
+                continue
+            fn = kald.get("function")
+            if not isinstance(fn, dict):
+                continue
+            args = fn.get("arguments")
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except ValueError:
+                    # Ugyldig JSON: vi kan ikke se det indre navn. Transport-
+                    # navnet bliver stående — se Fail-retningen ovenfor.
+                    args = {}
+            if not isinstance(args, dict):
+                # Gyldig JSON der ikke er et objekt (`[1,2]`, `"tekst"`, `null`)
+                # rammer her. Samme retning.
+                args = {}
+            navn, _ = pak_ud(str(fn.get("name") or ""), args)
+            navne.append(navn)
+    except Exception:
+        logger.warning("skill-gate: kunne ikke samle kaldte navne", exc_info=True)
+        return navne
+    return navne

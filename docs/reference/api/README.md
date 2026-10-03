@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15910 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15937 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,8 +27,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15910 functions/
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_governance_ledger`
-- [`core.runtime.02`](core.runtime.02.md) — `db_heartbeat` … `operational_preference_alignment`
-- [`core.runtime.03`](core.runtime.03.md) — `opmaerksomhed` … `ws_auth`
+- [`core.runtime.02`](core.runtime.02.md) — `db_heartbeat` … `ollamafreeapi_provider`
+- [`core.runtime.03`](core.runtime.03.md) — `operational_preference_alignment` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agentic_tool_cache`
 - [`core.services.02`](core.services.02.md) — `agentic_working_conclusions` … `autonomous_run_failures`
 - [`core.services.03`](core.services.03.md) — `autonomous_sessions` … `central_affect`
@@ -42,21 +42,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15910 functions/
 - [`core.services.11`](core.services.11.md) — `dream_articulation` … `endpoint_usage_store`
 - [`core.services.12`](core.services.12.md) — `env_block` … `gate_enforcement`
 - [`core.services.13`](core.services.13.md) — `gate_eval` … `heartbeat_daemon_ticks`
-- [`core.services.14`](core.services.14.md) — `heartbeat_delivery` … `internal_cadence_central_wiring`
-- [`core.services.15`](core.services.15.md) — `internal_cadence_core` … `loop_runtime`
-- [`core.services.16`](core.services.16.md) — `loyalty_gradient_signal_tracking` … `model_catalogue_sweep`
-- [`core.services.17`](core.services.17.md) — `model_context` … `operator_channel`
-- [`core.services.18`](core.services.18.md) — `orb_phase` … `private_state_snapshot_tracking`
-- [`core.services.19`](core.services.19.md) — `private_temporal_curiosity_state_tracking` … `provider_error_guard`
-- [`core.services.20`](core.services.20.md) — `provider_health_check` … `repeated_requests`
-- [`core.services.21`](core.services.21.md) — `report_claim_guard` … `runtime_self_knowledge`
-- [`core.services.22`](core.services.22.md) — `runtime_self_model` … `self_review_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `self_review_unified` … `signal_baseline`
-- [`core.services.24`](core.services.24.md) — `signal_decay_daemon` … `subjective_time`
-- [`core.services.25`](core.services.25.md) — `surprise_daemon` … `tool_intent_approval_runtime`
-- [`core.services.26`](core.services.26.md) — `tool_intent_runtime` … `versioneret_json_svar`
-- [`core.services.27`](core.services.27.md) — `veto_gate` … `visible_runs_watchdog`
-- [`core.services.28`](core.services.28.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `heartbeat_delivery` … `interlanguage_practice`
+- [`core.services.15`](core.services.15.md) — `internal_cadence` … `long_horizon_goals`
+- [`core.services.16`](core.services.16.md) — `longing_signal_daemon` … `missions_pipeline`
+- [`core.services.17`](core.services.17.md) — `model_benchmark` … `open_loop_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `operator_allowlist` … `private_inner_interplay_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `private_inner_note_signal_tracking` … `provider_autodiscovery`
+- [`core.services.20`](core.services.20.md) — `provider_circuit_breaker` … `release_marker_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `remembered_fact_signal_tracking` … `runtime_operational_memory`
+- [`core.services.22`](core.services.22.md) — `runtime_resource_signal` … `self_review_record_tracking`
+- [`core.services.23`](core.services.23.md) — `self_review_run_tracking` … `shutdown_window_daemon`
+- [`core.services.24`](core.services.24.md) — `side_tasks` … `subagent_digest`
+- [`core.services.25`](core.services.25.md) — `subagent_ecology` … `tool_embeddings`
+- [`core.services.26`](core.services.26.md) — `tool_hunt_nudge` … `verification_gate`
+- [`core.services.27`](core.services.27.md) — `verification_gate_telemetry` … `visible_runs_outcomes`
+- [`core.services.28`](core.services.28.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

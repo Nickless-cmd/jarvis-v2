@@ -785,7 +785,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jarvis-body {
   color: var(--fg-1);
   font-size: 15px;
-  line-height: 1.58;
+  /* 3/10-2026: 1,58 → 1,375 — samme forhold som mobilens fix (fd7f04d3f: 16/22).
+   * Målt direkte på to skærmbilleder samme dag (pixel-profil over tekstlinjerne):
+   * desk'ens linjepitch var 24 px, Claudes 20-21 px, ved samme tekststørrelse
+   * (15 vs 14-15 px). 15 × 1,375 = 20,6 px — altså samme rytme. 1,58 kom fra
+   * apps/ui's .message-content og var aldrig målt mod en reference. */
+  line-height: 1.375;
   min-width: 0;        /* tillad grid 1fr at krympe → ingen vandret overflow */
   /* Kun bryd lange ord/URL'er ved sidste udvej. */
   overflow-wrap: break-word;
@@ -793,7 +798,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .jarvis-body > *:first-child { margin-top: 0; }
 .jarvis-body > *:last-child { margin-bottom: 0; }
-.jarvis-body p { margin: 0 0 0.2em 0; }
+/* 0,625em = 9,4 px ved 15 px skrift — mobilens 10 px ved 16 px, samme forhold.
+ * Nødvendig modvægt til den strammere linjehøjde: uden den smelter afsnittene
+ * sammen (0,2em gav kun ~8,6 px luft efter linjehøjden blev sænket). */
+.jarvis-body p { margin: 0 0 0.625em 0; }
 .jarvis-body strong { color: var(--fg-0, #f0f2f7); font-weight: 600; }
 .jarvis-body em { color: var(--fg-2); }
 .jarvis-body h1, .jarvis-body h2, .jarvis-body h3,

@@ -81,6 +81,15 @@ _In-process real-time gate: is a VISIBLE turn actively assembling/streaming righ
 | function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
 | function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
 
+## `core/services/visible_synthesis_stream.py`
+_Den streamede syntese, skrubbet — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SyntesStykke` | `` | Ét renset stykke på vej til skærmen. | [src](../../../core/services/visible_synthesis_stream.py#L39) |
+| class | `SyntesFacit` | `` | Den færdige, skrubbede tekst. Kommer sidst, præcis én gang. | [src](../../../core/services/visible_synthesis_stream.py#L45) |
+| function | `skrubbet_syntese` | `(stroem, *, delta_klasse)` | Kør en syntese-strøm igennem `StroemSkrubber` og giv rensede stykker. | [src](../../../core/services/visible_synthesis_stream.py#L50) |
+
 ## `core/services/visible_terminal_policy.py`
 _Single source of truth for visible task terminal decisions._
 

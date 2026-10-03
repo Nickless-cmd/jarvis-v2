@@ -30,6 +30,22 @@ def taendt(monkeypatch):
 
 
 @pytest.fixture
+def slukket(monkeypatch):
+    """Sporet SLAAS FRA — aktivt, ikke ved at haabe.
+
+    De to «slukket»-tests laeste foer den omgivende filsystem-tilstand: laa
+    `/tmp/jarvis-delta-trace` der, fordi nogen maalte, skrev `noter` og
+    `noter_laesning` som de skal — og testen faldt. Den var altsaa kun groen
+    paa en maskine hvor ingen havde roert sentinelen, og maalte dermed miljoeet
+    i stedet for koden. Maalt 3/10-2026: begge fejlede paa main efter en
+    maaling, uden at én linje i kilden var aendret.
+
+    `taendt` ovenfor tvinger den ENE vej; denne tvinger den ANDEN.
+    """
+    monkeypatch.setattr(dt, "taendt", lambda: False)
+
+
+@pytest.fixture
 def ur(monkeypatch):
     """Et styret ur, saa hullerne er praecise og ikke afhaenger af maskinen."""
     nu = {"t": 100.0}
@@ -39,7 +55,7 @@ def ur(monkeypatch):
 
 # ── Slukket skal koste ingenting ──────────────────────────────────────────
 
-def test_slukket_sporer_INTET():
+def test_slukket_sporer_INTET(slukket):
     """Et spor der koster noget naar det er slukket, aendrer det det maaler."""
     dt._spor.clear()
     dt.noter("ind", "run-1", 10)
@@ -296,7 +312,7 @@ def test_EN_laesning_giver_ingen_opsummering(taendt, ur):
     assert dt.afslut_laesning("s1") == {}
 
 
-def test_laesesporet_er_no_op_naar_slukket():
+def test_laesesporet_er_no_op_naar_slukket(slukket):
     dt._laes.clear()
     dt.noter_laesning("s1", blokeret_s=1.0, behandlet_s=1.0)
     assert dt._laes == {}

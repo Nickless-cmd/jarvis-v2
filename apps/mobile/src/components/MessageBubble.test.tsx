@@ -19,7 +19,7 @@ jest.mock('../state/AuthContext', () => {
 const base = { id: 'm1', created_at: new Date().toISOString() }
 
 describe('MessageBubble', () => {
-  it('giver ombrudt assistenttekst en kompakt linjehøjde på selve Text-elementet', async () => {
+  it('giver ombrudt assistenttekst læsbar linjehøjde på selve Text-elementet', async () => {
     const screen = await render(<MessageBubble message={{
       ...base, role: 'assistant',
       content: 'Den gjorde det tre. Så enten overlever tælleren ikke mellem runderne, eller også starter hver af mine tekstblokke en ny tur.'
@@ -28,13 +28,13 @@ describe('MessageBubble', () => {
     const textgroup = text.parent!
     expect(textgroup.type).toBe('Text')
     expect(textgroup.props.style).toEqual(expect.objectContaining({
-      fontSize: 15,
-      lineHeight: 19,
+      fontSize: 16,
+      lineHeight: 22,
       includeFontPadding: false,
     }))
   })
 
-  it('stream og gemt svar bruger samme kompakte afsnitsafstand', async () => {
+  it('stream og gemt svar bruger samme tydelige afsnitsafstand', async () => {
     const content = 'Første sætning.\n\nAnden sætning.\n\nTredje sætning.'
     const a = await render(<MessageBubble message={{ ...base, id: 'stream-1', role: 'assistant', content } as ChatMessage} />)
     const b = await render(<MessageBubble message={{ ...base, id: 'm1', role: 'assistant', content } as ChatMessage} />)
@@ -52,7 +52,7 @@ describe('MessageBubble', () => {
     }
     expect(margins(a.toJSON())).toEqual(margins(b.toJSON()))
     expect(margins(b.toJSON())).toHaveLength(3)
-    expect(Math.max(...margins(b.toJSON()))).toBeLessThanOrEqual(3)
+    expect(margins(b.toJSON())).toEqual([10, 10, 10])
   })
 
   it('starter ikke indgangsanimationen igen når streamen bliver gemt', async () => {

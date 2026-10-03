@@ -63,14 +63,23 @@ def api(monkeypatch):
 
 @pytest.fixture
 def followups(monkeypatch):
+    """Stub for notification_bridge — samme skift som i
+    `test_background_job_watch`: CI-alarmen gik foer til trigger-koeen, som
+    aldrig toemmes, og gaar nu gennem den vej der faktisk leverer.
+
+    OBS: `test_roed_koersel_giver_en_followup` laeser `followups[0]["reason"]`
+    og skal skifte til `["source"]`;
+    `test_trigger_der_returnerer_none_meldes_som_fejl` skal omskrives til at
+    stubbe en leveringsfejl.
+    """
     lagt: list = []
-    from core.runtime import heartbeat_triggers
+    from core.services import notification_bridge
 
-    def _set(*, reason, source, text=""):
-        lagt.append({"reason": reason, "source": source, "text": text})
-        return {"created_at": "2026-10-03T13:00:00+00:00"}
+    def _send(content, *, source="", push=True, **_kw):
+        lagt.append({"source": source, "text": content})
+        return {"status": "ok", "message": {"id": "msg-test"}}
 
-    monkeypatch.setattr(heartbeat_triggers, "set_trigger_for_default_workspace", _set)
+    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
     return lagt
 
 

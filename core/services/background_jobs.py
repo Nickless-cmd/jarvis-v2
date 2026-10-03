@@ -3,7 +3,7 @@
 Bjørn 12/9-2026: «et sted hvor brugeren kan se de aktive opgaver der kører,
 uanset om det er bash commander eller andre ting».
 
-Der er TO kilder, og det er ikke en designfejl — de to slags arbejde er
+Kilderne er forskellige, og det er ikke en designfejl — de slags arbejde er
 virkelig forskellige:
 
 ``supervisor``
@@ -40,6 +40,14 @@ virkelig forskellige:
     kort kan sige hvad der kører og hvor længe. Operator-siden kan det ikke:
     dens `run` er ét bro-hop uden noget der holder tilstanden imens.
 
+``tool``
+    Værktøjskald fra et model-run, læst ud af de `tool.invoked`/`tool.completed`
+    events runtime allerede udgiver. Tilføjet 3/10-2026 — Bjørn: «alle hans
+    opgaver/bash commandoer bliver vist i baggrunds panelet... det sker ikk på
+    vores?». De øvrige kilder er BEHOLDERE; et bash-kald er en kommando inde i
+    en shell, og den blev aldrig til en række. Se `_tool_jobs` for hvorfor kun
+    kald med et `run_id` kommer med.
+
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
 
@@ -54,6 +62,7 @@ med i samme svar frem for at skulle gættes.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -225,6 +234,142 @@ def _scout_jobs() -> list[dict[str, Any]]:
             # (_skal_vises); en annulleret eller udløbet scout er ikke gået galt.
             "exit_code": None if aktiv else (1 if status == "failed" else 0),
             "can_pause": False,
+        })
+    return jobs
+
+
+#: Hvor mange events kilden læser bagud. Målt 3/10-2026: 2.000 rækker koster
+#: ~7 ms inkl. JSON-parse, og panelet henter hvert 5. sekund — så det er
+#: gratis. Vinduet skal kunne rumme et LANGT kald: kører der en bygning eller
+#: en fuld testsuite i femten minutter mens hundredevis af andre kald passerer,
+#: skal dens `tool.invoked` stadig være inden for rækkevidden.
+_TOOL_VINDUE = 2000
+
+#: Hvor længe et kald uden parret `tool.completed` må stå som «kører».
+#: Et kald der aldrig fik sit svar — fx fordi processen blev genstartet midt i
+#: det — ville ellers stå som kørende for evigt. Det er en TIDSGRÆNSE, ikke en
+#: påstand om at kaldet lever.
+_TOOL_SPOEGER_VINDUE_S = 1800
+
+
+def _tool_jobs() -> list[dict[str, Any]]:
+    """Værktøjskald fra et model-run — dem der kører lige nu.
+
+    Panelet kendte indtil 3/10-2026 kun BEHOLDERE: supervisor-processer, åbne
+    shells og scout-agenter. Et `bash`-kald er en kommando INDE i en shell —
+    den kører, svarer og forsvinder, og der blev aldrig skrevet en række.
+    Claude Desktop viser hvert kald med titel og ur; her var de usynlige.
+    (Bjørn 3/10-2026: «alle hans opgaver/bash commandoer bliver vist i
+    baggrunds panelet... det sker ikk på vores?»)
+
+    Kilden læser de to events runtime ALLEREDE udgiver ved hvert kald og
+    parrer dem på `tool_use_id`. Uparret = kører stadig. Der er intet nyt at
+    føre bog over: begge events har ligget i `events` hele tiden.
+
+    ## Hvorfor kun kald med et `run_id`
+
+    Et kald fra et model-run bærer `run_id` (sat af `simple_tool_executor`).
+    UI'ets EGNE bro-kald gør ikke: panelets eget poll af `/api/jobs` kalder
+    `operator_bash` gennem `execute_tool` uden om executoren, og hverken run
+    eller session følger med. Målt 3/10-2026: **151 af 152** `operator_bash`-
+    kald i et kvarters events var netop dét poll — ét hvert femte sekund.
+
+    Uden reglen ville panelet vise sig selv. Med den viser det Jarvis' arbejde
+    og ikke sin egen puls. Det er også derfor kilden ikke kræver at nogen
+    markerer deres kald: skellet findes allerede i data.
+
+    ## Hvad den ikke viser
+
+    Et kald der er FÆRDIGT forsvinder — også når det gik galt. Det er med
+    vilje: fejlen står i samtalen, hvor man kan læse hvad der skete, og et
+    panel der samlede fejl op ville vokse uden grænse. Det panel viser er
+    «hvad kører NU», og det er dét man åbner det for.
+    """
+    from core.runtime.db import connect
+    from core.tools.tool_call_telemetry import UKENDT
+
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, kind, payload_json, created_at
+                FROM events
+                WHERE kind IN ('tool.invoked', 'tool.completed')
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (_TOOL_VINDUE,),
+            ).fetchall()
+    except Exception:
+        logger.warning("background_jobs: kunne ikke laese tool-events", exc_info=True)
+        return []
+
+    # Nyeste foerst fra SQL; parringen skal gaa kronologisk.
+    rows.reverse()
+
+    aabne: dict[str, dict[str, Any]] = {}
+    for event_id, kind, payload, created in rows:
+        try:
+            d = json.loads(payload)
+        except Exception:
+            continue  # en enkelt ulaesbar raekke maa ikke tage hele listen
+        if kind == "tool.invoked":
+            run_id = str(d.get("run_id") or "")
+            if not run_id or run_id == UKENDT:
+                continue  # UI-plumbing, ikke et model-run
+            args = d.get("arguments") or {}
+            noegle = str(args.get("_runtime_tool_use_id") or "")
+            if not noegle:
+                # Uden kald-id kan to kald ikke skelnes. Raekkefoelgen er den
+                # eneste rest — den bruges, og raekkens eget id goer noeglen unik.
+                noegle = f"{d.get('tool')}#{event_id}"
+            aabne[noegle] = {
+                "tool": str(d.get("tool") or ""),
+                "args": args,
+                "start": _iso_ts(created),
+            }
+            continue
+        # tool.completed — luk det kald den hoerer til.
+        kald_id = str(d.get("tool_use_id") or "")
+        if kald_id and kald_id in aabne:
+            aabne.pop(kald_id, None)
+            continue
+        # Ældre completed-events (foer 3/10-2026) bar intet id. De parres paa
+        # værktøjsnavn i rækkefølge — upræcist naar to kald af samme værktøj
+        # kører samtidig, men bedre end at lade dem stå som kørende for evigt.
+        for k, v in list(aabne.items()):
+            if v["tool"] == d.get("tool"):
+                aabne.pop(k, None)
+                break
+
+    nu = _nu()
+    jobs: list[dict[str, Any]] = []
+    for v in aabne.values():
+        start = v["start"]
+        if start is None or nu - start > _TOOL_SPOEGER_VINDUE_S:
+            continue
+        tool = v["tool"]
+        args = v["args"]
+        # Titel er hvad kaldet LAVER — den beskrivelse Jarvis selv skriver til
+        # det. Uden den er kommandoen den aerlige faldback, og værktøjets navn
+        # den sidste.
+        titel = str(args.get("description") or args.get("titel") or "").strip()
+        kommando = str(args.get("command") or "").strip()
+        jobs.append({
+            "id": f"{tool}#{int(start)}",
+            "kilde": "tool_operator" if tool.startswith("operator_") else "tool",
+            "navn": titel or kommando[:120] or tool,
+            # Samme form som shell-kortet: værktøj og kommando i tooltip.
+            "kommando": f"{tool} · {kommando[:200]}" if kommando else tool,
+            "status": "running",
+            "pid": None,
+            "sekunder": max(0, int(nu - start)),
+            "exit_code": None,
+            # Et kald inde i et run kan hverken pauses eller stoppes udefra —
+            # det ville rive turen i stykker. Panelet skal ikke tilbyde en knap
+            # der ikke kan holde hvad den lover.
+            "can_pause": False,
+            "can_stop": False,
         })
     return jobs
 
@@ -414,7 +559,7 @@ def _shell_sessioner() -> list[dict[str, Any]]:
 
 
 def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, Any]:
-    """Alle jobs fra alle fire kilder.
+    """Alle jobs fra alle kilder.
 
     `kun_aktive` fjerner det der er FÆRDIGT — Bjørn: «de skal automatisk
     forsvinde når opgave er fuldført». Et job der fejlede bliver derimod
@@ -430,6 +575,12 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
         # Registret er en tilføjelse til panelet, ikke dets fundament: fejler det,
         # skal supervisor- og operator-jobbene stadig vises.
         logger.warning("background_jobs: kunne ikke læse scout-agenter", exc_info=True)
+    try:
+        jobs += _tool_jobs()
+    except Exception:
+        # Samme afvejning som scout-registret: de øvrige kilder skal stå, selv
+        # om værktøjssporet ikke kan læses.
+        logger.warning("background_jobs: kunne ikke laese tool-kald", exc_info=True)
     bro_ok = True
     if exec_fn is not None:
         try:

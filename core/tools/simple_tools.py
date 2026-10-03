@@ -23,7 +23,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
-from core.tools.tool_call_telemetry import udgiv_tool_invoked
+from core.tools.tool_call_telemetry import byg_completed_payload, udgiv_tool_invoked
 from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
@@ -1061,7 +1061,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = {"tool": name, "status": status}
+    _completed_payload = byg_completed_payload(name, status, arguments)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):
@@ -1206,7 +1206,7 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = {"tool": name, "status": status}
+    _completed_payload = byg_completed_payload(name, status, arguments)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):

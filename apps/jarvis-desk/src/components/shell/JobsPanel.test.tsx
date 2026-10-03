@@ -282,3 +282,50 @@ describe('åbne shell-sessioner', () => {
     await waitFor(() => expect(stopJob).toHaveBeenCalled())
   })
 })
+
+describe('værktøjskald i panelet (3/10-2026)', () => {
+  // Bjørn: «alle hans opgaver/bash commandoer bliver vist i baggrunds panelet...
+  // det sker ikk på vores?». Rækkerne kommer fra `_tool_jobs` og har `can_stop:
+  // false` — der findes ingen rute der kan stoppe et kald inde i et run.
+  beforeEach(() => { listJobs.mockReset(); stopJob.mockReset() })
+
+  const KALD = {
+    id: 'bash#1791053261', kilde: 'tool' as const,
+    navn: 'Kører hele testsuiten',
+    kommando: 'bash · npm test -- --run', status: 'running', pid: null,
+    sekunder: 137, exit_code: null, can_pause: false, can_stop: false,
+  }
+  const KALD_HANS = {
+    ...KALD, id: 'operator_bash#2', kilde: 'tool_operator' as const,
+    navn: 'Kigger i hjemmemaper', sekunder: 45,
+  }
+
+  it('viser kaldet med titel, maskine og ur', async () => {
+    listJobs.mockResolvedValue({ jobs: [KALD, KALD_HANS], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    expect(await screen.findByText('Kører hele testsuiten')).toBeInTheDocument()
+    // Hvert kald sit ur — to rækker må ikke dele ét tal.
+    expect(screen.getByText('2m 17s')).toBeInTheDocument()
+    expect(screen.getByText('45s')).toBeInTheDocument()
+    // To kald, to maskiner: den ene må ikke falde igennem til «Server».
+    expect(screen.getByText('Din maskine')).toBeInTheDocument()
+  })
+
+  it('tilbyder HVERKEN stop eller pause på et værktøjskald', async () => {
+    // Panelet tegner ellers en stop-knap på hver kørende række. Uden
+    // `can_stop` fik rækken en knap der så levende ud og gjorde ingenting.
+    listJobs.mockResolvedValue({ jobs: [KALD], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await screen.findByText('Kører hele testsuiten')
+    expect(screen.queryByRole('button', { name: /^Stop / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Pause / })).not.toBeInTheDocument()
+  })
+
+  it('en række UDEN can_stop beholder sin stop-knap', async () => {
+    // Feltet er en tilføjelse: de hidtidige kilder har det ikke, og de skal
+    // ikke miste knappen fordi et nyt felt kom til.
+    listJobs.mockResolvedValue({ jobs: [{ ...MIN_MASKINE, can_stop: undefined }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    expect(await screen.findByRole('button', { name: /^Stop Bygger klienten/ })).toBeInTheDocument()
+  })
+})

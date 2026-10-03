@@ -53,8 +53,20 @@ logger = logging.getLogger(__name__)
 # er vaerre end at overse). Et forkert STAERKT match koster en hel
 # SKILL.md-laesning og en begrundelse; et overset rigtigt koster at han loeser
 # opgaven selv — hvilket han beviseligt kan.
-_THRESHOLD = 0.70
+#
+# 3/10-2026: de to var 0,70 og 0,77, og baandet imellem dem var 88 % af alt
+# fladen viste. Maalt paa 400 af Bjoerns egne beskeder: 139 traef ved 0,70 mod
+# 17 ved 0,77 — og de 122 i baandet var stoej («Luk hanerne i active_sensing»
+# → memory-distillation, «Byg release 0.6.141» → matrix-nudge-converter).
+# Kurven ovenfor sagde det hele tiden: 0,70 giver 17 % praecision, 0,77 giver
+# 69 %. Bjoern: «stram fladen».
+#
+# Nu ER fladen den primaere: ét tal, ikke to der kan drive fra hinanden. Samme
+# form som `_TOOL_ROLES = _TOOL_USING_ROLES` (2/10) — arv, ikke kopi. Prisen er
+# sagt hoejt og accepteret: faerre forslag, men hvert forslag er et gaten ogsaa
+# staar ved.
 _PRIMARY_THRESHOLD = 0.77
+_THRESHOLD = _PRIMARY_THRESHOLD
 _MAX_SUGGESTIONS = 3
 
 # Under denne længde er en besked småsnak eller en kvittering. Sparer et embed-

@@ -21,6 +21,11 @@ def ingen_supervisor(monkeypatch):
     # Shell-sessionerne slaas fra som de to andre kilder. De tests der
     # handler OM dem taender dem igen med deres egen patch.
     monkeypatch.setattr(bj, "_shell_sessioner", lambda: [])
+    # Værktøjskilden læser den LEVENDE events-DB (3/10-2026). Uden denne patch
+    # ville hver eneste test her afhænge af hvad der tilfældigvis kørte på
+    # maskinen i det sekund — og «jobs == []» ville fejle, fordi nogen kørte
+    # en kommando. Dens egne tests tænder den igen.
+    monkeypatch.setattr(bj, "_tool_jobs", lambda: [])
 
 
 def test_en_standset_shell_er_PAUSET_ikke_koerende(monkeypatch):

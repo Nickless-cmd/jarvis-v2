@@ -90,3 +90,27 @@ def udgiv_tool_invoked(name: str, arguments: dict[str, Any]) -> None:
     except Exception as exc:  # bussen nede / payload userialiserbar
         logger.warning("tool_call_telemetry: kunne ikke udgive tool.invoked for %s: %s",
                        name, exc)
+
+
+def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """`tool.completed` — nu med de to felter der goer parringen mulig.
+
+    Frem til 3/10-2026 bar eventet kun ``{tool, status, mutating}``. Et
+    ``tool.invoked`` kunne derfor ikke parres med sit svar, og et panel der
+    ville vise «hvad koerer lige nu» kunne ikke se forskel paa et kald der var
+    i gang og et der var faerdigt — uden at gaette ud fra raekkefoelgen, hvilket
+    netop fejler naar to kald gaar i samme runde.
+
+    ``run_id`` og ``tool_use_id`` ligger begge i ``arguments`` allerede
+    (``simple_tool_executor`` haefter dem), saa det er en loeftning, ikke en ny
+    maaling. Et UI-kald gennem ``execute_tool`` uden om executoren har dem ikke —
+    og faar dermed tomme felter, hvilket er den aerlige beskrivelse af et kald
+    der ikke hoerer til et model-run.
+    """
+    args = arguments or {}
+    return {
+        "tool": str(name),
+        "status": str(status),
+        "run_id": _fra_args(args, "_runtime_turn_id"),
+        "tool_use_id": _fra_args(args, "_runtime_tool_use_id"),
+    }

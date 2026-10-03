@@ -103,3 +103,34 @@ def test_eventet_naar_faktisk_ud_paa_bussen(monkeypatch):
     assert kind == "tool.invoked"
     assert payload["user_id"] == "u9"
     assert payload["tool"] == "bash"
+
+
+# ── tool.completed skal kunne parres med sit kald (3/10-2026) ───────────────
+
+def test_completed_baerer_run_og_kald_id_saa_parringen_kan_lade_sig_goere():
+    """Frem til 3/10-2026 bar `tool.completed` kun `{tool, status, mutating}`.
+
+    Et panel der skal vise «hvad kører lige nu» kunne derfor ikke se forskel
+    på et kald der var i gang og et der var færdigt — uden at gætte ud fra
+    rækkefølgen. Det gæt fejler netop når to kald af samme værktøj går i
+    samme runde, hvilket er reglen snarere end undtagelsen.
+
+    Felterne løftes fra `arguments`, hvor `simple_tool_executor` allerede
+    hæfter dem. Det er en løftning, ikke en ny måling."""
+    p = t.byg_completed_payload("bash", "ok", {
+        "_runtime_turn_id": "visible-abc",
+        "_runtime_tool_use_id": "toolu_01XYZ",
+        "command": "npm test",
+    })
+    assert p["run_id"] == "visible-abc"
+    assert p["tool_use_id"] == "toolu_01XYZ"
+    assert p["status"] == "ok"
+
+
+def test_completed_fra_et_UI_kald_har_TOMME_felter_ikke_gaettede():
+    """Desk' egne bro-kald går gennem `execute_tool` uden om executoren og
+    bærer hverken run eller kald-id. Tomt er den ærlige beskrivelse; et
+    opdigtet id ville parre kaldet med noget der ikke hører til det."""
+    p = t.byg_completed_payload("operator_bash", "ok", {"command": "ls"})
+    assert p["run_id"] == ""
+    assert p["tool_use_id"] == ""

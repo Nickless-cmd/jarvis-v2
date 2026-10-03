@@ -144,7 +144,7 @@ export function JobsPanel({
             og kommandoen staar nu i `title` paa titlen ovenfor. Rækken er
             lavere end før, ikke højere. */}
       </div>
-      {isOwner && !faerdig && (
+      {isOwner && !faerdig && (j.can_pause || j.can_stop !== false) && (
         <div className="jobs-knapper">
           {j.can_pause && (
             <button
@@ -157,13 +157,20 @@ export function JobsPanel({
               {j.status === 'paused' ? <Play size={11} /> : <span className="jobs-pause-ikon" />}
             </button>
           )}
-          <button
-            type="button" className="jobs-stop" title="Stop jobbet"
-            aria-label={`Stop ${j.navn} (${j.id})`} disabled={travl === j.id}
-            onClick={() => void handling(j.id, () => stopJob(config!, j))}
-          >
-            <Square size={12} />
-          </button>
+          {/* can_stop === false er et VÆRKTØJSKALD inde i et run: der findes
+              ingen rute der kan stoppe det uden at rive turen i stykker. Uden
+              denne gren fik rækken en stop-knap der så levende ud og gjorde
+              ingenting — samme fejlklasse som panelets lukning begik, og den
+              blev først opdaget fordi nogen trykkede på den. */}
+          {j.can_stop !== false && (
+            <button
+              type="button" className="jobs-stop" title="Stop jobbet"
+              aria-label={`Stop ${j.navn} (${j.id})`} disabled={travl === j.id}
+              onClick={() => void handling(j.id, () => stopJob(config!, j))}
+            >
+              <Square size={12} />
+            </button>
+          )}
         </div>
       )}
     </li>

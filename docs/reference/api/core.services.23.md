@@ -284,19 +284,20 @@ _Semantic memory — unified embedding + cosine search across memory surfaces._
 | function | `_embed_ollama` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L240) |
 | function | `_cache_hent` | `(tekster)` | (resultater_med_huller, indeks_der_mangler) — slår hver tekst op i cachen. | [src](../../../core/services/semantic_memory.py#L288) |
 | function | `_cache_gem` | `(par)` | Læg nye vektorer i cachen. FIFO-halvtøm ved loft, som i `_embed_ollama`. | [src](../../../core/services/semantic_memory.py#L306) |
-| function | `_embed_ollama_batch` | `(texts)` | Batch-embed. Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). | [src](../../../core/services/semantic_memory.py#L320) |
-| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L408) |
-| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L412) |
-| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L416) |
-| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L420) |
-| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L429) |
-| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L464) |
-| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L528) |
-| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L543) |
-| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L551) |
-| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L628) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L637) |
-| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L650) |
+| function | `_embed_ollama_http` | `(bid)` | ÉT HTTP-kald til ollamas batch-endpoint. `None` = fejlede → kalderen falder | [src](../../../core/services/semantic_memory.py#L330) |
+| function | `_embed_ollama_batch` | `(texts)` | Batch-embed. Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). | [src](../../../core/services/semantic_memory.py#L360) |
+| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L446) |
+| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L450) |
+| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L454) |
+| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L458) |
+| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L467) |
+| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L502) |
+| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L566) |
+| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L581) |
+| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L589) |
+| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L666) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L675) |
+| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L688) |
 
 ## `core/services/sensory_archive.py`
 _Sansernes Arkiv — service layer for sensory memories._

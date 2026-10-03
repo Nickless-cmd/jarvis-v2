@@ -118,6 +118,65 @@ def test_fallback_til_seriel_er_HOEJLYDT(monkeypatch, caplog):
     assert "TimeoutError" in beskeder
 
 
+def test_store_arbejdssaet_deles_i_BIDDER(monkeypatch):
+    """Hele MEMORY.md (5.376 linjer) i ÉT kald timer ud efter 30 s (målt 22:39).
+    Bidder holder hvert kald under timeouten — og gor at en fejl kun rammer
+    sine egne tekster."""
+    monkeypatch.setattr(sm, "_embed_fastembed", lambda t: None)
+    kald: list[int] = []
+
+    def _post(url, json=None, timeout=None):
+        kald.append(len(json["input"]))
+        ind = list(json["input"])
+
+        class _R:
+            status_code = 200
+
+            def json(self):
+                return {"embeddings": [[1.0] * 768 for _ in ind]}
+        return _R()
+
+    import httpx
+    monkeypatch.setattr(httpx, "post", _post)
+    tekster = [f"linje {i}" for i in range(sm._EMBED_BID * 2 + 5)]
+    ud = sm._embed_ollama_batch(tekster)
+    assert len(ud) == len(tekster)
+    assert len(kald) == 3, f"ventede 3 bidder, fik {len(kald)}"
+    assert max(kald) <= sm._EMBED_BID, "et bid var stoerre end loftet"
+    assert sum(kald) == len(tekster), "tekster faldt ud mellem bidderne"
+
+
+def test_en_fejlet_bid_vaelter_ikke_hele_arbejdssaettet(monkeypatch):
+    """Den GLOBALE fallback var fejlen: ét timeout kostede 5.376 serielle kald.
+    Nu skal kun den bid der fejlede gaa serielt."""
+    monkeypatch.setattr(sm, "_embed_fastembed", lambda t: None)
+    monkeypatch.setattr(sm, "_EMBED_BID", 2)
+    import httpx
+    kald = {"n": 0}
+
+    def _post(url, json=None, timeout=None):
+        kald["n"] += 1
+        if kald["n"] == 2:
+            raise TimeoutError("ReadTimeout")
+        ind = list(json["input"])
+
+        class _R:
+            status_code = 200
+
+            def json(self):
+                return {"embeddings": [[1.0] * 768 for _ in ind]}
+        return _R()
+
+    monkeypatch.setattr(httpx, "post", _post)
+    serielle: list[str] = []
+    monkeypatch.setattr(sm, "_embed_ollama",
+                        lambda t: (serielle.append(t), _vek(1))[1])
+    ud = sm._embed_ollama_batch(["a", "b", "c", "d", "e"])
+    assert len(ud) == 5
+    assert kald["n"] == 3, f"ventede 3 bidder, fik {kald['n']}"
+    assert serielle == ["c", "d"], f"kun den fejlede bid maa gaa serielt: {serielle}"
+
+
 def test_tom_liste_er_stadig_tom():
     assert sm._embed_ollama_batch([]) == []
 

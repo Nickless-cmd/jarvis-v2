@@ -149,8 +149,16 @@ def test_defer_until_idle_venter_paa_FAKTUM_ikke_paa_sekunder(monkeypatch):
     et faktum — at runnet ikke laengere er i live — i stedet for et tal nogen
     skal ramme rigtigt. Jeg skrev systemd-timer-kommandoen i haanden tre gange
     paa én dag og ramte forkert én gang (60 s der naesten draebte turen).
+
+    3/10-2026, rettelse af MIG SELV: denne test satte `_aktive_koersler` til
+    TOM, saa vagten slap den igennem — og jeg opdagede foerst i drift at
+    vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur der
+    kaldte det. Testen var indrettet efter koden i stedet for efter
+    virkeligheden. Nu koerer der et aktivt run i testen, praecis som i drift.
     """
-    monkeypatch.setattr(rst, "_aktive_koersler", lambda *a, **k: [])
+    monkeypatch.setattr(rst, "_aktive_koersler",
+                        lambda *a, **k: [{"run_id": "visible-min-tur",
+                                          "preview": "tag begge to"}])
     kaldt: list = []
     monkeypatch.setattr(rst.subprocess, "Popen",
                         lambda cmd, **k: kaldt.append(cmd)
@@ -160,6 +168,10 @@ def test_defer_until_idle_venter_paa_FAKTUM_ikke_paa_sekunder(monkeypatch):
 
     ud = rst._exec_restart_self({"services": ["jarvis-api"], "defer_until_idle": True})
 
+    assert ud["status"] != "afvist", (
+        "den udskudte genstart blev afvist af den vagt den selv venter paa — "
+        "saa naarede den aldrig sin egen sti"
+    )
     assert ud["status"] == "ok" and ud["deferred"] is True
     assert ud["run_id"] == "visible-min-tur"
     assert kaldt, "den udskudte genstart blev ikke sat i gang"

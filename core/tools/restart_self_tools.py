@@ -165,7 +165,15 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     # Vagten AFVISER ikke; den svarer med hvad der koerer, saa Jarvis selv kan
     # vaelge at vente. En genstart der bare naegter ville han omgaa ad en anden
     # vej, og saa er vi vaerre stillet end nu.
-    if not bool(args.get("force")):
+    # 3/10-2026: `defer_until_idle` skal springe vagten over.
+    #
+    # Vagten spoerger «koerer der noget nu?». Med defer er svaret JA — det er
+    # MIN egen tur, og det er praecis derfor vi venter. At afvise dér er
+    # bagvendt: den naegter paa det faktum den skulle vente paa. Maalt samme
+    # dag: vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur
+    # der kaldte det, saa den udskudte sti blev aldrig naaet.
+    _defer = bool(args.get("defer_until_idle"))
+    if not bool(args.get("force")) and not _defer:
         aktive = _aktive_koersler()
         if aktive:
             return {
@@ -196,7 +204,7 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     # (maalt 3/10 kl. 15:43). Med `defer_until_idle` venter vi i stedet paa et
     # FAKTUM: at runnet ikke laengere er i live. Ingen sekunder at ramme
     # forkert, ingen afbrudt tur.
-    if bool(args.get("defer_until_idle")):
+    if _defer:
         try:
             from core.services.run_autonomy_context import current_run_id
             _rid = str(current_run_id() or "")

@@ -97,6 +97,30 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     # deklareret — og saa er den eneste vej tilbage at flette definitionen ind
     # i arrayet, hvilket koster hele samtalen. Se `kaldt_vaerktoej.py`.
     "call_loaded_tool",
+    # ── FAST fra 3/10-2026: `skill_invoke` var BETINGET, og det kostede ──
+    #
+    # Pinnet 15/9 betinget af et skill-match, med den begrundelse at «en plads
+    # ud af 48 ikke er gratis»: uden match ville `skill_invoke` vaere et
+    # vaerktoej uden et navn at give det.
+    #
+    # Betingelsen gjorde arrayet BESKED-afhaengigt, og arrayet ligger foer hele
+    # samtalen i praefikset. Det var usynligt indtil 3/10, fordi taersklen stod
+    # paa 0,70 og matchede naesten alt — «hej hvordan går det?» matchede
+    # `ui-ux-pro-max`. Pinnet var altsaa i praksis fast, og
+    # `test_visible_tool_pool_is_cache_stable_across_user_messages` var groen
+    # af den FORKERTE grund.
+    #
+    # Da Jarvis 3/10 hævede gulvet til primaer-taersklen (`ef8f7b0d5` — og det
+    # var rigtigt; baandet var 88 % stoej), blev en naesten-konstant en aegte
+    # variabel: en hilsen pinner ikke, en kodebesked goer, og arrayet skifter
+    # mellem to ture. Vagten blev roed, og det var den foerste aegte maaling.
+    #
+    # Prisen er maalt tre gange og staar oeverst i denne liste: én aendring i
+    # arrayet koster alt fra aendringspunktet og frem — 92 % -> 26 % hit,
+    # +419 tegn -> 62.672 miss-tokens. Én plads ud af 48 er billigere end hele
+    # praefikset hver gang en besked krydser taersklen anderledes end den
+    # forrige. Derfor: fast.
+    "skill_invoke",
     "scout_agent",
     # `spawn_agent_task` FJERNET 30/9-2026 (Bjoern: «den hedder scout idag»).
     #
@@ -442,8 +466,12 @@ def _faestn_kraevede(
     # Sikkerhedsgulvet faestnes SAMMEN med de kraevede (30/9-2026). Det stod
     # skrevet som «must always be available regardless of past usage» og var
     # ikke haandhaevet nogen steder — se kommentaren over `SAFETY_FLOOR`.
-    kraevede = (tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
-                + _betinget_kraevede(user_message))
+    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
+    # Intet pinnes BETINGET laengere (3/10-2026): et besked-afhaengigt array
+    # koster hele praefikset, og `skill_invoke` staar nu fast ovenfor. Kaldet
+    # her er KUN sporet matched -> surfaced -> tilgaengelig -> invoked; det
+    # returnerer altid (), se `spor_skill_match`.
+    spor_skill_match(user_message)
     for navn in kraevede:
         if navn in by_name and navn not in seen:
             selected_names.append(navn)
@@ -456,32 +484,38 @@ def _faestn_kraevede(
     return selected_names
 
 
-def _betinget_kraevede(user_message: str) -> tuple[str, ...]:
-    """Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem.
+def spor_skill_match(user_message: str) -> tuple[str, ...]:
+    """Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen.
 
-    ## Atomaritet (15/9-2026)
+    ## Hvad den gjorde indtil 3/10-2026
 
-    Runtimen maa aldrig bede modellen kalde noget der ikke ligger i kaldet.
-    Maalt samme dag: prompten skriver ordret ``skill_invoke("<navn>")``, og af
-    kataloget paa 471 vaerktoejer overlevede INGEN af de 24 skill-vaerktoejer
-    beskaeringen til 48 — heller ikke paa «brug pdf skill».
+    Hed `_betinget_kraevede` og returnerede `("skill_invoke",)` ved et match.
+    Begrundelsen stod i dens egen docstring: «en plads ud af 48 er ikke gratis;
+    uden et match ville `skill_invoke` være et værktøj uden et navn at give
+    det».
 
-    Jarvis gjorde derfor det rationelle: fandt filen med ``explore`` og laeste
-    SKILL.md i haanden. Det var ikke ulydighed; det var den eneste vej han
-    kunne se.
+    ## Hvorfor den ikke må fæstne noget
 
-    Tredje gang moensteret bider. Kommentaren over ``REQUIRED_LAZY_TOOL_NAMES``
-    beskriver praecis det samme for ``explore`` 6/9: «scope tillod det,
-    kataloget naevnte det, prompten anbefalede det — og pruneren fjernede det».
+    Et betinget pin gør værktøjs-arrayet besked-afhængigt, og arrayet ligger
+    FØR hele samtalen i præfikset. Prisen er målt tre gange: 92 % → 26 % hit,
+    og +419 tegn → 62.672 miss-tokens.
 
-    BETINGET og ikke fast: uden et match naevner prompten ingen skills, og saa
-    ville ``skill_invoke`` vaere et vaerktoej uden et navn at give det — en
-    spildt plads ud af 48. Betingelsen er praecis den samme som prompt-
-    sektionens, og den deler dens opslag, saa de to ikke kan komme til at sige
-    hver sit.
+    Det var usynligt fordi tærsklen stod på 0,70 og matchede næsten alt — «hej
+    hvordan går det?» matchede `ui-ux-pro-max`. Pinnet var i praksis fast, og
+    cache-vagten var grøn af den FORKERTE grund. Da gulvet 3/10 blev hævet til
+    primær-tærsklen, blev en næsten-konstant en ægte variabel, og vagten blev
+    rød. `skill_invoke` står nu fast i `REQUIRED_LAZY_TOOL_NAMES`.
 
-    Kaster aldrig: kan vi ikke afgoere det, faestner vi ingenting og er praecis
-    lige saa daarligt stillet som foer — aldrig vaerre.
+    ## Hvorfor funktionen så stadig findes
+
+    Logge-linjen er det eneste spor for kæden matched → surfaced → TILGÆNGELIG
+    → invoked. Det andet spor, `cognitive_state.skill_invoked`, bærer kun
+    `{"name": ...}` og hverken run- eller session-id, så man kan ikke engang
+    skelne en ægte invokering fra en test. Uden dette led kan man ikke svare på
+    «virkede rettelsen».
+
+    Returnerer derfor altid `()`. Kaster aldrig: et spor må ikke kunne vælte
+    en tur.
     """
     besked = str(user_message or "").strip()
     if not besked:
@@ -490,17 +524,18 @@ def _betinget_kraevede(user_message: str) -> tuple[str, ...]:
         from core.services.skill_relevance_surface import matchede_skills
         navne = matchede_skills(besked)
         if navne:
-            # Spor for kaeden matched → surfaced → TILGAENGELIG → invoked.
-            # Uden dette led kan man ikke svare paa «virkede rettelsen»: det
-            # eneste andet spor, cognitive_state.skill_invoked, baerer kun
-            # {"name": ...} og hverken run- eller session-id, saa man kan ikke
-            # engang skelne en aegte invokering fra en test.
-            logger.info("[skill-atomaritet] faestner skill_invoke — match: %s",
+            logger.info("[skill-atomaritet] match: %s — `skill_invoke` staar "
+                        "FAST i arrayet, intet pinnes betinget",
                         ", ".join(navne[:3]))
-            return ("skill_invoke",)
     except Exception:
         logger.debug("kunne ikke afgoere om skills blev naevnt", exc_info=True)
     return ()
+
+
+#: Bagudkompatibelt navn. De to kaldesteder (denne fil og `visible_runs`) kan
+#: opdateres naturligt; indtil da peger det gamle navn på sporet, så ingen
+#: import brækker. Boy Scout: ryd op når call-sites er fulgt med.
+_betinget_kraevede = spor_skill_match
 
 
 def _stable_idx(name: str) -> int:

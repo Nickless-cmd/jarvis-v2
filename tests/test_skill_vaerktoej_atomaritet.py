@@ -40,25 +40,87 @@ def katalog():
     return get_tool_definitions()
 
 
-# ────────────────────────────────────────────────── selve betingelsen
+# ───────────────────────── pinnet er FAST fra 3/10-2026, ikke betinget
 
-def test_uden_match_faestnes_ingenting():
-    """En plads ud af 48 er ikke gratis. Uden et match nævner prompten ingen
-    skills, og `skill_invoke` ville være et værktøj uden et navn at give det."""
-    assert p._betinget_kraevede("hej") == ()
-    assert p._betinget_kraevede("") == ()
-
-
-def test_med_match_faestnes_skill_invoke():
-    assert p._betinget_kraevede("hjaelp mig med excel") == ("skill_invoke",)
+def test_skill_invoke_staar_FAST_i_arrayet():
+    """Rettelsen 3/10. Pinnet var betinget af et skill-match, og det gjorde
+    vaerktoejs-arrayet besked-afhaengigt — arrayet ligger FOER hele samtalen i
+    praefikset, saa én aendring koster alt derfra og frem (92 % -> 26 % hit)."""
+    assert "skill_invoke" in p.REQUIRED_LAZY_TOOL_NAMES
 
 
-def test_betingelsen_kaster_aldrig(monkeypatch):
-    """Kan vi ikke afgøre det, fæstner vi ingenting og er præcis lige så dårligt
-    stillet som før — aldrig værre."""
+def test_arrayet_er_IDENTISK_uanset_beskeden(katalog):
+    """Den egentlige kontrakt, og den der var groen af den forkerte grund:
+    ved taerskel 0,70 matchede naesten ALT («hej hvordan går det?» matchede
+    `ui-ux-pro-max`), saa det betingede pin var i praksis fast. Da gulvet blev
+    haevet 3/10, blev en naesten-konstant en aegte variabel.
+
+    Testen maaler nu det der betyder noget: samme array, uanset hvad han
+    skriver — og `skill_invoke` ER med, ogsaa uden match."""
+    alle = katalog
+    pools = {}
+    for besked in ("hej hvordan går det?",
+                   "ret buggen i prompt contract og kør pytest",
+                   "hjaelp mig med excel",
+                   ""):
+        s._SIDSTE = ("", [])
+        s._SIDSTE_TRAEF = ("", [])
+        pools[besked] = [_navn(d) for d in p.select_tools_for_visible(
+            alle, user_message=besked)]
+        assert "skill_invoke" in pools[besked], besked or "(tom)"
+    foerste = next(iter(pools.values()))
+    for besked, pool in pools.items():
+        assert pool == foerste, (
+            f"arrayet skiftede paa «{besked or '(tom)'}» — forskel: "
+            f"{sorted(set(pool) ^ set(foerste))}")
+
+
+def test_sporet_faestner_INGENTING():
+    """`spor_skill_match` erstattede `_betinget_kraevede`. Den logger stadig, for
+    log-linjen er det eneste spor for kaeden matched -> surfaced -> TILGAENGELIG
+    -> invoked; `cognitive_state.skill_invoked` baerer hverken run- eller
+    session-id. Men den maa ikke fæstne noget."""
+    for besked in ("hjaelp mig med excel", "hej", ""):
+        assert p.spor_skill_match(besked) == (), besked or "(tom)"
+    # Bagudkompatibelt navn — to kaldesteder bruger det endnu.
+    assert p._betinget_kraevede is p.spor_skill_match
+
+
+def test_sporet_logger_ved_match_men_ikke_uden(caplog):
+    """Uden log-linjen kan man ikke svare paa «virkede rettelsen». Og en log
+    paa HVER tur ville vaere stoej, saa den skal fyre praecis ved et match."""
+    import logging
+    with caplog.at_level(logging.INFO, logger="core.tools.copilot_tool_pruning"):
+        s._SIDSTE = ("", [])
+        s._SIDSTE_TRAEF = ("", [])
+        p.spor_skill_match("hjaelp mig med excel")
+        med = [r for r in caplog.records if "skill-atomaritet" in r.getMessage()]
+        caplog.clear()
+        s._SIDSTE = ("", [])
+        s._SIDSTE_TRAEF = ("", [])
+        p.spor_skill_match("")
+        uden = [r for r in caplog.records if "skill-atomaritet" in r.getMessage()]
+    assert len(med) == 1, "intet spor ved et match"
+    assert uden == [], "sporet fyrede uden et match"
+
+
+def test_sporet_kaster_aldrig(monkeypatch):
+    """Et spor maa ikke kunne vaelte en tur."""
     monkeypatch.setattr(s, "matchede_skills",
                         lambda _m: (_ for _ in ()).throw(RuntimeError("i stykker")))
-    assert p._betinget_kraevede("hjaelp mig med excel") == ()
+    assert p.spor_skill_match("hjaelp mig med excel") == ()
+
+
+def test_selektionen_laeser_ikke_et_betinget_saet(monkeypatch):
+    """Vagten mod at betingetheden sniger sig tilbage: `kraevede` maa bestaa af
+    de FASTE lister alene. Et match maa kunne fyre uden at aendre ét navn."""
+    import ast
+    import inspect
+    kilde = inspect.getsource(p.select_tools_for_visible)
+    traeet = ast.unparse(ast.parse(inspect.cleandoc(kilde)))
+    assert "_betinget_kraevede(user_message))" not in traeet, (
+        "det betingede saet er lagt tilbage i `kraevede` — arrayet bliver "
+        "besked-afhaengigt, og det koster hele praefikset")
 
 
 # ──────────────────────────────────── kontrakten, maalt paa det AEGTE katalog
@@ -77,9 +139,16 @@ def test_naevner_prompten_det_saa_LIGGER_det_der(katalog, besked):
 
 
 @pytest.mark.parametrize("besked", ["hej", "ok tak"])
-def test_naevner_prompten_det_IKKE_spildes_pladsen_ikke(katalog, besked):
+def test_pladsen_bruges_med_VILJE_ogsaa_uden_match(katalog, besked):
+    """VENDT 3/10-2026. Testen haevdede foer at `skill_invoke` IKKE maatte med
+    uden et match — «en plads ud af 48 er ikke gratis».
+
+    Den plads bruges nu med vilje. Et betinget pin gjorde arrayet
+    besked-afhaengigt, og arrayet ligger foer hele samtalen i praefikset: én
+    aendring koster alt derfra og frem. Maalt tre gange — 92 % -> 26 % hit,
+    +419 tegn -> 62.672 miss-tokens. Én plads er billigere end praefikset."""
     ud = p.select_tools_for_visible(katalog, user_message=besked)
-    assert "skill_invoke" not in {_navn(t) for t in ud}
+    assert "skill_invoke" in {_navn(t) for t in ud}
 
 
 def test_kappen_holder_stadig(katalog):
@@ -215,13 +284,36 @@ def test_ukendt_origin_beholder_skills(ryd_memo):
     assert s.matchede_skills("lav et regneark over forbruget")
 
 
-def test_beskaereren_foelger_origin(ryd_memo):
-    """Ét delt opslag — prompten og værktøjsvalget kan ikke sige hver sit."""
+def test_autonome_ture_faar_ingen_skills_i_PROMPTEN(ryd_memo):
+    """FLYTTET 3/10-2026. Testen maalte `_betinget_kraevede(...) == ()` — men
+    efter at pinnet blev FAST returnerer den altid tomt, saa hævdelsen var
+    trivielt sand og maalte ingenting.
+
+    Undtagelsen gaelder prompt-siden, og det er der den skal maales: en autonom
+    tur maa ikke faa skills foreslaaet, for der er ingen bruger der spurgte om
+    noget. Vaerktoejs-arrayet er med VILJE origin-uafhaengigt nu — se
+    `test_arrayet_er_IDENTISK_uanset_beskeden`."""
     _saet_origin("heartbeat")
     try:
-        assert p._betinget_kraevede("lav et regneark over forbruget") == ()
+        assert s.matchede_skills("lav et regneark over forbruget") == []
+        assert (s.relevant_skills_section("lav et regneark over forbruget") or "") == ""
     finally:
         _saet_origin("")
+
+
+def test_arrayet_er_det_SAMME_paa_en_autonom_tur(katalog, ryd_memo):
+    """Modstykket: prompten undtager, arrayet goer IKKE. Skiftede arrayet med
+    origin, ville hver autonom tur kaste praefikset — og de koerer hele
+    doegnet."""
+    _saet_origin("")
+    hans = [_navn(t) for t in p.select_tools_for_visible(katalog, user_message="hjaelp mig med excel")]
+    _saet_origin("heartbeat")
+    try:
+        auto = [_navn(t) for t in p.select_tools_for_visible(katalog, user_message="hjaelp mig med excel")]
+    finally:
+        _saet_origin("")
+    assert auto == hans, f"arrayet foelger origin — forskel: {sorted(set(auto) ^ set(hans))}"
+    assert "skill_invoke" in auto
 
 
 def test_autonome_ture_faar_ingen_skills(ryd_memo):
@@ -270,7 +362,9 @@ def test_beskaereren_foelger_med(ryd_memo):
     """
     _saet_origin("heartbeat")
     try:
-        assert p._betinget_kraevede("hjaelp mig med excel") == ()
+        # MAALT PAA PROMPT-SIDEN 3/10: `_betinget_kraevede` returnerer nu altid
+        # tomt, saa den gamle haevdelse var trivielt sand.
+        assert s.matchede_skills("hjaelp mig med excel") == []
     finally:
         _saet_origin("")
 
@@ -288,9 +382,44 @@ def test_en_fejl_i_opslaget_undtager_ikke(ryd_memo, monkeypatch):
 def test_taersklerne_ligger_i_embedderens_faktiske_interval():
     """De gamle tal (0,30/0,50) stammede fra HuggingFace-embedderen. Den lokale
     har hele sit interval mellem 0,59 og 0,80 — målt på 200 af hans beskeder —
-    så en tærskel på 0,50 lå under ALT og gjorde «STÆRKT» til «altid»."""
+    så en tærskel på 0,50 lå under ALT og gjorde «STÆRKT» til «altid».
+
+    OMSKREVET 3/10-2026. Testen hævdede `_PRIMARY_THRESHOLD > _THRESHOLD`,
+    altså at der fandtes et BÅND mellem «sekundært» og «primært» match. Jarvis
+    fjernede båndet samme dag (`ef8f7b0d5`): det nederste af det var 88 % støj,
+    og gulvet er nu primær-tærsklen. Testen pinnede dermed et design der med
+    vilje ikke gælder længere.
+
+    Den pinner nu hensigten: ÉN tærskel, og den ligger inde i embedderens
+    faktiske interval. Og den har et loft — et gulv på 0,80 ville lægge sig
+    over næsten alt og gøre «STÆRKT» til «aldrig», altså den modsatte fejl af
+    den 0,50 lavede.
+    """
     assert s._THRESHOLD >= 0.59, "gulvet ligger under embedderens interval"
-    assert s._PRIMARY_THRESHOLD > s._THRESHOLD
+    assert s._THRESHOLD <= 0.80, "gulvet ligger over embedderens interval"
+    assert s._THRESHOLD == s._PRIMARY_THRESHOLD, (
+        "baandet er lagt tilbage. Det blev fjernet 3/10 fordi dets nederste "
+        "88 % var stoej — genindfoeres det, skal tallene maales igen, ikke "
+        "gaettes")
+
+
+def test_der_er_EN_taerskel_og_ikke_to_kilder():
+    """Båndet var to tal der kunne drive fra hinanden. Nu er `_THRESHOLD`
+    DEFINERET som `_PRIMARY_THRESHOLD` i kilden — ikke som et andet tal der
+    tilfældigvis er ens. Står de som to literaler, kan den ene rettes alene."""
+    import ast
+    import inspect
+    kilde = inspect.getsource(s)
+    for node in ast.walk(ast.parse(kilde)):
+        if (isinstance(node, ast.Assign)
+                and any(getattr(t, "id", "") == "_THRESHOLD" for t in node.targets)):
+            assert isinstance(node.value, ast.Name), (
+                "_THRESHOLD staar som sit eget tal — det skal PEGE paa "
+                "_PRIMARY_THRESHOLD, saa de to ikke kan drive fra hinanden")
+            assert node.value.id == "_PRIMARY_THRESHOLD"
+            break
+    else:
+        raise AssertionError("_THRESHOLD tildeles ikke laengere i modulet")
 
 
 def test_et_staerkt_match_er_en_INSTRUKS(monkeypatch):

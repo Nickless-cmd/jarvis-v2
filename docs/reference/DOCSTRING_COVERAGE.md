@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8402/15958 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8418/15983 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8402/15958 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 715 | 1296 | 55% |
-| `core.services` | 5612 | 10876 | 51% |
+| `core.services` | 5614 | 10878 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8402/15958 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 237 | 527 | 44% |
+| `scripts` | 251 | 550 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2231)
+## Undocumented public functions (2235)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L213)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2128,6 +2128,8 @@ Generated from source. 8402/15958 functions/methods documented (52%). The list b
 - `scripts/deferred_restart.py` :: `main` (L80)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
+- `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
+- `scripts/e2e_indbakke.py` :: `main` (L383)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/find_tidsbomber.py` :: `main` (L54)
@@ -2171,6 +2173,8 @@ Generated from source. 8402/15958 functions/methods documented (52%). The list b
 - `scripts/luk_foraeldede_flows.py` :: `find_testdata` (L53)
 - `scripts/luk_foraeldede_flows.py` :: `luk` (L92)
 - `scripts/luk_foraeldede_flows.py` :: `main` (L109)
+- `scripts/maal_indbakke.py` :: `maal` (L113)
+- `scripts/maal_indbakke.py` :: `main` (L214)
 - `scripts/maal_ventende_i_prompten.py` :: `main` (L228)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)

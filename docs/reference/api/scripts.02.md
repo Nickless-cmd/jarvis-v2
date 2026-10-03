@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_analyze.py`
+_Interlanguage analysis — aggregate report over the practice corpus._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
+| function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
+
 ## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
 _Binary: jarvis vs ollama_local — pre-check for Phase 4._
 
@@ -152,6 +161,20 @@ _Engangs-oprydning: luk flows hvis opgave allerede er afsluttet._
 | function | `find_foraeldede` | `(conn)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L78) |
 | function | `luk` | `(conn, foraeldede)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L92) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L109) |
+
+## `scripts/maal_indbakke.py`
+_Virker indbakkens to trin? Og er 2 det rigtige tal?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_iso_graense` | `(dage)` | `strftime`, ikke `datetime('now', …)`. | [src](../../../scripts/maal_indbakke.py#L69) |
+| function | `_haent` | `(dage)` | — | [src](../../../scripts/maal_indbakke.py#L82) |
+| function | `_poster_i` | `(payload)` | Post-id'erne i en hændelse, uanset om den bærer én eller mange. | [src](../../../scripts/maal_indbakke.py#L103) |
+| function | `maal` | `(dage=…)` | — | [src](../../../scripts/maal_indbakke.py#L113) |
+| function | `_taerskel` | `()` | — | [src](../../../scripts/maal_indbakke.py#L187) |
+| function | `_tilstand` | `()` | Hvad STAAR der i tabellen lige nu, uanset hvad sporet siger? | [src](../../../scripts/maal_indbakke.py#L198) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_indbakke.py#L214) |
+| function | `registrer_vindue` | `(timer=…)` | Opgave 7 trin 3: registrér maalevinduet, saa paamindelsen melder. | [src](../../../scripts/maal_indbakke.py#L265) |
 
 ## `scripts/maal_ventende_i_prompten.py`
 _Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
@@ -427,34 +450,4 @@ _Fase 7 — indsamler svarene._
 | function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L80) |
 | function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L92) |
 | function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L104) |
-
-## `scripts/phase7_judge.py`
-_Fase 7 — blind bedømmelse af svarene._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L71) |
-| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L80) |
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L93) |
-| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L99) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L103) |
-| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L148) |
-
-## `scripts/phone_home_auto.py`
-_phone_home_auto — hold phone_adb_address i runtime.json opdateret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L51) |
-| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L55) |
-| function | `_skriv_state` | `(**felter)` | — | [src](../../../scripts/phone_home_auto.py#L66) |
-| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L79) |
-| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L89) |
-| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L111) |
-| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L119) |
-| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L130) |
-| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L138) |
-| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L143) |
-| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L156) |
-| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L190) |
 

@@ -295,6 +295,28 @@ _Vent til ingen tur er levende, så en genstart ikke kapper en._
 | function | `levende` | `(db=…)` | Er der et levende run lige nu? `None` = kunne ikke afgøres. | [src](../../../scripts/drain_before_restart.py#L48) |
 | function | `vent` | `(loft=…, db=…)` | 0 = frit, kan genstarte. 1 = loftet nået mens noget stadig kørte. | [src](../../../scripts/drain_before_restart.py#L75) |
 
+## `scripts/e2e_indbakke.py`
+_E2E: holder indbakke-kæden usmocket, i produktionen?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Led` | `` | Ét led i kæden. Samler sit eget udfald, så ingen kan forsvinde. | [src](../../../scripts/e2e_indbakke.py#L53) |
+| method | `Led.__init__` | `(self)` | — | [src](../../../scripts/e2e_indbakke.py#L56) |
+| method | `Led.__call__` | `(self, nr, navn, status, detalje=…)` | — | [src](../../../scripts/e2e_indbakke.py#L59) |
+| method | `Led.bestod` | `(self)` | — | [src](../../../scripts/e2e_indbakke.py#L64) |
+| function | `_trin_1_units` | `(led)` | Kører BEGGE units den kode du tror? | [src](../../../scripts/e2e_indbakke.py#L68) |
+| function | `_trin_2_kilde_skriver` | `(led, bruger)` | En ÆGTE kilde skriver en post — gennem `registrer_kilde`, ikke SQL. | [src](../../../scripts/e2e_indbakke.py#L105) |
+| function | `_trin_3_visningen` | `(led, bruger, kid)` | Står posten i visningen? Kørt med den rigtige interpreter. | [src](../../../scripts/e2e_indbakke.py#L140) |
+| function | `_trin_4_prompten` | `(led, bruger, kid, session_id)` | Det afgørende led: BÆRER PROMPTEN DEN? | [src](../../../scripts/e2e_indbakke.py#L164) |
+| function | `_trin_5_gaten` | `(led, bruger)` | Nægter gaten en ægte mutation — og NAVNGIVER den posten? | [src](../../../scripts/e2e_indbakke.py#L200) |
+| function | `_trin_6_genstart` | `(led, bruger)` | Overlever tælleren en procesgenstart? | [src](../../../scripts/e2e_indbakke.py#L231) |
+| function | `_trin_7_done` | `(led, bruger, kid)` | `inbox_done` lukker den, visningen falder, og posten kan STADIG findes. | [src](../../../scripts/e2e_indbakke.py#L258) |
+| function | `_trin_8_intet_i_chatten` | `(led, session_id, foer)` | Er noget sivet ind i chatten som en assistant-besked? | [src](../../../scripts/e2e_indbakke.py#L287) |
+| function | `_trin_9_tavse_fejlformer` | `(led, bruger)` | De tre tal huset kender som tavse fejlformer. | [src](../../../scripts/e2e_indbakke.py#L305) |
+| function | `_chat_antal` | `(session_id)` | — | [src](../../../scripts/e2e_indbakke.py#L360) |
+| function | `_ryd` | `(bruger, kid)` | Luk en testpost. Kaster aldrig — oprydning må ikke vælte rapporten. | [src](../../../scripts/e2e_indbakke.py#L371) |
+| function | `main` | `()` | — | [src](../../../scripts/e2e_indbakke.py#L383) |
+
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._
 
@@ -414,13 +436,4 @@ _Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med d
 | function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
 | function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
-
-## `scripts/interlanguage_analyze.py`
-_Interlanguage analysis — aggregate report over the practice corpus._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
-| function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
 

@@ -555,8 +555,8 @@ const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
   // `body` bliver en View i react-native-markdown-display og kan ikke give
   // linjehøjde videre til Text. Det er textgroup, der faktisk ombryder prosa.
   body: {},
-  textgroup: { color: tokens.color.fg1, fontSize: 15, lineHeight: 19, includeFontPadding: false },
-  paragraph: { marginTop: 0, marginBottom: 3 },
+  textgroup: { color: tokens.color.fg1, fontSize: 16, lineHeight: 22, includeFontPadding: false },
+  paragraph: { marginTop: 0, marginBottom: 10 },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },
   em: { fontStyle: 'italic' },

@@ -10,6 +10,21 @@ ALLOWED_EVENT_FAMILIES = {
     "heartbeat",
     "cost",
     "reasoning",  # reasoning_store.capture_conclusion (#159) — var latent afvist
+    # Fire familier der publicerede uden at stå her (målt 3/10-2026): hvert kald
+    # kastede "Unsupported event family", og hver kaldested slugte det i sin egen
+    # `except`. Telemetrien forsvandt i tavshed — samme fejl som #159. Fundet ved
+    # at måle ALLE publish-familier mod registret, ikke kun den ene jeg ledte efter.
+    "skill_gate",  # visible_runs.py — skill-gate-nudgen
+    # BEMÆRK: "central" står IKKE her med vilje. Det er egress-membranen
+    # (§24.4, Rådet 1/7-2026): `central.observe()` kan bære private tanke-strenge,
+    # og garantien er at `central` ikke er en registreret familie — så Event.create
+    # afviser `central.observed` FØR writer-kø og subscribers. Håndhævet af
+    # tests/test_central_egress_invariant.py. Målt 3/10-2026: central_absorb.py
+    # publicerer derfor `central.learn`/`cluster.flag` i tavshed — det er prisen
+    # for membranen, ikke en fejl. Skal de kunne publiceres, kræver det en
+    # anden familie (fx `central_governance`) — ikke at denne åbnes.
+    "connector",  # connectors.py (connector.<event>)
+    "candidate_review_digest",  # candidate_review_digest.py
     "approvals",
     "council",
     "swarm",

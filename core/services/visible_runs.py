@@ -4296,8 +4296,16 @@ async def _stream_visible_run(
                                             "session_id": str(run.session_id or ""),
                                             "skills": _sg_primaere[:3],
                                         })
-                                    except Exception:
-                                        pass  # telemetri må ikke vælte turen
+                                    except Exception as _sg_exc:
+                                        # Telemetri må ikke vælte turen — men den
+                                        # må heller ikke forsvinde i tavshed. Målt
+                                        # 3/10-2026: `skill_gate` stod ikke i
+                                        # ALLOWED_EVENT_FAMILIES, så HVERT publish
+                                        # kastede her og blev slugt. Gaten fyrede,
+                                        # sporet fandtes ikke.
+                                        logger.warning(
+                                            "skill-gate-telemetri fejlede "
+                                            "(turen fortsaetter): %s", _sg_exc)
                                     continue
                             except Exception:
                                 pass  # fail-open → normal break nedenfor

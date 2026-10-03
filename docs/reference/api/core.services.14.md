@@ -424,6 +424,19 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1084) |
 | function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1096) |
 
+## `core/services/inbox_gate.py`
+_Indbakkens to-trins forudsætning i mutationspunktet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gate_tændt` | `()` | — | [src](../../../core/services/inbox_gate.py#L72) |
+| function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
+| function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
+| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L129) |
+| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L159) |
+| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L167) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L176) |
+
 ## `core/services/inbox_state.py`
 _Proveniens og bogføring for indbakken._
 
@@ -704,23 +717,4 @@ _Inner voice shadow recorder — Pilot for llm_driven_inner_pipeline._
 | function | `generate_voice_line_via_llm` | `(*, mood_tone, self_position, current_concern, current_pull, fallback, timeout_seconds=…)` | Production path for protected_inner_voice._voice_line. | [src](../../../core/services/inner_voice_shadow.py#L638) |
 | function | `recent_comparisons` | `(function_name=…, *, limit=…)` | Pull recent shadow records for human comparison. | [src](../../../core/services/inner_voice_shadow.py#L667) |
 | function | `shadow_stats` | `(function_name=…)` | Aggregate stats across all shadow records for one function. | [src](../../../core/services/inner_voice_shadow.py#L689) |
-
-## `core/services/interlanguage_practice.py`
-_Inter-sprog practice engine — internaliseret protokol på tværs af modeller._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_interlanguage_practice_table` | `(conn)` | Idempotently create interlanguage_practice table + index. | [src](../../../core/services/interlanguage_practice.py#L127) |
-| function | `ensure_schema` | `()` | Bagudkompat: åbner en conn og kalder _ensure_interlanguage_practice_table. | [src](../../../core/services/interlanguage_practice.py#L173) |
-| function | `_pick_term` | `(domain_filter=…)` | Pick a random core term, optionally filtered by domain. | [src](../../../core/services/interlanguage_practice.py#L187) |
-| function | `_build_clause` | `()` | Build a single clause: <term> <primitive> <term> or !<term>. | [src](../../../core/services/interlanguage_practice.py#L196) |
-| function | `generate_state_expression` | `(*, num_clauses=…, mood_override=…)` | Generate a state-expression from current mood and random composition. | [src](../../../core/services/interlanguage_practice.py#L212) |
-| function | `record_expression` | `(expression_text, *, session_id=…, tick_id=…, trigger=…, peer_id=…)` | Record a state-expression in the practice log. | [src](../../../core/services/interlanguage_practice.py#L265) |
-| function | `get_recent_expressions` | `(*, days=…, limit=…)` | Get recent state-expressions from the practice log. | [src](../../../core/services/interlanguage_practice.py#L298) |
-| function | `get_expression_count` | `(*, since_hours=…)` | Count expressions recorded in the last N hours. | [src](../../../core/services/interlanguage_practice.py#L326) |
-| function | `export_protocol` | `(*, recent_days=…, max_expressions=…)` | Eksportér hele inter-sprog-protokollen til model-skift. | [src](../../../core/services/interlanguage_practice.py#L342) |
-| function | `practice_tick` | `(*, session_id=…, tick_id=…, mood=…)` | Kaldes fra heartbeat tick — generér og gem én state-expression. | [src](../../../core/services/interlanguage_practice.py#L390) |
-| function | `export_mood_trace_for_period` | `(start, end)` | Eksportér Jarvis' mood-historie over en periode som (timestamp, mood) pairs. | [src](../../../core/services/interlanguage_practice.py#L430) |
-| function | `interpolate_mood_at` | `(trace, target_iso)` | Linear-interpolér mellem nærmeste to mood-samples til target timestamp. | [src](../../../core/services/interlanguage_practice.py#L470) |
-| function | `build_interlanguage_practice_surface` | `()` | Surface for Mission Control — 3 vital signs + dummy state ved ingen data. | [src](../../../core/services/interlanguage_practice.py#L516) |
 

@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/verification_gate.py`
+_Verification gate — advisory check on destructive/mutation actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
+| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L149) |
+| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L283) |
+| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L291) |
+| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L305) |
+| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L369) |
+| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
+| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
+| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
+
 ## `core/services/verification_gate_telemetry.py`
 _R2 verification gate telemetry — track whether warnings get heeded._
 
@@ -589,31 +604,4 @@ _Memory/continuity post-processing for visible runs._
 | function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
 | function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L50) |
 | function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L249) |
-
-## `core/services/visible_runs_outcomes.py`
-_Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_preview_text` | `(text, limit=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L33) |
-| function | `_mark_mid_word_truncation` | `(text)` | Append "…" if the assistant text ends abruptly mid-word. | [src](../../../core/services/visible_runs_outcomes.py#L40) |
-| function | `_origin_of_session` | `(session_id)` | «auto-dream-20260902» → «dream». Tom for almindelige samtaler. | [src](../../../core/services/visible_runs_outcomes.py#L79) |
-| function | `_normaliser_tekstblokke` | `(blocks)` | Samme blokstruktur-rettelse på tekstblokkene som på `content`. | [src](../../../core/services/visible_runs_outcomes.py#L88) |
-| function | `_med_udgivne_filer` | `(blocks, run)` | Laeg turens udgivne filer BAGEST i blok-arrayet. | [src](../../../core/services/visible_runs_outcomes.py#L108) |
-| function | `_indsaet_ved_deres_vaerktoej` | `(blocks, filer)` | Sæt hver udgiven fil DÉR hvor den blev lavet. | [src](../../../core/services/visible_runs_outcomes.py#L128) |
-| function | `_with_thinking_block` | `(blocks, run, reasoning)` | Sæt turens tænkning FORREST i blok-arrayet, hvis der blev tænkt. | [src](../../../core/services/visible_runs_outcomes.py#L176) |
-| function | `_persist_session_assistant_message` | `(run, text, *, reasoning_content=…, blocks=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L224) |
-| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L456) |
-| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L497) |
-| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L552) |
-| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L566) |
-| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L581) |
-| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L602) |
-| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L646) |
-| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L715) |
-| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L764) |
-| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L785) |
-| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L799) |
-| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en ``recovering``-række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L863) |
-| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L914) |
 

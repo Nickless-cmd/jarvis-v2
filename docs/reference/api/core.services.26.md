@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_embeddings.py`
+_Tool description embedding cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_embed_base` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
+| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L36) |
+| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L50) |
+| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L54) |
+| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L59) |
+| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L63) |
+| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L82) |
+| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L102) |
+| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L108) |
+| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L119) |
+| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L132) |
+
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 
@@ -568,19 +585,4 @@ _Value Formation — emergent ethics from experience._
 | function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
 | function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
 | function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
-
-## `core/services/verification_gate.py`
-_Verification gate — advisory check on destructive/mutation actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
-| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L149) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L283) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L291) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L305) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L369) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
 

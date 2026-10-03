@@ -649,21 +649,21 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/repeated_requests.py#L60) |
-| function | `_stems` | `(text)` | Betydningsbærende ord, forkortet til deres første `_STEM_CHARS` tegn. | [src](../../../core/services/repeated_requests.py#L64) |
-| function | `normalize` | `(text)` | Anmodningens stammer, sorteret — noeglen en anmodning gemmes under. | [src](../../../core/services/repeated_requests.py#L80) |
-| function | `similarity` | `(a, b)` | Jaccard mellem to anmodningers stammer (0-1). | [src](../../../core/services/repeated_requests.py#L85) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/repeated_requests.py#L93) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/repeated_requests.py#L117) |
-| function | `_sessions` | `(raw)` | — | [src](../../../core/services/repeated_requests.py#L121) |
-| function | `note_request` | `(*, text, session_id=…, kind=…)` | Tæl én anmodning. Returnerer rækken plus ``matured`` når den nu er en regel-kandidat. | [src](../../../core/services/repeated_requests.py#L125) |
-| function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L209) |
-| function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L224) |
-| function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L236) |
-| function | `surface_matured` | `(result, *, kind=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L273) |
-| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L296) |
-| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L308) |
-| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L318) |
+| function | `_now` | `()` | — | [src](../../../core/services/repeated_requests.py#L59) |
+| function | `_stems` | `(text)` | Betydningsbærende ord, forkortet til deres første `_STEM_CHARS` tegn. | [src](../../../core/services/repeated_requests.py#L63) |
+| function | `normalize` | `(text)` | Anmodningens stammer, sorteret — noeglen en anmodning gemmes under. | [src](../../../core/services/repeated_requests.py#L79) |
+| function | `similarity` | `(a, b)` | Jaccard mellem to anmodningers stammer (0-1). | [src](../../../core/services/repeated_requests.py#L84) |
+| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/repeated_requests.py#L92) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/repeated_requests.py#L116) |
+| function | `_sessions` | `(raw)` | — | [src](../../../core/services/repeated_requests.py#L120) |
+| function | `note_request` | `(*, text, session_id=…, kind=…)` | Tæl én anmodning. Returnerer rækken plus ``matured`` når den nu er en regel-kandidat. | [src](../../../core/services/repeated_requests.py#L124) |
+| function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L188) |
+| function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L203) |
+| function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L215) |
+| function | `surface_matured` | `(result, *, kind=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L250) |
+| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L273) |
+| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L285) |
+| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L295) |
 
 ## `core/services/report_claim_guard.py`
 _Efterproev det et barn PAASTAAR — Fase 6._

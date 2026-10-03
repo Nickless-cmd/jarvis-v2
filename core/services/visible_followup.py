@@ -32,6 +32,8 @@ working for every symbol):
 
 from __future__ import annotations
 
+from core.services.run_trailing import runtime_instruction_message
+
 import json  # noqa: F401 — re-exported for backward-compat (pre-split facade symbol)
 import logging
 import os
@@ -344,13 +346,10 @@ def synthesize_final_answer(
         except Exception:
             pass
         # Eksplicit finalize-instruktion (append-only → cache-prefix urørt).
-        _finalize_msgs = list(base_messages) + [{
-            "role": "user",
-            "content": (
-                "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
-                "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
-                "hvad du fandt og svar direkte."),
-        }]
+        _finalize_msgs = list(base_messages) + [runtime_instruction_message(
+            "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
+            "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
+            "hvad du fandt og svar direkte.")]
         _delta_parts: list[str] = []
         _done_text = ""
         for _ev in stream_visible_followup(
@@ -430,7 +429,7 @@ def synthesize_continuation(
         )
         _cont_msgs = list(base_messages) + [
             {"role": "assistant", "content": partial_text},
-            {"role": "user", "content": _instruction},
+            runtime_instruction_message(_instruction),
         ]
         _delta_parts: list[str] = []
         _done_text = ""

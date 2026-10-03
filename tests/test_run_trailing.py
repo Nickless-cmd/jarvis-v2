@@ -35,7 +35,7 @@ def test_vedvarende_beskeder_bliver_i_ALLE_foelgende_runder():
     """En styring brugeren skrev midtvejs gaelder resten af turen. Faldt den
     ud, ville historikken skifte mellem runder — samme braek, modsat vej."""
     h = RundeHale()
-    h.tilfoej_vedvarende("stop med at lede i loggen")
+    h.tilfoej_vedvarende("stop med at lede i loggen", rolle="user")
     h.ny_runde()
     h.ny_runde()
     assert [m["content"] for m in h.som_liste()] == ["stop med at lede i loggen"]
@@ -52,9 +52,10 @@ def test_runde_beskeder_ryddes_ved_ny_runde():
 
 def test_vedvarende_staar_FOERST_fordi_de_er_aeldst():
     h = RundeHale()
-    h.tilfoej_vedvarende("styring")
+    h.tilfoej_vedvarende("styring", rolle="user")
     h.tilfoej_runde("vink")
-    assert [m["content"] for m in h.som_liste()] == ["styring", "vink"]
+    assert h.som_liste()[0]["content"] == "styring"
+    assert h.som_liste()[1]["content"].endswith("\nvink")
 
 
 def test_en_TOM_besked_kommer_ikke_med():
@@ -71,24 +72,27 @@ def test_som_liste_giver_en_KOPI():
     byte-identisk. Gav vi den interne liste, ville en styring der lander
     imens aendre en runde der allerede er sendt."""
     h = RundeHale()
-    h.tilfoej_vedvarende("a")
+    h.tilfoej_vedvarende("a", rolle="user")
     foerste = h.som_liste()
-    h.tilfoej_vedvarende("b")
+    h.tilfoej_vedvarende("b", rolle="user")
     assert [m["content"] for m in foerste] == ["a"]
 
 
 def test_raekkefoelgen_inden_for_hver_slags_bevares():
     h = RundeHale()
     for t in ("en", "to", "tre"):
-        h.tilfoej_vedvarende(t)
+        h.tilfoej_vedvarende(t, rolle="user")
     assert [m["content"] for m in h.som_liste()] == ["en", "to", "tre"]
 
 
-def test_rollen_kan_saettes_men_er_user_som_standard():
+def test_interne_beskeder_er_system_og_aegte_styringer_er_user():
     h = RundeHale()
-    h.tilfoej_vedvarende("x")
-    h.tilfoej_runde("y", rolle="system")
-    assert [m["role"] for m in h.som_liste()] == ["user", "system"]
+    h.tilfoej_vedvarende("Du lovede lige at handle")
+    h.tilfoej_runde("Skriv nu dit endelige svar")
+    h.tilfoej_vedvarende("stop med at lede", rolle="user")
+    assert [m["role"] for m in h.som_liste()] == ["system", "user", "system"]
+    assert "ikke en besked fra brugeren" in h.som_liste()[0]["content"]
+    assert h.som_liste()[1]["content"] == "stop med at lede"
 
 
 # ── Kilde-vagt ──────────────────────────────────────────────────────────────

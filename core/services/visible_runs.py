@@ -1484,8 +1484,10 @@ async def _stream_visible_run(
                                     "input_tokens": 0, "output_tokens": 0})
                 return
             if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
+                from core.services.run_trailing import runtime_instruction_message
                 run.user_message = (
-                    f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
+                    f"{run.user_message}\n\n"
+                    f"{runtime_instruction_message('[HOOK] ' + str(_hook_dom['message']))['content']}")
             # Kun naar en hook faktisk gjorde noget — en linje pr. tur ville
             # vaere stoej, og den almindelige vej er «ingen hooks».
             if _hook_dom.get("action") != "allow":
@@ -3918,15 +3920,11 @@ async def _stream_visible_run(
                     # abandoned mid-token; we'll re-enter the loop with the
                     # steer added so the next round picks up where we steered.
                     if _mid_round_steers:
-                        for s in _mid_round_steers:
-                            content = str(s.get("content") or "").strip()
-                            if not content:
-                                continue
-                            _tur_hale.tilfoej_vedvarende(content)
-                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
-                            if content.strip().lower() in stop_words:
-                                _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
-                                break
+                        from core.services.visible_run_steers import append_real_user_steers
+                        _, _mid_steer_stop = append_real_user_steers(
+                            _tur_hale, _mid_round_steers)
+                        if _mid_steer_stop:
+                            _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
                         # Record the abandoned partial as an empty exchange so
                         # the next prompt has a clean slate (no half-tool-calls
                         # leaked into the followup history).
@@ -5000,11 +4998,11 @@ async def _stream_visible_run(
                     except Exception:
                         steers = []
                     if steers:
-                        for s in steers:
-                            content = str(s.get("content") or "").strip()
-                            if not content:
-                                continue
-                            _tur_hale.tilfoej_vedvarende(content)
+                        from core.services.visible_run_steers import append_real_user_steers
+                        _accepted_steers, _steer_stop = append_real_user_steers(
+                            _tur_hale, steers)
+                        for s in _accepted_steers:
+                            content = s["content"]
                             yield _sse("steer_received", {
                                 "type": "steer_received",
                                 "run_id": run.run_id,
@@ -5015,10 +5013,8 @@ async def _stream_visible_run(
                                 "agentic-steer run_id=%s round=%d injected=%d_chars",
                                 run.run_id, _agentic_round + 1, len(content),
                             )
-                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
-                            if content.strip().lower() in stop_words:
-                                _agentic_loop_exit_reason = "user-steer-stop"
-                                break
+                        if _steer_stop:
+                            _agentic_loop_exit_reason = "user-steer-stop"
                         if _agentic_loop_exit_reason == "user-steer-stop":
                             break
 

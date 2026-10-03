@@ -100,6 +100,7 @@ def nudge_for_tool_calls(*, message: str, provider: str, model: str,
     """
     try:
         from core.services.hollow_promise_guard import HOLLOW_PROMISE_NUDGE
+        from core.services.run_trailing import runtime_instruction_message
         from core.services.visible_model import stream_visible_model
         from core.services.visible_model_types import VisibleModelToolCalls
     except Exception:
@@ -114,7 +115,8 @@ def nudge_for_tool_calls(*, message: str, provider: str, model: str,
     try:
         calls: list[dict] = []
         for item in stream_visible_model(
-            message=f"{message}\n\n{HOLLOW_PROMISE_NUDGE}",
+            message=(f"{message}\n\n"
+                     f"{runtime_instruction_message(HOLLOW_PROMISE_NUDGE)['content']}"),
             provider=provider, model=model, session_id=session_id,
             thinking_mode=thinking_mode,
         ):

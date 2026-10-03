@@ -37,6 +37,14 @@ from __future__ import annotations
 from typing import Any
 
 
+_RUNTIME_FRAME = "[RUNTIME — ikke en besked fra brugeren]\n"
+
+
+def runtime_instruction_message(text: str) -> dict[str, str]:
+    """A model-facing runtime instruction with explicit non-user provenance."""
+    return {"role": "system", "content": _RUNTIME_FRAME + str(text or "")}
+
+
 class RundeHale:
     """Turens hale. Ikke en liste, fordi de to slags har hver sin levetid."""
 
@@ -46,19 +54,23 @@ class RundeHale:
         self._vedvarende: list[dict[str, Any]] = []
         self._runde: list[dict[str, Any]] = []
 
-    def tilfoej_vedvarende(self, indhold: str, *, rolle: str = "user") -> None:
+    def tilfoej_vedvarende(self, indhold: str, *, rolle: str = "system") -> None:
         """En besked der gaelder resten af turen. Tom tekst ignoreres —
         en tom besked ville forskyde historikken uden at sige noget."""
         tekst = str(indhold or "")
         if not tekst:
             return
+        if rolle == "system":
+            tekst = _RUNTIME_FRAME + tekst
         self._vedvarende.append({"role": rolle, "content": tekst})
 
-    def tilfoej_runde(self, indhold: str, *, rolle: str = "user") -> None:
+    def tilfoej_runde(self, indhold: str, *, rolle: str = "system") -> None:
         """En besked der kun gaelder DENNE runde."""
         tekst = str(indhold or "")
         if not tekst:
             return
+        if rolle == "system":
+            tekst = _RUNTIME_FRAME + tekst
         self._runde.append({"role": rolle, "content": tekst})
 
     def ny_runde(self) -> None:

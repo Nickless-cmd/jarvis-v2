@@ -866,8 +866,27 @@ def test_continuation_feeds_partial_and_returns_continuation(
     msgs = list(seen["base_messages"])        # type: ignore[arg-type]
     assert msgs[-2]["role"] == "assistant"
     assert msgs[-2]["content"] == "Svaret blev afkortet her"
-    assert msgs[-1]["role"] == "user"
+    assert msgs[-1]["role"] == "system"
+    assert "ikke en besked fra brugeren" in msgs[-1]["content"]
     assert "Fortsæt PRÆCIS der hvor" in msgs[-1]["content"]
+
+
+def test_final_synthesis_instruction_is_system_not_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = {}
+
+    def _fake_stream(**kwargs):
+        seen.update(kwargs)
+        yield vf.FollowupDone(text="færdigt", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    assert vf.synthesize_final_answer(
+        provider="ollama", model="glm-5.2:cloud",
+        base_messages=[{"role": "user", "content": "ægte besked"}], exchanges=[],
+    ) == "færdigt"
+    assert seen["base_messages"][-1]["role"] == "system"
+    assert "ikke en besked fra brugeren" in seen["base_messages"][-1]["content"]
 
 
 def test_continuation_swaps_reasoner_to_flash(monkeypatch: pytest.MonkeyPatch) -> None:

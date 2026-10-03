@@ -501,6 +501,34 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                 flush=True,
             )
 
+        def _dt_ud(rid: str, ramme: str) -> None:
+
+            """Notér én udgaaende ramme i delta-sporet.
+
+
+            Taeller kun TEKST-rammer: ping og terminale rammer er ikke
+
+            indhold, og de ville faa fordelingen til at se jaevnere ud end
+
+            den er — praecis den slags udglatning maalingen findes for at
+
+            undgaa. Slaar kun op naar sporet er taendt."""
+
+            try:
+
+                from core.services import delta_trace as _dt
+
+                if not _dt.taendt() or 'text_delta' not in ramme:
+
+                    return
+
+                _dt.noter('ud', rid, len(ramme))
+
+            except Exception:  # et spor maa aldrig afbryde streamen mod desk
+
+                pass
+
+
         async def _subscribe():
             import asyncio as _a
             import time as _xt
@@ -525,6 +553,11 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     for f in frames:
                         if "message_stop" in f:
                             saw_stop = True
+                        # Delta-sporets punkt «ud»: hvad desk FAKTISK modtager.
+                        # Sammenholdt med punkt «ind» i adapteren afgoer det om
+                        # en klump er modellens, vores egen kaedes eller desks
+                        # visning. Slukket som standard; se `delta_trace`.
+                        _dt_ud(run_id, f)
                         yield f
                         _last_emit = _xt.monotonic()
                     if saw_stop:
@@ -587,6 +620,14 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     await _a.sleep(0.015)
             finally:
                 rel.subscriber_closed(run_id)
+                # Delta-sporets opsummering — ÉN linje per maalepunkt, naar
+                # turen er slut. En linje per delta ville drukne journalen og
+                # selv koste tid; se `delta_trace`s hoved.
+                try:
+                    from core.services import delta_trace as _dt_slut
+                    _dt_slut.afslut(run_id)
+                except Exception:  # sporet maa ikke kunne forhindre oprydningen
+                    pass
 
         return StreamingResponse(
             _subscribe(),

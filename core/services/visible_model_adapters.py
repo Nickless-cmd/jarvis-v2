@@ -256,6 +256,19 @@ def _stream_openai_compatible_model(
     deepseek-chat (non-thinking compat-alias). Andre openai-compat
     providere ignorerer (de har ikke thinking-mode).
     """
+    def _dt_noter(tekst: str) -> None:
+        """Notér én delta i delta-sporet. Slaar kun run-id op naar sporet er
+        TAENDT — et slukket spor maa ikke koste et opslag per token."""
+        try:
+            from core.services import delta_trace as _dt
+            if not _dt.taendt():
+                return
+            from core.services.session_context_resolve import aktivt_run_id
+            _dt.noter("ind", aktivt_run_id(""), len(tekst))
+        except Exception:  # et spor maa aldrig vaelte en tur; den tavse vej er
+            # her den rigtige, fordi alternativet er at miste svaret.
+            pass
+
     from core.services.cheap_provider_runtime import (
         _iter_openai_compatible_chat_events,
         provider_runtime_defaults,
@@ -395,6 +408,11 @@ def _stream_openai_compatible_model(
                         if _tt_first_tok and _tt is not None:
                             _tt.mark("deepseek_first_token", f"{provider}/{model}")
                             _tt_first_tok = False
+                        # Delta-sporets punkt «ind»: hvad UDBYDEREN sender, foer
+                        # noget af vores egen kaede roerer det. Sammenholdt med
+                        # punkt «ud» i `chat_stream_v2` afgoer det om en klump
+                        # er modellens, vores eller desks. Slukket som standard.
+                        _dt_noter(delta)
                         yield VisibleModelDelta(delta=delta)
                 elif kind == "reasoning_delta":
                     # Thinking-modeller sender ræsonnering FØR svaret. Videresend den

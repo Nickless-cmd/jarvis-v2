@@ -273,6 +273,39 @@ function Element({ e, streaming, config, beskedId }: {
   return <BlocksRenderer blocks={[b]} density="compact" streaming={streaming} />
 }
 
+/** Arbejdsrundernes skjulte kroppe bliver stående i DOM'en. Under streaming
+ *  kommer der nye blok-arrays ved hvert delta, men færdige blok-objekter er
+ *  stabile. Spring deres dyre kort-render over, når indholdet er det samme. */
+function sammeArbejdsElementer(a: ArbejdsElement[], b: ArbejdsElement[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]!
+    const y = b[i]!
+    if (x.slags !== y.slags) return false
+    if (x.slags === 'blok' && y.slags === 'blok' && x.blok !== y.blok) return false
+    if (x.slags === 'mellemsvar' && y.slags === 'mellemsvar' && x.tekst !== y.tekst) return false
+    if (x.slags === 'spor' && y.slags === 'spor'
+      && (x.trin.length !== y.trin.length || x.trin.some((t, j) => t !== y.trin[j]))) return false
+  }
+  return true
+}
+
+const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, streaming, config, beskedId }: {
+  elementer: ArbejdsElement[]
+  aaben: boolean
+  streaming: boolean
+  config?: ApiConfig
+  beskedId?: string
+}) {
+  return (
+    <div className="rv-arbejdsdetaljer" hidden={!aaben}>
+      {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
+    </div>
+  )
+}, (a, b) => a.aaben === b.aaben && a.streaming === b.streaming
+  && a.config === b.config && a.beskedId === b.beskedId
+  && sammeArbejdsElementer(a.elementer, b.elementer))
+
 function Arbejdsrunde({
   elementer, streaming, sidste, harSvar, config, rundeEtiketter, beskedId,
 }: {
@@ -325,9 +358,7 @@ function Arbejdsrunde({
         </span>}
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
-      <div className="rv-arbejdsdetaljer" hidden={!aaben}>
-        {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
-      </div>
+      <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
     </div>
   )
 }

@@ -194,6 +194,19 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Search')).not.toBeVisible()
   })
 
+  it('opdaterer skjulte detaljer når et værktøj faktisk ændrer sig', () => {
+    const intro = tekst('Jeg læser kommandoen.')
+    const gammel = kald('bash', { command: 'echo gammel' })
+    const { container, rerender } = render(<RaekkeTranskript blocks={[intro, gammel]} streaming />)
+    const detaljer = container.querySelector('.rv-arbejdsdetaljer')!
+    expect(detaljer).toHaveAttribute('hidden')
+    expect(detaljer.textContent).toContain('gammel')
+
+    const ny = { ...gammel, input: { command: 'echo ny' } }
+    rerender(<RaekkeTranskript blocks={[intro, ny]} streaming />)
+    expect(detaljer.textContent).toContain('ny')
+  })
+
   it('bruger Jarvis’ egen kommandobeskrivelse og en levende værktøjsfallback', () => {
     const medTekst = render(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger filen.'),

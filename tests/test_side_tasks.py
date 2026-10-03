@@ -126,3 +126,62 @@ def test_prompt_afsnittet_kaster_ikke_paa_en_halv_post(lager):
     lager.append({"side_task_id": "side-xx", "status": "activated"})
     assert side_tasks.side_tasks_prompt_section("chat-abc") is not None
     assert side_tasks.arbejds_session_for("chat-abc") is None
+
+
+# ── Forureningen: listen laestes som en arbejdsordre (3/10-2026) ──────────
+#
+# Bjoern: «noget forurener side-opgave sessionen! den starter hele tiden og det
+# er samme opgave han laver i en anden session med mig».
+#
+# Maalt samme dag stod der i HVER sessions prompt:
+#   [side-eea886e1e9] Giv vagtposterne en levende kanal — … Fixet er tre dele:
+#   stop aesthetic-daemonens spam, flyt udgangen til send_session_notificati
+# 240 tegn med fremgangsmaaden i, afkortet midt i et ord. Det er ikke et flag,
+# det er en arbejdsordre.
+
+def test_listen_siger_at_den_IKKE_er_opgaver_man_er_sat_til(lager):
+    """Maerkningen. Samme tre egenskaber som vaerns-noterne: hvad listen ER,
+    hvad den IKKE er, og et eksplicit forbud mod den forkerte laesning."""
+    side_tasks.flag(title="Giv vagtposterne en levende kanal",
+                    prompt="…", tldr="trigger-koeen er doed")
+    t = side_tasks.side_tasks_prompt_section("en-anden-samtale")
+    assert "HUSKELISTE" in t
+    assert "ikke opgaver du er sat til" in t
+    assert "IKKE begynde" in t
+    assert "Ingen af dem er bedt om i denne samtale" in t
+
+
+def test_tldr_afkortes_ved_en_ORDGRAENSE_og_ikke_midt_i_et_ord(lager):
+    """`send_session_notificati` var det maalte symptom. En afkortet instruks
+    er vaerre end ingen: den ser ud som et fuldt svar."""
+    side_tasks.flag(
+        title="Giv vagtposterne en levende kanal",
+        prompt="…",
+        tldr=("trigger-koeen er doed. Fixet er tre dele: stop "
+              "aesthetic-daemonens spam, flyt udgangen til "
+              "send_session_notification og luk koeen"))
+    t = side_tasks.side_tasks_prompt_section()
+    assert "send_session_notificati\n" not in t
+    assert "send_session_notificati…" not in t, "afkortet midt i et ord"
+    assert t.endswith("…") or "…" in t
+    # Og fremgangsmaaden maa ikke staa der i sin helhed.
+    assert "luk koeen" not in t
+
+
+def test_korte_titler_og_tldr_er_UAENDREDE(lager):
+    """Afkortningen maa ikke roere det der allerede er kort — ellers ville
+    hver linje faa en vildledende ellipse."""
+    side_tasks.flag(title="Fix badge", prompt="…", tldr="den er stale")
+    t = side_tasks.side_tasks_prompt_section()
+    assert "Fix badge — den er stale" in t
+    assert "…" not in t
+
+
+def test_kort_afkorter_ved_ord_og_rydder_tegnsaetning():
+    assert side_tasks._kort("abc", 10) == "abc"
+    assert side_tasks._kort("en to tre fire fem", 10) == "en to tre…"
+    # Linjeskift og dobbelte mellemrum foldes, saa en flerlinjet tldr ikke
+    # braekker bullet-listen.
+    assert side_tasks._kort("en\n\n  to", 20) == "en to"
+    # Et enkelt ord laengere end maks maa stadig afkortes.
+    assert side_tasks._kort("a" * 30, 10) == "a" * 10 + "…"

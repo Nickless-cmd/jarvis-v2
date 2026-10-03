@@ -39,6 +39,19 @@ _TERMINALE = frozenset({"completed", "dismissed"})
 _MAX_SHOWN = 6
 
 
+def _kort(tekst: str, maks: int) -> str:
+    """Afkort ved en ORD-grænse, så en halv sætning ikke læses som en hel.
+
+    Den gamle `tldr[:240]` skar midt i «send_session_notificati», og en
+    afkortet instruks er værre end ingen: den ser ud som et fuldt svar.
+    """
+    t = " ".join(str(tekst or "").split())
+    if len(t) <= maks:
+        return t
+    skaaret = t[:maks].rsplit(" ", 1)[0].rstrip(",.;:-—")
+    return (skaaret or t[:maks]) + "…"
+
+
 def _load_all() -> list[dict[str, Any]]:
     raw = load_json(_STATE_KEY, [])
     if not isinstance(raw, list):
@@ -156,13 +169,31 @@ def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
         # HELE id'et: Jarvis skal kunne afslutte opgaven med præcis det id han
         # ser. Et afkortet id (før: de sidste 10 tegn) kan han ikke bruge.
         sid = str(r.get("side_task_id", ""))
-        title = str(r.get("title", ""))
-        tldr = str(r.get("tldr", "")).strip()
+        title = _kort(str(r.get("title", "")), 70)
+        # Kun et STIKORD af tldr'en (3/10-2026). Bjørn: «noget forurener
+        # side-opgave sessionen … det er samme opgave han laver i en anden
+        # session med mig». Målt samme dag stod der 240 tegn med
+        # fremgangsmåden i — «Fixet er tre dele: stop aesthetic-daemonens
+        # spam, flyt udgangen til send_session_notificati» — afkortet
+        # midt i et ord. Det er ikke et flag, det er en arbejdsordre, og den
+        # stod i HVER sessions prompt. Opgavens fulde tekst hører i den
+        # samtale der løser den, ikke i alle de andre.
+        tldr = _kort(str(r.get("tldr", "")).strip(), 70)
         suffix = f" — {tldr}" if tldr else ""
         tag = " (i gang)" if r.get("status") == "activated" else ""
         bullets.append(f"  [{sid}]{tag} {title}{suffix}")
     extra = f"  (+{len(aabne) - _MAX_SHOWN} mere)" if len(aabne) > _MAX_SHOWN else ""
-    afsnit = "Flaggede side-tasks (deferred):\n" + "\n".join(bullets) + extra
+    # Mærkningen. Tre egenskaber, som i `visible_run_guard_notices`: hvad
+    # listen ER, hvad den IKKE er, og et eksplicit forbud mod den forkerte
+    # læsning. Uden det sidste blev en flagget opgave læst som en opgave at
+    # gå i gang med — i enhver samtale den stod i.
+    afsnit = (
+        "Flaggede side-tasks (deferred) — en HUSKELISTE, ikke opgaver du er "
+        "sat til. Ingen af dem er bedt om i denne samtale, og du må IKKE "
+        "begynde paa en af dem her. Er en af dem arbejdet i netop denne "
+        "samtale, staar det udtrykkeligt nedenfor.\n"
+        + "\n".join(bullets) + extra
+    )
     if mit is not None:
         # Lukke-instruksen. Den staar KUN i den samtale opgaven blev startet
         # for, saa den ikke bliver stoej i alle andre ture.

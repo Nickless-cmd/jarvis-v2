@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8348/15893 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8349/15894 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8348/15893 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 701 | 1281 | 54% |
-| `core.services` | 5581 | 10840 | 51% |
+| `core.services` | 5582 | 10841 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1158,7 +1158,7 @@ Generated from source. 8348/15893 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L769)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L827)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)

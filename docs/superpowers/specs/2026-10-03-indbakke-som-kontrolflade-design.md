@@ -457,6 +457,9 @@ tre af de fem i første forsøg. En oprydning hører i sit eget spor.
 
 ## Opgaver
 
+Opgave 8–13 (tilføjet 3/10) bygger på Opgave 1–2 (postens lager og visningen) og
+Opgave 4 (tælleren). De tilføjer livscyklus og oprydning — ikke nye kilder.
+
 ### Opgave 0: Mål prompten FØR vi bygger
 
 **Filer:** ny `scripts/maal_ventende_i_prompten.py`; ingen test (måleværktøj).
@@ -863,7 +866,7 @@ def test_flush_afleverer_en_henvisning_og_ikke_en_replik():
 
 > **MANGLER (Jarvis 3/10):** opgaven beder mig skelne «udløb» fra de andre
 > udfald — men ingen opgave skaber en udløbs-tilstand. En måling af noget der
-> ikke findes, måler nul. Se §1 i «Seks mangler».
+> ikke findes, måler nul. Se §1 og Opgave 8.
 
 **Filer:** ny `scripts/maal_indbakke.py`; ingen test (måleværktøj).
 
@@ -885,6 +888,134 @@ vindue stod 78 dage. Denne opgave findes for at det ikke gentager sig.
       `review_after_hours`, så påmindelsen (rettet 2/10 med en durabel klokke)
       melder når det er modent.
 - [ ] **Trin 4: Commit.**
+
+---
+
+### Opgave 8: Udløbs-tilstanden — en post må kunne dø af sig selv
+
+> **MANGLER (§1).** Opgave 7 beder om at skelne «udløb» fra `done`/`drop`. Ingen
+> opgave skaber tilstanden. En måling af noget der ikke findes, måler nul.
+
+**Filer:** `core/runtime/db_inbox.py` (migration: `expires_at`), `core/services/inbox_state.py`;
+test `tests/test_inbox_state.py`.
+
+**Beslutning først (trin 1):** skal `inbox_items` have `expires_at` med samme
+semantik som godkendelserne (`core/runtime/db_governance.py`: `expires_at` +
+`expire_tool_intent_approval_request`), eller er udløb med vilje overladt til mig?
+
+Bygges den, gælder tre ting: udløb er en **terminal tilstand**, ikke en sletning;
+`kraever_handling` falder ved udløb, så en post ikke kan gate i det uendelige ved
+at ingen rører den; og udløbet skrives til sporet, så Opgave 7 kan skelne
+`udloebet` fra `released` uden årsag.
+
+- [ ] **Trin 1: Lås beslutningen** i Global Constraints (bygges, eller afvises med begrundelse).
+- [ ] **Trin 2: Test at en post med passeret `expires_at` ikke længere gater**, og at den stadig kan læses.
+- [ ] **Trin 3: Kør, se den fejle.**
+- [ ] **Trin 4: Implementér** udløb som en **beregnet** tilstand på læse-tidspunktet — samme form som godkendelsernes `expired`-beregning, ikke en baggrundsjobb der skal køre for at posten dør.
+- [ ] **Trin 5: Test at udløb er idempotent** og at en genstart ikke nulstiller det.
+- [ ] **Trin 6: Kør hele suiten. Commit.**
+
+### Opgave 9: Standardtilstanden — hvem lukker en post der er færdig?
+
+> **MANGLER (§2).** `kraever_handling` udledes af proveniens, og `inbox_done` er
+> manuel. Intet lukker et job der er exit 0 af sig selv — så systemets ligevægt
+> er blokeret.
+
+**Filer:** `core/services/inbox_state.py`, den kilde der registrerer posten;
+test `tests/test_inbox_state.py`.
+
+**Beslutning først (trin 1):** hvem lukker en post hvis arbejde er færdigt uden at
+nogen kaldte `done`? Tre mulige: (a) kilden lukker — jobbet skriver sin egen
+terminale tilstand; (b) en indholdsregel nedgraderer posten når kilden er
+terminal; (c) ingen af dem, og posten skal lukkes af mig. Vælges (c), skal
+begrundelsen stå — for det er præcis den blokerede ligevægt.
+
+- [ ] **Trin 1: Lås beslutningen.**
+- [ ] **Trin 2: Test at en post hvis kildearbejde er afsluttet (exit 0) ikke længere gater** — uden at `inbox_done` blev kaldt.
+- [ ] **Trin 3: Kør, se den fejle.**
+- [ ] **Trin 4: Implementér** kildens terminale tilstand som **nedgradering**, ikke sletning: posten bliver `afsluttet_af_kilde` og kan stadig ses. Beviset slettes ikke.
+- [ ] **Trin 5: Test at nedgraderingen er idempotent**, og at en post der IKKE er færdig ikke nedgraderes af en fejlende kilde.
+- [ ] **Trin 6: Kør hele suiten. Commit.**
+
+### Opgave 10: Loft og rangorden i visningen
+
+> **MANGLER (§3).** Seks sektioner, én linje per post, ingen cap. Argumentet der
+> udelukkede kandidat-backloggen («1.896 poster ville drukne den dag ét») gælder
+> også **inde i** sektionerne.
+
+**Filer:** visningsfilen fra Opgave 2 (`byg_indbakke`); samme testfil som Opgave 2.
+
+**Beslutning først (trin 1):** et loft per sektion, og en rangorden — ældste først
+eller mest handlingskrævende først? Loftet skal være **synligt**: en afkortet
+sektion skal sige hvad der er skjult («+17 mere»), ellers er loftet selv en
+tavshed.
+
+- [ ] **Trin 1: Lås beslutningen** (tal og orden).
+- [ ] **Trin 2: Test at en sektion med flere poster end loftet viser loftet og en tælling af resten**, og at de viste er de rigtige efter den valgte orden.
+- [ ] **Trin 3: Kør, se den fejle.**
+- [ ] **Trin 4: Implementér** loft, orden og «+N mere»-linje.
+- [ ] **Trin 5: Test at den blokerende sektion («VENTER PÅ DIG») aldrig kan afkortes tavst** — en skjult blokerende post er en usynlig blokering.
+- [ ] **Trin 6: Kør hele suiten. Commit.**
+
+### Opgave 11: Retention — hvad sker der med de lukkede poster?
+
+> **MANGLER (§4).** `inbox_items` er durabel og vokser. Ingen lukket-sektion,
+> ingen sletning, ingen TTL — samme kurve som de 1.896 kandidater, bare
+> langsommere.
+
+**Filer:** `core/runtime/db_inbox.py`, `core/services/inbox_state.py`;
+test `tests/test_inbox_state.py`.
+
+**Beslutning først (trin 1):** hvor længe lever en lukket post, og hvor ser jeg
+den? Sletning er ikke det eneste svar — en lukket-sektion der kan læses, men som
+ikke fylder i den aktive visning, kan være nok.
+
+- [ ] **Trin 1: Lås beslutningen.**
+- [ ] **Trin 2: Test at en lukket post ældre end vinduet ikke optræder i den aktive visning**, men stadig kan findes.
+- [ ] **Trin 3: Kør, se den fejle.**
+- [ ] **Trin 4: Implementér** retention som en **læse-regel** (vindue), og kun sletning hvis beslutningen kræver det. Sletning af et bevis kræver sin egen begrundelse.
+- [ ] **Trin 5: Test at retention ikke kan fjerne en post der stadig gater**, uanset alder.
+- [ ] **Trin 6: Kør hele suiten. Commit.**
+
+### Opgave 12: Tælleren skal læse promptens eget artefakt
+
+> **MANGLER (§5).** Dagens fejlklasse: skill-gaten læste `_a_tool_calls` — der
+> bærer transport-navnet `call_loaded_tool` — mens event-loggen stod på den anden
+> side af udpakningen i `core/services/simple_tool_executor.py`. Gaten fyrede på
+> en forkert præmis i timevis.
+
+**Filer:** `core/services/visible_runs.py` (tælleren i R2.5-forudsætningen,
+Opgave 4); test `tests/test_skill_invokering_spor.py`.
+
+**Beslutning først (trin 1):** hvilken funktion er den **ene** sandhed for «hvad
+så modellen denne tur»? Opgave 4's leverings-tæller skal læse den samme liste
+prompten blev bygget fra — ikke en proxy der ligner.
+
+- [ ] **Trin 1: Lås beslutningen** — navngiv funktionen.
+- [ ] **Trin 2: Test at tælleren og prompt-byggeren læser samme liste:** injicér et kald gennem `call_loaded_tool`, og bevis at tælleren ser det **ægte** navn.
+- [ ] **Trin 3: Kør, se den fejle** (den er blind i dag; `prop-36aa612b6d7c49f1` er forslaget der retter det).
+- [ ] **Trin 4: Implementér** udpakning på læse-tidspunktet, så tælleren ser det navn modellen faktisk kaldte.
+- [ ] **Trin 5: Test at de to lister er identiske** for en tur med både direkte kald og `call_loaded_tool`-kald.
+- [ ] **Trin 6: Kør hele suiten. Commit.**
+
+### Opgave 13: Et løfte givet i prosa — navngivet fravalg eller indgang
+
+> **MANGLER (§6).** Kanalbeskeder blev udelukket *med* en AST-vagt. Den mest
+> almindelige ægte fejl — «jeg tjekker det i morgen», sagt i en samtale og aldrig
+> registreret — er slet ikke nævnt.
+
+**Filer:** Global Constraints og tabellen «Hvad der ER med, og hvad der ikke er»;
+evt. en vagt efter mønstret i Opgave 2 trin 9.
+
+**Beslutning først (trin 1):** skal prosa-løfter kunne registreres — og i givet
+fald af hvem, må jeg oprette en post ud fra min egen sætning? Eller er det et
+fravalg med begrundelse? Spec'ens egen standard gælder: **en udelukkelse uden
+vagt glider.**
+
+- [ ] **Trin 1: Lås beslutningen.**
+- [ ] **Trin 2a (fravalg):** skriv det som navngivet fravalg i tabellen, med begrundelse — på linje med kanalbeskederne.
+- [ ] **Trin 2b (indgang):** beskriv hvem der må registrere, hvordan proveniens bevises for en sætning (samme krav som Opgave 1: ejer er bevis, ikke et flag), og hvordan en fejlagtig registrering trækkes tilbage.
+- [ ] **Trin 3: Commit.**
 
 ---
 
@@ -1146,9 +1277,9 @@ Den svarer ikke på det andet spørgsmål: **hvordan holder den sig ren efter da
 blokering bag.
 
 De seks nedenfor er **ikke rettelser**. De er mangler jeg fandt i reviewet, og
-hver af dem skal enten bygges som en opgave eller afvises med vilje. Jeg har
-**ikke** skrevet dem ind i opgaverne — det er Bjørns beslutning om de hører
-hjemme her, og hvor. Markørerne i afsnittene ovenfor peger herned.
+hver af dem skal enten bygges eller afvises med vilje — ved sin egen trin 1.
+**De er skrevet ind som Opgave 8–13 den 3/10 (Bjørns beslutning).** Markørerne i
+afsnittene ovenfor peger herned, og hver § peger tilbage på sin opgave.
 
 ### §1 — Udløb findes som måling, ikke som mekanisme
 
@@ -1167,6 +1298,8 @@ indbakken — men giver den ikke det registret manglede: en terminal tilstand so
 *Beslutning:* skal `inbox_items` have `expires_at` med samme semantik som
 godkendelserne, eller er udløb med vilje overladt til mig?
 
+**→ Opgave 8.**
+
 ### §2 — Standardtilstanden er «åben og gater»
 
 `kraever_handling` udledes af **proveniens** — et verificeret oprettende run.
@@ -1183,6 +1316,8 @@ kan ikke se hvad der forhindrer at indbakken bliver netop det.
 *Beslutning:* hvem lukker en post hvis arbejde er færdigt uden at nogen kaldte
 `done`?
 
+**→ Opgave 9.**
+
 ### §3 — Intet loft og ingen rangorden
 
 Seks sektioner, én linje per post — og ingen cap. Det er præcis det argument der
@@ -1195,12 +1330,16 @@ vises, når «VENTER PÅ DIG» har 30 poster.
 *Beslutning:* et loft per sektion, og en rangorden — ældste først, eller mest
 handlingskrævende først?
 
+**→ Opgave 10.**
+
 ### §4 — Ingen retention
 
 `inbox_items` er durabel — og vokser. Ingen lukket-sektion, ingen sletning,
 ingen TTL. Samme kurve som de 1.896 kandidater, bare langsommere.
 
 *Beslutning:* hvor længe lever en lukket post, og hvor ser jeg den?
+
+**→ Opgave 11.**
 
 ### §5 — Gaten skal læse præcis det artefakt prompten blev bygget fra
 
@@ -1218,6 +1357,8 @@ Ellers bygger vi samme blindhed igen — og opdager det først om tre uger.
 *Beslutning:* hvilken funktion er den ene sandhed for «hvad så modellen denne
 tur», og hvordan bevises de to lister identiske i en test?
 
+**→ Opgave 12.**
+
 ### §6 — Et løfte givet i prosa har ingen indgang
 
 Ikke en fejl — en **unavnt udelukkelse**. Kanalbeskeder blev udelukket *med* en
@@ -1230,13 +1371,15 @@ standard bør den stå som navngivet fravalg.
 *Beslutning:* skal prosa-løfter kunne registreres (og i givet fald af hvem), eller
 er det et fravalg med begrundelse?
 
+**→ Opgave 13.**
+
 ---
 
 ### Hvad jeg ikke har gjort
 
-Jeg har **ikke** skrevet de seks ind i opgaverne, og jeg har ikke bygget noget. De
-står som en mangelliste med én beslutning ved hver, så de kan afvises med vilje i
-stedet for at forsvinde.
+Jeg har **ikke** bygget noget. De seks stod først som en mangelliste; den 3/10
+blev de skrevet ind som **Opgave 8–13**, hver med sin beslutning i trin 1, så de
+kan afvises med vilje i stedet for at forsvinde.
 
 Punkterne er læst frem af spec'ens egne sektioner — Global Constraints, visningen,
 koblingen til R2.5, Opgave 1/2/4/7 — og af dagens fejl i skill-gaten. De er **ikke**

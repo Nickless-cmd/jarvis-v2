@@ -908,6 +908,7 @@ def generate_session_summary(
     run_id: str = "",
     user_message: str = "",
     assistant_response: str = "",
+    human_user_message: bool = True,
 ) -> str:
     """Generate and store a compact conversation summary for the given session.
 
@@ -918,7 +919,8 @@ def generate_session_summary(
 
     # Use provided messages if available
     if user_message:
-        context_parts.append(f"Bruger: {user_message[:300]}")
+        source = "Bruger" if human_user_message else "Automatisk opgave"
+        context_parts.append(f"{source}: {user_message[:300]}")
     if assistant_response:
         context_parts.append(f"Jarvis: {assistant_response[:500]}")
 

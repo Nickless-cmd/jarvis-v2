@@ -85,6 +85,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             user_message=run.user_message,
             assistant_response=assistant_text,
             internal_context=_vr._recent_internal_tool_context(run.session_id),
+            human_user_message=not run.autonomous,
         )
     except Exception as exc:
         errors.append(f"end_of_run_consolidation:{type(exc).__name__}:{exc}")
@@ -109,6 +110,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             run_id=run.run_id,
             user_message=run.user_message,
             assistant_response=assistant_text,
+            human_user_message=not run.autonomous,
         ) or ""
     except Exception as exc:
         errors.append(f"session_summary:{type(exc).__name__}:{exc}")

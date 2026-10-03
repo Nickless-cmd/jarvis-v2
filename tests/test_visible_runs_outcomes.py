@@ -147,6 +147,43 @@ def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch)
     assert captured["session_id"] == "chat-session-real"
 
 
+def test_autonomous_outcome_does_not_pass_task_as_user_message(monkeypatch):
+    class _Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, *_args, **_kwargs):
+            return self
+
+        def commit(self):
+            return None
+
+    captured: dict[str, object] = {}
+    run = _Run(session_id="auto-recurring-test")
+    run.autonomous = True
+    run.lane = "visible"
+    monkeypatch.setattr(vro, "connect", lambda: _Connection())
+    monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **_kwargs: None)
+    monkeypatch.setattr(vro._vr, "get_visible_run_controller", lambda _run_id: None)
+    monkeypatch.setattr(
+        vro._vr, "_get_visible_run_control",
+        lambda _run_id: {"current_user_message_preview": "Send morgenbriefing"},
+    )
+    monkeypatch.setattr(vro._vr, "_update_cognitive_systems_async", lambda **values: captured.update(values))
+
+    vro._persist_visible_run_outcome(
+        run,
+        status="completed",
+        finished_at="2026-09-10T10:00:00+00:00",
+        text_preview="Briefing sendt.",
+    )
+
+    assert captured["user_message"] == ""
+
+
 def test_tekstbloggene_normaliseres_ogsaa():
     """Klienterne tegner en gemt tur ud fra content_json — ikke content."""
     from core.services.visible_runs_outcomes import _normaliser_tekstblokke

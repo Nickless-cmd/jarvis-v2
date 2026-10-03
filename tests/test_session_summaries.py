@@ -233,6 +233,26 @@ class TestSessionSummaryCleanup:
 
 
 class TestGenerateSessionSummary:
+    def test_autonomous_task_is_not_labeled_as_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from core.services import session_distillation as sd
+
+        prompts: list[str] = []
+        monkeypatch.setattr(
+            "core.services.daemon_llm.daemon_llm_call",
+            lambda prompt, **kw: prompts.append(prompt) or "Emne: Opgave | Resultat: Udført",
+        )
+        monkeypatch.setattr("core.runtime.db.session_summary_insert", lambda **kw: None)
+
+        sd.generate_session_summary(
+            session_id="auto-recurring-test",
+            user_message="Send morgenbriefing",
+            assistant_response="Briefing sendt.",
+            human_user_message=False,
+        )
+
+        assert "Automatisk opgave: Send morgenbriefing" in prompts[0]
+        assert "Bruger: Send morgenbriefing" not in prompts[0]
+
     def test_generates_from_messages(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.services import session_distillation as sd
 

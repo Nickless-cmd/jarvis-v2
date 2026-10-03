@@ -36,6 +36,7 @@ def consolidate_run_memory(
     user_message: str = "",
     assistant_response: str = "",
     internal_context: str = "",
+    human_user_message: bool = True,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "consolidated": False,
@@ -63,6 +64,13 @@ def consolidate_run_memory(
         except Exception:
             pass
         return result
+
+    if not human_user_message:
+        # Recurring/heartbeat work has a task brief, not a fresh request from
+        # Bjørn. Consolidating it as "User:" fabricated repeat requests and
+        # unsolicited rule proposals after each scheduled execution.
+        result["skipped_reason"] = "no-human-user-turn"
+        return _finish()
 
     if len(user_message) < 12 and len(assistant_response) < 40:
         result["skipped_reason"] = "conversation-too-short"

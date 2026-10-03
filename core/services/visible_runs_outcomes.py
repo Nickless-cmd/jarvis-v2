@@ -996,7 +996,7 @@ def _persist_visible_run_outcome(
         run_id=run.run_id,
         session_id=run.session_id,
         model=run.model,
-        user_message=user_message_preview or "",
+        user_message=(user_message_preview or "") if not getattr(run, "autonomous", False) else "",
         assistant_response=work_preview or "",
         outcome_status=status,
     )

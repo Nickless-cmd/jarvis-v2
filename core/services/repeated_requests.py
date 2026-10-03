@@ -54,6 +54,7 @@ STATUS_OPEN = "open"
 STATUS_ASKED = "asked"
 STATUS_RULE = "rule"
 STATUS_DECLINED = "declined"
+STATUS_INVALID_SOURCE = "invalid_source"
 
 
 def _now() -> str:
@@ -130,12 +131,30 @@ def note_request(
     if len(body) < _MIN_LENGTH or not norm:
         return {"status": "skipped", "reason": "too-short"}
     sid = str(session_id or "").strip()
+    if sid.startswith("auto-"):
+        # The scheduler replays one saved task each day. It is not Bjørn
+        # asking again, even if a summarizer calls it a REQUEST.
+        return {"status": "skipped", "reason": "non-human-session"}
     now = _now()
     with connect() as conn:
         conn.row_factory = sqlite3.Row
         ensure_table(conn)
         existing = _row(conn.execute(
             "SELECT * FROM repeated_requests WHERE norm_text = ?", (norm,)).fetchone() or {})
+        if existing.get("status") == STATUS_INVALID_SOURCE:
+            # A real request with the same wording must start at one, without
+            # inheriting scheduler executions or the old proposal state.
+            conn.execute(
+                "UPDATE repeated_requests SET text=?, kind=?, status=?, "
+                "mention_count=1, session_ids=?, first_seen=?, last_seen=?, decided_at='' "
+                "WHERE request_id=?",
+                (body[:400], str(kind or "request")[:40], STATUS_OPEN,
+                 sid, now, now, existing["request_id"]),
+            )
+            conn.commit()
+            return {"status": "new", "request_id": existing["request_id"],
+                    "mention_count": 1, "session_count": 1 if sid else 0,
+                    "matured": False}
         if not existing:
             # Ikke ordret den samme — men er det den samme ANMODNING? Bjoern
             # skriver sjaeldent det samme to gange paa praecis samme maade.
@@ -143,6 +162,8 @@ def note_request(
                 "SELECT * FROM repeated_requests ORDER BY last_seen DESC LIMIT 200"
             ).fetchall():
                 cand = _row(row)
+                if cand.get("status") == STATUS_INVALID_SOURCE:
+                    continue
                 if str(cand.get("kind") or "request") != str(kind or "request"):
                     continue
                 if similarity(body, str(cand.get("text") or "")) >= _SAME_REQUEST_SIMILARITY:
@@ -223,6 +244,8 @@ def record_decision(*, request_id: str, accepted: bool) -> dict[str, Any]:
             (str(request_id or ""),)).fetchone() or {})
         if not row:
             return {"decided": False, "reason": "unknown-request"}
+        if row.get("status") == STATUS_INVALID_SOURCE:
+            return {"decided": False, "reason": "invalid-source"}
         conn.execute(
             "UPDATE repeated_requests SET status = ?, decided_at = ? WHERE request_id = ?",
             (STATUS_RULE if accepted else STATUS_DECLINED, _now(), str(request_id or "")),

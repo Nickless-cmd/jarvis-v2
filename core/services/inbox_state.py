@@ -63,6 +63,15 @@ from core.runtime.db_inbox import (
 
 logger = logging.getLogger(__name__)
 
+
+def _spor(kind: str, payload: dict[str, Any]) -> None:
+    """Publicér til eventbussen. Kaster aldrig — se `inbox_gate._spor`."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(kind, payload)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke spore %s: %s", kind, exc)
+
 #: Kildetyper der ALDRIG gater, uanset hvor kaldet kom fra. Spec'ens tabel:
 #: recurring/heartbeat/daemoner må oprette, ikke kræve. Godkendelser har sin
 #: egen klasse («venter på Bjørn») og gater ikke, fordi hans svartid ikke må
@@ -177,6 +186,18 @@ def registrer_kilde(
         logger.warning(
             "inbox_state: kunne IKKE registrere %s/%s for %s (kraever_handling=%s): %s",
             kildetype_n, kilde_id, bruger_id, kraever_handling, r.get("error"))
+        _spor("inbox.registrering_fejlede", {
+            "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,
+            "kraever_handling": kraever_handling, "error": str(r.get("error") or "")})
+        return r
+    # Kun NYE poster spores. En genregistrering er idempotent og maa ikke
+    # taelle igen — ellers ville Opgave 7's «hvor mange blev
+    # handlingskraevende» vokse hver gang en notifikation blev genleveret.
+    post = r.get("post") or {}
+    if int(post.get("paamindelser") or 0) == 0 and not post.get("afgjort_at"):
+        _spor("inbox.registreret", {
+            "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,
+            "verificeret_ejer": ejer, "kraever_handling": kraever_handling})
     return r
 
 
@@ -243,6 +264,8 @@ def done(bruger_id: str, post_id: str) -> dict[str, Any]:
     if r.get("status") != "ok":
         return {"status": "fejl", "type": str(post.get("kildetype") or ""),
                 "id": post_id, "error": str(r.get("error") or r.get("status"))}
+    _spor("inbox.afgjort", {"bruger_id": bruger_id, "kilde_id": post_id,
+                            "udfald": "done", "kildetype": str(post.get("kildetype") or "")})
     return {"status": "ok", "type": str(post.get("kildetype") or ""), "id": post_id}
 
 
@@ -267,6 +290,9 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
     if r.get("status") != "ok":
         return {"status": "fejl", "type": str(post.get("kildetype") or ""),
                 "id": post_id, "error": str(r.get("error") or r.get("status"))}
+    _spor("inbox.afgjort", {"bruger_id": bruger_id, "kilde_id": post_id,
+                            "udfald": "drop", "grund": grund,
+                            "kildetype": str(post.get("kildetype") or "")})
     return {"status": "ok", "type": str(post.get("kildetype") or ""), "id": post_id}
 
 

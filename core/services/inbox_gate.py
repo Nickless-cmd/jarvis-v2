@@ -156,6 +156,24 @@ _SYSTEM_MAERKE: Final[str] = (
 )
 
 
+def _spor(kind: str, payload: dict[str, Any]) -> None:
+    """Publicér til eventbussen. Kaster aldrig.
+
+    Sporet er ikke pynt: Opgave 7 skal kunne PARRE hændelser per post-id og
+    bruger-id, og skelne `done`, `drop`, udløb, fail-open og DB-fejl. «released
+    uden årsag» er ikke efterlevelse — og uden et spor pr. trin kan de to
+    heed-rater ikke måles hver for sig. R2's punkt 2 ventede fra 13. juni på en
+    måling der aldrig blev lavet, fordi tallene ikke blev skrevet nogen steder.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(kind, payload)
+    except Exception as exc:  # noqa: BLE001
+        # Telemetrien maa aldrig vaelte gaten. Men en bus der er nede goer hele
+        # Opgave 7 blind, saa den skal kunne SES.
+        logger.warning("inbox_gate: kunne ikke spore %s: %s", kind, exc)
+
+
 def _varsel(poster: list[dict[str, Any]]) -> str:
     n = len(poster)
     ider = ", ".join(str(p["id"]) for p in poster[:3])
@@ -215,6 +233,8 @@ def evaluer_inbox_mutation(
 
     poster = _gatende_poster(bruger_id)
     if poster is None:
+        _spor("inbox_gate.fail_open", {"bruger_id": bruger_id, "tool_name": navn,
+                                       "tur": tur, "aarsag": "db-fejl"})
         return {**tomt, "grund": "fail-open: kunne ikke laese indbakken"}
     if not poster:
         return {**tomt, "grund": "intet venter"}
@@ -222,6 +242,10 @@ def evaluer_inbox_mutation(
     graense = _foer_blok()
     modne = [p for p in poster if int(p.get("paamindelser") or 0) >= graense]
     if modne:
+        _spor("inbox_gate.blocked", {
+            "bruger_id": bruger_id, "tool_name": navn, "tur": tur,
+            "poster": [str(p["id"]) for p in modne],
+            "graense": graense})
         return {"blokeret": True,
                 "poster": [str(p["id"]) for p in modne],
                 "varsel": _naegtelse(modne, navn),
@@ -242,6 +266,11 @@ def evaluer_inbox_mutation(
         # linje gentages i hver runde.
         return {**tomt, "poster": [str(p["id"]) for p in poster],
                 "grund": "paamindet i denne tur"}
+    _spor("inbox_gate.reminded", {
+        "bruger_id": bruger_id, "poster": [str(p["id"]) for p in leveret],
+        "tool_name": navn, "tur": tur,
+        "paamindelser": {str(p["id"]): int(p.get("paamindelser") or 0) + 1
+                         for p in leveret}})
     return {**tomt, "poster": [str(p["id"]) for p in leveret],
             "varsel": _varsel(leveret),
             "grund": f"trin 1: paamindede {len(leveret)} post(er)"}

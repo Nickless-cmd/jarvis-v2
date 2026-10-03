@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/structured_content_flag.py`
+_Governed kill-switch for struktureret content-persist + wire. Default ON._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
+| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
+
 ## `core/services/subagent_digest.py`
 _Surface recently-completed subagents into the visible prompt._
 
@@ -594,11 +602,4 @@ _Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
 | function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
 | function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
 | function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
-
-## `core/services/tool_dansk_bro.py`
-_Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L184) |
 

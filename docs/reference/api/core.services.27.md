@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/value_formation.py`
+_Value Formation — emergent ethics from experience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_value_from_experience` | `(*, action, outcome, reflection)` | — | [src](../../../core/services/value_formation.py#L12) |
+| function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
+| function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
+| function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
+
 ## `core/services/verification_gate.py`
 _Verification gate — advisory check on destructive/mutation actions._
 
@@ -595,13 +605,4 @@ _User-facing error messages for visible runs (Jarvis voice)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
-
-## `core/services/visible_runs_learning_signals.py`
-_Post-run learning signals for a visible run (extracted from visible_runs.py,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `er_brugerafbrydelse` | `(fejl)` | True hvis fejlteksten beskriver en afbrydelse frem for en fejl. | [src](../../../core/services/visible_runs_learning_signals.py#L29) |
-| function | `tool_names` | `(collected_native_tool_calls)` | Names of the native tool calls in order (objects or OpenAI-style dicts). | [src](../../../core/services/visible_runs_learning_signals.py#L35) |
-| function | `record_visible_run_learning_signals` | `(*, run_ref, collected_native_tool_calls, outcome_status, outcome_error, followup_text, output_tokens)` | — | [src](../../../core/services/visible_runs_learning_signals.py#L53) |
 

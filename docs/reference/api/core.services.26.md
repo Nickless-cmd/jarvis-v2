@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_dansk_bro.py`
+_Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L184) |
+
 ## `core/services/tool_embeddings.py`
 _Tool description embedding cache._
 
@@ -575,14 +582,4 @@ _Valence Trajectory — long-term flourishing/withering signal._
 | function | `build_valence_trajectory_prompt_section` | `()` | Return a single prompt line when trajectory is notable. | [src](../../../core/services/valence_trajectory.py#L262) |
 | function | `reset_valence_trajectory` | `()` | Reset state (for testing). | [src](../../../core/services/valence_trajectory.py#L274) |
 | function | `_publish_valence_trajectory_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/valence_trajectory.py#L285) |
-
-## `core/services/value_formation.py`
-_Value Formation — emergent ethics from experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_value_from_experience` | `(*, action, outcome, reflection)` | — | [src](../../../core/services/value_formation.py#L12) |
-| function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
-| function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
-| function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
 

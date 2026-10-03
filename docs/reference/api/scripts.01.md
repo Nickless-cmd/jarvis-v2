@@ -313,9 +313,9 @@ _E2E: holder indbakke-kæden usmocket, i produktionen?_
 | function | `_trin_7_done` | `(led, bruger, kid)` | `inbox_done` lukker den, visningen falder, og posten kan STADIG findes. | [src](../../../scripts/e2e_indbakke.py#L258) |
 | function | `_trin_8_intet_i_chatten` | `(led, session_id, foer)` | Er noget sivet ind i chatten som en assistant-besked? | [src](../../../scripts/e2e_indbakke.py#L287) |
 | function | `_trin_9_tavse_fejlformer` | `(led, bruger)` | De tre tal huset kender som tavse fejlformer. | [src](../../../scripts/e2e_indbakke.py#L305) |
-| function | `_chat_antal` | `(session_id)` | — | [src](../../../scripts/e2e_indbakke.py#L360) |
-| function | `_ryd` | `(bruger, kid)` | Luk en testpost. Kaster aldrig — oprydning må ikke vælte rapporten. | [src](../../../scripts/e2e_indbakke.py#L371) |
-| function | `main` | `()` | — | [src](../../../scripts/e2e_indbakke.py#L383) |
+| function | `_chat_antal` | `(session_id)` | — | [src](../../../scripts/e2e_indbakke.py#L385) |
+| function | `_ryd` | `(bruger, kid)` | Luk en testpost. Kaster aldrig — oprydning må ikke vælte rapporten. | [src](../../../scripts/e2e_indbakke.py#L396) |
+| function | `main` | `()` | — | [src](../../../scripts/e2e_indbakke.py#L408) |
 
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._

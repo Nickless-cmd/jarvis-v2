@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shell_confinement_report.py`
+_Hver shell-sti skal SIGE om den er indespaerret — Fase 3, K10._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `rapport` | `(grund)` | Byg rapporten — eller None naar der ikke er noget at sige. | [src](../../../core/services/shell_confinement_report.py#L38) |
+| function | `vedhaeft` | `(svar, grund)` | Saet rapporten paa et svar. Roerer intet andet, kaster aldrig. | [src](../../../core/services/shell_confinement_report.py#L60) |
+
 ## `core/services/shutdown_window_daemon.py`
 _Shutdown Window daemon — unannounced pauses to practice finitude._
 
@@ -583,12 +591,4 @@ _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 | method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
 | method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
 | method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
-
-## `core/services/structured_content_flag.py`
-_Governed kill-switch for struktureret content-persist + wire. Default ON._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
-| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
 

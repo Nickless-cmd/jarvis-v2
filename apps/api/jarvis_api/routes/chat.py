@@ -1292,25 +1292,38 @@ def chat_session_recovery(session_id: str, response: Response) -> dict:
     return snapshot
 
 
+# 3/10-2026: loft for hvor laenge et AABENT run maa holde indikatoren taendt.
+# Endpointets egen kommentar naevnte 10 minutter — det er vaernet mod en zombie
+# der aldrig blev markeret faerdig.
+_AKTIVE_RUNS_ALDER_LOFT_S = 600.0
+
+
 @router.get("/active-runs")
 def chat_active_runs() -> dict:
     """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).
 
     Bruges af Sidebar til at vise en arbejds-indikator på en session der ikke er
-    fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
-    state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
-    ikke cancelled."""
+    fremme. Højst ét aktivt visible-run ad gangen. Alders-guard mod phantom-
+    state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt."""
     # Autoritativ liveness via run_follow-bufferen (SAMME proces som de afkoblede
     # runs + dette endpoint) — paalideligt for detached A3-runs og rydder
     # OEJEBLIKKELIGT op naar et run afsluttes (end_follow). Erstatter det DELTE
     # active-run-heartbeat, der halter cross-proces for detached runs og fik
     # desktop-aktivitetsprikkerne til at haenge (Bjoern 2026-06-18).
+    #
+    # 3/10-2026: kilden er skiftet fra `live_run_ids` (FRISKHEDS-baseret: et run
+    # falder ud naar der ikke er kommet en frame i 45 s) til `aabne_run_ids`
+    # (TILSTANDS-baseret: et run er i gang til det er FAERDIGT). Under et langt
+    # blokerende vaerktoejskald kommer der ingen frames — og indikatoren blinkede
+    # (Bjoern: «stopper ... starter op igen og koere x sekunder og saa stopper»).
+    # Det er samme defekt `aabne_run_ids` blev bygget til 19/9 for den indre
+    # opmaerksomhed; klienten fik den bare aldrig.
     from core.runtime.settings import load_settings
     if load_settings().server_authoritative_runs:
         import core.services.run_event_log as rel
         sids: list[str] = []
         sessions: list[dict] = []
-        for rid in rel.live_run_ids():
+        for rid in rel.aabne_run_ids(max_alder_s=_AKTIVE_RUNS_ALDER_LOFT_S):
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)

@@ -96,3 +96,62 @@ def test_decision_adherence_gate_is_silent_when_all_are_healthy(monkeypatch):
     ])
 
     assert gate.decision_adherence_section() == ""
+
+
+def test_handlingen_skrives_EN_gang_per_baand_ikke_per_post():
+    """Målt 4/10-2026 på Bjørns levende samtale: blokken var 1.177 tokens — den
+    STØRSTE i hele den dynamiske hale, 17,4 % af den — og ~297 af dem (25 %)
+    var den samme sætning gentaget tolv gange.
+
+    Handlingen er pr. BÅND, ikke pr. beslutning. Den var identisk hver gang
+    fordi den aldrig kunne være andet, og den blev betalt hver tur.
+
+    Testen tæller forekomster frem for at lede efter sætningen: en test der
+    bare spurgte «står handlingen der?» ville bestå både før og efter. Det er
+    præcis den fejl jeg lavede i indbakkens dublet-test samme dag.
+    """
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    kritiske = [{"decision_id": f"dec_{i:012x}", "directive": f"direktiv {i}",
+                 "adherence_score": 0.0} for i in range(5)]
+    imperative = [{"decision_id": f"dec_i{i:011x}", "directive": f"imp {i}",
+                   "adherence_score": 0.3} for i in range(3)]
+    alle = kritiske + imperative
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=alle), \
+         patch("core.services.behavioral_decisions.count_decisions",
+               return_value=len(alle)):
+        t = g.decision_adherence_section()
+
+    assert t.count("kan ikke opfyldes som formuleret") == 1, \
+        "den kritiske handling gentages stadig per post"
+    assert t.count("navngiv det eksplicit") == 1, \
+        "den imperative handling gentages stadig per post"
+    # Og den skal SIGE hvor mange den gaelder for — ellers mister linjen sin
+    # adresse naar den ikke laengere staar ved sin egen post.
+    assert "De 5 i kritisk band" in t
+    assert "De 3 i imperativ band" in t
+    # Hver beslutning har stadig sin EGEN linje med sit id. Samlingen af
+    # handlingen maa ikke samle posterne.
+    for d in alle:
+        assert d["decision_id"] in t, f"{d['decision_id']} forsvandt"
+
+
+def test_et_baand_UDEN_poster_faar_ingen_handlingslinje():
+    """«+0 mere» i en anden form. En handling for et bånd der er tomt er en
+    instruktion uden modtager."""
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    kun_advisory = [{"decision_id": "dec_adv", "directive": "d",
+                     "adherence_score": 0.5}]
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=kun_advisory), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=1):
+        t = g.decision_adherence_section()
+    assert "kan ikke opfyldes som formuleret" not in t
+    assert "navngiv det eksplicit" not in t
+    assert "dec_adv" in t

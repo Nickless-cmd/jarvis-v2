@@ -118,6 +118,18 @@ def decision_adherence_section() -> str:
     raekker.sort(key=lambda r: r[0])
 
     lines = ["\n[DECISION-ADHERENCE-GATE]"]
+    # Handlingen skrives ÉN gang per bånd, ikke én gang per post.
+    #
+    # Målt 4/10-2026 på Bjørns levende samtale: blokken var 1.177 tokens — den
+    # STØRSTE i hele den dynamiske hale, 17,4 % af den — og ~297 af dem (25 %)
+    # var den samme sætning gentaget tolv gange. Handlingen er pr. BÅND, ikke
+    # pr. beslutning; den var identisk hver gang fordi den aldrig kunne være
+    # andet.
+    #
+    # Formen er ikke ændret: båndet eskalerer stadig i HANDLING, og en
+    # beslutning slettes stadig ikke. Kun gentagelsen er væk.
+    kritiske_vist = 0
+    imperative_vist = 0
     for score, dec_id, directive in raekker[:_MAKS_LINJER]:
         if score < _CRITICAL_THRESHOLD:
             # Critical band — adherence below 25%.
@@ -137,23 +149,31 @@ def decision_adherence_section() -> str:
             lines.append(
                 f"Adherence {score:.0%} (kritisk band) — {dec_id}: {directive}"
             )
-            lines.append(
-                "  Handling: kan ikke opfyldes som formuleret — omformulér den "
-                "til trigger → handling → bevis. Den slettes ikke."
-            )
+            kritiske_vist += 1
         elif score < _ADVISORY_THRESHOLD:
             # Imperative band — adherence below 40%
             lines.append(
                 f"Adherence {score:.0%} (imperativ band) — {dec_id}: {directive}"
             )
-            lines.append(
-                "  Handling: bruddet gentages — navngiv det eksplicit i næste svar."
-            )
+            imperative_vist += 1
         else:
             # Advisory band — adherence below good threshold
             lines.append(
                 f"Adherence {score:.0%} (advisory band) — {dec_id}: {directive}"
             )
+
+    # Handlingerne, én per bånd der faktisk har poster.
+    if kritiske_vist:
+        lines.append(
+            f"  → De {kritiske_vist} i kritisk band kan ikke opfyldes som "
+            "formuleret: omformulér hver til trigger → handling → bevis. "
+            "De slettes ikke."
+        )
+    if imperative_vist:
+        lines.append(
+            f"  → De {imperative_vist} i imperativ band gentager bruddet — "
+            "navngiv det eksplicit i næste svar."
+        )
 
     skjulte = len(raekker) - _MAKS_LINJER
     if skjulte > 0:

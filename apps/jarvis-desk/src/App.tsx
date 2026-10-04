@@ -25,6 +25,7 @@ import { InspectorPanel } from './components/panel/InspectorPanel'
 import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
+import { PrivacyDialog } from './components/PrivacyDialog'
 import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
@@ -46,6 +47,7 @@ import './styles/cheap-lane.css'
 import './styles/cowork-categories.css'
 import './styles/desk-settings.css'
 import './styles/raekkevisning.css'
+import './styles/chat-reading.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
@@ -234,6 +236,7 @@ function Shell({
   const { settings } = useSettings()
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   const [searchOpen, setSearchOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   return (
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)} />
@@ -269,7 +272,7 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
-              onOpenPrivacy={() => { setSurface('cowork'); emitZone('privacy') }}
+              onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}
           {surface === 'cowork' && <CoworkView role={role} sessionId={activeId} />}
@@ -279,7 +282,7 @@ function Shell({
               userName={userName}
               role={role}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
-              onOpenPrivacy={() => { setSurface('cowork'); emitZone('privacy') }}
+              onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}
           {surface === 'memory' && <MemoryView role={role} />}
@@ -287,6 +290,7 @@ function Shell({
           {surface === 'artifacts' && <ArtifactsView onOpenCode={() => setSurface('code')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
         </ShellWithPanel>
+        {privacyOpen && <PrivacyDialog config={cfg} onClose={() => setPrivacyOpen(false)} />}
         {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}
       </main>
     </div>

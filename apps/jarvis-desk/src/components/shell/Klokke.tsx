@@ -4,32 +4,27 @@ import type { ApiConfig } from '../../lib/api'
 import { openEventSocket } from '../../lib/api'
 import { hentNotifikationer } from '../../lib/notifikationerApi'
 import { maaPolle } from '../../lib/ro'
+import { acknowledgeNotifications, NOTIFICATION_READ_EVENT, notificationAttention } from '../../lib/notificationAttention'
 
-/**
- * Notifikations-klokken med sin taeller.
- *
- * Taelleren er antal der VENTER — alt undtagen Jarvis' egne svar.
- *
- * Den var foer antal AABNE i alt, med den begrundelse at feeden var en
- * to-do-liste: staar noget der, er det ikke klaret. Det holdt indtil
- * `run_done` viste sig at vaere den stoerste post i tabellen (maalt
- * 26/9-2026: 100 aabne paa én gang). Et svar venter ikke paa noget — det er
- * laesning — og et tal der taeller dem gjorde klokken til en konstant «9+»
- * hvor intet faktisk manglede hans svar. Serveren sender derfor to tal:
- * `antal` (alt aabent) og `venter` (dem der ikke er svar). Klokken viser det
- * sidste; feedet viser begge, i hver sin fane.
- *
- * Kan listen ikke hentes, skjules taelleren ikke bare — knappen siger det.
- * En tom klokke og en brudt klokke maa ikke ligne hinanden.
- */
+/** Aabne poster sammenholdes med klientens laest/kvitteret-id'er.
+ * Nye poster giver vedvarende ring; klik kvitterer for ringningen, mens
+ * den lille prik bliver indtil posten er laest eller fjernet. */
 export function Klokke({ config, onAaben, aktivSession }: {
   config: ApiConfig | null
   onAaben: () => void
   /** Samtalen brugeren sidder i nu. Svar fra den springes over paa serveren. */
   aktivSession?: string | null
 }) {
-  const [antal, setAntal] = useState(0)
+  const [ids, setIds] = useState<string[]>([])
+  const [, setSeenVersion] = useState(0)
   const [fejl, setFejl] = useState(false)
+  const { unread, attention } = notificationAttention(ids)
+
+  useEffect(() => {
+    const changed = () => setSeenVersion((n) => n + 1)
+    window.addEventListener(NOTIFICATION_READ_EVENT, changed)
+    return () => window.removeEventListener(NOTIFICATION_READ_EVENT, changed)
+  }, [])
 
   // `alive` vaerner mod at saette state efter unmount — samme moenster som
   // usePollWhenVisible. Uden det kan et sent svar fra en ALLEREDE lukket
@@ -45,10 +40,7 @@ export function Klokke({ config, onAaben, aktivSession }: {
     hentNotifikationer(config, aktivSession)
       .then((f) => {
         if (!alive.current) return
-        // Faldet til `antal` er ikke kosmetik: en klient der rammer en
-        // aeldre server (rullende udgivelse) faar ingen `venter`, og uden
-        // det ville taelleren vise NaN.
-        setAntal(typeof f.venter === 'number' ? f.venter : f.antal)
+        setIds(f.poster.map((p) => p.id))
         setFejl(false)
       })
       .catch(() => {
@@ -91,22 +83,14 @@ export function Klokke({ config, onAaben, aktivSession }: {
 
   const titel = fejl
     ? 'Notifikationer — listen kunne ikke hentes'
-    : antal > 0 ? `Notifikationer — ${antal} åbne` : 'Notifikationer'
+    : unread ? 'Notifikationer — ulæste poster' : 'Notifikationer'
 
   return (
-    <button type="button" className="icon-btn klokke" title={titel}
-            aria-label={titel} onClick={onAaben}>
+    <button type="button" className={`icon-btn klokke${attention ? ' klokke-attention' : ''}`} title={titel}
+            aria-label={titel} onClick={() => { acknowledgeNotifications(ids); onAaben() }}>
       <Bell size={15} />
-      {antal > 0 && (
-        <span className="klokke-taeller" data-testid="klokke-taeller">
-          {antal > 9 ? '9+' : antal}
-        </span>
-      )}
-      {/* data-testid ved siden af className: samme moenster som
-          klokke-taeller ovenfor. className alene er en stil-krog der kan
-          flyttes/omdoebes uden at det er en adfaerdsaendring — en test der
-          hang paa den ville braekke paa den forkerte begivenhed. testid'et
-          er kontrakten testen laaser fast; className er fri til at aendre sig. */}
+      {unread && <span className="klokke-ulast" data-testid="klokke-ulast" aria-hidden="true" />}
+      {/* En fejlet hentning maa stadig se anderledes ud end en tom liste. */}
       {fejl && <span className="klokke-fejl" data-testid="klokke-fejl" aria-hidden="true" />}
     </button>
   )

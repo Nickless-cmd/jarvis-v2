@@ -10,6 +10,7 @@ import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
 import { usePanel } from '../hooks/usePanel'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
@@ -116,7 +117,9 @@ export function CodeView({
   const [kind, setKind] = useState<WsKind>(savedWs.kind === 'workstation' ? 'workstation' : 'container')
   const [root, setRoot] = useState<string>(savedWs.root && serverRoots.includes(savedWs.root as never) ? savedWs.root : serverRoots[0])
   const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
-  const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
+  // Panel-tilstand huskes i localStorage (Bjørn 4/10-2026: «appen husker ikk om
+  // de var åbne … alle paneler nulstiller ved app genstart»).
+  const [filesOpen, setFilesOpen] = usePersistedState('jarvis-desk:panel:files', false) // fil-træ
   const [highlightPath, setHighlightPath] = useState<string>('') // Jarvis-styret highlight
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
@@ -136,7 +139,7 @@ export function CodeView({
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
   // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
-  const [envManual, setEnvManual] = useState<boolean | null>(null)
+  const [envManual, setEnvManual] = usePersistedState<boolean | null>('jarvis-desk:panel:env', null)
   const [winW, setWinW] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1920)
   useEffect(() => {
     const onResize = () => setWinW(window.innerWidth)
@@ -329,17 +332,17 @@ export function CodeView({
 
   // Baggrundsjob: panelet henter selv naar det er aabent. HER hentes kun
   // TAELLEREN, saa ikonet kan sige om noget koerer uden at man skal aabne det.
-  const [jobsOpen, setJobsOpen] = useState(false)
+  const [jobsOpen, setJobsOpen] = usePersistedState('jarvis-desk:panel:jobs', false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
-  const [changesOpen, setChangesOpen] = useState(false)
+  const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   // Jarvis' browser. Den kom med i chat-fladen 21/9 og blev glemt her —
   // samme hoejre-stak, samme plads i raekken, saa de to flader ikke skilles ad.
-  const [browserOpen, setBrowserOpen] = useState(false)
+  const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
   // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
   // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
-  const [artifactsOpen, setArtifactsOpen] = useState(false)
-  const [plansOpen, setPlansOpen] = useState(false)
-  const [prOpen, setPrOpen] = useState(false)
+  const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
+  const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
+  const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
@@ -351,7 +354,7 @@ export function CodeView({
 
   // Jarvis' desk-værktøjer (Claude Desktops ccd_view, 19/9-2026) — som
   // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
-  const [codeFane, setCodeFane] = useState<PanelTab>('files')
+  const [codeFane, setCodeFane] = usePersistedState<PanelTab>('jarvis-desk:panel:codeFane', 'files')
   const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
   const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen })
   skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen }
@@ -705,13 +708,20 @@ export function CodeView({
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
     if (!ready) return
-    let sid = sessionId
+    let sid = sessionId ?? sessions.activeId
     if (!sid) sid = (await sessions.create('Kode-session', 'code')).id
-    const message = text.trim() || 'Vedhæftet'
+    const message = text.trim() || opts.attachments.map((a) => a.name).join(', ') || 'Vedhæftet'
+    const imageBlocks = opts.attachments
+      .filter((a) => a.isImage && a.src)
+      .map((a) => ({ type: 'image' as const, src: a.src as string, alt: a.name }))
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
-      content: [{ type: 'text', text: message }],
+      content: [
+        ...(text.trim() ? [{ type: 'text' as const, text }] : []),
+        ...imageBlocks,
+        ...(!text.trim() && imageBlocks.length === 0 ? [{ type: 'text' as const, text: message }] : []),
+      ],
       created_at: new Date().toISOString(),
       parent_id: null,
     })
@@ -867,6 +877,19 @@ export function CodeView({
     </div>
   )
 
+  const koerselsTal = (() => {
+    const assistantMessages = sessions.messages.filter((m) => m.role === 'assistant')
+    const trin = assistantMessages.reduce((total, m) => total +
+      (Array.isArray(m.content) ? m.content.filter((b) => b?.type === 'tool_use').length : 0), 0)
+    const laest = stream.usage.cacheHit + stream.usage.cacheMiss
+    return {
+      ture: assistantMessages.length,
+      trin,
+      ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
+      ...(envTotalTokens > 0 ? { tokens: envTotalTokens } : {}),
+    }
+  })()
+
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
@@ -876,7 +899,7 @@ export function CodeView({
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       config={config}
-      getSessionId={async () => sessionId ?? (await sessions.create('Kode-session', 'code')).id}
+      getSessionId={async () => sessionId ?? sessions.activeId ?? (await sessions.create('Kode-session', 'code')).id}
       sessionId={sessionId}
       showPermissions={true}
       contextTokens={contextTokens}
@@ -888,6 +911,8 @@ export function CodeView({
       isOwner={isOwner}
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
+      draftKey="code"
+      koerselsTal={koerselsTal}
     />
   )
 

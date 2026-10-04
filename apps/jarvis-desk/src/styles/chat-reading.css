@@ -1,0 +1,13 @@
+/* Skrift i chatten følger den lyse, rolige læsning fra referencen. */
+.chatview .jarvis-body,
+.chatview .raekkevisning {
+  color: var(--fg-1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* Bevar mørkt tema, men gør sessionsnavne og navigation lettere at læse. */
+.sidebar .session-item { color: var(--fg-1); }
+.sidebar .sidebar-label { color: var(--fg-2); opacity: 1; }
+.sidebar .sidebar-nav-row { color: var(--fg-1); }

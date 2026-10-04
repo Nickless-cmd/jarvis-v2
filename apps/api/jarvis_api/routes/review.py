@@ -133,6 +133,40 @@ def review_changes(
     return _aendringer_paa_serveren(test_koert, diff)
 
 
+def _seneste_commit(rod: Path, med_diff: bool) -> dict[str, Any]:
+    """Den seneste commit — så panelet ikke bliver tomt i det øjeblik man committer.
+
+    Bjørn 4/10-2026: «ændrings panel der forsvinder indhold så snart du
+    committer». Panelet viste kun arbejdstræet; ved commit bliver træet rent, og
+    «Ingen ændringer» er teknisk sandt men ubrugeligt — man ville se hvad man
+    LIGE havde lavet. Kalderen henter denne KUN når træet er rent, så et poll
+    hvert fjerde sekund ikke betaler for en diff ingen kigger på.
+
+    Kun server-træet: det læses med `_kør` direkte. Maskine-træet går over broen,
+    hvor endnu en compound-sektion ville gøre kommandoen tung for et panel der
+    mest viser Jarvis' EGEN commit.
+    """
+    info = _kør(rod, "log", "-1", "--format=%h%n%s%n%cI")
+    if not info.strip():
+        return {}
+    linjer = info.splitlines()
+    filer = _traeer.numstat_til_filer(_kør(rod, "show", "--numstat", "--format=", "HEAD"))
+    tekst = ""
+    if med_diff:
+        tekst = _kør(rod, "show", "--format=", "HEAD")
+        if len(tekst.encode("utf-8", "ignore")) > _DIFF_MAX_BYTES:
+            tekst = tekst[: _DIFF_MAX_BYTES // 2]
+    return {
+        "hash": (linjer[0] if linjer else "").strip(),
+        "subject": (linjer[1] if len(linjer) > 1 else "").strip(),
+        "when": (linjer[2] if len(linjer) > 2 else "").strip(),
+        "files": filer,
+        "added": sum(f["added"] for f in filer),
+        "removed": sum(f["removed"] for f in filer),
+        "diff": tekst,
+    }
+
+
 def _saml(
     rod_til_laesning,
     gren: str,
@@ -188,7 +222,7 @@ def _aendringer_paa_serveren(test_koert: bool, med_diff: bool) -> dict:
         except Exception:
             return None
 
-    return _saml(
+    svar = _saml(
         rod,
         (_kør(rod, "rev-parse", "--abbrev-ref", "HEAD") or "").strip(),
         _kør(rod, "diff", "--numstat", "HEAD"),
@@ -196,6 +230,11 @@ def _aendringer_paa_serveren(test_koert: bool, med_diff: bool) -> dict:
         _kør(rod, "diff", "HEAD") if med_diff else "",
         test_koert, med_diff, laes,
     )
+    # Kun når arbejdstræet er rent: hvad blev der LIGE committet? (Bjørn 4/10-2026)
+    # Ellers betalte hvert poll for en diff ingen kigger på.
+    if not svar["files"]:
+        svar["seneste_commit"] = _seneste_commit(rod, med_diff)
+    return svar
 
 
 def _aendringer_paa_maskinen(rod: str, test_koert: bool, med_diff: bool) -> dict:

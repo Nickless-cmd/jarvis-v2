@@ -28,6 +28,34 @@ _WRITE_ACTIONS = {"resolve_and_route", "depromote", "resolve_incident",
                   "nerve_observe", "note"}
 
 
+def _incident_counts(snap: dict) -> dict[str, int]:
+    """Sande incident-tal til status-svaret.
+
+    `snap["incidents"]` er KLIPPET til 12 for visning, så `len()` af den lyver —
+    målt 4/10-2026 stod `unresolved_incidents` derfor altid på 12, og
+    `unresolved_errors` blev talt i samme klippede vindue (en ægte fejl uden for
+    top-12 var usynlig, mens status-farven var gul).
+
+    `incident_counts` (talt i DB) er autoritativ. Mangler den — fx fra en ældre
+    kalder — falder vi tilbage til listen; tallet er så et GULV, ikke et loft.
+    Self-safe."""
+    c = snap.get("incident_counts") or {}
+    inc = snap.get("incidents") or []
+    if c:
+        return {
+            "unresolved_incidents": int(c.get("unresolved") or 0),
+            "unresolved_errors": int(c.get("errors") or 0),
+            "unresolved_governance_events": int(c.get("governance") or 0),
+        }
+    return {
+        "unresolved_incidents": len(inc),
+        "unresolved_errors": len([i for i in inc
+                                  if str(i.get("severity")) in ("error", "severe")]),
+        "unresolved_governance_events": len([i for i in inc
+                                             if str(i.get("kind")) == "gate_enforce"]),
+    }
+
+
 def _envelope(status: str, action: str, data: Any, error: str | None,
               source: str, t0: float, **meta_extra: Any) -> dict[str, Any]:
     meta = {"latency_ms": int((time.monotonic() - t0) * 1000), "source": source,
@@ -152,15 +180,13 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 # 51 uløste, hvoraf 42 var governance og 4 var errors. Tallet
                 # fik 51 til at se ud som 51 problemer. Nu staar begge dele
                 # særskilt, og summen er uændret for bagudkompatibilitet.
-                "unresolved_incidents": len(s.get("incidents") or []),
-                "unresolved_errors": len([
-                    i for i in (s.get("incidents") or [])
-                    if str(i.get("severity")) in ("error", "severe")
-                ]),
-                "unresolved_governance_events": len([
-                    i for i in (s.get("incidents") or [])
-                    if str(i.get("kind")) == "gate_enforce"
-                ]),
+                # 4/10-2026: tallene kom fra `len(s["incidents"])` — men den liste
+                # er KLIPPET til 12 for visning, så `unresolved_incidents` stod
+                # altid på 12, og `unresolved_errors` blev talt i samme klippede
+                # vindue. En ægte fejl uden for top-12 var derfor usynlig, mens
+                # status-farven (regnet på den fulde liste) var gul. Se
+                # `_incident_counts` — den tæller i DB.
+                **_incident_counts(s),
                 "anomalies": {"counts": _anom.get("counts", {}), "recent": _recent},
                 "known_signals": s.get("known_signals") or [],
                 "config_drift": bool(s.get("config_drift")),

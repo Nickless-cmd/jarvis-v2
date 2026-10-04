@@ -22,6 +22,10 @@ vi.mock('../../lib/api', () => ({
 import { Klokke } from './Klokke'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
+const posts = (count: number) => Array.from({ length: count }, (_, i) => ({
+  id: `post-${i}`, slags: 'approval', titel: 'A', tekst: '', kan_afgoere: true,
+  foraeldet: false, oprettet: '', session_id: null,
+}))
 
 describe('Klokke', () => {
   // Et "bart" mockReset() (uden en efterfoelgende default-implementering)
@@ -34,6 +38,7 @@ describe('Klokke', () => {
     hent.mockReset()
     hent.mockResolvedValue({ poster: [], antal: 0 })
     sockets.length = 0
+    localStorage.clear()
   })
 
   // `ro.ts` bruger et modul-globalt ur (`_saetUr`) og modul-global
@@ -50,10 +55,10 @@ describe('Klokke', () => {
     hent.mockResolvedValue({ poster: [], antal: 0 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
     await waitFor(() => expect(hent).toHaveBeenCalled())
-    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
   })
 
-  it('taeller ALLE aabne, ikke kun dem der kraever et svar', async () => {
+  it('viser en prik for aabne poster uden et tal', async () => {
     hent.mockResolvedValue({
       poster: [
         { id: '1', slags: 'approval', titel: 'A', tekst: '', kan_afgoere: true, foraeldet: false, oprettet: '', session_id: null },
@@ -62,7 +67,8 @@ describe('Klokke', () => {
       antal: 2,
     })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('2')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
+    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
   })
 
   it('siger fra naar listen ikke kunne hentes — og skjuler IKKE bare taelleren', async () => {
@@ -72,10 +78,10 @@ describe('Klokke', () => {
     await waitFor(() => expect(knap.getAttribute('title')).toMatch(/kunne ikke hentes/i))
   })
 
-  it('viser 9+ i stedet for et tal der sprænger prikken', async () => {
-    hent.mockResolvedValue({ poster: [], antal: 14 })
+  it('viser stadig kun en prik ved mange poster', async () => {
+    hent.mockResolvedValue({ poster: posts(14), antal: 14 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('9+')
+    expect(await screen.findByTestId('klokke-ulast')).toHaveTextContent('')
   })
 
   // Selve hullet: fire tests ovenfor laaser TITEL/aria-label fast naar
@@ -95,9 +101,9 @@ describe('Klokke', () => {
   })
 
   it('proek-markoeren er IKKE i DOM naar hentningen LYKKES', async () => {
-    hent.mockResolvedValue({ poster: [], antal: 3 })
+    hent.mockResolvedValue({ poster: posts(3), antal: 3 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    await screen.findByTestId('klokke-taeller')
+    await screen.findByTestId('klokke-ulast')
     expect(screen.queryByTestId('klokke-fejl')).toBeNull()
   })
 
@@ -110,13 +116,13 @@ describe('Klokke', () => {
     // samme kodesti som naar intervallet selv trigger et nyt kald.
     hent.mockResolvedValue({ poster: [{ id: '1', slags: 'approval', titel: 'A', tekst: '', kan_afgoere: true, foraeldet: false, oprettet: '', session_id: null }], antal: 1 })
     const { rerender } = render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('1')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
 
     hent.mockRejectedValue(new Error('offline'))
     rerender(<Klokke config={{ ...cfg, authToken: 't2' }} onAaben={() => {}} />)
 
     expect(await screen.findByTestId('klokke-fejl')).toBeInTheDocument()
-    expect(screen.getByTestId('klokke-taeller')).toHaveTextContent('1')
+    expect(screen.getByTestId('klokke-ulast')).toBeInTheDocument()
   })
 
   // Selve pointen med opgave 10: klokken skal opdatere sig UDEN at man gaar
@@ -124,15 +130,15 @@ describe('Klokke', () => {
   // ellers ville en haendelse kunne blive slugt af `maaPolle`.
   it('opdaterer taelleren paa en haendelse — uden at man gaar ud og ind', async () => {
     hent.mockResolvedValueOnce({ poster: [], antal: 0 })
-       .mockResolvedValue({ poster: [], antal: 3 })
+       .mockResolvedValue({ poster: posts(3), antal: 3 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
     await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
-    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
 
     const s = sockets[sockets.length - 1]!
     s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
 
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
   })
 
   // Selve hullet i opgave 10: kommentaren i Klokke.tsx paastaar at `hentNu`
@@ -159,10 +165,10 @@ describe('Klokke', () => {
     ur += ROLIG_EFTER_MS + 1_000 // roFaktor() er fra nu af FAKTOR_RO — loftet er reelt i kraft
 
     hent.mockResolvedValueOnce({ poster: [], antal: 0 })
-       .mockResolvedValue({ poster: [], antal: 3 })
+       .mockResolvedValue({ poster: posts(3), antal: 3 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
     await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
-    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
 
     // Bevis at loftet reelt blokerer NU — ikke kun at vi haaber det: et
     // almindeligt poll-kald for samme noegle, i samme oejeblik, er blokeret
@@ -173,7 +179,7 @@ describe('Klokke', () => {
     const s = sockets[sockets.length - 1]!
     s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
 
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
   })
 
   // Bussen paa /ws baerer ALT — indre stemme, raesonnement, hvad som helst.
@@ -195,19 +201,16 @@ describe('Klokke', () => {
   // Maalt 26/9-2026 stod 100 `run_done` aabne samtidig, og et taeller der
   // talte dem gjorde klokken til en konstant «9+» hvor intet ventede.
 
-  it('taelleren viser hvad der VENTER, ikke Jarvis egne svar', async () => {
-    hent.mockResolvedValue({ poster: [], antal: 100, venter: 3 })
+  it('prikken vises også for ulæste svar', async () => {
+    hent.mockResolvedValue({ poster: [{ ...posts(1)[0], slags: 'run_done' }], antal: 100, venter: 0 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
   })
 
-  it('falder tilbage til antal naar serveren ikke kender venter', async () => {
-    // Rullende udgivelse: en aeldre server sender kun `antal`. Uden faldet
-    // ville taelleren vise NaN — et tal der ikke findes er vaerre end et
-    // groft et.
-    hent.mockResolvedValue({ poster: [], antal: 4 })
+  it('virker også med ældre server uden venter', async () => {
+    hent.mockResolvedValue({ poster: posts(4), antal: 4 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('4')
+    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
   })
 
   it('sender den aktive samtale med, saa serveren kan springe dens svar over', async () => {

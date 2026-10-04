@@ -360,6 +360,40 @@ def count_unresolved(*, min_severity: str | None = None,
         return 0
 
 
+def count_open_incidents() -> dict[str, int]:
+    """Antal ULØSTE incidents, opdelt — talt i DB, ikke i en klippet liste.
+
+    Målt 4/10-2026: panelet viste altid 12, uanset hvor mange der stod åbne, fordi
+    `central_realtime` klipper visnings-listen til 12 FØR der tælles — og
+    `unresolved_errors` blev talt i samme klippede vindue. En ægte fejl uden for
+    top-12 var derfor usynlig, mens status-farven (regnet på den fulde liste) var
+    gul: tal og farve modsagde hinanden. Denne tæller i DB'en i stedet.
+
+    Nøgler: `unresolved`, `errors` (error+severe), `severe`, `governance`
+    (kind='gate_enforce'), `fail_open`. Self-safe → {} ved fejl (kalderen falder
+    tilbage til listen)."""
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            row = conn.execute(
+                "SELECT COUNT(*), "
+                "SUM(CASE WHEN severity IN ('error','severe') THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN severity = 'severe' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN kind = 'gate_enforce' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN kind = 'fail_open' THEN 1 ELSE 0 END) "
+                "FROM central_incidents WHERE resolved = 0"
+            ).fetchone()
+        return {
+            "unresolved": int(row[0] or 0),
+            "errors": int(row[1] or 0),
+            "severe": int(row[2] or 0),
+            "governance": int(row[3] or 0),
+            "fail_open": int(row[4] or 0),
+        }
+    except Exception:  # self-safe: DB nede → {} og kalderen falder tilbage til listen
+        return {}
+
+
 def has_open_incident(*, cluster: str, nerve: str) -> bool:
     """True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker.
 

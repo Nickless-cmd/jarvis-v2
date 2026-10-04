@@ -126,10 +126,11 @@ _`central_query` — Jarvis' direkte adgang til Den Intelligente Central (pull o
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_envelope` | `(status, action, data, error, source, t0, **meta_extra)` | — | [src](../../../core/tools/central_query_tool.py#L31) |
-| function | `_paginate` | `(items, offset, limit)` | Returnér en side + pagina-meta. ALDRIG trunkér en linje midt over: vi dropper | [src](../../../core/tools/central_query_tool.py#L39) |
-| function | `_nerve_klass` | `(nerve)` | NerveSpec.klass for en nerve (til sikker toggle). Defaulter SECURITY-SIKKERT: | [src](../../../core/tools/central_query_tool.py#L57) |
-| function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L75) |
+| function | `_incident_counts` | `(snap)` | Sande incident-tal til status-svaret. | [src](../../../core/tools/central_query_tool.py#L31) |
+| function | `_envelope` | `(status, action, data, error, source, t0, **meta_extra)` | — | [src](../../../core/tools/central_query_tool.py#L59) |
+| function | `_paginate` | `(items, offset, limit)` | Returnér en side + pagina-meta. ALDRIG trunkér en linje midt over: vi dropper | [src](../../../core/tools/central_query_tool.py#L67) |
+| function | `_nerve_klass` | `(nerve)` | NerveSpec.klass for en nerve (til sikker toggle). Defaulter SECURITY-SIKKERT: | [src](../../../core/tools/central_query_tool.py#L85) |
+| function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L103) |
 
 ## `core/tools/code_navigation_tools.py`
 _Symbol find / find usages — regex-based v1._

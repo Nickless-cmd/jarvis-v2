@@ -72,7 +72,19 @@ export function billedSti(input: Record<string, unknown> | undefined): string {
 }
 
 
-type LevendeKald = { name: string; status?: string; input?: Record<string, unknown> }
+type LevendeKald = { name: string; status?: string; input?: Record<string, unknown>; partialJson?: string }
+
+function billedArgumenter(kald: LevendeKald): Record<string, unknown> | undefined {
+  if (kald.input && Object.keys(kald.input).length > 0) return kald.input
+  if (!kald.partialJson) return kald.input
+  try {
+    const parsed: unknown = JSON.parse(kald.partialJson)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown> : kald.input
+  } catch {
+    return kald.input
+  }
+}
 
 /**
  * Det billedarbejde der kører LIGE NU blandt et sæt kald — eller null.
@@ -88,7 +100,8 @@ export function levendeBilledArbejde(kald: LevendeKald[]): MedieArbejde | null {
     if (erBilledVaerktoej(k.name)) return { slags: 'generering' }
     if (erVideoVaerktoej(k.name)) return { slags: 'video' }
     if (erBilledAnalyse(k.name)) {
-      return { slags: 'analyse', kilde: billedKilde(k.input), sti: billedSti(k.input) }
+      const input = billedArgumenter(k)
+      return { slags: 'analyse', kilde: billedKilde(input), sti: billedSti(input) }
     }
   }
   return null

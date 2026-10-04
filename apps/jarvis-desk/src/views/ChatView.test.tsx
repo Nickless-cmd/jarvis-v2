@@ -1,7 +1,7 @@
 import { GenoptagelsesVarselHost } from '../components/feedback/GenoptagelsesVarselHost'
 import { useEffect } from 'react'
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
@@ -43,6 +43,7 @@ vi.mock('../lib/api', () => ({
   // naeste der ER aegte.
   warmSession: vi.fn().mockResolvedValue(undefined),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
+  uploadAttachment: vi.fn(async () => ({ id: 'att-1' })),
   // Opsamlingen af et ventende godkendelses-kort (20/9-2026): uden den
   // i mocken falder hele viewet, fordi StreamContext kalder den.
   hentVentendeGodkendelse: vi.fn(async () => null),
@@ -64,6 +65,11 @@ vi.mock('../lib/sideTasksApi', () => ({
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
+
+// Kladden og panel-tilstanden persisteres nu i localStorage (4/10-2026), så uden
+// denne lækker én tests åbne panel ind i den næste — og «de to ruder kan stå
+// SAMMEN» fejler, fordi panelet allerede ER åbent fra testen før.
+beforeEach(() => localStorage.clear())
 
 describe('ChatView integration', () => {
   it('viser rækkevisning når en ældre assistentbesked har et tomt blokindeks', async () => {
@@ -175,6 +181,48 @@ describe('ChatView integration', () => {
     act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
     expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
+  })
+
+  it('viser eget uploadet billede straks og skjuler kørselstal i chat', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:chat-preview')
+    const { container } = render(
+      <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+        <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+          <ChatView sessionId="s1" />
+        </PanelProvider></PermissionProvider></StreamProvider>
+      </SessionProvider></SettingsProvider>,
+    )
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+    fireEvent.change(input, { target: { files: [new File(['image'], 'foto.png', { type: 'image/png' })] } })
+    await waitFor(() => expect(api.uploadAttachment).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText('foto.png')).toBeInTheDocument())
+    await userEvent.type(screen.getByRole('textbox'), 'se her{Enter}')
+    await waitFor(() => expect(container.querySelector('.msg-user-images img')).toHaveAttribute('src', 'blob:chat-preview'))
+    expect(container.querySelector('.composer-tal')).toBeNull()
+  })
+
+  it('bruger uploadens nye session til beskeden, selv før parent-proppen er opdateret', async () => {
+    vi.mocked(api.createSession).mockClear()
+    vi.mocked(api.createSession).mockResolvedValueOnce({ id: 's-upload', title: 'Ny samtale', updated_at: 'now' })
+    URL.createObjectURL = vi.fn(() => 'blob:new-chat-preview')
+    function BoundChatView() {
+      const { activeId } = useSessions()
+      return <ChatView sessionId={activeId} />
+    }
+    const { container } = render(
+      <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+        <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+          <BoundChatView />
+        </PanelProvider></PermissionProvider></StreamProvider>
+      </SessionProvider></SettingsProvider>,
+    )
+    fireEvent.change(container.querySelector<HTMLInputElement>('input[type="file"]')!, {
+      target: { files: [new File(['image'], 'nyt.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(api.uploadAttachment).toHaveBeenCalled())
+    await userEvent.type(screen.getByRole('textbox'), 'billede{Enter}')
+    await waitFor(() => expect(container.querySelector('.msg-user-images img')).toHaveAttribute('src', 'blob:new-chat-preview'))
+    expect(api.createSession).toHaveBeenCalledTimes(1)
   })
 
   it('starter ikke en follow-stream for sit eget svar efter message_stop', async () => {
@@ -521,6 +569,17 @@ describe('ChatView — ændringer og jobs i samme skinne', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
     expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
+  })
+
+  it('husker at panelet var åbent — også efter et gen-mount (genstart)', async () => {
+    // Bjørn 4/10-2026: «appen husker ikk om de var åbne … alle paneler nulstiller
+    // ved app genstart». Et gen-mount er det tætteste testen kommer på en genstart.
+    const a = vis()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
+    a.unmount()
+    vis()
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
   })
 
   it('headeren gør plads KUN når skinnen er åben', async () => {

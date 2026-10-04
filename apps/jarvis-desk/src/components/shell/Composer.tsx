@@ -6,9 +6,10 @@ import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
 import {
-  readThinkingMode, writeThinkingMode, type ThinkingMode,
+  readThinkingMode, writeThinkingMode, draftKeyFor, type ThinkingMode,
 } from '../../lib/composerPrefs'
 import { PROV_KEY, MODEL_KEY } from '../../lib/composerPrefs'
+import { usePersistedState } from '../../hooks/usePersistedState'
 import {
   pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
 } from '../../lib/pasteStore'
@@ -153,6 +154,7 @@ export function Composer({
   onVoice,
   voiceSupported = false,
   indsaet,
+  draftKey = 'chat',
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -220,8 +222,17 @@ export function Composer({
    * så den samme tekst to gange også virker.
    */
   indsaet?: { tekst: string; n: number } | null
+  /**
+   * Hvilken flade kladden hører til (chat / code / cowork). Teksten gemmes i
+   * localStorage under denne nøgle, så den overlever mode-skift og genstart.
+   * Uden den delte chat og kode om samme kladde — en kode-tekst ville dukke op
+   * i chatfeltet.
+   */
+  draftKey?: string
 }) {
-  const [text, setText] = useState('')
+  // Kladden huskes pr. flade (Bjørn 4/10-2026): mode-skift unmounter denne
+  // Composer, og uden persistens tog `useState('')` teksten med sig.
+  const [text, setText] = usePersistedState<string>(draftKeyFor(draftKey), '')
   useEffect(() => {
     if (indsaet) setText(indsaet.tekst)
   }, [indsaet?.n]) // eslint-disable-line react-hooks/exhaustive-deps

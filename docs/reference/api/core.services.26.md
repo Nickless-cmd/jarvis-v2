@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_calling_evidence.py`
+_Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_db_noegle` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L71) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L79) |
+| function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L84) |
+| function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L138) |
+
 ## `core/services/tool_catalog.py`
 _Compact tool catalog for system prompt._
 
@@ -519,34 +529,4 @@ _Per-bruger data-scope (SECURITY #154, streng GDPR)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
-
-## `core/services/user_temperature_engine.py`
-_User temperature field engine — Lag 10 two-stream pipeline._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_afgraens_workspace` | `(workspace)` | Hvilken workspace må læses? Tom → intet (fail-closed). | [src](../../../core/services/user_temperature_engine.py#L70) |
-| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/user_temperature_engine.py#L75) |
-| function | `_now` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L82) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/user_temperature_engine.py#L86) |
-| function | `_punct_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L93) |
-| function | `_caps_density` | `(message)` | — | [src](../../../core/services/user_temperature_engine.py#L100) |
-| function | `_burst_density` | `(message_at, *, workspace=…)` | User msgs in last 5 min, normalized: 0 → 0.0, 5+ → 1.0. | [src](../../../core/services/user_temperature_engine.py#L108) |
-| function | `_delay_since_last_jarvis` | `(message_at, *, workspace=…)` | Seconds since the prior assistant message. None if no prior or > 60min. | [src](../../../core/services/user_temperature_engine.py#L132) |
-| function | `_parse_hour` | `(message_at)` | — | [src](../../../core/services/user_temperature_engine.py#L166) |
-| function | `_compute_raw_signals` | `(*, message, message_at, baseline, workspace=…)` | Map a single message + baseline to 6 normalized signals. | [src](../../../core/services/user_temperature_engine.py#L174) |
-| function | `map_signals_to_field` | `(signals)` | Pure function: 6 raw signals → valens/arousal/texture/confidence. | [src](../../../core/services/user_temperature_engine.py#L222) |
-| function | `_texture_from_circumplex` | `(valens, arousal)` | Pure function: (valens, arousal) → texture key. | [src](../../../core/services/user_temperature_engine.py#L245) |
-| function | `_validate_llm_output` | `(raw)` | — | [src](../../../core/services/user_temperature_engine.py#L269) |
-| function | `combine_streams` | `(*, struct, llm)` | Deterministic merge of structural + LLM streams. | [src](../../../core/services/user_temperature_engine.py#L294) |
-| function | `_is_significant_shift` | `(prior, new)` | Did valens/arousal shift > threshold or texture change? | [src](../../../core/services/user_temperature_engine.py#L362) |
-| function | `_compute_baseline` | `(*, days=…, workspace=…)` | Compute rolling baseline from last N days of user messages. | [src](../../../core/services/user_temperature_engine.py#L376) |
-| function | `get_active_field` | `(*, workspace_id=…)` | Read active field, honoring kill-switch. | [src](../../../core/services/user_temperature_engine.py#L445) |
-| function | `format_temperature_field_for_heartbeat` | `(*, workspace_id=…)` | Render the field as a heartbeat awareness-section block. | [src](../../../core/services/user_temperature_engine.py#L470) |
-| function | `get_response_style_modifiers` | `(*, workspace_id=…)` | Return response-style hints based on active temperature field. | [src](../../../core/services/user_temperature_engine.py#L510) |
-| function | `get_active_field_surface` | `(*, workspace_id=…, force_refresh=…)` | Return MC-friendly surface dict. force_refresh ignored in Phase 1. | [src](../../../core/services/user_temperature_engine.py#L563) |
-| function | `run_structural_stream` | `(*, workspace_id, message, message_at)` | Per-message structural pipeline. Updates struct_* + recomputes field_*. | [src](../../../core/services/user_temperature_engine.py#L594) |
-| function | `_get_or_build_baseline` | `(*, prior, settings, workspace=…)` | Return cached baseline if fresh, else rebuild. | [src](../../../core/services/user_temperature_engine.py#L667) |
-| function | `_has_pending_trigger` | `(*, workspace_id)` | Read trigger flag without consuming. | [src](../../../core/services/user_temperature_engine.py#L723) |
-| function | `run_llm_stream` | `(*, workspace_id=…, force=…)` | Run LLM-based pipeline (4h cadence or on trigger). | [src](../../../core/services/user_temperature_engine.py#L729) |
 

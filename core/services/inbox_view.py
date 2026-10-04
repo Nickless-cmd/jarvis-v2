@@ -195,6 +195,54 @@ def planlagte_vaekning_ids(
     }
 
 
+#: Vækningens statusser der betyder «nogen har afgjort den». Bevidst en
+#: POSITIV liste: en status vi ikke kender skal lade posten staa, ikke skjule
+#: den. Modsat retning ville en ny status kunne fjerne en post i stilhed.
+_TERMINALE_VAEKNING_STATUSSER: Final[frozenset[str]] = frozenset(
+    {"consumed", "cancelled"})
+
+
+def afgjorte_vaekning_ids(
+    bruger_id: str, kilder: "Kilder | None" = None,
+) -> set[str]:
+    """Vækninger KILDEN selv har afgjort — deres post skal ikke staa aaben.
+
+    Modstykket til `planlagte_vaekning_ids`, og samme lære: kilden bærer en
+    tilstand som den durable række ikke kender, og de to maa ikke blive uenige
+    om hvad «afgjort» betyder.
+
+    ## Hullet (maalt 4/10-2026)
+
+    `inbox_done(wake-…)` lukker BEGGE sider: den kalder `mark_wakeup_consumed`
+    OG skriver den durable afgørelse. Men `mark_wakeup_consumed` kaldt DIREKTE
+    — værktøjet, uden om `inbox_done` — ændrer kun vækningens EGEN status.
+    Rækken blev staaende `aaben` med tomt `afgjort_at`.
+
+    Den gatede ikke (`kraever_handling` var aldrig sat), saa den var ikke
+    farlig. Den var bare umulig at blive af med: `liste_aktiv` bevarer netop
+    rækker UDEN lukke-tidspunkt for evigt, saa posten stod i VENTER PÅ DIG
+    permanent og kunne ikke længere afgøres — `done` meldte «allerede» fordi
+    vækningen var terminal, mens rækken aldrig blev lukket.
+
+    Maalt: tre rækker (`wake-0e7892004e`, `wake-9e550077c0`, `wake-feec8eb4ea`),
+    alle `status='aaben'`, alle med vækningen `consumed`.
+
+    ## Hvorfor i LÆSEREN og ikke kun hos skriveren
+
+    Skriver-siden kan ikke dække rækker der allerede staar der, og en fremtidig
+    vej kan glemme at lukke. Reglen hører hvor den kan ses: en post hvis kilde
+    er terminal er afgjort, uanset hvad den durable række siger.
+    """
+    raekker = (kilder.vaekninger(bruger_id) if kilder is not None
+               else _aegte_vaekninger(bruger_id))
+    return {
+        str(r.get("wakeup_id") or "").strip()
+        for r in raekker
+        if str(r.get("status") or "") in _TERMINALE_VAEKNING_STATUSSER
+        and str(r.get("wakeup_id") or "").strip()
+    }
+
+
 def _aegte_jobs(bruger_id: str) -> list[dict[str, Any]]:
     """De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne."""
     from core.services import background_jobs
@@ -565,6 +613,10 @@ def byg_indbakke(
     # Vækningernes EGEN tilstand, slået op ÉN gang. En `pending` vækning er
     # PLANLAGT, ikke ventende — se `planlagte_vaekning_ids`.
     planlagte_vaek_ids = planlagte_vaekning_ids(bruger_id, k)
+    # Samme slaering, modsat fortegn: de vækninger kilden selv har afgjort.
+    # En afgjort vækning hvis durable række aldrig blev lukket maa ikke staa
+    # som aaben — se `afgjorte_vaekning_ids`.
+    afgjorte_vaek_ids = afgjorte_vaekning_ids(bruger_id, k)
 
     vakte: list[dict[str, Any]] = []
     venter_paa_dig: list[dict[str, Any]] = []
@@ -608,6 +660,12 @@ def byg_indbakke(
     #    kilderne nedenfor bidrager med tilstand, ikke med gating.
     for p in alle_poster:
         if p.get("status") != db_inbox.STATUS_AABEN:
+            continue
+        # Kilden kan have afgjort posten UDEN at rækken blev lukket. Den
+        # durable række er skrevet ved bookingen og opdateres ikke af kilden
+        # selv — se `afgjorte_vaekning_ids` for det maalte tilfælde.
+        if (str(p.get("kildetype") or "") == "wakeup"
+                and str(p.get("kilde_id") or "") in afgjorte_vaek_ids):
             continue
         sti = str(p.get("output_sti") or "")
         vis_sti = _indenfor_workspace(sti, bruger_id)

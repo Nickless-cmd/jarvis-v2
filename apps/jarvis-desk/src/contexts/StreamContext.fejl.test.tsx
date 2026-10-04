@@ -59,7 +59,12 @@ describe('bannerets kaldesteder', () => {
   // praecis synligt i kilden — et kryds uden `clearError` og en raa `error`
   // i stedet for den strukturerede.
   const kilde = (f: string) =>
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // Lazy require med vilje: filen koerer i jsdom, og en top-level ESM-import
+    // af node:fs ville blive evalueret ved modul-load i det miljoe.
+    // 4/10-2026: her stod reglen `no-var-requires` — den GAMLE regel, som ikke
+    // rammer `require()` brugt som udtryk. Derfor virkede disablen ikke, og CI
+    // faldt paa `no-require-imports`. Det er den regel der skal navngives.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     (require('node:fs') as typeof import('node:fs'))
       .readFileSync(`src/views/${f}`, 'utf-8')
 

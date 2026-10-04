@@ -583,7 +583,8 @@ _Gate 1: Decision-adherence gate._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L31) |
+| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L32) |
+| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L190) |
 
 ## `core/services/decision_enforcement.py`
 _Decision enforcement — close the loop between commitment and behavior._

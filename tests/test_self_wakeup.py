@@ -200,3 +200,65 @@ def test_section_lists_fired_wakeups(monkeypatch):
     assert section is not None
     assert "Tjek om brugeren er klar" in section
     assert "follow-up" in section
+
+
+# ── Sjette fejl: kilden kan være terminal på en måde lukkeren ikke genkendte ──
+
+def _komplet(wakeup_id: str, status: str) -> dict:
+    """En record med de felter `schedule_self_wakeup` selv skriver.
+
+    Uden dem måler testen sin egen mangel på felter i stedet for sit emne.
+    """
+    return {
+        "wakeup_id": wakeup_id, "status": status, "prompt": "p", "reason": "",
+        "extra": None, "scheduled_at": "2026-10-04T06:17:50+00:00",
+        "fire_at": "2026-10-04T06:27:50+00:00", "delay_seconds": 600,
+        "fired_at": None, "consumed_at": "2026-10-04T06:25:28+00:00",
+        "channel": "app", "session_id": None, "user_id": "bjorn",
+        "workspace_name": None, "user_display_name": None, "role": None,
+        "context_channel": None,
+    }
+
+
+def test_mark_consumed_paa_en_ALLEREDE_consumed_er_idempotent(monkeypatch):
+    """At kvittere en allerede kvitteret vækning er en NO-OP, ikke en fejl.
+
+    Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` svarede «wakeup
+    status=consumed, can't consume» — og den durable række stod stadig
+    `aaben` med `kraever_handling=1`, så den gatede permanent. Posten kunne
+    ikke lukkes med det værktøj der findes til at lukke den.
+
+    `_luk_kilden` i inbox_state accepterer ALLEREDE svaret «already» som
+    succes. Det er kilden her der aldrig svarede det.
+    """
+    state = [_komplet("w1", "consumed")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    result = sw.mark_wakeup_consumed("w1")
+    assert result["status"] == "already", f"en kvitteret vaekning blev en fejl: {result}"
+    assert state[0]["status"] == "consumed", "en no-op aendrede tilstanden"
+
+
+def test_mark_consumed_paa_en_CANCELLED_er_idempotent(monkeypatch):
+    """Samme form, anden terminal tilstand.
+
+    `cancel_wakeup` lukker vækningen, ikke dens durable række — målt
+    4/10-2026 på `wake-99ac19041a`, hvor posten stod åben efter annulleringen.
+    """
+    state = [_komplet("w1", "cancelled")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    result = sw.mark_wakeup_consumed("w1")
+    assert result["status"] == "already", f"en annulleret vaekning blev en fejl: {result}"
+
+
+def test_mark_consumed_paa_en_UKENDT_tilstand_er_STADIG_en_fejl(monkeypatch):
+    """Modprøven. Rettelsen må ikke gøre kvitteringen blind.
+
+    En tilstand vi ikke kender er ikke det samme som en terminal tilstand —
+    og en post man ikke kan afgøre er værre end ingen post.
+    """
+    state = [_komplet("w1", "noget-nyt")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    assert sw.mark_wakeup_consumed("w1")["status"] == "error"

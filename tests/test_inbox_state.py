@@ -575,3 +575,77 @@ def test_en_FEJLENDE_kilde_skjuler_ikke_de_andre(inbox_db, monkeypatch):
          "navn": "job-der-findes"}])
     monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
     assert inbox_state.drop(BJORN, "job-der-findes", "stale")["status"] == "ok"
+
+
+# ── Sjette fejl: luk rækken når KILDEN er terminal ─────────────────────────
+
+def _terminal_vaekning(monkeypatch, wakeup_id: str, status: str) -> None:
+    """Den ÆGTE self_wakeup-tilstand — ikke en mock.
+
+    De øvrige wakeup-tests her patcher `mark_wakeup_consumed`. Det er netop
+    den søm der brækkede: en mock på sømmen kan ikke se sømmen. Denne hjælper
+    lader den ægte funktion læse en ægte tilstand.
+    """
+    from core.services import self_wakeup as sw
+    tilstand = [{
+        "wakeup_id": wakeup_id, "status": status, "prompt": "p", "reason": "",
+        "extra": None, "scheduled_at": "2026-10-04T06:17:50+00:00",
+        "fire_at": "2026-10-04T06:27:50+00:00", "delay_seconds": 600,
+        "fired_at": None, "consumed_at": "2026-10-04T06:25:28+00:00",
+        "channel": "app", "session_id": None, "user_id": BJORN,
+    }]
+    monkeypatch.setattr(sw, "_load", lambda: list(tilstand))
+    monkeypatch.setattr(sw, "_save", lambda r: tilstand.clear() or tilstand.extend(r))
+
+
+@pytest.mark.parametrize("status", ["consumed", "cancelled"])
+def test_en_TERMINAL_vaekning_kan_kvitteres_og_gater_ikke_mere(inbox_db, monkeypatch, status):
+    """Sjette fejl i indbakke-sporet: en post der vises, men ikke kan afgøres.
+
+    Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` → «wakeup
+    status=consumed, can't consume». Vækningen var færdig i sin EGEN kilde,
+    men den durable række stod `aaben` med `kraever_handling=1` — så den
+    gatede ALT `bash`, inklusive det kald der skulle lukke den. Vejen ud gik
+    gennem det værktøj der var blokeret.
+
+    De to lag var uenige om hvad «færdig» betyder. Rettelsen: luk rækken når
+    kilden er terminal — uanset HVILKEN terminal tilstand.
+    """
+    from core.services import inbox_gate
+    wid = f"wake-{status}"
+    with _som_bjorn():
+        inbox_state.registrer_kilde(bruger_id=BJORN, kildetype="wakeup",
+                                    kilde_id=wid, oprettende_run_id="visible-abc123")
+    _terminal_vaekning(monkeypatch, wid, status)
+
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id=wid)
+    assert post["status"] == db_inbox.STATUS_AABEN
+    assert post["kraever_handling"] is True
+    # Uden denne påstand kunne testen «bestå» på en opsætning der intet gatede.
+    assert [p["id"] for p in inbox_gate._gatende_poster(BJORN)] == [wid]
+
+    r = inbox_state.done(BJORN, wid)
+    assert r["status"] == "ok", f"posten kunne ikke lukkes: {r}"
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id=wid)["status"] == db_inbox.STATUS_DONE
+    assert inbox_gate._gatende_poster(BJORN) == [], "posten gater efter lukning"
+
+
+def test_en_vaekning_der_ikke_FINDES_kan_STADIG_ikke_kvitteres(inbox_db, monkeypatch):
+    """Modprøven — og den vigtigste.
+
+    Rettelsen må ikke blive «luk alt hvad der ikke kan slås op». En vækning
+    der slet ikke findes er ikke terminal; vi kan ikke bevise at den er
+    færdig. Den lukkes med `inbox_drop` — en anden afgørelse med et andet ord.
+    """
+    from core.services import self_wakeup as sw
+    monkeypatch.setattr(sw, "_load", lambda: [])
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    with _som_bjorn():
+        inbox_state.registrer_kilde(bruger_id=BJORN, kildetype="wakeup",
+                                    kilde_id="wake-forsvundet",
+                                    oprettende_run_id="visible-abc123")
+    r = inbox_state.done(BJORN, "wake-forsvundet")
+    assert r["status"] == "fejl"
+    assert "not found" in r["error"]
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="wake-forsvundet")["status"] == db_inbox.STATUS_AABEN

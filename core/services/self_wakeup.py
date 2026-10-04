@@ -202,9 +202,27 @@ def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
     record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
     if record is None:
         return {"status": "error", "error": "wakeup not found"}
-    if record.get("status") not in ("pending", "fired"):
-        return {"status": "error", "error": f"wakeup status={record.get('status')}, can't consume"}
-    was_fired = str(record.get("status") or "") == "fired"
+    status = str(record.get("status") or "")
+    # Kilden kan være ALLEREDE terminal. At kvittere den igen er en no-op,
+    # ikke en fejl — og forskellen er hele sagen.
+    #
+    # `_luk_kilden` i `inbox_state` accepterer «already» som succes og lader
+    # den durable afgørelse lukke rækken. Et «error» gør det modsatte: rækken
+    # bliver stående `aaben` med `kraever_handling=1`, og så gater posten
+    # permanent — og vejen ud går gennem det værktøj gaten blokerer.
+    #
+    # Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` → «status=consumed,
+    # can't consume», mens rækken stod åben og gatede alt `bash`. Samme form
+    # efter `cancel_wakeup` på `wake-99ac19041a`: annulleringen lukkede
+    # vækningen, ikke dens durable række.
+    #
+    # `drop` rammes ikke — den kalder ikke kilden, den afgør rækken direkte.
+    # Det er derfor `inbox_drop` virkede hvor `inbox_done` nægtede.
+    if status in ("consumed", "cancelled"):
+        return {"status": "already", "wakeup_id": wakeup_id, "tilstand": status}
+    if status not in ("pending", "fired"):
+        return {"status": "error", "error": f"wakeup status={status}, can't consume"}
+    was_fired = status == "fired"
     record["status"] = "consumed"
     record["consumed_at"] = datetime.now(UTC).isoformat()
     # 12/9-2026: luk den sidste stille kant. Dispatcheren filtrerer på

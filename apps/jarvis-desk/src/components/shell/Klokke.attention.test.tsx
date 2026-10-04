@@ -65,4 +65,28 @@ describe('Klokke attention', () => {
     expect(screen.getByRole('button', { name: 'Notifikationer' })).not.toHaveClass('klokke-attention')
     expect(screen.queryByTestId('klokke-ulast')).toBeNull()
   })
+
+  // Maalt 4/10-2026: der laa 1152 aabne `run_done` («Svar klar i «X»»), og der
+  // kommer en ny hver gang et run slutter. Tog klokken dem med, ringede og
+  // prikkede den permanent — hvert klik kvitterer kun dem der er der NU.
+  const runDone = (id: string) => ({ ...notification(id), slags: 'run_done' })
+
+  it('ringer ikke for run_done — baggrundsstof er ikke «noget nyt»', async () => {
+    hent.mockResolvedValue({ poster: [runDone('a'), runDone('b')], antal: 2, venter: 0 })
+    render(<Klokke config={config} onAaben={() => {}} />)
+    // Det EKSAKTE navn er beviset: baade puls og prik ville have gjort
+    // aria-label til «Notifikationer — ulaeste poster».
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Notifikationer' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Notifikationer' })).not.toHaveClass('klokke-attention')
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
+  })
+
+  it('ringer stadig naar en post der kraever svar ligger ved siden af run_done', async () => {
+    hent.mockResolvedValue({ poster: [runDone('a'), notification('spoerg')], antal: 2, venter: 1 })
+    render(<Klokke config={config} onAaben={() => {}} />)
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: /ulæste poster/ })).toHaveClass('klokke-attention'))
+    expect(screen.getByTestId('klokke-ulast')).toBeInTheDocument()
+  })
 })

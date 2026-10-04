@@ -1,14 +1,14 @@
 import { useContext, useSyncExternalStore } from 'react'
 import { StreamContext, type StreamContextValue } from '../contexts/StreamContext'
 
-function lager() {
+function useLager() {
   const l = useContext(StreamContext)
   if (!l) throw new Error('useStream must be used within StreamProvider')
   return l
 }
 
 export function useStream(): StreamContextValue {
-  const l = lager()
+  const l = useLager()
   // Abonnér på lageret i stedet for at læse en kontekst-værdi: kun DENNE
   // komponent renderes om ved en stream-opdatering (lib/vaerdiLager).
   //
@@ -42,6 +42,6 @@ export function useStreamUdsnit<T>(vaelg: (v: StreamContextValue) => T): T {
    * ikke er cachet — og du har byttet for mange renders til en uendelig
    * løkke. Vælg felterne enkeltvis i stedet.
    */
-  const l = lager()
+  const l = useLager()
   return useSyncExternalStore(l.abonner, () => vaelg(l.hent()), () => vaelg(l.hent()))
 }

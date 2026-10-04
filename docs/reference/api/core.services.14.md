@@ -470,19 +470,19 @@ _Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload._
 | function | `_kort` | `(tekst, loft)` | Afkort på et ordskel. Den GEMTE post afkortes aldrig — kun linjen. | [src](../../../core/services/inbox_view.py#L70) |
 | function | `_bytes_tekst` | `(b)` | `None` ⇒ «stoerrelse ukendt», aldrig «0 B». | [src](../../../core/services/inbox_view.py#L79) |
 | function | `_alder_dage` | `(fra_iso, nu_ts)` | Hele dage siden `fra_iso`. `None` når tidsstemplet ikke kan læses. | [src](../../../core/services/inbox_view.py#L97) |
-| function | `_aegte_poster` | `(bruger_id)` | — | [src](../../../core/services/inbox_view.py#L121) |
-| function | `_aegte_vaekninger` | `(bruger_id)` | `list_wakeups()` er GLOBAL — den har intet brugerfilter. | [src](../../../core/services/inbox_view.py#L125) |
-| function | `_aegte_jobs` | `(bruger_id)` | De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne. | [src](../../../core/services/inbox_view.py#L147) |
-| function | `_aegte_godkendelser` | `(bruger_id)` | `recent_tool_intent_approval_requests` med EKSPLICIT bruger. | [src](../../../core/services/inbox_view.py#L164) |
-| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L180) |
-| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L206) |
-| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L243) |
-| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L297) |
-| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L322) |
-| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L334) |
-| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L402) |
-| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L416) |
-| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Seks sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L426) |
+| function | `_aegte_poster` | `(bruger_id)` | Åbne poster PLUS de nyligt afgjorte. | [src](../../../core/services/inbox_view.py#L121) |
+| function | `_aegte_vaekninger` | `(bruger_id)` | `list_wakeups()` er GLOBAL — den har intet brugerfilter. | [src](../../../core/services/inbox_view.py#L135) |
+| function | `_aegte_jobs` | `(bruger_id)` | De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne. | [src](../../../core/services/inbox_view.py#L157) |
+| function | `_aegte_godkendelser` | `(bruger_id)` | `recent_tool_intent_approval_requests` med EKSPLICIT bruger. | [src](../../../core/services/inbox_view.py#L174) |
+| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L190) |
+| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L216) |
+| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L253) |
+| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L307) |
+| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L332) |
+| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L344) |
+| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L412) |
+| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L426) |
+| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Seks sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L436) |
 
 ## `core/services/indre_puls.py`
 _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._

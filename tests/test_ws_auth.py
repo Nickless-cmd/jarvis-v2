@@ -318,3 +318,29 @@ def test_ruten_sender_efter_rolle(klient, monkeypatch, rolle, forventet):
     with klient.websocket_connect("/ws", subprotocols=[ws_auth.SUBPROTOKOL, "t"]) as ws:
         modtaget = [ws.receive_json() for _ in forventet]
     assert modtaget == forventet
+
+
+# ── «Kan ikke afgøre» må ikke være «auth er slået fra» (4/10-2026) ────────────
+#
+# `kraeves_auth` svarede False når opslaget fejlede. Kalderen i `live.py` afviser
+# KUN når den svarer ja — så et fejlende opslag gav en ANONYM klient hele den
+# private event-strøm. Retningen er nu fail-closed.
+
+def test_kraeves_auth_fejler_lukket_naar_opslaget_kaster(monkeypatch):
+    import core.runtime.jarvisx_auth as ja
+
+    def _kaster():
+        raise RuntimeError("kunne ikke læse runtime.json")
+
+    monkeypatch.setattr(ja, "auth_required", _kaster)
+    assert ws_auth.kraeves_auth() is True
+
+
+def test_kraeves_auth_foelger_indstillingen_naar_den_kan_laeses(monkeypatch):
+    """Modprøven: den normale vej er uændret."""
+    import core.runtime.jarvisx_auth as ja
+
+    monkeypatch.setattr(ja, "auth_required", lambda: True)
+    assert ws_auth.kraeves_auth() is True
+    monkeypatch.setattr(ja, "auth_required", lambda: False)
+    assert ws_auth.kraeves_auth() is False

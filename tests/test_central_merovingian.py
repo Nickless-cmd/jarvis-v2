@@ -130,3 +130,21 @@ def test_expire_cooling_marks_expired(db):
     c.execute("UPDATE central_merovingian SET cools_off_at='2000-01-01T00:00:00+00:00'")
     c.commit(); c.close()
     assert m.expire_cooling()["expired"] == 1
+
+
+# ── «Kunne ikke læse» er ikke «ingen åben indvending» (4/10-2026) ─────────────
+#
+# `_has_open_challenge` svarede False når DB'en fejlede → en hypotese der ALLEREDE
+# var udfordret blev udfordret igen på et gæt. Fail-closed: antag at der ER en.
+
+def test_has_open_challenge_fejler_lukket(monkeypatch):
+    def _kaster(*a, **k):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(m, "connect", _kaster)
+    assert m._has_open_challenge("h1") is True
+
+
+def test_has_open_challenge_svarer_false_naar_der_ikke_er_nogen(db):
+    """Modprøven: den normale vej er uændret."""
+    assert m._has_open_challenge("findes-ikke") is False

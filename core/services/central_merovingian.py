@@ -25,11 +25,14 @@ altid suveræn. Synlighed via Central-CLI (den nye MC), IKKE Mission Control. Se
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 _COOLING_HOURS = 24
 _ABANDON_DAYS = 30
@@ -318,7 +321,11 @@ def _has_open_challenge(hyp_id: str) -> bool:
                 "SELECT 1 FROM central_merovingian WHERE hyp_id=? AND status IN ('challenged','abandon_window') LIMIT 1",
                 (hyp_id,)).fetchone())
     except Exception:
-        return False
+        # «Kunne ikke laese» er ikke «ingen aaben indvending». Fail-closed: vi antager at
+        # der ER en, saa vi ikke skriver en dublet-udfordring paa et gaet. Naeste
+        # cadence-koersel proever igen. (Vendt 4/10-2026.)
+        logger.warning("_has_open_challenge: kunne ikke laese for %s — antager aaben", hyp_id)
+        return True
 
 
 def list_challenges(*, active_only: bool = True, limit: int = 40) -> list[dict[str, Any]]:

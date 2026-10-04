@@ -280,3 +280,21 @@ def test_evaluate_ignores_unverified_grounding():
     v = g.evaluate(_valid_hyp(confidence=0.3, sample_size=1), confirming_evidence=ev,
                    grounded_sample_count=1)
     assert v.confidence == 0.3   # uændret — falsk grounding ignoreret (ingen jordet evidens)
+
+
+# ── En ulæselig dato er ikke et bevis på liv (4/10-2026) ─────────────────────
+#
+# Modulet hviler på Popper-asymmetrien: en hypotese skal DØ let og bekræftes
+# svært. En `created_at` der ikke kunne parses gav «ikke udløbet» — hypotesen
+# levede for evigt, stik imod sin egen docstring om falsificering ved tavshed.
+
+def test_ulaeselig_created_at_doer_ved_ttl():
+    v = g.evaluate(_valid_hyp(created_at="ikke-en-dato"), confirming_evidence=[])
+    assert v.alive is False and "TTL" in v.reason
+
+
+def test_frisk_dato_doer_ikke_af_rettelsen():
+    """Modprøven: en hypotese inden for sin TTL rammes ikke."""
+    frisk = datetime.now(timezone.utc).isoformat()
+    v = g.evaluate(_valid_hyp(created_at=frisk), confirming_evidence=[])
+    assert "TTL" not in v.reason

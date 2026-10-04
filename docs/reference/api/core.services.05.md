@@ -75,28 +75,28 @@ _core/services/central_hypothesis_governance.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `verify_frozen_core` | `()` | Tripwire (filosof-lensen): er dødsmekanismens egne konstanter uændrede? En selv-muterende | [src](../../../core/services/central_hypothesis_governance.py#L68) |
-| function | `validate_preregistration` | `(hyp)` | En hypotese uden falsifikations-forudsigelse, TTL, null-hypotese, success-kriterium, | [src](../../../core/services/central_hypothesis_governance.py#L83) |
-| function | `is_expired` | `(created_at_iso, ttl_seconds, *, now=…)` | Er TTL udløbet? En udløbet-uden-bekræftelse hypotese DØR (falsificeret via tavshed). | [src](../../../core/services/central_hypothesis_governance.py#L108) |
-| function | `apply_outcome` | `(confidence, *, falsified, up_rate=…, down_rate=…)` | Dør let, bekræftes svært: falsifikation hård multiplikativ nedtræk; bekræftelse langsom | [src](../../../core/services/central_hypothesis_governance.py#L121) |
-| function | `is_circular` | `(hyp_id, confirming_evidence, *, threshold=…)` | Karantæne hvis ≥ threshold af den STØTTENDE evidens er selv-udløst (triggered_by == hyp_id). | [src](../../../core/services/central_hypothesis_governance.py#L132) |
-| function | `is_externally_grounded` | `(evidence, *, verifier=…)` | Loopet må kun lukkes af virkeligheden. Kræver (a) source i allowlist OG (b) et ground_ref | [src](../../../core/services/central_hypothesis_governance.py#L144) |
-| function | `may_apply_adaptation` | `(*, shadow_days_elapsed, human_approved, min_days=…)` | Ingen aktiv adaptation før ≥ min_days skygge OG menneske-godkendelse. Fail-closed. | [src](../../../core/services/central_hypothesis_governance.py#L167) |
-| function | `convergence_threshold` | `(base_alpha, n_comparisons)` | Bonferroni (family-wise). NB (rådet): for en STOR hypotese-population over tid er FDR | [src](../../../core/services/central_hypothesis_governance.py#L174) |
-| function | `benjamini_hochberg_cutoff` | `(pvalues, *, fdr=…)` | FDR-tærskel: største p(i) ≤ (i/m)·fdr. Passer 'mange hypoteser over tid' bedre end Bonferroni. | [src](../../../core/services/central_hypothesis_governance.py#L180) |
-| function | `_control_salt` | `()` | — | [src](../../../core/services/central_hypothesis_governance.py#L196) |
-| function | `is_control_arm` | `(stable_hyp_id, *, fraction=…)` | Deterministisk split på et STABILT, server-tildelt id (IKKE statement-afledt — ellers kan | [src](../../../core/services/central_hypothesis_governance.py#L207) |
-| function | `_is_finite_scalar` | `(v)` | — | [src](../../../core/services/central_hypothesis_governance.py#L216) |
-| function | `is_learnable_aggregate` | `(key, value)` | Må (key, value) fodre learning? KUN hvis nøglen er en kendt aggregat-nøgle OG værdien er en | [src](../../../core/services/central_hypothesis_governance.py#L227) |
-| function | `assert_learnable` | `(payload)` | Alle (nøgle,værdi) i et learning-input SKAL være aggregat-nøgle + finite skalar. Fail-closed: | [src](../../../core/services/central_hypothesis_governance.py#L234) |
-| function | `gate_learning_input` | `(payload)` | OBLIGATORISK choke-point: ethvert learning-input SKAL gennem denne (håndhævet af invariant- | [src](../../../core/services/central_hypothesis_governance.py#L243) |
-| class | `DriftVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L261) |
-| function | `anchor_identity_baseline` | `(params, *, version, approved_by, domain=…)` | Forankr en identitets-baseline for ÉT domæne i en Bjørn-godkendt CEREMONI (write-once pr. | [src](../../../core/services/central_hypothesis_governance.py#L276) |
-| function | `get_anchored_baseline` | `(*, domain=…)` | — | [src](../../../core/services/central_hypothesis_governance.py#L295) |
-| function | `drift_budget_check` | `(current, *, baseline=…, budgets=…, total_budget=…, domain=…)` | Mål drift af selv-muterede parametre fra en ANKRET baseline (namespaced pr. domæne). Itererer | [src](../../../core/services/central_hypothesis_governance.py#L301) |
-| function | `gate_self_mutation` | `(current, *, budgets=…, total_budget=…, domain=…)` | OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline | [src](../../../core/services/central_hypothesis_governance.py#L351) |
-| class | `GovernanceVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L362) |
-| function | `evaluate` | `(hyp, *, confirming_evidence=…, grounded_sample_count=…, now=…, verifier=…)` | Anvend ALLE hypotese-værn → samlet dom der EKSEKVERER død (acts=False stopper handling). | [src](../../../core/services/central_hypothesis_governance.py#L370) |
+| function | `verify_frozen_core` | `()` | Tripwire (filosof-lensen): er dødsmekanismens egne konstanter uændrede? En selv-muterende | [src](../../../core/services/central_hypothesis_governance.py#L71) |
+| function | `validate_preregistration` | `(hyp)` | En hypotese uden falsifikations-forudsigelse, TTL, null-hypotese, success-kriterium, | [src](../../../core/services/central_hypothesis_governance.py#L86) |
+| function | `is_expired` | `(created_at_iso, ttl_seconds, *, now=…)` | Er TTL udløbet? En udløbet-uden-bekræftelse hypotese DØR (falsificeret via tavshed). | [src](../../../core/services/central_hypothesis_governance.py#L111) |
+| function | `apply_outcome` | `(confidence, *, falsified, up_rate=…, down_rate=…)` | Dør let, bekræftes svært: falsifikation hård multiplikativ nedtræk; bekræftelse langsom | [src](../../../core/services/central_hypothesis_governance.py#L129) |
+| function | `is_circular` | `(hyp_id, confirming_evidence, *, threshold=…)` | Karantæne hvis ≥ threshold af den STØTTENDE evidens er selv-udløst (triggered_by == hyp_id). | [src](../../../core/services/central_hypothesis_governance.py#L140) |
+| function | `is_externally_grounded` | `(evidence, *, verifier=…)` | Loopet må kun lukkes af virkeligheden. Kræver (a) source i allowlist OG (b) et ground_ref | [src](../../../core/services/central_hypothesis_governance.py#L152) |
+| function | `may_apply_adaptation` | `(*, shadow_days_elapsed, human_approved, min_days=…)` | Ingen aktiv adaptation før ≥ min_days skygge OG menneske-godkendelse. Fail-closed. | [src](../../../core/services/central_hypothesis_governance.py#L175) |
+| function | `convergence_threshold` | `(base_alpha, n_comparisons)` | Bonferroni (family-wise). NB (rådet): for en STOR hypotese-population over tid er FDR | [src](../../../core/services/central_hypothesis_governance.py#L182) |
+| function | `benjamini_hochberg_cutoff` | `(pvalues, *, fdr=…)` | FDR-tærskel: største p(i) ≤ (i/m)·fdr. Passer 'mange hypoteser over tid' bedre end Bonferroni. | [src](../../../core/services/central_hypothesis_governance.py#L188) |
+| function | `_control_salt` | `()` | — | [src](../../../core/services/central_hypothesis_governance.py#L204) |
+| function | `is_control_arm` | `(stable_hyp_id, *, fraction=…)` | Deterministisk split på et STABILT, server-tildelt id (IKKE statement-afledt — ellers kan | [src](../../../core/services/central_hypothesis_governance.py#L215) |
+| function | `_is_finite_scalar` | `(v)` | — | [src](../../../core/services/central_hypothesis_governance.py#L224) |
+| function | `is_learnable_aggregate` | `(key, value)` | Må (key, value) fodre learning? KUN hvis nøglen er en kendt aggregat-nøgle OG værdien er en | [src](../../../core/services/central_hypothesis_governance.py#L235) |
+| function | `assert_learnable` | `(payload)` | Alle (nøgle,værdi) i et learning-input SKAL være aggregat-nøgle + finite skalar. Fail-closed: | [src](../../../core/services/central_hypothesis_governance.py#L242) |
+| function | `gate_learning_input` | `(payload)` | OBLIGATORISK choke-point: ethvert learning-input SKAL gennem denne (håndhævet af invariant- | [src](../../../core/services/central_hypothesis_governance.py#L251) |
+| class | `DriftVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L269) |
+| function | `anchor_identity_baseline` | `(params, *, version, approved_by, domain=…)` | Forankr en identitets-baseline for ÉT domæne i en Bjørn-godkendt CEREMONI (write-once pr. | [src](../../../core/services/central_hypothesis_governance.py#L284) |
+| function | `get_anchored_baseline` | `(*, domain=…)` | — | [src](../../../core/services/central_hypothesis_governance.py#L303) |
+| function | `drift_budget_check` | `(current, *, baseline=…, budgets=…, total_budget=…, domain=…)` | Mål drift af selv-muterede parametre fra en ANKRET baseline (namespaced pr. domæne). Itererer | [src](../../../core/services/central_hypothesis_governance.py#L309) |
+| function | `gate_self_mutation` | `(current, *, budgets=…, total_budget=…, domain=…)` | OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline | [src](../../../core/services/central_hypothesis_governance.py#L359) |
+| class | `GovernanceVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L370) |
+| function | `evaluate` | `(hyp, *, confirming_evidence=…, grounded_sample_count=…, now=…, verifier=…)` | Anvend ALLE hypotese-værn → samlet dom der EKSEKVERER død (acts=False stopper handling). | [src](../../../core/services/central_hypothesis_governance.py#L378) |
 
 ## `core/services/central_hypothesis_sampler.py`
 _core/services/central_hypothesis_sampler.py_
@@ -389,24 +389,24 @@ _Merovingian — den konservative ældste der tvinger Centralen til at forsvare 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L49) |
-| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L53) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L65) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L73) |
-| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L91) |
-| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L121) |
-| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L136) |
-| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L165) |
-| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L193) |
-| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L203) |
-| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L219) |
-| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L240) |
-| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L258) |
-| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L276) |
-| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L291) |
-| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L313) |
-| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L324) |
-| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L336) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L52) |
+| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L56) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L68) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L76) |
+| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L94) |
+| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L124) |
+| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L139) |
+| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L168) |
+| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L196) |
+| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L206) |
+| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L222) |
+| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L243) |
+| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L261) |
+| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L279) |
+| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L294) |
+| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L316) |
+| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L331) |
+| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L343) |
 
 ## `core/services/central_model_meta.py`
 _core/services/central_model_meta.py_

@@ -172,6 +172,28 @@ def test_et_LEVENDE_job_staar_under_i_gang():
     assert v["venter_paa_dig"] == []
 
 
+def test_et_TOOL_KALD_uden_pid_er_i_gang_ikke_venter():
+    """Et tool-job er et KALD, ikke en proces.
+
+    `_tool_jobs` giver altid `pid: None` — dens egen kontrakt er «Uparret =
+    kører stadig» — så `proces_lever(None) == None` må ikke læses som «kan
+    ikke afgøres». Den klassen er rigtig for et supervisor-job på en host vi
+    ikke kan nå; for et kald er den en tavs fejl.
+
+    Uden denne gren lander hvert kørende kald i «VENTER PÅ DIG», og fordi
+    id'et er `<værktøj>#<epoch>` skifter det hvert kald, så `drop` aldrig
+    rammer det. Målt 4/10-2026: `venter_paa_dig: [('bash#1791092371',
+    'status_ukendt')]`, `i_gang: []`.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        jobs=[{"id": "bash#1791092371", "kilde": "tool", "status": "running",
+               "pid": None, "sekunder": 2, "navn": "Kald indbakken"}],
+        proces_lever=None))
+    assert [p["id"] for p in v["i_gang"]] == ["bash#1791092371"]
+    assert v["venter_paa_dig"] == [], \
+        "et koerende kald stod i VENTER PAA DIG — det er ikke noget der venter"
+
+
 def test_et_job_med_exit_0_staar_slet_ikke():
     """Et færdigt job der gik godt kræver ingenting. Stod det der, ville
     panelet fyldes med det der ER i orden — og så lukker man det."""

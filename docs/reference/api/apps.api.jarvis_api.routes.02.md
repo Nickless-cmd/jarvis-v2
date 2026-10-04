@@ -111,15 +111,16 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 | function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L312) |
 
 ## `apps/api/jarvis_api/routes/files.py`
-_File download route — serves files Jarvis has published to ~/.jarvis-v2/files/._
+_Udgivne filer — per bruger._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_files_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L35) |
-| function | `download_file` | `(filename)` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L41) |
-| function | `list_files` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L61) |
-| class | `LinkOenske` | `` | Hvilken fil, og hvor laenge. | [src](../../../apps/api/jarvis_api/routes/files.py#L71) |
-| function | `udsted_link` | `(req)` | Et kortlivet signeret link til én fil. | [src](../../../apps/api/jarvis_api/routes/files.py#L83) |
+| function | `_min_mappe` | `(*, opret=…)` | Den autentificerede brugers filmappe, eller 401. | [src](../../../apps/api/jarvis_api/routes/files.py#L52) |
+| function | `ensure_files_dir` | `()` | Den autentificerede brugers mappe, oprettet. Bevarer det gamle navn, | [src](../../../apps/api/jarvis_api/routes/files.py#L70) |
+| class | `LinkOenske` | `` | Hvilken fil, og hvor længe. | [src](../../../apps/api/jarvis_api/routes/files.py#L76) |
+| function | `udsted_link` | `(req)` | Et kortlivet signeret link til én af MINE filer. | [src](../../../apps/api/jarvis_api/routes/files.py#L88) |
+| function | `download_file` | `(filename, ws=…)` | Hent én fil — min egen, eller en andens via et gyldigt signeret link. | [src](../../../apps/api/jarvis_api/routes/files.py#L124) |
+| function | `list_files` | `()` | MINE filer. Aldrig nogen andens, og aldrig de gamle faelles. | [src](../../../apps/api/jarvis_api/routes/files.py#L173) |
 
 ## `apps/api/jarvis_api/routes/health.py`
 

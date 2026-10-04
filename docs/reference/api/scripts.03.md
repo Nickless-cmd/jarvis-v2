@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/phase7_collect.py`
+_Fase 7 — indsamler svarene._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L55) |
+| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L63) |
+| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L71) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L80) |
+| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L92) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L104) |
+
 ## `scripts/phase7_judge.py`
 _Fase 7 — blind bedømmelse af svarene._
 

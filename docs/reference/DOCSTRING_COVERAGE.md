@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8460/16027 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8469/16035 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8460/16027 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 9 | 20 | 45% |
-| `apps.api.jarvis_api.routes` | 708 | 939 | 75% |
+| `apps.api.jarvis_api.routes` | 712 | 940 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,8 +24,8 @@ Generated from source. 8460/16027 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 718 | 1298 | 55% |
-| `core.services` | 5648 | 10915 | 51% |
+| `core.runtime` | 721 | 1301 | 55% |
+| `core.services` | 5649 | 10916 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,18 +37,18 @@ Generated from source. 8460/16027 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 251 | 550 | 45% |
+| `scripts` | 252 | 553 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2235)
+## Undocumented public functions (2233)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L255)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L261)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
@@ -77,9 +77,6 @@ Generated from source. 8460/16027 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)
-- `apps/api/jarvis_api/routes/files.py` :: `download_file` (L41)
-- `apps/api/jarvis_api/routes/files.py` :: `ensure_files_dir` (L35)
-- `apps/api/jarvis_api/routes/files.py` :: `list_files` (L61)
 - `apps/api/jarvis_api/routes/health.py` :: `health` (L10)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `confusion` (L240)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `finish_session` (L232)
@@ -2196,6 +2193,7 @@ Generated from source. 8460/16027 functions/methods documented (52%). The list b
 - `scripts/memory_probe.py` :: `load_probes` (L24)
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
+- `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)
 - `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)
 - `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)
 - `scripts/minimal_mode_baseline.py` :: `main` (L248)

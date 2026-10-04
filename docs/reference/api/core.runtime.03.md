@@ -291,6 +291,9 @@ _Workspace path resolver — single source of truth for filesystem layout._
 | function | `workspace_dir` | `(user_id=…)` | Per-relation workspace. Defaults to current_user_id() from context. | [src](../../../core/runtime/workspace_paths.py#L40) |
 | function | `workspace_dir_or_owner` | `()` | workspace_dir() with an owner fallback, then shared/ as last resort. | [src](../../../core/runtime/workspace_paths.py#L65) |
 | function | `_user_id_to_workspace_name` | `(user_id)` | Resolve user_id → workspace folder name. | [src](../../../core/runtime/workspace_paths.py#L89) |
+| function | `rent_mappe_eller_filnavn` | `(navn)` | Et BLOT navn — ingen sti, ingen `..`. Tom streng når det ikke er det. | [src](../../../core/runtime/workspace_paths.py#L125) |
+| function | `published_files_dir` | `(user_id=…, *, opret=…)` | Hvor ÉN brugers udgivne filer bor. `~/.jarvis-v2/files/u/<workspace>/`. | [src](../../../core/runtime/workspace_paths.py#L147) |
+| function | `published_file_path` | `(filnavn, user_id=…, *, opret_mappe=…)` | Den fulde sti til ÉN brugers fil. Rejser ValueError på en sti. | [src](../../../core/runtime/workspace_paths.py#L194) |
 
 ## `core/runtime/ws_auth.py`
 _Legitimation paa en WebSocket — uden at skrive tokenet i adgangsloggen._

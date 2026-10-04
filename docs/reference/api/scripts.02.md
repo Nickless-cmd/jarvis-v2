@@ -282,6 +282,15 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 
+## `scripts/migrer_filer_per_bruger.py`
+_Flyt de gamle fælles filer ind i ejerens egen mappe._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hash` | `(p)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L42) |
+| function | `find_ejer` | `()` | Ejerens workspace-navn. Tom streng når det ikke kan afgøres. | [src](../../../scripts/migrer_filer_per_bruger.py#L50) |
+| function | `migrer` | `(*, udfoer, ejer_ws=…)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L62) |
+
 ## `scripts/migrer_shared_runtime_til_state_store.py`
 _Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
 
@@ -438,16 +447,4 @@ _Fase 7 — bygger proberne af arkivet._
 | function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L142) |
 | function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L149) |
 | function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L171) |
-
-## `scripts/phase7_collect.py`
-_Fase 7 — indsamler svarene._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L55) |
-| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L63) |
-| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L71) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L80) |
-| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L92) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L104) |
 

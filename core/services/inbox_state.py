@@ -240,9 +240,89 @@ def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok"}
 
 
+def _find_i_kilderne(bruger_id: str, post_id: str) -> tuple[str, str] | None:
+    """(kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har.
+
+    ## Hullet dette lukker
+
+    Målt 4/10-2026 kl. 07:16, Jarvis' FØRSTE brug af værktøjerne: `inbox` →
+    ok, derefter `inbox_done(wake-cf0577f5bb)` → fejl, `inbox_drop(
+    phase3-final-classifier)` → fejl, `inbox_drop(jarvis_bare)` → fejl. Tre af
+    seks kald. Han skrev det selv: «kunne ikke lukke dem (id'erne matcher
+    ikke)».
+
+    Årsagen: `byg_indbakke` læser FIRE kilder — `inbox_items`, vækninger, jobs
+    og godkendelser — mens `done`/`drop` kun kendte `inbox_items`. De tre
+    poster var ældre end skriveren i `schedule_self_wakeup`, så de havde ingen
+    række. Visningen viste altså poster der ikke kunne lukkes: en blindgyde,
+    og samme form som da skriveren manglede helt.
+
+    ## Hvorfor den spørger VISNINGENS egne adaptere
+
+    Ikke id-præfikset. Spec'ens Opgave 3 trin 3 siger det: «vælg kildehandler
+    fra postens typede `kildetype`, ikke alene fra et brugerleveret
+    id-præfiks.» Og ved at bruge `Kilder()` — de samme funktioner visningen
+    bruger — kan de to ikke blive uenige om hvad der findes. Det er en garanti
+    ved konstruktion frem for to lister der skal holdes i sync.
+    """
+    try:
+        from core.services.inbox_view import Kilder
+        k = Kilder()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke laese kilderne: %s", exc)
+        return None
+    for hent, kildetype, id_felt, tekst_felter in (
+            (k.vaekninger, "wakeup", "wakeup_id", ("prompt", "reason")),
+            (k.jobs, "job", "id", ("navn", "beskrivelse", "kommando")),
+    ):
+        try:
+            for r in hent(bruger_id) or []:
+                if str(r.get(id_felt) or "").strip() != post_id:
+                    continue
+                for felt in tekst_felter:
+                    if str(r.get(felt) or "").strip():
+                        return kildetype, str(r[felt])[:200]
+                return kildetype, ""
+        except Exception as exc:  # noqa: BLE001
+            # Én kilde der fejler maa ikke skjule de andre — men den skal ses,
+            # ellers bliver et id tavst «ukendt» fordi en laesning braekkede.
+            logger.warning("inbox_state: kilde %s fejlede ved opslag af %r: %s",
+                           kildetype, post_id[:40], exc)
+    return None
+
+
+def _hent_eller_optag(bruger_id: str, post_id: str) -> dict[str, Any] | None:
+    """Postens række — og opret den hvis KILDEN findes men rækken ikke gør.
+
+    Posten optages som `ukendt` og dermed ikke-gatende, og det er ærligt: vi
+    kunne ikke bevise proveniensen da den blev oprettet, for den blev oprettet
+    før registreringen fandtes. Men den skal kunne LUKKES — en afgørelse er
+    hele pointen, og en post man ikke kan afgøre er værre end ingen post.
+    """
+    post = db_inbox.hent(bruger_id=bruger_id, kilde_id=post_id)
+    if post is not None:
+        return post
+    fundet = _find_i_kilderne(bruger_id, post_id)
+    if fundet is None:
+        return None
+    kildetype, beskrivelse = fundet
+    r = db_inbox.opret_eller_hent(
+        bruger_id=bruger_id, kildetype=kildetype, kilde_id=post_id,
+        verificeret_ejer=EJER_UKENDT, kraever_handling=False,
+        beskrivelse=beskrivelse)
+    if r.get("status") != "ok":
+        logger.warning("inbox_state: kunne ikke optage %s/%s for %s: %s",
+                       kildetype, post_id, bruger_id, r.get("error"))
+        return None
+    _spor("inbox.optaget_ved_lukning", {
+        "bruger_id": bruger_id, "kildetype": kildetype, "kilde_id": post_id,
+        "grund": "kilden fandtes, raekken gjorde ikke"})
+    return r.get("post")
+
+
 def done(bruger_id: str, post_id: str) -> dict[str, Any]:
     """Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa."""
-    post = db_inbox.hent(bruger_id=bruger_id, kilde_id=post_id)
+    post = _hent_eller_optag(bruger_id, post_id)
     if post is None:
         # Et ukendt id må ALDRIG melde succes. Det er husets hyppigste
         # fejlform, og her er den særlig grim: et «ok» på et id der ikke
@@ -279,7 +359,7 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
     grund = str(reason or "").strip()
     if not grund:
         return {"status": "fejl", "id": post_id, "error": "reason kraeves"}
-    post = db_inbox.hent(bruger_id=bruger_id, kilde_id=post_id)
+    post = _hent_eller_optag(bruger_id, post_id)
     if post is None:
         return {"status": "ukendt", "id": post_id}
     r = db_inbox.afgoer(bruger_id=bruger_id, kilde_id=post_id,

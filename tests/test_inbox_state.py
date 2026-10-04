@@ -473,3 +473,105 @@ def test_en_FEJLENDE_registrering_ruller_IKKE_vaekningen_tilbage(
         r = self_wakeup.schedule_self_wakeup(delay_seconds=300, prompt="x",
                                              user_id=BJORN)
     assert r["status"] == "ok", "vaekningen blev rullet tilbage af en indbakke-fejl"
+
+
+# ── Jarvis' første brug afslørede en blindgyde (4/10-2026) ──────────────────
+
+def test_en_post_VISNINGEN_viser_kan_LUKKES_selv_uden_en_raekke(inbox_db, monkeypatch):
+    """Målt 4/10 kl. 07:16 — Jarvis' FØRSTE brug af værktøjerne:
+
+        inbox                                   → ok
+        inbox_done(wake-cf0577f5bb)             → fejl
+        inbox_drop(phase3-final-classifier)     → fejl
+        inbox_drop(jarvis_bare)                 → fejl
+
+    Tre af seks kald. Han skrev det selv: «kunne ikke lukke dem (id'erne
+    matcher ikke)».
+
+    Årsagen: `byg_indbakke` læser FIRE kilder, mens `done`/`drop` kun kendte
+    `inbox_items`. De tre poster var ældre end skriveren i
+    `schedule_self_wakeup`, så de havde ingen række. Visningen viste poster der
+    ikke kunne lukkes — en blindgyde, og samme form som da skriveren manglede
+    helt: visningen og lukkeren var uenige om hvad der findes.
+    """
+    from core.services import inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [
+        {"wakeup_id": "wake-cf0577f5bb", "status": "fired", "user_id": BJORN,
+         "prompt": "Slet prevacuum-backuppen"}])
+    monkeypatch.setattr(iv, "_aegte_jobs", lambda _b: [
+        {"id": "phase3-final-classifier", "status": "exited", "exit_code": 2,
+         "navn": "phase3-final-classifier"}])
+    monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
+
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-cf0577f5bb") is None
+
+    kaldt: list[str] = []
+    with patch("core.services.self_wakeup.mark_wakeup_consumed",
+               side_effect=lambda wid: kaldt.append(wid) or {"status": "ok"}):
+        r = inbox_state.done(BJORN, "wake-cf0577f5bb")
+    assert r["status"] == "ok", f"posten kunne stadig ikke lukkes: {r}"
+    # Kildetypen kommer fra KILDEN, ikke fra id-praefikset — saa vaekningens
+    # egen kvittering bliver kaldt, med praefikset intakt.
+    assert kaldt == ["wake-cf0577f5bb"]
+    assert r["type"] == "wakeup"
+
+    d = inbox_state.drop(BJORN, "phase3-final-classifier", "stale fra 28. maj")
+    assert d["status"] == "ok" and d["type"] == "job"
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="phase3-final-classifier")["afgjort_grund"] \
+        == "stale fra 28. maj"
+
+
+def test_en_post_der_findes_INGEN_steder_melder_stadig_ukendt(inbox_db, monkeypatch):
+    """Modprøven. Uden den kunne rettelsen være «opret alt hvad nogen nævner»,
+    og så ville et stavefejlet id blive en ny, tom post — og `ukendt` ville
+    aldrig kunne meldes igen."""
+    from core.services import inbox_view as iv
+    for navn in ("_aegte_vaekninger", "_aegte_jobs", "_aegte_godkendelser"):
+        monkeypatch.setattr(iv, navn, lambda _b: [])
+    assert inbox_state.done(BJORN, "findes-slet-ikke") == {
+        "status": "ukendt", "id": "findes-slet-ikke"}
+    assert db_inbox.liste(bruger_id=BJORN, kun_aabne=False) == []
+
+
+def test_en_post_optaget_ved_lukning_kan_IKKE_gate(inbox_db, monkeypatch):
+    """Den optages som `ukendt`, og det er ærligt: proveniensen kunne ikke
+    bevises, for posten blev oprettet før registreringen fandtes. Men den må
+    aldrig kunne gate bagefter — ellers var vejen rundt om skrive-kontrakten
+    at lukke en gammel post."""
+    from core.services import inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_jobs", lambda _b: [
+        {"id": "gammelt-job", "status": "exited", "exit_code": 1,
+         "navn": "gammelt-job"}])
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [])
+    monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
+    with _som_bjorn():
+        inbox_state.drop(BJORN, "gammelt-job", "stale")
+    p = db_inbox.hent(bruger_id=BJORN, kilde_id="gammelt-job")
+    assert p["verificeret_ejer"] == inbox_state.EJER_UKENDT
+    assert p["kraever_handling"] is False
+
+
+def test_en_ANDEN_brugers_kilde_kan_ikke_lukkes_af_mig(inbox_db, monkeypatch):
+    """Adapteren filtrerer på bruger, og lukkeren arver den filtrering fordi
+    den bruger SAMME adapter. Det er garantien ved konstruktion."""
+    from core.services import inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda b: [
+        {"wakeup_id": "wake-andens", "status": "fired", "user_id": ANDEN,
+         "prompt": "andens"}] if b == ANDEN else [])
+    monkeypatch.setattr(iv, "_aegte_jobs", lambda _b: [])
+    monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
+    assert inbox_state.done(BJORN, "wake-andens")["status"] == "ukendt"
+
+
+def test_en_FEJLENDE_kilde_skjuler_ikke_de_andre(inbox_db, monkeypatch):
+    """Én læsning der kaster må ikke gøre et id tavst «ukendt» — så ville en
+    forbigående fejl se ud som et stavefejlet id."""
+    from core.services import inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger",
+                        lambda _b: (_ for _ in ()).throw(OSError("filen laast")))
+    monkeypatch.setattr(iv, "_aegte_jobs", lambda _b: [
+        {"id": "job-der-findes", "status": "exited", "exit_code": 1,
+         "navn": "job-der-findes"}])
+    monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
+    assert inbox_state.drop(BJORN, "job-der-findes", "stale")["status"] == "ok"

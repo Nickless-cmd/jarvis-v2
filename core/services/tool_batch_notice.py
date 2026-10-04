@@ -24,9 +24,11 @@ cache-præfikset er urørt.
 """
 from __future__ import annotations
 
-#: Hvor mange gange vinket må fyre i én tur. Tre er nok til at etablere vanen;
-#: derefter er det nag.
-MAKS_PR_TUR = 3
+#: Hvor mange gange vinket må fyre i én tur. ÉN er nok til at etablere vanen;
+#: derefter er det nag. Målt 4/10: vinket fyrer også når kaldene var strengt
+#: sekventielle og ikke kunne batches — Bjørn kaldte det «genere». Én påmindelse
+#: pr. tur bærer signalet; de næste ville være støj.
+MAKS_PR_TUR = 1
 
 #: Vinket giver først mening når der er runder nok tilbage til at bruge det.
 MIN_RUNDER_TILBAGE = 3

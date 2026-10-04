@@ -5,9 +5,27 @@ og fik «[no matches]» på et mønster der findes 28 gange i filen. `--include=
 (og rg's `-g`) matcher på FILNAVN-mønster, ikke på sti. Ikke en fejl, ikke et
 tomt resultat man kan lære af: bare tavshed.
 """
+import pathlib
 from core.tools.simple_tools_web import _exec_search
 
 FIL = "core/runtime/provider_router.py"
+
+
+
+def _linje_for(fil: str, navn: str) -> int:
+    """Hvilken linje står `navn` på — udledt med AST, uafhængigt af koden under test.
+
+    Derfor AST og ikke en egen linje-scan: `facit_for` scanner netop linje for
+    linje med en regex, så en `enumerate`-løkke her ville være SAMME mekanisme,
+    og testen kunne ikke fejle hvis regexen var forkert. `ast` kommer frem ad
+    en anden vej og er derfor et ægte uafhængigt svar.
+    """
+    import ast
+    træ = ast.parse(pathlib.Path(fil).read_text(encoding="utf-8"))
+    for n in træ.body:                      # modul-niveau, som `^def ` matcher
+        if isinstance(n, ast.FunctionDef) and n.name == navn:
+            return n.lineno
+    raise AssertionError(f"{navn} findes ikke paa modul-niveau i {fil}")
 
 
 def test_en_sti_i_glob_finder_noget():
@@ -24,10 +42,21 @@ def test_traeffene_baerer_STIEN_ikke_kun_linjenummeret():
 
 
 def test_linjenummeret_er_det_RIGTIGE():
-    """Agentens svar skal kunne citeres. 18 er sandheden i hovedtræet."""
+    """Agentens svar skal kunne citeres — altså stemme med KILDEN.
+
+    RETTET 4/10-2026 (Opus): docstringen sagde «18 er sandheden i hovedtræet»,
+    og det var sandt indtil nogen lagde en linje ind over funktionen. Et
+    linjenummer er ikke en sandhed, det er en position — og en test der pinner
+    positionen måler ikke om værktøjet citerer rigtigt.
+    
+    Raekkevidden, saa vagten ikke laeses for bredt: nummeret kommer fra
+    ripgrep, en ekstern proces jeg ikke kan mutere.
+    """
+    sand_linje = _linje_for(FIL, "load_provider_router_registry")
     r = _exec_search({"pattern": "^def load_provider_router_registry", "glob": FIL})
     linje = (r.get("text") or "").splitlines()[0]
-    assert f"{FIL}:18:" in linje, linje
+    assert f"{FIL}:{sand_linje}:" in linje, (
+        f"kilden siger linje {sand_linje}, vaerktoejet siger: {linje!r}")
 
 
 def test_en_mappe_i_glob_soeger_i_mappen():

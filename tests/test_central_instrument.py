@@ -376,3 +376,21 @@ def test_vaerd_at_foreslaa_fail_open_naar_indekset_ikke_kunne_bygges():
     """Kan vi ikke afgøre det, filer vi — den fejl er den sikre."""
     f = _fund_d("hvad_som_helst")
     assert ci._vaerd_at_foreslaa(f, læste=None, sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_fail_open_paa_MODUL_niveau():
+    """Den femte spærre, og den manglede en vagt (Opus, 4/10).
+
+    `if not navn: return True` — et fund uden funktionsnavn ligger på
+    modul-niveau, og dér er der INGEN kalder at måle. Fail-open er derfor
+    rigtigt, men det var uprøvet: en mutation til `return False` ville
+    undertrykke hvert modul-niveau-fund i tavshed, og de fire andre tests
+    bestod uændret.
+
+    Fundet ved at mutere alle fem spærrer; fire faldt, denne gjorde ikke.
+    """
+    f = _fund_d("")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed=set()) is True
+    # Og med et navn der ikke læses, falder den — saa testen ovenfor maaler
+    # NAVNETS fravaer og ikke blot at funktionen svarer ja til alt.
+    assert ci._vaerd_at_foreslaa(_fund_d("x"), læste=set(), sikkerhed=set()) is False

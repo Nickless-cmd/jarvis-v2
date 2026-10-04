@@ -156,3 +156,43 @@ def test_sektionen_er_koblet_paa_prompt_assemblyen():
     # DYNAMIC_TAIL_SENTINEL. Et skiftende PREFIX kostede maalt 92 % -> 26 %.
     kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
     assert '_awareness_add(0, "indbakke", inbox_prompt_section())' in kilde
+
+
+def test_BESLUTNINGER_gentages_ikke_i_prompten():
+    """`[DECISION-ADHERENCE-GATE]` står i den SAMME hale og lister de 12
+    værste med id og bånd.
+
+    Målt da registreringen kørte første gang 4/10-2026: 34 beslutnings-poster
+    fyldte «VENTER PÅ DIG», og prompten ville have rapporteret de samme
+    beslutninger to steder.
+
+    Og overskriften ville lyve: posterne er `[huset]` og gater ikke, mens
+    spec'ens egen linje om sektionen er «KUN denne kan gate mutationer». 34
+    poster der ikke kan gate under netop den overskrift er den slags tal man
+    holder op med at læse.
+    """
+    beslutninger = [{"id": f"dec_{i:04x}", "kildetype": "decision",
+                     "kraever_handling": False,
+                     "linje": f"dec_{i:04x} aaben «[kritisk 0%] noget» [huset]"}
+                    for i in range(34)]
+    t = _kald(_v(venter_paa_dig=beslutninger))
+    assert t is None, "beslutningerne naaede prompten og gentager gaten"
+
+
+def test_en_ALMINDELIG_post_naar_stadig_prompten_sammen_med_beslutninger():
+    """Modprøven. Udelukkelsen må ikke tømme sektionen — en reel blokerende
+    post skal stadig frem, også når den står side om side med 34 beslutninger
+    der ikke skal."""
+    poster = [{"id": f"dec_{i:04x}", "kildetype": "decision",
+               "kraever_handling": False, "linje": f"dec_{i:04x} [huset]"}
+              for i in range(34)]
+    poster.append({"id": "wake-min", "kildetype": "wakeup",
+                   "kraever_handling": True,
+                   "linje": "wake-min fired 3d forfalden «min egen» [dig]"})
+    t = _kald(_v(venter_paa_dig=poster)) or ""
+    assert "wake-min" in t
+    assert "dec_0000" not in t
+    # Antallet skal vaere de VISTE, ikke de 35 — ellers lyver overskriften i
+    # den anden retning.
+    assert "VENTER PÅ DIG (34)" not in t
+    assert "kan nægte en mutation" in t

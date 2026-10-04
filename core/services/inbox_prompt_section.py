@@ -58,6 +58,24 @@ logger = logging.getLogger(__name__)
 #: beslutning som Opgave 10's, anvendt på et medie hvor pladsen er dyr.
 _PROMPT_LOFT: int = 6
 
+#: Kildetyper der IKKE gentages i prompten, fordi en anden sektion i SAMME
+#: prompt allerede bærer dem.
+#:
+#: `decision` (4/10-2026): `[DECISION-ADHERENCE-GATE]` står i den samme hale og
+#: lister de 12 værste med deres id og bånd. Målt da registreringen kørte
+#: første gang: 34 beslutnings-poster fyldte «VENTER PÅ DIG», og prompten ville
+#: have rapporteret de samme beslutninger to steder.
+#:
+#: Og overskriften ville lyve. Posterne er `[huset]` og gater ikke — spec'ens
+#: egen linje om sektionen er «KUN denne kan gate mutationer». 34 poster der
+#: ikke kan gate under netop den overskrift er den slags tal man holder op med
+#: at læse.
+#:
+#: De bliver i VISNINGEN, så `inbox` viser alle 34 med id, og `inbox_done`/
+#: `inbox_drop` kan ramme dem. Det er hele grunden til at de blev registreret:
+#: gaten siger «… og 22 flere under tærsklen» uden at kunne navngive dem.
+_IKKE_I_PROMPTEN: frozenset[str] = frozenset({"decision"})
+
 _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
     ("vakte", "▲ VAKTE DENNE TUR"),
     ("venter_paa_dig", "VENTER PÅ DIG"),
@@ -114,7 +132,8 @@ def inbox_prompt_section() -> str | None:
     linjer: list[str] = []
     gater = 0
     for noegle, titel in _OVERSKRIFTER:
-        poster = list(v.get(noegle) or [])
+        poster = [p for p in (v.get(noegle) or [])
+                  if str(p.get("kildetype") or "") not in _IKKE_I_PROMPTEN]
         if not poster:
             continue
         if noegle == "venter_paa_dig":

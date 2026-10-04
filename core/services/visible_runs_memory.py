@@ -50,6 +50,24 @@ def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> 
 def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     if not run.session_id:
         return
+    # Backstop for an explicit admission that a changed behavior has no test.
+    # The preferred path is the structured flag_side_task call while the run
+    # is live. This conservative scan only acts on one named source file and
+    # never converts an unrelated red suite into a task.
+    try:
+        from core.services.inbox_state import _ejer_id
+        from core.services.run_finding_accounting import audit_final_response
+        owner = _ejer_id()
+        run_user = str(getattr(run, "user_id", "") or "")
+        if owner and (not run_user or run_user == owner):
+            audit_final_response(
+                run_id=run.run_id, session_id=run.session_id,
+                text=assistant_text,
+            )
+    except Exception:
+        import logging as _lg_findings
+        _lg_findings.getLogger(__name__).warning(
+            "run finding audit failed", exc_info=True)
     distillation_result: dict[str, object] | None = None
     consolidation_result: dict[str, object] | None = None
     errors: list[str] = []
@@ -221,19 +239,17 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
         _lg_cont.getLogger(__name__).warning(
             "continuity live_update-forberedelse fejlede efter run", exc_info=True)
 
-    # Side-opgave-fejningen (3/10-2026) hoerer netop HER: efterbehandlingen
-    # sker kun naar der ER aktivitet, saa en opgave lukkes inden for én
-    # stilstandsperiode efter hans sidste besked — uden en ny daemon til at
-    # polle. Huset har 40 der kun tikker naar han har travlt.
+    # En inaktiv arbejds-session flyttes tilbage til ventende. Tavshed er ikke
+    # bevis for at opgaven er udført, så fejeren markerer den aldrig færdig.
     try:
         import logging as _lg_side
         from core.services.side_tasks import fej_faerdige
         _side = fej_faerdige()
-        if _side.get("lukket"):
+        if _side.get("tilbage_til_venter"):
             # Modulet har ingen modul-logger; hentes lokalt frem for at
             # indfoere en global i en fil der klarer sig uden.
             _lg_side.getLogger(__name__).info(
-                "side-opgaver lukket efter run: %s", _side)
+                "side-opgaver tilbage til ventende efter run: %s", _side)
     except Exception:
         import logging as _lg_side2
         _lg_side2.getLogger(__name__).warning(

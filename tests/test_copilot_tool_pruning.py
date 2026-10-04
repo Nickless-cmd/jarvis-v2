@@ -27,6 +27,14 @@ def test_load_more_tools_in_tier1():
     assert "load_more_tools" in ctp.TIER_1_ALWAYS_ON
 
 
+def test_side_task_accounting_tools_survive_visible_cap():
+    names = {"flag_side_task", "activate_side_task", "dismiss_side_task"}
+    selected = set(_names(ctp.select_tools_for_visible(
+        _make_tools(), user_message="hello", session_id="s",
+    )))
+    assert names <= selected
+
+
 def test_visible_set_is_deterministic_across_messages():
     tools = _make_tools()
     assert len(tools) > ctp.MAX_TOOLS  # ensure pruning actually triggers

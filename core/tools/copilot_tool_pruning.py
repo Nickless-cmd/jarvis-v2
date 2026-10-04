@@ -73,6 +73,9 @@ SAFETY_FLOOR: tuple[str, ...] = (
 
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
+    # Side-opgaver skal kunne registreres og afsluttes i samme run, også når
+    # den stabile synlige værktøjsliste rammer loftet.
+    "flag_side_task", "activate_side_task", "dismiss_side_task",
     # ── De fire hyppigst HENTEDE (30/9-2026, maalt over 30 dage) ───────────
     #
     # Alle fire stod allerede i TIER_1_ALWAYS_ON — og blev alligevel hentet
@@ -235,6 +238,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     # kan komme ud af ved at buste sin egen cache er en blokering man
     # ikke kan komme ud af.
     "inbox", "inbox_done", "inbox_drop",
+    "flag_side_task", "activate_side_task", "dismiss_side_task",
     "load_more_tools",  # escape-hatch til de ~316 ikke-sendte tools — SKAL altid være på
     # App-self-control: Jarvis styrer jarvis-desk indefra (skift mode, åbn paneler).
     # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.

@@ -148,12 +148,22 @@ function Ruller({
   )
 }
 
-/** Dæmpning: vis højst én ny værdi hver `ms`.
+/** Hvor meget token-tallet dæmpes, i millisekunder.
  *
  *  MÅLT 4/10-2026 med headless chromium: ulaempet token-rulning stod stille
  *  20 % af tiden ved ~60 opdateringer/sek — det er en blur, ikke en rulning.
- *  Ved 1 opdatering/sek stod den stille 76 %. Dæmpningen er derfor ikke
- *  kosmetik: uden den ruller tallet ikke, det vibrerer.
+ *  Ved 1 opdatering/sek stod den stille 76 %.
+ *
+ *  Bjørn valgte 4/10-2026 den ULAEMPEDE variant — «ur OG tokens ruller».
+ *  Den står derfor på 0 med vilje. Det er ÉT tal at skrue på, hvis bluren
+ *  generer i drift: 260 giver den rolige rulning målingen pegede på.
+ */
+const DAEMPNING_MS = 0
+
+/** Dæmpning: vis højst én ny værdi hver `ms`.
+ *
+ *  `ms = 0` er en gennemløbs-vej: den viste værdi sættes med det samme, så
+ *  hjulet følger hvert eneste token-tal.
  */
 function useDampet(vaerdi: number, ms: number): number {
   const [vist, setVist] = useState(vaerdi)
@@ -202,7 +212,7 @@ export function RullendeUr({ sek }: { sek: number }) {
 
 /** Kontekst-størrelsen som rullende tal — «12.8k», eller «456» under 1000. */
 export function RullendeTokens({ tokens }: { tokens: number }) {
-  const dampet = useDampet(tokens, 260)
+  const dampet = useDampet(tokens, DAEMPNING_MS)
   const forrige = useRef(dampet)
   const retning: Retning = dampet >= forrige.current ? 'op' : 'ned'
   useEffect(() => {

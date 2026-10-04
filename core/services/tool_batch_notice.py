@@ -37,11 +37,33 @@ def tool_batch_notice(
     forrige_runde_kald: int,
     runder_tilbage: int,
     gange_vist: int,
+    forrige_forrige_kald: int | None = None,
 ) -> str:
     """Vinket, eller «» når det ikke ville hjælpe.
 
     `forrige_runde_kald` er antallet af værktøjskald i runden før denne — 0 hvis
     der ikke var nogen (første runde, eller en ren tekst-runde).
+
+    `forrige_forrige_kald` er det samme tal én runde længere tilbage.
+
+    ## Hvorfor det andet tal kom til (4/10-2026)
+
+    Betingelsen var `forrige_runde_kald == 1` — et ANTAL. Men et enkelt kald er
+    ikke et bevis på at der var noget at batche; det er ofte det ENESTE rigtige
+    kald, fordi det næste skal bygge på resultatet. Vinket fyrede derfor også
+    midt i en strengt sekventiel kæde (læs → mål → beslut → læs), hvor der ikke
+    fandtes to uafhængige kald at slå sammen.
+
+    Målt i drift: vinket fyrede i en tur hvor hvert kald ventede på det forrige,
+    og sagde «Du kaldte ét værktøj i sidste runde» om noget der var korrekt.
+    Bjørn 4/10: «den genere dig».
+
+    Fixet kræver at MØNSTERET gentager sig: to runder i træk med præcis ét kald
+    er en vane på vej. Ét enkelt kald er normal sekventiel udførelse.
+
+    Er tallet ukendt (None), tier vi: et vink vi ikke kan begrunde, sender vi
+    ikke. Det er den samme fail-retning som resten af filen — hellere tie end
+    at påstå noget usandt om en runde.
     """
     try:
         kald = int(forrige_runde_kald)
@@ -58,6 +80,17 @@ def tool_batch_notice(
         return ""
     if kald != 1:
         # 0 kald: der var ikke noget at batche. 2+: han gør det allerede.
+        return ""
+    # Mønsteret, ikke det enkelte kald — se docstringen. `int(None)` kaster, så
+    # en kalder der ikke kender tallet får tavshed i stedet for et gæt.
+    try:
+        forrige = int(forrige_forrige_kald)  # type: ignore[arg-type]
+    except Exception:  # tavs med vilje: None/ikke-tal = «historikken kendes ikke»
+        # Vi tier frem for at gaette. Se docstringen: et vink vi ikke kan
+        # begrunde, sender vi ikke. Der er intet at logge — None er et
+        # LOVLIGT svar fra en kalder der kun har ét runders tal.
+        return ""
+    if forrige != 1:
         return ""
 
     return (

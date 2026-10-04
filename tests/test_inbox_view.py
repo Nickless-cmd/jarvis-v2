@@ -668,6 +668,66 @@ def test_en_afgjort_VAEKNING_forsvinder_ogsaa_naar_kilden_stadig_siger_fired():
     assert "wake-lukket" not in alle
 
 
+def test_en_DIREKTE_kvitteret_vaekning_lukker_ogsaa_naar_raekken_staar_AABEN():
+    """Den MODSATTE retning af testen ovenfor — og den jeg selv ramte live.
+
+    `inbox_done` lukker begge sider, men `mark_wakeup_consumed` kaldt DIREKTE
+    ændrer kun vækningens egen status. Rækken blev stående `aaben` med tomt
+    `afgjort_at`, og `liste_aktiv` bevarer netop rækker UDEN lukke-tidspunkt
+    for evigt: posten stod i VENTER PÅ DIG permanent, og `done` svarede
+    «allerede» fordi vækningen var terminal — så den kunne ikke engang lukkes
+    bagefter.
+
+    Målt 4/10-2026 på tre rækker: `wake-0e7892004e`, `wake-9e550077c0`,
+    `wake-feec8eb4ea` — alle `status='aaben'`, alle med vækningen `consumed`.
+    """
+    for status in ("consumed", "cancelled"):
+        v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+            poster=[_post(id="wake-lukket", kildetype="wakeup",
+                          status=db_inbox.STATUS_AABEN,
+                          verificeret_ejer=db_inbox.EJER_UKENDT,
+                          kraever_handling=False)],
+            vaekninger=[{"wakeup_id": "wake-lukket", "status": status,
+                         "user_id": BJORN, "prompt": "kvitteret direkte"}]))
+        alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+        assert "wake-lukket" not in alle, \
+            f"raekken stod AABEN mens vaekningen var {status}"
+
+
+def test_en_FYRET_vaekning_med_AABEN_raekke_bliver_staaende():
+    """Modprøven. Uden den kunne fixet skjule enhver vækning der HAR en række,
+    og så ville VENTER PÅ DIG tømme sig selv — en gate der aldrig gater."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[_post(id="wake-aaben", kildetype="wakeup",
+                      status=db_inbox.STATUS_AABEN)],
+        vaekninger=[{"wakeup_id": "wake-aaben", "status": "fired",
+                     "user_id": BJORN, "prompt": "venter"}]))
+    assert "wake-aaben" in [p["id"] for p in v["venter_paa_dig"]]
+
+
+def test_en_vaekning_med_UKENDT_status_skjules_ikke():
+    """Listen over terminale statusser er POSITIV med vilje. En status vi ikke
+    kender skal lade posten stå — ellers kunne en ny status i kilden fjerne en
+    post i stilhed, hvilket er den fejlform hele dette spor handler om."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[_post(id="wake-ny", kildetype="wakeup",
+                      status=db_inbox.STATUS_AABEN)],
+        vaekninger=[{"wakeup_id": "wake-ny", "status": "noget-nyt",
+                     "user_id": BJORN, "prompt": "ukendt status"}]))
+    assert "wake-ny" in [p["id"] for p in v["venter_paa_dig"]]
+
+
+def test_en_TERMINAL_vaekning_uden_durabel_raekke_goer_INGEN_skade():
+    """En vækning kan være terminal uden at have en række (ældre end
+    skriveren). Sættet er så bare uden virkning — det må ikke kaste."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        vaekninger=[{"wakeup_id": "wake-uden-raekke", "status": "consumed",
+                     "user_id": BJORN, "prompt": "gammel"}]))
+    alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+    assert "wake-uden-raekke" not in alle
+    assert v["status"] == "ok"
+
+
 def test_en_UDLOEBET_og_en_kilde_afsluttet_post_forsvinder_ogsaa():
     """Opgave 8 og 9's terminale tilstande er også afgørelser. Var kun
     `done`/`drop` dækket, ville en udløbet post stå for evigt."""

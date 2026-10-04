@@ -723,6 +723,17 @@ def byg_indbakke(
         if (str(p.get("kildetype") or "") == "wakeup"
                 and str(p.get("kilde_id") or "") in planlagte_vaek_ids):
             paa_vej.append(post)
+        elif post["ejer"] == db_inbox.EJER_BRUGER:
+            # BJØRNS post er MIN at minde HAM om — ikke min at udføre.
+            #
+            # Målt 4/10-2026: uden denne gren gik HVER åben post i
+            # `venter_paa_dig`, uanset ejer. Bjørn: «den skal skelne dine og
+            # mine — så du ved hvad er til dig og hvad er til dig du skal
+            # minde mig om.» Og overskriften løj for den ene læser: i prompten
+            # betyder «dig» MIG, i `inbox`-værktøjet betyder den HAM — samme
+            # streng, modsat betydning. Ejer-mærket fandtes hele tiden på
+            # linjen; det var SEKTIONEN der ikke fulgte det.
+            venter_paa_bjorn.append(post)
         else:
             venter_paa_dig.append(post)
 
@@ -738,7 +749,8 @@ def byg_indbakke(
         wid = str(r.get("wakeup_id") or "").strip()
         if not wid or _er_afgjort(wid):
             continue                      # afgjort — uanset hvad kilden siger
-        if any(wid in p["kilde_ider"] for p in venter_paa_dig + paa_vej):
+        if any(wid in p["kilde_ider"]
+               for p in venter_paa_dig + paa_vej + venter_paa_bjorn):
             continue                      # den durable post bærer den allerede
         st = str(r.get("status") or "")
         if st not in ("pending", "fired"):

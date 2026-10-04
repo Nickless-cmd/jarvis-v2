@@ -392,6 +392,46 @@ def test_godkendelser_er_SYNLIGE_men_gater_ALDRIG():
     assert v["venter_paa_dig"] == []
 
 
+def test_BJOERNS_post_skelnes_fra_MINE():
+    """Bjørn 4/10-2026: «den skal skelne dine og mine — så du ved hvad er til
+    dig og hvad er til dig du skal minde mig om.»
+
+    Uden grenen gik HVER åben post i `venter_paa_dig`, uanset ejer. Så stod
+    hans egen flagging som noget JEG skyldte — og overskriften løj: i prompten
+    betyder «dig» MIG, i `inbox`-værktøjet betyder den HAM.
+
+    Testen maaler begge veje: hans post maa ikke staa i min sektion, og min
+    maa ikke staa i hans. Kun den ene vej ville gaa igennem en gren der bare
+    flyttede ALT over i `venter_paa_bjorn`.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id="bug-9f2a", kildetype="flag", verificeret_ejer=db_inbox.EJER_BRUGER,
+              kraever_handling=False, beskrivelse="railens farve er forkert"),
+        _post(id="wake-77c1", kildetype="wakeup",
+              verificeret_ejer=db_inbox.EJER_JARVIS,
+              beskrivelse="foelg op paa brief"),
+    ]))
+    assert [p["id"] for p in v["venter_paa_bjorn"]] == ["bug-9f2a"]
+    assert [p["id"] for p in v["venter_paa_dig"]] == ["wake-77c1"]
+    assert v["venter_paa_bjorn"][0]["ejer_maerke"] == "[bjørn]"
+    assert v["venter_paa_bjorn"][0]["kraever_handling"] is False
+
+
+def test_en_vaekning_der_ALLEEREDE_staar_i_bjoern_sektionen_dubles_ikke():
+    """Sektion 2 læser vækning-kilden og springer over hvad den durable post
+    bærer. Undlod den `venter_paa_bjorn` i det tjek, stod samme vækning to
+    steder — én gang fra rækken, én gang fra kilden."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[_post(id="wake-3a1f", kildetype="wakeup",
+                      verificeret_ejer=db_inbox.EJER_BRUGER,
+                      kraever_handling=False, beskrivelse="husk at ringe")],
+        vaekninger=[{"wakeup_id": "wake-3a1f", "user_id": BJORN,
+                     "status": "fired", "prompt": "husk at ringe",
+                     "scheduled_at": _iso(TID - DAG), "fired_at": _iso(TID)}]))
+    assert [p["id"] for p in v["venter_paa_bjorn"]] == ["wake-3a1f"]
+    assert v["venter_paa_dig"] == []
+
+
 def test_backlog_er_ET_TAL_og_ikke_1896_linjer():
     """1.896 poster, 99 % gentagelser, ville drukne den dag ét."""
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(backlog_tal=1896))

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8425/15991 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8426/15992 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8425/15991 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 715 | 1296 | 55% |
-| `core.services` | 5621 | 10886 | 51% |
+| `core.services` | 5622 | 10887 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1744,7 +1744,7 @@ Generated from source. 8425/15991 functions/methods documented (52%). The list b
 - `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L637)
+- `core/services/semantic_memory.py` :: `get_stats` (L675)
 - `core/services/sensory_archive.py` :: `count` (L276)
 - `core/services/sensory_archive.py` :: `get` (L272)
 - `core/services/sensory_archive.py` :: `list_recent` (L251)

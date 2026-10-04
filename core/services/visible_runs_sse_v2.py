@@ -451,16 +451,29 @@ async def translate_to_v2(
                 payload={"run_id": str(_state["run_id"] or "")},
             ).to_sse_line())
         await _ensure_text_block_open()
-        # Replay et bekræftet svar i højst ~30 små dele. Det er samme tekst,
-        # uden et nyt modelkald, og fold-signalet står FØR første delta.
-        chunk_size = max(16, (len(text) + 29) // 30) if final else len(text)
+        # Replay teksten i ~30 små dele — BÅDE slutsvaret og den mellemliggende
+        # syntese.
+        #
+        # MÅLT 3/10-2026 (Bjørn: «det første du skriver før første runde
+        # streamer korrekt og efter første runde dumper det ind»). Forklaringen
+        # stod i `delta`-grenen ovenfor: teksten FØR første værktøj går ud som
+        # `content_block_delta` token-for-token og glider. Teksten EFTER første
+        # værktøj lægges i `_pending_text` og bliver først sendt her — og med
+        # `chunk_size = len(text)` når `final=False` landede HELE syntesen som
+        # ÉT delta. Blokken åbnes først lige her, så den var tom indtil da:
+        # den sprang fra tom til fuld, og den synlige strøm blev et dump.
+        #
+        # Delingen gør de to veje ens. Det er samme tekst, uden et nyt
+        # modelkald — og `provisional_text_commit` sendes stadig til sidst, så
+        # klienternes foreløbige visning og den bekræftede blok følges ad.
+        chunk_size = max(16, (len(text) + 29) // 30)
         for offset in range(0, len(text), chunk_size):
             await queue.put(ContentBlockDelta(
                 index=int(_state["text_block_index"]),
                 delta_type="text_delta",
                 content=text[offset:offset + chunk_size],
             ).to_sse_line())
-            if final and offset + chunk_size < len(text):
+            if offset + chunk_size < len(text):
                 await asyncio.sleep(0.03)
         if not final:
             await queue.put(SystemEvent(

@@ -328,6 +328,47 @@ async def test_final_answer_boundary_precedes_replayed_text_without_folding_inte
 
 
 @pytest.mark.asyncio
+async def test_mellemsyntesen_deles_i_bidder_ikke_et_hug():
+    """Bjørn 3/10-2026: «det første du skriver før første runde streamer
+    korrekt og efter første runde dumper det ind».
+
+    Teksten EFTER første værktøjskald går gennem `_pending_text` og blev sendt
+    med `chunk_size = len(text)` → HELE syntesen som ÉT delta. Tekstblokken
+    blev åbnet først lige der, så den sprang fra tom til fuld: den synlige
+    strøm blev et dump. Rettelsen deler begge veje ens.
+
+    Syntesen SKAL være længere end `chunk_size = max(16, (len+29)//30)`,
+    ellers kan den pr. konstruktion ikke deles, og testen måler ingenting —
+    den fælde stod den oprindelige test i med sin 14-tegns syntese.
+    """
+    syntese = "Mellemresultat " * 4  # 56 tegn → chunk 16 → 4 bidder
+    assert len(syntese) > 16, "testen kræver en syntese der KAN deles"
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {"type": "tool_result", "tool": "bash",
+                                         "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": syntese})
+        yield _legacy_sse("working_step", {"run_id": "v1", "action": "thinking",
+                                           "detail": "Tænker videre · runde 2"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Det endelige svar."})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    boundary_at = next(i for i, (kind, data) in enumerate(events)
+                       if kind == "system_event" and data.get("kind") == "final_answer_start")
+    mellem = [data["delta"]["text"] for i, (kind, data) in enumerate(events)
+              if kind == "content_block_delta" and data["delta"].get("type") == "text_delta"
+              and i < boundary_at]
+
+    assert len(mellem) > 1, "mellemsyntesen kom som ÉT hug — opdelingen virker ikke"
+    assert "".join(mellem) == syntese, "bidderne udgør tilsammen ikke syntesen"
+    assert max(len(b) for b in mellem) < len(syntese), "et enkelt bid bar hele teksten"
+
+
+@pytest.mark.asyncio
 async def test_interrupted_run_never_marks_buffered_text_as_final_answer():
     async def legacy() -> AsyncIterator[str]:
         yield _legacy_sse("working_step", _annoncering())
@@ -343,8 +384,13 @@ async def test_interrupted_run_never_marks_buffered_text_as_final_answer():
                for kind, data in events)
     assert any(kind == "system_event" and data.get("kind") == "provisional_text_commit"
                for kind, data in events)
-    assert any(kind == "content_block_delta" and data["delta"].get("text") == "Uafsluttet syntese"
-               for kind, data in events)
+    # Teksten deles nu i bidder, som slutsvaret — den kan derfor ikke længere
+    # forventes som ÉT delta (18 tegn → chunk 16 → 2 bidder). Bidderne skal
+    # tilsammen give den fulde tekst, og intet enkelt bid må bære det hele.
+    bidder = [data["delta"]["text"] for kind, data in events
+              if kind == "content_block_delta" and data["delta"].get("type") == "text_delta"]
+    assert "".join(bidder) == "Uafsluttet syntese"
+    assert max(len(b) for b in bidder) < len("Uafsluttet syntese")
 
 
 @pytest.mark.asyncio

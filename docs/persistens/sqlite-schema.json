@@ -5730,7 +5730,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -16622,6 +16622,220 @@
       },
       "created_at_formats": []
     },
+    "inbox_items": {
+      "digest": "95:a5:91:e3:13:52:f5:94:86:93:4b:f7:2e:15:85:28:7e:ad:15:3b:d0:18:92:26:0f:a6:73:83:27:99:1a:8b",
+      "schema": {
+        "columns": [
+          {
+            "name": "afgjort_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "afgjort_grund",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "beskrivelse",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "bruger_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "expires_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "kilde_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "kildetype",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "kraever_handling",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "oprettende_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "output_bytes",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "output_sti",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "paamindelser",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sidste_paamindelse_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sidste_paamindelse_tur",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'aaben'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "verificeret_ejer",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'ukendt'",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_inbox_items_bruger_status",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "bruger_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "id",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_inbox_items_bruger_status ON inbox_items(bruger_id, status, id DESC)"
+          },
+          {
+            "name": "sqlite_autoindex_inbox_items_1",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "bruger_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "kildetype",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "kilde_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_offset"
+      ]
+    },
     "inner_voice_shadow": {
       "digest": "9c:a5:72:aa:c9:27:e4:91:99:db:40:0f:79:63:fb:ce:54:0b:ce:1f:07:49:96:9a:be:82:35:c9:b6:2b:d0:f6",
       "schema": {
@@ -23692,7 +23906,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_autonomy_pressure_signals": {
@@ -27172,7 +27386,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_flows": {
@@ -28857,7 +29071,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_meaning_significance_signals": {
@@ -29096,7 +29310,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_memory_md_update_proposals": {
@@ -29813,7 +30027,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_open_loop_signals": {
@@ -30052,7 +30266,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_private_initiative_tension_signals": {
@@ -31486,7 +31700,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_proactive_loop_lifecycle_signals": {
@@ -32920,7 +33134,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_relation_state_signals": {
@@ -33876,7 +34090,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_self_authored_prompt_proposals": {
@@ -36568,7 +36782,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_temporal_recurrence_signals": {
@@ -36807,7 +37021,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_user_md_update_proposals": {
@@ -37285,7 +37499,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "runtime_webchat_execution_pilots": {

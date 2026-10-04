@@ -3280,88 +3280,33 @@ def _build_visible_chat_prompt_assembly_impl(
     #     pending nudges") og pegede på beskeder der blev skrevet 1600 linjer SENERE end
     #     nudge-sektionen blev læst — de kunne aldrig nå den prompt de tilhørte;
     #   · Matrix Sign-Off, som Bjørn har bekræftet var ment som en joke.
-    # ── Stabile hale-sektioner flyttes op i det CACHEDE praefiks ──────────
+    # ── RULLET TILBAGE 4/10-2026, maalt ──────────────────────────────────
     #
-    # Maalt 4/10-2026 over 99 ture: fire sektioner i halen var BYTE-IDENTISKE
-    # hver eneste gang (1 distinkt udgave hver). Halen ligger efter
-    # sentinel'en og er derfor cache-MISS i hver tur — og en miss-token koster
-    # 50x en hit-token ($0,15/M mod $0,003/M).
+    # Fire hale-sektioner blev flyttet herop fordi de var BYTE-IDENTISKE over
+    # 99 ture. Maalt efter flytningen, 120 kald mod 2.571 i doegnet foer:
     #
-    #     Hvad jeg ved nu (min egen hjerne)   1.174 tegn  99/99 ture
-    #     Mine seneste chronicle-entries         928      99/99
-    #     FORBUNDNE APPS (plugins)               792      86/99
-    #     WORKFLOW (every round)                 709      99/99
-    #                                         ───────
-    #                                         3.603 tegn ≈ 900 tokens/kald
+    #     FOER    7.673 miss/kald   5,65 %
+    #     EFTER  12.184 miss/kald   8,93 %      ← +59 %
     #
-    # Maalt pris: 2,01 M miss-tokens i doegnet (2.234 synlige kald) = $110/aar
-    # for indhold der aldrig aendrer sig. Som praefiks: $2/aar.
+    # Aarsagen stod i vagtens egen linje: «stabile=3» paa en tur hvor der
+    # ellers stod «stabile=4». `FORBUNDNE APPS` bygges kun naar brugeren HAR
+    # forbundne plugins — maalt 86 af 99 ture.
     #
-    # WORKFLOW-blokken bar i forvejen kommentaren «Static → cache-safe» og laa
-    # alligevel i halen.
+    # Et praefiks der nogle gange har fire sektioner og andre gange tre, er et
+    # praefiks der ikke matcher. Hver gang sektionen kommer eller gaar,
+    # invalideres alt efter den — inklusive de 120.064 tokens samtalehistorik.
     #
-    # ## Hvorfor PARTITION og ikke fire flyttede byggesteder
+    # Fejlen i analysen: jeg maalte hvad sektionerne INDEHOLDT (1 distinkt
+    # udgave hver) og overs:aa om de var TIL STEDE (86/99). «Uaendret indhold»
+    # og «altid til stede» er to forskellige egenskaber, og cachen kraever
+    # begge.
     #
-    # De fire tilfoejes ad to forskellige veje — to direkte med
-    # `_dyn_tail.append`, to gennem awareness-bufferen med prioritet og budget.
-    # At rykke byggestederne ville roere begge mekanismer. Her flyttes kun
-    # POSITIONEN, og hver sektion bygges praecis som foer.
-    #
-    # ## Hvorfor i ENDEN af praefikset
-    #
-    # `build_visible_stable_prefix` (cache-warmeren) bygger praefikset
-    # SELVSTAENDIGT og slutter efter identitets-filerne. Filen advarer to
-    # gange: «Must stay byte-identical … or the DeepSeek cache-prefix
-    # diverges.» Indsatte vi midt i, ville warmerens praefiks ikke laengere
-    # vaere et praefiks af det levende, og den varme cache holdt op med at
-    # ramme — altsaa et stoerre tab end gevinsten. Sidst i praefikset er
-    # warmeren uberoert: den varmer bare lidt mindre.
-    _STABILE_I_HALEN = (
-        "## Hvad jeg ved nu (min egen hjerne)",
-        "## Mine seneste chronicle-entries",
-        "🔌 FORBUNDNE APPS (plugins)",
-        "🎬 WORKFLOW (every round)",
-    )
-    _stabile: list[str] = []
-    _resten: list[str] = []
-    for _del in _dyn_tail:
-        _t = str(_del or "")
-        (_stabile if any(_t.lstrip().startswith(_m) for _m in _STABILE_I_HALEN)
-         else _resten).append(_del)
-    # Fast raekkefoelge efter `_STABILE_I_HALEN`, ikke efter hvornaar de blev
-    # bygget: et praefiks skal vaere byte-identisk mellem ture, og
-    # bygge-raekkefoelgen afhaenger af hvilke futures der blev faerdige foerst.
-    _stabile.sort(key=lambda t: next(
-        (i for i, m in enumerate(_STABILE_I_HALEN) if str(t).lstrip().startswith(m)),
-        len(_STABILE_I_HALEN)))
-    # Vagten: bliver de ved med at vaere uaendrede? Flytningen er kun en
-    # gevinst saa laenge de er det — ÉN aendring per 99 ture goer den til et
-    # tab, fordi et skift sidst i praefikset invaliderer hele
-    # samtalehistorikken ovenpaa. Se core/services/praefiks_stabilitet.
-    _stabil_felter = ""
-    try:
-        from core.services import praefiks_stabilitet as _ps
-        _stabil_felter = _ps.tjek([
-            (next((m for m in _STABILE_I_HALEN if str(t).lstrip().startswith(m)), "?"),
-             str(t))
-            for t in _stabile
-        ])
-    except Exception as _ps_exc:  # noqa: BLE001 — en vagt maa ikke vaelte en tur
-        # Filen har ingen modul-logger; samme moenster som peak-badgen ovenfor.
-        import logging as _ps_logging
-        _ps_logging.getLogger(__name__).debug(
-            "praefiks_stabilitet sprang over: %s", _ps_exc)
-    # EGEN linje, ikke paa timing-linjen: den skrives ~500 linjer FOER
-    # partitionen i denne funktion, saa feltet ville vaere ubundet dér.
-    # Testene fangede det som en UnboundLocalError — den slags ser ud som en
-    # lille omflytning og er et nedbrud.
-    if _stabil_felter:
-        print(f"prompt-praefiks-stabilitet {_stabil_felter}",
-              file=_sys_mod.stderr, flush=True)
-    parts.extend(_stabile)
-    if _resten:
+    # Hale-positionen er derfor rigtig for alt betinget: dér koster en
+    # sektions komme-og-gaa kun sektionen selv. Det er samme konklusion som
+    # 30/9-kommentaren naaede for tool-kataloget.
+    if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
-        parts.extend(_resten)
+        parts.extend(_dyn_tail)
 
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)

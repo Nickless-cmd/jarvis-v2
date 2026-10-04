@@ -5,12 +5,12 @@ import { HangPrompt } from './HangPrompt'
 import { LivenessIndicator } from './LivenessIndicator'
 
 describe('feedback', () => {
-  // 4/10-2026: Bjørn erstattede CC-formen («42s») med rullende min:sek —
-  // «sådan som tallende ruller nede fra og op». Tallet bæres nu af hjulenes
-  // aria-label, fordi hjulenes DOM indeholder HELE ciffer-striben.
-  it('LivenessIndicator viser varigheden som rullende min:sek', () => {
+  // 4/10-2026: formatet er «Xs»/«XXs»/«Xm Xs» — samme regel som `varighed()`
+  // i panelet. Bjørn: «Den skal tælle Xs så XXs og så Xm og Xs». Tallet bæres
+  // af hjulenes aria-label, fordi hjulenes DOM indeholder HELE ciffer-striben.
+  it('LivenessIndicator viser varigheden som rullende tal — «42s»', () => {
     render(<LivenessIndicator status="working" elapsedMs={42000} density="compact" />)
-    expect(screen.getByRole('timer', { name: '00:42' })).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: '42s' })).toBeInTheDocument()
   })
   it('LivenessIndicator: tænke-tid i CC-form, gennemstreget når tanken er SLUT', () => {
     const { container, rerender } = render(

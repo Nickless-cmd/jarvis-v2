@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { varighed } from '../../lib/jobsApi'
 
 /** Rullende tal til liveness-linjen (Bjørn 4/10-2026).
  *
@@ -198,14 +199,18 @@ function useDampet(vaerdi: number, ms: number): number {
   return vist
 }
 
-/** Forløbet tid som rullende min:sek. */
+/** Forløbet tid som rullende tal — «5s», «45s», «1m 12s».
+ *
+ *  Bjørn 4/10-2026: «Den skal tælle Xs så XXs og så Xm og Xs». Formatet
+ *  kommer fra `varighed()` — samme funktion som panelet og tænke-tiden
+ *  bruger, så hele linjen skriver tiden ens. Det foranstillede «00:» står
+ *  ikke og fylder i det første minut, hvor det endnu ikke tæller.
+ */
 export function RullendeUr({ sek }: { sek: number }) {
-  const m = Math.floor(sek / 60)
-  const s = sek % 60
-  const label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  const label = varighed(sek)
   return (
     <span className="rullende" role="timer" aria-label={label}>
-      <Ruller tekst={label} retning="op" cyklusser={[10, 10, null, 6, 10]} />
+      <Ruller tekst={label} retning="op" />
     </span>
   )
 }

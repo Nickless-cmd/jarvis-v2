@@ -184,11 +184,26 @@ function Ruller({
   )
 }
 
-/** Forløbet tid som rullende min:sek. */
+/** Sekundtallet hvor minuttet dukker op. Se `RullendeUr`. */
+export const MINUT_FRA_SEK = 60
+
+/** Forløbet tid som rullende min:sek.
+ *
+ *  Bjørn 4/10-2026: «Min skal først dukke op når den faktisk tæller eller
+ *  vises 00 i op til 60 sek.» Minuttet står altså ikke og fylder «00:» i det
+ *  første minut, hvor det endnu ikke tæller — under ét minut vises kun
+ *  sekunderne («05»), og minuttet dukker op når det begynder at tælle
+ *  («01:05»).
+ *
+ *  ÉT tal at vende: sæt `MINUT_FRA_SEK` til 0 for altid at vise «00:05».
+ */
 export function RullendeUr({ sek, farve, tegnFarve }: { sek: number; farve: string; tegnFarve: string }) {
   const m = Math.floor(sek / 60)
   const s = sek % 60
-  const label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  const visMinut = sek >= MINUT_FRA_SEK
+  const label = visMinut
+    ? `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : String(s).padStart(2, '0')
   return (
     <View
       style={stil.raekke}
@@ -199,7 +214,7 @@ export function RullendeUr({ sek, farve, tegnFarve }: { sek: number; farve: stri
       <Ruller
         tekst={label}
         retning="op"
-        cyklusser={[10, 10, null, 6, 10]}
+        cyklusser={visMinut ? [10, 10, null, 6, 10] : [6, 10]}
         farve={farve}
         tegnFarve={tegnFarve}
       />

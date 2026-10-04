@@ -9,9 +9,24 @@ import { RullendeTokens, RullendeUr } from './RullendeTal'
  * forskel der gør rullingen mulig, og den er målbar i træet.
  */
 describe('RullendeTal', () => {
-  it('uret skriver min:sek — «00:03», ikke «3s»', async () => {
+  /**
+   * Bjørn 4/10-2026: «Min skal først dukke op når den faktisk tæller.» Under
+   * ét minut vises derfor kun sekunderne — ikke et «00:» der står og fylder
+   * uden at tælle.
+   *
+   * MUT: sæt `MINUT_FRA_SEK` til 0 → «00:03» → fanger.
+   */
+  it('uret skjuler minuttet indtil det tæller — «03», ikke «00:03»', async () => {
     const s = await render(<RullendeUr sek={3} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByLabelText('00:03')).toBeTruthy()
+    expect(s.getByLabelText('03')).toBeTruthy()
+  })
+
+  it('minuttet dukker op når det begynder at tælle — «59» → «01:00»', async () => {
+    // Grænsen er selve pointen: 59 er stadig sekunder, 60 har et minut.
+    const sidste = await render(<RullendeUr sek={59} farve="#fff" tegnFarve="#888" />)
+    expect(sidste.getByLabelText('59')).toBeTruthy()
+    const foerste = await render(<RullendeUr sek={60} farve="#fff" tegnFarve="#888" />)
+    expect(foerste.getByLabelText('01:00')).toBeTruthy()
   })
 
   it('uret tæller minutter med — «01:12»', async () => {

@@ -121,9 +121,10 @@ describe('Arbejdslinje', () => {
       expect(s.queryByTestId('arbejdslinje-tid')).toBeNull()
       await act(async () => { jest.advanceTimersByTime(3000) })
       expect(s.getByTestId('arbejdslinje-tid')).toBeTruthy()
-      // 4/10-2026: uret ruller nu min:sek (desk's form), og tallet bæres af
-      // hjulenes accessibilityLabel i stedet for én tekststreng.
-      expect(s.getByLabelText('00:03')).toBeTruthy()
+      // 4/10-2026: uret ruller nu min:sek, og tallet bæres af hjulenes
+      // accessibilityLabel i stedet for én tekststreng. Minuttet dukker
+      // først op når det tæller — derfor «03» og ikke «00:03».
+      expect(s.getByLabelText('03')).toBeTruthy()
     } finally {
       jest.useRealTimers()
     }

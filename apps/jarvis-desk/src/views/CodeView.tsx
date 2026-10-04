@@ -679,13 +679,20 @@ export function CodeView({
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
     if (!ready) return
-    let sid = sessionId
+    let sid = sessionId ?? sessions.activeId
     if (!sid) sid = (await sessions.create('Kode-session', 'code')).id
-    const message = text.trim() || 'Vedhæftet'
+    const message = text.trim() || opts.attachments.map((a) => a.name).join(', ') || 'Vedhæftet'
+    const imageBlocks = opts.attachments
+      .filter((a) => a.isImage && a.src)
+      .map((a) => ({ type: 'image' as const, src: a.src as string, alt: a.name }))
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
-      content: [{ type: 'text', text: message }],
+      content: [
+        ...(text.trim() ? [{ type: 'text' as const, text }] : []),
+        ...imageBlocks,
+        ...(!text.trim() && imageBlocks.length === 0 ? [{ type: 'text' as const, text: message }] : []),
+      ],
       created_at: new Date().toISOString(),
       parent_id: null,
     })
@@ -836,6 +843,19 @@ export function CodeView({
     </div>
   )
 
+  const koerselsTal = (() => {
+    const assistantMessages = sessions.messages.filter((m) => m.role === 'assistant')
+    const trin = assistantMessages.reduce((total, m) => total +
+      (Array.isArray(m.content) ? m.content.filter((b) => b?.type === 'tool_use').length : 0), 0)
+    const laest = stream.usage.cacheHit + stream.usage.cacheMiss
+    return {
+      ture: assistantMessages.length,
+      trin,
+      ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
+      ...(envTotalTokens > 0 ? { tokens: envTotalTokens } : {}),
+    }
+  })()
+
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
@@ -845,7 +865,7 @@ export function CodeView({
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       config={config}
-      getSessionId={async () => sessionId ?? (await sessions.create('Kode-session', 'code')).id}
+      getSessionId={async () => sessionId ?? sessions.activeId ?? (await sessions.create('Kode-session', 'code')).id}
       sessionId={sessionId}
       showPermissions={true}
       contextTokens={contextTokens}
@@ -857,6 +877,7 @@ export function CodeView({
       isOwner={isOwner}
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
+      koerselsTal={koerselsTal}
     />
   )
 

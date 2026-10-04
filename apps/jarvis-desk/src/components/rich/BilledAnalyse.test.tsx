@@ -107,6 +107,11 @@ describe('levendeBilledArbejde', () => {
     expect(levendeBilledArbejde([{ name: 'analyze_image', input: {} }])).toEqual({ slags: 'analyse', kilde: '', sti: '' })
   })
 
+  it('læser analyse-stien fra delvis JSON mens værktøjets argumenter streames', () => {
+    expect(levendeBilledArbejde([{ name: 'analyze_image', status: 'running', input: {}, partialJson: '{"image_path":"/tmp/foto.png"}' }]))
+      .toEqual({ slags: 'analyse', kilde: 'foto.png', sti: '/tmp/foto.png' })
+  })
+
   it('andre værktøjer giver intet', () => {
     expect(levendeBilledArbejde([
       { name: 'read_file', status: 'running', input: {} },
@@ -180,6 +185,14 @@ describe('animationen på skærmen', () => {
   it('RaekkeTranskript: scanningen står uden for det foldede turhoved', () => {
     render(<RaekkeTranskript blocks={[analyse({ image_path: '/home/bs/skaerm.png' })]} streaming />)
     expect(screen.getByLabelText('Analyserer skaerm.png')).toBeInTheDocument()
+  })
+
+  it('RaekkeTranskript: generering vises også under en arbejdsrunde', () => {
+    render(<RaekkeTranskript blocks={[
+      { type: 'thinking', thinking: 'Laver billede' },
+      { type: 'tool_use', id: 'g1', name: 'openrouter_image', input: {}, status: 'running' },
+    ]} streaming />)
+    expect(screen.getByLabelText('Genererer billede')).toBeInTheDocument()
   })
 
   it('uden navn står den stadig — men uden at finde på et', () => {

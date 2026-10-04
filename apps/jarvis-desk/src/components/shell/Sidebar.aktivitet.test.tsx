@@ -23,7 +23,13 @@ vi.mock('../../hooks/useSessions', () => ({
   }),
 }))
 vi.mock('../../hooks/useSettings', () => ({ useSettings: () => ({ settings: null }) }))
-vi.mock('../../hooks/useStream', () => ({ useStream: () => ({ workingSessionId: state.workingId }) }))
+vi.mock('../../hooks/useStream', () => ({
+  useStream: () => ({ workingSessionId: state.workingId }),
+  // Udsnits-abonnementet gaar gennem SAMME tilstand (4/10-2026):
+  // Sidebar laeser nu ÉT felt, saa den ikke rendrer hele listen om
+  // ved hver stream-chunk.
+  useStreamUdsnit: (vaelg: (v: any) => unknown) => vaelg(({ workingSessionId: state.workingId })),
+}))
 vi.mock('../../lib/api', () => ({
   searchSessions: vi.fn().mockResolvedValue([]),
   getActiveRuns: vi.fn().mockResolvedValue([]),

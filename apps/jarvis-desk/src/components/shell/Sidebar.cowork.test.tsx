@@ -10,6 +10,7 @@ vi.mock('../../hooks/useSettings', () => ({
 }))
 vi.mock('../../hooks/useStream', () => ({
   useStream: () => ({ workingSessionId: null }),
+  useStreamUdsnit: (vaelg: (v: any) => unknown) => vaelg(({ workingSessionId: null })),
 }))
 vi.mock('../../lib/api', () => ({
   searchSessions: vi.fn().mockResolvedValue([]),

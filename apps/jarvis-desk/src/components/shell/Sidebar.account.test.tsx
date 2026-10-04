@@ -18,7 +18,13 @@ vi.mock('../../hooks/useSettings', () => ({
     auth: { role: konto.role, display_name: 'Bjørn' }, update,
   }),
 }))
-vi.mock('../../hooks/useStream', () => ({ useStream: () => ({ workingSessionId: null }) }))
+vi.mock('../../hooks/useStream', () => ({
+  useStream: () => ({ workingSessionId: null }),
+  // Udsnits-abonnementet gaar gennem SAMME tilstand (4/10-2026):
+  // Sidebar laeser nu ÉT felt, saa den ikke rendrer hele listen om
+  // ved hver stream-chunk.
+  useStreamUdsnit: (vaelg: (v: any) => unknown) => vaelg(({ workingSessionId: null })),
+}))
 vi.mock('./Klokke', () => ({ Klokke: () => <button>Klokke</button> }))
 
 import { Sidebar } from './Sidebar'

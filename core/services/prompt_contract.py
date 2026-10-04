@@ -735,6 +735,14 @@ def _build_visible_chat_prompt_assembly_impl(
     import time as _t_mod
     import sys as _sys_mod
     _t_assembly_start = _t_mod.monotonic()
+    # Hvad lavede maskinen IMENS? Uden det kan en maaling ikke skelne
+    # «assemblyen er blevet tung» fra «boksen var optaget» — se
+    # core/services/assembly_load_probe.
+    try:
+        from core.services import assembly_load_probe as _alp
+        _last_probe = _alp.start()
+    except Exception:  # noqa: BLE001 — en maaling maa aldrig vaelte en tur
+        _alp, _last_probe = None, None
     try:
         from core.services import turn_trace as _tt
         if session_id != "__prewarm__":
@@ -2774,8 +2782,10 @@ def _build_visible_chat_prompt_assembly_impl(
             _gaps.append(f"sync_{_name}_ms={_delta}")
             _prev_t = _sync_landmarks[_name]
     _gaps_str = " ".join(_gaps)
+    _last_str = _alp.afslut(_last_probe) if _alp is not None else ""
     print(
-        f"prompt-assembly-timing total_ms={_total_ms} {_phases_str} {_gaps_str}",
+        f"prompt-assembly-timing total_ms={_total_ms} {_last_str} "
+        f"{_phases_str} {_gaps_str}",
         file=_sys_mod.stderr,
         flush=True,
     )

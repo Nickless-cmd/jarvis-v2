@@ -78,4 +78,24 @@ export default tseslint.config(
     files: ['src/components/PresenceOrb.tsx'],
     rules: { '@typescript-eslint/no-unused-expressions': 'off' },
   },
+  {
+    // Mockups er standalone forhaandsvisninger — HTML + vanilla JS der aabnes
+    // i en browser, ikke i appen. De bruger browser-globaler, og de bruger
+    // `this`-aliaser med vilje (mekanikken kopieres direkte ind i en .html-fil).
+    //
+    // MAALT 4/10-2026: uden denne blok faldt CI med 38 fejl paa `document`,
+    // `window` og `setTimeout` alene. Mockups laa ikke i `ignores`, saa
+    // app'ens regelsaet blev koert paa browser-kode. Blokken her er valgt
+    // frem for et ignore, saa filerne stadig bliver laest igennem.
+    files: ['mockups/**/*.js'],
+    languageOptions: {
+      globals: {
+        document: 'readonly', window: 'readonly', console: 'readonly',
+        setTimeout: 'readonly', clearTimeout: 'readonly',
+        setInterval: 'readonly', clearInterval: 'readonly',
+        getComputedStyle: 'readonly', requestAnimationFrame: 'readonly',
+      },
+    },
+    rules: { '@typescript-eslint/no-this-alias': 'off' },
+  },
 )

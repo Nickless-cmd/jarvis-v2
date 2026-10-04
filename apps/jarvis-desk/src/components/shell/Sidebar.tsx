@@ -60,12 +60,16 @@ export function Sidebar({
   onSurface,
   userName,
   onSearch,
+  onOpenBug,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
   userName: string
   /** Aabner Ctrl+K-paletten. Samme vej som genvejen — ét sted at rette. */
   onSearch?: () => void
+  /** Aabner fejl-rapporten MIDT PAA SKAERMEN. Rapporten sendes til
+   *  `/chat/inbox/flag`, ikke til skrivefeltet. (Bjørn 4/10-2026.) */
+  onOpenBug?: () => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
@@ -91,8 +95,6 @@ export function Sidebar({
   const [feedAaben, setFeedAaben] = useState(false)
   const [notifikationSession, setNotifikationSession] = useState<string | null>(null)
   const [kontoAaben, setKontoAaben] = useState(false)
-  const [bugAaben, setBugAaben] = useState(false)
-  const [bugTekst, setBugTekst] = useState('')
   const klokkeRef = useRef<HTMLDivElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const kontoRef = useRef<HTMLDivElement>(null)
@@ -370,36 +372,17 @@ export function Sidebar({
             />
           )}
         </div>
-        {/* Bug-ikonet bor i fodens HØJRE side. Indtil videre er det hele
-            ikonet: et klik åbner et lille felt, og teksten lægges i
-            skrivefeltet via `jarvis-bug`, så den kan rettes før den sendes.
-            (Bjørn 29/9-2026: «bare iconet til at starte med».) */}
+        {/* Bug-ikonet bor i fodens HØJRE side. Det åbner fejl-rapporten MIDT
+            PÅ SKÆRMEN, og rapporten går til `/chat/inbox/flag` — altså til
+            indbakken, hvor den har et id og kan ses og lukkes.
+            (Bjørn 4/10-2026: «bug icon laves om til et felt midt på skærmen
+            hvor man kan melde faktisk bug til dit bug endpoint». Før lagde
+            ikonet sin tekst i skrivefeltet via `jarvis-bug` — en nødløsning
+            fra 29/9, hvor der ingen rute fandtes. Den findes nu.) */}
         <button type="button" className="sidebar-bug" aria-label="Rapportér en fejl"
-                aria-expanded={bugAaben} title="Rapportér en fejl"
-                onClick={() => setBugAaben((aaben) => !aaben)}>
+                title="Rapportér en fejl" onClick={() => onOpenBug?.()}>
           <Bug size={14} />
         </button>
-        {bugAaben && (
-          <div className="sidebar-bug-pop" role="dialog" aria-label="Rapportér en fejl">
-            <label className="sidebar-bug-label" htmlFor="jarvis-bug-tekst">Hvad gik galt?</label>
-            <textarea id="jarvis-bug-tekst" className="sidebar-bug-tekst" rows={4}
-                      value={bugTekst} onChange={(e) => setBugTekst(e.target.value)}
-                      placeholder="Beskriv fejlen — den lægges i skrivefeltet, klar til at sende." />
-            <div className="sidebar-bug-handlinger">
-              <button type="button" onClick={() => { setBugAaben(false); setBugTekst('') }}>
-                Annuller
-              </button>
-              <button type="button" className="primaer" disabled={!bugTekst.trim()}
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('jarvis-bug', { detail: bugTekst.trim() }))
-                        setBugAaben(false)
-                        setBugTekst('')
-                      }}>
-                Send til Jarvis
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   )

@@ -418,28 +418,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
      gjorde ikonet til noget man skulle lede efter. */
   color: var(--fg-1); cursor: pointer;
 }
-.sidebar-bug:hover, .sidebar-bug[aria-expanded="true"] { background: var(--bg-2); color: var(--fg-1); }
-.sidebar-bug-pop {
-  position: absolute; bottom: calc(100% + 6px); right: 8px; z-index: 40;
-  width: 300px; display: flex; flex-direction: column; gap: 8px; padding: 10px;
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
-}
-.sidebar-bug-label { font-size: 12px; color: var(--fg-2); }
-.sidebar-bug-tekst {
-  width: 100%; resize: vertical; background: var(--bg-3); color: var(--fg-1);
-  border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px;
-  font: inherit; font-size: 12.5px;
-}
-.sidebar-bug-handlinger { display: flex; justify-content: flex-end; gap: 6px; }
-.sidebar-bug-handlinger button {
-  border: 1px solid var(--line); border-radius: 6px; background: var(--bg-3);
-  color: var(--fg-1); padding: 4px 10px; font-size: 12px; cursor: pointer;
-}
-.sidebar-bug-handlinger button:disabled { opacity: .5; cursor: default; }
-.sidebar-bug-handlinger .primaer {
-  background: var(--accent); border-color: var(--accent); color: #0b1a17; font-weight: 600;
-}
+.sidebar-bug:hover { background: var(--bg-2); color: var(--fg-1); }
+/* Popoveret er væk 4/10-2026. Rapporten er nu et felt midt på skærmen
+   (`components/BugRapport.tsx` + `styles/bug-rapport.css`), fordi den skal til
+   `/chat/inbox/flag` frem for i skrivefeltet. Reglerne her bar `-pop`, `-label`,
+   `-tekst` og `-handlinger`; de er flyttet med, så der ikke står død CSS tilbage
+   der ligner en flade. */
 .sidebar-foot .avatar {
   width: 22px; height: 22px;
   border-radius: 50%;

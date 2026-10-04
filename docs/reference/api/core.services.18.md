@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ollama_model_names.py`
+_Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_base_url` | `()` | — | [src](../../../core/services/ollama_model_names.py#L41) |
+| function | `served_tags` | `()` | De modelnavne ollama serverer lige nu. Cachet 120 s; tom maengde ved fejl. | [src](../../../core/services/ollama_model_names.py#L53) |
+| function | `resolve_model_name` | `(model)` | `glm-5.2` → `glm-5.2:cloud` naar den variant findes. Ellers uaendret. | [src](../../../core/services/ollama_model_names.py#L75) |
+
 ## `core/services/ollama_visible_prompt.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -585,21 +594,4 @@ _`PreparedRequest` — det der skal til for at bygge NØJAGTIG samme anmodning i
 | method | `PreparedRequest.reconstruct` | `(self, hent=…)` | Byg anmodningen igen. Kaster hvis en komponent kun findes som hash. | [src](../../../core/services/prepared_request.py#L123) |
 | method | `PreparedRequest.same_series_as` | `(self, other)` | Er det stadig SAMME anmodningsserie? | [src](../../../core/services/prepared_request.py#L139) |
 | function | `forget_content` | `(p)` | Efterlign at indholdet er væk og kun digesten er tilbage. | [src](../../../core/services/prepared_request.py#L153) |
-
-## `core/services/pressure_threshold_gate.py`
-_Pressure Threshold Gate — konverterer presning til impuls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Impulse` | `` | En impuls — en presning der har krydset tærsklen og bliver til vilje. | [src](../../../core/services/pressure_threshold_gate.py#L65) |
-| function | `_get_threshold` | `(direction)` | Get the current threshold for a direction, creating default if needed. | [src](../../../core/services/pressure_threshold_gate.py#L88) |
-| function | `_adapt_threshold` | `(direction, crossed)` | Adapt threshold based on whether it was crossed. | [src](../../../core/services/pressure_threshold_gate.py#L95) |
-| function | `_is_on_cooldown` | `(direction)` | Check if a direction is still in cooldown from a recent impulse. | [src](../../../core/services/pressure_threshold_gate.py#L109) |
-| function | `evaluate_pressures` | `(pressures)` | Evaluate all pressure vectors and generate impulses for those that cross thresholds. | [src](../../../core/services/pressure_threshold_gate.py#L122) |
-| function | `get_pending_impulses` | `()` | Return all pending impulses that haven't been executed yet. | [src](../../../core/services/pressure_threshold_gate.py#L197) |
-| function | `mark_impulse_executing` | `(impulse_id, action=…)` | Mark an impulse as currently being executed. | [src](../../../core/services/pressure_threshold_gate.py#L202) |
-| function | `mark_impulse_completed` | `(impulse_id, action=…)` | Mark an impulse as completed. | [src](../../../core/services/pressure_threshold_gate.py#L211) |
-| function | `mark_impulse_failed` | `(impulse_id, reason=…)` | Mark an impulse as failed. | [src](../../../core/services/pressure_threshold_gate.py#L221) |
-| function | `snapshot` | `()` | Return serializable snapshot of gate state. | [src](../../../core/services/pressure_threshold_gate.py#L230) |
-| function | `run_threshold_gate_tick` | `()` | Run one tick of the threshold gate. | [src](../../../core/services/pressure_threshold_gate.py#L244) |
 

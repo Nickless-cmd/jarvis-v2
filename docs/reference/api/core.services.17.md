@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/metacognition_signal_tracker.py`
+_Metacognition signal tracker — Step E.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L70) |
+| function | `_connect` | `()` | — | [src](../../../core/services/metacognition_signal_tracker.py#L90) |
+| function | `_split_sentences` | `(text)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L100) |
+| function | `_sentence_nouns` | `(sentence)` | Cheap content-word extraction: lowercase alpha tokens, ≥4 chars, | [src](../../../core/services/metacognition_signal_tracker.py#L105) |
+| function | `_has_negation` | `(sentence)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L119) |
+| function | `score_contradiction` | `(text)` | Detect contradicting sentence pairs within the same response. | [src](../../../core/services/metacognition_signal_tracker.py#L124) |
+| function | `score_claim_density` | `(text)` | Claim-bearing sentences / total sentences. Healthy: 0.3–0.7. | [src](../../../core/services/metacognition_signal_tracker.py#L166) |
+| function | `record_signals` | `(run_id, text)` | Compute + persist + publish both signals for a completed run. | [src](../../../core/services/metacognition_signal_tracker.py#L187) |
+| function | `latest_signals_section` | `(*, window_n=…)` | Return an awareness one-liner ONLY when recent signals are | [src](../../../core/services/metacognition_signal_tracker.py#L229) |
+| function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — same cross-process pattern as | [src](../../../core/services/metacognition_signal_tracker.py#L285) |
+| function | `start_metacognition_tracker` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/metacognition_signal_tracker.py#L342) |
+| function | `stop_metacognition_tracker` | `()` | — | [src](../../../core/services/metacognition_signal_tracker.py#L359) |
+
 ## `core/services/metacognitive_integration.py`
 _Metacognitive Integration — the overarching layer that synthesizes all cognitive layers into a coherent self-model._
 
@@ -591,13 +609,4 @@ _Offline recomposition: recombine recent cognitive material into candidates._
 | function | `_feed_learning` | `(item)` | — | [src](../../../core/services/offline_recomposition_engine.py#L99) |
 | function | `_runtime_state` | `(key)` | — | [src](../../../core/services/offline_recomposition_engine.py#L113) |
 | function | `_load` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L118) |
-
-## `core/services/ollama_model_names.py`
-_Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_base_url` | `()` | — | [src](../../../core/services/ollama_model_names.py#L41) |
-| function | `served_tags` | `()` | De modelnavne ollama serverer lige nu. Cachet 120 s; tom maengde ved fejl. | [src](../../../core/services/ollama_model_names.py#L53) |
-| function | `resolve_model_name` | `(model)` | `glm-5.2` → `glm-5.2:cloud` naar den variant findes. Ellers uaendret. | [src](../../../core/services/ollama_model_names.py#L75) |
 

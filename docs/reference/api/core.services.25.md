@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_failure_kind.py`
+_Struktureret failure-taksonomi for streaming/followup (spec §11.1 B11, I5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FailureKind` | `` | Kanoniske failure-kind-strenge (str-const set fremfor Enum så de | [src](../../../core/services/stream_failure_kind.py#L37) |
+| function | `_scan_http_status` | `(text)` | — | [src](../../../core/services/stream_failure_kind.py#L121) |
+| function | `_contains` | `(text, needles)` | — | [src](../../../core/services/stream_failure_kind.py#L131) |
+| function | `classify_failure` | `(*, http_status=…, error_text=…, kind_hint=…)` | Klassificér en streaming/followup-fejl → (failure_kind, retryable). | [src](../../../core/services/stream_failure_kind.py#L135) |
+| function | `is_retryable_kind` | `(failure_kind)` | Er ``failure_kind`` retryable på SAMME provider? (provider_stall = False.) | [src](../../../core/services/stream_failure_kind.py#L225) |
+| function | `compute_backoff_with_jitter` | `(attempt, *, base=…, cap=…, retry_after=…)` | Eksponentiel backoff MED jitter (spec §11.2, OpenAI-SDK-mønster). | [src](../../../core/services/stream_failure_kind.py#L242) |
+| class | `MalformedStreamPayload` | `` | Streamen sluttede malformet (trunkeret final-JSON / ingen terminal/``done``) | [src](../../../core/services/stream_failure_kind.py#L291) |
+| function | `safe_decode_line` | `(raw_line)` | Decode én rå stream-linje UDEN nogensinde at rejse. | [src](../../../core/services/stream_failure_kind.py#L298) |
+| function | `try_parse_json_line` | `(data)` | Parse én JSON ``data:``-streng → ``(payload, ok)``, ALDRIG rejsende. | [src](../../../core/services/stream_failure_kind.py#L319) |
+
 ## `core/services/stream_sentinel.py`
 _Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
 
@@ -604,12 +619,4 @@ _Compact tool catalog for system prompt._
 | function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L178) |
 | function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L214) |
 | function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L219) |
-
-## `core/services/tool_chip_payload.py`
-_Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
-| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
 

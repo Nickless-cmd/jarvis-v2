@@ -115,9 +115,11 @@ _File download route — serves files Jarvis has published to ~/.jarvis-v2/files
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_files_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L17) |
-| function | `download_file` | `(filename)` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L23) |
-| function | `list_files` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L43) |
+| function | `ensure_files_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L35) |
+| function | `download_file` | `(filename)` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L41) |
+| function | `list_files` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L61) |
+| class | `LinkOenske` | `` | Hvilken fil, og hvor laenge. | [src](../../../apps/api/jarvis_api/routes/files.py#L71) |
+| function | `udsted_link` | `(req)` | Et kortlivet signeret link til én fil. | [src](../../../apps/api/jarvis_api/routes/files.py#L83) |
 
 ## `apps/api/jarvis_api/routes/health.py`
 

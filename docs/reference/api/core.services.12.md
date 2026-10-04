@@ -424,6 +424,17 @@ _File Awareness Daemon — proprioception: "I feel when my files change."_
 | function | `is_file_awareness_running` | `()` | Check if the file awareness watcher is running. | [src](../../../core/services/file_awareness_daemon.py#L309) |
 | function | `tick_file_awareness` | `()` | Heartbeat tick: ensure watcher is running, report status. | [src](../../../core/services/file_awareness_daemon.py#L318) |
 
+## `core/services/file_links.py`
+_Kortlivede, signerede links til udgivne filer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_noegle` | `()` | Signerings-nøglen. Tom bytes når den ikke kan udledes. | [src](../../../core/services/file_links.py#L65) |
+| function | `_rent_navn` | `(filnavn)` | Filnavnet som det MÅ signeres. Tom streng når det ikke er et blot navn. | [src](../../../core/services/file_links.py#L86) |
+| function | `_signatur` | `(navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L100) |
+| function | `signer` | `(filnavn, *, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L105) |
+| function | `verificer` | `(filnavn, udloeb, sig, *, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L124) |
+
 ## `core/services/file_watch_daemon.py`
 _File Watch Daemon — proprioception: "I feel when my own files change"._
 
@@ -608,12 +619,4 @@ _Commit-cluster gate (beslutnings-disciplin)._
 |---|---|---|---|---|
 | function | `commit_gate` | `(ctx)` | Kør Commit-clusterens decision-conflict-check og returnér ét GRADERET Verdict. | [src](../../../core/services/gate_commit.py#L18) |
 | function | `veto_gate` | `(ctx)` | Commit-cluster: affektiv bruger-pushback gater tool-eksekvering. | [src](../../../core/services/gate_commit.py#L44) |
-
-## `core/services/gate_enforcement.py`
-_Governed per-gate enforce-kill-switch for PRE-eksekverings-gates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_enforced` | `(nerve, klass)` | True hvis gatens håndhævelse er aktiv. | [src](../../../core/services/gate_enforcement.py#L32) |
-| function | `note_suppressed_block` | `(nerve, cluster, reason, *, detected_text=…, trigger_pattern=…, source_file=…, source_line=…, session_id=…, run_id=…)` | En gate ville have blokeret, men håndhævelsen er governed-OFF → registrér det som | [src](../../../core/services/gate_enforcement.py#L47) |
 

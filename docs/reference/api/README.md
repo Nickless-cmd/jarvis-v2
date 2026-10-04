@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16020 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16027 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,23 +40,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16020 functions/
 - [`core.services.09`](core.services.09.md) — `council_memory_daemon` … `decision_evidence`
 - [`core.services.10`](core.services.10.md) — `decision_gate` … `dream_adoption_candidate_tracking`
 - [`core.services.11`](core.services.11.md) — `dream_articulation` … `endpoint_usage_store`
-- [`core.services.12`](core.services.12.md) — `env_block` … `gate_enforcement`
-- [`core.services.13`](core.services.13.md) — `gate_eval` … `heartbeat_action_hints`
-- [`core.services.14`](core.services.14.md) — `heartbeat_daemon_ticks` … `inner_voice_daemon`
-- [`core.services.15`](core.services.15.md) — `inner_voice_notifier` … `local_small_model`
-- [`core.services.16`](core.services.16.md) — `local_tool_broker` … `metacognition_signal_tracker`
-- [`core.services.17`](core.services.17.md) — `metacognitive_integration` … `ollama_model_names`
-- [`core.services.18`](core.services.18.md) — `ollama_visible_prompt` … `pressure_threshold_gate`
-- [`core.services.19`](core.services.19.md) — `priors_feedback` … `proposal_classifier`
-- [`core.services.20`](core.services.20.md) — `proprioception_metrics` … `relation_state_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `relational_warmth` … `runtime_hook_runtime`
-- [`core.services.22`](core.services.22.md) — `runtime_hooks` … `self_repair_engine`
-- [`core.services.23`](core.services.23.md) — `self_review_cadence_signal_tracking` … `shared_cache`
-- [`core.services.24`](core.services.24.md) — `shared_language` … `stream_failure_kind`
-- [`core.services.25`](core.services.25.md) — `stream_sentinel` … `tool_chip_payload`
-- [`core.services.26`](core.services.26.md) — `tool_concurrency` … `user_theory_of_mind`
-- [`core.services.27`](core.services.27.md) — `user_understanding_signal_tracking` … `visible_runs_capabilities`
-- [`core.services.28`](core.services.28.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `env_block` … `gate_commit`
+- [`core.services.13`](core.services.13.md) — `gate_enforcement` … `hardware_body`
+- [`core.services.14`](core.services.14.md) — `heartbeat_action_hints` … `inner_visible_support_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `inner_voice_daemon` … `local_intent_gate`
+- [`core.services.16`](core.services.16.md) — `local_small_model` … `metabolism_state_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `metacognition_signal_tracker` … `offline_recomposition_engine`
+- [`core.services.18`](core.services.18.md) — `ollama_model_names` … `prepared_request`
+- [`core.services.19`](core.services.19.md) — `pressure_threshold_gate` … `prompt_variant_tracker`
+- [`core.services.20`](core.services.20.md) — `proposal_classifier` … `relation_map`
+- [`core.services.21`](core.services.21.md) — `relation_state_signal_tracking` … `runtime_flows`
+- [`core.services.22`](core.services.22.md) — `runtime_hook_runtime` … `self_narrative_self_model_review_bridge`
+- [`core.services.23`](core.services.23.md) — `self_repair_engine` … `share_guard_store`
+- [`core.services.24`](core.services.24.md) — `shared_cache` … `stream_degeneration`
+- [`core.services.25`](core.services.25.md) — `stream_failure_kind` … `tool_catalog`
+- [`core.services.26`](core.services.26.md) — `tool_chip_payload` … `user_temperature_runtime`
+- [`core.services.27`](core.services.27.md) — `user_theory_of_mind` … `visible_runs_approvals`
+- [`core.services.28`](core.services.28.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

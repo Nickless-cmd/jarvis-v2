@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-04 from app.routes (live) — 621 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-04 from app.routes (live) — 622 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -309,6 +309,7 @@
 | GET | `/cowork/ui-panel/pending` | dict | cowork |
 | POST | `/cowork/ui-panel/{request_id}/ack` | dict | cowork |
 | GET | `/files/` | dict | files |
+| POST | `/files/link` | dict | files |
 | GET | `/files/{filename}` |  | files |
 | GET | `/health` | HealthResponse | health |
 | GET | `/interlanguage-blind` |  | interlanguage_blind |

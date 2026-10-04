@@ -240,3 +240,60 @@ def test_ukendt_filingstilstand_filer_intet(isolated_runtime, monkeypatch):
     dbi.replace_file_findings("core/a.py", [_fund("sig-a")])
     monkeypatch.setattr(ci, "_allerede_filet", lambda: None)
     assert ci._file_proposals(max_new=10) == 0
+
+
+def test_foraeldrede_fund_ryddes_naar_filen_forsvinder(isolated_runtime):
+    """En fil der flyttes eller slettes scannes aldrig — dens fund skal ryddes.
+
+    `replace_file_findings` rydder kun fund for filer der BLIVER scannet, og en
+    fil der er væk besøges aldrig af `_iter_py_files()`. Målt 4/10-2026: 35
+    forældede fund over 9 stier — `core/services/db_central_incidents.py` var
+    flyttet til `core/runtime/`, `tiktok_tools.py` og `prospective_memory.py`
+    var slettede. De talte med i køen som om koden stadig havde fejlen.
+    """
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/findes.py", [_fund("sig-findes")])
+    dbi.replace_file_findings("core/vaek.py", [_fund("sig-vaek")])
+    dbi.set_file_hash("core/vaek.py", "h", 1)
+
+    assert dbi.prune_missing_files({"core/findes.py"}) == 1
+
+    aabne = {f["signature"] for f in dbi.list_findings(status="open", limit=50)}
+    assert "sig-vaek" not in aabne, "et fund for en fil der ikke findes skal ryddes"
+    assert "sig-findes" in aabne, "et fund for en fil der FINDES maa ikke roeres"
+    assert dbi.get_file_hash("core/vaek.py") is None, "scan-cachen skal ryddes med"
+
+
+def test_rydningen_roerer_intet_naar_alle_filer_findes(isolated_runtime):
+    """Modprøven: er der ingen forældede filer, sker der ingenting."""
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/findes.py", [_fund("sig-findes")])
+    assert dbi.prune_missing_files({"core/findes.py"}) == 0
+    assert any(f["signature"] == "sig-findes"
+               for f in dbi.list_findings(status="open", limit=50))
+
+
+def test_scanningen_rydder_fund_for_en_fil_der_er_vaek(isolated_runtime, monkeypatch, tmp_path):
+    """KOBLINGEN: `scan_repo` skal selv rydde fund for filer der ikke længere findes.
+
+    Funktionen alene er ikke nok. Uden kaldet inde i `scan_repo` står fundet for
+    en flyttet eller slettet fil i køen for evigt, fordi `replace_file_findings`
+    kun besøger filer der BLIVER scannet — og den er væk.
+    """
+    from core.runtime import db_instrument as dbi
+    from core.services import central_instrument as ci
+
+    dbi.replace_file_findings("core/vaek.py", [_fund("sig-vaek")])
+    (tmp_path / "core").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "core" / "findes.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr(ci, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(ci, "_iter_py_files", lambda: ["core/findes.py"])
+    monkeypatch.setattr(ci, "_security_files", lambda: set())
+
+    rep = ci.scan_repo(changed_only=False)
+
+    assert rep["pruned_files"] == 1
+    aabne = {f["signature"] for f in dbi.list_findings(status="open", limit=50)}
+    assert "sig-vaek" not in aabne, "scanningen skal have ryddet fundet for den væk fil"

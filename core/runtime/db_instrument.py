@@ -117,6 +117,41 @@ def replace_file_findings(file: str, findings: list[dict[str, Any]]) -> None:
         pass
 
 
+def prune_missing_files(existing: set[str]) -> int:
+    """Slet fund for filer der ikke længere findes i træet. Returnerer antal ryddede filer.
+
+    `replace_file_findings` rydder kun fund for filer der BLIVER scannet. En fil der
+    flyttes eller slettes besøges aldrig af `_iter_py_files()`, så dens fund blev
+    stående for evigt — og talte med i køen som om koden stadig havde fejlen.
+
+    Målt 4/10-2026: 35 forældede fund over 9 stier. `core/services/db_central_incidents.py`
+    var flyttet til `core/runtime/` og fandtes ikke i HEAD; `tiktok_tools.py`,
+    `prospective_memory.py` og `teams.py` var slettede. Ingen af dem blev nogensinde ryddet.
+
+    Self-safe → 0.
+    """
+    try:
+        with connect() as conn:
+            _ensure_tables(conn)
+            kendte = {str(r["file"]) for r in conn.execute(
+                "SELECT DISTINCT file FROM central_instrument_findings"
+            ).fetchall()}
+            forældede = sorted(kendte - {str(f) for f in existing})
+            if not forældede:
+                return 0
+            conn.executemany(
+                "DELETE FROM central_instrument_findings WHERE file = ?",
+                [(f,) for f in forældede],
+            )
+            conn.executemany(
+                "DELETE FROM central_instrument_filehash WHERE file = ?",
+                [(f,) for f in forældede],
+            )
+            return len(forældede)
+    except Exception:  # self-safe: en rydde-fejl må ikke vælte scanningen
+        return 0
+
+
 def list_findings(*, status: str = "open", min_score: int = 0, limit: int = 200,
                   exclude_signatures: set[str] | None = None) -> list[dict[str, Any]]:
     """Fund (højeste score først). Self-safe → [].

@@ -325,7 +325,8 @@ def scan_repo(*, changed_only: bool = True) -> dict[str, int]:
     scanned = 0
     changed = 0
     total_findings = 0
-    for rel in _iter_py_files():
+    filer = _iter_py_files()
+    for rel in filer:
         try:
             source = (_REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
         except Exception:
@@ -348,7 +349,11 @@ def scan_repo(*, changed_only: bool = True) -> dict[str, int]:
             total_findings += 1
         dbi.replace_file_findings(rel, rows)
         dbi.set_file_hash(rel, h, len(rows))
-    return {"scanned": scanned, "changed": changed, "findings": total_findings}
+    # En fil der er flyttet eller slettet besøges aldrig ovenfor, så dens fund blev
+    # stående for evigt — og talte med som om koden stadig havde fejlen.
+    ryddede = dbi.prune_missing_files(set(filer))
+    return {"scanned": scanned, "changed": changed, "findings": total_findings,
+            "pruned_files": ryddede}
 
 
 def _allerede_filet() -> set[str] | None:

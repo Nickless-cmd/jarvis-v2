@@ -43,6 +43,13 @@ describe('MessageRail', () => {
     expect(aktive.length).toBe(1)
     expect(rows[2]!.getAttribute('aria-current')).toBe('true')
   })
+
+  it('rækken har spørgsmålet som tilgængeligt navn', () => {
+    // Rækken bærer ingen synlig tekst mere (4/10-2026) — uden aria-label ville
+    // knappen stå uden navn for en skærmlæser.
+    render(<Harness ids={['a', 'b']} />)
+    expect(screen.getAllByRole('button')[0]!.getAttribute('aria-label')).toBe('besked a')
+  })
 })
 
 /* ── Skinnen trækker sig i en smal rude (spec punkt 3.5, 29/9-2026) ─────────
@@ -105,55 +112,86 @@ describe('MessageRail — bredde', () => {
   })
 })
 
-/* ── Svar-kortet (Bjørn 3/10-2026) ─────────────────────────────────────────
+/* ── Kortet (4/10-2026, 1:1 med mockup'en) ─────────────────────────────────
  *
- * Før stod svaret som en blok UNDER hver titel, og hele listen viste titel +
- * svar på én gang. Bjørn: «panelet folder stadig ud, men kun med titler —
- * svaret vises i et rent kort ved den linje musen er på».
+ * Historikken er to beslutninger der peger hver sin vej, og det er værd at
+ * holde fast hvorfor den sidste vandt:
  *
- * Testene her låser BEGGE sider af den beslutning: at panelet ikke længere
- * bærer svaret, og at kortet kommer frem ved hover. Den gamle test hed
- * «svaret står i sin egen linje under spørgsmålet» og låste netop den væg der
- * blev klaget over.
+ *  3/10: Bjørn — «panelet folder stadig ud, men kun med titler — svaret vises i
+ *  et rent kort ved den linje musen er på». Panelet bar titlerne, kortet KUN
+ *  svaret.
+ *
+ *  4/10: fem skærmbilleder og «1:1». Railen har INGEN tekst, og kortet bærer
+ *  BEGGE: spørgsmålet i fed som første linje og svaret i op til tre dæmpede
+ *  linjer under. Det er den ene linje der siger hvad rækken ER — derfor vises
+ *  kortet også for en tur uden svar, hvor den gamle regel ryddede det helt.
  */
-describe('MessageRail — svar-kortet', () => {
+describe('MessageRail — kortet', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
-  it('panelet viser KUN titler — svaret står ikke under spørgsmålet', () => {
+  it('panelet bærer INGEN tekst — kun streger', () => {
     render(<HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />)
-    expect(document.querySelector('.msg-rail-spm')?.textContent).toContain('besked a')
-    expect(document.querySelector('.msg-rail-svar')).toBeNull()
+    expect(document.querySelector('.msg-rail-text')).toBeNull()
+    expect(document.querySelector('.msg-rail-spm')).toBeNull()
     // Og kortet findes ikke, før musen er der.
     expect(document.querySelector('.msg-rail-kort')).toBeNull()
   })
 
-  it('hover på en række viser svaret i et kort', () => {
+  it('hover viser spørgsmål OG svar i kortet', () => {
     render(<HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />)
     fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
-    expect(document.querySelector('.msg-rail-kort')?.textContent).toBe('det korte svar')
+    const kort = document.querySelector('.msg-rail-kort')!
+    expect(kort.querySelector('.msg-rail-kort-spm')?.textContent).toBe('besked a')
+    expect(kort.querySelector('.msg-rail-kort-svar')?.textContent).toBe('det korte svar')
   })
 
-  it('en tur UDEN svar giver intet kort', () => {
-    // Ellers blev det forrige svar stående ved den nye linje.
+  it('en tur UDEN svar viser stadig spørgsmålet', () => {
+    // 4/10: før ryddede et tomt svar kortet helt, og så stod rækken uden noget
+    // at læse. Spørgsmålet findes altid — svaret gør ikke.
     render(<HarnessMedSvar ids={['a', 'b']} svar="" />)
     fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
-    expect(document.querySelector('.msg-rail-kort')).toBeNull()
+    const kort = document.querySelector('.msg-rail-kort')
+    expect(kort?.querySelector('.msg-rail-kort-spm')?.textContent).toBe('besked a')
+    expect(kort?.querySelector('.msg-rail-kort-svar')).toBeNull()
   })
 
-  it('spørgsmålet står stadig i `title`, så det kan læses uklippet', () => {
+  it('kortet bærer et bogmærke-ikon — det er «saved» i navnet', () => {
     render(<HarnessMedSvar ids={['a', 'b']} svar="noget" />)
-    const t = document.querySelector('.msg-rail-text')
-    expect(t?.getAttribute('title')).toBe('besked a')
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort-ikon')).not.toBeNull()
+  })
+
+  it('en fejlet tur meldes med ORD i kortet, ikke med farve i railen', () => {
+    // Bjørn 4/10-2026: «den røde farve i dit rail irriterer mig, væk med den».
+    // Rødt blandt streger læste som en anden SLAGS punkt, ikke som «her gik det
+    // galt» — spørgsmålet besvares i stedet hvor der er plads til ord.
+    render(<HarnessMedSvar ids={['a', 'b']} svar="noget" fejl />)
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort-fejl')?.textContent).toContain('fejl')
+  })
+
+  it('en tur UDEN fejl melder ingenting', () => {
+    render(<HarnessMedSvar ids={['a', 'b']} svar="noget" />)
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort-fejl')).toBeNull()
+  })
+
+  it('musen væk fra railen rydder kortet', () => {
+    render(<HarnessMedSvar ids={['a', 'b']} svar="noget" />)
+    fireEvent.mouseEnter(screen.getAllByRole('button')[0]!)
+    expect(document.querySelector('.msg-rail-kort')).not.toBeNull()
+    fireEvent.mouseLeave(screen.getByRole('navigation', { name: 'Spring til besked' }))
+    expect(document.querySelector('.msg-rail-kort')).toBeNull()
   })
 })
 
-function HarnessMedSvar({ ids, svar }: { ids: string[]; svar: string }) {
+function HarnessMedSvar({ ids, svar, fejl }: { ids: string[]; svar: string; fejl?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <MessageRail
         containerRef={ref}
-        anchors={ids.map((id) => ({ id, label: `besked ${id}`, svar: svar || undefined }))}
+        anchors={ids.map((id) => ({ id, label: `besked ${id}`, svar: svar || undefined, fejl }))}
       />
       {ids.map((id) => <div key={id} data-rail-id={id}>m{id}</div>)}
     </div>

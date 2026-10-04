@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16007 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16011 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,12 +51,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16007 functions/
 - [`core.services.20`](core.services.20.md) — `prose_tool_calls` … `relational_warmth`
 - [`core.services.21`](core.services.21.md) — `relationship_texture` … `runtime_hooks`
 - [`core.services.22`](core.services.22.md) — `runtime_learning_signals` … `self_review_cadence_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `self_review_outcome_tracking` … `shared_language_extended`
-- [`core.services.24`](core.services.24.md) — `shell_confinement_report` … `stream_settlement`
-- [`core.services.25`](core.services.25.md) — `structured_content_flag` … `tool_contract_shadow`
-- [`core.services.26`](core.services.26.md) — `tool_dansk_bro` … `valence_trajectory`
-- [`core.services.27`](core.services.27.md) — `value_formation` … `visible_runs_error_messaging`
-- [`core.services.28`](core.services.28.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `self_review_outcome_tracking` … `shared_language`
+- [`core.services.24`](core.services.24.md) — `shared_language_extended` … `stream_sentinel`
+- [`core.services.25`](core.services.25.md) — `stream_settlement` … `tool_concurrency`
+- [`core.services.26`](core.services.26.md) — `tool_contract_shadow` … `user_understanding_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `valence_trajectory` … `visible_runs_cognitive`
+- [`core.services.28`](core.services.28.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

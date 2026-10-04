@@ -86,6 +86,11 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "add_wakeup_extra",
     "schedule_recurring",
     "schedule_self_wakeup",
+    # Selv-startede sessioner (4/10-2026). Owner-only med vilje: et
+    # selv-startet run er den dyreste handling jeg kan tage på egen hånd —
+    # hele værktøjskassen, ingen bruger til at godkende undervejs. En
+    # husstandsmedlem må ikke kunne starte runs i Bjørns navn.
+    "start_session",
 })
 
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere

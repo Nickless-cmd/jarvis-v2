@@ -595,8 +595,40 @@ def _hent_eller_optag(bruger_id: str, post_id: str) -> dict[str, Any] | None:
     return r.get("post")
 
 
+def _afgoer_sideopgave(bruger_id: str, post_id: str, *, decision: str,
+                       reason: str = "") -> dict[str, Any] | None:
+    """Route en sideopgave til dens eget lager; skriv aldrig inbox_items.
+
+    Et `side-` præfiks er kun routing. Ejerskab kontrolleres før opslaget,
+    og et ukendt id bliver aldrig til en vellykket afgørelse.
+    """
+    if not str(post_id or "").startswith("side-"):
+        return None
+    if str(bruger_id or "") != _ejer_id():
+        return {"status": "ukendt", "id": post_id}
+    from core.services.side_tasks import get, resolve
+    task = get(post_id)
+    if task is None:
+        return {"status": "ukendt", "id": post_id}
+    old = str(task.get("status") or "")
+    if old in {"completed", "dismissed"}:
+        if old == decision:
+            return {"status": "ok", "type": "side_task", "id": post_id,
+                    "allerede": old}
+        return {"status": "fejl", "type": "side_task", "id": post_id,
+                "error": f"side task is already {old}"}
+    result = resolve(post_id, decision=decision, lukket_af="inbox", reason=reason)
+    if result.get("status") != "ok":
+        return {"status": "fejl", "type": "side_task", "id": post_id,
+                "error": str(result.get("error") or "status update failed")}
+    return {"status": "ok", "type": "side_task", "id": post_id}
+
+
 def done(bruger_id: str, post_id: str) -> dict[str, Any]:
     """Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa."""
+    side = _afgoer_sideopgave(bruger_id, post_id, decision="completed")
+    if side is not None:
+        return side
     post = _hent_eller_optag(bruger_id, post_id)
     if post is None:
         # Et ukendt id må ALDRIG melde succes. Det er husets hyppigste
@@ -634,6 +666,9 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
     grund = str(reason or "").strip()
     if not grund:
         return {"status": "fejl", "id": post_id, "error": "reason kraeves"}
+    side = _afgoer_sideopgave(bruger_id, post_id, decision="dismissed", reason=grund)
+    if side is not None:
+        return side
     post = _hent_eller_optag(bruger_id, post_id)
     if post is None:
         return {"status": "ukendt", "id": post_id}

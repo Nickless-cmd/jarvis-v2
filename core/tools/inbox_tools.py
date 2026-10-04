@@ -132,6 +132,7 @@ def _tekst(v: dict[str, Any]) -> str:
         ("VAKTE DENNE TUR", "vakte"),
         ("VENTER PAA DIG", "venter_paa_dig"),
         ("I GANG", "i_gang"),
+        ("SIDEOPGAVER", "sideopgaver"),
         ("PAA VEJ", "paa_vej"),
         ("PLANLAGTE", "planlagte"),
         ("VENTER PAA BJOERN", "venter_paa_bjorn"),

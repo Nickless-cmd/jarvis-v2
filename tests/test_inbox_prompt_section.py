@@ -29,6 +29,7 @@ BRUGER = "bjorn"
 def _v(**sektioner) -> dict:
     d = {"status": "ok", "bruger_id": BRUGER, "vakte": [], "venter_paa_dig": [],
          "i_gang": [], "paa_vej": [], "planlagte": [], "venter_paa_bjorn": [],
+         "sideopgaver": [],
          "backlog_tal": 0}
     d.update(sektioner)
     return d
@@ -72,6 +73,13 @@ def test_TOMME_sektioner_naevnes_slet_ikke():
     assert "I GANG" in t
     for titel in ("VENTER PÅ DIG", "PÅ VEJ", "PLANLAGTE", "VAKTE"):
         assert titel not in t, f"{titel} staar der med nul linjer"
+
+
+def test_sideopgaver_vises_kun_naar_der_er_aabne_opgaver():
+    assert _kald(_v()) is None
+    text = _kald(_v(sideopgaver=[_p("side-1", linje="side-1 venter «Test frame» [dig]")])) or ""
+    assert "SIDEOPGAVER" in text and "side-1 venter" in text
+    assert "kan nægte en mutation" not in text
 
 
 # ── Loftet: den fejl rigtige data afslørede ─────────────────────────────────

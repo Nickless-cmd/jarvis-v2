@@ -80,6 +80,7 @@ _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
     ("vakte", "▲ VAKTE DENNE TUR"),
     ("venter_paa_dig", "VENTER PÅ DIG"),
     ("i_gang", "I GANG"),
+    ("sideopgaver", "SIDEOPGAVER (venter / kø / i gang)"),
     ("paa_vej", "PÅ VEJ"),
     ("planlagte", "PLANLAGTE (gentager sig)"),
     ("venter_paa_bjorn", "VENTER PÅ BJØRN (gater ikke)"),

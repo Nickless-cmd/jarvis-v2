@@ -595,22 +595,51 @@ describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', (
     expect(regel).not.toMatch(/^\s*color:/m)
   })
 
-  it('begge farver er defineret i BEGGE temaer', () => {
+  it('farverne bor ét sted og er defineret i BEGGE temaer (4/10-2026)', () => {
+    // 4/10: `--rv-tilf`/`--rv-fjern` blev ALIASER, så miljø-feltet og
+    // «Redigerede N filer» kan læse samme grønne/røde (Bjørn). Værdien skal
+    // derfor findes som hex i tokens.css — i begge temaer — og aliaset skal
+    // pege derhen. Stod hex'en tilbage her, kunne de to drive fra hinanden.
     const moerk = rv.match(/\.raekkevisning \{([\s\S]*?)\n\}/)?.[1] ?? ''
     const lys = rv.match(/:root\[data-theme='light'\] \.raekkevisning,[\s\S]*?\{([\s\S]*?)\n\}/)?.[1] ?? ''
     for (const [navn, blok] of [['mørkt', moerk], ['lyst', lys]] as const) {
       expect(blok, `${navn} tema-blok mangler`).toBeTruthy()
-      for (const v of ['--rv-tilf', '--rv-fjern']) {
-        expect(blok, `${v} mangler i ${navn} tema`).toMatch(new RegExp(`${v}:\\s*#[0-9a-f]{6}`, 'i'))
-      }
+      expect(blok, `--rv-tilf mangler i ${navn} tema`).toMatch(/--rv-tilf:\s*var\(--diff-add\)/)
+      expect(blok, `--rv-fjern mangler i ${navn} tema`).toMatch(/--rv-fjern:\s*var\(--diff-del\)/)
+    }
+    const tokens = læs('tokens.css')
+    for (const v of ['--diff-add', '--diff-del']) {
+      const antal = [...tokens.matchAll(new RegExp(`^\\s*${v}:\\s*#[0-9a-f]{6}`, 'gmi'))].length
+      expect(antal, `${v} skal være en hex-værdi i mindst to temaer`).toBeGreaterThanOrEqual(2)
     }
   })
 
-  // Miljø-panelet har sine EGNE `git-add`/`git-del` (environment-inspector.css).
-  // Overstyringen må ikke lække derud, for Bjørn pegede på runde-linjerne.
-  it('lækker ikke ud i miljø-panelets egne diff-tal', () => {
+  // 3/10 blev overstyringen scopet, så miljø-panelet beholdt de dæmpede
+  // `--ok`/`--error-fg`. 4/10-2026 vendte Bjørn det: «diff visning i miljø
+  // feltet skal have samme rød og græn som i rundelinjerne». Nu skal BEGGE
+  // læse samme token — det er præcis det vagten holder fast, så de ikke
+  // glider fra hinanden igen ved en senere rettelse.
+  it('miljø-panelet og runde-linjerne deler farven (4/10-2026)', () => {
     expect(rv).not.toMatch(/^\.git-add/m)
-    expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--ok\)/)
+    expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--diff-add\)/)
+    expect(læs('environment-inspector.css')).toMatch(/\.git-del \{ color: var\(--diff-del\)/)
+  })
+
+  it('alle fire visninger læser den samme grønne og røde (4/10-2026)', () => {
+    // Bjørn pegede på tre steder (miljø-feltet, «Redigerede N filer», chatten)
+    // og DiffView er det fjerde der tegner en diff. Alle fire skal læse
+    // `--diff-add`/`--diff-del`: de ses aldrig side om side, så en der sakker
+    // bagud bliver først synlig når nogen kigger efter.
+    const cssApp = læs('app.css')
+    const miljø = læs('environment-inspector.css')
+    expect(cssApp, 'DiffView-tallet').toMatch(/\.diffview-add \{ color: var\(--diff-add\)/)
+    expect(cssApp, 'DiffView-tallet').toMatch(/\.diffview-del \{ color: var\(--diff-del\)/)
+    expect(cssApp, 'diff-linjens baggrund').toMatch(/\.diffline-add \{ background: color-mix\(in srgb, var\(--diff-add\)/)
+    expect(cssApp, 'diff-linjens baggrund').toMatch(/\.diffline-del \{ background: color-mix\(in srgb, var\(--diff-del\)/)
+    expect(miljø).toMatch(/\.git-add \{ color: var\(--diff-add\)/)
+    expect(miljø).toMatch(/\.git-del \{ color: var\(--diff-del\)/)
+    expect(rv).toMatch(/--rv-tilf:\s*var\(--diff-add\)/)
+    expect(rv).toMatch(/--rv-fjern:\s*var\(--diff-del\)/)
   })
 })
 

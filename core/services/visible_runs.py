@@ -2760,7 +2760,10 @@ async def _stream_visible_run(
                 _a_pending_tool_intent = False
                 _a_finish_reason = ""
                 # Batch-vink: maalt 13/9 kaldte 304 af 366 runder ÉT vaerktoej.
+                # 4/10-2026: vinket kraever at MOENSTERET gentager sig — se
+                # `tool_batch_notice`. Derfor baeres to runders tal, ikke ét.
                 _forrige_runde_kald = 0
+                _forrige_forrige_kald = 0
                 _batch_vink_vist = 0
                 # CUT-OFF-flag (12. sep 2026 — ROD-ÅRSAG til UnboundLocalError):
                 # initialiseres HER, ikke kun pr. forsøg inde i loopet. To tidlige
@@ -3166,6 +3169,7 @@ async def _stream_visible_run(
                             from core.services.tool_batch_notice import tool_batch_notice as _tbn
                             _vink = _tbn(
                                 forrige_runde_kald=_forrige_runde_kald,
+                                forrige_forrige_kald=_forrige_forrige_kald,
                                 runder_tilbage=_AGENTIC_MAX_ROUNDS - _agentic_round,
                                 gange_vist=_batch_vink_vist,
                             )
@@ -4663,6 +4667,9 @@ async def _stream_visible_run(
                         _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                         _outcome_state.set_error("user-cancelled-during-tool-exec")
                         break
+                    # Skub historikken foer vi overskriver: vinket skal kunne se
+                    # om den forrige runde OGSAA noejedes med ét kald.
+                    _forrige_forrige_kald = _forrige_runde_kald
                     _forrige_runde_kald = len(_a_tool_calls or [])
                     _a_results = _a_batch_out["results"]
                     _step_counter = _a_batch_out["step_counter"]

@@ -2175,7 +2175,7 @@ Generated from source. 8438/16002 functions/methods documented (52%). The list b
 - `scripts/luk_foraeldede_flows.py` :: `main` (L109)
 - `scripts/maal_indbakke.py` :: `maal` (L113)
 - `scripts/maal_indbakke.py` :: `main` (L214)
-- `scripts/maal_ventende_i_prompten.py` :: `main` (L228)
+- `scripts/maal_ventende_i_prompten.py` :: `main` (L252)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)
 - `scripts/measure_turn_latency.py` :: `watch` (L101)

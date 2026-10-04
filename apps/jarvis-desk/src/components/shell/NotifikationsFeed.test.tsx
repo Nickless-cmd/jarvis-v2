@@ -73,7 +73,7 @@ describe('NotifikationsFeed', () => {
     fireEvent.touchStart(card, { touches: [{ clientX: 140, clientY: 100 }] })
     fireEvent.touchEnd(card, { changedTouches: [{ clientX: 50, clientY: 104 }] })
     await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
-    expect(screen.getByRole('button', { name: 'Fjern notifikation' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByTestId('notif-svar-1')).toBeNull())
   })
 
   it('viser stadig individuel fjernelse for spørgsmål', async () => {
@@ -127,6 +127,40 @@ describe('NotifikationsFeed', () => {
     await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, 'reply'))
     expect(set).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(screen.queryByTestId('notif-svar-reply')).toBeNull())
+  })
+
+  it('rydder alle i Venter efter bekræftelse, også ubesvarede spørgsmål, men ikke Svar', async () => {
+    const posts = [post({ id: 'approval' }), post({ id: 'question', slags: 'question', kan_afgoere: false }),
+      post({ id: 'reply', slags: 'run_done', kan_afgoere: false })]
+    hent.mockResolvedValue({ poster: posts, antal: 3 })
+    set.mockResolvedValue(undefined)
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByTestId('notif-approval')
+    fireEvent.click(screen.getByRole('button', { name: 'Ryd alle i Venter' }))
+    expect(screen.getByText(/godkendelser fjernes uden svar/)).toBeInTheDocument()
+    expect(set).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Ryd alle' }))
+    await waitFor(() => expect(set).toHaveBeenCalledTimes(2))
+    expect(set).toHaveBeenCalledWith(cfg, 'approval')
+    expect(set).toHaveBeenCalledWith(cfg, 'question')
+    expect(set).not.toHaveBeenCalledWith(cfg, 'reply')
+    await waitFor(() => expect(screen.queryByTestId('notif-approval')).toBeNull())
+    expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')
+  })
+
+  it('lukker en release straks og lader den ikke genopstå fra et forsinket feed-svar', async () => {
+    hent.mockResolvedValue({ poster: [post({ slags: 'release', kan_afgoere: false })], antal: 1 })
+    set.mockResolvedValue(undefined)
+    const installNow = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('jarvisDesk', { updates: { installNow } })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByTestId('notif-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Installér nu' }))
+    await waitFor(() => expect(installNow).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern notifikation' }))
+    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    await waitFor(() => expect(screen.queryByTestId('notif-1')).toBeNull())
+    vi.unstubAllGlobals()
   })
 
   it('en fejl ser IKKE ud som en tom feed', async () => {

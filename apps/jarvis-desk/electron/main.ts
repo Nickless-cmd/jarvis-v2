@@ -878,6 +878,7 @@ app.whenReady().then(() => {
       const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
+      ipcMain.handle('update:install-now', () => api.downloadAndInstall())
       // Push-vejen (20/9-2026). Serveren opdager selv releasen
       // (apps/api/jarvis_api/routes/app_release.py), lægger den på event-bussen,
       // og /ws bærer den hertil — så vi tjekker i sekunder i stedet for at vente

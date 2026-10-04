@@ -24,6 +24,20 @@
 }
 .notif-clear-read:hover { color: var(--fg-1); background: var(--bg-3); }
 .notif-clear-read:disabled { opacity: .55; cursor: default; }
+.notif-clear-all-row { display: flex; justify-content: flex-end; margin: -2px 0 8px; }
+.notif-clear-confirm {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-1); color: var(--fg-2); font-size: 11px;
+}
+.notif-clear-confirm span { flex-basis: 100%; line-height: 1.4; }
+.notif-clear-confirm button, .notif-install {
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  background: var(--bg-3); color: var(--fg-1); font-size: 11px; cursor: pointer;
+}
+.notif-clear-confirm button:hover, .notif-install:hover { background: var(--bg-4); }
+.notif-clear-confirm button:disabled, .notif-install:disabled { opacity: .55; cursor: default; }
+.notif-install { margin-top: 8px; color: var(--accent-text); }
 @keyframes klokke-ring {
   0%, 8%, 17%, 100% { transform: rotate(0); }
   10% { transform: rotate(-17deg); }

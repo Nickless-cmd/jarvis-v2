@@ -21,7 +21,9 @@ import { JarvisRing } from './JarvisRing'
 import type { SecondarySurface } from './SecondaryNav'
 import { Klokke } from './Klokke'
 import { NotifikationsFeed } from './NotifikationsFeed'
+import { NotifikationSessionPanel } from './NotifikationSessionPanel'
 import { KontoMenu } from './KontoMenu'
+import '../../styles/notification-feed.css'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -76,6 +78,7 @@ export function Sidebar({
     useState<Partial<Record<SessionGruppe, boolean>>>({})
 
   const [feedAaben, setFeedAaben] = useState(false)
+  const [notifikationSession, setNotifikationSession] = useState<string | null>(null)
   const [kontoAaben, setKontoAaben] = useState(false)
   const klokkeRef = useRef<HTMLDivElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
@@ -216,10 +219,17 @@ export function Sidebar({
           <NotifikationsFeed
             config={apiConfig}
             onLuk={() => setFeedAaben(false)}
-            onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
+            onAabnSession={(id) => { setNotifikationSession(id); setFeedAaben(false) }}
             aktivSession={activeId}
           />
         </div>
+      )}
+
+      {notifikationSession && apiConfig && (
+        <NotifikationSessionPanel key={notifikationSession} config={apiConfig}
+          sessionId={notifikationSession} isOwner={auth?.role === 'owner'}
+          onClose={() => setNotifikationSession(null)}
+          onOpenFull={(targetSurface) => { select(notifikationSession); onSurface(targetSurface); setNotifikationSession(null) }} />
       )}
 
       {surface === 'cowork' ? (

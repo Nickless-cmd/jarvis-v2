@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react'
 import {
   X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package, RefreshCw,
   MessageCircle, Flag, ShieldX, Radar, Key, AtSign,
@@ -9,6 +9,62 @@ import {
   type Notifikation, type TidligereNotifikation,
 } from '../../lib/notifikationerApi'
 import { SettingsState, SettingsActionError } from '../settings/SettingsState'
+import { markNotificationsRead, notificationAttention, NOTIFICATION_READ_EVENT } from '../../lib/notificationAttention'
+
+function SwipeCard({ children, className, onRead, onDelete }: {
+  children: ReactNode; className: string; onRead: () => void; onDelete?: () => void
+}) {
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const swiped = useRef(false)
+  const [drag, setDrag] = useState(0)
+  const down = (e: ReactPointerEvent<HTMLLIElement>) => { start.current = { x: e.clientX, y: e.clientY } }
+  const move = (e: ReactPointerEvent<HTMLLIElement>) => {
+    if (!start.current || !Number.isFinite(e.clientX)) return
+    const dx = e.clientX - start.current.x
+    if (Math.abs(e.clientY - start.current.y) > Math.abs(dx)) return
+    if (dx < 0 && !onDelete) return
+    setDrag(Math.max(-86, Math.min(86, dx)))
+  }
+  const finish = (x: number, y: number) => {
+    if (!start.current) return
+    const dx = x - start.current.x
+    const dy = y - start.current.y
+    start.current = null
+    setDrag(0)
+    if (Math.abs(dx) < 68 || Math.abs(dy) > 42) return
+    if (dx < 0 && !onDelete) return
+    swiped.current = true
+    if (dx > 0) onRead()
+    else onDelete?.()
+  }
+  return (
+    <li className={`notif-swipe ${className}`} data-drag={drag < 0 ? 'left' : drag > 0 ? 'right' : undefined}
+        onClickCapture={(e) => { if (swiped.current) { e.preventDefault(); e.stopPropagation(); swiped.current = false } }}
+        onPointerDown={down} onPointerMove={move}
+        onPointerUp={(e) => finish(e.clientX, e.clientY)}
+        onPointerCancel={() => { start.current = null; setDrag(0) }}
+        onTouchStart={(e: ReactTouchEvent<HTMLLIElement>) => {
+          const touch = e.touches[0]
+          if (touch) start.current = { x: touch.clientX, y: touch.clientY }
+        }}
+        onTouchMove={(e: ReactTouchEvent<HTMLLIElement>) => {
+          const touch = e.touches[0]
+          if (touch && start.current) {
+            const dx = touch.clientX - start.current.x
+            if (dx >= 0 || onDelete) setDrag(Math.max(-86, Math.min(86, dx)))
+          }
+        }}
+        onTouchEnd={(e: ReactTouchEvent<HTMLLIElement>) => {
+          const touch = e.changedTouches[0]
+          if (touch) finish(touch.clientX, touch.clientY)
+        }}>
+      <span className="notif-swipe-action" aria-hidden="true">{drag < 0 ? 'Slet' : 'Læst'}</span>
+      <div className="notif-swipe-content" style={drag ? { transform: `translateX(${drag}px)` } : undefined}>
+        {children}
+      </div>
+    </li>
+  )
+}
 
 const IKON: Record<string, typeof Bell> = {
   approval: ShieldAlert, question: ShieldAlert,
@@ -82,6 +138,12 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
   const [handlingFejl, setHandlingFejl] = useState('')
   const [travl, setTravl] = useState('')
   const [opdaterer, setOpdaterer] = useState(false)
+  const [, setReadVersion] = useState(0)
+  useEffect(() => {
+    const changed = () => setReadVersion((n) => n + 1)
+    window.addEventListener(NOTIFICATION_READ_EVENT, changed)
+    return () => window.removeEventListener(NOTIFICATION_READ_EVENT, changed)
+  }, [])
 
   // Tre faner. «venter» er standarden: den er der hvor der ER noget at goere.
   const [fane, setFane] = useState<'venter' | 'svar' | 'tidligere'>('venter')
@@ -149,6 +211,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
     try {
       const svar = await afgoerNotifikation(config, p.id, godkendt)
       if (!svar.ok) { setHandlingFejl(svar.fejl || 'Svaret kunne ikke sendes.'); return }
+      markNotificationsRead([p.id])
       genindlaes()
     } catch {
       setHandlingFejl('Svaret kunne ikke sendes. Prøv igen.')
@@ -160,6 +223,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
     setTravl(p.id); setHandlingFejl('')
     try {
       await setNotifikation(config, p.id)
+      markNotificationsRead([p.id])
       genindlaes()
     } catch {
       setHandlingFejl('Notifikationen kunne ikke afsluttes. Prøv igen.')
@@ -168,13 +232,8 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
 
   const aabn = (p: Notifikation) => {
     if (p.session_id) onAabnSession(p.session_id)
-    // En `foraeldet` post (ejeren kunne ikke hydreres) maa ALDRIG lukkes med
-    // /set — den venter stadig. Kun navigation er tilladt; et lukket kort kan
-    // ikke komme igen gennem dedup'en paa serveren, saa en utilgaengelig ejer
-    // maa ikke faa den til at ligne en klaret opgave (V1, 22/9-2026).
-    if (config && !p.foraeldet && p.slags !== 'question') {
-      void setNotifikation(config, p.id).then(genindlaes).catch(() => undefined)
-    }
+    // Laesning er ikke sletning. Kortet bliver i feedet indtil kryds/venstre-swipe.
+    markNotificationsRead([p.id])
   }
 
   // Et svar er ikke en opgave, og de to skal ikke dele liste.
@@ -252,7 +311,10 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
             {svar.map((p) => {
               const Ikon = IKON[p.slags] ?? Bell
               return (
-                <li key={p.id} className={`notif-item tone-${p.slags} er-svar`}>
+                <SwipeCard key={p.id} className={`notif-item tone-${p.slags} er-svar${notificationAttention([p.id]).unread ? '' : ' er-laest'}`}
+                  onRead={() => markNotificationsRead([p.id])} onDelete={p.foraeldet ? undefined : () => void afslut(p)}>
+                  {!p.foraeldet && <button type="button" className="notif-dismiss" aria-label="Fjern notifikation"
+                          disabled={travl === p.id} onClick={() => void afslut(p)}><X size={13} /></button>}
                   {/* Et svar er LAESNING, ikke en opgave: ingen knapper her.
                       At trykke paa kortet aabner samtalen svaret kom fra —
                       den eneste handling der giver mening, og den samme som
@@ -264,8 +326,8 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
                     title={p.tekst || p.titel}
                     role="button"
                     tabIndex={0}
-                    onClick={() => { if (p.session_id) onAabnSession(p.session_id) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && p.session_id) onAabnSession(p.session_id) }}
+                    onClick={() => aabn(p)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') aabn(p) }}
                   >
                     <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
                     <span className="notif-titel">{p.titel}</span>
@@ -274,7 +336,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
                   {p.tekst && p.tekst !== p.titel && (
                     <p className="notif-tekst notif-svar-tekst">{p.tekst}</p>
                   )}
-                </li>
+                </SwipeCard>
               )
             })}
           </ul>
@@ -291,18 +353,21 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           <p className="notif-tom">Ingen notifikationer — alt er klaret.</p>
         ) : (
           <ul className="notif-liste">
-            {poster.map((p) => {
+            {venter.map((p) => {
               const Ikon = IKON[p.slags] ?? Bell
               return (
-                <li key={p.id} className={`notif-item tone-${p.slags}`}>
+                <SwipeCard key={p.id} className={`notif-item tone-${p.slags}${notificationAttention([p.id]).unread ? '' : ' er-laest'}`}
+                  onRead={() => markNotificationsRead([p.id])} onDelete={p.foraeldet ? undefined : () => void afslut(p)}>
+                  {!p.foraeldet && <button type="button" className="notif-dismiss" aria-label="Fjern notifikation"
+                          disabled={travl === p.id} onClick={() => void afslut(p)}><X size={13} /></button>}
                   <div
                     className={`notif-post${p.foraeldet ? ' er-foraeldet' : ''}`}
                     data-testid={`notif-${p.id}`}
                     title={p.tekst || p.titel}
                     role="button"
                     tabIndex={0}
-                    onClick={() => { if (!p.kan_afgoere) aabn(p) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !p.kan_afgoere) aabn(p) }}
+                    onClick={() => aabn(p)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') aabn(p) }}
                   >
                     <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
                     <span className="notif-titel">{p.titel}</span>
@@ -320,12 +385,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
                               onClick={() => void afgoer(p, false)}>Afvis</button>
                     </div>
                   )}
-                  {!p.kan_afgoere && !p.foraeldet && p.slags !== 'question' && (
-                    <div className="notif-handlinger">
-                      <button type="button" disabled={travl === p.id} onClick={() => void afslut(p)}>Færdig</button>
-                    </div>
-                  )}
-                </li>
+                </SwipeCard>
               )
             })}
           </ul>

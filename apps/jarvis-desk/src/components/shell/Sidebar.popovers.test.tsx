@@ -10,11 +10,21 @@ vi.mock('../../hooks/useSettings', () => ({
 }))
 vi.mock('../../hooks/useStream', () => ({ useStream: () => ({ workingSessionId: null }) }))
 vi.mock('./Klokke', () => ({ Klokke: ({ onAaben }: { onAaben: () => void }) => <button onClick={onAaben}>Klokke</button> }))
-vi.mock('./NotifikationsFeed', () => ({ NotifikationsFeed: () => <div role="dialog" aria-label="Notifikationer">Feed</div> }))
+vi.mock('./NotifikationsFeed', () => ({ NotifikationsFeed: ({ onAabnSession }: { onAabnSession: (id: string) => void }) => <div role="dialog" aria-label="Notifikationer"><button onClick={() => onAabnSession('other')}>Anden session</button></div> }))
+vi.mock('./NotifikationSessionPanel', () => ({ NotifikationSessionPanel: ({ sessionId, isOwner }: { sessionId: string; isOwner: boolean }) => <div role="dialog" aria-label="Samtale fra notifikation" data-session={sessionId} data-owner={String(isOwner)} /> }))
 
 import { Sidebar } from './Sidebar'
 
 describe('Sidebar popovers', () => {
+  it('åbner den notificerede session i højre panel', () => {
+    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Klokke' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Anden session' }))
+    const panel = screen.getByRole('dialog', { name: 'Samtale fra notifikation' })
+    expect(panel).toHaveAttribute('data-session', 'other')
+    expect(panel).toHaveAttribute('data-owner', 'true')
+    expect(screen.queryByRole('dialog', { name: 'Notifikationer' })).toBeNull()
+  })
   it('klokken åbner og lukker feedet ved gentaget klik', () => {
     render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
     fireEvent.click(screen.getByRole('button', { name: 'Klokke' }))

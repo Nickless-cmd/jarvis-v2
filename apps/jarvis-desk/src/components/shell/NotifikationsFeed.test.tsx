@@ -25,6 +25,7 @@ vi.mock('../../lib/api', () => ({
 }))
 
 import { NotifikationsFeed } from './NotifikationsFeed'
+import { notificationAttention } from '../../lib/notificationAttention'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 const post = (o: Partial<Record<string, unknown>> = {}) => ({
@@ -50,10 +51,28 @@ const afgjortPost = (o: Partial<Record<string, unknown>> = {}) => ({
 describe('NotifikationsFeed', () => {
   beforeEach(() => {
     hent.mockReset(); hentHistorik.mockReset(); afgoer.mockReset(); set.mockReset()
+    localStorage.clear()
     sockets.length = 0
     // Historikken er tom som udgangspunkt — de fleste tests handler om
     // «venter», og uden en default ville `.then` ramme undefined.
     hentHistorik.mockResolvedValue({ poster: [], antal: 0 })
+  })
+
+  it('swipe højre markerer læst, swipe venstre sletter; hjørnekrydset bruger samme sletning', async () => {
+    hent.mockResolvedValue({ poster: [post({ slags: 'question', kan_afgoere: false })], antal: 1 })
+    set.mockResolvedValue(undefined)
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    const card = (await screen.findByTestId('notif-1')).closest('li')!
+    expect(notificationAttention(['1']).unread).toBe(true)
+    fireEvent.touchStart(card, { touches: [{ clientX: 50, clientY: 100 }] })
+    fireEvent.touchEnd(card, { changedTouches: [{ clientX: 140, clientY: 104 }] })
+    expect(notificationAttention(['1']).unread).toBe(false)
+    await waitFor(() => expect(card).toHaveClass('er-laest'))
+    expect(set).not.toHaveBeenCalled()
+    fireEvent.touchStart(card, { touches: [{ clientX: 140, clientY: 100 }] })
+    fireEvent.touchEnd(card, { changedTouches: [{ clientX: 50, clientY: 104 }] })
+    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    expect(screen.getByRole('button', { name: 'Fjern notifikation' })).toBeInTheDocument()
   })
 
   it('en fejl ser IKKE ud som en tom feed', async () => {
@@ -108,8 +127,9 @@ describe('NotifikationsFeed', () => {
       .mockResolvedValue({ poster: [], antal: 0 })
     set.mockResolvedValue(undefined)
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
     expect(await screen.findByText('Jarvis vil køre en kommando.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Færdig' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern notifikation' }))
     await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
     await waitFor(() => expect(screen.queryByText('Vil du tillade bash?')).toBeNull())
   })
@@ -143,9 +163,10 @@ describe('NotifikationsFeed', () => {
     set.mockResolvedValue(undefined)
     const aabn = vi.fn()
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={aabn} />)
-    fireEvent.click(await screen.findByTestId('notif-1'))
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
+    fireEvent.click(await screen.findByTestId('notif-svar-1'))
     expect(aabn).toHaveBeenCalledWith('s-1')
-    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    expect(set).not.toHaveBeenCalled()
   })
 
   // V1: en `foraeldet` post har `kan_afgoere: false` (ejeren kunne ikke
@@ -154,7 +175,7 @@ describe('NotifikationsFeed', () => {
   // en utilgaengelig ejer maa ikke faa den til at ligne en klaret opgave.
   it('en foraeldet post sender IKKE /set naar man klikker den — den er ikke klaret', async () => {
     hent.mockResolvedValue({
-      poster: [post({ slags: 'run_done', kan_afgoere: false, foraeldet: true })],
+      poster: [post({ slags: 'run_failed', kan_afgoere: false, foraeldet: true })],
       antal: 1,
     })
     const aabn = vi.fn()

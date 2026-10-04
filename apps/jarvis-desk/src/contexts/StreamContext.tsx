@@ -22,6 +22,34 @@ export interface StreamErrorInfo {
   correlationId: string
 }
 
+/** En HANDLING der fejlede → struktureret fejl der siger hvad.
+ *
+ *  Bjørn 4/10-2026: «network error kan være meget, den er nødt til at vise en
+ *  fejl.» `approve`/`deny` satte kun den rå `Error`, hvis tekst kommer fra
+ *  browseren («Failed to fetch») eller fra `api.ts`' `Netværksfejl: …`. Et
+ *  banner der siger «netværksfejl» uden at sige hvad man forsøgte, efterlader
+ *  ham med et kryds og ingen handling.
+ *
+ *  Handlingen navngives derfor FØRST, og den tekniske årsag står efter som
+ *  fix-hint — den er stadig nyttig når noget skal fejlfindes, men den er ikke
+ *  overskriften.
+ */
+export function handlingTilInfo(handling: string, e: unknown): StreamErrorInfo {
+  const raa = e instanceof Error ? e.message.trim() : String(e ?? '').trim()
+  const net = /fetch|network|netværk|timeout|ECONN|ERR_/i.test(raa)
+  return {
+    code: net ? 'network' : 'unknown',
+    severity: 'error',
+    message: `${handling} — ${net ? 'ingen forbindelse til Jarvis.' : 'serveren svarede ikke som forventet.'}`,
+    // Den raa tekst BEVARES. Den er det eneste der kan skelne «serveren er
+    // nede» fra «tokenet er udloebet» naar nogen skal fejlfinde det.
+    fixHint: raa ? `${net ? 'Tjek din forbindelse og prøv igen.' : 'Prøv igen.'} (${raa})`
+                 : 'Prøv igen.',
+    retryable: true,
+    correlationId: '',
+  }
+}
+
 /** Klient-side StreamError → samme envelope-form, så UI kun kender ÉN fejl-type. */
 function errorToInfo(err: StreamError): StreamErrorInfo {
   const net = err.category === 'network'
@@ -414,11 +442,17 @@ export function StreamProvider({
 
   const approve = useCallback((approvalId: string) => {
     setPendingApproval(null) // optimistisk — streamen fortsætter når serveren resolver
-    void approveTool(config, approvalId).catch((e) => setError(e as Error))
+    void approveTool(config, approvalId).catch((e) => {
+      setError(e as Error)
+      setStreamError(handlingTilInfo('Kunne ikke godkende værktøjet', e))
+    })
   }, [config])
   const deny = useCallback((approvalId: string) => {
     setPendingApproval(null)
-    void denyTool(config, approvalId).catch((e) => setError(e as Error))
+    void denyTool(config, approvalId).catch((e) => {
+      setError(e as Error)
+      setStreamError(handlingTilInfo('Kunne ikke afvise værktøjet', e))
+    })
   }, [config])
 
   const clearAppAction = useCallback(() => setPendingAppAction(null), [])

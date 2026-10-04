@@ -1273,8 +1273,46 @@ export function CodeView({
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
             )}
-            {stream.status === 'error' && stream.error && (
-              <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
+            {/* Bjørn 4/10-2026: «network error og kryds til at trykke — network
+                error kan være meget, den er nødt til at vise en fejl.»
+
+                Her stod den RÅ `stream.error` — et `Error`-objekt hvis tekst
+                kommer fra browseren («Failed to fetch») eller fra
+                `api.ts:256`s `Netværksfejl: ${e.message}`. Ingen alvorlighed,
+                intet fix-hint, intet «Prøv igen» — og krydset var bogstaveligt
+                talt en tom funktion med en kommentar.
+
+                Den strukturerede `streamError` har eksisteret hele tiden og
+                bruges allerede i ChatView: ærlig dansk besked pr. kategori
+                (afbrudt / session udløbet / for mange forespørgsler), et
+                fix-hint og `retryable`. Samme no-op-kryds blev rettet i
+                ChatView 23/6-2026 og aldrig her — anden gang samme fejl, andet
+                sted. */}
+            {stream.status === 'error' && (stream.streamError || stream.error) && (
+              <ErrorBanner
+                message={stream.streamError?.message
+                  // Fald tilbage på den rå tekst frem for at skjule den: en
+                  // ukendt fejl er stadig en fejl, og en tom banner ville
+                  // efterlade ham uden noget at handle på.
+                  ?? stream.error?.message ?? 'Der opstod en fejl.'}
+                severity={stream.streamError?.severity}
+                fixHint={stream.streamError?.fixHint}
+                onDismiss={() => stream.clearError()}
+                onRetry={stream.streamError?.retryable ? () => {
+                  const sidste = [...sessions.messages].reverse()
+                    .find((m) => m.role === 'user')
+                  const tekst = Array.isArray(sidste?.content)
+                    ? sidste!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+                    : ''
+                  stream.clearError()
+                  // `resend`, ikke `handleSend`: den er rolle-bevidst og
+                  // arver de VALGTE praeferencer (model, udbyder, taenke-mode),
+                  // praecis som auto-continue. `handleSend` ville kraeve at
+                  // jeg opfandt et saet indstillinger her, og saa ville
+                  // «Proev igen» sende noget andet end det der fejlede.
+                  if (tekst.trim()) resend(tekst)
+                } : undefined}
+              />
             )}
           </div>
           <JumpToLatest synlig={!scroll.atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />

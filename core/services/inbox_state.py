@@ -123,6 +123,159 @@ def _autentificeret_bruger_matcher(bruger_id: str) -> bool:
         str(current_workspace_name() or "").strip() == bruger_id
 
 
+#: Har vi allerede advaret om det ubundne fald i denne proces? Én linje er
+#: diagnosen; én per tur er støj der gør loggen ulæselig.
+_HAR_ADVARET: list[bool] = [False]
+
+
+def _ejer_workspace() -> str:
+    """Ejerens workspace-navn — `workspace_context`'s EGEN standard.
+
+    Hardkodet «bjorn» ville være en fjerde kopi af samme sandhed. Navnet blev
+    omdøbt fra «default» én gang før (Task 5), og en kopi her ville have
+    overlevet omdøbningen tavst og lukket ejeren ude.
+    """
+    try:
+        from core.identity.workspace_context import _DEFAULT_STATE
+        return str(getattr(_DEFAULT_STATE, "workspace_name", "") or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke laese ejer-workspacet: %s", exc)
+        return ""
+
+
+def _ejer_id() -> str:
+    """Ejerens rigtige bruger-id, med workspace-navnet som sidste udvej.
+
+    Faldet er med vilje mod at BEVARE hans indbakke. Svarer `owner_user_id()`
+    tom — intet ejer-record, en DB der ikke kan læses — er alternativet en
+    indbakke der er tom hver tur uden at sige hvorfor, og det er den fejlform
+    hele dette spor handler om. Den gamle adfærd er stadig den dårligste af de
+    to, så den er sidst og den siger til.
+    """
+    try:
+        from core.identity.owner_resolver import owner_user_id
+        uid = str(owner_user_id() or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke oploese ejeren: %s", exc)
+        uid = ""
+    if uid:
+        return uid
+    ws = _ejer_workspace()
+    logger.warning("inbox_state: ingen ejer-identitet kunne oploeses — falder "
+                   "tilbage paa workspace-navnet %r. Det er den gamle adfaerd "
+                   "der opfandt en ANDEN indbakke til samme person.", ws)
+    return ws
+
+
+def _advar_om_ubundet_fald(rolle: str) -> None:
+    """Sig ÉN gang at læsningen kørte uden bundet bruger.
+
+    Tilstanden er lovlig for ejeren og farlig for alle andre, og inde i
+    processen kan de to ikke skelnes. Så længe det er sådan, er en linje i
+    loggen det eneste der kan gøre tilstanden synlig — uden den sker faldet
+    tavst, og tavshed er præcis hvad der lod to indbakker opstå.
+    """
+    if _HAR_ADVARET[0]:
+        return
+    _HAR_ADVARET[0] = True
+    logger.warning(
+        "inbox_state: laeser indbakken UDEN bundet bruger-id (rolle=%r) og "
+        "falder tilbage paa ejeren. Lovligt for Bjoern, hvis desk-request "
+        "ikke binder noget; en TABT ContextVar i en anden brugers session ser "
+        "identisk ud herinde. Lukkes foerst naar ejeren bindes eksplicit.",
+        rolle)
+
+
+def laese_bruger() -> str:
+    """HVIS indbakke skal læses? Tom streng når det ikke kan afgøres.
+
+    ## Hullet dette lukker
+
+    Målt 4/10-2026. De tre LÆSE-steder — prompt-sektionen, værktøjerne og
+    ruten — faldt tilbage på `current_workspace_name()` når `current_user_id()`
+    var tom:
+
+        uid or current_workspace_name()
+
+    Og `_DEFAULT_STATE.workspace_name` er **"bjorn"**. Så i en anden
+    husstandsbrugers session, hvis ContextVar'en var tabt — og den fælde er
+    målt to gange i dette hus (`tool_scope_ctxvar_lost`,
+    `contextvar_async_generator_gap`) — ville `_bruger_id()` svare «bjorn», og
+    **Bjørns indbakke stod i den anden brugers prompt.**
+
+    Skrive-vejen gjorde det rigtigt hele tiden
+    (`_autentificeret_bruger_matcher` kræver `role == "owner"`). Læse- og
+    skrive-vejen var altså uenige om samme spørgsmål, og uenigheden lækkede i
+    den farlige retning. Det er tredje gang i dette spor at to definitioner af
+    samme regel driver fra hinanden — og den dyreste, for de andres workspaces
+    er krypterede netop for at det ikke kan ske.
+
+    ## Hvorfor faldet ikke bare blev FJERNET
+
+    Min første rettelse krævede `current_role() == "owner"` for at falde
+    tilbage. Den var fail-closed og den ville have slukket Bjørns egen
+    indbakke, hver tur. Målt på CT105 4/10:
+
+      * `users` har to rækker, `lotte` og `rune`, begge `member`. Der er
+        **ingen owner-række** — Bjørn er den implicitte ejer.
+      * Hans desk-request bærer derfor intet bruger-header, så middlewaren
+        tager `not user_id and not project_root`-hurtigvejen og binder
+        **ingenting**.
+      * Standard-konteksten er `('bjorn', '', '')`.
+
+    Bjørns ægte tilstand er altså BYTE-IDENTISK med en tabt ContextVar. Inde i
+    processen findes der intet felt der skiller dem. En rolle-gate her ville
+    ikke lukke lækagen; den ville kun flytte skaden fra «en anden ser hans
+    indbakke» til «han har ingen». Se `docs/` og spørgsmålet til ham: hullet
+    lukkes først når ejeren BINDES eksplicit, og det er en ændring i
+    auth-middlewaren, ikke her.
+
+    ## Hvad faldet så peger på
+
+    `owner_user_id()`, ikke `current_workspace_name()`. Det er en rigtig
+    identitet frem for et mappenavn, og forskellen var ikke kosmetisk — målt
+    samme dag stod der **to indbakker til samme person**:
+
+        1246415163603816499 | 70 raekker | 18 wakeup done, 11 drop, 4 job drop
+        bjorn               | 36 raekker | 35 decision aaben, 0 lukket
+
+    De 70 er dem Jarvis faktisk arbejder i; de 36 er dem workspace-faldet
+    skrev, og ingen af dem er nogensinde blevet lukket. De samme beslutninger
+    stod under BEGGE id'er. Dobbelt-sandhed, opfundet af en fallback — og
+    præcis det `Source of Truth` forbyder.
+
+    `current_role()`, ikke `effective_role()`: den sidste kalder `touch(sid)`
+    og fornyer override-vinduet. En læsning må ikke forlænge en TOTP-elevering.
+    """
+    try:
+        from core.identity.workspace_context import (
+            current_role,
+            current_user_id,
+            current_workspace_name,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke laese bruger-konteksten: %s", exc)
+        return ""
+    uid = str(current_user_id() or "").strip()
+    if uid:
+        return uid
+    rolle = str(current_role() or "").strip().lower()
+    if rolle and rolle != "owner":
+        # En BUNDET ikke-ejer. Her er der positivt bevis for at det ikke er
+        # ejeren, og saa falder vi ikke tilbage. Det er den ene halvdel af
+        # laekagen der KAN lukkes inde i processen.
+        return ""
+    if str(current_workspace_name() or "").strip() != _ejer_workspace():
+        # Et ANDET workspace uden rolle: samme slutning. Og tomt workspace er
+        # heller ikke ejerens — en helt ubundet kalder (et script, en daemon,
+        # en test der nulstiller alt) skal faa den typede «ingen bruger»-fejl
+        # frem for husets indbakke. Standardtilstanden er «bjorn», ikke tom,
+        # saa Bjoerns egen vej rammes ikke af det.
+        return ""
+    _advar_om_ubundet_fald(rolle)
+    return _ejer_id()
+
+
 def verificeret_jarvis_run(oprettende_run_id: str, bruger_id: str) -> bool:
     """Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger?
 
@@ -466,7 +619,7 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
 
 
 __all__ = [
-    "KILDETYPE_FLAG", "flag_fra_bruger",
+    "KILDETYPE_FLAG", "flag_fra_bruger", "laese_bruger",
     "EJER_BRUGER", "EJER_HUSET", "EJER_JARVIS", "EJER_UKENDT", "STATUS_AABEN",
     "IKKE_GATENDE_KILDETYPER", "done", "drop", "registrer_kilde",
     "verificeret_jarvis_run",

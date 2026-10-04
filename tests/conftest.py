@@ -1598,3 +1598,27 @@ def _tomt_godkendelses_lager():
     except Exception:
         pass   # lageret findes maaske ikke i en minimal testkontekst
     yield
+
+
+@pytest.fixture
+def ejeren_er_bjorn(monkeypatch):
+    """Lås ejer-identiteten til `"bjorn"` under indbakke-testene.
+
+    Uden den læser `owner_resolver.owner_user_id()` den RIGTIGE bruger-tabel:
+    på CT105 svarer den `1246415163603816499`, på min maskine noget andet, og
+    i CI ingenting. En test der sammenligner læserens id med ejerens ville
+    altså måle hvilken maskine den kørte på — og `_min_post`s regel om
+    ejerløse poster ville aldrig blive målt nogen steder.
+
+    Patch på MODULET, ikke på `inbox_state._ejer_id`: den sidste ER reglen
+    under test. Og importen inde i `_ejer_id` henter attributten ved kaldet,
+    så en patch af modulet bliver set — havde den stået på modulniveau, bandt
+    `from … import …` en kopi, og patchen ville ramme ved siden af.
+    """
+    import core.identity.owner_resolver as _or
+    monkeypatch.setattr(_or, "owner_user_id", lambda: "bjorn")
+    # Advarslen er proces-global og "én gang per proces" — nulstil den, eller
+    # ser kun den FØRSTE test der rammer faldet den.
+    from core.services import inbox_state as _is
+    _is._HAR_ADVARET[0] = False
+    return "bjorn"

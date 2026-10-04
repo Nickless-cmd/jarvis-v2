@@ -19,7 +19,7 @@ ANDEN = "en-anden-bruger"
 
 
 @pytest.fixture
-def inbox_db(monkeypatch, tmp_path):
+def inbox_db(monkeypatch, tmp_path, ejeren_er_bjorn):
     sti = tmp_path / "gate.db"
 
     @contextmanager

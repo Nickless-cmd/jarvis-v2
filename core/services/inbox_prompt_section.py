@@ -94,12 +94,13 @@ def _bruger_id() -> str:
     ægte, levende tilstand. `registrer_kilde` afgør alligevel selv om ejerskabet
     KAN bevises — her vælges kun hvis indbakke der skal læses.
     """
+    # ÉN definition, i `inbox_state`. Min foerste udgave her faldt tilbage paa
+    # `current_workspace_name()` uden at kraeve owner-rollen — og standarden er
+    # «bjorn». I en anden husstandsbrugers session med en TABT ContextVar stod
+    # Bjoerns indbakke i deres prompt. Se `inbox_state.laese_bruger`.
     try:
-        from core.identity.workspace_context import (
-            current_user_id, current_workspace_name,
-        )
-        return (str(current_user_id() or "").strip()
-                or str(current_workspace_name() or "").strip())
+        from core.services.inbox_state import laese_bruger
+        return laese_bruger()
     except Exception as exc:  # noqa: BLE001
         logger.warning("inbox_prompt_section: kunne ikke laese brugeren: %s", exc)
         return ""

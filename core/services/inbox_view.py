@@ -408,16 +408,46 @@ def _indenfor_workspace(sti: str, bruger_id: str) -> bool:
     return os.path.normpath(s).startswith(f"/home/bs/.jarvis-v2/workspaces/{navn}")
 
 
+def _ejer_id() -> str:
+    """Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her."""
+    try:
+        from core.services.inbox_state import _ejer_id as _id
+        return _id()
+    except Exception as exc:  # noqa: BLE001
+        # Kan ejeren ikke oploeses, viser vi INGEN ejerloese poster. Det er
+        # den sikre retning: husets aktivitet maa hellere mangle i hans
+        # indbakke end staa i en andens.
+        logger.warning("inbox_view: kunne ikke oploese ejeren: %s", exc)
+        return ""
+
+
 def _min_post(r: dict[str, Any], bruger_id: str) -> bool:
     """Er denne rå kilde-post min?
 
-    En post UDEN ejer slipper igennem — men den får `[ukendt]` og kan aldrig
-    gate. En post med en ANDEN ejer slippes aldrig. Den asymmetri er valgt:
-    `list_wakeups()` er global og har ejerløse poster, og skjulte vi dem,
-    forsvandt reel tilstand fra fladen; men en fremmed ejer er et databrud.
+    En post med en ANDEN ejer slippes aldrig — en fremmed ejer er et databrud.
+
+    En post UDEN ejer slipper kun igennem til **ejeren**. Det er en rettelse,
+    målt 4/10-2026: min egen isolations-test gav otte rækker i
+    `en-anden-bruger`s visning —
+
+        overnight-temp-monitor, overnight-temp-watch, proc, watch-clock,
+        dealwork-worker, grid-bot, superteam-scanner, toku-poller
+
+    — alle ægte baggrundsjob fra denne maskine. `not uid` betød «hører til
+    ALLE», og ejerløs er ikke undtagelsen her, det er normen: `visible_runs`
+    har tomt `user_id` i alle 1037 rækker, `costs` i alle 16.695. Så
+    asymmetrien var ikke «ejerløse poster får [ukendt]» — den var «husets
+    samlede aktivitet står i hver brugers indbakke».
+
+    Begrundelsen for faldet holder stadig, bare ikke for alle: `list_wakeups()`
+    ER global, og skjulte vi de ejerløse for ejeren, forsvandt reel tilstand
+    fra hans flade. Derfor går de til ham og kun ham. `_indenfor_workspace`
+    dækkede kun STIERNE; beskrivelserne stod der frit.
     """
     uid = str(r.get("user_id") or r.get("bruger_id") or "").strip()
-    return not uid or uid == bruger_id
+    if uid:
+        return uid == bruger_id
+    return bruger_id == _ejer_id()
 
 
 def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:

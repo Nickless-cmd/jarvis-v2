@@ -23,7 +23,7 @@ NAVNE = ("inbox", "inbox_done", "inbox_drop")
 
 
 @pytest.fixture
-def inbox_db(monkeypatch, tmp_path):
+def inbox_db(monkeypatch, tmp_path, ejeren_er_bjorn):
     sti = tmp_path / "t.db"
 
     @contextmanager

@@ -9,9 +9,19 @@ sektion ville prompten have fået ~180 linjer i hver tur.
 """
 from __future__ import annotations
 
+import pytest
+
 from unittest.mock import patch
 
 from core.services import inbox_prompt_section as ips
+
+@pytest.fixture(autouse=True)
+def _ejeren(ejeren_er_bjorn):
+    """Hele filen laeser som BJORN, og BJORN skal vaere ejeren — ellers maales
+    `_min_post`s regel om ejerloese poster mod maskinens egen bruger-tabel."""
+    return ejeren_er_bjorn
+
+
 
 BRUGER = "bjorn"
 

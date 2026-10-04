@@ -109,14 +109,13 @@ def _bruger() -> str:
     bruger, var hele bruger-afgrænsningen et flag kalderen styrer — præcis den
     fejlform `registrer_kilde` er bygget imod.
     """
+    # ÉN definition, i `inbox_state.laese_bruger`. Min foerste udgave her
+    # faldt tilbage paa workspacet UDEN at kraeve owner-rollen, og standarden
+    # er «bjorn» — saa en tabt ContextVar i en anden brugers session gav
+    # adgang til Bjoerns indbakke.
     try:
-        from core.identity.workspace_context import current_user_id, current_workspace_name
-        uid = str(current_user_id() or "").strip()
-        # Ejerens vej: et token uden bruger-id, hvor workspacet ER brugeren.
-        # Samme asymmetri som i `inbox_state._autentificeret_bruger_matcher`,
-        # og den er noedvendig — 882 af 4.462 beskeder paa to doegn bar tomt
-        # bruger-id, saa en owner-session uden id er en aegte tilstand.
-        return uid or str(current_workspace_name() or "").strip()
+        from core.services.inbox_state import laese_bruger
+        return laese_bruger()
     except Exception as exc:  # noqa: BLE001
         logger.warning("inbox_tools: kunne ikke laese bruger-konteksten: %s", exc)
         return ""

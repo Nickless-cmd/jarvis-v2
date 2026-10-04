@@ -27,6 +27,13 @@ DAG = 86400.0
 _KILDE = pathlib.Path("core/services/inbox_view.py")
 
 
+@pytest.fixture(autouse=True)
+def _ejeren(ejeren_er_bjorn):
+    """Hele filen laeser som BJORN, og BJORN skal vaere ejeren — ellers maales
+    `_min_post`s regel om ejerloese poster mod maskinens egen bruger-tabel."""
+    return ejeren_er_bjorn
+
+
 def _iso(ts: float) -> str:
     from datetime import UTC, datetime
     return datetime.fromtimestamp(ts, UTC).isoformat()
@@ -823,3 +830,49 @@ def test_et_ULAESELIGT_backlog_tal_bliver_0_og_logges(monkeypatch, caplog):
         assert iv._aegte_backlog_tal() == 0
     assert any("backloggen" in r.message for r in caplog.records), \
         "en ulaeselig backlog forsvandt i tavshed"
+
+
+# ── Ejerløse kilde-rækker: husets aktivitet er IKKE alles ──────────────────
+
+def test_en_EJERLOES_raekke_naar_kun_ejeren():
+    """Målt 4/10-2026 af min egen isolations-test, som fejlede på det:
+    `en-anden-bruger`s visning bar otte ægte baggrundsjob fra maskinen —
+    overnight-temp-monitor, grid-bot, toku-poller og fem mere.
+
+    `not uid` betød «hører til ALLE», og ejerløs er normen her, ikke
+    undtagelsen: `visible_runs` har tomt `user_id` i alle 1037 rækker.
+    `_indenfor_workspace` dækkede kun STIERNE — beskrivelserne stod frit.
+    """
+    ejerloest = {"id": "job-x", "navn": "grid-bot", "beskrivelse": "husets eget",
+                 "status": "running", "pid": 4242}
+    som_ejer = byg_indbakke(BJORN, kilder=_kilder(jobs=[ejerloest]), nu_ts=TID)
+    som_anden = byg_indbakke(ANDEN, kilder=_kilder(jobs=[ejerloest]), nu_ts=TID)
+
+    def _ider(v):
+        return [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+
+    assert "job-x" in _ider(som_ejer), "ejeren mistede husets egen tilstand"
+    assert _ider(som_anden) == [], (
+        f"en anden brugers visning bar husets rae kker: {_ider(som_anden)}")
+
+
+def test_en_raekke_med_EGEN_ejer_naar_stadig_sin_ejer():
+    """Modprøven: reglen må ikke være blevet «kun ejeren ser noget»."""
+    hendes = {"id": "job-h", "navn": "hendes", "beskrivelse": "hendes eget",
+              "status": "running", "pid": 7, "user_id": ANDEN}
+    v = byg_indbakke(ANDEN, kilder=_kilder(jobs=[hendes]), nu_ts=TID)
+    assert "job-h" in [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+    v2 = byg_indbakke(BJORN, kilder=_kilder(jobs=[hendes]), nu_ts=TID)
+    assert [p["id"] for s in v2.values() if isinstance(s, list) for p in s] == [], (
+        "en fremmed ejer slap igennem til ejeren")
+
+
+def test_kan_ejeren_ikke_oploeses_vises_INGEN_ejerloese(monkeypatch):
+    """Den sikre retning: husets aktivitet må hellere mangle i hans indbakke
+    end stå i en andens."""
+    import core.services.inbox_view as iv
+    monkeypatch.setattr(iv, "_ejer_id", lambda: "")
+    ejerloest = {"id": "job-x", "navn": "grid-bot", "beskrivelse": "x",
+                 "status": "running", "pid": 1}
+    v = byg_indbakke(BJORN, kilder=_kilder(jobs=[ejerloest]), nu_ts=TID)
+    assert [p["id"] for s in v.values() if isinstance(s, list) for p in s] == []

@@ -23,7 +23,7 @@ ANDEN = "en-anden-bruger"
 
 
 @pytest.fixture
-def inbox_db(monkeypatch, tmp_path):
+def inbox_db(monkeypatch, tmp_path, ejeren_er_bjorn):
     """Rigtig sqlite i tmp_path, og skema-flaget nulstillet per test.
 
     `_skema_klar` er en MODUL-konstant. Uden nulstillingen ville test nr. 2 tro
@@ -751,3 +751,164 @@ def test_flaget_tager_IKKE_et_bruger_id_fra_kalderen(inbox_db):
     # Og den er KEYWORD-ONLY, saa en positionel forveksling ikke kan ske.
     assert all(p.kind is inspect.Parameter.KEYWORD_ONLY
                for p in sig.parameters.values())
+
+
+# ── Bruger-isolationen: læse- og skrive-vejen skal være ENIGE ───────────────
+
+def test_et_DELVIST_tab_af_konteksten_giver_INGEN_indbakke(inbox_db, caplog):
+    """Lækagen, målt 4/10-2026, og den halvdel der KAN lukkes herinde.
+
+    De tre LÆSE-steder faldt tilbage på `current_workspace_name()` når
+    `current_user_id()` var tom, og `_DEFAULT_STATE.workspace_name` er
+    «bjorn». Så en anden husstandsbrugers session med en tabt ContextVar —
+    målt to gange i dette hus — læste Bjørns indbakke.
+
+    De to delvise tab er de realistiske: en tråd-hop eller en generator-grænse
+    hvor ét felt overlever. Begge lukkes nu, fordi det overlevende felt er
+    POSITIVT bevis for at det ikke er ejeren.
+
+    Det TOTALE tab kan ikke lukkes her — Bjørns ægte tilstand er
+    `('bjorn', '', '')`, altså selve standardtilstanden, og den er
+    byte-identisk. Derfor måler denne test i stedet at faldet SIGER til, så
+    tilstanden kan ses i loggen i stedet for at ske tavst.
+    """
+    import logging
+    from core.identity import workspace_context as wc
+    from core.services.inbox_prompt_section import _bruger_id
+    from core.tools.inbox_tools import _bruger
+
+    # Rollen overlevede, workspacet gjorde ikke.
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="member")
+    try:
+        assert inbox_state.laese_bruger() == ""
+        assert _bruger_id() == ""
+        assert _bruger() == ""
+    finally:
+        wc.reset_context(tok)
+
+    # Workspacet overlevede, rollen gjorde ikke.
+    tok = wc.set_context(workspace_name="lotte", user_id="", role="")
+    try:
+        assert inbox_state.laese_bruger() == ""
+    finally:
+        wc.reset_context(tok)
+
+    # Helt ubundet: ingen af felterne overlevede. Her svarer vi EJEREN — og
+    # siger det, én gang, med hele forbeholdet i linjen.
+    inbox_state._HAR_ADVARET[0] = False
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        with caplog.at_level(logging.WARNING, logger="core.services.inbox_state"):
+            assert inbox_state.laese_bruger() == BJORN
+        linjer = [r.message for r in caplog.records if "UDEN bundet" in r.message]
+        assert len(linjer) == 1, f"faldet advarede {len(linjer)} gange"
+        assert "TABT ContextVar" in linjer[0], (
+            "advarslen naevner ikke hvad tilstanden ogsaa kan vaere")
+    finally:
+        wc.reset_context(tok)
+
+    # Og skrive-vejen er stadig strengere end laese-vejen — den slipper IKKE
+    # en ubundet kalder igennem, og det er med vilje: huset maa ikke gate.
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        assert inbox_state._autentificeret_bruger_matcher(BJORN) is False
+    finally:
+        wc.reset_context(tok)
+
+
+def test_faldet_peger_paa_ejerens_ID_ikke_paa_workspace_navnet(inbox_db, monkeypatch):
+    """Workspace-faldet opfandt en ANDEN identitet til samme person.
+
+    Målt på CT105 4/10-2026 — to indbakker, samme menneske:
+
+        1246415163603816499 | 70 raekker | 18 wakeup done, 11 drop, 4 job drop
+        bjorn               | 36 raekker | 35 decision aaben, 0 lukket
+
+    De 70 er dem Jarvis faktisk arbejdede i. De 36 skrev workspace-faldet, og
+    ingen af dem blev nogensinde lukket. De samme beslutninger stod under
+    BEGGE id'er. Dobbelt sandhed, opfundet af en fallback.
+    """
+    import core.identity.owner_resolver as _or
+    monkeypatch.setattr(_or, "owner_user_id", lambda: "1246415163603816499")
+    from core.identity import workspace_context as wc
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        assert inbox_state.laese_bruger() == "1246415163603816499", (
+            "faldet gav workspace-navnet igen — saa vokser den anden indbakke")
+    finally:
+        wc.reset_context(tok)
+
+
+def test_uden_oploeselig_ejer_falder_vi_mod_at_BEVARE_indbakken(inbox_db, monkeypatch, caplog):
+    """Kan ejeren ikke opløses, er en tom indbakke hver tur det værre udfald.
+
+    Derfor er workspace-navnet stadig sidste udvej — men den siger til, for
+    det er netop den adfærd der skabte den anden indbakke.
+    """
+    import logging
+    import core.identity.owner_resolver as _or
+    monkeypatch.setattr(_or, "owner_user_id", lambda: "")
+    from core.identity import workspace_context as wc
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        with caplog.at_level(logging.WARNING, logger="core.services.inbox_state"):
+            assert inbox_state.laese_bruger() == "bjorn"
+        assert any("ingen ejer-identitet" in r.message for r in caplog.records), (
+            "sidste udvej blev taget TAVST")
+    finally:
+        wc.reset_context(tok)
+
+
+def test_ejerens_AEGTE_ubundne_vej_virker_stadig(inbox_db):
+    """Modprøven, og den er nødvendig: 882 af 4.462 beskeder på to døgn bar
+    tomt bruger-id, så en owner-session uden id er en ÆGTE tilstand. Lukkede
+    vi den, kunne Bjørn ikke se sin egen indbakke."""
+    from core.identity import workspace_context as wc
+    from core.services.inbox_prompt_section import _bruger_id
+    from core.tools.inbox_tools import _bruger
+
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="owner")
+    try:
+        assert inbox_state.laese_bruger() == "bjorn"
+        assert _bruger_id() == "bjorn"
+        assert _bruger() == "bjorn"
+        assert inbox_state._autentificeret_bruger_matcher("bjorn") is True
+    finally:
+        wc.reset_context(tok)
+
+
+def test_en_ANDEN_brugers_token_laeser_sin_EGEN_indbakke(inbox_db):
+    """Og aldrig Bjørns. `user_id` vinder altid over workspacet."""
+    from core.identity import workspace_context as wc
+
+    inbox_state.flag_fra_bruger(bruger_id=BJORN, titel="Bjoerns egen")
+    tok = wc.set_context(workspace_name="bjorn", user_id=ANDEN, role="member")
+    try:
+        assert inbox_state.laese_bruger() == ANDEN
+        from core.services.inbox_view import byg_indbakke
+        v = byg_indbakke(inbox_state.laese_bruger())
+        alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+        assert alle == [], f"en anden brugers session saa noget: {alle}"
+    finally:
+        wc.reset_context(tok)
+
+
+def test_de_FIRE_steder_bruger_SAMME_definition():
+    """Kilde-vagt. Tre af fire havde deres egen kopi, og kopierne drev fra
+    hinanden — tredje gang i dette spor. AST, ikke grep: docstringene nævner
+    `current_workspace_name` med vilje."""
+    import ast
+    import pathlib
+
+    for sti in ("core/services/inbox_prompt_section.py",
+                "core/tools/inbox_tools.py",
+                "apps/api/jarvis_api/routes/chat_inbox.py"):
+        træ = ast.parse(pathlib.Path(sti).read_text())
+        navne = {n.name for x in ast.walk(træ)
+                 if isinstance(x, ast.ImportFrom) for n in x.names}
+        kaldt = {x.func.id for x in ast.walk(træ)
+                 if isinstance(x, ast.Call) and isinstance(x.func, ast.Name)}
+        assert "current_workspace_name" not in navne, (
+            f"{sti} importerer workspacet selv — brug inbox_state.laese_bruger")
+        assert "laese_bruger" in navne and "laese_bruger" in kaldt, (
+            f"{sti} bruger ikke den faelles definition")

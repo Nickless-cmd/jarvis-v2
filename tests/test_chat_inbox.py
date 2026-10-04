@@ -17,7 +17,7 @@ BJORN = "bjorn"
 
 
 @pytest.fixture
-def klient(monkeypatch, tmp_path):
+def klient(monkeypatch, tmp_path, ejeren_er_bjorn):
     from fastapi.testclient import TestClient
 
     from apps.api.jarvis_api.routes.chat_inbox import router

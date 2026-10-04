@@ -61,16 +61,12 @@ def flag_i_indbakken(req: InboxFlagRequest) -> dict[str, object]:
     if not titel:
         raise HTTPException(status_code=400, detail="titel kraeves")
 
-    from core.identity.workspace_context import (
-        current_user_id,
-        current_workspace_name,
-    )
-    # Samme asymmetri som resten af indbakken: et token uden bruger-id er
-    # ejerens egen, ubundne vej, og 882 af 4.462 beskeder paa to doegn bar
-    # praecis den form. Falder vi tilbage til workspacet, rammer posten den
-    # indbakke visningen ogsaa laeser.
-    bruger = (str(current_user_id() or "").strip()
-              or str(current_workspace_name() or "").strip())
+    # ÉN definition, i `inbox_state.laese_bruger`: tokenets bruger-id, eller
+    # workspacet KUN naar rollen eksplicit er `owner`. Uden rolle-kravet ville
+    # en tabt ContextVar ramme standard-workspacet «bjorn», og saa kunne en
+    # anden brugers kald oprette en post i HANS indbakke.
+    from core.services.inbox_state import laese_bruger
+    bruger = laese_bruger()
     if not bruger:
         raise HTTPException(status_code=401, detail="ingen autentificeret bruger")
 

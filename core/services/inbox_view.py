@@ -58,6 +58,11 @@ EJER_MAERKE: Final[dict[str, str]] = {
     db_inbox.EJER_JARVIS: "[dig]",
     db_inbox.EJER_HUSET: "[huset]",
     db_inbox.EJER_UKENDT: "[ukendt]",
+    # `[bjørn]` (4/10-2026): et menneske har flagget den. Eget maerke, fordi de
+    # to betyder noget forskelligt paa linjen — `[dig]` er noget Jarvis selv
+    # har lovet, `[bjørn]` er noget nogen har bedt om. Og kun den sidste kan
+    # baere et `bloker`.
+    db_inbox.EJER_BRUGER: "[bjørn]",
 }
 
 #: Linjen er ÉN linje. Spec'ens egen test: `len(linje) < 200`. Loftet findes
@@ -334,6 +339,7 @@ def _post(
     forfalden_dage: int | None = None,
     alder_dage: int | None = None,
     tid_tekst: str = "",
+    bloker: bool = False,
 ) -> dict[str, Any]:
     """Byg én post med de seks felter — og ÉN linje, uden payload.
 
@@ -366,7 +372,11 @@ def _post(
         "ejer_maerke": maerke,
         "forfalden_dage": forfalden_dage,
         "alder_dage": alder_dage,
-        "kraever_handling": ejer == db_inbox.EJER_JARVIS,
+        # Bruger-poster gater kun naar `bloker` er sat. Uden `bloker`-leddet
+        # ville visningen sige «kraever handling: nej» om en post gaten
+        # faktisk naegter paa — to svar om samme post.
+        "kraever_handling": (ejer == db_inbox.EJER_JARVIS
+                             or (ejer == db_inbox.EJER_BRUGER and bloker)),
         "dubletter": 1,
         "kilde_ider": [post_id],
         "linje": linje,
@@ -581,6 +591,7 @@ def byg_indbakke(
             har_artefakt=bool(sti) and vis_sti,
             alder_dage=_alder_dage(str(p.get("created_at") or ""), nu),
             forfalden_dage=_alder_dage(str(p.get("created_at") or ""), nu),
+            bloker=bool(p.get("bloker")),
             nu_ts=nu,
         )
         if post["id"] == turens_wake:

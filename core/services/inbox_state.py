@@ -53,6 +53,7 @@ from typing import Any, Final
 
 from core.runtime import db_inbox
 from core.runtime.db_inbox import (
+    EJER_BRUGER,
     EJER_HUSET,
     EJER_JARVIS,
     EJER_UKENDT,
@@ -206,6 +207,87 @@ def registrer_kilde(
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,
             "verificeret_ejer": ejer, "kraever_handling": kraever_handling})
     return r
+
+
+# ── Bjørns egen vej ind (4/10-2026) ─────────────────────────────────────────
+
+#: Kildetypen for noget et MENNESKE har flagget. Egen type, ikke `job` eller
+#: `daemon`, fordi den har en anden proveniens end alle de andre: den er
+#: oprettet af en autentificeret handling, ikke udledt af en kilde.
+KILDETYPE_FLAG: Final[str] = "bug"
+
+
+def flag_fra_bruger(
+    *,
+    bruger_id: str,
+    titel: str,
+    beskrivelse: str = "",
+    bloker: bool = False,
+) -> dict[str, Any]:
+    """Et menneske flagger noget. Den FJERDE skriver.
+
+    ## Hullet dette lukker
+
+    Indbakken havde tre skrivere: Jarvis gennem verificeret proveniens, huset
+    gennem `paastaaet_ejer="huset"`, og `ukendt` når intet kunne bevises. Der
+    fandtes **ingen vej hvor en menneskelig handling oprettede en post** —
+    `registrer_kilde` blev kun kaldt af kilder.
+
+    `side_tasks` var næsten det, men med en anden sandhed: en JSON-fil uden
+    bruger-scoping, uden proveniens, uden terminale tilstande og uden
+    retention. Og dens eneste skriver var et VÆRKTØJ, altså kun Jarvis — som
+    oven i købet har det skjult fra sit katalog (`tool_hunt_nudge` siger det),
+    så det kræver `load_more_tools` og dermed 92 % → 26 % cache-hit. Målt: 8
+    poster i alt, alle terminale. Fladen fandtes og var praktisk uopnåelig.
+
+    ## `bloker` er et VALG, ikke en bivirkning
+
+    Bjørns afgørelse 4/10: «synlig men gater ikke som standard».
+
+    Normal gating kræver `verificeret_ejer == "jarvis"` — det du selv har
+    lovet kommer tilbage til dig. En post Bjørn flagger har ham som ejer og
+    ville derfor aldrig gate under den regel. `bloker` er den eksplicitte
+    undtagelse: huset kan informere, Jarvis kan binde sig selv, og Bjørn kan
+    **kræve** — men kun når han siger det.
+
+    Faren er konkret og målt i dag: en post der gater kan spærre for netop de
+    værktøjer der skulle rette den. Det var dead-locken i
+    `mark_wakeup_consumed`. Derfor er `bloker` falsk som standard, og
+    `inbox_done`/`inbox_drop` virker uændret på en blokerende post — så
+    pressionen er reel uden at kunne låse ham fast.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    titel = str(titel or "").strip()
+    if not bruger_id:
+        return {"status": "fejl", "error": "bruger_id kraeves"}
+    if not titel:
+        # En post uden titel kan ikke navngives i visningen, og
+        # skrive-kontraktens betingelse 2 siger at en post der ikke kan
+        # navngives ikke må gate. Så afvis frem for at oprette en stum post.
+        return {"status": "fejl", "error": "titel kraeves"}
+
+    from uuid import uuid4
+    kilde_id = f"bug-{uuid4().hex[:10]}"
+    tekst = f"{titel} — {beskrivelse}".strip(" —") if beskrivelse else titel
+    r = db_inbox.opret_eller_hent(
+        bruger_id=bruger_id,
+        kildetype=KILDETYPE_FLAG,
+        kilde_id=kilde_id,
+        # Ejeren ER brugeren. Det er ikke en påstand: ruten kalder kun med den
+        # autentificerede principal, og `bruger_id` kommer derfra.
+        verificeret_ejer=EJER_BRUGER,
+        kraever_handling=bool(bloker),
+        beskrivelse=tekst,
+        bloker=bool(bloker),
+    )
+    if r.get("status") != "ok":
+        logger.warning("inbox_state: kunne IKKE flagge %r for %s: %s",
+                       titel[:60], bruger_id, r.get("error"))
+        return r
+    _spor("inbox.flagget_af_bruger", {
+        "bruger_id": bruger_id, "kilde_id": kilde_id, "bloker": bool(bloker)})
+    return {"status": "ok", "id": kilde_id, "bloker": bool(bloker),
+            "post": r.get("post")}
 
 
 # ── Opgave 3: bogføringen ───────────────────────────────────────────────────
@@ -384,7 +466,8 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
 
 
 __all__ = [
-    "EJER_HUSET", "EJER_JARVIS", "EJER_UKENDT", "STATUS_AABEN",
+    "KILDETYPE_FLAG", "flag_fra_bruger",
+    "EJER_BRUGER", "EJER_HUSET", "EJER_JARVIS", "EJER_UKENDT", "STATUS_AABEN",
     "IKKE_GATENDE_KILDETYPER", "done", "drop", "registrer_kilde",
     "verificeret_jarvis_run",
 ]

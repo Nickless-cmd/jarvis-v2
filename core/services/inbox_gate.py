@@ -139,9 +139,25 @@ def _gatende_poster(bruger_id: str) -> list[dict[str, Any]] | None:
         logger.warning("inbox_gate: kunne ikke laese poster for %r — "
                        "mutationen SLIPPER igennem: %s", bruger_id, exc)
         return None
-    kandidater = [p for p in poster
-                  if p.get("kraever_handling")
-                  and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS]
+    # To veje ind i gaten, og kun to.
+    #
+    # 1) Jarvis' EGET arbejde, verificeret ved oprettelsen. «Det du selv har
+    #    lovet kommer tilbage til dig.»
+    # 2) En post Bjørn har sat `bloker` på. Det er ikke en omgåelse af
+    #    skrive-kontrakten, det er dens anden halvdel: huset kan informere,
+    #    Jarvis kan binde sig selv, og principalen kan KRÆVE — men kun ved en
+    #    eksplicit handling, aldrig som standard (Bjørns valg 4/10).
+    #
+    # `ukendt` og `huset` kan stadig ALDRIG gate. Det er netop de to der ville
+    # kunne sætte flaget ved et uheld.
+    kandidater = [
+        p for p in poster
+        if p.get("kraever_handling") and (
+            str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS
+            or (bool(p.get("bloker"))
+                and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_BRUGER)
+        )
+    ]
     if not kandidater:
         return []
     # En PLANLAGT vækning venter ikke på nogen. Rækkens `kraever_handling` er

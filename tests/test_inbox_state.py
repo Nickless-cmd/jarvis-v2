@@ -649,3 +649,105 @@ def test_en_vaekning_der_ikke_FINDES_kan_STADIG_ikke_kvitteres(inbox_db, monkeyp
     assert "not found" in r["error"]
     assert db_inbox.hent(bruger_id=BJORN,
                          kilde_id="wake-forsvundet")["status"] == db_inbox.STATUS_AABEN
+
+
+# ── Bjørns egen vej ind (4/10-2026) ─────────────────────────────────────────
+
+def test_et_FLAG_fra_brugeren_gater_IKKE_som_standard(inbox_db):
+    """Bjørns afgørelse: «synlig men gater ikke som standard».
+
+    Faren ved det modsatte er målt samme dag: en post der gater kan spærre for
+    netop de værktøjer der skulle rette den. Det var dead-locken i
+    `mark_wakeup_consumed`, hvor `inbox_done` nægtede og vejen ud gik gennem
+    det værktøj gaten blokerede.
+    """
+    r = inbox_state.flag_fra_bruger(bruger_id=BJORN, titel="Desk hænger ved reconnect")
+    assert r["status"] == "ok"
+    assert r["bloker"] is False
+    p = db_inbox.hent(bruger_id=BJORN, kilde_id=r["id"])
+    assert p["verificeret_ejer"] == inbox_state.EJER_BRUGER
+    assert p["kraever_handling"] is False
+    assert p["bloker"] is False
+    assert p["beskrivelse"] == "Desk hænger ved reconnect"
+
+
+def test_et_flag_MED_bloker_gater(inbox_db):
+    """Den anden halvdel af skrive-kontrakten: huset kan informere, Jarvis kan
+    binde sig selv, og principalen kan KRÆVE — men kun ved en eksplicit
+    handling."""
+    from core.services.inbox_gate import evaluer_inbox_mutation
+
+    r = inbox_state.flag_fra_bruger(
+        bruger_id=BJORN, titel="Ret cutoff FØRST", beskrivelse="den haster",
+        bloker=True)
+    assert r["bloker"] is True
+    p = db_inbox.hent(bruger_id=BJORN, kilde_id=r["id"])
+    assert p["kraever_handling"] is True and p["bloker"] is True
+    # Og gaten skal faktisk tage den — ellers er flaget pynt.
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id=r["id"], tur="t1")
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id=r["id"], tur="t2")
+    v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")
+    assert v["blokeret"] is True
+    assert r["id"] in v["poster"]
+    assert "Ret cutoff FØRST" in v["varsel"], "naegtelsen navngiver ikke posten"
+
+
+def test_HUSET_kan_ikke_saette_bloker(inbox_db):
+    """Det er netop huset og `ukendt` der ville kunne sætte flaget ved et
+    uheld — en daemon der sender `bloker=True` ville kunne spærre Jarvis uden
+    at nogen bad om det. Gaten kræver `bloker` OG ejer == bruger."""
+    from core.services.inbox_gate import evaluer_inbox_mutation
+
+    r = db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="daemon", kilde_id="d-snyd",
+        verificeret_ejer=db_inbox.EJER_HUSET, kraever_handling=True, bloker=True)
+    assert r["status"] == "ok"
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id="d-snyd", tur="t1")
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id="d-snyd", tur="t2")
+    assert evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")["blokeret"] is False
+
+
+def test_UKENDT_ejer_kan_ikke_saette_bloker(inbox_db):
+    from core.services.inbox_gate import evaluer_inbox_mutation
+
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="job", kilde_id="u-snyd",
+        verificeret_ejer=db_inbox.EJER_UKENDT, kraever_handling=True, bloker=True)
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id="u-snyd", tur="t1")
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id="u-snyd", tur="t2")
+    assert evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")["blokeret"] is False
+
+
+def test_en_BLOKERENDE_post_kan_stadig_lukkes(inbox_db):
+    """Pressionen skal være reel uden at kunne låse ham fast. `inbox_done` og
+    `inbox_drop` virker uændret — og det er med vilje: alternativet er den
+    dead-lock jeg selv byggede i morges."""
+    from core.services.inbox_gate import evaluer_inbox_mutation
+
+    r = inbox_state.flag_fra_bruger(bruger_id=BJORN, titel="noget", bloker=True)
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id=r["id"], tur="t1")
+    db_inbox.noter_paamindelse(bruger_id=BJORN, kilde_id=r["id"], tur="t2")
+    assert evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")["blokeret"] is True
+    assert inbox_state.drop(BJORN, r["id"], "ikke en bug")["status"] == "ok"
+    assert evaluer_inbox_mutation(BJORN, "edit_file", tur="t4")["blokeret"] is False
+
+
+def test_et_flag_UDEN_titel_afvises(inbox_db):
+    """Skrive-kontraktens betingelse 2: en post der ikke kan navngives i
+    visningen må ikke gate. En post uden titel kan ikke navngives, så den
+    afvises frem for at blive en stum post."""
+    for t in ("", "   ", None):
+        r = inbox_state.flag_fra_bruger(bruger_id=BJORN, titel=t)
+        assert r["status"] == "fejl" and "titel" in r["error"]
+    assert db_inbox.liste(bruger_id=BJORN, kun_aabne=False) == []
+
+
+def test_flaget_tager_IKKE_et_bruger_id_fra_kalderen(inbox_db):
+    """Ruten sender den autentificerede principal. Et felt kalderen vælger er
+    en påstand — hele grunden til at `registrer_kilde` har den form den har."""
+    import inspect
+    sig = inspect.signature(inbox_state.flag_fra_bruger)
+    assert list(sig.parameters) == ["bruger_id", "titel", "beskrivelse", "bloker"]
+    # Og den er KEYWORD-ONLY, saa en positionel forveksling ikke kan ske.
+    assert all(p.kind is inspect.Parameter.KEYWORD_ONLY
+               for p in sig.parameters.values())

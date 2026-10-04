@@ -56,6 +56,11 @@ TERMINALE_STATUSSER: Final[frozenset[str]] = frozenset({
 EJER_JARVIS: Final[str] = "jarvis"
 EJER_HUSET: Final[str] = "huset"
 EJER_UKENDT: Final[str] = "ukendt"
+#: `bruger` (4/10-2026): et MENNESKE har flagget posten. Egen værdi, ikke
+#: `jarvis`, fordi de to har forskellig betydning i visningen og i gaten: en
+#: Jarvis-post er noget HAN har lovet, en bruger-post er noget nogen har bedt
+#: om. Og mærket skal kunne læses på linjen — `[dig]` mod `[bjørn]`.
+EJER_BRUGER: Final[str] = "bruger"
 
 _skema_klar = False
 _skema_laas = threading.Lock()
@@ -117,8 +122,20 @@ def _ensure_skema(conn: sqlite3.Connection) -> None:
 #: valg frem for NULL. Tom streng sorterer FØR enhver ISO-dato, så en `<`-
 #: sammenligning i SQL ville gøre hver post uden udløb til «udløbet» — derfor
 #: har hver forespørgsel om udløb også et `expires_at != ''`.
+#: `bloker` (4/10-2026, Opgave «bug-endpoint»): må DENNE post nægte en
+#: mutation, selv om ejeren ikke er `jarvis`?
+#:
+#: Normalt kræver gating `verificeret_ejer == "jarvis"` — det du selv har
+#: lovet kommer tilbage til dig. En post Bjørn flagger har HAM som ejer, så
+#: den ville aldrig kunne gate under den regel.
+#:
+#: Bjørns valg 4/10: «synlig men gater ikke som standard». Så feltet er 0 som
+#: default, og kun en eksplicit handling fra den autentificerede principal kan
+#: sætte det. Det er den stærkeste proveniens der findes: huset kan informere,
+#: Jarvis kan binde sig selv, og Bjørn kan kræve — men kun når han siger det.
 _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     ("expires_at", "TEXT NOT NULL DEFAULT ''"),
+    ("bloker", "INTEGER NOT NULL DEFAULT 0"),
 )
 
 
@@ -166,6 +183,7 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "afgjort_at": str(r["afgjort_at"] or ""),
         "afgjort_grund": str(r["afgjort_grund"] or ""),
         "expires_at": _felt(r, "expires_at"),
+        "bloker": _felt(r, "bloker") in ("1", "True", "true"),
     }
 
 
@@ -194,6 +212,7 @@ def opret_eller_hent(
     beskrivelse: str = "",
     output_sti: str = "",
     output_bytes: int | None = None,
+    bloker: bool = False,
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -215,13 +234,13 @@ def opret_eller_hent(
             INSERT OR IGNORE INTO inbox_items (
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
-                output_sti, output_bytes, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                output_sti, output_bytes, created_at, bloker
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
-             output_bytes, _nu()),
+             output_bytes, _nu(), 1 if bloker else 0),
         )
         r = conn.execute(
             "SELECT * FROM inbox_items WHERE bruger_id = ? AND kildetype = ? "

@@ -700,3 +700,36 @@ def test_den_AEGTE_adapter_leverer_ogsaa_de_AFGJORTE_raekker(monkeypatch, tmp_pa
     v = byg_indbakke(BJORN, nu_ts=TID)
     alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
     assert "job-lukket" not in alle
+
+
+# ── En PLANLAGT vækning venter ikke på nogen ───────────────────────────────
+
+def test_en_PLANLAGT_vaeknings_post_staar_i_PAA_VEJ():
+    """`pending` = planlagt, ikke ventende.
+
+    Målt 4/10-2026: rækken skrives ved BOOKINGEN med `kraever_handling=True`,
+    og sektion 1 lagde den derfor i VENTER PÅ DIG — hvor den også gatede — før
+    vækningen overhovedet havde fyret. Sektion 2's egen regel sagde det
+    modsatte; den sprang bare over, fordi rækken kom først.
+    """
+    k = _kilder(poster=[_post(id="wake-planlagt")],
+                vaekninger=[{"wakeup_id": "wake-planlagt", "user_id": BJORN,
+                             "status": "pending"}])
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=k)
+    assert [p["id"] for p in v["venter_paa_dig"]] == []
+    assert [p["id"] for p in v["paa_vej"]] == ["wake-planlagt"], \
+        "den durable post og sektion 2 maa ikke BEGGE tilfoeje den"
+
+
+def test_en_FYRET_vaeknings_post_staar_i_VENTER():
+    """Den anden halvdel: en vækning der ER fyret venter faktisk på ham.
+
+    Uden denne ville rettelsen kunne være «visningen viser den ikke længere» —
+    og det er ikke det samme som at den viser den det rigtige sted.
+    """
+    k = _kilder(poster=[_post(id="wake-fyret")],
+                vaekninger=[{"wakeup_id": "wake-fyret", "user_id": BJORN,
+                             "status": "fired"}])
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=k)
+    assert [p["id"] for p in v["venter_paa_dig"]] == ["wake-fyret"]
+    assert [p["id"] for p in v["paa_vej"]] == []

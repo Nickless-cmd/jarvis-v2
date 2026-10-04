@@ -499,3 +499,59 @@ def test_en_DOED_eventbus_stopper_ikke_gaten(inbox_db, monkeypatch):
     v = ig.evaluer_inbox_mutation(BJORN, "edit_file", tur="t1")
     assert v["blokeret"] is False
     assert v["varsel"] != "", "en doed bus slugte paamindelsen"
+
+
+# ── En PLANLAGT vækning venter ikke på nogen ───────────────────────────────
+
+def test_en_PLANLAGT_vaekning_gater_IKKE(inbox_db, monkeypatch):
+    """`pending` = planlagt, ikke ventende — også når påmindelserne er brugt op.
+
+    Målt 4/10-2026 i drift: gaten nægtede et `bash`-kald med min egen netop
+    bookede efterkontrol som grund (`wake-155d570154`, `paamindelser=1`,
+    tærskel 2). Rækkens `kraever_handling` sættes ved BOOKINGEN og opdateres
+    aldrig når vækningen fyrer — `meld_kilde_faerdig` har nul kaldere — så
+    posten gatede før vækningen overhovedet havde fyret.
+    """
+    import core.services.inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [
+        {"wakeup_id": "wake-planlagt", "user_id": BJORN, "status": "pending"}])
+    post = _egen_aaben_post(id="wake-planlagt")
+    _lever_paamindelse(post, "t1")
+    _lever_paamindelse(post, "t2")
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-planlagt")["paamindelser"] == 2
+    v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")
+    assert v["blokeret"] is False, v
+
+
+def test_en_FYRET_vaekning_gater_STADIG(inbox_db, monkeypatch):
+    """Den anden halvdel: en vækning der ER fyret venter faktisk på ham.
+
+    Uden denne ville rettelsen kunne være «gaten gater ikke længere» — og det
+    er ikke det samme som at den gater det rigtige.
+    """
+    import core.services.inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [
+        {"wakeup_id": "wake-fyret", "user_id": BJORN, "status": "fired"}])
+    post = _egen_aaben_post(id="wake-fyret")
+    _lever_paamindelse(post, "t1")
+    _lever_paamindelse(post, "t2")
+    v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")
+    assert v["blokeret"] is True, v
+    assert "wake-fyret" in v["poster"]
+
+
+def test_en_vaekning_uden_foraeldre_gater_som_foer(inbox_db, monkeypatch):
+    """Findes vækningen slet ikke i kilden, må posten IKKE blive usynlig.
+
+    Den er så en post man ikke kan afgøre — husets værste fejlform. Rækken
+    findes, så den skal både vises og kunne lukkes; derfor falder vi tilbage
+    til rækkens eget flag.
+    """
+    import core.services.inbox_view as iv
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [])
+    post = _egen_aaben_post(id="wake-uden-kilde")
+    _lever_paamindelse(post, "t1")
+    _lever_paamindelse(post, "t2")
+    v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")
+    assert v["blokeret"] is True, v
+    assert "wake-uden-kilde" in v["poster"]

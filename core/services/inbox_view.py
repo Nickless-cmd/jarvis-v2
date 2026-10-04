@@ -154,6 +154,42 @@ def _aegte_vaekninger(bruger_id: str) -> list[dict[str, Any]]:
     return ud
 
 
+def planlagte_vaekning_ids(
+    bruger_id: str, kilder: "Kilder | None" = None,
+) -> set[str]:
+    """Vækninger der er PLANLAGT (`pending`) — de venter ikke på nogen.
+
+    Delt af visningen og indbakke-gaten, så de to ikke kan blive uenige om
+    hvad «venter» betyder. Det er læren i dette spor: hver gang to led hver
+    for sig afgjorde hvad der «findes» eller «venter», drev de fra hinanden og
+    efterlod en post der blev vist men ikke kunne afgøres.
+
+    ## Hvorfor (målt 4/10-2026)
+
+    Den durable række skrives ved BOOKINGEN, og `kraever_handling` sættes
+    derfra: `ejer == jarvis and kildetype not in IKKE_GATENDE_KILDETYPER`.
+    `wakeup` står ikke på den liste — så hver vækning jeg bookede til mig selv
+    fik en post der stod i VENTER PÅ DIG og GATEDE, før den havde fyret. Intet
+    opdaterer rækken når vækningen fyrer (`meld_kilde_faerdig` har nul
+    kaldere), så flaget er et øjebliksbillede fra bookingen.
+
+    Målt i drift: gaten nægtede et `bash`-kald med min egen netop bookede
+    efterkontrol som grund (`wake-155d570154`, `paamindelser=1`, tærskel 2).
+
+    Uden `kilder` læses den ægte vækning-kilde — det er gaten, der ikke har en
+    injiceret flade. Med `kilder` bruges SAMME læsning som visningen selv, så
+    en test kan bytte kilden ud ét sted uden at kende klassen.
+    """
+    raekker = (kilder.vaekninger(bruger_id) if kilder is not None
+               else _aegte_vaekninger(bruger_id))
+    return {
+        str(r.get("wakeup_id") or "").strip()
+        for r in raekker
+        if str(r.get("status") or "") == "pending"
+        and str(r.get("wakeup_id") or "").strip()
+    }
+
+
 def _aegte_jobs(bruger_id: str) -> list[dict[str, Any]]:
     """De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne."""
     from core.services import background_jobs
@@ -453,6 +489,9 @@ def byg_indbakke(
     # ÉN laesning. Kilden kan vaere dyr, og to laesninger kunne give to
     # forskellige svar midt i en afgoerelse.
     alle_poster = list(k.poster(bruger_id))
+    # Vækningernes EGEN tilstand, slået op ÉN gang. En `pending` vækning er
+    # PLANLAGT, ikke ventende — se `planlagte_vaekning_ids`.
+    planlagte_vaek_ids = planlagte_vaekning_ids(bruger_id, k)
 
     vakte: list[dict[str, Any]] = []
     venter_paa_dig: list[dict[str, Any]] = []
@@ -513,7 +552,16 @@ def byg_indbakke(
         )
         if post["id"] == turens_wake:
             vakte.append(post)
-        venter_paa_dig.append(post)
+        # En vækning der stadig er PLANLAGT venter ikke på nogen. Dens række
+        # findes allerede ved bookingen, så uden denne gren stod hver vækning
+        # jeg booker til mig selv i VENTER PÅ DIG — og gatede — før den havde
+        # fyret. Sektion 2's egen regel siger det samme; den sprang bare over,
+        # fordi rækken kom først.
+        if (str(p.get("kildetype") or "") == "wakeup"
+                and str(p.get("kilde_id") or "") in planlagte_vaek_ids):
+            paa_vej.append(post)
+        else:
+            venter_paa_dig.append(post)
 
     # 2. Vækninger. `pending` → PÅ VEJ; `fired` uden kvittering → VENTER PÅ DIG.
     for r in k.vaekninger(bruger_id):
@@ -527,7 +575,7 @@ def byg_indbakke(
         wid = str(r.get("wakeup_id") or "").strip()
         if not wid or _er_afgjort(wid):
             continue                      # afgjort — uanset hvad kilden siger
-        if any(wid in p["kilde_ider"] for p in venter_paa_dig):
+        if any(wid in p["kilde_ider"] for p in venter_paa_dig + paa_vej):
             continue                      # den durable post bærer den allerede
         st = str(r.get("status") or "")
         if st not in ("pending", "fired"):

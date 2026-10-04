@@ -139,9 +139,30 @@ def _gatende_poster(bruger_id: str) -> list[dict[str, Any]] | None:
         logger.warning("inbox_gate: kunne ikke laese poster for %r — "
                        "mutationen SLIPPER igennem: %s", bruger_id, exc)
         return None
-    return [p for p in poster
-            if p.get("kraever_handling")
-            and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS]
+    kandidater = [p for p in poster
+                  if p.get("kraever_handling")
+                  and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS]
+    if not kandidater:
+        return []
+    # En PLANLAGT vækning venter ikke på nogen. Rækkens `kraever_handling` er
+    # et øjebliksbillede fra bookingen og opdateres ikke når vækningen fyrer,
+    # så uden dette led gater hver vækning jeg booker til mig selv — målt
+    # 4/10-2026, hvor gaten nægtede et `bash`-kald med min egen netop bookede
+    # efterkontrol som grund.
+    #
+    # Reglen HENTES fra visningen, ikke kopieret her: to definitioner af
+    # «venter» er præcis den drift der gav fire fejl i dette spor. Kan den ikke
+    # hentes, falder vi tilbage til den gamle adfærd — og det skal SES.
+    try:
+        from core.services.inbox_view import planlagte_vaekning_ids
+        planlagte = planlagte_vaekning_ids(bruger_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_gate: kunne ikke hente planlagte vaekninger — "
+                       "falder tilbage til raekkens eget flag: %s", exc)
+        planlagte = set()
+    return [p for p in kandidater
+            if not (str(p.get("kildetype") or "") == "wakeup"
+                    and str(p.get("kilde_id") or p.get("id") or "") in planlagte)]
 
 
 #: Husets ENE mærkning, importeret. Jeg skrev først min egen her, og det var

@@ -573,7 +573,16 @@ def byg_indbakke(
             "output_bytes": j.get("output_bytes"),
             "har_artefakt": bool(sti) and vis_sti, "nu_ts": nu,
         }
-        if st in ("kører", "running") and lever is False and sek >= _FORAELDRELOES_EFTER_S:
+        # Et tool-job har ingen pid: det er et KALD, ikke en proces — og
+        # `_tool_jobs`' egen kontrakt er «Uparret = kører stadig». `lever is
+        # None` betyder derfor to ting (usynlig proces vs. ingen proces), og
+        # uden denne gren lander hvert kørende kald i «VENTER PÅ DIG» med et
+        # epoch i id'et, hvor `drop` aldrig kan ramme det. Målt 4/10-2026:
+        # `venter_paa_dig: [('bash#1791092371','status_ukendt')]`, `i_gang: []`.
+        er_kald = str(j.get("kilde") or "") == "tool"
+        if st in ("kører", "running") and er_kald:
+            i_gang.append(_post(status="koerer", **faelles))
+        elif st in ("kører", "running") and lever is False and sek >= _FORAELDRELOES_EFTER_S:
             venter_paa_dig.append(_post(status="foraeldreloes", **faelles))
         elif st in ("kører", "running") and lever is None:
             venter_paa_dig.append(_post(status="status_ukendt", **faelles))

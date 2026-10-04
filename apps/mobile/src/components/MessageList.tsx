@@ -506,13 +506,10 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // der kom bagefter; det er selve beviset for at den er færdig.
   const sidste = rows[rows.length - 1]
   if (sidste?.kind === 'thinking') sidste.live = true
-  // Kun turens SIDSTE arbejdsrunde kan stadig være i gang — og kun den bærer
-  // shimmeren videre gennem hullet til næste runde (se `InlineToolGroup`).
-  const sidsteRunde = rows.reduce((idx, r, j) => (r.kind === 'tool-group' ? j : idx), -1)
-  if (sidsteRunde >= 0) {
-    const r = rows[sidsteRunde]
-    if (r?.kind === 'tool-group') r.sidsteRunde = true
-  }
+  // (Flaget `sidsteRunde` sættes IKKE her. Denne funktion bygger `live-tool`-
+  // rækker; `tool-group` opstår først i `groupToolRounds`. Lå det her, ramte
+  // det en rækketype der ikke findes i arrayet — og shimmeren var død i hele
+  // appen. Se det levende sted nedenfor, ved `nyeLive`.)
   const sidsteArbejde = rows.reduce((index, r, j) =>
     r.kind === 'msg' || r.kind === 'attachments' ? index : j, -1)
   const sidsteTekst = rows.reduce((index, r, j) => r.kind === 'msg' ? j : index, -1)
@@ -779,6 +776,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // Tekst-delta skelner ikke syntese fra slutsvar. Fold først ved bekræftet stop.
   const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
   const nyeLive = medTurHoveder(groupToolRounds([...flade, ...levende]), erAaben)
+  // Kun turens SIDSTE arbejdsrunde kan stadig være i gang — og kun den bærer
+  // shimmeren videre gennem hullet til næste runde (se `InlineToolGroup`).
+  //
+  // Flaget sættes HER, ikke i `buildStreamingRows`: den funktion bygger
+  // `live-tool`-rækker, og `tool-group` opstår først i `groupToolRounds`
+  // ovenfor. Sat der ramte det en rækketype der ikke findes i arrayet, så
+  // `sidste` var altid `undefined` og shimmeren kørte ALDRIG (målt 4/10-2026).
+  {
+    const sidsteRunde = nyeLive.reduce((idx, r, j) => (r.kind === 'tool-group' ? j : idx), -1)
+    if (sidsteRunde >= 0) {
+      const r = nyeLive[sidsteRunde]
+      if (r?.kind === 'tool-group') r.sidsteRunde = true
+    }
+  }
   // En ny delta ændrer som regel kun den sidste række. Genbrug de øvrige
   // referencer, så memoiserede rækker beholder deres tekst, ikoner og state.
   const gamleLive = useRef(new Map<string, Row>())

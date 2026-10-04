@@ -614,5 +614,5 @@ _Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist, forrige_forrige_kald=…)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L35) |
+| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist, forrige_forrige_kald=…)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L37) |
 

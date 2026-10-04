@@ -1212,7 +1212,18 @@ export function ChatScreen({
               topInset={topInset}
               messages={sessions.messages}
               blocks={visibleStreamBlocks(stream.state)}
-              working={stream.state.status === 'working' || serverBusy}
+              // Liveness-værnet (spejlet fra desk 3/10-2026, `8b054042f`):
+              // serverens «kører»-svar dækker også runnets EFTERSLÆB —
+              // `/active-runs` melder først færdig når `mark_done` er kørt til
+              // sidst i runnets `finally`. Er det run serveren rapporterer vores
+              // EGET (samme id som streamen kører under), er der intet fremmed
+              // at vente på, og linjen skal ikke holdes oppe af det. Er id'et
+              // tomt, falder vi tilbage til «vis» — som desk's `!currentRun?.run_id`.
+              working={
+                stream.state.status === 'working'
+                || (serverBusy && !(activeRunId && activeRunId === stream.state.activeRunId))
+              }
+              finalAnswerStarted={stream.state.finalAnswerStarted}
               arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
               arbejdslinjeTokens={brugteTokens}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje

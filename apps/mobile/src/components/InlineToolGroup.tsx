@@ -53,6 +53,23 @@ interface Props {
    * antallet af kald.
    */
   tanker?: TankeRaekke[]
+  /**
+   * Sand mens turen kører. Sammen med `sidste` og `svarBegyndt` bærer den
+   * shimmeren gennem hullet mellem to runder — se `visShimmer`.
+   */
+  streaming?: boolean
+  /**
+   * Er dette turens SIDSTE arbejdsrunde? Kun den kan stadig være i gang; alt
+   * før den er overhalet af noget der kom bagefter.
+   */
+  sidste?: boolean
+  /**
+   * Har serveren bekræftet at arbejdsfasen er slut (`final_answer_start`)?
+   *
+   * Udeladt = nej. Den er ikke «der er kommet tekst efter værktøjet» — se
+   * `visShimmer`.
+   */
+  svarBegyndt?: boolean
 }
 
 /**
@@ -87,7 +104,9 @@ export const SVAR_KLIP = 4000
  * - **Folden**: 200 ms med opacitet; indholdet i en ramme på højst 200 dp,
  *   der selv scroller.
  */
-export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aabenFraStart, tanker }: Props) {
+export const InlineToolGroup = memo(function InlineToolGroup({
+  items, etiket, aabenFraStart, tanker, streaming = false, sidste = false, svarBegyndt = false,
+}: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
@@ -98,6 +117,19 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
   // flere kald kan stå åbne samtidig — man læser typisk to svar mod hinanden.
   const [aabneSvar, setAabneSvar] = useState<Record<number, boolean>>({})
   const running = items.some((i) => i.running)
+  // Shimmeren skal leve gennem hullet MELLEM runder.
+  //
+  // Et afsluttet værktøjskald afslutter ikke nødvendigvis Jarvis' runde: han
+  // tænker på den næste. `running` alene slukker i samme sekund sidste kald
+  // får sit resultat — og præcis dér opstod stilheden (Bjørn 3/10-2026:
+  // «shimmer skal fortsætte til første tænke i næste runde, ellers opstår der
+  // et par sekunders stilhed hvor du tænker»).
+  //
+  // Signalet er `svarBegyndt` (serverens `final_answer_start`), IKKE «der er
+  // kommet tekst efter værktøjet»: rundeopsummeringen lander med resultatet og
+  // ville slukke shimmeren i det vindue den skal dække. Desk fik reglen
+  // 3/10 (`RaekkeTranskript.tsx:341`); mobilen havde den ikke.
+  const visShimmer = streaming && sidste && (running || !svarBegyndt)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
 
@@ -147,7 +179,7 @@ export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aa
           <View style={styles.spark} testID="tool-spark">
             <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           </View>
-          <LabelSkift tekst={tekst} arbejder={running} style={styles.summary} farve={tokens.color.fg2} fastIkon />
+          <LabelSkift tekst={tekst} arbejder={visShimmer} style={styles.summary} farve={tokens.color.fg2} fastIkon />
           {/* Summen i selve linjen — foldet som standard ville tallene ellers
               kun ses af den der folder ud. Et nul vises ikke. */}
           {sum ? (

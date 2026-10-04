@@ -523,7 +523,16 @@ describe('linjen holder sig inden for skaermen', () => {
     // [0] er SVG-rammen i den koerende gren; [1] er label-skiftets lag og [2]
     // cellen — de to findes i begge tilstande.
     for (const running of [true, false]) {
-      const s = await render(<InlineToolGroup items={[item({ label: 'x'.repeat(200), running })]} />)
+      // Shimmer-tilstanden kraever HELE kaeden siden 4/10-2026: `running` alene
+      // er ikke nok — runden skal ogsaa vaere turens SIDSTE, og slutsvaret maa
+      // ikke vaere begyndt (se `visShimmer` i `InlineToolGroup`). Testen maaler
+      // stadig layoutet i BEGGE tilstande; den fremkalder dem blot som fladen
+      // nu goer. Uden `streaming`/`sidste` faldt den koerende gren tilbage til
+      // den faerdige, og `glidende-tekst` fandtes ikke i traeet.
+      const s = await render(<InlineToolGroup
+        items={[item({ label: 'x'.repeat(200), running })]}
+        streaming={running} sidste={running}
+      />)
       const vej = vejTil(s.toJSON(), running ? 'glidende-tekst' : 'linje-titel')
       expect(vej).not.toBeNull()
       // Sidste led i vejen er knuden selv; foraeldrene ligger lige foer den.
@@ -558,5 +567,54 @@ describe('linjen holder sig inden for skaermen', () => {
     expect(boern.filter((b) => b.flexShrink === 1)).toHaveLength(1)
     expect(boern.filter((b) => b.flexShrink === 0)).toHaveLength(boern.length - 1)
     expect(stil(vejTil(s.toJSON(), 'tool-status-caret')!.at(-1)).flexShrink).toBe(0)
+  })
+})
+
+// ── Shimmeren lever gennem hullet mellem runder (4/10-2026) ────────────────
+//
+// Bjørn 3/10-2026: «i runde linjerne … skal shimmer fortsætte til første tænke
+// i næste runde, ellers opstår der et par sekunders stilhed hvor du tænker».
+//
+// `running` alene slukker i samme sekund sidste kald får sit resultat — og
+// præcis dér tænker modellen på den næste. Reglen er derfor
+// `streaming && sidste && (running || !svarBegyndt)`, spejlet fra desk's
+// `RaekkeTranskript.tsx:341`. Den er ikke «der er kommet tekst efter
+// værktøjet»: rundeopsummeringen lander MED resultatet og ville slukke
+// shimmeren i det vindue den skal dække.
+describe('shimmeren lever gennem hullet mellem runder', () => {
+  const glimter = (s: Awaited<ReturnType<typeof render>>) =>
+    vejTil(s.toJSON(), 'glidende-tekst') !== null
+
+  it('en FAERDIG runde glimter stadig — naar slutsvaret ikke er begyndt', async () => {
+    const s = await render(
+      <InlineToolGroup items={[item()]} streaming sidste svarBegyndt={false} />,
+    )
+    expect(glimter(s)).toBe(true)
+  })
+
+  it('den slukker naar slutsvaret begynder', async () => {
+    const s = await render(<InlineToolGroup items={[item()]} streaming sidste svarBegyndt />)
+    expect(glimter(s)).toBe(false)
+  })
+
+  it('en runde der IKKE er turens sidste glimter ikke', async () => {
+    // Alt før den sidste er overhalet af noget der kom bagefter — det er
+    // selve beviset for at den er færdig.
+    const s = await render(
+      <InlineToolGroup items={[item()]} streaming sidste={false} svarBegyndt={false} />,
+    )
+    expect(glimter(s)).toBe(false)
+  })
+
+  it('en historisk runde — ikke streaming — glimter ikke', async () => {
+    const s = await render(<InlineToolGroup items={[item()]} />)
+    expect(glimter(s)).toBe(false)
+  })
+
+  it('et KOERENDE kald glimter — ogsaa naar svaret er begyndt', async () => {
+    const s = await render(
+      <InlineToolGroup items={[item({ running: true })]} streaming sidste svarBegyndt />,
+    )
+    expect(glimter(s)).toBe(true)
   })
 })

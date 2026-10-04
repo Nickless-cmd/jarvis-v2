@@ -36,6 +36,18 @@ export interface StreamState {
    */
   workingAction: string | null
 
+  /**
+   * Serveren har bekræftet at ARBEJDSFASEN er slut — `final_answer_start`.
+   *
+   * Det er ikke «der er kommet tekst efter værktøjet»: rundeopsummeringen
+   * (`tool_use_summary`) lander lige når værktøjet er færdigt, og talte den
+   * som «svaret er begyndt», døde runde-linjens shimmer i præcis det vindue
+   * hvor modellen tænker på næste runde. Bjørn 3/10-2026 (desk): «shimmer
+   * skal fortsætte til første tænke i næste runde, ellers opstår der et par
+   * sekunders stilhed hvor du tænker».
+   */
+  finalAnswerStarted: boolean
+
   research: ResearchUiState | null
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 
@@ -86,6 +98,7 @@ export function initialStreamState(): StreamState {
     provisionalMissingBlockIndex: null,
     workingStep: null,
     workingAction: null,
+    finalAnswerStarted: false,
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
@@ -183,6 +196,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         skillFlade: _sammeRun ? state.skillFlade : undefined,
         workingStep: null,
         workingAction: null,
+        // En NY kørsel har ikke begyndt sit slutsvar endnu. Samme run beholder
+        // flaget — en genforbindelse midt i svaret må ikke tænde shimmeren igen.
+        finalAnswerStarted: _sammeRun ? state.finalAnswerStarted : false,
         research: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens, output: 0 }
       }
@@ -309,6 +325,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           provisionalText: (nytRun ? '' : state.provisionalText) + delta,
           provisionalBlockIndex: nytRun ? null : state.provisionalBlockIndex,
           provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
+          finalAnswerStarted: nytRun ? false : state.finalAnswerStarted,
         }
       }
       if (event.kind === 'provisional_text_commit') {
@@ -321,6 +338,20 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
           provisionalMissingBlockIndex: null,
         }
+      }
+      // Arbejdsfasen er slut. Signalet kommer fra serveren (`visible_runs_sse_v2
+      // .py:450`) og er UAFHÆNGIGT af hvilke blokke der lander — derfor kan det
+      // skelne «han tænker på næste runde» fra «han er begyndt at svare», hvor
+      // rundeopsummeringen ikke kan. Desk bruger det til shimmeren
+      // (`RaekkeTranskript.tsx:341`); mobilen havde hverken flaget eller grenen.
+      //
+      // Run-id'et tjekkes, så en FORSINKET `final_answer_start` fra en tidligere
+      // kørsel ikke slukker shimmeren i den vi ser på nu.
+      if (event.kind === 'final_answer_start') {
+        const rid = String(event.payload.run_id ?? '')
+        return rid && rid === state.activeRunId
+          ? { ...state, finalAnswerStarted: true }
+          : state
       }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig

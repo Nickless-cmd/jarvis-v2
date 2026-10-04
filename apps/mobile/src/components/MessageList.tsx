@@ -85,6 +85,14 @@ interface MessageListProps {
    * viser samme tal for samme tur. Udeladt eller 0 = tallet vises ikke.
    */
   arbejdslinjeTokens?: number
+  /**
+   * Har serveren bekræftet at arbejdsfasen er slut (`final_answer_start`)?
+   *
+   * Bærer runde-linjens shimmer gennem hullet mellem to runder: uden den
+   * slukker den i samme sekund sidste værktøjskald er færdigt, mens Jarvis
+   * stadig tænker på den næste. Udeladt = nej (shimmeren slukker som før).
+   */
+  finalAnswerStarted?: boolean
   /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
@@ -142,7 +150,7 @@ type Row = (
   | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
-  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[] }
+  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[]; sidsteRunde?: boolean }
   /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
    *  Findes kun mens der streames; rækken tilføjes ikke efter. */
   | { kind: 'arbejdslinje'; key: string; tekst: string; tokens: number }
@@ -498,6 +506,13 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // der kom bagefter; det er selve beviset for at den er færdig.
   const sidste = rows[rows.length - 1]
   if (sidste?.kind === 'thinking') sidste.live = true
+  // Kun turens SIDSTE arbejdsrunde kan stadig være i gang — og kun den bærer
+  // shimmeren videre gennem hullet til næste runde (se `InlineToolGroup`).
+  const sidsteRunde = rows.reduce((idx, r, j) => (r.kind === 'tool-group' ? j : idx), -1)
+  if (sidsteRunde >= 0) {
+    const r = rows[sidsteRunde]
+    if (r?.kind === 'tool-group') r.sidsteRunde = true
+  }
   const sidsteArbejde = rows.reduce((index, r, j) =>
     r.kind === 'msg' || r.kind === 'attachments' ? index : j, -1)
   const sidsteTekst = rows.reduce((index, r, j) => r.kind === 'msg' ? j : index, -1)
@@ -523,7 +538,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -777,6 +792,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         && gammel.hideActions === row.hideActions
         && gammel.kildeBlokke === row.kildeBlokke) stabil = gammel
       if (row.kind === 'tool-group' && gammel.kind === 'tool-group'
+        && gammel.sidsteRunde === row.sidsteRunde
         && JSON.stringify(gammel.items) === JSON.stringify(row.items)) stabil = gammel
       if (row.kind === 'thinking' && gammel.kind === 'thinking'
         && gammel.text === row.text && gammel.seconds === row.seconds
@@ -922,7 +938,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           const resume = visning === 'thinking'
             ? item.items.map((i: ToolItem) => (i.id ? resumeer[i.id] : undefined)).find(Boolean)
             : undefined
-          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} tanker={item.tanker} />
+          const gruppe = <InlineToolGroup
+            items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} tanker={item.tanker}
+            streaming={working} sidste={item.sidsteRunde} svarBegyndt={finalAnswerStarted}
+          />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }
         if (item.kind === 'thinking') {

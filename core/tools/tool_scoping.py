@@ -125,6 +125,25 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "mcp",
     # Fortryd en hel redigeringsrunde.
     "checkpoint",
+    # ── Kontinuitetens to haandtag (4/10-2026) ────────────────────────────
+    #
+    # Maalt samme dag: begge laa i `_TOOL_HANDLERS` og i INGEN af listerne
+    # der afgoer hvad der faktisk SENDES — hverken her, i
+    # `REQUIRED_LAZY_TOOL_NAMES` eller i `SAFETY_FLOOR`. Kaldbare og
+    # usynlige, samme moenster som `read_attachment` (6/9) og
+    # billedvaerktoejerne (13/9).
+    #
+    # De staar nu BAADE her og i garantilisten, og det er ikke dobbelt
+    # arbejde: garantilisten fæstner dem i det 48-store loft og forener dem
+    # ind i session-laasen — men den vej forudsætter at laasen er TÆNDT
+    # (`session_tool_pin_enabled`). Uden medlemskab her ville kill-switchen
+    # tage dem med sig i chat-scope, og det er den scope Bjoern skriver i.
+    #
+    # Owner-only: begge staar i `OWNER_ONLY_TOOLS`. Et selv-startet run er
+    # den dyreste handling Jarvis kan tage alene — hele vaerktoejskassen,
+    # ingen bruger til at godkende undervejs — og en overdragelse skrives i
+    # hans navn. Member/guest faar dem strippet af rollegaten.
+    "start_session", "write_handover",
     # At se. Desk og mobil kan uploade billeder (POST /attachments), men
     # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
     # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.

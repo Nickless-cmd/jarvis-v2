@@ -40,6 +40,10 @@ _MEMBER_TICKS = {
     "ground_truth_registry": ("core.services.ground_truth_registry", "ground_truth_daemon_tick"),
     "mail_checker": ("core.services.mail_checker_daemon", "tick_mail_checker_daemon"),
     "visual_memory": ("core.services.visual_memory", "tick_visual_memory_daemon"),
+    # Beslutninger ind i indbakken (4/10-2026). Den kalder ikke en daemon-tick
+    # men `decision_adherence_gate.registrer_i_indbakken`, saa kilden er dér.
+    "beslutninger_i_indbakken": (
+        "core.services.decision_adherence_gate", "registrer_i_indbakken"),
     # Tilføjet til familien 5/9-2026 ved dækningsrevisionen — den var den eneste
     # ægte forældreløse efter 15/7-konsolideringen. Selv-throttler internt
     # (1440 min), så familien kalder hver tick.
@@ -88,6 +92,10 @@ _FAMILY_THROTTLED = {
     # `_infra_throttle_ready("visible_drift_cleanup", 30)` — familiens egen
     # throttle, samme mekanisme som de fire ovenfor.
     "visible_drift_cleanup": 30,
+    # Samme mekanisme: `_infra_throttle_ready("beslutninger_i_indbakken", 60)`.
+    # 60 minutter fordi listen kun aendrer sig naar en adherence-score bliver
+    # reviewet, og det sker i timer.
+    "beslutninger_i_indbakken": 60,
 }
 
 

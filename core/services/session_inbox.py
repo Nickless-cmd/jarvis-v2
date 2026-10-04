@@ -234,9 +234,7 @@ def flush_session(session_id: str) -> dict[str, Any]:
     delivered = 0
     now_iso = datetime.now(UTC).isoformat()
     try:
-        from core.services.chat_sessions import (
-            append_chat_message, get_chat_session,
-        )
+        from core.services.chat_sessions import get_chat_session
         from core.eventbus.bus import event_bus
     except Exception as exc:
         logger.error("session_inbox: chat-session import failed: %s", exc)
@@ -256,42 +254,66 @@ def flush_session(session_id: str) -> dict[str, Any]:
         return {"status": "ok", "delivered": 0, "note": "session not found"}
     for item in items:
         try:
-            # Kun de felter koeen faktisk gemte — samme begrundelse som i
-            # notification_bridge: `None` er semantisk identisk med at udelade,
-            # men at sende dem ubetinget aendrer kaldets form og braekker
-            # stubs med en smal signatur. Et item uden afsender-felter giver
-            # derfor praecis det kald flush'en lavede foer 2/10-2026.
-            _afsender = {
-                n: str(item[n]) for n in ("user_id", "workspace_name")
-                if str(item.get(n) or "").strip()
-            }
-            # ── Opgave 6, foerste halvdel (3/10-2026) ───────────────────
+            # ── Opgave 6, ANDEN halvdel (4/10-2026) ─────────────────────
             #
-            # Indholdet skrives STADIG som en assistant-besked. Det er med
-            # vilje: spec'ens Opgave 6 kraever at desk og mobil kan vise en
-            # kilde-maerket notifikation FOER leveringsvejen laegges om, og
-            # «ingen post maa forsvinde» i mellemtiden. Omlaegningen til en
-            # ren henvisning venter altsaa paa en klient-udrulning.
+            # Bjoern: «alle disse beskeder der starter med
+            # [SYSTEM — IKKE FRA BJOERN] boer kun vises i mit notifikations
+            # feed og ikk dumpe ind i mit chatview … de forurenere chatview
+            # naar vi arbejder.»
             #
-            # Men MAERKNINGEN kan ikke vente. `_a_parts` er — ifoelge
-            # `compose_exchange_text`s egen docstring — baade det persisterede
-            # svar OG naeste rundes model-input. En umaerket notifikation i
-            # jeg-form bliver derfor laest som noget Jarvis selv sagde, og det
-            # var praecis formen bag Smiths loekke: hans note landede i halen,
-            # han gentog den, detektoren fyrede.
+            # Foerste halvdel skrev dem STADIG som assistant-beskeder, med
+            # denne begrundelse: «omlaegningen til en ren henvisning venter
+            # paa en klient-udrulning». Klienten findes nu
+            # (`NotifikationsFeed.tsx` + `GET /notifications/pending`), saa
+            # ventetiden er forbi.
             #
-            # Bjoerns staaende regel gaelder i dag: alt der ikke er skrevet
-            # fra hans composer SKAL baere en kilde-maerkning.
+            # Maalt 4/10 foer omlaegningen: ni beskeder i `chat_messages`
+            # begyndte med maerket, alle `role=assistant`, alle fra denne vej
+            # — «Droemme — hvad jeg lavede mens du var vaek», «5
+            # skygge-eksperimenter venter paa review». De stod i traaden som
+            # om Jarvis havde sagt dem midt i arbejdet.
             #
-            # Husets ENE maerkning bruges — `systemmaerket()` — fordi
-            # `fjern_menneske_noter` genkender netop den tekst. En egen
-            # variant her ville vaere en tredje definition af samme regel.
-            message = append_chat_message(
-                session_id=session_id,
-                role="assistant",
-                content=_maerket(str(item["content"])),
-                **_afsender,
-            )
+            # Nu gaar de i FEEDEN. To ting foelger af det, og begge er
+            # pointen:
+            #
+            # * Chatview er rent. Notifikationen staar ét sted, hvor den kan
+            #   kvitteres, i stedet for at ligge i en samtale den ikke hoerer
+            #   til.
+            # * Modellen ser dem ikke laengere. En chat-besked er ogsaa
+            #   naeste rundes model-input — det var hele grunden til at
+            #   maerkningen skulle hastes igennem. Ryger beskeden ud af
+            #   traaden, er den risiko vaek ved roden frem for daempet med en
+            #   advarsel.
+            #
+            # Maerkningen beholdes paa feed-raekken. Bjoerns staaende regel
+            # er at alt der ikke er skrevet fra hans composer skal kunne
+            # skelnes fra ham, og en feed-raekke kan ogsaa citeres videre.
+            _uid = str(item.get("user_id") or "").strip()
+            if not _uid:
+                # Uden en modtager kan raekken ikke vises nogen steder. Vi
+                # falder IKKE tilbage paa en ejer — det ville laegge huset
+                # besked i én bestemt brugers feed. Posten markeres leveret,
+                # saa koeen ikke looper paa den.
+                logger.warning(
+                    "session_inbox: notifikation uden user_id (kilde=%s) — "
+                    "kan ikke vises i feeden, droppes", item.get("source"))
+                message = None
+            else:
+                from core.services import notifikationer as _feed
+                _raa = str(item["content"] or "").strip()
+                _linjer = [x for x in _raa.splitlines() if x.strip()]
+                # Foerste linje som titel, resten som tekst. Feeden viser
+                # titlen i listen; uden den ville hver raekke hedde det samme.
+                _titel = (_linjer[0] if _linjer else "Jarvis")[:120]
+                _feed.opret(
+                    user_id=_uid,
+                    slags=f"session_inbox:{item.get('source') or 'ukendt'}",
+                    kilde="egen",
+                    titel=_titel,
+                    tekst=_maerket(_raa),
+                    session_id=session_id,
+                )
+                message = {"id": "", "role": "assistant", "content": _raa}
             event_bus.publish(
                 "channel.chat_message_appended",
                 {

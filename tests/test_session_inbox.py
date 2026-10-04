@@ -166,43 +166,101 @@ def test_flush_session_handles_deleted_session(tmp_db, monkeypatch):
 
 # ── Opgave 6, første halvdel: kilde-mærkningen ──────────────────────────────
 
-def test_en_leveret_notifikation_er_KILDE_MAERKET(tmp_path, monkeypatch):
-    """Bjørns stående regel: alt der ikke er skrevet fra hans composer SKAL
-    bære en kilde-mærkning.
+def test_notifikationen_gaar_i_FEEDEN_og_IKKE_i_chatview(tmp_path, monkeypatch):
+    """Bjørn 4/10-2026: «de forurenere chatview når vi arbejder.»
 
-    `flush_session` skriver indholdet som en **assistant-besked**, og
-    `_a_parts` er — ifølge `compose_exchange_text`s egen docstring — både det
-    persisterede svar OG næste rundes model-input. En umærket notifikation i
-    jeg-form bliver derfor læst som noget Jarvis selv sagde. Det var præcis
-    formen bag Smiths løkke: hans note landede i halen, han gentog den,
-    detektoren fyrede.
+    Omlægningens anden halvdel. Første halvdel skrev notifikationen som en
+    **assistant-besked** og begrundede det med at «omlægningen til en ren
+    henvisning venter på en klient-udrulning». Klienten findes nu, og målt før
+    omlægningen stod ni sådanne beskeder i `chat_messages` — «Drømme — hvad
+    jeg lavede mens du var væk», «5 skygge-eksperimenter venter på review» —
+    alle `role=assistant`, midt i en arbejdssamtale.
 
-    Omlægningen til en ren HENVISNING venter på en klient-udrulning (spec'ens
-    Opgave 6 trin 3-6). Mærkningen gør ikke.
+    To påstande, og den anden er den vigtigste: feeden får rækken, OG
+    chatview får ingenting. En test der kun målte det første ville bestå
+    selvom beskeden stadig blev skrevet begge steder.
     """
     from unittest.mock import patch
+
     from core.services import session_inbox
     from core.services.visible_run_guard_notices import SYSTEM_MAERKE
 
-    skrevet: list[dict] = []
+    feed: list[dict] = []
+    chat: list[dict] = []
     monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [
         {"id": 1, "session_id": s, "content": "Jeg har ryddet op i databasen.",
-         "source": "jarvis-notify"}])
+         "source": "jarvis-notify", "user_id": "u-bjorn"}])
     monkeypatch.setattr(session_inbox, "_connect", _tom_connect)
-    with patch("core.services.chat_sessions.append_chat_message",
-               side_effect=lambda **kw: skrevet.append(kw) or {"id": "m1"}), \
+    with patch("core.services.notifikationer.opret",
+               side_effect=lambda **kw: feed.append(kw) or "n1"), \
+         patch("core.services.chat_sessions.append_chat_message",
+               side_effect=lambda **kw: chat.append(kw) or {"id": "m1"}), \
          patch("core.services.chat_sessions.get_chat_session",
                return_value={"id": "s1"}), \
          patch("core.eventbus.bus.event_bus.publish", return_value=None):
         session_inbox.flush_session("s1")
-    assert len(skrevet) == 1
-    indhold = str(skrevet[0]["content"])
-    assert SYSTEM_MAERKE in indhold, "notifikationen blev leveret UMAERKET"
-    # Indholdet er stadig med — maerkningen tilfoejer, den erstatter ikke.
-    assert "ryddet op i databasen" in indhold
-    # Og den skal eksplicit forbyde at laese den som samtykke. Uden den linje
-    # kan en systembesked blive et «ja».
-    assert "samtykke" in indhold
+
+    assert chat == [], f"notifikationen landede STADIG i chatview: {chat}"
+    assert len(feed) == 1, "feeden fik den ikke"
+    assert feed[0]["user_id"] == "u-bjorn"
+    assert feed[0]["session_id"] == "s1", "raekken mistede sin samtale-reference"
+
+
+def test_feed_raekken_er_stadig_KILDE_MAERKET(tmp_path, monkeypatch):
+    """Mærkningen flytter med. Bjørns stående regel er at alt der ikke er
+    skrevet fra hans composer skal kunne skelnes fra ham — og en feed-række
+    kan også citeres videre."""
+    from unittest.mock import patch
+
+    from core.services import session_inbox
+    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
+
+    feed: list[dict] = []
+    monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [
+        {"id": 1, "session_id": s, "content": "Jeg har ryddet op i databasen.",
+         "source": "jarvis-notify", "user_id": "u-bjorn"}])
+    monkeypatch.setattr(session_inbox, "_connect", _tom_connect)
+    with patch("core.services.notifikationer.opret",
+               side_effect=lambda **kw: feed.append(kw) or "n1"), \
+         patch("core.services.chat_sessions.get_chat_session",
+               return_value={"id": "s1"}), \
+         patch("core.eventbus.bus.event_bus.publish", return_value=None):
+        session_inbox.flush_session("s1")
+
+    tekst = str(feed[0]["tekst"])
+    assert SYSTEM_MAERKE in tekst, "feed-raekken blev skrevet UMAERKET"
+    assert "ryddet op i databasen" in tekst, "indholdet forsvandt"
+    assert "samtykke" in tekst, "forbuddet mod at laese den som et ja mangler"
+    # Titlen er foerste linje, saa feeden ikke viser samme overskrift paa alt.
+    assert feed[0]["titel"] == "Jeg har ryddet op i databasen."
+
+
+def test_UDEN_modtager_skrives_der_hverken_i_feed_eller_chat(tmp_path, monkeypatch, caplog):
+    """Vi falder IKKE tilbage på en ejer: det ville lægge husets besked i én
+    bestemt brugers feed. Posten markeres leveret, så køen ikke looper."""
+    import logging
+    from unittest.mock import patch
+
+    from core.services import session_inbox
+
+    feed: list[dict] = []
+    chat: list[dict] = []
+    monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [
+        {"id": 1, "session_id": s, "content": "noget", "source": "jarvis-notify"}])
+    monkeypatch.setattr(session_inbox, "_connect", _tom_connect)
+    with caplog.at_level(logging.WARNING), \
+         patch("core.services.notifikationer.opret",
+               side_effect=lambda **kw: feed.append(kw) or "n1"), \
+         patch("core.services.chat_sessions.append_chat_message",
+               side_effect=lambda **kw: chat.append(kw) or {"id": "m1"}), \
+         patch("core.services.chat_sessions.get_chat_session",
+               return_value={"id": "s1"}), \
+         patch("core.eventbus.bus.event_bus.publish", return_value=None):
+        session_inbox.flush_session("s1")
+
+    assert feed == [] and chat == []
+    assert any("uden user_id" in r.message for r in caplog.records), \
+        "posten forsvandt TAVST"
 
 
 class _tom_connect:

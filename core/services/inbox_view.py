@@ -621,13 +621,22 @@ def byg_indbakke(
             "output_bytes": j.get("output_bytes"),
             "har_artefakt": bool(sti) and vis_sti, "nu_ts": nu,
         }
-        # Et tool-job har ingen pid: det er et KALD, ikke en proces — og
-        # `_tool_jobs`' egen kontrakt er «Uparret = kører stadig». `lever is
-        # None` betyder derfor to ting (usynlig proces vs. ingen proces), og
-        # uden denne gren lander hvert kørende kald i «VENTER PÅ DIG» med et
-        # epoch i id'et, hvor `drop` aldrig kan ramme det. Målt 4/10-2026:
-        # `venter_paa_dig: [('bash#1791092371','status_ukendt')]`, `i_gang: []`.
-        er_kald = str(j.get("kilde") or "") == "tool"
+        # Et job UDEN pid er et KALD, ikke en proces — og `_tool_jobs`' egen
+        # kontrakt er «Uparret = kører stadig». `lever is None` betyder derfor
+        # to ting, og det er `pid` der skiller dem:
+        #
+        #   * MED pid, som ikke kan ses herfra (supervisor/operator på en host
+        #     vi ikke kan nå) → «kan ikke afgøres» er det RIGTIGE svar.
+        #   * UDEN pid → der er intet at spørge om. Grenen er en tautologi, og
+        #     hvert kørende kald lander i «VENTER PÅ DIG» med et epoch i id'et,
+        #     hvor `drop` aldrig kan ramme det.
+        #
+        # Kilden på listen, ikke navnet: `tool`, `tool_operator`, `agent`,
+        # `shell` og `shell_operator` bærer alle `pid: None` og rammes derfor
+        # af samme fejl. Målt 4/10-2026: `venter_paa_dig:
+        # [('bash#1791092371','status_ukendt')]`, `i_gang: []` — og `== "tool"`
+        # slap `tool_operator` forbi, som er netop den vej desk-broen bruger.
+        er_kald = not j.get("pid")
         if st in ("kører", "running") and er_kald:
             i_gang.append(_post(status="koerer", **faelles))
         elif st in ("kører", "running") and lever is False and sek >= _FORAELDRELOES_EFTER_S:

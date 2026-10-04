@@ -172,26 +172,55 @@ def test_et_LEVENDE_job_staar_under_i_gang():
     assert v["venter_paa_dig"] == []
 
 
-def test_et_TOOL_KALD_uden_pid_er_i_gang_ikke_venter():
-    """Et tool-job er et KALD, ikke en proces.
+@pytest.mark.parametrize(
+    "kilde",
+    ["tool", "tool_operator", "agent", "shell", "shell_operator"],
+)
+def test_en_kilde_UDEN_pid_er_i_gang_ikke_venter(kilde):
+    """En kilde uden pid er et KALD, ikke en proces.
 
-    `_tool_jobs` giver altid `pid: None` — dens egen kontrakt er «Uparret =
-    kører stadig» — så `proces_lever(None) == None` må ikke læses som «kan
-    ikke afgøres». Den klassen er rigtig for et supervisor-job på en host vi
-    ikke kan nå; for et kald er den en tavs fejl.
+    `lever is None` er kun et SVAR når der er en pid at spørge om. Bærer
+    jobbet ingen pid, er grenen en tautologi — den svarer «kan ikke afgøres»
+    på et spørgsmål der aldrig blev stillet. `proces_lever(None) == None` må
+    derfor ikke læses som usikkerhed.
 
-    Uden denne gren lander hvert kørende kald i «VENTER PÅ DIG», og fordi
-    id'et er `<værktøj>#<epoch>` skifter det hvert kald, så `drop` aldrig
-    rammer det. Målt 4/10-2026: `venter_paa_dig: [('bash#1791092371',
-    'status_ukendt')]`, `i_gang: []`.
+    Den ægte klasse er `supervisor` og `operator`, der BEGGE bærer en pid —
+    se modprøven nedenfor. De pid-løse kilder er fem, alle målt 4/10-2026:
+
+    * `tool` — `venter_paa_dig: [('bash#1791092371', 'status_ukendt')]`
+    * `tool_operator` — samme form, men `== "tool"` slap den forbi, og
+      `operator_bash` er netop den vej desk-broen bruger
+    * `agent`, `shell`, `shell_operator` — `pid: None` i kilden
+
+    Uden grenen lander hvert kørende kald i «VENTER PÅ DIG», og fordi id'et
+    er `<værktøj>#<epoch>` skifter det hvert kald, så `drop` aldrig rammer
+    det.
     """
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
-        jobs=[{"id": "bash#1791092371", "kilde": "tool", "status": "running",
-               "pid": None, "sekunder": 2, "navn": "Kald indbakken"}],
+        jobs=[{"id": f"{kilde}#1791092371", "kilde": kilde,
+               "status": "running", "pid": None, "sekunder": 2,
+               "navn": "Kald indbakken"}],
         proces_lever=None))
-    assert [p["id"] for p in v["i_gang"]] == ["bash#1791092371"]
+    assert [p["id"] for p in v["i_gang"]] == [f"{kilde}#1791092371"]
     assert v["venter_paa_dig"] == [], \
-        "et koerende kald stod i VENTER PAA DIG — det er ikke noget der venter"
+        f"et koerende kald (kilde={kilde}) stod i VENTER PAA DIG"
+
+
+def test_en_supervisor_MED_pid_beholder_den_AEgte_behandling():
+    """Modprøven: reglen må ikke sluge den klasse den er lavet ved siden af.
+
+    En supervisor med en pid vi ikke kan nå ER «kan ikke afgøres» — det er
+    præcis den forskel grenen skal bevare. Uden denne test kunne `er_kald`
+    gøres sand for alt, og den anden test ville stadig bestå.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        jobs=[{"id": "sup-1", "kilde": "supervisor", "status": "running",
+               "pid": 4242, "sekunder": 10,
+               "navn": "paa en host vi ikke naar"}],
+        proces_lever=None))
+    assert v["i_gang"] == []
+    assert [p["id"] for p in v["venter_paa_dig"]] == ["sup-1"]
+    assert v["venter_paa_dig"][0]["status"] == "status_ukendt"
 
 
 def test_et_job_med_exit_0_staar_slet_ikke():

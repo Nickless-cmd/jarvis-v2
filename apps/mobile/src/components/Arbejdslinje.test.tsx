@@ -90,8 +90,13 @@ describe('Arbejdslinje', () => {
   it('viser token-tallet kort — «45.2k tokens», som desk', async () => {
     // Samme regel som desks liveness-linje, så de to klienter skriver tallet
     // ens. MUT: vis tallet råt → «45200 tokens» → fanger.
+    //
+    // 4/10-2026: tallet er nu RULLENDE hjul, så cifrene er delt op i
+    // individuelle Text-knuder. Tallet bæres derfor af hjulenes
+    // accessibilityLabel — se `RullendeTal.tsx`.
     const s = await render(<Arbejdslinje tekst="Kører npm test" tokens={45200} />)
-    expect(s.getByText('45.2k tokens')).toBeTruthy()
+    expect(s.getByLabelText('45.2k')).toBeTruthy()
+    expect(s.getByText(/tokens/)).toBeTruthy()
   })
 
   it('skjuler token-tallet når der ikke er noget at vise', async () => {
@@ -111,7 +116,9 @@ describe('Arbejdslinje', () => {
       expect(s.queryByTestId('arbejdslinje-tid')).toBeNull()
       await act(async () => { jest.advanceTimersByTime(3000) })
       expect(s.getByTestId('arbejdslinje-tid')).toBeTruthy()
-      expect(s.getByText('3s')).toBeTruthy()
+      // 4/10-2026: uret ruller nu min:sek (desk's form), og tallet bæres af
+      // hjulenes accessibilityLabel i stedet for én tekststreng.
+      expect(s.getByLabelText('00:03')).toBeTruthy()
     } finally {
       jest.useRealTimers()
     }

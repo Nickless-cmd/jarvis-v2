@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { AnimeretPuls } from './AnimeretPuls'
 import { Prikker } from './Prikker'
-import { formatTid, kortTokens } from '../lib/arbejdslinje'
+import { RullendeTokens, RullendeUr } from './RullendeTal'
 
 /**
  * Arbejdslinjen — nederst i beskeden, kun mens der streames.
@@ -77,10 +77,15 @@ export function Arbejdslinje({ tekst, tokens = 0 }: { tekst: string | null; toke
           bevægelsen er ny. `testID` bevares, så tegnet kan findes som før. */}
       <AnimeretPuls size={15} farve={farver.color.accent} testID="puls-ikon" />
       {tokens > 0 ? (
-        <Text style={styles.tal} testID="arbejdslinje-tokens" numberOfLines={1}>{kortTokens(tokens)} tokens</Text>
+        <View style={styles.talRaekke} testID="arbejdslinje-tokens">
+          <RullendeTokens tokens={tokens} farve={farver.color.fg2} tegnFarve={farver.color.fg3} />
+          <Text style={styles.talTekst}> tokens</Text>
+        </View>
       ) : null}
       {sek >= 1 ? (
-        <Text style={styles.tal} testID="arbejdslinje-tid" numberOfLines={1}>{formatTid(sek)}</Text>
+        <View style={styles.talRaekke} testID="arbejdslinje-tid">
+          <RullendeUr sek={sek} farve={farver.color.fg2} tegnFarve={farver.color.fg3} />
+        </View>
       ) : null}
       <Text style={styles.tekst} numberOfLines={2}>{tekst}</Text>
       <Prikker farve={farver.color.fg3} />
@@ -101,9 +106,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   // Tallene står FAST: de er det linjen melder om arbejdet, og en lang sti må
   // ikke skubbe dem ud af skærmen. Det er teksten der viger.
-  tal: {
-    color: tokens.color.fg2, fontSize: 12, opacity: 0.65,
-    fontVariant: ['tabular-nums'], flexShrink: 0,
-  },
+  talRaekke: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, opacity: 0.65 },
+  talTekst: { color: tokens.color.fg2, fontSize: 12, fontVariant: ['tabular-nums'] },
   tekst: { color: tokens.color.fg2, fontSize: 13.5, flexShrink: 1, minWidth: 0 },
 })

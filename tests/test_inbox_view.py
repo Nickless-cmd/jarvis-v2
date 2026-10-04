@@ -184,14 +184,28 @@ def test_et_TOOL_KALD_uden_pid_er_i_gang_ikke_venter():
     id'et er `<værktøj>#<epoch>` skifter det hvert kald, så `drop` aldrig
     rammer det. Målt 4/10-2026: `venter_paa_dig: [('bash#1791092371',
     'status_ukendt')]`, `i_gang: []`.
+
+    UDVIDET 4/10 (Opus): BEGGE kilde-former, ikke kun `tool`.
+
+    `background_jobs._tool_jobs` saetter
+    `"tool_operator" if tool.startswith("operator_") else "tool"`, saa et
+    operator-kald baerer `tool_operator` og slap gennem den praecise
+    sammenligning `== "tool"`. Maalt:
+        kilde=tool           -> i_gang
+        kilde=tool_operator  -> venter_paa_dig ('status_ukendt')
+    Og `operator_bash` er netop det der kaldes gennem desk-broen, saa
+    hullet var live. Testen koerer nu over begge former — en test paa kun
+    den ene kunne ikke se forskellen.
     """
-    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
-        jobs=[{"id": "bash#1791092371", "kilde": "tool", "status": "running",
-               "pid": None, "sekunder": 2, "navn": "Kald indbakken"}],
-        proces_lever=None))
-    assert [p["id"] for p in v["i_gang"]] == ["bash#1791092371"]
-    assert v["venter_paa_dig"] == [], \
-        "et koerende kald stod i VENTER PAA DIG — det er ikke noget der venter"
+    for kilde in ("tool", "tool_operator"):
+        v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+            jobs=[{"id": "bash#1791092371", "kilde": kilde, "status": "running",
+                   "pid": None, "sekunder": 2, "navn": "Kald indbakken"}],
+            proces_lever=None))
+        assert [p["id"] for p in v["i_gang"]] == ["bash#1791092371"], \
+            f"kilde={kilde} naaede ikke I GANG"
+        assert v["venter_paa_dig"] == [], \
+            f"kilde={kilde}: et koerende kald stod i VENTER PAA DIG"
 
 
 def test_et_job_med_exit_0_staar_slet_ikke():

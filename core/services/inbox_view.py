@@ -627,7 +627,17 @@ def byg_indbakke(
         # uden denne gren lander hvert kørende kald i «VENTER PÅ DIG» med et
         # epoch i id'et, hvor `drop` aldrig kan ramme det. Målt 4/10-2026:
         # `venter_paa_dig: [('bash#1791092371','status_ukendt')]`, `i_gang: []`.
-        er_kald = str(j.get("kilde") or "") == "tool"
+        # `startswith`, ikke `==`. `background_jobs._tool_jobs` saetter
+        # `"tool_operator" if tool.startswith("operator_") else "tool"`, saa et
+        # OPERATOR-kald baerer `tool_operator` og slap derfor gennem den
+        # praecise sammenligning. Maalt 4/10-2026:
+        #   kilde=tool           -> i_gang
+        #   kilde=tool_operator  -> venter_paa_dig ('status_ukendt')
+        # og `operator_bash` er netop det Jarvis kalder gennem desk-broen.
+        #
+        # Praefikset matcher begge former som kilden selv danner dem, saa de
+        # to kan kun drive fra hinanden hvis nogen omdoeber BEGGE.
+        er_kald = str(j.get("kilde") or "").startswith("tool")
         if st in ("kører", "running") and er_kald:
             i_gang.append(_post(status="koerer", **faelles))
         elif st in ("kører", "running") and lever is False and sek >= _FORAELDRELOES_EFTER_S:

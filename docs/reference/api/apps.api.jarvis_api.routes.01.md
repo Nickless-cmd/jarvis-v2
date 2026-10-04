@@ -588,6 +588,14 @@ _Kontekstforbrug og komprimeringsstatus til Desk._
 | class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L173) |
 | function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L179) |
 
+## `apps/api/jarvis_api/routes/chat_inbox.py`
+_Bjørns egen vej ind i indbakken — den fjerde skriver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
+| function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
+
 ## `apps/api/jarvis_api/routes/chat_rewind.py`
 _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
 
@@ -623,14 +631,4 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 | function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
 | function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
 | function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
-
-## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
-_Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L20) |
-| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
-| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
-| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
 

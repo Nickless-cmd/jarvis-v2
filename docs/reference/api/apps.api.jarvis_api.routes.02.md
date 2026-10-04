@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
+_Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L20) |
+| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
+| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
+| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
+
 ## `apps/api/jarvis_api/routes/cheap_balancer.py`
 _Mission Control endpoints for cheap_lane_balancer telemetry + controls._
 
@@ -717,14 +727,4 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L106) |
 | function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
 | function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L170) |
-
-## `apps/api/jarvis_api/routes/notifikations_valg.py`
-_Push-valg per slags. Scoper til den auth'ede bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
-| function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
-| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
 

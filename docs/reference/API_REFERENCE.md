@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-04 from app.routes (live) — 620 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-04 from app.routes (live) — 621 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -238,6 +238,7 @@
 | POST | `/chat/git/commit-all` | dict | chat |
 | POST | `/chat/git/create-pr` | dict | chat |
 | POST | `/chat/git/worktree` | dict | chat |
+| POST | `/chat/inbox/flag` | dict | chat_inbox |
 | POST | `/chat/messages/{message_id}/feedback` | dict | chat |
 | GET | `/chat/messages/{message_id}/reasoning` | dict | chat |
 | GET | `/chat/messages/{message_id}/tool-result/{tool_use_id}` | dict | chat |

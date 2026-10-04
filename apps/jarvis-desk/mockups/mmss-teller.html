@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>min:sek — rullende tal</title>
+<style>
+  /* ── Tema: desk'ets egne tokens, så mockup'en matcher appen ───────── */
+  :root {
+    --bg-0: #16161a;
+    --bg-1: #1c1c21;
+    --bg-2: #232329;
+    --line: #2e2e36;
+    --fg-0: #f2f2f4;
+    --fg-1: #c8c8d0;
+    --fg-2: #8b8b98;
+    --fg-3: #5c5c68;
+    --accent: #6ee7a8;
+    --accent-dim: #2f6b4d;
+    --warn: #e8b96e;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-0);
+    color: var(--fg-0);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+  }
+
+  .wrap { display: grid; gap: 34px; justify-items: center; }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--fg-2);
+    text-align: center;
+  }
+
+  /* ── Uret ────────────────────────────────────────────────────────── */
+  .clock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 26px 38px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px -30px #000;
+  }
+
+  .grp { display: flex; }
+
+  /* Vinduet er ÉT ciffer højt. Alt udenfor klippes, så rullingen sker
+     "indefra" og der ikke er nogen synlig bane. */
+  .digit {
+    position: relative;
+    height: 1em;
+    width: .62em;
+    overflow: hidden;
+    font-size: 92px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+
+  .strip {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+    backface-visibility: hidden;
+    transition: transform .5s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .strip span {
+    height: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .colon {
+    font-size: 68px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--fg-3);
+    padding: 0 .04em;
+  }
+  .colon.tik { color: var(--fg-2); }
+
+  /* ── Undertekst ──────────────────────────────────────────────────── */
+  .meta {
+    display: flex;
+    gap: 26px;
+    font-size: 12px;
+    color: var(--fg-2);
+    letter-spacing: .06em;
+  }
+  .meta b { color: var(--fg-0); font-weight: 600; }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-1);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  button:hover { background: var(--bg-1); color: var(--fg-0); border-color: var(--fg-3); }
+  button[aria-pressed="true"] { border-color: var(--accent-dim); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tid · min:sek</h1>
+
+  <div class="clock" id="clock" aria-live="polite" aria-atomic="true" aria-label="00:00">
+    <div class="grp" id="minutter"></div>
+    <span class="colon" id="colon">:</span>
+    <div class="grp" id="sekunder"></div>
+  </div>
+
+  <div class="meta">
+    <span>min <b id="vmin">0</b></span>
+    <span>sek <b id="vsek">0</b></span>
+    <span>i alt <b id="vialt">0</b></span>
+  </div>
+
+  <div class="controls">
+    <button id="btnKoer" aria-pressed="false">Start</button>
+    <button id="btnNul">Nulstil</button>
+    <button id="btnTi">+10 sek</button>
+    <button id="btnMin">+1 min</button>
+  </div>
+</div>
+
+<script src="mmss-teller.js"></script>
+</body>
+</html>

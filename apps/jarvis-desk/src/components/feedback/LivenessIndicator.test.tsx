@@ -19,7 +19,8 @@ describe('LivenessIndicator · kort status over composeren', () => {
   it('gentager ikke tur-headerens fil- og værktøjsaktivitet', () => {
     cleanup()
     const { container } = vis({ status: 'working', elapsedMs: 754_000, tokens: 45_200, thoughtMs: 1000, thoughtAfsluttet: true })
-    expect(container.textContent).toContain('45.2k tokens')
+    expect(screen.getByLabelText('45.2k')).toBeInTheDocument()
+    expect(container.textContent).toContain('tokens')
     expect(container.textContent).toContain('Thought for 1s')
     expect(container.textContent).not.toMatch(/Redigerer|læser|andre/)
     expect(container.querySelector('.liveness-arbjede')).toBeNull()
@@ -44,7 +45,7 @@ describe('LivenessIndicator · job-linjen i hvile', () => {
     vis({ status: 'working', runningJobs: 2, elapsedMs: 3000, onOpenJobs: aabn })
     fireEvent.click(screen.getByRole('button', { name: '2 jobs kører' }))
     expect(aabn).toHaveBeenCalledOnce()
-    expect(screen.getByText('3s').closest('button')).toBeNull()
+    expect(screen.getByRole('timer', { name: '00:03' }).closest('button')).toBeNull()
   })
 
   it('viser ikke rundetal fra serverens interne tænke-livstegn', () => {

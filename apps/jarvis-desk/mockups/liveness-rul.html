@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>liveness — rullende min:sek og tokens</title>
+<style>
+  /* Desk'ets EGNE tokens, laest fra src/styles/tokens.css (moerkt tema) */
+  :root {
+    --bg-0: #111111;
+    --bg-1: #151515;
+    --bg-2: #1a1a19;
+    --bg-3: #252524;
+    --line: #292929;
+    --fg-0: #ffffff;
+    --fg-1: #f0efec;
+    --fg-2: #c3c2b7;
+    --fg-3: #898781;
+    --accent: #3fc7b4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-0); color: var(--fg-1);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 22px; display: grid; gap: 18px;
+  }
+  h1 { font-size: 11px; font-weight: 500; letter-spacing: .18em;
+       text-transform: uppercase; color: var(--fg-2); }
+  .kort { background: var(--bg-1); border: 1px solid var(--line);
+          border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+  .etiket { font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+            color: var(--fg-3); }
+
+  /* ── liveness-linjen, 1:1 fra src/styles/liveness.css ──────────────── */
+  .liveness {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 6px 4px; color: var(--fg-3); font-size: 13px;
+    width: 100%; box-sizing: border-box;
+  }
+  .liveness-label { color: var(--fg-3); flex: 1; min-width: 0; line-height: 1.45; }
+  .ring { flex: none; width: 20px; height: 20px; border-radius: 50%;
+          border: 2px solid var(--accent); opacity: .85; }
+
+  /* ── Det rullende tal ──────────────────────────────────────────────── */
+  .rullende {
+    display: inline-flex; align-items: baseline;
+    color: var(--fg-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .hjul {
+    position: relative; display: inline-block;
+    width: .62em; height: 1em; overflow: hidden;
+    vertical-align: -0.11em;
+    line-height: 1;
+  }
+  .hjul-spor {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    will-change: transform;
+    backface-visibility: hidden;
+    transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+  }
+  .hjul-spor span {
+    height: 1em; display: flex; align-items: center; justify-content: center;
+  }
+  .tegn { color: var(--fg-3); }
+</style>
+</head>
+<body>
+  <h1>liveness-linjen · rullende min:sek + tokens</h1>
+
+  <div class="kort">
+    <span class="etiket">I dag — «1m 12s · 12.8k tokens»</span>
+    <div class="liveness">
+      <span class="ring"></span>
+      <span class="liveness-label">1m 12s · 12.8k tokens · tænker</span>
+    </div>
+  </div>
+
+  <div class="kort">
+    <span class="etiket">Forslag — ur OG tokens ruller (tokens ulaempet, ~60/sek)</span>
+    <div class="liveness" id="linjeB">
+      <span class="ring"></span>
+      <span class="liveness-label">
+        <span class="rullende" id="ur"></span> ·
+        <span class="rullende" id="tokA"></span> tokens · tænker
+      </span>
+    </div>
+  </div>
+
+  <div class="kort">
+    <span class="etiket">Tokens ved ~4 opdateringer/sek</span>
+    <div class="liveness">
+      <span class="liveness-label"><span class="rullende" id="tokB"></span> tokens · tænker</span>
+    </div>
+  </div>
+
+  <div class="kort">
+    <span class="etiket">Tokens ved 1 opdatering/sek</span>
+    <div class="liveness">
+      <span class="liveness-label"><span class="rullende" id="tokC"></span> tokens · tænker</span>
+    </div>
+  </div>
+</body>
+<script src="liveness-rul.js"></script>
+</html>

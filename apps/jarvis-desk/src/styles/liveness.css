@@ -40,3 +40,36 @@
   animation: liveness-pulse 1.4s ease-in-out infinite;
 }
 @keyframes liveness-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* ── Rullende tal (4/10-2026) ──────────────────────────────────────────
+   Bjørn: «sådan som tallende ruller nede fra og op … osse token tællerne i
+   linjen». Hvert ciffer er sit eget hjul, klippet til ÉN ciffer-højde, så
+   rullingen sker indefra og der ikke er nogen synlig bane.
+
+   MÅLT 4/10-2026 med headless chromium: hjulet er 8,05 × 13 px på en linje
+   med 20,15 px line-height — det sidder uden at flytte linjen. Ulaempet
+   token-rulning stod stille 20 % af tiden ved ~60 opdateringer/sek; derfor
+   har token-hjulene en kortere overgang (se `hjul-hurtig`). */
+.rullende {
+  display: inline-flex; align-items: baseline;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.rullende .hjul {
+  position: relative; display: inline-block;
+  width: .62em; height: 1em; overflow: hidden;
+  vertical-align: -0.11em;
+  line-height: 1;
+}
+.rullende .hjul-spor {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  will-change: transform;
+  backface-visibility: hidden;
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+}
+.rullende .hjul.hjul-hurtig .hjul-spor { transition-duration: .22s; }
+.rullende .hjul-spor span {
+  height: 1em; display: flex; align-items: center; justify-content: center;
+}
+.rullende .tegn { color: var(--fg-3); }

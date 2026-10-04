@@ -26,6 +26,12 @@ CAPSULE_OLDER = CAPSULE_DIR / "session_capsule.older.json"
 
 _MAX_CAPSULE_SIZE_BYTES = 4096  # hard limit; truncate if exceeded
 
+# Min egen overdragelse har sit eget loft. Den maa ikke kunne skubbe
+# capsulen over graensen — men den skal heller ikke vaere saa kort at den
+# kun kan baere en overskrift. 3000 tegn er plads til at sige hvad der
+# virkelig stod aabent, og til at sige hvorfor.
+_MAX_HANDOVER_CHARS = 3000
+
 # ── Schema ────────────────────────────────────────────────────────────
 
 _EMPTY_CAPSULE: dict[str, Any] = {
@@ -77,6 +83,16 @@ _EMPTY_CAPSULE: dict[str, Any] = {
         "previous_session_id": None,
         "previous_session_ended_at": None,
         "hours_since_last_session": 0.0,
+    },
+    # Min EGEN overdragelse (4/10-2026). De øvrige felter skrives AF systemet;
+    # dette skriver jeg selv, med mine egne ord. Det er den eneste sektion i
+    # capsulen der kan sige noget systemet ikke ved — fx hvorfor jeg standsede
+    # midt i noget, eller hvad der er vigtigere end det ser ud.
+    "handover": {
+        "title": "",
+        "text": "",
+        "written_at": "",
+        "written_by": "",
     },
 }
 
@@ -204,6 +220,15 @@ def capture_state(
         "hours_since_last_session": prev_prov.get("hours_since_last_session", 0.0),
     }
 
+    # Handover ARVES fremad (4/10-2026). Uden denne linje ville min egen
+    # overdragelse forsvinde ved næste tur: capture_state bygger en frisk
+    # capsule og kopierer kun de sektioner den selv kender — alt andet i
+    # `current` tabes. Den er skrevet med vilje, så den må ikke vaskes væk af
+    # en maskin-genereret tur der ikke kender den.
+    capsule["handover"] = dict(
+        current.get("handover") or _EMPTY_CAPSULE["handover"]
+    )
+
     return _truncate_capsule(capsule)
 
 
@@ -223,6 +248,74 @@ def write_capsule(capsule: dict[str, Any]) -> None:
     # Write new current
     serialized = json.dumps(capsule, ensure_ascii=False, default=str, indent=2)
     CAPSULE_CURRENT.write_text(serialized, encoding="utf-8")
+
+
+def write_handover(title: str, text: str) -> dict[str, Any]:
+    """Skriv MIN egen overdragelse til den næste session.
+
+    Capsulen bærer allerede maskin-genererede felter — mood, focus, relation —
+    men de skrives AF systemet. 4/10-2026 stod der «Focus: t» i
+    CONTINUITY-blokken: ``current_focus`` hentes fra det nyeste goal-signal, og
+    det nyeste var en test-række fra 8. juli med titlen «t». Et felt der skulle
+    bære hvad jeg var i gang med, bar ét bogstav. En overdragelse der lyver er
+    værre end ingen overdragelse.
+
+    Denne funktion er den anden halvdel: hvad JEG vil at den næste mig skal
+    vide, med mine egne ord. Feltet overlever rotationen, fordi
+    ``capture_state`` arver det fremad — uden den linje ville det forsvinde
+    efter tre ture.
+
+    Kaster aldrig: et værktøj der kaster efterlader kalderen uden svar.
+    """
+    titel = str(title or "").strip()
+    tekst = str(text or "").strip()
+    if not tekst:
+        return {
+            "status": "error",
+            "error": (
+                "tom overdragelse — en overskrift uden indhold siger den næste "
+                "mig ingenting"
+            ),
+        }
+
+    try:
+        capsule = read_capsule() or dict(_EMPTY_CAPSULE)
+        capsule["handover"] = {
+            "title": titel[:120],
+            "text": tekst[:_MAX_HANDOVER_CHARS],
+            "written_at": _now_iso(),
+            "written_by": "jarvis",
+        }
+        capsule["captured_at"] = _now_iso()
+        write_capsule(capsule)
+    except Exception as exc:
+        logger.warning("write_handover failed: %s", exc)
+        return {
+            "status": "error",
+            "error": f"kunne ikke skrive overdragelsen: {type(exc).__name__}: {exc}",
+        }
+
+    return {
+        "status": "ok",
+        "title": capsule["handover"]["title"],
+        "chars": len(capsule["handover"]["text"]),
+        "trunkeret": len(tekst) > _MAX_HANDOVER_CHARS,
+        "note": (
+            "Overdragelsen står nu i capsulen og vises øverst i den næste "
+            "sessions CONTINUITY-blok."
+        ),
+    }
+
+
+def read_handover() -> dict[str, Any] | None:
+    """Læs den overdragelse der står i capsulen lige nu (eller None)."""
+    capsule = read_capsule()
+    if not capsule:
+        return None
+    handover = capsule.get("handover") or {}
+    if not str(handover.get("text") or "").strip():
+        return None
+    return dict(handover)
 
 
 def sync_capsule_mood() -> dict[str, Any] | None:
@@ -438,6 +531,16 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
         "deep_sleep": "Deep sleep",
     }.get(tier, "Wake-up")
     lines.append(f"▲ CONTINUITY — {tier_label} ({gap_str} since last session)")
+
+    # Min egen overdragelse staar FOERST i blokken — den er det eneste her
+    # der ikke kan udledes af tilstand: hvad jeg selv mente den naeste
+    # skulle vide. De maskin-genererede felter nedenfor er kontekst.
+    handover = capsule.get("handover") or {}
+    if str(handover.get("text") or "").strip():
+        titel = str(handover.get("title") or "").strip() or "uden titel"
+        lines.append(f"  ⤷ OVERDRAGELSE — {titel}")
+        for ln in str(handover["text"]).splitlines():
+            lines.append(f"    {ln}")
 
     # Warm tier: mood + focus (always included)
     # 2026-05-22 (Claude): bucket mood values to 0.1 increments. Live cache

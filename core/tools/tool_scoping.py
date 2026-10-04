@@ -91,6 +91,9 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # hele værktøjskassen, ingen bruger til at godkende undervejs. En
     # husstandsmedlem må ikke kunne starte runs i Bjørns navn.
     "start_session",
+    # Min egen overdragelse (4/10-2026). Owner-only: capsulen er MIN
+    # tilstand, ikke en flade en husstand kan skrive i.
+    "write_handover",
 })
 
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere

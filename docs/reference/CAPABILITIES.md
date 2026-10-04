@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-04 — 491 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-04 — 492 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -430,6 +430,7 @@
 | `worktree_list` | native | no |
 | `worktree_merge` | native | no |
 | `write_file` | native | yes |
+| `write_handover` | native | no |
 | `write_memory_topic` | native | no |
 | `operator_bash` | operator | yes |
 | `operator_bash_output` | operator | no |

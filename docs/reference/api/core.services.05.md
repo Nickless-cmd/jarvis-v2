@@ -212,8 +212,11 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 | function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L305) |
 | function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L319) |
 | function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L359) |
-| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L381) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L437) |
+| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L381) |
+| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L403) |
+| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L460) |
+| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L481) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L552) |
 
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._

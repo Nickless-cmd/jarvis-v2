@@ -378,7 +378,107 @@ def _allerede_filet() -> set[str] | None:
         return None
 
 
-def _file_proposals(max_new: int = 10) -> int:
+def _er_fritstaaende(linje: str, aaben: int) -> bool:
+    """Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen?
+
+    Sandt = den yderste kaldes for sin BIVIRKNING, og returværdien smides væk.
+    Kan parentes-balancen ikke følges (fx en parentes inde i en streng), svarer
+    vi nej — og så tælles navnet som læst. Den fejl er den sikre: vi filer
+    hellere ét forslag for meget end at skjule et ægte fund.
+    """
+    dybde = 0
+    i = aaben
+    while i < len(linje):
+        c = linje[i]
+        if c in "([{":
+            dybde += 1
+        elif c in ")]}":
+            dybde -= 1
+            if dybde == 0:
+                return not linje[i + 1:].strip()
+        i += 1
+    return False
+
+
+def _funktions_brug() -> set[str] | None:
+    """Navne på funktioner hvis returværdi LÆSES et sted i kodebasen.
+
+    Instrumentet målte FORM: returnerer `except`-grenen en success-lignende værdi?
+    Det er ikke det samme som RISIKO. `False` fra en `except` er kun farlig hvis
+    nogen læser den — en kalder der smider svaret væk kan ikke skelne noget,
+    fordi den ikke prøver. Målt 4/10-2026: 937 kandidater, hvoraf et mindretal
+    faktisk bruges som svar.
+
+    Reglen er bevidst skæv mod «læses»: kun et kald der står ALENE som sin egen
+    sætning tæller som «værdien smides væk». En falsk «læses» koster ét forslag
+    for meget; en falsk «ignoreres» ville skjule et ægte fund.
+
+    Regex, ikke AST: vi skal kun skelne «nogen læser svaret» fra «ingen gør», og
+    et fuldt AST-indeks over hele træet ville koste mere end svaret er værd.
+    Kaldes funktionen gennem et alias i en anden fil, ser vi det ikke — derfor er
+    fraværet af et navn et svagt signal, og det bruges kun til at UDSKYDE en
+    anmodning, aldrig til at slette et fund.
+
+    Returnerer `None` hvis indekset ikke kunne bygges — så filer vi som før.
+    """
+    læst: set[str] = set()
+    try:
+        for rel in _iter_py_files():
+            try:
+                source = (_REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+            except Exception:  # self-safe: en ulaeselig fil maa ikke vaelte indekset
+                continue
+            for linje in source.splitlines():
+                s = linje.strip()
+                if not s or s.startswith("#"):
+                    continue
+                # `def foo(x):` matcher ellers samme mønster som et KALD — og så
+                # blev hver funktion «læst» af sin egen definitionslinje. Målt
+                # 4/10-2026: uden dette spring var 19.103 navne «læst», altså
+                # næsten hele kodebasen, og signalet skilte intet.
+                if s.startswith(("def ", "async def ", "class ", "@", "import ", "from ")):
+                    continue
+                if s.startswith("await "):
+                    s = s[6:].lstrip()
+                kald = list(re.finditer(r"\b([A-Za-z_]\w*)\s*\(", s))
+                if not kald:
+                    continue
+                # Den yderste kalder kan være punkteret (`self.foo(`) — den skal
+                # ogsaa kunne genkendes, ellers tælles et bart metodekald som «læst».
+                yderst = re.match(r"(?:[A-Za-z_]\w*\.)*[A-Za-z_]\w*\s*\(", s)
+                if yderst and _er_fritstaaende(s, yderst.end() - 1):
+                    # Den yderste kaldes for sin bivirkning — men de INDRE kald på
+                    # linjen læses stadig (`_observe(central().snapshot())`).
+                    læst.update(m.group(1) for m in kald[1:])
+                else:
+                    læst.update(m.group(1) for m in kald)
+    except Exception:  # self-safe: kunne ikke bygge indekset → None = «fil som foer»
+        return None
+    return læst
+
+
+def _vaerd_at_foreslaa(f: dict[str, Any], *, læste: set[str] | None,
+                       sikkerhed: set[str]) -> bool:
+    """Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form.
+
+    Et forslag er en anmodning om handling. Findes der ingen kalder der læser
+    svaret, er der ingen handling at anmode om: fundet bliver liggende som åbent
+    fund, men det fylder ikke køen. Fejler indekset, svarer vi ja (fail-open på
+    filing er den sikre side).
+    """
+    if læste is None:
+        return True
+    if str(f.get("kind") or "") != "except_silent":
+        return True  # kun den klasse hvor RETURVÆRDIEN er selve problemet
+    if str(f.get("file") or "") in sikkerhed:
+        return True  # sikkerhedsflader undtages — dér er formen nok
+    navn = str(f.get("function") or "")
+    if not navn:
+        return True  # modul-niveau: ingen kalder at måle
+    return navn in læste
+
+
+def _file_proposals(max_new: int = 10, *, stats: dict[str, int] | None = None) -> int:
     """Filer reviewbare proposals for åbne fund med score≥threshold.
 
     Et fund filéres HØJST ÉN GANG. Dedup'en så før kun på `pending`-køen, så et
@@ -393,6 +493,11 @@ def _file_proposals(max_new: int = 10) -> int:
     instrumentet: sandheden om at mønsteret stadig findes ligger i koden, ikke i
     køen.
 
+    Vinduet hentes BREDERE end `max_new`, fordi fund hvis returværdi ingen læser
+    springes over (`_vaerd_at_foreslaa`). Ellers ville de fylde vinduet og
+    blokere for de fund der faktisk har en kalder — samme mekanik som da filede
+    fund skubbede ufilede ud.
+
     ALDRIG auto-merged. Returnerer antal nye proposals.
     """
     from core.runtime import db_instrument as dbi
@@ -404,16 +509,22 @@ def _file_proposals(max_new: int = 10) -> int:
         from core.services.autonomy_proposal_queue import file_proposal
     except Exception:
         return 0
+    læste = _funktions_brug()
+    sikkerhed = _security_files()
     filed = 0
+    sprunget_over = 0
     # Udelukkelsen sker i SQL, så et filéret fund ikke optager vinduet og skubber
     # et ufiléret ud af det.
     for f in dbi.list_findings(status="open", min_score=_PROPOSAL_THRESHOLD,
-                               limit=max_new, exclude_signatures=allerede):
+                               limit=max_new * 20, exclude_signatures=allerede):
         sig = str(f.get("signature") or "")
         if sig in allerede:
             continue
         if _reject_count(sig) >= _REJECT_DEMOTE:
             continue  # lært: afvist gentagne gange → ingen ny proposal
+        if not _vaerd_at_foreslaa(f, læste=læste, sikkerhed=sikkerhed):
+            sprunget_over += 1
+            continue  # ingen læser svaret → ingen anmodning at stille
         title = f"Silent-failure: {f.get('kind')} i {f.get('file')}:{f.get('line')}"
         rationale = (
             f"Mønster '{f.get('kind')}' (severity {f.get('severity')}, score {f.get('score')}) "
@@ -423,7 +534,8 @@ def _file_proposals(max_new: int = 10) -> int:
         )
         try:
             file_proposal(kind="instrument_fix", title=title, rationale=rationale,
-                          payload={"finding": f}, created_by="central_instrument",
+                          payload={"finding": f, "returvaerdi_laeses": True},
+                          created_by="central_instrument",
                           canonical_key=sig)
             filed += 1
             allerede.add(sig)  # samme kørsel må ikke filé samme signatur to gange
@@ -431,6 +543,9 @@ def _file_proposals(max_new: int = 10) -> int:
             pass
         if filed >= max_new:
             break
+    if stats is not None:
+        stats["sprunget_over"] = sprunget_over
+        stats["filbare"] = filed
     return filed
 
 
@@ -439,7 +554,8 @@ def run_instrument_scan(*, trigger: str = "cadence", changed_only: bool = True) 
     from core.runtime import db_instrument as dbi
     counts = scan_repo(changed_only=changed_only)
     summary = dbi.summary()
-    new_proposals = _file_proposals()
+    stats: dict[str, int] = {}
+    new_proposals = _file_proposals(stats=stats)
     try:
         from core.services.central_core import central
         central().observe({
@@ -447,8 +563,11 @@ def run_instrument_scan(*, trigger: str = "cadence", changed_only: bool = True) 
             "scanned": counts.get("scanned"), "changed": counts.get("changed"),
             "open_findings": summary.get("total"), "critical": summary.get("critical"),
             "high": summary.get("high"), "proposals_open": summary.get("proposals"),
-            "new_proposals": new_proposals, "trigger": trigger,
+            "new_proposals": new_proposals,
+            "sprunget_over": stats.get("sprunget_over", 0),
+            "trigger": trigger,
         })
     except Exception:
         pass
-    return {"status": "ok", **counts, "summary": summary, "new_proposals": new_proposals}
+    return {"status": "ok", **counts, "summary": summary, "new_proposals": new_proposals,
+            "sprunget_over": stats.get("sprunget_over", 0)}

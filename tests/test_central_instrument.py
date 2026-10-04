@@ -297,3 +297,82 @@ def test_scanningen_rydder_fund_for_en_fil_der_er_vaek(isolated_runtime, monkeyp
     assert rep["pruned_files"] == 1
     aabne = {f["signature"] for f in dbi.list_findings(status="open", limit=50)}
     assert "sig-vaek" not in aabne, "scanningen skal have ryddet fundet for den væk fil"
+
+
+# ── Brugs-signalet: måler BRUG, ikke form (4/10-2026) ────────────────────────
+#
+# Instrumentet spurgte «returnerer `except`-grenen en success-lignende værdi?».
+# Det er FORM. Spørgsmålet der afgør om et fund er en ANMODNING om handling er
+# om nogen LÆSER svaret — en kalder der smider det væk kan ikke skelne noget,
+# fordi den ikke prøver.
+
+def _trae(tmp_path, monkeypatch, kilde: str):
+    (tmp_path / "a.py").write_text(kilde, encoding="utf-8")
+    monkeypatch.setattr(ci, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(ci, "_iter_py_files", lambda: ["a.py"])
+    return ci._funktions_brug()
+
+
+def test_funktions_brug_skelner_laest_fra_smidt_vaek(tmp_path, monkeypatch):
+    laeste = _trae(tmp_path, monkeypatch,
+                   "def laest():\n    return 1\n"
+                   "def bart():\n    return 2\n"
+                   "def aldrig_kaldt():\n    return 3\n"
+                   "def brug():\n"
+                   "    x = laest()\n"
+                   "    bart()\n"
+                   "    return x\n")
+    assert "laest" in laeste, "x = laest() — værdien læses"
+    assert "bart" not in laeste, "bart() står alene — værdien smides væk"
+    assert "aldrig_kaldt" not in laeste
+
+
+def test_funktions_brug_ser_bart_metodekald(tmp_path, monkeypatch):
+    """`self.foo(x)` er også et bart kald — det var fælden der gjorde indekset tomt for signal."""
+    laeste = _trae(tmp_path, monkeypatch, "def brug(self):\n    self.hemmelig()\n")
+    assert "hemmelig" not in laeste
+
+
+def test_funktions_brug_laeser_indre_kald_paa_en_bart_linje(tmp_path, monkeypatch):
+    """Den yderste kaldes for sin bivirkning — men de indre kald læses stadig."""
+    laeste = _trae(tmp_path, monkeypatch, "def brug():\n    _observe(hent())\n")
+    assert "hent" in laeste
+    assert "_observe" not in laeste
+
+
+def test_funktions_brug_tror_ikke_def_linjen_er_et_kald(tmp_path, monkeypatch):
+    """`def foo(x):` matcher samme mønster. Uden springet blev hver funktion «læst»."""
+    laeste = _trae(tmp_path, monkeypatch, "def helt_ukaldt(x):\n    return x\n")
+    assert "helt_ukaldt" not in laeste
+
+
+def _fund_d(funktion: str, *, kind: str = "except_silent", fil: str = "core/x.py") -> dict:
+    return {"signature": "s", "file": fil, "line": 1, "kind": kind,
+            "severity": "high", "score": 4, "function": funktion, "snippet": "x"}
+
+
+def test_vaerd_at_foreslaa_springer_ulæst_over():
+    f = _fund_d("aldrig_laest")
+    assert ci._vaerd_at_foreslaa(f, læste={"noget_andet"}, sikkerhed=set()) is False
+
+
+def test_vaerd_at_foreslaa_beholder_naar_nogen_laeser():
+    f = _fund_d("laest")
+    assert ci._vaerd_at_foreslaa(f, læste={"laest"}, sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_undtager_sikkerhedsflader():
+    """På en sikkerhedsflade er FORMEN nok — vi springer ikke over fordi ingen læser."""
+    f = _fund_d("aldrig_laest", fil="core/auth/port.py")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed={"core/auth/port.py"}) is True
+
+
+def test_vaerd_at_foreslaa_roerer_ikke_andre_kinds():
+    f = _fund_d("aldrig_laest", kind="except_pass")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_fail_open_naar_indekset_ikke_kunne_bygges():
+    """Kan vi ikke afgøre det, filer vi — den fejl er den sikre."""
+    f = _fund_d("hvad_som_helst")
+    assert ci._vaerd_at_foreslaa(f, læste=None, sikkerhed=set()) is True

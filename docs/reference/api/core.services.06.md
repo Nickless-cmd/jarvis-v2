@@ -53,12 +53,12 @@ _Real-time Central-surface til owner-vinduet i jarvis-desk (code mode)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_status_from` | `(diag, incidents, open_breakers, drift, degrading, anomaly_counts=…, processes=…)` | 🔴 red / 🟡 yellow / 🟢 green — værst-vinder. Inkluderer ALLE processers helbred | [src](../../../core/services/central_realtime.py#L20) |
-| function | `runtime_liveness` | `()` | Sandfærdig runtime-topologi + heartbeat-friskhed. | [src](../../../core/services/central_realtime.py#L42) |
-| function | `realtime_snapshot` | `(*, trace_limit=…)` | Ét snapshot af Centralens live-tilstand. Self-safe (delvise data ved fejl). | [src](../../../core/services/central_realtime.py#L74) |
-| function | `_balanced_feed` | `(records, limit)` | Flet feed-records på tværs af processer UDEN at en højvolumen-proces (api) sulter en | [src](../../../core/services/central_realtime.py#L214) |
-| function | `_cluster_grid` | `(feed, incidents, open_breakers, degrading)` | Pr. cluster: grøn (fyrer), gul (fejl/degraderer), rød (breaker/severe/fail-open), | [src](../../../core/services/central_realtime.py#L243) |
-| function | `_safe` | `(fn, *a)` | — | [src](../../../core/services/central_realtime.py#L281) |
+| function | `_status_from` | `(diag, incidents, open_breakers, drift, degrading, anomaly_counts=…, processes=…, incident_counts=…)` | 🔴 red / 🟡 yellow / 🟢 green — værst-vinder. Inkluderer ALLE processers helbred | [src](../../../core/services/central_realtime.py#L20) |
+| function | `runtime_liveness` | `()` | Sandfærdig runtime-topologi + heartbeat-friskhed. | [src](../../../core/services/central_realtime.py#L55) |
+| function | `realtime_snapshot` | `(*, trace_limit=…)` | Ét snapshot af Centralens live-tilstand. Self-safe (delvise data ved fejl). | [src](../../../core/services/central_realtime.py#L87) |
+| function | `_balanced_feed` | `(records, limit)` | Flet feed-records på tværs af processer UDEN at en højvolumen-proces (api) sulter en | [src](../../../core/services/central_realtime.py#L238) |
+| function | `_cluster_grid` | `(feed, incidents, open_breakers, degrading)` | Pr. cluster: grøn (fyrer), gul (fejl/degraderer), rød (breaker/severe/fail-open), | [src](../../../core/services/central_realtime.py#L267) |
+| function | `_safe` | `(fn, *a)` | — | [src](../../../core/services/central_realtime.py#L305) |
 
 ## `core/services/central_red_dress.py`
 _The Woman in the Red Dress — opmærksomheds-fælden._

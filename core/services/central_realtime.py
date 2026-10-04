@@ -19,21 +19,34 @@ _FEED_CAP = 80  # hvor mange records vi trækker pr. proces før fletning/limit
 
 def _status_from(diag: dict, incidents: list, open_breakers: list, drift: dict,
                  degrading: list, anomaly_counts: dict | None = None,
-                 processes: list | None = None) -> str:
+                 processes: list | None = None,
+                 incident_counts: dict | None = None) -> str:
     """🔴 red / 🟡 yellow / 🟢 green — værst-vinder. Inkluderer ALLE processers helbred
     (api + runtime): en åben breaker eller degradering i runtime-processen tæller lige
-    så meget som i api-processen."""
+    så meget som i api-processen.
+
+    Målt 4/10-2026: farven blev regnet på `incidents` — som kalderen henter med
+    ``limit=40``. Er der flere end 40 uløste, falder en ægte fejl uden for vinduet,
+    og Centralen kunne stå GRØN med en uløst ``error`` i DB'en. ``incident_counts``
+    (talt i DB) er autoritativ når den findes; ellers bruges listen som før."""
     ac = anomaly_counts or {}
     procs = processes or []
     any_proc_breaker = any((p.get("open_breakers") or []) for p in procs)
     any_proc_degraded = any(p.get("degraded") for p in procs)
-    severe = [i for i in incidents if str(i.get("severity")) == "severe"]
-    fail_open = [i for i in incidents if str(i.get("kind")) == "fail_open"]
-    if (open_breakers or any_proc_breaker or severe or fail_open
+    ic = incident_counts or {}
+    if ic:
+        _severe = int(ic.get("severe") or 0)
+        _errors = int(ic.get("errors") or 0)
+        _fail_open = int(ic.get("fail_open") or 0)
+    else:
+        _severe = len([i for i in incidents if str(i.get("severity")) == "severe"])
+        _errors = len([i for i in incidents
+                       if str(i.get("severity")) in ("error", "severe")])
+        _fail_open = len([i for i in incidents if str(i.get("kind")) == "fail_open"])
+    if (open_breakers or any_proc_breaker or _severe or _fail_open
             or int(ac.get("critical") or 0) > 0):
         return "red"
-    errors = [i for i in incidents if str(i.get("severity")) in ("error", "severe")]
-    if (diag.get("degraded") or any_proc_degraded or errors or degrading
+    if (diag.get("degraded") or any_proc_degraded or _errors or degrading
             or (drift or {}).get("drift") or int(ac.get("high") or 0) > 0):
         return "yellow"
     return "green"
@@ -153,6 +166,16 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
         ]
     except Exception:
         pass
+    # Sande tal (4/10-2026): listen ovenfor er KLIPPET til 12 for visning, så
+    # `len()` af den svarer altid ≤12. Panelet viste derfor «12» uanset om der
+    # stod 12 eller 240 åbne, og `unresolved_errors` blev talt i det klippede
+    # vindue — så en ægte fejl uden for top-12 var usynlig, mens status-farven
+    # (regnet på den fulde liste) var gul. Tal og farve modsagde hinanden.
+    try:
+        from core.runtime.db_central_incidents import count_open_incidents
+        snap["incident_counts"] = count_open_incidents()
+    except Exception:  # self-safe: kalderen falder tilbage til den klippede liste
+        snap["incident_counts"] = {}
     # Config-drift: udled fra de PERSISTEREDE incidents (config_drift-cadence-produceren
     # skriver dem) — KALD IKKE observe_config_drift() live: dens port-probe blokerer ~10s
     # (connect-timeout mod port 80), og panelet poller hvert 2s → ville hænge endpointet.
@@ -207,7 +230,8 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
     snap["runtime_liveness"] = runtime_liveness()
     snap["status"] = _status_from(diag, incidents, snap["open_breakers"], drift, degrading,
                                   snap.get("anomalies", {}).get("counts", {}),
-                                  snap.get("processes", []))
+                                  snap.get("processes", []),
+                                  snap.get("incident_counts"))
     return snap
 
 

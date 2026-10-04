@@ -274,3 +274,44 @@ def test_has_unresolved_message_dedup(isolated_runtime):
     # når resolved → ikke længere en dublet-blokering
     resolve_central_incidents(cluster="system", nerve="config_drift")
     assert has_unresolved_message(cluster="system", nerve="config_drift", message=msg) is False
+
+
+# ── Sande tal: tæl i DB, ikke i den klippede visnings-liste (målt 4/10-2026) ──
+#
+# Panelet viste altid 12 uløste, uanset hvor mange der stod åbne: `snap["incidents"]`
+# klippes til 12 for VISNING, og `unresolved_incidents` blev talt med `len()` af den
+# klippede liste. `unresolved_errors` blev talt i samme vindue, så en ægte fejl uden
+# for top-12 var usynlig — mens status-farven (regnet på den fulde liste) var gul.
+# Tal og farve modsagde hinanden.
+
+def test_count_open_incidents_opdeler_de_aabne(isolated_runtime):
+    """Tællingen skal komme fra DB — ikke fra en liste der klippes til 12.
+
+    Med 16 åbne er det sande tal 16; `len(visnings-listen)` ville sige 12."""
+    from core.runtime.db_central_incidents import (
+        record_central_incident, count_open_incidents, resolve_central_incident,
+    )
+    for i in range(15):
+        record_central_incident(cluster="proactivity", nerve="verification",
+                                kind="gate_enforce", severity="info", message=f"g{i}")
+    fejl = record_central_incident(cluster="runtime", nerve="silent_cutoff",
+                                   kind="turn_without_reply", severity="error",
+                                   message="cut")
+    c = count_open_incidents()
+    assert c["unresolved"] == 16
+    assert c["errors"] == 1
+    assert c["governance"] == 15
+    assert c["severe"] == 0
+    assert c["fail_open"] == 0
+    # en LUKKET fejl tælles ikke med
+    assert resolve_central_incident(fejl)
+    assert count_open_incidents()["errors"] == 0
+    assert count_open_incidents()["unresolved"] == 15
+
+
+def test_count_open_incidents_er_self_safe(monkeypatch, isolated_runtime):
+    """DB nede → {} (kalderen falder tilbage til listen), aldrig en exception."""
+    from core.runtime import db_central_incidents as dci
+    monkeypatch.setattr(dci, "connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert dci.count_open_incidents() == {}

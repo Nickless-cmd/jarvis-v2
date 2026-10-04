@@ -250,7 +250,8 @@ _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
 | function | `expire_orphan_incidents` | `(*, older_than_hours=…)` | Luk ULØSTE incidents UDEN run-tilknytning der er ældre end vinduet. Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L282) |
 | function | `has_unresolved_message` | `(*, cluster, nerve, message, within_seconds=…)` | True hvis en uløst incident med SAMME besked allerede findes inden for tidsvinduet. | [src](../../../core/runtime/db_central_incidents.py#L310) |
 | function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L336) |
-| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L363) |
+| function | `count_open_incidents` | `()` | Antal ULØSTE incidents, opdelt — talt i DB, ikke i en klippet liste. | [src](../../../core/runtime/db_central_incidents.py#L363) |
+| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L397) |
 
 ## `core/runtime/db_chat_rewind.py`
 _Spol en samtale tilbage — og fortryd det, indtil næste besked._

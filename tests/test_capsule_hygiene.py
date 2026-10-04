@@ -32,6 +32,48 @@ I_DAG = datetime.now(UTC).date().isoformat()
 # ── defekt 1: dagstallet ──────────────────────────────────────────────
 
 
+def test_gammelt_fokus_ryddes_ved_merge_ikke_kun_ved_kilden(capsule_dir):
+    """Den tredje vej — og den eneste der virker paa en fil der allerede loej.
+
+    Kilden og visningen blev vogtet 4/10, men capture_state MERGER over den
+    forrige capsule: naar den ferske attention er tom, arves den gamle vaerdi
+    fremad for evigt. Maalt i drift kl. 17:38 stod filen stadig med
+    current_focus='t' EFTER fixet — praecis fordi merge lod den staa.
+    """
+    gammel = dict(c._EMPTY_CAPSULE)
+    gammel["attention"] = {
+        "current_focus": "t",
+        "active_goal_title": "t",
+        "open_thread": None,
+    }
+    c.write_capsule(gammel)
+
+    # Fersk attention UDEN fokus — praecis som naar statusfilteret nu giver nul
+    # aktive signaler. Den gamle 't' maa ikke overleve.
+    ny = c.capture_state(attention={"open_thread": None})
+    assert ny["attention"].get("current_focus") is None
+    assert ny["attention"].get("active_goal_title") is None
+
+    # capture_state BYGGER dict'en; write_capsule GEMMER den. Rensningen skal
+    # holde hele vejen — ogsaa naar den er skrevet og laest igen. (Den foerste
+    # udgave af denne test antog at capture_state selv skrev; det goer den
+    # ikke, og testen fejlede med rette paa sin egen paastand.)
+    c.write_capsule(ny)
+    fra_disk = c.read_capsule()
+    assert fra_disk["attention"].get("current_focus") is None
+    assert fra_disk["attention"].get("active_goal_title") is None
+
+
+def test_et_rigtigt_fokus_overlever_merge(capsule_dir):
+    """Vagten maa ikke rydde et aegte fokus. Kun skrald under graensen."""
+    gammel = dict(c._EMPTY_CAPSULE)
+    gammel["attention"] = {"current_focus": "Railen 1:1 med mockup'en"}
+    c.write_capsule(gammel)
+
+    ny = c.capture_state(attention={})
+    assert ny["attention"]["current_focus"] == "Railen 1:1 med mockup'en"
+
+
 def test_skrald_tal_fra_foer_fixet_nulstilles(capsule_dir):
     """Capsulen stod paa 860 uden dato — den skal nulstilles, ikke fortsætte."""
     gammel = dict(c._EMPTY_CAPSULE)

@@ -180,6 +180,22 @@ def capture_state(
     # Attention
     merged_attention = dict(current.get("attention", {}))
     merged_attention.update(attention or {})
+    # Rensningen af det MERGEDE felt — tredje sted, og det eneste der virker
+    # paa gammel skrald (4/10-2026).
+    #
+    # Vagten ved KILDEN (visible_runs_memory) og ved VISNINGEN
+    # (build_wake_up_block) var ikke nok. capture_state MERGER over den
+    # forrige capsule, saa en vaerdi der allerede stod i filen blev arvet
+    # fremad for evigt: ingen skrev den, og ingen ryddede den. Maalt 4/10
+    # kl. 17:38 — EFTER fixet var i drift — stod filen stadig med
+    # current_focus='t', netop fordi den ferske attention var tom, og merge
+    # derfor lod den gamle staa.
+    #
+    # Tomt er aerligt; «t» er en loegn om at der ER et fokus.
+    for _noegle in ("current_focus", "active_goal_title"):
+        _vaerdi = str(merged_attention.get(_noegle) or "").strip()
+        if _vaerdi and len(_vaerdi) < MIN_FOCUS_CHARS:
+            merged_attention[_noegle] = None
     capsule["attention"] = merged_attention
 
     # Relation

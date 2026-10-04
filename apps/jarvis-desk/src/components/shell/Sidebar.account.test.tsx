@@ -79,23 +79,25 @@ describe('rollen og bug-ikonet i fodens bund', () => {
     expect(screen.getByRole('button', { name: 'Rapportér en fejl' })).toBeTruthy()
   })
 
-  it('bug-feltet lægger rapporten i skrivefeltet via jarvis-bug', () => {
-    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
+  it('bug-ikonet åbner rapporten — den lægges ikke i skrivefeltet længere', () => {
+    // 4/10-2026: feltet er flyttet MIDT PÅ SKÆRMEN og sender til
+    // `/chat/inbox/flag`. Det gamle popover fyldte skrivefeltet via
+    // `jarvis-bug`. Begge dele skal være væk — ikke kun det ene, for så ville
+    // rapporten kunne havne to steder.
+    const aabn = vi.fn()
+    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" onOpenBug={aabn} />)
     fireEvent.click(screen.getByRole('button', { name: 'Rapportér en fejl' }))
-    fireEvent.change(screen.getByLabelText('Hvad gik galt?'), { target: { value: 'Streamen stopper' } })
-    const fanget: string[] = []
-    const lyt = (e: Event) => fanget.push(String((e as CustomEvent<string>).detail))
-    window.addEventListener('jarvis-bug', lyt)
-    fireEvent.click(screen.getByRole('button', { name: 'Send til Jarvis' }))
-    window.removeEventListener('jarvis-bug', lyt)
-    expect(fanget).toEqual(['Streamen stopper'])
-    // Feltet lukker og tømmes, så rapporten ikke kan sendes to gange.
+    expect(aabn).toHaveBeenCalledOnce()
     expect(screen.queryByLabelText('Hvad gik galt?')).toBeNull()
   })
 
-  it('kan ikke sende en tom rapport', () => {
-    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" />)
+  it('fylder ikke skrivefeltet via jarvis-bug', () => {
+    const fanget: string[] = []
+    const lyt = (e: Event) => fanget.push(String((e as CustomEvent<string>).detail))
+    window.addEventListener('jarvis-bug', lyt)
+    render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" onOpenBug={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Rapportér en fejl' }))
-    expect(screen.getByRole('button', { name: 'Send til Jarvis' })).toBeDisabled()
+    window.removeEventListener('jarvis-bug', lyt)
+    expect(fanget).toEqual([])
   })
 })

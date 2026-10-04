@@ -26,6 +26,7 @@ import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { PrivacyDialog } from './components/PrivacyDialog'
+import { BugRapport } from './components/BugRapport'
 import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
@@ -198,9 +199,14 @@ function Shell({
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   const [searchOpen, setSearchOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  // Fejl-rapporten bor her og ikke i Sidebar, af samme grund som
+  // privatlivs-dialogen: begge er `<dialog>`-elementer der skal ligge i
+  // top-laget MIDT på skærmen, ikke inde i sidens kolonne-layout.
+  const [bugOpen, setBugOpen] = useState(false)
   return (
     <div className="window">
-      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)} />
+      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)}
+               onOpenBug={() => setBugOpen(true)} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
         <PresenceHost />
@@ -252,6 +258,7 @@ function Shell({
           {surface === 'scheduling' && <SchedulingView role={role} />}
         </ShellWithPanel>
         {privacyOpen && <PrivacyDialog config={cfg} onClose={() => setPrivacyOpen(false)} />}
+        {bugOpen && <BugRapport config={cfg} onClose={() => setBugOpen(false)} />}
         {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}
       </main>
     </div>

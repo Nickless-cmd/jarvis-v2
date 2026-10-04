@@ -128,23 +128,33 @@ function Ruller({
   hurtig?: boolean
 }) {
   const tegn = tekst.split('')
+  const antal = tegn.length
   return (
     <>
-      {tegn.map((c, i) =>
-        /\d/.test(c) ? (
+      {tegn.map((c, i) => {
+        // Nøglen er afstanden FRA HØJRE, ikke indekset fra venstre.
+        //
+        // MÅLT 4/10-2026 i mobilen (samme kode): med `key={i}` genbrugte
+        // React det forreste hjul da strengen voksede, så «9s» → «10s» lod
+        // hjul 0 gå 9 → 1. Da 1 < 9 ramte det viklings-grenen og viste «0» —
+        // uret stod på «90s» i stedet for «10s». Med ankeret fra højre
+        // beholder 's' sin nøgle, ener-hjulet ruller 9 → 0 (den RIGTIGE
+        // vikling), og det nye tier-hjul monteres forfra på sit eget ciffer.
+        const anker = antal - i
+        return /\d/.test(c) ? (
           <CifferHjul
-            key={i}
+            key={anker}
             cyklus={cyklusser?.[i] ?? 10}
             vaerdi={Number(c)}
             retning={retning}
             hurtig={hurtig}
           />
         ) : (
-          <span className="tegn" key={i} aria-hidden="true">
+          <span className="tegn" key={anker} aria-hidden="true">
             {c}
           </span>
-        ),
-      )}
+        )
+      })}
     </>
   )
 }

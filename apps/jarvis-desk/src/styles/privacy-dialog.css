@@ -1,0 +1,22 @@
+.privacy-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  padding: 0;
+  border: 1px solid var(--overlay-line);
+  border-radius: 14px;
+  background: var(--overlay-bg);
+  color: var(--fg-1);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 50%);
+  overflow: auto;
+}
+.privacy-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.privacy-dialog-content { position: relative; padding: 28px; }
+.privacy-dialog .data-privacy { margin: 0; padding: 0; border: 0; max-width: none; }
+.privacy-dialog-close {
+  position: sticky; top: 0; float: right; z-index: 1;
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border: 0; border-radius: 7px; background: var(--bg-3); color: var(--fg-1);
+  cursor: pointer;
+}
+.privacy-dialog-close:hover { background: var(--bg-4); }
+@media (max-width: 600px) { .privacy-dialog-content { padding: 20px; } }

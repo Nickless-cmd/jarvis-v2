@@ -88,6 +88,11 @@ describe('CodeView', () => {
     })
   })
 
+  it('viser kørselstal under composer i code mode', () => {
+    const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    expect(container.querySelector('.composer-tal')).toHaveTextContent('0 turns 0 steps')
+  })
+
   it('viser aktivitet fra en anden enhed som ikon ved Central i headeren', async () => {
     vi.mocked(api.getActiveRunSessions).mockResolvedValueOnce([
       { session_id: 's1', run_id: 'remote-run', status: 'working' },

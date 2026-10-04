@@ -1,0 +1,86 @@
+/* Notification attention keeps the desk palette from tokens.css. */
+.klokke-ulast {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-0);
+}
+.klokke-attention svg { transform-origin: 50% 15%; animation: klokke-ring 3.8s ease-in-out infinite; }
+.klokke-attention::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 7px;
+  animation: klokke-glow 3.8s ease-out infinite;
+}
+@keyframes klokke-ring {
+  0%, 8%, 17%, 100% { transform: rotate(0); }
+  10% { transform: rotate(-17deg); }
+  12% { transform: rotate(15deg); }
+  14% { transform: rotate(-10deg); }
+  16% { transform: rotate(5deg); }
+}
+@keyframes klokke-glow {
+  0%, 18%, 100% { box-shadow: 0 0 0 0 transparent; }
+  9% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+
+.notif-liste .notif-swipe { position: relative; overflow: hidden; padding: 0; touch-action: pan-y; }
+.notif-swipe-content { position: relative; padding: 10px; background: var(--bg-1); transition: transform .16s ease-out, background .16s; }
+.notif-swipe:hover .notif-swipe-content { background: var(--bg-3); }
+.notif-liste .notif-swipe.er-laest { border-left-color: var(--line); }
+.notif-swipe.er-laest .notif-titel { color: var(--fg-2); }
+.notif-swipe-action { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 12px; color: var(--fg-1); font-size: 11px; }
+.notif-swipe[data-drag="left"] .notif-swipe-action { justify-content: flex-end; background: color-mix(in srgb, var(--error-fg) 20%, var(--bg-2)); }
+.notif-swipe[data-drag="right"] .notif-swipe-action { background: color-mix(in srgb, var(--accent) 20%, var(--bg-2)); }
+.notif-dismiss {
+  position: absolute; z-index: 1; top: 4px; right: 4px;
+  width: 24px; height: 24px; display: grid; place-items: center;
+  border: 0; border-radius: 5px; background: transparent; color: var(--fg-3);
+  opacity: 0; transition: opacity .14s, background .14s;
+}
+.notif-swipe:hover .notif-dismiss, .notif-swipe:focus-within .notif-dismiss { opacity: 1; }
+.notif-dismiss:hover, .notif-dismiss:focus-visible { background: var(--bg-4); color: var(--fg-1); }
+.notif-swipe .notif-post { padding-right: 12px; }
+.notif-liste .notif-item { animation: notif-card-in .32s ease-out both; }
+.notif-item:nth-child(2) { animation-delay: 60ms; }
+.notif-item:nth-child(3) { animation-delay: 120ms; }
+@keyframes notif-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.notif-session-panel {
+  position: fixed; z-index: 65; top: 42px; right: 10px; bottom: 10px;
+  width: min(var(--skinne-bredde, 360px), calc(100vw - 320px));
+  display: flex; flex-direction: column; min-width: 290px; overflow: hidden;
+  border: 1px solid var(--overlay-line); border-radius: 12px;
+  background: var(--bg-2); color: var(--fg-1);
+  box-shadow: -12px 0 36px rgba(0,0,0,.35);
+  animation: notif-panel-in .25s ease-out both;
+}
+@keyframes notif-panel-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+.notif-session-head { display: flex; align-items: flex-start; gap: 8px; padding: 15px 12px; border-bottom: 1px solid var(--line); }
+.notif-session-heading { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.notif-session-heading strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
+.notif-session-heading span { color: var(--fg-3); font-size: 11px; }
+.notif-session-messages { flex: 1; min-height: 0; overflow: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; }
+.notif-session-messages .msg-user-wrap, .notif-session-messages .msg-jarvis-wrap { max-width: 100%; }
+.notif-session-hint { margin: auto; color: var(--fg-3); font-size: 12px; }
+.notif-session-error { color: var(--error-fg); font-size: 12px; }
+.notif-session-approval { margin: 0 10px 8px; padding: 9px; border: 1px solid var(--warn-fg); border-radius: 8px; font-size: 11px; }
+.notif-session-approval p { margin: 0 0 8px; white-space: pre-wrap; }
+.notif-session-approval button { margin-right: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-3); color: var(--fg-1); cursor: pointer; }
+.notif-session-composer { padding: 0 10px 8px; }
+.notif-session-composer .composer-shell { max-width: 100%; }
+.notif-session-composer .composer { min-width: 0; }
+.notif-session-composer .composer-disclaimer { display: none; }
+.notif-session-composer .composer-bar { gap: 3px; }
+.notif-session-composer .composer-left, .notif-session-composer .composer-right { gap: 2px; }
+.notif-session-composer .composer-perm { max-width: 105px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 700px) { .notif-session-panel { width: min(360px, calc(100vw - 20px)); } }
+@media (prefers-reduced-motion: reduce) {
+  .klokke-attention svg, .klokke-attention::before, .notif-liste .notif-item, .notif-session-panel { animation: none; }
+  .notif-swipe-content { transition: none; }
+}

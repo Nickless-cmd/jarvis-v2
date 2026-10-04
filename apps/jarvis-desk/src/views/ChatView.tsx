@@ -46,7 +46,6 @@ import { startSideOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
-import { useRaekkevisning } from '../lib/visningsPref'
 import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -429,7 +428,7 @@ export function ChatView({
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
     markInteraction()  // device-presence: markér aktiv interaktion på denne enhed
-    let sid = sessionId
+    let sid = sessionId ?? sessions.activeId
     if (!sid) {
       const created = await sessions.create('Ny samtale')
       sid = created.id
@@ -634,7 +633,7 @@ export function ChatView({
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && koe.items.length === 0 && !bgActive)
 
   const ensureSessionId = async () => {
-    if (sessionId) return sessionId
+    if (sessionId ?? sessions.activeId) return (sessionId ?? sessions.activeId)!
     const created = await sessions.create('Ny samtale')
     return created.id
   }
@@ -698,33 +697,6 @@ export function ChatView({
     [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  /* Koerselstallene til linjen mellem composer og disclaimer. Kun naar
-     raekkevisningen er slaaet til — bobblevisningen ser ud som foer.
-
-     «ture» = assistent-svar i traaden. «trin» = vaerktoejskald i alt. Begge
-     taelles af de beskeder vi ALLEREDE har; der hentes intet nyt.
-     TTFT og tok/s udelades med vilje: de findes ikke i stroemmen, og linjen
-     tegner dem graat frem for at lade som om den er komplet. */
-  const raekkevisning = useRaekkevisning()
-  const koerselsTal = useMemo(() => {
-    if (!raekkevisning) return undefined
-    let trin = 0
-    let ture = 0
-    for (const m of visibleMessages) {
-      if (m.role !== 'assistant') continue
-      ture += 1
-      if (!Array.isArray(m.content)) continue
-      for (const b of m.content) if ((b as { type?: string }).type === 'tool_use') trin += 1
-    }
-    const laest = stream.usage.cacheHit + stream.usage.cacheMiss
-    return {
-      ture,
-      trin,
-      ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
-      ...(tokensTotal > 0 ? { tokens: tokensTotal } : {}),
-    }
-  }, [raekkevisning, visibleMessages, stream.usage.cacheHit, stream.usage.cacheMiss, tokensTotal])
-
   const composer = (
     <>
       <Composer
@@ -746,7 +718,6 @@ export function ChatView({
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
-        koerselsTal={koerselsTal}
         draftKey="chat"
       />
       <VoiceConversation

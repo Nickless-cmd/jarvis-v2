@@ -144,7 +144,9 @@ export function EnvironmentPanel({
 
       {!collapsed && (
         <>
-          <ul className="env-rows">
+          {/* `env-top`: hele den øverste blok (ændringer → opret pull request)
+              står i samme hvide som sessionsnavnene. Se environment-inspector.css. */}
+          <ul className="env-rows env-top">
             <li className="env-row env-changes">
               <span className="env-label"><GitCompare size={13} /> Ændringer</span>
               <span className="env-val">

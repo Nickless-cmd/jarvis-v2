@@ -405,13 +405,18 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .sidebar-foot .who[aria-expanded="true"] .sidebar-account-arrow { color: var(--fg-2); }
 /* Pilen staar LIGE efter rollen, ikke ude i kanten — «Bjørn - owner ⌄». */
 .sidebar-account-arrow { color: var(--fg-3); flex: 0 0 auto; }
-.who-navn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Navnet i foden står i SAMME hvide som sessionsnavnene over det (Bjørn
+   4/10-2026). Rollen efter det beholder --fg-3: den er sekundær oplysning,
+   ikke et navn, og den hvide skal ikke sprede sig til hele foden. */
+.who-navn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); }
 .who-rolle { flex: 0 0 auto; color: var(--fg-3); font-size: 12px; }
 /* Bug-ikonet — fodens højre side. (Bjørn 29/9-2026.) */
 .sidebar-bug {
   flex: 0 0 auto; display: grid; place-items: center;
   width: 28px; height: 28px; background: none; border: none; border-radius: 7px;
-  color: var(--fg-3); cursor: pointer;
+  /* Samme hvide som navnet ved siden af (Bjørn 4/10-2026). Før --fg-3, som
+     gjorde ikonet til noget man skulle lede efter. */
+  color: var(--fg-1); cursor: pointer;
 }
 .sidebar-bug:hover, .sidebar-bug[aria-expanded="true"] { background: var(--bg-2); color: var(--fg-1); }
 .sidebar-bug-pop {

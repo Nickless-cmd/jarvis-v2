@@ -49,6 +49,13 @@
 .env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .env-changes { min-height: 20px; }
 .env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }
+/* Den ØVERSTE blok i miljø-feltet — «Ændringer» og ned til og med «Opret pull
+   request» — står i samme hvide som sessionsnavnene i sidebaren (Bjørn
+   4/10-2026). Klassen sidder på netop DEN liste og ikke på .env-label selv:
+   RunHealth (Maskine/GPU/Disk/Kontekst) og kilder deler klassenavnet og skal
+   beholde deres dæmpede farve. */
+.env-rows.env-top .env-label,
+.env-rows.env-top .env-actbtn { color: var(--fg-1, var(--fg)); }
 .env-row-button { display: grid; grid-template-columns: 16px minmax(0, auto) minmax(0, 1fr) auto; align-items: center;
   gap: 6px; width: 100%; min-width: 0; border: 0; padding: 2px 0; background: none; color: var(--fg-2);
   text-align: left; cursor: pointer; font: inherit; }

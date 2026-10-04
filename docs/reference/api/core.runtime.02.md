@@ -48,9 +48,9 @@ _Persistens for central_instrument — selv-instrumenterings-motorens fund + sca
 | function | `get_file_hash` | `(file)` | Sidst-scannede indholds-hash for en fil (til incremental skip). Self-safe → None. | [src](../../../core/runtime/db_instrument.py#L54) |
 | function | `set_file_hash` | `(file, content_hash, n_findings)` | — | [src](../../../core/runtime/db_instrument.py#L68) |
 | function | `replace_file_findings` | `(file, findings)` | Erstat ALLE åbne fund for én fil (idempotent pr. scan). Bevarer status (fx 'dismissed') | [src](../../../core/runtime/db_instrument.py#L84) |
-| function | `list_findings` | `(*, status=…, min_score=…, limit=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
-| function | `set_finding_status` | `(signature, status)` | Sæt status på ét fund — lukker hagen. | [src](../../../core/runtime/db_instrument.py#L135) |
-| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L162) |
+| function | `list_findings` | `(*, status=…, min_score=…, limit=…, exclude_signatures=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
+| function | `set_finding_status` | `(signature, status)` | Sæt status på ét fund — lukker hagen. | [src](../../../core/runtime/db_instrument.py#L148) |
+| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L175) |
 
 ## `core/runtime/db_interlanguage_blind.py`
 _DB layer for interlanguage validation blind-dommer UI._

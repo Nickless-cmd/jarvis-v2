@@ -117,16 +117,29 @@ def replace_file_findings(file: str, findings: list[dict[str, Any]]) -> None:
         pass
 
 
-def list_findings(*, status: str = "open", min_score: int = 0, limit: int = 200) -> list[dict[str, Any]]:
-    """Fund (højeste score først). Self-safe → []."""
+def list_findings(*, status: str = "open", min_score: int = 0, limit: int = 200,
+                  exclude_signatures: set[str] | None = None) -> list[dict[str, Any]]:
+    """Fund (højeste score først). Self-safe → [].
+
+    `exclude_signatures` filtrerer i SQL — ikke hos kalderen. Det er ikke en
+    optimering: `ORDER BY score DESC, severity, file` er deterministisk, så fund
+    der allerede ER filéret ville ellers optage vinduet og skubbe de ufilede ud
+    af det. Målt 4/10-2026: 48 filede fund lå foran 937 kandidater, og de blev
+    aldrig nået.
+    """
     try:
         with connect() as conn:
             _ensure_tables(conn)
-            rows = conn.execute(
-                "SELECT * FROM central_instrument_findings "
-                "WHERE status = ? AND score >= ? ORDER BY score DESC, severity, file LIMIT ?",
-                (str(status or "open"), int(min_score), int(limit)),
-            ).fetchall()
+            sql = ("SELECT * FROM central_instrument_findings "
+                   "WHERE status = ? AND score >= ?")
+            params: list[Any] = [str(status or "open"), int(min_score)]
+            udelad = sorted({str(s) for s in (exclude_signatures or set()) if str(s or "").strip()})
+            if udelad:
+                sql += f" AND signature NOT IN ({', '.join('?' * len(udelad))})"
+                params.extend(udelad)
+            sql += " ORDER BY score DESC, severity, file LIMIT ?"
+            params.append(int(limit))
+            rows = conn.execute(sql, tuple(params)).fetchall()
         return [dict(r) for r in rows]
     except Exception:
         return []

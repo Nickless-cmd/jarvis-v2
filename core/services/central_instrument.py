@@ -351,20 +351,61 @@ def scan_repo(*, changed_only: bool = True) -> dict[str, int]:
     return {"scanned": scanned, "changed": changed, "findings": total_findings}
 
 
-def _file_proposals(max_new: int = 10) -> int:
-    """Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed,
-    ikke lærings-dæmpet). ALDRIG auto-merged. Returnerer antal nye proposals."""
-    from core.runtime import db_instrument as dbi
-    filed = 0
+def _allerede_filet() -> set[str] | None:
+    """Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status.
+
+    `None` = kunne ikke afgøres. Det er ikke det samme som «intet er filéret»:
+    den tomme mængde betyder «fil løs», og et DB-fejl må ikke ligne den. Fejler
+    opslaget, filer vi intet denne kørsel — daemonen kører igen om seks timer,
+    og et gentaget forslag kan ikke trækkes tilbage, mens en udsat kørsel kan.
+
+    Self-safe → `None`.
+    """
     try:
-        from core.services.autonomy_proposal_queue import file_proposal, list_pending_proposals
-        pending_keys = {str(p.get("canonical_key") or "")
-                        for p in (list_pending_proposals(limit=200) or [])}
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT canonical_key FROM autonomy_proposals "
+                "WHERE kind = 'instrument_fix' AND canonical_key != ''"
+            ).fetchall()
+        return {str(r[0]) for r in rows if r and r[0]}
+    except Exception:  # self-safe: et DB-fejl må ikke vælte daemonen — None = «kunne ikke afgøres»
+        return None
+
+
+def _file_proposals(max_new: int = 10) -> int:
+    """Filer reviewbare proposals for åbne fund med score≥threshold.
+
+    Et fund filéres HØJST ÉN GANG. Dedup'en så før kun på `pending`-køen, så et
+    forslag der forlod køen (afvist, arkiveret eller udført) frigav sit fund
+    igen — og fordi `list_findings` sorterer deterministisk, ramte hver kørsel
+    de SAMME fund. Målt 4/10-2026: 48 fund stod bag 1.129 forslag (~23
+    gen-filinger hver), mens 937 kandidater nedenfor i sorteringen aldrig blev
+    nået.
+
+    Et forslag er en ANMODNING om handling, og en anmodning der er afvist skal
+    ikke gentages. Fundet bliver til gengæld liggende som ÅBENT fund i
+    instrumentet: sandheden om at mønsteret stadig findes ligger i koden, ikke i
+    køen.
+
+    ALDRIG auto-merged. Returnerer antal nye proposals.
+    """
+    from core.runtime import db_instrument as dbi
+
+    allerede = _allerede_filet()
+    if allerede is None:
+        return 0  # kunne ikke afgøre hvad der er filéret → fil intet (fail-closed)
+    try:
+        from core.services.autonomy_proposal_queue import file_proposal
     except Exception:
         return 0
-    for f in dbi.list_findings(status="open", min_score=_PROPOSAL_THRESHOLD, limit=max_new * 3):
+    filed = 0
+    # Udelukkelsen sker i SQL, så et filéret fund ikke optager vinduet og skubber
+    # et ufiléret ud af det.
+    for f in dbi.list_findings(status="open", min_score=_PROPOSAL_THRESHOLD,
+                               limit=max_new, exclude_signatures=allerede):
         sig = str(f.get("signature") or "")
-        if sig in pending_keys:
+        if sig in allerede:
             continue
         if _reject_count(sig) >= _REJECT_DEMOTE:
             continue  # lært: afvist gentagne gange → ingen ny proposal
@@ -380,6 +421,7 @@ def _file_proposals(max_new: int = 10) -> int:
                           payload={"finding": f}, created_by="central_instrument",
                           canonical_key=sig)
             filed += 1
+            allerede.add(sig)  # samme kørsel må ikke filé samme signatur to gange
         except Exception:
             pass
         if filed >= max_new:

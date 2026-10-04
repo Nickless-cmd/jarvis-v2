@@ -170,3 +170,73 @@ def test_self_exclusion_in_file_list():
     files = ci._iter_py_files()
     assert ci._SELF_EXCLUDE not in files
     assert all("__pycache__" not in f and "/tests/" not in f for f in files)
+
+
+# ── Dedup: et fund må filéres HØJST én gang (målt 4/10-2026) ──────────────
+#
+# `_file_proposals` tjekkede kun `pending`-køen. Så snart et forslag forlod
+# køen — afvist, arkiveret eller udført — var fundet frit igen, og fordi
+# `list_findings` sorterer deterministisk (`score DESC, severity, file`) ramte
+# hver kørsel de SAMME fund. Målt i drift: 48 fund stod bag 1.129 forslag
+# (~23 gen-filinger hver), mens 937 kandidater nedenfor i sorteringen aldrig
+# blev nået.
+
+
+def _fund(sig: str, *, score: int = 4) -> dict:
+    return {"signature": sig, "line": 1, "kind": "except_silent",
+            "severity": "high", "score": score, "function": "f", "snippet": "x"}
+
+
+def test_et_fund_fileres_kun_en_gang(isolated_runtime):
+    """Forslaget forlader køen uden at udføre — fundet må ikke filéres igen."""
+    from core.runtime import db_instrument as dbi
+    from core.services import autonomy_proposal_queue as q
+
+    dbi.replace_file_findings("core/a.py", [_fund("sig-a")])
+    assert ci._file_proposals(max_new=10) == 1
+
+    forslag = q.list_pending_proposals(limit=10)
+    assert len(forslag) == 1
+    q.reject_proposal(forslag[0]["proposal_id"], resolution_note="nej")
+
+    # Fundet er STADIG åbent — koden er ikke rettet. Men anmodningen er afvist,
+    # og en anmodning der er afvist skal ikke gentages.
+    assert any(r["signature"] == "sig-a"
+               for r in dbi.list_findings(status="open", min_score=3, limit=10))
+    assert ci._file_proposals(max_new=10) == 0
+
+
+def test_filede_fund_optager_ikke_vinduet(isolated_runtime):
+    """Et filéret fund må ikke SKUBBE et ufiléret ud af vinduet.
+
+    Uden filtrering i SQL returnerer `LIMIT max_new` de samme filede fund hver
+    kørsel, og daemonen står stille for evigt — de 937 nås aldrig.
+    """
+    from core.runtime import db_instrument as dbi
+    from core.services.autonomy_proposal_queue import file_proposal
+
+    # Ti filede fund der sorterer FORAN de tre ufilede: samme score og severity,
+    # så rækkefølgen er filnavnet (core/f* < core/n*).
+    for i in range(10):
+        sig = f"sig-f{i:02d}"
+        dbi.replace_file_findings(f"core/f{i:02d}.py", [_fund(sig)])
+        file_proposal(kind="instrument_fix", title=f"gammel {i}", rationale="",
+                      payload={"finding": _fund(sig)}, created_by="test",
+                      canonical_key=sig)
+    for i in range(3):
+        dbi.replace_file_findings(f"core/n{i:02d}.py", [_fund(f"sig-n{i:02d}")])
+
+    assert ci._file_proposals(max_new=3) == 3
+
+
+def test_ukendt_filingstilstand_filer_intet(isolated_runtime, monkeypatch):
+    """Kan vi ikke afgøre hvad der er filéret, filer vi INTET — ikke «løs».
+
+    Et DB-fejl må ikke ligne «intet er filéret»: den ene udsætter en kørsel,
+    den anden gentager en anmodning Bjørn allerede har set.
+    """
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/a.py", [_fund("sig-a")])
+    monkeypatch.setattr(ci, "_allerede_filet", lambda: None)
+    assert ci._file_proposals(max_new=10) == 0

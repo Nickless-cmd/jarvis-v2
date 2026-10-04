@@ -29,8 +29,11 @@ const getListener = (name: string): Listener => {
 }
 
 beforeEach(() => {
+  jest.useFakeTimers()
   jest.clearAllMocks()
 })
+
+afterEach(() => jest.useRealTimers())
 
 it('passiv mobil følger det konkrete run fra snapshot uden at starte et nyt', () => {
   followSession(config, 's1', { onEvent: jest.fn() }, 'run-2')
@@ -38,6 +41,22 @@ it('passiv mobil følger det konkrete run fra snapshot uden at starte et nyt', (
     'https://api.srvlab.dk/chat/runs/run-2/subscribe?from_idx=0',
     expect.objectContaining({ method: 'GET' })
   )
+})
+
+it('passiv follow af kendt run genoptager fra offset efter et stille brud', () => {
+  const onReconnecting = jest.fn()
+  const control = followSession(config, 's1', { onEvent: jest.fn(), onReconnecting }, 'visible-follow')
+  getListener('content_block_delta')({ data: JSON.stringify({
+    type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hej' }
+  }) })
+  jest.advanceTimersByTime(25_000)
+  expect(onReconnecting).toHaveBeenCalledWith(1)
+  jest.advanceTimersByTime(500)
+  expect(EventSource).toHaveBeenLastCalledWith(
+    'https://api.srvlab.dk/chat/runs/visible-follow/subscribe?from_idx=1',
+    expect.objectContaining({ method: 'GET' })
+  )
+  control.abort()
 })
 
 it('forwards parsed events and completes on message_stop', () => {
@@ -228,6 +247,42 @@ it('reconnects from offset via subscribe when the socket drops mid-run', () => {
   jest.useRealTimers()
 })
 
+it('genforbinder en tavs mobil-socket fra sidste log-offset, selv uden error-event', () => {
+  jest.useFakeTimers()
+  const onReconnecting = jest.fn()
+  const control = startStream(
+    { config, sessionId: 's1', message: 'Hej' },
+    { onEvent: jest.fn(), onReconnecting }
+  )
+  getListener('message_start')({ data: JSON.stringify({
+    type: 'message_start', message: { id: 'visible-stuck', model: 'm', provider: 'p', lane: 'primary', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } }
+  }) })
+  jest.advanceTimersByTime(20_000)
+  getListener('ping')({ data: JSON.stringify({ type: 'ping' }) })
+  jest.advanceTimersByTime(20_000)
+  expect(onReconnecting).not.toHaveBeenCalled()
+  jest.advanceTimersByTime(5_000)
+  expect(onReconnecting).toHaveBeenCalledWith(1)
+  jest.advanceTimersByTime(500)
+  expect(EventSource).toHaveBeenLastCalledWith(
+    'https://api.srvlab.dk/chat/runs/visible-stuck/subscribe?from_idx=1',
+    expect.objectContaining({ method: 'GET' })
+  )
+  control.abort()
+  jest.useRealTimers()
+})
+
+it('stopper tavshedsvagten når runnet er afsluttet', () => {
+  jest.useFakeTimers()
+  const onReconnecting = jest.fn()
+  startStream({ config, sessionId: 's1', message: 'Hej' }, { onEvent: jest.fn(), onReconnecting })
+  getListener('message_stop')({ data: JSON.stringify({ type: 'message_stop' }) })
+  jest.advanceTimersByTime(60_000)
+  expect(onReconnecting).not.toHaveBeenCalled()
+  expect(EventSource).toHaveBeenCalledTimes(1)
+  jest.useRealTimers()
+})
+
 it('treats a 404 on reconnect as benign completion (run finished while away)', () => {
   const onEvent = jest.fn()
   const onError = jest.fn()
@@ -397,8 +452,11 @@ describe('generations-hegn paa stroemmen', () => {
     // Den gamle fejler igen bagefter — to kilder paa samme run ville begge
     // taelle offset op.
     fyr(0, 'error', { type: 'error', message: 'sent brud' })
-    jest.advanceTimersByTime(30_000)
+    jest.advanceTimersByTime(20_000)
     expect(gen.length).toBe(2)
+    // Den aktuelle kilde er selv tavs: vagten må godt genforbinde DEN.
+    jest.advanceTimersByTime(5_000)
+    expect(gen.length).toBe(3)
     ctrl.abort()
   })
 })

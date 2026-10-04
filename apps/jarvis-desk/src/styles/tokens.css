@@ -85,6 +85,13 @@
   --radius-lg: 12px;
   --fg-0: #ffffff;
   --ok: #7cc49b;
+  /* Diff-grøn og diff-rød — ÉN kilde (Bjørn 4/10-2026: «diff visning i miljø
+     feltet skal have samme rød og græn som i rundelinjerne i chatview … mere
+     knald på farverne»). Runde-linjerne havde dem først; miljø-feltet,
+     «Redigerede N filer» og DiffView brugte de dæmpede `--ok`/`--error-fg`.
+     Nu læser alle fire samme værdi, og der er ét sted at rette. */
+  --diff-add: #56d364;
+  --diff-del: #ff7b86;
   --tint: #8ab0e8;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --mono: var(--font-mono);
@@ -132,6 +139,9 @@
   --code-bg: #f2f2f2;
   --fg-0: #000000;
   --ok: #2e7d32;
+  /* Samme to farver i lyst tema — værdierne er runde-linjernes egne. */
+  --diff-add: #1a7f37;
+  --diff-del: #c62828;
   --tint: #2563eb;
   --error-fg: #c62828;
   /* Mobilens advarsel er #B26A00. Den giver 4,06:1 mod #fafafa og falder for
@@ -158,6 +168,8 @@
   --code-bg: #0a0a0a;
   --fg-0: #ffffff;
   --ok: #00ff95;
+  --diff-add: #00ff95;
+  --diff-del: #ff6b6b;
   --tint: #7cc0ff;
   --error-fg: #ff6b6b;
   --warn-fg: #ffd166;

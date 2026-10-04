@@ -1,6 +1,6 @@
 import { GenoptagelsesVarselHost } from './components/feedback/GenoptagelsesVarselHost'
-import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { UpdateCard } from './components/shell/UpdateCard'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { UpdateHost } from './components/shell/UpdateHost'
 import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
@@ -111,45 +111,6 @@ export function App() {
         </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
-  )
-}
-
-interface UpdatesBridge {
-  onAvailable: (cb: (i: { version?: string }) => void) => () => void
-  onReady: (cb: (i: { version?: string }) => void) => () => void
-  download: () => Promise<void>
-  install: () => Promise<void>
-}
-function updatesBridge(): UpdatesBridge | undefined {
-  return (window as unknown as { jarvisDesk?: { updates?: UpdatesBridge } }).jarvisDesk?.updates
-}
-
-/** Lytter på app-opdaterings-events fra main og viser UpdateCard (§22.5). */
-function UpdateHost() {
-  const [upd, setUpd] = useState<{ version: string; phase: 'available' | 'ready' } | null>(null)
-  // Afvist version huskes, så de 15-min polls ikke nager om SAMME version igen — men en
-  // NYERE version (eller 'ready'-fasen efter download) bryder altid igennem (Bjørn 2026-06-23).
-  const dismissedRef = useRef<string>('')
-  useEffect(() => {
-    const u = updatesBridge()
-    if (!u) return
-    const offA = u.onAvailable((i) => {
-      const v = i.version ?? ''
-      if (v && v === dismissedRef.current) return  // allerede afvist denne version
-      setUpd({ version: v, phase: 'available' })
-    })
-    const offR = u.onReady((i) => setUpd({ version: i.version ?? '', phase: 'ready' }))
-    return () => { offA(); offR() }
-  }, [])
-  if (!upd) return null
-  return (
-    <UpdateCard
-      version={upd.version}
-      phase={upd.phase}
-      onUpdate={() => void updatesBridge()?.download()}
-      onInstall={() => void updatesBridge()?.install()}
-      onDismiss={() => { if (upd.phase === 'available') dismissedRef.current = upd.version; setUpd(null) }}
-    />
   )
 }
 

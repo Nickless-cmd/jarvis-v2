@@ -62,8 +62,12 @@
 .env-row-button:hover { color: var(--fg-0); }
 .env-row-button > span { min-width: 0; }
 
-.git-add { color: var(--ok); }
-.git-del { color: var(--error-fg); }
+/* Diff-grøn og diff-rød — SAMME som runde-linjerne (Bjørn 4/10-2026: «diff
+   visning i miljø feltet skal have samme rød og græn som i rundelinjerne»).
+   Værdien bor i tokens.css, så miljø-feltet, «Redigerede N filer» og chatten
+   ikke kan drive fra hinanden. Før stod de på de dæmpede `--ok`/`--error-fg`. */
+.git-add { color: var(--diff-add); }
+.git-del { color: var(--diff-del); }
 
 /* Shared inspector chrome and evidence views. */
 .inspector-head { gap: 7px; }

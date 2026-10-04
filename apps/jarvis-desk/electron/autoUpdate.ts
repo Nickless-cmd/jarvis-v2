@@ -26,8 +26,8 @@ interface Updater { checkForUpdatesAndNotify: () => unknown }
 interface FullUpdater {
   autoDownload: boolean
   on: (ev: string, cb: (info: unknown) => void) => void
-  checkForUpdates: () => unknown
-  downloadUpdate: () => unknown
+  checkForUpdates: () => unknown | Promise<unknown>
+  downloadUpdate: () => unknown | Promise<unknown>
   quitAndInstall: () => unknown
 }
 type Send = (channel: string, payload: unknown) => void
@@ -43,8 +43,14 @@ export function wireUpdater(up: FullUpdater, send: Send) {
   up.on('error', (e) => send('update:error', String(e)))
   return {
     check: () => { try { up.checkForUpdates() } catch { /* noop */ } },
-    download: () => { try { up.downloadUpdate() } catch { /* noop */ } },
+    download: () => Promise.resolve(up.downloadUpdate()),
     installNow: () => { try { up.quitAndInstall() } catch { /* noop */ } },
+    downloadAndInstall: async () => {
+      const available = await up.checkForUpdates()
+      if (!available) throw new Error('Ingen ny app-version er klar til installation.')
+      await up.downloadUpdate()
+      up.quitAndInstall()
+    },
   }
 }
 

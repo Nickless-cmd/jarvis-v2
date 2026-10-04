@@ -47,16 +47,19 @@
   --rv-accent-soft: rgba(63, 199, 180, .10);
   /* Diff-tallene i runde-linjerne (3/10-2026). `--ok`/`--error-fg` er dæmpede,
      og `opacity: .82` på `.rv-diffstat` vaskede dem yderligere — Bjørn:
-     «kraftigere grøn/rød farve». Kun denne visning bruger dem. */
-  --rv-tilf: #56d364;
-  --rv-fjern: #ff7b86;
+     «kraftigere grøn/rød farve».
+     4/10-2026: værdien flyttede til `--diff-add`/`--diff-del` i tokens.css,
+     så miljø-feltet, «Redigerede N filer» og DiffView kan læse PRÆCIS samme
+     grønne og røde. Disse to er nu aliasser — tallet står ét sted. */
+  --rv-tilf: var(--diff-add);
+  --rv-fjern: var(--diff-del);
 }
 :root[data-theme='light'] .raekkevisning,
 :root:not([data-theme='dark']) .raekkevisning {
   --rv-tertiary: #6a6a64;
   --rv-accent-soft: rgba(61, 127, 92, .09);
-  --rv-tilf: #1a7f37;
-  --rv-fjern: #c62828;
+  --rv-tilf: var(--diff-add);
+  --rv-fjern: var(--diff-del);
 }
 :root[data-theme='dark'] .raekkevisning { --rv-tertiary: #a6a59c; }
 
@@ -544,8 +547,10 @@
    grøn/rød farve». Farven sættes på BØRNENE (`git-add`/`git-del`), ikke på
    `.rv-diffstat` selv — samme grund som kommentaren ovenfor: en `color` på
    forælderen slår ikke børnenes, og så stod der to steder der bestemte.
-   Scopet til runde-linjernes diff-tal, så miljø-panelets egne `git-add`/
-   `git-del` beholder `--ok`/`--error-fg`. */
+   4/10-2026 er scopet ophævet: Bjørn vil have miljø-feltet og «Redigerede N
+   filer» i SAMME grønne/røde, så `.git-add`/`.git-del` læser nu også
+   `--diff-add`/`--diff-del`. Reglen herunder står, fordi den binder
+   runde-linjernes tal til `--rv-tilf`/`--rv-fjern` gennem tema-skiftet. */
 .raekkevisning .rv-diffstat .git-add { color: var(--rv-tilf); }
 .raekkevisning .rv-diffstat .git-del { color: var(--rv-fjern); }
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }

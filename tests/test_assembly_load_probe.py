@@ -125,3 +125,43 @@ def test_timing_linjen_BAERER_felterne():
     # Og felterne skal staa i SELVE f-strengen, ikke bare vaere beregnet.
     i = kilde.index("prompt-assembly-timing total_ms=")
     assert "{_last_str}" in kilde[i:i + 200], "felterne naar ikke linjen"
+
+
+# ── Per-builder CPU: grundlaget for at skille CPU fra I/O ──────────────────
+
+def test_hver_builder_maaler_sin_EGEN_traads_cpu():
+    """Kilde-vagt. `thread_time()` og ikke `process_time()`.
+
+    Den sidste tæller ALLE trådes CPU, så hver builder ville se CPU-tung ud
+    uanset hvad den lavede — og klassifikationen «CPU-bundet vs I/O-bundet»
+    ville blive meningsløs præcis når den skal bruges. Det er samme fejltype
+    som kostede tre forkerte konklusioner 4/10, bare et lag dybere.
+    """
+    import ast
+    import pathlib
+
+    kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
+    traeet = ast.parse(kilde)
+    fundet = False
+    for node in ast.walk(traeet):
+        if not isinstance(node, ast.FunctionDef) or node.name != "_wrapped":
+            continue
+        krop = ast.unparse(node)
+        if "_phase_cpu" not in krop:
+            continue
+        assert "thread_time" in krop, "builder-CPU maales ikke per TRAAD"
+        assert "process_time" not in krop, (
+            "process_time() taeller alle traade — hver builder ville se "
+            "CPU-tung ud uanset hvad den lavede")
+        fundet = True
+    assert fundet, "fandt ingen _wrapped der skriver _phase_cpu"
+
+
+def test_cpu_felterne_naar_timing_linjen():
+    """Husets hyppigste fejl: koden er rigtig og ingen skriver den ud."""
+    import pathlib
+    kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
+    assert "_cpu={v}" in kilde, "per-builder CPU naar ikke linjen"
+    i = kilde.index("prompt-assembly-timing total_ms=")
+    # Felterne bygges ind i `_phases_str`, som staar i selve f-strengen.
+    assert "{_phases_str}" in kilde[i:i + 240]

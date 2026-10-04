@@ -758,6 +758,8 @@ def _build_visible_chat_prompt_assembly_impl(
     import threading as _threading_mod
     _phase_timings_lock = _threading_mod.Lock()
 
+    # CPU per builder — grundlaget for at skille CPU-bundet fra I/O-bundet.
+    _phase_cpu: dict[str, int] = {}
     executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
 
     def _measured_submit(_name: str, _fn, *args, **kwargs):
@@ -770,12 +772,19 @@ def _build_visible_chat_prompt_assembly_impl(
         """
         def _wrapped():
             _t = _t_mod.monotonic()
+            # CPU for DENNE traad, ikke processen: det er forskellen paa
+            # «builderen regnede» og «builderen ventede». `thread_time()` er
+            # per-traad; `process_time()` ville taelle alle de andre med og
+            # gøre hver builder til at se CPU-tung ud.
+            _c = _t_mod.thread_time()
             try:
                 return _fn(*args, **kwargs)
             finally:
                 _elapsed = int((_t_mod.monotonic() - _t) * 1000)
+                _cpu = int((_t_mod.thread_time() - _c) * 1000)
                 with _phase_timings_lock:
                     _phase_timings[_name] = _elapsed
+                    _phase_cpu[_name] = _cpu
                 if _tt is not None:
                     _tt.mark("section", f"future:{_name}", _elapsed)
         # KRITISK (16.jul): kopiér caller'ens contextvars ind i worker-tråden. UDEN dette
@@ -2760,6 +2769,11 @@ def _build_visible_chat_prompt_assembly_impl(
     if _tt is not None:
         _tt.mark("assembly_end", "assembly complete", _total_ms)
     _phases_str = " ".join(f"{k}_ms={v}" for k, v in sorted(_phase_timings.items()))
+    # `<navn>_cpu=` ved siden af `<navn>_ms=`: forholdet mellem de to er
+    # klassifikationen. Naer 1 = CPU-bundet (hoerer serielt), naer 0 =
+    # I/O-bundet (hoerer i puljen, hvor ventetiden kan overlappe).
+    _phases_str += " " + " ".join(
+        f"{k}_cpu={v}" for k, v in sorted(_phase_cpu.items()))
     # Compute sync-gap deltas between consecutive landmarks (work that the
     # main thread did while parallel futures ran). _sync_landmarks keys
     # are wall-clock-from-start, so deltas show elapsed-since-prev.

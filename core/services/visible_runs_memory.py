@@ -209,7 +209,17 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             session_id=run.session_id,
         )
     except Exception:
-        pass
+        # 4/10-2026: her stod der et bart «pass». Da jeg maalte om capsulen
+        # blev skrevet efter hver tur, kunne journalen ikke skelne «blev ikke
+        # kaldt» fra «fejlede tavst» — den var tom i BEGGE tilfaelde, og jeg
+        # konkluderede forkert paa det. Skrive-vejen viste sig at virke.
+        # Hullet var ikke desto mindre aegte: fejler forberedelsen (mood-sync,
+        # attention, seneste aktivitet), forsvandt sporet helt. Samme moenster
+        # som side-opgave-fejningen nedenfor bruger.
+        import logging as _lg_cont
+
+        _lg_cont.getLogger(__name__).warning(
+            "continuity live_update-forberedelse fejlede efter run", exc_info=True)
 
     # Side-opgave-fejningen (3/10-2026) hoerer netop HER: efterbehandlingen
     # sker kun naar der ER aktivitet, saa en opgave lukkes inden for én

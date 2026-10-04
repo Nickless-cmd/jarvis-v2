@@ -97,6 +97,75 @@ def test_acknowledged_does_not_save_bare_except():
     assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
 
 
+# ── Mærket i funktionens DOCSTRING skal tælle ────────────────────────────────
+# Målt 4/10-2026: af 1098 proposal-værdige fund havde 157 mærket i docstringen —
+# men `_acknowledged` kiggede kun ±5 linjer omkring except'en, så kodebasens EGEN
+# dokumentation («Selv-sikker → 0») var usynlig for scanneren. Fundet stod åbent
+# og blev filét igen og igen. Mærket findes; vinduet nåede det ikke.
+
+
+def _dokumenteret(doc: str) -> str:
+    """En funktion hvor except'en ligger LANGT under docstringen (±5-vinduet når den ikke)."""
+    return (
+        f"def f():\n"
+        f'    """{doc}"""\n'
+        f"    x = 1\n"
+        f"    y = 2\n"
+        f"    z = 3\n"
+        f"    w = 4\n"
+        f"    try:\n"
+        f"        return _hent(x)\n"
+        f"    except Exception:\n"
+        f"        return None\n"
+    )
+
+
+def test_maerket_i_docstringen_daemper_selv_langt_fra_excepten():
+    fs = ci.scan_source("core/x.py", _dokumenteret("Laes en raekke. Selv-sikker: DB nede → None."))
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is True
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_en_docstring_UDEN_maerke_daemper_ikke():
+    """Modprøven: rettelsen må ikke gøre enhver docstring til et fribrev."""
+    fs = ci.scan_source("core/x.py", _dokumenteret("Laes en raekke fra tabellen."))
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_docstring_maerke_redder_heller_ikke_bare_except():
+    """Også her: bare except er aldrig forsvarligt, uanset hvor mærket står."""
+    src = ("def f():\n"
+           '    """Selv-sikker: maa aldrig vaelte runtime."""\n'
+           "    x = 1\n    y = 2\n    z = 3\n    w = 4\n"
+           "    try:\n        x()\n    except:\n        pass\n")
+    fs = ci.scan_source("core/x.py", src)
+    bare = next(f for f in fs if f.kind == "bare_except")
+    assert bare.acknowledged is False
+    assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_maerke_i_KROPPEN_langt_fra_faldet_daemper_ikke():
+    """Grænsen, valgt med vilje: docstringen tæller — ikke hele funktions-kroppen.
+
+    Et mærke langt nede i kroppen er ikke nødvendigvis en begrundelse for DETTE fald,
+    og et bredt vindue ville lade én kommentar dæmpe alle funktionens fald på én gang.
+    Målt 4/10-2026: 15 af 1098 proposal-værdige fund står netop her.
+    """
+    src = ("def f():\n"
+           '    """Laes en raekke."""\n'
+           "    x = 1\n"
+           "    # selv-sikker: bevidst\n"
+           "    y = 2\n    z = 3\n    w = 4\n    v = 5\n"
+           "    try:\n        return _hent(x)\n"
+           "    except Exception:\n        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+
+
 def test_self_exclusion_in_file_list():
     files = ci._iter_py_files()
     assert ci._SELF_EXCLUDE not in files

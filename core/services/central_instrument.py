@@ -111,25 +111,51 @@ def _is_success_like_return(node: ast.AST) -> bool:
     return False
 
 
-def _func_of(lineno: int, funcs: list[tuple[int, int, str]]) -> str:
+def _func_of(lineno: int, funcs: list[tuple[int, int, str, int]]) -> str:
     """Navn på den inderste funktion der omslutter lineno."""
     best = ""
     best_span = 10**9
-    for start, end, name in funcs:
+    for start, end, name, _doc_end in funcs:
         if start <= lineno <= end and (end - start) < best_span:
             best, best_span = name, end - start
+    return best
+
+
+def _doc_span_of(lineno: int, funcs: list[tuple[int, int, str, int]]) -> tuple[int, int]:
+    """(funktions-start, docstring-slut) for den inderste funktion der omslutter lineno.
+
+    Docstringen er hvor denne kodebase dokumenterer at et fald er BEVIDST
+    («Selv-sikker → 0»). Uden den er mærket usynligt for `_acknowledged`, som kun
+    ser ±5 linjer — og fundet bliver filét igen og igen.
+    `doc_end == start` betyder «ingen docstring».
+    """
+    best: tuple[int, int] = (0, 0)
+    best_span = 10**9
+    for start, end, _name, doc_end in funcs:
+        if start <= lineno <= end and (end - start) < best_span:
+            best, best_span = (start, doc_end), end - start
     return best
 
 
 _TODO_RE = re.compile(r"#\s*(TODO|FIXME|HACK)\b", re.IGNORECASE)
 
 
-def _acknowledged(lines: list[str], start: int, end: int) -> bool:
-    """True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end].
-    Vi kigger lidt FØR (kommentar over try) og hele handler-kroppen."""
+def _acknowledged(lines: list[str], start: int, end: int,
+                  doc_span: tuple[int, int] = (0, 0)) -> bool:
+    """True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]
+    ELLER i den omsluttende funktions docstring.
+
+    Docstringen skal tælle: den er hvor kodebasen skriver «Selv-sikker → 0». Målt 4/10-2026
+    bar 157 af 1098 proposal-værdige fund mærket dér — uden for de ±5 linjer vinduet så.
+    """
     lo = max(0, start - 5)
     hi = min(len(lines), end + 1)
-    blob = "\n".join(lines[lo:hi]).lower()
+    dele = lines[lo:hi]
+    f_start, doc_end = doc_span
+    if doc_end > f_start:
+        # Docstringen ligger på linjerne f_start+1 .. doc_end (1-indekseret).
+        dele = lines[f_start:doc_end] + dele
+    blob = "\n".join(dele).lower()
     return any(m in blob for m in _ACK_MARKERS)
 
 
@@ -142,10 +168,18 @@ def scan_source(relpath: str, source: str) -> list[Finding]:
         return []
     lines = source.splitlines()
 
-    funcs: list[tuple[int, int, str]] = []
+    funcs: list[tuple[int, int, str, int]] = []
     for n in ast.walk(tree):
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            funcs.append((n.lineno, getattr(n, "end_lineno", n.lineno) or n.lineno, n.name))
+            start = n.lineno
+            # Docstringens slutlinje bærer funktionens egen begrundelse for et bevidst
+            # fald — og `_acknowledged` skal kunne se den.
+            doc_end = start
+            if (n.body and isinstance(n.body[0], ast.Expr)
+                    and isinstance(n.body[0].value, ast.Constant)
+                    and isinstance(n.body[0].value.value, str)):
+                doc_end = getattr(n.body[0], "end_lineno", start) or start
+            funcs.append((start, getattr(n, "end_lineno", start) or start, n.name, doc_end))
 
     found: list[Finding] = []
 
@@ -160,7 +194,7 @@ def scan_source(relpath: str, source: str) -> list[Finding]:
             guarded = _has_guard_call(ast.Module(body=n.body, type_ignores=[]))
             succ = _is_success_like_return(ast.Module(body=n.body, type_ignores=[]))
             h_end = getattr(n, "end_lineno", n.lineno) or n.lineno
-            ack = _acknowledged(lines, n.lineno, h_end)
+            ack = _acknowledged(lines, n.lineno, h_end, _doc_span_of(n.lineno, funcs))
             if n.type is None:
                 # bare except: — fanger KeyboardInterrupt/SystemExit. Altid kritisk (også mærket).
                 found.append(Finding(relpath, n.lineno, "bare_except", "critical",

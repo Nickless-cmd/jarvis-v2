@@ -202,16 +202,17 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 | function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L85) |
 | function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L98) |
 | function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L114) |
-| function | `_acknowledged` | `(lines, start, end)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]. | [src](../../../core/services/central_instrument.py#L127) |
-| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L136) |
-| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L208) |
-| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L232) |
-| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L237) |
-| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L256) |
-| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L271) |
-| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L285) |
-| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L320) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L356) |
+| function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L124) |
+| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L143) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L162) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L242) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L266) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L271) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L290) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L305) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L319) |
+| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L354) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L390) |
 
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._

@@ -3566,18 +3566,26 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail:hover { max-width: none; }
 /* Cap til ~12 dashes ad gangen (scroll for resten) + tæt afstand, så rail'en
  * ikke fylder hele chatview-højden (Bjørn 2026-06-17). Scrollbar skjult. */
-.msg-rail-panel { display: flex; flex-direction: column; gap: 1px; padding: 4px;
+.msg-rail-panel { display: flex; flex-direction: column; gap: 0; padding: 4px;
   border: 1px solid transparent; border-radius: 10px; max-height: 150px; overflow-y: auto;
   scrollbar-width: none; transition: background .12s ease, border-color .12s ease; }
 .msg-rail-panel::-webkit-scrollbar { display: none; }
 .msg-rail:hover .msg-rail-panel { background: var(--bg-1, var(--bg)); border-color: var(--line);
   box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 6px; max-height: calc(100vh - 200px); }
-.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 10px;
-  background: none; border: none; padding: 1px 8px; border-radius: 6px; cursor: pointer;
-  text-align: left; color: var(--fg-3, #888); }
+/* 4/10-2026 (Bjørn, gentaget): «mindre mellemrum mellem stregerne».
+   Rækkehøjden var 10px min-height + 2px padding + 1px gap = 13px. Stregen er
+   2px, så der stod 11px luft mellem dem. Nu 6px række og ingen gap: 4px luft.
+   Titlerne er skjult i hvile (se .msg-rail-text), så rækken behøver ikke være
+   høj nok til tekst — den folder ud ved hover. */
+.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 2px;
+  background: none; border: none; padding: 0 8px; border-radius: 6px; cursor: pointer;
+  text-align: left; color: var(--fg-3, #888); transition: min-height .16s ease; }
 .msg-rail-row:hover { background: var(--bg-2, var(--bg)); color: var(--fg-1, var(--fg)); }
-.msg-rail-dash { flex: none; width: 13px; height: 2px; border-radius: 2px; background: currentColor;
-  opacity: .45; transition: width .12s ease, opacity .12s ease; }
+.msg-rail-dash { flex: none; width: 13px; height: 2px; border-radius: 2px;
+  background: var(--fg-1);
+  opacity: .5; transition: width .12s ease, opacity .12s ease; }
+.msg-rail-row:hover .msg-rail-dash,
+.msg-rail-row:focus-visible .msg-rail-dash { opacity: 1; }
 /* Markeringen FØLGER nu scroll-positionen. Den var hardkodet til den sidste
    besked, altsaa til noget man i forvejen vidste — en indholdsfortegnelse uden
    position er en liste. */
@@ -3585,8 +3593,9 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail-row.is-active .msg-rail-dash { opacity: 1; width: 17px; background: var(--accent); }
 /* En tur der endte i fejl faar en roed streg, saa «hvor gik det galt» kan
    besvares uden at scrolle hele samtalen igennem. */
-.msg-rail-row.har-fejl .msg-rail-dash { background: var(--error-fg); opacity: .85; }
-.msg-rail-row.har-fejl.is-active .msg-rail-dash { background: var(--error-fg); opacity: 1; }
+/* 4/10-2026 (Bjoern): «den roede skal helt vaek». En fejlet tur markeres ikke
+   med farve i railen — roedt blandt streger laeste som en anden SLAGS punkt,
+   ikke som «her gik det galt». Fejlen vises i svarkortet ved raekken. */
 /* Den NEDERSTE streg er teal og længere end de andre (Bjørn 16/9-2026). Står
    efter fejl-reglen med vilje, så i hvile viser den hvor samtalen slutter. Står
    man PÅ en fejlet sidste tur, vinder rødt (fejl+aktiv har højere vægt).
@@ -3594,17 +3603,19 @@ p.central-flag { margin: 0 0 6px; }
    lidt længere end de andre over?» Den var 21 mod is-active's 17, altså kun
    4 px forskel — nok til at reglen fandtes, ikke nok til at man så den. Nu 28,
    så den er 11 px længere end den aktive og 15 end en almindelig. */
-.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 28px; background: var(--accent); }
+.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 26px; background: var(--accent); }
 /* Komprimering: prikket streg, så den kan skelnes fra et kapitel i hvile. */
-.msg-rail-row.er-komprimering .msg-rail-dash { height: 0; background: none;
-  border-top: 2px dotted currentColor; border-radius: 0; }
+/* 4/10-2026 (Bjoern): «de stiplede linjer skal vaere hele, det ser underligt
+   ud». Den prikkede streg skulle skelne et komprimeret afsnit fra et kapitel,
+   men prikkerne laeste som stoj i en liste der ellers er rene streger. */
+.msg-rail-row.er-komprimering .msg-rail-dash { height: 2px; background: var(--fg-1);
+  opacity: .5; border-radius: 2px; }
 /* Fastgjort: den ENESTE markering brugeren selv har sat. Den står fuldt
    optegnet i hvile, hvor kapitler er svage — man skal kunne se sine egne
    nedslag uden at føre musen derhen. Står efter er-sidste, så en fastgjort
    sidste besked stadig vises som fastgjort. */
 .msg-rail-row.er-fastgjort .msg-rail-dash { opacity: 1; width: 17px; background: var(--accent); }
 .msg-rail-pin { flex: none; margin-right: 4px; vertical-align: -1px; color: var(--accent); }
-.msg-rail-row.er-komprimering.er-sidste .msg-rail-dash { border-top-color: var(--accent); }
 .msg-rail-row.er-komprimering .msg-rail-text { font-style: italic; }
 /* Spoergsmaal over, svar under (spec punkt 3.2, 29/9-2026). Etiketten alene
    svarer paa «hvad spurgte jeg om»; det man leder efter naar man scroller
@@ -3612,7 +3623,10 @@ p.central-flag { margin: 0 0 6px; }
    Raekken maa STADIG vaere 10px i hvile — svaret findes kun i den udfoldede
    tilstand, saa skinnens hvilehoejde er uaendret. */
 .msg-rail-row { align-items: flex-start; }
-.msg-rail-row .msg-rail-dash { margin-top: 4px; }
+.msg-rail-row .msg-rail-dash { margin-top: 0; }
+/* Hover: listen folder ud — rækkerne vokser og stregen flugter med titlen. */
+.msg-rail:hover .msg-rail-row { min-height: 20px; }
+.msg-rail:hover .msg-rail-row .msg-rail-dash { margin-top: 4px; }
 .msg-rail-spm { display: block; }
 .msg-rail-text { display: none; font-size: 12px; line-height: 1.3; max-width: 230px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3633,19 +3647,12 @@ p.central-flag { margin: 0 0 6px; }
   color: var(--fg-2); font-size: 12px; line-height: 1.4;
   pointer-events: none;
 }
-/* Bølgen markerer positionen uden at fylde railen med tekst. */
-.msg-rail-dash { position: relative; }
-.msg-rail-dash::before, .msg-rail-dash::after {
-  content: ''; position: absolute; left: 0; height: 2px;
-  border-radius: 2px; background: currentColor; opacity: 0;
-  transition: opacity .15s ease;
-}
-.msg-rail-dash::before { top: -5px; width: 9px; }
-.msg-rail-dash::after { top: 5px; width: 11px; }
-.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::before,
-.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::after { opacity: .7; }
+/* 4/10-2026 (Bjoern): «dine forslag viser et ekstra streg naar musen koerer».
+   Boelgen var TO smaa streger over og under den raekke man pegede paa — et
+   ekstra punkt i listen, ikke en markering. Nu er markeringen raekken selv:
+   baggrunden lyser op, og stregen gaar fra daempet til fuld hvid. */
 @media (prefers-reduced-motion: reduce) {
-  .msg-rail-dash, .msg-rail-dash::before, .msg-rail-dash::after { transition: none; }
+  .msg-rail-dash { transition: none; }
 }
 
 /* ── App-opdaterings-kort (§22.5) ── */

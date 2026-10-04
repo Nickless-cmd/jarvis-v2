@@ -887,6 +887,16 @@ export function CodeView({
       trin,
       ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
       ...(envTotalTokens > 0 ? { tokens: envTotalTokens } : {}),
+      // TTFT og tok/s (4/10-2026). Composeren har tegnet «TTFT — · — tok/s»
+      // siden den blev skrevet, fordi INGEN satte felterne — visningen var
+      // bygget og produceren manglede. Tallene maales nu paa serveren
+      // (`core/services/svar_tempo`) og kommer med i `message_delta`.
+      //
+      // Udelades naar de er null, saa composerens egen «—» staar der i stedet
+      // for et opfundet nul. Afrundet HER og ikke i reduceren: raa tal er
+      // rigtige at gemme, afrundede er rigtige at vise.
+      ...(stream.usage.ttftMs != null ? { ttft: Math.round(stream.usage.ttftMs) } : {}),
+      ...(stream.usage.tokPerSek != null ? { tokPerSek: Math.round(stream.usage.tokPerSek) } : {}),
     }
   })()
 

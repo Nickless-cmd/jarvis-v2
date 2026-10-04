@@ -494,6 +494,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             research_mode=bool(request.research_mode),
             surface=getattr(request, "surface", "") or "",
         )
+        if not _attached:
+            # TTFT-uret starter HER: i det oejeblik runnet begynder, foer noget
+            # er sendt mod udbyderen. Ved `_attached` er runnet allerede i gang
+            # — saa ville vi maale fra DETTE kald og faa en TTFT der ser ud som
+            # om modellen var hurtig, fordi den havde arbejdet i forvejen.
+            try:
+                from core.services import svar_tempo
+                svar_tempo.start(run_id)
+            except Exception as _tempo_exc:  # noqa: BLE001
+                logger.warning("chat/stream/v2: TTFT-uret kunne ikke starte: %s", _tempo_exc)
         if _attached:
             print(
                 f"[chat/stream/v2] single-flight: session={session_id[:20]} "

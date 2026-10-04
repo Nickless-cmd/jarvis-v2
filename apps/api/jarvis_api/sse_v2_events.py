@@ -150,6 +150,11 @@ class MessageDelta:
     output_tokens: int = 0
     cache_hit_tokens: int = 0
     cache_miss_tokens: int = 0
+    #: Maalt HOS OS, ikke hentet hos udbyderen (4/10-2026). `None` naar det
+    #: ikke kunne afgoeres — ikke 0, for et nul ville tegne «TTFT 0ms» i
+    #: composeren og se ud som et maaleresultat. Se `core/services/svar_tempo`.
+    ttft_ms: float | None = None
+    tok_per_sek: float | None = None
 
     def to_sse_line(self) -> str:
         """Returnér message_delta SSE-blokken med stop_reason og final usage-tal."""
@@ -161,6 +166,10 @@ class MessageDelta:
                 "output_tokens": self.output_tokens,
                 "cache_hit_tokens": self.cache_hit_tokens,
                 "cache_miss_tokens": self.cache_miss_tokens,
+                # Udelades naar de er ukendte, saa en klient kan skelne «ikke
+                # maalt» fra «maalt til nul» uden at kende vores default.
+                **({"ttft_ms": self.ttft_ms} if self.ttft_ms is not None else {}),
+                **({"tok_per_sek": self.tok_per_sek} if self.tok_per_sek is not None else {}),
             },
         })
 

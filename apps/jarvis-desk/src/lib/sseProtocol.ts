@@ -69,6 +69,12 @@ export interface MessageDeltaEvent {
     output_tokens: number
     cache_hit_tokens: number
     cache_miss_tokens: number
+    /** TTFT i millisekunder, maalt paa SERVEREN (`core/services/svar_tempo`).
+     *  Udelades naar den ikke kunne maales — derfor valgfri, ikke 0. */
+    ttft_ms?: number
+    /** Output-tokens per sekund, maalt fra FOERSTE token til sidste — ikke
+     *  over hele turen, saa en lang TTFT ikke straffer skrivehastigheden. */
+    tok_per_sek?: number
   }
 }
 

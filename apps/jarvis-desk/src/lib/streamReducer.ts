@@ -16,7 +16,11 @@ export interface StreamState {
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   finalAnswerStarted: boolean // serveren har bekræftet slutsvar før første synlige delta
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
-  usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
+  usage: { input: number; output: number; cacheHit: number; cacheMiss: number
+           // Maalt paa SERVEREN (core/services/svar_tempo), ikke hentet hos
+           // udbyderen: saa betyder tallet det samme uanset om turen gik
+           // gennem DeepSeek eller Ollama Cloud. `null` = ikke maalt.
+           ttftMs: number | null; tokPerSek: number | null }
   /**
    * Runde-etiketter slået op på TOOL-ID — «Rettede fejl i login».
    *
@@ -36,7 +40,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -392,6 +396,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           output: event.usage.output_tokens,
           cacheHit: event.usage.cache_hit_tokens ?? state.usage.cacheHit,
           cacheMiss: event.usage.cache_miss_tokens ?? state.usage.cacheMiss,
+          // `??`, ikke `||`: en maalt 0 er et svar, og `||` ville kaste den
+          // vaek sammen med `null`. Serveren udelader feltet naar det ikke
+          // kunne maales, saa `undefined` betyder «behold hvad vi havde».
+          ttftMs: event.usage.ttft_ms ?? state.usage.ttftMs,
+          tokPerSek: event.usage.tok_per_sek ?? state.usage.tokPerSek,
         },
       }
 

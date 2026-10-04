@@ -104,7 +104,12 @@ export interface StreamContextValue {
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
   workingSessionId: string | null
   /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
-  usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
+  /** Tokens — og turens tempo. `ttftMs`/`tokPerSek` er `null` indtil serveren
+   *  har maalt dem; de kommer i `message_delta`, altsaa ved turens slutning.
+   *  Maalt HOS OS og ikke hentet hos udbyderen, saa tallet betyder det samme
+   *  gennem DeepSeek og Ollama Cloud. Se `core/services/svar_tempo`. */
+  usage: { input: number; output: number; cacheHit: number; cacheMiss: number
+           ttftMs: number | null; tokPerSek: number | null }
   blocks: ContentBlock[]
   provisionalText: string
   provisionalBlockIndex: number | null

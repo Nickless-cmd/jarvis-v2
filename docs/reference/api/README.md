@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16035 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16040 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,10 +53,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16035 functions/
 - [`core.services.22`](core.services.22.md) — `runtime_hook_runtime` … `self_narrative_self_model_review_bridge`
 - [`core.services.23`](core.services.23.md) — `self_repair_engine` … `share_guard_store`
 - [`core.services.24`](core.services.24.md) — `shared_cache` … `stream_degeneration`
-- [`core.services.25`](core.services.25.md) — `stream_failure_kind` … `tool_catalog`
-- [`core.services.26`](core.services.26.md) — `tool_chip_payload` … `user_temperature_runtime`
-- [`core.services.27`](core.services.27.md) — `user_theory_of_mind` … `visible_runs_approvals`
-- [`core.services.28`](core.services.28.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `stream_failure_kind` … `tool_calling_evidence`
+- [`core.services.26`](core.services.26.md) — `tool_catalog` … `user_temperature_engine`
+- [`core.services.27`](core.services.27.md) — `user_temperature_runtime` … `visible_runs`
+- [`core.services.28`](core.services.28.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

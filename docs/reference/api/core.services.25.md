@@ -154,6 +154,16 @@ _Sustained Attention — ongoing projects that survive across ticks._
 | function | `_surface_summary` | `(active, paused, completed)` | — | [src](../../../core/services/sustained_attention.py#L229) |
 | function | `build_sustained_attention_prompt_section` | `()` | — | [src](../../../core/services/sustained_attention.py#L246) |
 
+## `core/services/svar_tempo.py`
+_TTFT og tokens/sekund — målt hos OS, ikke hentet hos udbyderen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start` | `(run_id)` | Uret begynder. Kaldes når turen går mod udbyderen. | [src](../../../core/services/svar_tempo.py#L54) |
+| function | `foerste_token` | `(run_id)` | Det første stykke INDHOLD er på vej ud. Idempotent. | [src](../../../core/services/svar_tempo.py#L69) |
+| function | `afslut` | `(run_id, *, output_tokens=…)` | Luk målingen. `{"ttft_ms": …, "tok_per_sek": …}` — None hvor ukendt. | [src](../../../core/services/svar_tempo.py#L81) |
+| function | `glem` | `(run_id)` | Smid en måling væk uden at aflæse den — fx når et run annulleres. | [src](../../../core/services/svar_tempo.py#L108) |
+
 ## `core/services/system_cartographer.py`
 _System Cartographer — broad map of Jarvis' runtime and inner layers._
 
@@ -608,15 +618,4 @@ _Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
 | function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L79) |
 | function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L84) |
 | function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L138) |
-
-## `core/services/tool_catalog.py`
-_Compact tool catalog for system prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L149) |
-| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L163) |
-| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L178) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L214) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L219) |
 

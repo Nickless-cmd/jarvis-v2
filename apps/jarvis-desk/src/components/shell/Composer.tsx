@@ -1005,10 +1005,18 @@ export function Composer({
     {koerselsTal && (
       <div className="composer-tal" role="status" aria-label="kørselstal">
         <span>{koerselsTal.ture} turns {koerselsTal.trin} steps</span>
-        <span className={koerselsTal.ttft == null ? 'mangler' : undefined}>
-          {koerselsTal.ttft == null ? 'TTFT —' : `TTFT ${koerselsTal.ttft}ms`}
+        {/* To spans, ikke ét (4/10-2026). De to tal kan GENUINT mangle hver
+            for sig: en tur med nul output-tokens har en maalt TTFT og ingen
+            hastighed. Foer daempede `mangler` begge ud fra TTFT alene, saa et
+            maalt tal stod graat ved siden af en tankestreg — eller omvendt. */}
+        <span>
+          <span className={koerselsTal.ttft == null ? 'mangler' : undefined}>
+            {koerselsTal.ttft == null ? 'TTFT —' : `TTFT ${koerselsTal.ttft}ms`}
+          </span>
           {' · '}
-          {koerselsTal.tokPerSek == null ? '— tok/s' : `${koerselsTal.tokPerSek} tok/s`}
+          <span className={koerselsTal.tokPerSek == null ? 'mangler' : undefined}>
+            {koerselsTal.tokPerSek == null ? '— tok/s' : `${koerselsTal.tokPerSek} tok/s`}
+          </span>
         </span>
         {koerselsTal.cacheHit != null && <span>Cache hit {koerselsTal.cacheHit}%</span>}
         {koerselsTal.tokens != null && <span>{formatTokens(koerselsTal.tokens)} tokens</span>}

@@ -285,6 +285,21 @@ def _run_still_active(run_id: str) -> bool:
         return True
 
 
+def _laes_tempo(run_id: str, output_tokens: int) -> dict[str, float | None]:
+    """TTFT og tok/s for dette run. Tomt dict ved enhver fejl.
+
+    Egen funktion fordi `MessageDelta` bygges to steder (normal afslutning og
+    gendannelse), og en try/except kopieret begge steder ville vaere to
+    definitioner af «hvad goer vi naar maalingen fejler».
+    """
+    try:
+        from core.services import svar_tempo
+        return svar_tempo.afslut(run_id, output_tokens=output_tokens)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sse_v2: kunne ikke aflaese svar-tempoet: %s", exc)
+        return {}
+
+
 async def translate_to_v2(
     legacy_iter: AsyncIterator[str],
     *,
@@ -699,6 +714,23 @@ async def translate_to_v2(
                     continue
                 event_name, payload = parsed
 
+                # TTFT maales HER og kun her (4/10-2026). Det er den ene soem
+                # hvor hver opstroems-haendelse passerer praecis én gang,
+                # allerede parset — en markering ved hvert `queue.put` ville
+                # vaere fire kopier af samme regel, og kopier driver fra
+                # hinanden.
+                #
+                # `reasoning_delta` taeller MED som indhold: taenke-tokens er
+                # det foerste man ser, og en TTFT der sprang dem over ville
+                # sige 14 s om noget der foeltes som 2.
+                if event_name in ("delta", "reasoning_delta"):
+                    try:
+                        from core.services import svar_tempo
+                        svar_tempo.foerste_token(str(_state.get("run_id") or ""))
+                    except Exception as _tempo_exc:  # noqa: BLE001
+                        # Et maaleinstrument maa aldrig vaelte det det maaler.
+                        logger.warning("sse_v2: TTFT-markering fejlede: %s", _tempo_exc)
+
                 # Pluk metadata ud af tidlige events så message_start har
                 # meningsfulde værdier hvis de ikke blev givet til kaldet.
                 #
@@ -812,12 +844,16 @@ async def translate_to_v2(
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)
                     _state["stop_reason"] = str(payload.get("status") or "end_turn")
+                    _tempo = _laes_tempo(str(_state.get("run_id") or ""),
+                                         int(_state["output_tokens"]))
                     await queue.put(MessageDelta(
                         stop_reason=str(_state["stop_reason"]),
                         input_tokens=int(_state["input_tokens"]),
                         output_tokens=int(_state["output_tokens"]),
                         cache_hit_tokens=int(_state["cache_hit_tokens"]),
                         cache_miss_tokens=int(_state["cache_miss_tokens"]),
+                        ttft_ms=_tempo.get("ttft_ms"),
+                        tok_per_sek=_tempo.get("tok_per_sek"),
                     ).to_sse_line())
                     await queue.put(MessageStop().to_sse_line())
                     _state["message_stopped"] = True
@@ -928,12 +964,20 @@ async def translate_to_v2(
                             payload=recovery_notice(_reason),
                         ).to_sse_line())
                         _state["stop_reason"] = "recovering"
+                    # Ogsaa paa GENDANNELSES-vejen. Et run der endte uden
+                    # `done` har stadig haft en TTFT, og udelod vi den her,
+                    # ville tallet forsvinde praecis i de ture hvor noget gik
+                    # galt — altsaa dem man helst vil kunne maale.
+                    _tempo = _laes_tempo(str(_state.get("run_id") or ""),
+                                         int(_state["output_tokens"]))
                     await queue.put(MessageDelta(
                         stop_reason=str(_state.get("stop_reason") or "end_turn"),
                         input_tokens=int(_state["input_tokens"]),
                         output_tokens=int(_state["output_tokens"]),
                         cache_hit_tokens=int(_state["cache_hit_tokens"]),
                         cache_miss_tokens=int(_state["cache_miss_tokens"]),
+                        ttft_ms=_tempo.get("ttft_ms"),
+                        tok_per_sek=_tempo.get("tok_per_sek"),
                     ).to_sse_line())
                     await queue.put(MessageStop().to_sse_line())
                     _state["message_stopped"] = True

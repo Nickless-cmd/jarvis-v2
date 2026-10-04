@@ -3334,6 +3334,30 @@ def _build_visible_chat_prompt_assembly_impl(
     _stabile.sort(key=lambda t: next(
         (i for i, m in enumerate(_STABILE_I_HALEN) if str(t).lstrip().startswith(m)),
         len(_STABILE_I_HALEN)))
+    # Vagten: bliver de ved med at vaere uaendrede? Flytningen er kun en
+    # gevinst saa laenge de er det — ÉN aendring per 99 ture goer den til et
+    # tab, fordi et skift sidst i praefikset invaliderer hele
+    # samtalehistorikken ovenpaa. Se core/services/praefiks_stabilitet.
+    _stabil_felter = ""
+    try:
+        from core.services import praefiks_stabilitet as _ps
+        _stabil_felter = _ps.tjek([
+            (next((m for m in _STABILE_I_HALEN if str(t).lstrip().startswith(m)), "?"),
+             str(t))
+            for t in _stabile
+        ])
+    except Exception as _ps_exc:  # noqa: BLE001 — en vagt maa ikke vaelte en tur
+        # Filen har ingen modul-logger; samme moenster som peak-badgen ovenfor.
+        import logging as _ps_logging
+        _ps_logging.getLogger(__name__).debug(
+            "praefiks_stabilitet sprang over: %s", _ps_exc)
+    # EGEN linje, ikke paa timing-linjen: den skrives ~500 linjer FOER
+    # partitionen i denne funktion, saa feltet ville vaere ubundet dér.
+    # Testene fangede det som en UnboundLocalError — den slags ser ud som en
+    # lille omflytning og er et nedbrud.
+    if _stabil_felter:
+        print(f"prompt-praefiks-stabilitet {_stabil_felter}",
+              file=_sys_mod.stderr, flush=True)
     parts.extend(_stabile)
     if _resten:
         parts.append(DYNAMIC_TAIL_SENTINEL)

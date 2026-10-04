@@ -67,10 +67,14 @@ def test_raekkefoelgen_er_FAST_ikke_bygge_raekkefoelge():
     """Et præfiks skal være byte-identisk mellem ture. Byggerækkefølgen
     afhænger af hvilke futures der blev færdige først, så den må ikke afgøre
     hvor sektionerne står."""
+    # Maalt paa REKKEFOELGEN af de to udtryk, ikke paa afstanden mellem dem:
+    # foerste udgave kiggede 600 tegn tilbage, og en tilfoejet vagt imellem
+    # skubbede `sort` ud af vinduet. En test der maaler afstand maaler
+    # formatering, ikke adfaerd.
     kilde = KILDE.read_text()
-    i = kilde.index("parts.extend(_stabile)")
-    foran = kilde[max(0, i - 600):i]
-    assert "_stabile.sort(" in foran, "raekkefoelgen er ikke fastlaast"
+    i_sort = kilde.index("_stabile.sort(")
+    i_brug = kilde.index("parts.extend(_stabile)")
+    assert i_sort < i_brug, "raekkefoelgen laases ikke FOER brug"
 
 
 def test_sentinel_UDELADES_naar_der_intet_er_tilbage():

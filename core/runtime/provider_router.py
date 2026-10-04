@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -11,6 +12,8 @@ from core.auth.profiles import (
 )
 from core.runtime.config import PROVIDER_ROUTER_FILE
 from core.runtime.settings import load_settings, update_visible_execution_settings
+
+logger = logging.getLogger(__name__)
 
 _SIMPLE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9:-]{0,63}$")
 
@@ -217,7 +220,15 @@ def select_main_agent_target(
     )
     if configured_target is None:
         # For ollama: allow any model that exists in the live Ollama instance
-        if provider_id == "ollama" and _ollama_model_exists(registry=registry, model=model_name):
+        findes = (
+            _ollama_model_exists(registry=registry, model=model_name)
+            if provider_id == "ollama"
+            else False
+        )
+        # `None` = Ollama svarede ikke. Vi kan ikke BEVISE at modellen mangler,
+        # så et manglende svar må ikke afvise et target — men hintet siger at
+        # svaret er uafklaret, så ingen tror den er bekræftet.
+        if findes is not False:
             configured_target = {
                 "provider": "ollama",
                 "model": model_name,
@@ -225,7 +236,7 @@ def select_main_agent_target(
                 "auth_profile": None,
                 "base_url": _provider_base_url(provider="ollama", registry=registry) or "http://127.0.0.1:11434",
                 "credentials_ready": True,
-                "readiness_hint": "ollama-live",
+                "readiness_hint": "ollama-live" if findes else "ollama-ukendt",
             }
         else:
             raise ValueError(
@@ -554,8 +565,14 @@ def _normalize_auth_mode(value: str) -> str:
     return normalized
 
 
-def _ollama_model_exists(*, registry: dict[str, object], model: str) -> bool:
-    """Return True if *model* is available in the live Ollama instance."""
+def _ollama_model_exists(*, registry: dict[str, object], model: str) -> bool | None:
+    """Er *model* tilgængelig i den kørende Ollama?
+
+    `None` = kunne ikke afgøres (Ollama svarer ikke). Det er ikke `False`, og de
+    to må ikke smelte sammen: en slukket Ollama meldte ellers at en INSTALLERET
+    model ikke findes, og kalderen afviste et gyldigt target med «target must
+    exist» — en fejl der peger på modellen i stedet for på forbindelsen.
+    """
     import urllib.request as _req
     import urllib.error as _uerr
 
@@ -563,10 +580,11 @@ def _ollama_model_exists(*, registry: dict[str, object], model: str) -> bool:
     try:
         with _req.urlopen(f"{base_url}/api/tags", timeout=3) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        names = {str(item.get("name") or "").strip() for item in data.get("models", [])}
-        return model in names
-    except Exception:
-        return False
+    except Exception as exc:
+        logger.warning("provider_router: kunne ikke spoerge Ollama (%s): %s", base_url, exc)
+        return None
+    names = {str(item.get("name") or "").strip() for item in data.get("models", [])}
+    return model in names
 
 
 def _normalize_profile(value: str) -> str:

@@ -78,3 +78,112 @@ def test_token_without_jti_unaffected(isolated_runtime) -> None:
     from core.runtime.jarvisx_auth import issue_token, verify_token
     minted = issue_token(user_id="plain", role="member")
     assert verify_token(minted["token"])["sub"] == "plain"
+
+
+# ── En ULÆSELIG runtime.json er ikke det samme som en TOM ────────────────────
+
+
+def test_en_ULAESELIG_runtime_json_maa_ikke_overskrives(tmp_path, monkeypatch) -> None:
+    """`_read_secret` skriver HELE runtime.json tilbage — og ved en korrupt fil er
+    det læste dict TOMT. Så genereres en ny secret, og filen erstattes af én nøgle.
+
+    Målt 4/10-2026: runtime.json bærer 163 nøgler (alle API-nøgler). Ét u-parsbart
+    tegn — fx en afbrudt skrivning — ville slette dem alle sammen i det stille.
+
+    En fil der FINDES men ikke kan læses er ikke en fil der ikke findes. Den
+    første må ikke skrives over: nøglerne er stadig i den, og nogen kan måske
+    redde dem. Den anden har intet at tabe.
+    """
+    monkeypatch.delenv("JARVISX_AUTH_SECRET", raising=False)
+    fil = tmp_path / "runtime.json"
+    monkeypatch.setattr("core.runtime.jarvisx_auth.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.jarvisx_auth._SETTINGS_FILE", fil)
+
+    korrupt = '{"agnes_api_key": "hemmelig", "app_name": "jarvis", "trailing": '  # pragma: allowlist secret
+    fil.write_text(korrupt, encoding="utf-8")
+
+    from core.runtime import jarvisx_auth as ja
+
+    ja._read_secret()
+
+    assert fil.read_text(encoding="utf-8") == korrupt, (
+        "en ulæselig runtime.json blev overskrevet af secret-genereringen — "
+        "konfigurationen er tabt"
+    )
+
+
+def test_en_MANGLENDE_runtime_json_oprettes_med_secret(tmp_path, monkeypatch) -> None:
+    """Modprøven: findes filen slet ikke, er der intet at tabe — så må den oprettes.
+
+    Uden denne kunne rettelsen gøre enhver skrivning umulig og stadig være grøn.
+    """
+    import json
+
+    monkeypatch.delenv("JARVISX_AUTH_SECRET", raising=False)
+    fil = tmp_path / "runtime.json"
+    monkeypatch.setattr("core.runtime.jarvisx_auth.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.jarvisx_auth._SETTINGS_FILE", fil)
+
+    from core.runtime import jarvisx_auth as ja
+
+    s = ja._read_secret()
+
+    assert len(s) >= 32
+    assert json.loads(fil.read_text(encoding="utf-8"))["jarvisx_auth_secret"] == s
+
+
+def test_en_ULAESELIG_runtime_json_slaar_ikke_auth_fra(tmp_path, monkeypatch) -> None:
+    """En fil vi ikke kan læse er ikke et svar på om auth er slået til.
+
+    `auth_required()` faldt tilbage til `False` når `_load_settings()` gav `{}`
+    — og `{}` er også hvad en KORRUPT fil giver. Så ét u-parsbart tegn slog
+    stille auth fra: API'et ville acceptere `X-JarvisX-User`-headere uden
+    verifikation, hvilket er præcis det modulet er skrevet for at forhindre.
+
+    Fail-closed er det sikre svar: vi kan ikke bekræfte nogen, så vi afviser.
+    """
+    monkeypatch.delenv("JARVISX_AUTH_REQUIRED", raising=False)
+    fil = tmp_path / "runtime.json"
+    monkeypatch.setattr("core.runtime.jarvisx_auth.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.jarvisx_auth._SETTINGS_FILE", fil)
+    fil.write_text('{"jarvisx_auth_required": true, "trailing": ', encoding="utf-8")
+
+    from core.runtime.jarvisx_auth import auth_required
+
+    assert auth_required() is True
+
+
+def test_en_MANGLENDE_runtime_json_slaar_ikke_auth_til(tmp_path, monkeypatch) -> None:
+    """Modprøven: en fil der slet ikke findes er det dokumenterede dev-default.
+
+    Uden denne kunne rettelsen gøre enhver manglende fil til «auth påkrævet»
+    og låse en frisk installation ude.
+    """
+    monkeypatch.delenv("JARVISX_AUTH_REQUIRED", raising=False)
+    fil = tmp_path / "findes-ikke.json"
+    monkeypatch.setattr("core.runtime.jarvisx_auth.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.jarvisx_auth._SETTINGS_FILE", fil)
+
+    from core.runtime.jarvisx_auth import auth_required
+
+    assert auth_required() is False
+
+
+def test_en_GYLDIG_men_forkert_formet_json_er_ogsaa_ulaeselig(tmp_path, monkeypatch) -> None:
+    """`[1, 2, 3]` er gyldig JSON og ikke et settings-dokument.
+
+    Uden skelnen ville `data.get(...)` kaste AttributeError — eller, værre,
+    `_read_secret` ville skrive en liste tilbage med én nøgle i.
+    """
+    monkeypatch.delenv("JARVISX_AUTH_SECRET", raising=False)
+    fil = tmp_path / "runtime.json"
+    monkeypatch.setattr("core.runtime.jarvisx_auth.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.jarvisx_auth._SETTINGS_FILE", fil)
+    fil.write_text("[1, 2, 3]", encoding="utf-8")
+
+    from core.runtime import jarvisx_auth as ja
+
+    s = ja._read_secret()
+
+    assert len(s) >= 32
+    assert fil.read_text(encoding="utf-8") == "[1, 2, 3]"

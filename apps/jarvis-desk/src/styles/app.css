@@ -3562,35 +3562,43 @@ p.central-flag { margin: 0 0 6px; }
  * zonen folder hele titel-listen ud i et panel (bg + ramme + skygge); rækken
  * under markøren fremhæves, og det aktuelle (nederste) anker står fedt med en
  * længere/lysere dash. Klik scroller til beskeden. */
-.msg-rail { position: absolute; left: 4px; top: 14px; z-index: 20; max-width: 26px; }
-.msg-rail:hover { max-width: none; }
+.msg-rail { position: absolute; left: 4px; top: 14px; z-index: 20; }
 /* Cap til ~12 dashes ad gangen (scroll for resten) + tæt afstand, så rail'en
  * ikke fylder hele chatview-højden (Bjørn 2026-06-17). Scrollbar skjult. */
 .msg-rail-panel { display: flex; flex-direction: column; gap: 0; padding: 4px;
   border: 1px solid transparent; border-radius: 10px; max-height: 150px; overflow-y: auto;
   scrollbar-width: none; transition: background .12s ease, border-color .12s ease; }
 .msg-rail-panel::-webkit-scrollbar { display: none; }
-.msg-rail:hover .msg-rail-panel { background: var(--bg-1, var(--bg)); border-color: var(--line);
-  box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 6px; max-height: calc(100vh - 200px); }
-/* 4/10-2026 (Bjørn, gentaget): «mindre mellemrum mellem stregerne».
-   Rækkehøjden var 10px min-height + 2px padding + 1px gap = 13px. Stregen er
-   2px, så der stod 11px luft mellem dem. Nu 6px række og ingen gap: 4px luft.
-   Titlerne er skjult i hvile (se .msg-rail-text), så rækken behøver ikke være
-   høj nok til tekst — den folder ud ved hover. */
-.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 2px;
-  background: none; border: none; padding: 0 8px; border-radius: 6px; cursor: pointer;
-  text-align: left; color: var(--fg-3, #888); transition: min-height .16s ease; }
-.msg-rail-row:hover { background: var(--bg-2, var(--bg)); color: var(--fg-1, var(--fg)); }
+/* 4/10-2026: panelet faar INGEN ramme, baggrund eller skygge ved hover. Det
+   gjorde railen til en aabnet boks oven paa samtalen. I mockup'en (og i Codex)
+   er der kun streger, ogsaa naar musen er der. Kun rulle-hoejden udvides, saa
+   en lang session stadig kan naas. */
+.msg-rail:hover .msg-rail-panel { max-height: calc(100vh - 200px); }
+/* Rækkehøjden — sidste ord 4/10-2026. Den har været 13px (10 min-height +
+   2 padding + 1 gap), 6px, 3px og 2px, mens Bjørn bad om «mindre» seks gange.
+   Facit er mockup'ens 8px: 2px streg og 6px luft. Rækken bærer ingen tekst —
+   titel-listen er væk — så højden er kun streg + luft. */
+/* 4/10-2026, 1:1 med mockup'en. Raekken er 8px — 2px streg og 6px luft — og
+   baerer INGEN tekst. Den gamle titel-liste er væk; kortet viser spoergsmaalet. */
+.msg-rail-row { display: flex; align-items: center; width: 100%; min-height: 8px;
+  background: none; border: none; padding: 0; border-radius: 6px; cursor: pointer;
+  text-align: left; color: var(--fg-3, #888); }
 .msg-rail-dash { flex: none; width: 13px; height: 2px; border-radius: 2px;
   background: var(--fg-1);
-  opacity: .5; transition: width .12s ease, opacity .12s ease; }
+  opacity: .5; transition: width .14s ease, opacity .14s ease; }
+/* Den raekke musen er paa bliver LAENGERE (13 -> 26) og fuld hvid. Det er hele
+   markeringen; der laegges ingen ekstra streger til (boelgen blev fjernet 4/10). */
 .msg-rail-row:hover .msg-rail-dash,
-.msg-rail-row:focus-visible .msg-rail-dash { opacity: 1; }
+.msg-rail-row:focus-visible .msg-rail-dash { opacity: 1; width: 26px; }
 /* Markeringen FØLGER nu scroll-positionen. Den var hardkodet til den sidste
    besked, altsaa til noget man i forvejen vidste — en indholdsfortegnelse uden
    position er en liste. */
-.msg-rail-row.is-active { color: var(--fg-1, var(--fg)); font-weight: 500; }
-.msg-rail-row.is-active .msg-rail-dash { opacity: 1; width: 17px; background: var(--accent); }
+/* «Hvor er jeg» markeres med LYS — ikke med farve og ikke med laengde. Den var
+   teal og 17px; farven gjorde den til et andet SLAGS punkt i en liste af hvide
+   streger, og laengden konkurrerede med hover-markeringen. Nu er den hvid og
+   13px som de andre, og den er den eneste der staar fuldt optegnet i hvile. */
+.msg-rail-row.is-active { color: var(--fg-1, var(--fg)); }
+.msg-rail-row.is-active .msg-rail-dash { opacity: 1; width: 13px; background: var(--fg-1); }
 /* En tur der endte i fejl faar en roed streg, saa «hvor gik det galt» kan
    besvares uden at scrolle hele samtalen igennem. */
 /* 4/10-2026 (Bjoern): «den roede skal helt vaek». En fejlet tur markeres ikke
@@ -3603,7 +3611,14 @@ p.central-flag { margin: 0 0 6px; }
    lidt længere end de andre over?» Den var 21 mod is-active's 17, altså kun
    4 px forskel — nok til at reglen fandtes, ikke nok til at man så den. Nu 28,
    så den er 11 px længere end den aktive og 15 end en almindelig. */
-.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 26px; background: var(--accent); }
+.msg-rail-row.er-sidste .msg-rail-dash { opacity: 1; width: 18px; background: var(--accent); }
+/* 4/10-2026 (Bjørn): «den nederste grønne streg skal ikke kunne flytte sig».
+   Den stod paa 26px = praecis samme maal som hover, saa man kunne ikke se
+   forskel. Nu 18: laengere end en almindelig (13), kortere end hover (26) — og
+   reglen her staar EFTER hover-reglen, saa den ogsaa vinder naar musen er over
+   netop den raekke. Den viser hvor samtalen slutter; den er ikke en markoer. */
+.msg-rail-row.er-sidste:hover .msg-rail-dash,
+.msg-rail-row.er-sidste:focus-visible .msg-rail-dash { width: 18px; }
 /* Komprimering: prikket streg, så den kan skelnes fra et kapitel i hvile. */
 /* 4/10-2026 (Bjoern): «de stiplede linjer skal vaere hele, det ser underligt
    ud». Den prikkede streg skulle skelne et komprimeret afsnit fra et kapitel,
@@ -3615,22 +3630,16 @@ p.central-flag { margin: 0 0 6px; }
    nedslag uden at føre musen derhen. Står efter er-sidste, så en fastgjort
    sidste besked stadig vises som fastgjort. */
 .msg-rail-row.er-fastgjort .msg-rail-dash { opacity: 1; width: 17px; background: var(--accent); }
-.msg-rail-pin { flex: none; margin-right: 4px; vertical-align: -1px; color: var(--accent); }
-.msg-rail-row.er-komprimering .msg-rail-text { font-style: italic; }
+/* Pin-ikonet boede foer i raekkens titel. Raekken har ingen tekst mere, saa
+   det staar nu i kortet (se .msg-rail-kort-ikon). */
 /* Spoergsmaal over, svar under (spec punkt 3.2, 29/9-2026). Etiketten alene
    svarer paa «hvad spurgte jeg om»; det man leder efter naar man scroller
    tilbage i en lang samtale er som regel «fik jeg det jeg skulle bruge».
    Raekken maa STADIG vaere 10px i hvile — svaret findes kun i den udfoldede
    tilstand, saa skinnens hvilehoejde er uaendret. */
-.msg-rail-row { align-items: flex-start; }
-.msg-rail-row .msg-rail-dash { margin-top: 0; }
-/* Hover: listen folder ud — rækkerne vokser og stregen flugter med titlen. */
-.msg-rail:hover .msg-rail-row { min-height: 20px; }
-.msg-rail:hover .msg-rail-row .msg-rail-dash { margin-top: 4px; }
-.msg-rail-spm { display: block; }
-.msg-rail-text { display: none; font-size: 12px; line-height: 1.3; max-width: 230px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.msg-rail:hover .msg-rail-text { display: inline; }
+/* Titel-listen er fjernet 4/10-2026: den foldede ud over samtalen ved hover, og
+   spoergsmaalet staar nu i kortet ved raekken. Der er ingen .msg-rail-text og
+   ingen .msg-rail-spm tilbage. */
 /* Svaret i et RENT kort ved den raekke musen er paa (Bjørn 3/10-2026). Før stod
    svaret som en blok UNDER hver titel, saa hele listen viste titel + svar paa én
    gang — en vaeg man ikke kunne skanne, fordi man ledte efter en titel og fik
@@ -3641,12 +3650,20 @@ p.central-flag { margin: 0 0 6px; }
    ellers flimrer hover'en mellem raekken og kortet. */
 .msg-rail-kort {
   position: absolute; left: calc(100% + 8px); z-index: 30;
-  max-width: 280px; padding: 8px 10px; border-radius: 8px;
-  background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
-  box-shadow: 0 12px 34px rgba(0,0,0,.38);
-  color: var(--fg-2); font-size: 12px; line-height: 1.4;
-  pointer-events: none;
+  width: 302px; max-width: calc(100vw - 150px); padding: 9px 11px; border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  box-shadow: 0 14px 38px rgba(0,0,0,.5);
+  color: var(--fg-2); font-size: 12px; line-height: 1.42;
+  pointer-events: none; text-align: left;
 }
+.msg-rail-kort-top { display: flex; align-items: flex-start; gap: 8px; }
+.msg-rail-kort-spm { flex: 1; min-width: 0; color: var(--fg-1); font-weight: 600;
+  font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-rail-kort-ikon { flex: none; width: 13px; height: 13px; color: var(--fg-3); margin-top: 2px; }
+.msg-rail-kort-svar { margin-top: 5px; color: var(--fg-2); font-size: 12px; line-height: 1.42;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Fejlen meldes med ORD i kortet. Den roede streg er ude af railen. */
+.msg-rail-kort-fejl { margin-top: 5px; color: var(--error-fg); font-size: 11.5px; }
 /* 4/10-2026 (Bjoern): «dine forslag viser et ekstra streg naar musen koerer».
    Boelgen var TO smaa streger over og under den raekke man pegede paa — et
    ekstra punkt i listen, ikke en markering. Nu er markeringen raekken selv:

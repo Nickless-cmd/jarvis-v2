@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useSkinneSynlig } from '../../lib/railSynlighed'
-import { Pin } from 'lucide-react'
+import { Bookmark, Pin } from 'lucide-react'
 
 export interface RailAnchor {
   id: string
@@ -27,18 +27,25 @@ export interface RailAnchor {
  * indholdsfortegnelse uden position er en liste.
  *
  * Nu følger markeringen scroll-positionen (IntersectionObserver på de faktiske
- * beskeder), og en tur der endte i fejl får en rød streg. Så svarer skinnen på
- * de to spørgsmål man har når man scroller i en lang samtale: hvor er jeg, og
- * hvor gik det galt.
+ * beskeder). Klik scroller.
  *
- * I hvile vises kun streger; hover folder titlerne ud. Klik scroller.
+ * **1:1 med Codex (4/10-2026).** Bjørn sendte fem skærmbilleder og bad om
+ * railen «1:1». Det der ændrede sig, er HVAD der vises hvornår:
  *
- * **Svar-kortet (3/10-2026).** Før stod svaret som en blok UNDER hver titel, og
- * hele listen viste titel + svar på én gang. Bjørn: «panelet folder stadig ud,
- * men kun med titler — svaret vises i et rent kort ved den linje musen er på».
- * Han havde ret i at væggen ikke kunne skannes: man ledte efter en titel, men
- * fik to linjers svar oveni for hver eneste række. Nu bærer panelet KUN
- * titlerne, og svaret kommer frem ét sted — ved den række man peger på.
+ *  - I hvile er der KUN streger. Ingen titel-liste folder ud — hverken ved
+ *    hover på railen eller på rækken. Rækkehøjden er 8px, altså 6px luft
+ *    mellem to 2px streger.
+ *  - Den række musen er på bliver længere (26px) og fuld hvid.
+ *  - Et kort kommer frem VED den række: spørgsmålet i fed som første linje
+ *    (klippet med «…»), svaret i op til tre dæmpede linjer under, og et
+ *    bogmærke-ikon øverst til højre. Det er derfor han kalder den *saved*rail.
+ *  - Den NEDERSTE streg er grøn og 18px — længere end en almindelig (13px),
+ *    kortere end hover (26px) — og den vokser ALDRIG. Den viser hvor samtalen
+ *    slutter; den er ikke en markør der flytter sig.
+ *  - Ingen rød nogen steder i railen. En fejlet tur meldes i kortet.
+ *
+ * Før bar panelet titlerne og kortet KUN svaret. Nu bærer kortet begge, og
+ * panelet bærer ingen tekst — det var den væg der gjorde listen uskannelig.
  */
 export function MessageRail({
   containerRef,
@@ -58,7 +65,9 @@ export function MessageRail({
   // Hvilken række musen staar paa, og hvor kortet skal staa. `top` maales —
   // ikke gaettes: panelet ruller (max-height + overflow-y), og `offsetTop`
   // ville staa stille mens raekken flyttede sig.
-  const [kort, setKort] = useState<{ svar: string; top: number } | null>(null)
+  const [kort, setKort] = useState<{
+    label: string; svar?: string; fejl?: boolean; fastgjort?: boolean; top: number
+  } | null>(null)
   const railRef = useRef<HTMLElement>(null)
 
   // Positionen: det SIDSTE anker der er rullet forbi toppen — altså
@@ -113,14 +122,24 @@ export function MessageRail({
   }
 
   /** Kortet staar VED den raekke musen er paa. Maalt mod railens egen kant, saa
-   *  det foelger raekken ogsaa naar panelet er rullet. En raekke uden svar
-   *  rydder kortet — ellers blev det forrige svar staaende ved den nye linje. */
-  const visKort = (row: HTMLElement, svar?: string) => {
+   *  det foelger raekken ogsaa naar panelet er rullet.
+   *
+   *  4/10-2026: kortet vises nu ogsaa naar turen ikke HAR et svar. Foer ryddede
+   *  et tomt svar kortet helt, og saa stod raekken uden noget at laese — men
+   *  spoergsmaalet findes altid, og det er den ene linje der siger hvad raekken
+   *  ER. Kun naar musen forlader railen helt, ryddes kortet. */
+  const visKort = (row: HTMLElement, a: RailAnchor) => {
     const rail = railRef.current
-    if (!svar || !rail) { setKort(null); return }
+    if (!rail) { setKort(null); return }
     const r = row.getBoundingClientRect()
     const b = rail.getBoundingClientRect()
-    setKort({ svar, top: r.top - b.top })
+    setKort({
+      label: a.label,
+      svar: a.svar,
+      fejl: a.fejl,
+      fastgjort: a.slags === 'fastgjort',
+      top: r.top - b.top,
+    })
   }
 
   return (
@@ -135,20 +154,18 @@ export function MessageRail({
           <button
             key={`${a.slags ?? 'kapitel'}:${a.id}`}
             type="button"
-            // `er-sidste`: den nederste streg er teal og længere end de andre
+            // `er-sidste`: den nederste streg er grøn og længere end de andre
             // (Bjørn 16/9-2026) — så man i hvile kan se hvor samtalen slutter.
+            // Den vokser ikke ved hover (se CSS'en).
             className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}${a.slags === 'komprimering' ? ' er-komprimering' : ''}${a.slags === 'fastgjort' ? ' er-fastgjort' : ''}${i === anchors.length - 1 ? ' er-sidste' : ''}`}
             aria-current={a.id === aktivId ? 'true' : undefined}
+            // Rækken har ingen synlig tekst mere — kortet bærer spørgsmålet.
+            // Uden det her stod knappen uden tilgængeligt navn.
+            aria-label={a.label}
             onClick={() => jump(a.id)}
-            onMouseEnter={(e) => visKort(e.currentTarget, a.svar)}
+            onMouseEnter={(e) => visKort(e.currentTarget, a)}
           >
             <span className="msg-rail-dash" aria-hidden />
-            <span className="msg-rail-text" title={a.slags === 'fastgjort' ? `Fastgjort: ${a.label}` : a.label}>
-              <span className="msg-rail-spm">
-                {a.slags === 'fastgjort' ? <Pin size={9} className="msg-rail-pin" aria-hidden /> : null}
-                {a.label}
-              </span>
-            </span>
           </button>
         ))}
       </div>
@@ -157,7 +174,19 @@ export function MessageRail({
           klippet af dets scroll-boks. `pointer-events: none` staar i CSS'en, så
           det ikke fanger musen og får hover'en til at flimre. */}
       {kort ? (
-        <div className="msg-rail-kort" style={{ top: kort.top }}>{kort.svar}</div>
+        <div className="msg-rail-kort" style={{ top: kort.top }}>
+          <div className="msg-rail-kort-top">
+            <span className="msg-rail-kort-spm">{kort.label}</span>
+            {kort.fastgjort
+              ? <Pin size={13} className="msg-rail-kort-ikon" aria-hidden />
+              : <Bookmark size={13} className="msg-rail-kort-ikon" aria-hidden />}
+          </div>
+          {kort.svar ? <div className="msg-rail-kort-svar">{kort.svar}</div> : null}
+          {/* Den røde streg er væk fra railen (Bjørn 4/10-2026: «den røde
+              farve i dit rail irriterer mig»). «Hvor gik det galt» besvares i
+              stedet her, hvor der er plads til at sige det med ord. */}
+          {kort.fejl ? <div className="msg-rail-kort-fejl">Turen endte i en fejl</div> : null}
+        </div>
       ) : null}
     </nav>
   )

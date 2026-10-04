@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_cognitive.py`
+_Per-turn cognitive/candidate tracking-pipeline for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_visible_cadence_updates` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood)` | Run post-turn cadence producers without letting them block finalization. | [src](../../../core/services/visible_runs_cognitive.py#L25) |
+| function | `_legacy_regex_detectors_enabled` | `()` | Er de gamle ordmønster-detektorer stadig tændt? (default: nej) | [src](../../../core/services/visible_runs_cognitive.py#L58) |
+| function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L73) |
+| function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L99) |
+
+## `core/services/visible_runs_error_messaging.py`
+_User-facing error messages for visible runs (Jarvis voice)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
+
 ## `core/services/visible_runs_learning_signals.py`
 _Post-run learning signals for a visible run (extracted from visible_runs.py,_
 
@@ -18,7 +35,7 @@ _Memory/continuity post-processing for visible runs._
 |---|---|---|---|---|
 | function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
 | function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L50) |
-| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L249) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L262) |
 
 ## `core/services/visible_runs_outcomes.py`
 _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-04 — 490 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-04 — 492 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -385,6 +385,7 @@
 | `stage_edit_file` | native | no |
 | `stage_write_file` | native | no |
 | `start_prompt_experiment` | native | no |
+| `start_session` | native | no |
 | `stripe_balance` | native | no |
 | `stripe_create_issuing_card` | native | no |
 | `stripe_payouts` | native | no |
@@ -429,6 +430,7 @@
 | `worktree_list` | native | no |
 | `worktree_merge` | native | no |
 | `write_file` | native | yes |
+| `write_handover` | native | no |
 | `write_memory_topic` | native | no |
 | `operator_bash` | operator | yes |
 | `operator_bash_output` | operator | no |

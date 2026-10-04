@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/priors_feedback.py`
+_Priors feedback — surfaces past patterns relevant to NOW._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_crisis_summary` | `(days=…)` | — | [src](../../../core/services/priors_feedback.py#L31) |
+| function | `_decision_priors` | `()` | Pull active decisions + flag any with low adherence. | [src](../../../core/services/priors_feedback.py#L53) |
+| function | `_quality_outlier_priors` | `(days=…)` | If recent ticks dropped sharply, surface that as context. | [src](../../../core/services/priors_feedback.py#L84) |
+| function | `build_priors_feedback` | `()` | Return up to ~6 prior lines. Empty list = no signal. | [src](../../../core/services/priors_feedback.py#L109) |
+| function | `priors_feedback_section` | `()` | — | [src](../../../core/services/priors_feedback.py#L118) |
+
 ## `core/services/private_initiative_tension_signal_tracking.py`
 _Private initiative-tension signal tracking — migrated onto signal_tracking_framework._
 
@@ -732,20 +743,4 @@ _Proposal classifier — detects action impulses in thought fragments and scores
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `classify_fragment` | `(fragment)` | Classify a thought fragment for action impulses. | [src](../../../core/services/proposal_classifier.py#L59) |
-
-## `core/services/proprioception_metrics.py`
-_Proprioception Metrics — process-level body sense._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L38) |
-| function | `_current_snapshot` | `()` | Sample current process stats. | [src](../../../core/services/proprioception_metrics.py#L46) |
-| function | `_measure_self_latency_ms` | `()` | Measure trivial self-dispatch as a crude latency proxy. | [src](../../../core/services/proprioception_metrics.py#L76) |
-| function | `_emit` | `(kind, payload)` | — | [src](../../../core/services/proprioception_metrics.py#L89) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/proprioception_metrics.py#L100) |
-| function | `recent_snapshots` | `(*, limit=…)` | — | [src](../../../core/services/proprioception_metrics.py#L143) |
-| function | `build_proprioception_metrics_surface` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L147) |
-| function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L180) |
-| function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
-| function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
 

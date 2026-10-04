@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_review_cadence_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_self_review_cadence_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L22) |
+| function | `refresh_runtime_self_review_cadence_signal_statuses` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L64) |
+| function | `build_runtime_self_review_cadence_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L95) |
+| function | `_extract_self_review_cadence_candidates` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L121) |
+| function | `_persist_self_review_cadence_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L177) |
+| function | `_build_cadence_snapshots` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L253) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L273) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L283) |
+| function | `_build_cadence_state` | `(*, review_age, outcome_status)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L296) |
+| function | `_build_cadence_reason` | `(*, cadence_state, review_type)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L304) |
+| function | `_build_status_reason` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L312) |
+| function | `_build_due_hint` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L320) |
+| function | `_cadence_state_from_summary` | `(summary)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L328) |
+| function | `_self_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L339) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L344) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L349) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L359) |
+
 ## `core/services/self_review_outcome_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -487,6 +509,16 @@ _Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
 | function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L98) |
 | function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en daemon-tråd. Blokerer aldrig | [src](../../../core/services/session_prewarm.py#L249) |
 
+## `core/services/session_spawn.py`
+_start_session — Jarvis starter selv et run i en session der er Bjørns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ryd_gamle` | `(now)` | Drop tidsstempler ældre end en time — rullende vindue. | [src](../../../core/services/session_spawn.py#L37) |
+| function | `antal_sidste_time` | `()` | Hvor mange selv-startede runs ligger i det rullende vindue lige nu. | [src](../../../core/services/session_spawn.py#L44) |
+| function | `start_session` | `(prompt, *, session_id=…, title=…, origin=…)` | Start et autonomt run i en session der tilhører Bjørn. | [src](../../../core/services/session_spawn.py#L50) |
+| function | `_exec_start_session` | `(args)` | — | [src](../../../core/services/session_spawn.py#L141) |
+
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 
@@ -641,29 +673,4 @@ _SQLite-backed shared cache for cross-process state._
 | function | `stats` | `()` | Return basic cache stats for MC visibility. | [src](../../../core/services/shared_cache.py#L230) |
 | function | `build_shared_cache_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/shared_cache.py#L259) |
 | function | `_emit_shared_cache_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/shared_cache.py#L274) |
-
-## `core/services/shared_language.py`
-_Shared Language — tracks shorthand terms that develop between Jarvis and user._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
-| function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
-| function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
-
-## `core/services/shared_language_extended.py`
-_Shared Language Extended — shorthand-udvikling og -resolution._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/shared_language_extended.py#L34) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/shared_language_extended.py#L38) |
-| function | `_ngrams` | `(text)` | — | [src](../../../core/services/shared_language_extended.py#L60) |
-| function | `_load_recent_user_messages` | `(days=…, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L71) |
-| function | `propose_shorthand_terms` | `(*, min_occurrences=…, max_proposals=…)` | Scan chat messages for repeated n-grams; propose as shorthand. | [src](../../../core/services/shared_language_extended.py#L87) |
-| function | `_latest_suggestion_ts` | `()` | — | [src](../../../core/services/shared_language_extended.py#L151) |
-| function | `maybe_weekly_shorthand_suggestion` | `()` | Max 1 shorthand per 7 days. Returns the new term if added. | [src](../../../core/services/shared_language_extended.py#L166) |
-| function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
-| function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
-| function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
 

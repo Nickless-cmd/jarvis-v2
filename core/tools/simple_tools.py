@@ -455,6 +455,14 @@ from core.services.self_wakeup import (
     _exec_mark_wakeup_consumed,
     _exec_add_wakeup_extra,
 )
+from core.services.session_spawn import (
+    SESSION_TOOL_DEFINITIONS,
+    _exec_start_session,
+)
+from core.services.handover_tools import (
+    HANDOVER_TOOL_DEFINITIONS,
+    _exec_write_handover,
+)
 from core.services.wakeup_dispatcher import (
     WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
     _exec_dispatch_due_wakeups,
@@ -1840,6 +1848,14 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "cross_agent_recall": _exec_cross_agent_recall,
     "schedule_self_wakeup": _exec_schedule_self_wakeup,
     "list_self_wakeups": _exec_list_self_wakeups,
+    # Selv-startede sessioner (4/10-2026). Motoren er visible_runs'
+    # start_autonomous_run; dette er knappen. Sessionen stempler Bjørns id
+    # og lander i hans liste i desk — se core/services/session_spawn.py.
+    "start_session": _exec_start_session,
+    # Min egen overdragelse til naeste session (4/10-2026). Capsulens oevrige
+    # felter skrives af systemet; dette skriver jeg selv — og det arves
+    # fremad, saa det ikke vaskes vaek af naeste maskin-genererede tur.
+    "write_handover": _exec_write_handover,
     # Indbakken (Opgave 5). Navnet bor FEM steder — skema, eksekutor,
     # dispatch, desk og mobil — og 2/10 ramte jeg tre af de fem i
     # foerste forsoeg. De tre nye staar samlet, saa de kan taelles.

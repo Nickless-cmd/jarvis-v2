@@ -450,17 +450,19 @@ _Continuity Kernel — state capsule + live update + graded wake-up._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity.py#L87) |
-| function | `_ensure_dir` | `()` | — | [src](../../../core/services/continuity.py#L91) |
-| function | `_truncate_capsule` | `(data)` | Ensure capsule stays under _MAX_CAPSULE_SIZE_BYTES. | [src](../../../core/services/continuity.py#L95) |
-| function | `capture_state` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, workspace_id=…, session_id=…)` | Build a complete state capsule dict from partial inputs. | [src](../../../core/services/continuity.py#L129) |
-| function | `write_capsule` | `(capsule)` | Write capsule to disk with rotation. | [src](../../../core/services/continuity.py#L210) |
-| function | `sync_capsule_mood` | `()` | Sync capsule mood from mood_oscillator's live state. | [src](../../../core/services/continuity.py#L228) |
-| function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L278) |
-| function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L296) |
-| function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L308) |
-| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L402) |
-| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L519) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity.py#L111) |
+| function | `_ensure_dir` | `()` | — | [src](../../../core/services/continuity.py#L115) |
+| function | `_truncate_capsule` | `(data)` | Ensure capsule stays under _MAX_CAPSULE_SIZE_BYTES. | [src](../../../core/services/continuity.py#L119) |
+| function | `capture_state` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, workspace_id=…, session_id=…)` | Build a complete state capsule dict from partial inputs. | [src](../../../core/services/continuity.py#L153) |
+| function | `write_capsule` | `(capsule)` | Write capsule to disk with rotation. | [src](../../../core/services/continuity.py#L269) |
+| function | `write_handover` | `(title, text)` | Skriv MIN egen overdragelse til den næste session. | [src](../../../core/services/continuity.py#L287) |
+| function | `read_handover` | `()` | Læs den overdragelse der står i capsulen lige nu (eller None). | [src](../../../core/services/continuity.py#L344) |
+| function | `sync_capsule_mood` | `()` | Sync capsule mood from mood_oscillator's live state. | [src](../../../core/services/continuity.py#L355) |
+| function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L405) |
+| function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L423) |
+| function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L435) |
+| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L529) |
+| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L661) |
 
 ## `core/services/continuity_kernel.py`
 _Bounded Continuity Kernel — existence feel between ticks._

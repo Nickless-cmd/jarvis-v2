@@ -503,6 +503,13 @@ _Hallucination Guard — forced memory-check before answering._
 | function | `_observe_guard_decision` | `(*, activated, reason)` | Egress-frit Central-observe af hallucination-guardens beslutning (§7.2). | [src](../../../core/services/hallucination_guard.py#L325) |
 | function | `inject_memory_into_prompt` | `(message, chat_messages, *, memory_path=…)` | Inject relevant memory as a system-role message into the prompt. | [src](../../../core/services/hallucination_guard.py#L349) |
 
+## `core/services/handover_tools.py`
+_write_handover — værktøjet der lader mig skrive min egen overdragelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_write_handover` | `(args)` | — | [src](../../../core/services/handover_tools.py#L20) |
+
 ## `core/services/hardware_body.py`
 _Hardware body — collects CPU/GPU/RAM/VRAM/disk/temp signals._
 
@@ -530,13 +537,4 @@ _Hvornår er en indre-livs-handling det rigtige valg? Vink til heartbeat-beslutn
 | function | `chronicle_period_covered` | `()` | True når seneste kronik-post allerede dækker indeværende ISO-uge. | [src](../../../core/services/heartbeat_action_hints.py#L61) |
 | function | `chronicle_hint` | `()` | Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget. | [src](../../../core/services/heartbeat_action_hints.py#L83) |
 | function | `inner_life_hints` | `()` | Alle aktive vink for indre-livs-handlinger. Tom liste når intet er forfaldent. | [src](../../../core/services/heartbeat_action_hints.py#L111) |
-
-## `core/services/heartbeat_daemon_ticks.py`
-_Jarvis' indre daemoner — ét tik, uanset om han har travlt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
-| function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
-| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
 

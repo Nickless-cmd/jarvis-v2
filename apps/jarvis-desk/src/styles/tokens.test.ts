@@ -643,28 +643,48 @@ describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', (
   })
 })
 
-describe('railens nederste streg er længere end de andre (3/10-2026)', () => {
-  // Bjørn: «den nederste pind er den der er igang — kan du lave den lidt
-  // længere end de andre over?» Reglen fandtes i forvejen, men 21 mod 17 px var
-  // ikke til at se: forskellen var der på papiret og ikke på skærmen. Værnet
-  // måler derfor FORSKELLEN, ikke det ene tal — det er den der gør at man i
-  // hvile kan se hvor samtalen slutter.
+describe('railens streger — hvile, hover og den nederste (4/10-2026)', () => {
+  // VÆRNET ER VENDT, og det er med vilje.
+  //
+  // 3/10-2026 lød beslutningen: «den nederste pind er den der er igang — kan du
+  // lave den lidt længere end de andre over?» Dengang var den aktive markør en
+  // teal streg på 17px, og værnet målte at den nederste var mindst 8px bredere
+  // end DEN. Forskellen var pointen: i hvile skulle man kunne se hvor samtalen
+  // sluttede.
+  //
+  // 4/10-2026 sendte Bjørn fem skærmbilleder og sagde «1:1». Designet vendte:
+  // den aktive markør er ikke længere teal og ikke længere lang — den er hvid
+  // og 13px som de andre, og skiller sig ud ved LYS. Den nederste er 18px:
+  // længere end en almindelig (13), kortere end hover (26), så den ikke
+  // konkurrerer med den markering der følger musen. Målt mod den AKTIVE giver
+  // den gamle sætning ingen mening længere — den ville kræve at den nederste
+  // var bredere end noget der ikke er bredt.
+  //
+  // Værnet måler derfor de tre ting der stadig gælder: man skal kunne SE den i
+  // hvile, den må ikke forveksles med hover, og den må ikke kunne flytte sig.
   const af = (re: RegExp) => Number(app.match(re)?.[1] ?? 0)
   const sidste = af(/^\.msg-rail-row\.er-sidste \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
-  const aktiv = af(/^\.msg-rail-row\.is-active \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const hover = af(/^\.msg-rail-row:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
   const almindelig = af(/^\.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const sidsteHover = af(/^\.msg-rail-row\.er-sidste:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
 
   it('reglerne findes', () => {
     expect(sidste, 'er-sidste-reglen mangler i app.css').toBeGreaterThan(0)
-    expect(aktiv, 'is-active-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(hover, 'hover-reglen mangler i app.css').toBeGreaterThan(0)
     expect(almindelig, 'den almindelige streg mangler i app.css').toBeGreaterThan(0)
   })
 
-  it('den sidste er mindst 8px bredere end den aktive', () => {
-    expect(sidste - aktiv, `kun ${sidste - aktiv}px forskel — den skal kunne ses`).toBeGreaterThanOrEqual(8)
+  it('den nederste er længere end en almindelig streg — den skal ses i hvile', () => {
+    expect(sidste).toBeGreaterThan(almindelig)
   })
 
-  it('og bredere end en almindelig streg', () => {
-    expect(sidste).toBeGreaterThan(almindelig)
+  it('men kortere end hover-markeringen — de to må ikke forveksles', () => {
+    expect(hover, 'hover-reglen skal være den længste').toBeGreaterThan(sidste)
+  })
+
+  it('og den nederste VOKSER ikke når musen er over den', () => {
+    // Bjørn 4/10-2026: «den nederste grønne streg skal ikke kunne flytte sig».
+    // Den stod på 26px = samme mål som hover, så man kunne ikke se forskel.
+    expect(sidsteHover, 'er-sidste:hover-override mangler').toBe(sidste)
   })
 })

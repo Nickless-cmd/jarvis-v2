@@ -160,14 +160,27 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             pass
 
         # Gather attention from active goals
+        #
+        # 4/10-2026: her stod der «Focus: t» i CONTINUITY-blokken. Kaldet
+        # hentede UDEN statusfilter, saa det nyeste signal vandt — og det
+        # nyeste var en test-raekke fra 8. juli (goal_type='test', title='t').
+        # Maalt i basen: 1744 signaler, ALLE 'archived', nul aktive. Et
+        # fokus-felt der baerer eet bogstav er vaerre end et tomt felt.
+        #
+        # To værn: status="active" holder arkiverede ude, og længde-vagten
+        # holder et signal med en titel som «t» ude selv hvis det er aktivt.
+        # Er der intet brugbart signal, staar feltet tomt — det er aerligt.
         attention = {}
         try:
+            from core.services.continuity import MIN_FOCUS_CHARS
             from core.services.goal_signal_tracking import list_runtime_goal_signals
-            signals = list_runtime_goal_signals(limit=3)
-            if signals:
-                top = signals[0]
-                attention["active_goal_title"] = str(top.get("goal_title", top.get("title", "")))[:80]
-                attention["current_focus"] = str(top.get("title", top.get("goal_title", "")))[:80]
+
+            for s in list_runtime_goal_signals(status="active", limit=3):
+                titel = str(s.get("title") or s.get("goal_title") or "").strip()
+                if len(titel) >= MIN_FOCUS_CHARS:
+                    attention["active_goal_title"] = titel[:80]
+                    attention["current_focus"] = titel[:80]
+                    break
         except Exception:
             pass
 

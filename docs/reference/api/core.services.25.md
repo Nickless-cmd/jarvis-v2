@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_sentinel.py`
+_Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe` | `(nerve, run_id, session_id, **data)` | — | [src](../../../core/services/stream_sentinel.py#L32) |
+| function | `note_start` | `(run_id, session_id=…, **meta)` | En SSE-stream sendte message_start. Registrér + observe + opportunistisk stall-sweep. | [src](../../../core/services/stream_sentinel.py#L43) |
+| function | `note_stop` | `(run_id, *, reason=…)` | En SSE-stream sendte message_stop (reason='done' normalt, 'fallback' = terminal-garanti). | [src](../../../core/services/stream_sentinel.py#L58) |
+| function | `note_event` | `(run_id, kind, session_id=…, **data)` | Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout. | [src](../../../core/services/stream_sentinel.py#L80) |
+| function | `_sweep_stalled` | `(timeout_s=…)` | message_start uden message_stop i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L88) |
+| function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L115) |
+| function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L125) |
+
+## `core/services/stream_settlement.py`
+_`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Attempt` | `` | Hvad udbyderen faktisk gjorde. Ren beskrivelse, ingen fortolkning. | [src](../../../core/services/stream_settlement.py#L76) |
+| class | `Settlement` | `` | Nøjagtig ÉN pr. forsøg. | [src](../../../core/services/stream_settlement.py#L106) |
+| function | `har_indhold` | `(a)` | Findes der overhovedet noget der kunne være et svar? | [src](../../../core/services/stream_settlement.py#L122) |
+| function | `classify` | `(a)` | Afgør hvad forsøget blev til. Ren funktion — rører ingenting. | [src](../../../core/services/stream_settlement.py#L127) |
+| class | `AlreadySettled` | `` | Forsøget er afregnet. En anden afregning ville være en anden historik. | [src](../../../core/services/stream_settlement.py#L219) |
+| class | `StaleAttempt` | `` | En forsinket pumpe forsøgte at skrive efter afregningen. | [src](../../../core/services/stream_settlement.py#L223) |
+| class | `AttemptLedger` | `` | Holder styr på hvilke forsøg der er afregnet, og lukker dem for skrivning. | [src](../../../core/services/stream_settlement.py#L227) |
+| method | `AttemptLedger.__init__` | `(self)` | — | [src](../../../core/services/stream_settlement.py#L254) |
+| method | `AttemptLedger.next_frame` | `(self, attempt_id)` | Næste rammesekvens. Kaster hvis forsøget er afregnet. | [src](../../../core/services/stream_settlement.py#L259) |
+| method | `AttemptLedger.frames` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L271) |
+| method | `AttemptLedger.settle` | `(self, attempt_id, settlement)` | Afregn ÉN gang. Et andet forsøg er en fejl, ikke en opdatering. | [src](../../../core/services/stream_settlement.py#L275) |
+| method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
+| method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
+| method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
+
 ## `core/services/structured_content_flag.py`
 _Governed kill-switch for struktureret content-persist + wire. Default ON._
 
@@ -579,27 +612,4 @@ _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15
 |---|---|---|---|---|
 | function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
 | function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
-
-## `core/services/tool_concurrency.py`
-_Tool-concurrency policy (harness Part C)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `concurrency_mode` | `()` | Current mode: 'off' | 'on'. Default 'off'. Env wins over config. Self-safe. | [src](../../../core/services/tool_concurrency.py#L42) |
-| function | `_call_name` | `(tc)` | — | [src](../../../core/services/tool_concurrency.py#L57) |
-| function | `is_parallelizable` | `(tool_calls, *, mode)` | True iff mode=='on' AND >=2 calls AND every call name is in the allowlist. | [src](../../../core/services/tool_concurrency.py#L62) |
-
-## `core/services/tool_contract_shadow.py`
-_Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L37) |
-| function | `pr_vaerktoej` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L41) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L45) |
-| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L57) |
-| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/tool_contract_shadow.py#L69) |
-| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
-| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
-| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
 

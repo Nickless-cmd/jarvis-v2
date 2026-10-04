@@ -41,6 +41,13 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/recurring_tasks.py": "tests/test_user_scope_154.py",
     "core/services/user_scope.py": "tests/test_user_scope_154.py",
     "core/services/workspace_crypto.py": "tests/test_workspace_cutover.py",
+    # Jarvis' kontinuitets-arbejde (4/10-2026): testene er navngivet efter
+    # FUNKTIONEN, ikke modulet, og det er den rigtige navngivning her —
+    # `test_handover.py` maaler `write_handover` ende til ende, og modulet er
+    # kun den ene halvdel af vejen. Uden linjen blokerede gaten enhver FLETTE
+    # af hans arbejde: en merge gen-stager alt, saa gaten doemte hans filer i
+    # min commit, og hans egen commit havde allerede passeret.
+    "core/services/handover_tools.py": "tests/test_handover.py",
     # Boy Scout-split fra db.py — testet via #154-isolation + surfaces.
     "core/runtime/db_autonomy.py": "tests/test_user_scope_154.py",
     "core/runtime/db_private_brain.py": "tests/test_user_scope_154.py",

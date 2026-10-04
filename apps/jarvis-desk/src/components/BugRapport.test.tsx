@@ -68,6 +68,25 @@ describe('fejl-rapporten', () => {
     expect(screen.getByLabelText('Hvad gik galt?')).toHaveValue('Streamen stopper')
   })
 
+  it('sender ikke to gange når et kald er i gang', async () => {
+    // Uden guarden ville et dobbeltklik oprette TO poster i indbakken for
+    // samme fejl. `rapporterBug` har ingen idempotens-nøgle, og `apiFetch`
+    // gentager ikke et POST — men det gør et dobbeltklik. Guarden har to lag:
+    // `disabled` på knappen og `if (!t || sender) return` i handleren.
+    let slip: (v: { id: string }) => void = () => {}
+    rb.mockReturnValue(new Promise((res) => { slip = res }))
+    render(<BugRapport config={cfg} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText('Hvad gik galt?'), { target: { value: 'Streamen stopper' } })
+    const knap = screen.getByRole('button', { name: 'Send til Jarvis' })
+    fireEvent.click(knap)
+    fireEvent.click(knap)
+    expect(rb).toHaveBeenCalledTimes(1)
+    // Knappen er låst imens kaldet kører — man kan se at den arbejder.
+    expect(screen.getByRole('button', { name: 'Sender …' })).toBeDisabled()
+    slip({ id: 'inbox-1' })
+    expect(await screen.findByRole('status')).toHaveTextContent(/indbakken/i)
+  })
+
   it('siger til når der ikke er nogen server at sende til', async () => {
     // `config` er valgfri i props (App sender `cfg`, som kan være undefined før
     // indstillingerne er læst). Uden denne gren ville kaldet gå af sted med

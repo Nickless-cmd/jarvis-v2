@@ -31,20 +31,22 @@ export function Klokke({ config, onAaben, aktivSession }: {
   // klokke (fx skift af flade midt i et kald) skrive ind i en fjernet
   // komponent.
   const alive = useRef(true)
+  const requestVersion = useRef(0)
 
   // `hentNu` gaar UDEN OM ro-loftet (`maaPolle`) — den bruges baade af pollet
   // selv (efter loftet har sagt ja) og af WS-lytteren nedenfor, hvor en
   // haendelse ER signalet og derfor aldrig maa sluges af ro-mekanismen.
   const hentNu = useCallback(() => {
     if (!config) return
+    const version = ++requestVersion.current
     hentNotifikationer(config, aktivSession)
       .then((f) => {
-        if (!alive.current) return
+        if (!alive.current || version !== requestVersion.current) return
         setIds(f.poster.map((p) => p.id))
         setFejl(false)
       })
       .catch(() => {
-        if (!alive.current) return
+        if (!alive.current || version !== requestVersion.current) return
         setFejl(true)
       })
   }, [config, aktivSession])
@@ -57,9 +59,10 @@ export function Klokke({ config, onAaben, aktivSession }: {
 
   useEffect(() => {
     alive.current = true
+    const versions = requestVersion
     hent()
     const id = window.setInterval(hent, 8000)
-    return () => { alive.current = false; window.clearInterval(id) }
+    return () => { alive.current = false; versions.current++; window.clearInterval(id) }
   }, [hent])
 
   // Live-vejen. Pollet er sikkerhedsnettet; DETTE er grunden til at man ikke

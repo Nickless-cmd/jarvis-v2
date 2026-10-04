@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const hent = vi.fn()
 const sockets: Array<{ onmessage: ((e: { data: string }) => void) | null }> = []
@@ -51,6 +51,18 @@ describe('Klokke attention', () => {
     view.unmount()
     render(<Klokke config={config} onAaben={() => {}} />)
     await waitFor(() => expect(hent).toHaveBeenCalledTimes(2))
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
+  })
+
+  it('ignores a stale response after a newer empty feed', async () => {
+    let resolveOld!: (value: unknown) => void
+    hent.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve }))
+      .mockResolvedValue({ poster: [], antal: 0, venter: 0 })
+    render(<Klokke config={config} onAaben={() => {}} />)
+    act(() => { sockets.at(-1)?.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.lukket' }) }) })
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(2))
+    await act(async () => { resolveOld({ poster: [notification('already-closed')], antal: 1, venter: 1 }) })
+    expect(screen.getByRole('button', { name: 'Notifikationer' })).not.toHaveClass('klokke-attention')
     expect(screen.queryByTestId('klokke-ulast')).toBeNull()
   })
 })

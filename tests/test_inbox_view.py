@@ -563,3 +563,118 @@ def test_dubletter_taelles_FOER_loftet():
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(vaekninger=poster))
     # 8 unikke + 1 gruppe = 9 grupper, altsaa én skjult — ikke tre.
     assert v["paa_vej_skjult"] == 1, f"loftet taalte raa poster: {v.get('paa_vej_skjult')}"
+
+
+# ── Jarvis' review 4/10-2026: `drop` skrev en afgørelse visningen ikke læste ──
+
+def test_en_AFGJORT_post_forsvinder_fra_visningen_for_HVER_kilde():
+    """Jarvis fandt den, og han havde ret på alle fire punkter.
+
+    Han lukkede tre poster. Vækningen forsvandt — fordi `mark_wakeup_consumed`
+    ændrer vækningens EGEN status i kilden. De to jobs stod der stadig som
+    `fejlet`, fordi job-grenen læser jobbets egen status og **aldrig**
+    konsulterer `inbox_items`. `drop` skrev altså en afgørelse visningen ikke
+    læste.
+
+    Og der var ingen vagt: `grep drop tests/test_inbox_view.py` gav nul træf.
+    Min egen nye test målte at OPSLAGET lykkedes — ikke at posten forsvandt.
+    Præcis den fejl jeg selv lavede med chunk-testen: en grøn test der ikke kan
+    fejle.
+
+    Derfor måler denne for HVER kilde, ikke kun for jobs. En rettelse der kun
+    lukker job-grenen ville efterlade den næste kilde med samme hul.
+    """
+    afgjort = _post(id="job-droppet", kildetype="job",
+                    status=db_inbox.STATUS_DROP, beskrivelse="stale")
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[afgjort],
+        jobs=[{"id": "job-droppet", "status": "exited", "exit_code": 1,
+               "navn": "stale", "sekunder": 10}],
+        vaekninger=[{"wakeup_id": "wake-droppet", "status": "fired",
+                     "user_id": BJORN, "prompt": "lukket"}]))
+    alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+    assert "job-droppet" not in alle, \
+        "et DROPPET job staar stadig i visningen — drop skrev i ingenting"
+
+
+def test_en_afgjort_VAEKNING_forsvinder_ogsaa_naar_kilden_stadig_siger_fired():
+    """`mark_wakeup_consumed` kan fejle eller være sprunget over (et job har
+    ingen kvittering). Så afgørelsen i `inbox_items` SKAL alene være nok —
+    ellers afhænger lukningen af at kilden samarbejder."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[_post(id="wake-lukket", kildetype="wakeup",
+                      status=db_inbox.STATUS_DONE)],
+        vaekninger=[{"wakeup_id": "wake-lukket", "status": "fired",
+                     "user_id": BJORN, "prompt": "er kvitteret"}]))
+    alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+    assert "wake-lukket" not in alle
+
+
+def test_en_UDLOEBET_og_en_kilde_afsluttet_post_forsvinder_ogsaa():
+    """Opgave 8 og 9's terminale tilstande er også afgørelser. Var kun
+    `done`/`drop` dækket, ville en udløbet post stå for evigt."""
+    for status in (db_inbox.STATUS_UDLOEBET, db_inbox.STATUS_AFSLUTTET_AF_KILDE):
+        v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+            poster=[_post(id="job-t", kildetype="job", status=status)],
+            jobs=[{"id": "job-t", "status": "exited", "exit_code": 1,
+                   "navn": "t", "sekunder": 10}]))
+        alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+        assert "job-t" not in alle, f"{status} stod stadig i visningen"
+
+
+def test_en_AABEN_post_bliver_naturligvis_staaende():
+    """Modprøven. Uden den kunne rettelsen være «skjul alt fra kilderne», og
+    så ville indbakken være tom — en gate der aldrig gater."""
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        jobs=[{"id": "job-aaben", "status": "exited", "exit_code": 1,
+               "navn": "fejlet nu", "sekunder": 10}]))
+    assert "job-aaben" in [p["id"] for p in v["venter_paa_dig"]]
+
+
+def test_den_AEGTE_adapter_leverer_ogsaa_de_AFGJORTE_raekker(monkeypatch, tmp_path):
+    """Mutations-prøve: uden den kunne `_aegte_poster` gå tilbage til kun at
+    hente åbne rækker, og hele rettelsen ovenfor ville være virkningsløs.
+
+    Alle de andre tests sender `poster=` direkte ind og springer adapteren
+    over — en mock på netop den søm der kan brække. Her kører den mod en
+    RIGTIG sqlite, så det er `liste_aktiv` mod `liste` der måles.
+    """
+    import sqlite3
+    from contextlib import contextmanager
+
+    from core.runtime import db_inbox as dbi
+    from core.services import inbox_view as iv
+
+    sti = tmp_path / "v.db"
+
+    @contextmanager
+    def _connect():
+        k = sqlite3.connect(sti)
+        k.row_factory = sqlite3.Row
+        try:
+            yield k
+            k.commit()
+        finally:
+            k.close()
+
+    monkeypatch.setattr(dbi, "connect", _connect)
+    monkeypatch.setattr(dbi, "_skema_klar", False)
+    dbi.opret_eller_hent(bruger_id=BJORN, kildetype="job", kilde_id="job-lukket",
+                         beskrivelse="stale")
+    dbi.afgoer(bruger_id=BJORN, kilde_id="job-lukket",
+               ny_status=dbi.STATUS_DROP, grund="stale")
+
+    hentet = {p["id"]: p["status"] for p in iv._aegte_poster(BJORN)}
+    assert hentet.get("job-lukket") == dbi.STATUS_DROP, \
+        "adapteren leverer ikke de afgjorte — visningen kan ikke se en lukning"
+
+    # Og hele vejen igennem: jobbet staar stadig `exited` i sin egen kilde,
+    # men posten er afgjort, saa det maa IKKE vises.
+    monkeypatch.setattr(iv, "_aegte_vaekninger", lambda _b: [])
+    monkeypatch.setattr(iv, "_aegte_godkendelser", lambda _b: [])
+    monkeypatch.setattr(iv, "_aegte_jobs", lambda _b: [
+        {"id": "job-lukket", "status": "exited", "exit_code": 1,
+         "navn": "stale", "sekunder": 99}])
+    v = byg_indbakke(BJORN, nu_ts=TID)
+    alle = [p["id"] for s in v.values() if isinstance(s, list) for p in s]
+    assert "job-lukket" not in alle

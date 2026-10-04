@@ -119,7 +119,17 @@ def _alder_dage(fra_iso: str, nu_ts: float) -> int | None:
 # ── Kilderne ────────────────────────────────────────────────────────────────
 
 def _aegte_poster(bruger_id: str) -> list[dict[str, Any]]:
-    return db_inbox.liste(bruger_id=bruger_id)
+    """Åbne poster PLUS de nyligt afgjorte.
+
+    De afgjorte er ikke pynt: visningen skal kunne SPRINGE en lukket post
+    over, også når kilden stadig rapporterer den. Før 4/10 hentede denne kun
+    åbne rækker, og så havde visningen ingen måde at vide at en post var
+    lukket — `drop` skrev en afgørelse ingen læste.
+
+    `liste_aktiv` er Opgave 11's retention-vindue, og den havde indtil nu
+    ingen kalder i koden. Nu er den vejen ind.
+    """
+    return db_inbox.liste_aktiv(bruger_id=bruger_id)
 
 
 def _aegte_vaekninger(bruger_id: str) -> list[dict[str, Any]]:
@@ -440,6 +450,9 @@ def byg_indbakke(
         return {"status": "fejl", "error": "bruger_id kraeves"}
     k = kilder or Kilder()
     nu = float(nu_ts if nu_ts is not None else time.time())
+    # ÉN laesning. Kilden kan vaere dyr, og to laesninger kunne give to
+    # forskellige svar midt i en afgoerelse.
+    alle_poster = list(k.poster(bruger_id))
 
     vakte: list[dict[str, Any]] = []
     venter_paa_dig: list[dict[str, Any]] = []
@@ -450,9 +463,38 @@ def byg_indbakke(
 
     turens_wake = str(k.turens_wakeup_id() or "").strip()
 
+    # ── Afgjorte poster, ÉT sted ──────────────────────────────────────────
+    #
+    # Jarvis' review 4/10-2026. Han lukkede tre poster; vækningen forsvandt,
+    # men de to jobs stod der stadig som `fejlet`. Vækningen forsvandt kun
+    # fordi `mark_wakeup_consumed` ændrer vækningens EGEN status i kilden —
+    # job-grenen læste jobbets status og konsulterede aldrig `inbox_items`.
+    # `drop` skrev altså en afgørelse visningen ikke læste.
+    #
+    # Det er samme form som de tre foregående fejl i dette spor, bare
+    # spejlvendt: dér manglede en skriver og en læser, her læses der et andet
+    # sted end der skrives.
+    #
+    # Derfor ÉT sæt, brugt af hver kilde-gren. En ny kilde der tilføjes senere
+    # skal bruge `_er_afgjort` — og `tests/test_inbox_view.py` måler det for
+    # hver gren, så et hul i den næste ikke kan være tavst.
+    afgjorte: set[str] = {
+        str(p.get("id") or "") for p in alle_poster
+        if str(p.get("status") or "") != db_inbox.STATUS_AABEN
+    }
+
+    def _er_afgjort(kilde_id: str) -> bool:
+        """Har nogen truffet en afgørelse om denne post?
+
+        Alle terminale tilstande tæller — `done`, `drop`, `udloebet` og
+        `afsluttet_af_kilde`. Dækkede den kun `done`/`drop`, ville en udløbet
+        post stå for evigt, og Opgave 8's hele formål var at den ikke skulle.
+        """
+        return kilde_id in afgjorte
+
     # 1. De durable poster. DE er sandheden om hvad der kræver handling —
     #    kilderne nedenfor bidrager med tilstand, ikke med gating.
-    for p in k.poster(bruger_id):
+    for p in alle_poster:
         if p.get("status") != db_inbox.STATUS_AABEN:
             continue
         sti = str(p.get("output_sti") or "")
@@ -483,7 +525,9 @@ def byg_indbakke(
         if not _min_post(r, bruger_id):
             continue
         wid = str(r.get("wakeup_id") or "").strip()
-        if not wid or any(wid in p["kilde_ider"] for p in venter_paa_dig):
+        if not wid or _er_afgjort(wid):
+            continue                      # afgjort — uanset hvad kilden siger
+        if any(wid in p["kilde_ider"] for p in venter_paa_dig):
             continue                      # den durable post bærer den allerede
         st = str(r.get("status") or "")
         if st not in ("pending", "fired"):
@@ -508,7 +552,11 @@ def byg_indbakke(
         if not _min_post(j, bruger_id):
             continue
         jid = str(j.get("id") or "").strip()
-        if not jid or any(jid in p["kilde_ider"] for p in venter_paa_dig):
+        if not jid or _er_afgjort(jid):
+            # DEN fejl Jarvis fandt. Uden denne linje stod et droppet job som
+            # `fejlet` for evigt, fordi grenen kun saa jobbets egen status.
+            continue
+        if any(jid in p["kilde_ider"] for p in venter_paa_dig):
             continue
         st = str(j.get("status") or "")
         sek = int(j.get("sekunder") or 0)
@@ -541,11 +589,15 @@ def byg_indbakke(
     #    indbakken overdrive hvor meget der venter — og så bliver den noget man
     #    lukker i stedet for at læse.
     for t in k.planlagte(bruger_id):
+        if _er_afgjort(str(t.get("id") or "")):
+            continue
         paa_vej.append(_post(
             post_id=str(t.get("id") or ""), status="planlagt", kildetype="scheduled",
             beskrivelse=str(t.get("beskrivelse") or t.get("prompt") or ""),
             ejer=db_inbox.EJER_UKENDT, nu_ts=nu))
     for t in k.gentagende(bruger_id):
+        if _er_afgjort(str(t.get("id") or "")):
+            continue
         planlagte.append(_post(
             post_id=str(t.get("id") or ""), status="gentagende", kildetype="recurring",
             beskrivelse=str(t.get("beskrivelse") or t.get("prompt") or ""),
@@ -555,6 +607,8 @@ def byg_indbakke(
     # 5. Godkendelser: synlige, gater ALDRIG. Hans svartid må ikke blive
     #    Jarvis' blokering.
     for a in k.godkendelser(bruger_id):
+        if _er_afgjort(str(a.get("request_id") or a.get("id") or "")):
+            continue
         venter_paa_bjorn.append(_post(
             post_id=str(a.get("request_id") or a.get("id") or ""),
             status=str(a.get("effective_approval_state") or a.get("approval_state") or ""),

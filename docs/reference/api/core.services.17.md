@@ -547,7 +547,8 @@ _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._
 | function | `_load_config` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L13) |
 | function | `is_configured` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L26) |
 | function | `_default_title` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L30) |
-| function | `send_notification` | `(message, title=…, priority=…, tags=…)` | Send a push notification via ntfy. Returns status dict. | [src](../../../core/services/ntfy_gateway.py#L41) |
+| function | `_header_safe` | `(value)` | Goer en tekst sikker som HTTP-header (urllib koder headere som latin-1). | [src](../../../core/services/ntfy_gateway.py#L41) |
+| function | `send_notification` | `(message, title=…, priority=…, tags=…)` | Send a push notification via ntfy. Returns status dict. | [src](../../../core/services/ntfy_gateway.py#L78) |
 
 ## `core/services/nudge_broend.py`
 _Nudge-broend — daemons drop nudges, Jarvis inspects and decides._

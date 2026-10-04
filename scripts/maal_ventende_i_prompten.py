@@ -82,7 +82,21 @@ def split_system_by_sections(tekst: str) -> list[tuple[str, int, int]]:
     for blok in tekst.split("\n\n"):
         if not blok.strip():
             continue
-        ud.append((_label_of(blok), len(blok), count_tokens(blok)))
+        # Navnet PLUS et praeg af indholdet. Grunden er maalt 4/10-2026:
+        # `[AWARENESS]` er en BEHOLDER — den rummer baade humoer, self-signals
+        # og (siden 3/10) hele indbakken. Et navne-match kan ikke klassificere
+        # en beholder, og at tilfoeje «awareness» til moenster-saettet ville
+        # overtaelle alt det andet den rummer.
+        #
+        # Derfor baerer labelen anden linje med: `[AWARENESS]` alene siger
+        # intet, mens «[AWARENESS] · 📥 DIN INDBAKKE — det du selv har startet»
+        # kan laeses. Det er den oplysning der manglede da jeg rapporterede
+        # 0,0 % og ikke kunne se at den stoerste blok var ventende tilstand.
+        linjer = [x.strip() for x in blok.strip().splitlines() if x.strip()]
+        navn = _label_of(blok)
+        if len(linjer) > 1:
+            navn = f"{navn} · {linjer[1][:44]}"
+        ud.append((navn, len(blok), count_tokens(blok)))
     return ud
 
 # ── Klassifikationen ────────────────────────────────────────────────────────
@@ -108,6 +122,16 @@ _VENTENDE_MOENSTRE: tuple[str, ...] = (
     "inbox", "indbakke",
     "unfinished", "ufuldendt",
     "intent",
+    # Tilfoejet 4/10-2026, efter at saettet misklassificerede den STOERSTE
+    # ventende blok i halen. `[DECISION-ADHERENCE-GATE]` er 1.177 tokens
+    # (17,4 %) med 12 poster, hvert med et `dec_<hex>`-id og en «Handling:» —
+    # altsaa praecis indbakkens form — og den ramte intet moenster. Rapporten
+    # sagde 0,0 %, og `uklassificeret_top` havde svaret klar.
+    #
+    # Lærestykket staar allerede i filens egen kommentar: et moenster-saet
+    # forfalder hurtigere end koden. Derfor LAES `uklassificeret_top` hver gang
+    # frem for at tro paa procenten.
+    "adherence", "decision", "beslutning",
 )
 
 

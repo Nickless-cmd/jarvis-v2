@@ -657,6 +657,43 @@ Denne opgave er FØRST, og resten afhænger af dens svar. Den må ikke springes.
 >    samme tal og modsat gyldighed. Derfor rapporterer værktøjet nu altid de
 >    største UKLASSIFICEREDE dele: et nul skal kunne efterprøves.
 
+> **RETTET 4/10-2026 kl. 15:5x (Opus) — tallet var 0 %, og det var FORKERT.**
+>
+> Bjørn spurgte om der ikke lå noget i den dynamiske hale som burde ligge i
+> indbakken. Målt på hans levende samtale, denne gang ved at LÆSE blokkene
+> frem for at matche deres navne:
+>
+> | | tokens | andel af halen |
+> |---|---|---|
+> | Hele halen | 6.766 | 100 % |
+> | `[DECISION-ADHERENCE-GATE]` | **1.177** | **17,4 %** |
+> | Indbakkens egen sektion (i `[AWARENESS]`) | 130 | 1,9 % |
+>
+> Den blok er indbakke-formet: 12 poster, hver med et stabilt id (`dec_<hex>`),
+> en beskrivelse og en «Handling:». Og alle tolv handlinger er **ordret den
+> samme sætning** — «kan ikke opfyldes som formuleret — omformulér den til
+> trigger → handling → bevis» — altså ~297 tokens ren gentagelse (25 % af
+> blokken), hver tur. Tolv beslutninger står på «Adherence 0 % (kritisk band)»
+> og har gjort det længe nok til at handlingen er blevet en skabelon.
+>
+> **Hvorfor jeg målte 0 %:** klassifikationen matchede på NAVNE, og
+> `[DECISION-ADHERENCE-GATE]` rammer intet mønster i `_VENTENDE_MOENSTRE`. Jeg
+> skrev selv i måleskriptet at mønster-sættet forfalder hurtigere end koden, og
+> jeg lagde `uklassificeret_top` ind netop for at kunne se den slags. Så
+> rapporterede jeg nullet uden at læse listen. Det er tredje gang i dette spor
+> at jeg læser et aggregat uden at spørge hvilke rækker det dækkede — og denne
+> gang havde mit eget værktøj advarslen klar.
+>
+> **Hvad der STADIG holder:** vækninger, jobs og agent-status lå ikke i
+> prompten, så indbakken er stadig en tilføjelse for dem, ikke en besparelse.
+> Men den samlede dom «0 tokens ventende tilstand» var gal: der ER ventende
+> tilstand i halen, den er ~17 %, og den ligger i én blok ingen lukker.
+>
+> **Ikke gjort:** at flytte de tolv beslutninger ind i indbakken. Det ville give
+> dem id'er der kan lukkes med `inbox_done`/`inbox_drop` og fjerne gentagelsen,
+> men beslutnings-gaten er en flade Jarvis og Codex arbejder på samtidig.
+> Afventer Bjørns valg af hvem der tager den.
+
 ### Opgave 1: Handlings-klassen i køen
 
 > **MANGLER (Jarvis 3/10):** postens livscyklus har kun to udgange — `done` og

@@ -106,7 +106,12 @@ class EffektivProfil:
         }
 
     def haandhaevelse(self) -> dict[str, Any]:
-        """Maalt virkelighed for de tre akser i kriterium 7. Selv-sikker."""
+        """Maalt virkelighed for de tre akser i kriterium 7.
+
+        Selv-sikker — men en TOM måling er ikke «intet at måle». `maal()` dækker
+        altid alle tre akser, så `{}` betyder at målingen ikke kunne køre, og
+        `afvigelser()` nedenfor siger det i stedet for at melde alt i orden.
+        """
         try:
             from core.runtime.profile_enforcement import maal
             return maal(self.felter)
@@ -114,12 +119,21 @@ class EffektivProfil:
             return {}
 
     def afvigelser(self) -> list[str]:
-        """Hvor holder virkeligheden ikke hvad profilen lover?"""
+        """Hvor holder virkeligheden ikke hvad profilen lover?
+
+        En TOM liste betyder «målt — og alt stemmer». Kunne målingen ikke
+        køres, er svaret ikke tomt, det er UKENDT, og det står der. Ellers ville
+        en manglende håndhæver-rapport se ud som en ren sikkerhedsrapport — den
+        præcise løgn `profile_enforcement` er skrevet for at afsløre.
+        """
         try:
             from core.runtime.profile_enforcement import afvigelser as _a
-            return _a(self.haandhaevelse())
-        except Exception:
-            return []
+        except Exception as exc:
+            return [f"kunne ikke maale afvigelser: {exc}"]
+        maalt = self.haandhaevelse()
+        if not maalt:
+            return ["kunne ikke maale haandhaevelse — sikkerheden er ukendt, ikke i orden"]
+        return _a(maalt)
 
 
 def _er_indsnaevring(akse: str, fra: Any, til: Any) -> bool:

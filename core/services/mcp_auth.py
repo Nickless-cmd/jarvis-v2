@@ -85,7 +85,12 @@ def needs_refresh(name: str) -> bool:
     try:
         return time.time() >= float(rec["expires_at"]) - _MARGIN_S
     except (TypeError, ValueError):
-        return False
+        # `expires_at` FINDES men kan ikke laeses. Foer 4/10-2026 svarede vi «intet at
+        # fornye» — og tokenet blev aldrig fornyet, saa auth fejlede senere med en fejl
+        # der pegede paa credentials i stedet for paa tidsstemplet. Vi kan ikke bevise
+        # at tokenet er frisk → forny.
+        logger.warning("mcp_auth: ulaeseligt expires_at for %s — fornyer", name)
+        return True
 
 
 def refresh(name: str) -> bool:

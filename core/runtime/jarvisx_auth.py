@@ -61,13 +61,34 @@ class AuthError(RuntimeError):
     """Raised when a token is missing, malformed, expired, or forged."""
 
 
+class _UlaeseligConfig(RuntimeError):
+    """runtime.json FINDES, men kunne ikke læses som et settings-dokument.
+
+    Forskellen til en manglende fil er hele sagen. En manglende fil har intet
+    at tabe og må oprettes. En fil der findes bærer stadig sine nøgler — også
+    når vi ikke kan parse dem — og må ikke skrives over af en kalder der
+    troede den var tom.
+    """
+
+
 def _load_settings() -> dict[str, Any]:
+    """Læs runtime.json.
+
+    `{}` betyder «filen findes ikke». En fil der findes men ikke kan læses
+    rejser `_UlaeseligConfig` — den er ikke tom, den er ulæselig, og de to må
+    ikke smelte sammen: begge kaldere nedenfor skriver tilbage til filen.
+    """
     if not _SETTINGS_FILE.is_file():
         return {}
     try:
-        return json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+        data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise _UlaeseligConfig(str(exc)) from exc
+    if not isinstance(data, dict):
+        # Gyldig JSON, men ikke et settings-dokument (fx `[1, 2, 3]` eller `42`).
+        # Uden dette ville `data.get(...)` kaste AttributeError i kalderen.
+        raise _UlaeseligConfig(f"forventede et objekt, fik {type(data).__name__}")
+    return data
 
 
 def _save_settings(data: dict[str, Any]) -> None:
@@ -88,7 +109,20 @@ def _read_secret() -> str:
     env = os.environ.get("JARVISX_AUTH_SECRET")
     if env and len(env) >= _MIN_SECRET_BYTES:
         return env
-    data = _load_settings()
+    try:
+        data = _load_settings()
+    except _UlaeseligConfig as exc:
+        # Filen findes men kan ikke læses. Vi må IKKE skrive over den: den bærer
+        # stadig nøglerne, og de kan måske reddes. Generér i hukommelsen så
+        # processen kan køre — prisen er at tokens dør ved næste genstart,
+        # hvilket er langt billigere end at slette hele konfigurationen.
+        logger.error(
+            "jarvisx_auth: %s findes men kan ikke laeses (%s). Genererer en "
+            "midlertidig secret i hukommelsen og ROER IKKE filen — ret den, "
+            "ellers doer udstedte tokens ved naeste genstart.",
+            _SETTINGS_FILE, exc,
+        )
+        return _secrets.token_hex(32)
     secret = str(data.get(_SECRET_KEY) or "")
     if secret and len(secret) >= _MIN_SECRET_BYTES:
         return secret
@@ -282,7 +316,17 @@ def auth_required() -> bool:
     env = os.environ.get("JARVISX_AUTH_REQUIRED")
     if env is not None:
         return env.strip() not in {"", "0", "false", "False", "no"}
-    data = _load_settings()
+    try:
+        data = _load_settings()
+    except _UlaeseligConfig as exc:
+        # Kan konfigurationen ikke læses, kan vi ikke vide om auth er slået til
+        # — og en ulæselig fil må ikke stille slå den FRA. Fail-closed: hellere
+        # afvise end at lukke hvem som helst ind på et gæt.
+        logger.error(
+            "jarvisx_auth: %s kan ikke laeses (%s) — antager auth PAAKRAEVET.",
+            _SETTINGS_FILE, exc,
+        )
+        return True
     flag = data.get("jarvisx_auth_required")
     if isinstance(flag, bool):
         return flag

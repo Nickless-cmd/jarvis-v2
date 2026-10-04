@@ -97,10 +97,10 @@ _Profil-komponisten — Fase 9 i DeepSeek-harness-spec'en._
 | class | `EffektivProfil` | `` | Resultatet af en komposition — og det en kørsel gemmer om sig selv. | [src](../../../core/runtime/profile_composer.py#L66) |
 | method | `EffektivProfil.hash` | `(self)` | Hash over det EFFEKTIVE resultat, ikke over navnet. | [src](../../../core/runtime/profile_composer.py#L75) |
 | method | `EffektivProfil.forklar` | `(self)` | Hvad Mission Control skal kunne vise. Exit-kriteriet kræver at | [src](../../../core/runtime/profile_composer.py#L87) |
-| method | `EffektivProfil.haandhaevelse` | `(self)` | Maalt virkelighed for de tre akser i kriterium 7. Selv-sikker. | [src](../../../core/runtime/profile_composer.py#L108) |
-| method | `EffektivProfil.afvigelser` | `(self)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_composer.py#L116) |
-| function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L125) |
-| function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L140) |
+| method | `EffektivProfil.haandhaevelse` | `(self)` | Maalt virkelighed for de tre akser i kriterium 7. | [src](../../../core/runtime/profile_composer.py#L108) |
+| method | `EffektivProfil.afvigelser` | `(self)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_composer.py#L121) |
+| function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L139) |
+| function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L154) |
 
 ## `core/runtime/profile_enforcement.py`
 _ANMODET vs FAKTISK — Fase 9, exit-kriterium 7._
@@ -126,34 +126,34 @@ _De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `load_provider_router_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L18) |
-| function | `configure_provider_router_entry` | `(*, provider, model, auth_mode, auth_profile, base_url, api_key, lane, set_visible)` | — | [src](../../../core/runtime/provider_router.py#L30) |
-| function | `provider_router_summary` | `()` | — | [src](../../../core/runtime/provider_router.py#L125) |
-| function | `main_agent_target` | `()` | — | [src](../../../core/runtime/provider_router.py#L162) |
-| function | `main_agent_selection` | `()` | — | [src](../../../core/runtime/provider_router.py#L183) |
-| function | `select_main_agent_target` | `(*, provider, model, auth_profile=…)` | — | [src](../../../core/runtime/provider_router.py#L200) |
-| function | `resolve_provider_router_target` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L254) |
-| function | `provider_router_lane_targets` | `()` | — | [src](../../../core/runtime/provider_router.py#L320) |
-| function | `list_provider_router_targets` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L325) |
-| function | `_provider_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L360) |
-| function | `_model_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L378) |
-| function | `_latest_model_for_lane` | `(*, registry, lane)` | — | [src](../../../core/runtime/provider_router.py#L388) |
-| function | `_configured_main_agent_targets` | `(*, registry)` | — | [src](../../../core/runtime/provider_router.py#L405) |
-| function | `_configured_target_match` | `(*, registry, provider, model)` | — | [src](../../../core/runtime/provider_router.py#L447) |
-| function | `_readiness_hint` | `(*, provider, auth_mode, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L459) |
-| function | `_provider_entry` | `(*, registry, provider)` | — | [src](../../../core/runtime/provider_router.py#L472) |
-| function | `_provider_auth_mode` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L483) |
-| function | `_provider_base_url` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L490) |
-| function | `_credentials_ready` | `(*, provider, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L497) |
-| function | `_upsert_provider` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L514) |
-| function | `_upsert_model` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L523) |
-| function | `_default_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L536) |
-| function | `_normalize_simple_id` | `(value, *, label)` | — | [src](../../../core/runtime/provider_router.py#L543) |
-| function | `_normalize_auth_mode` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L550) |
-| function | `_ollama_model_exists` | `(*, registry, model)` | Return True if *model* is available in the live Ollama instance. | [src](../../../core/runtime/provider_router.py#L557) |
-| function | `_normalize_profile` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L572) |
-| function | `_normalize_lane` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L579) |
-| function | `_now` | `()` | — | [src](../../../core/runtime/provider_router.py#L586) |
+| function | `load_provider_router_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L21) |
+| function | `configure_provider_router_entry` | `(*, provider, model, auth_mode, auth_profile, base_url, api_key, lane, set_visible)` | — | [src](../../../core/runtime/provider_router.py#L33) |
+| function | `provider_router_summary` | `()` | — | [src](../../../core/runtime/provider_router.py#L128) |
+| function | `main_agent_target` | `()` | — | [src](../../../core/runtime/provider_router.py#L165) |
+| function | `main_agent_selection` | `()` | — | [src](../../../core/runtime/provider_router.py#L186) |
+| function | `select_main_agent_target` | `(*, provider, model, auth_profile=…)` | — | [src](../../../core/runtime/provider_router.py#L203) |
+| function | `resolve_provider_router_target` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L265) |
+| function | `provider_router_lane_targets` | `()` | — | [src](../../../core/runtime/provider_router.py#L331) |
+| function | `list_provider_router_targets` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L336) |
+| function | `_provider_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L371) |
+| function | `_model_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L389) |
+| function | `_latest_model_for_lane` | `(*, registry, lane)` | — | [src](../../../core/runtime/provider_router.py#L399) |
+| function | `_configured_main_agent_targets` | `(*, registry)` | — | [src](../../../core/runtime/provider_router.py#L416) |
+| function | `_configured_target_match` | `(*, registry, provider, model)` | — | [src](../../../core/runtime/provider_router.py#L458) |
+| function | `_readiness_hint` | `(*, provider, auth_mode, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L470) |
+| function | `_provider_entry` | `(*, registry, provider)` | — | [src](../../../core/runtime/provider_router.py#L483) |
+| function | `_provider_auth_mode` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L494) |
+| function | `_provider_base_url` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L501) |
+| function | `_credentials_ready` | `(*, provider, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L508) |
+| function | `_upsert_provider` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L525) |
+| function | `_upsert_model` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L534) |
+| function | `_default_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L547) |
+| function | `_normalize_simple_id` | `(value, *, label)` | — | [src](../../../core/runtime/provider_router.py#L554) |
+| function | `_normalize_auth_mode` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L561) |
+| function | `_ollama_model_exists` | `(*, registry, model)` | Er *model* tilgængelig i den kørende Ollama? | [src](../../../core/runtime/provider_router.py#L568) |
+| function | `_normalize_profile` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L590) |
+| function | `_normalize_lane` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L597) |
+| function | `_now` | `()` | — | [src](../../../core/runtime/provider_router.py#L604) |
 
 ## `core/runtime/refresh_tokens.py`
 _Refresh-token-rotation (spec §22.6)._
@@ -297,11 +297,11 @@ _Legitimation paa en WebSocket — uden at skrive tokenet i adgangsloggen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_foerste_bearer` | `(vaerdi)` | — | [src](../../../core/runtime/ws_auth.py#L38) |
-| function | `token_fra_handshake` | `(headers)` | Find tokenet i et WS-handshake. | [src](../../../core/runtime/ws_auth.py#L45) |
-| function | `verificer` | `(token)` | Verificér tokenet. Returnerer claims, eller None hvis det ikke holder. | [src](../../../core/runtime/ws_auth.py#L74) |
-| function | `kraeves_auth` | `()` | Er auth slaaet til i denne runtime? | [src](../../../core/runtime/ws_auth.py#L91) |
-| function | `_private_familier` | `()` | — | [src](../../../core/runtime/ws_auth.py#L118) |
-| function | `er_ejer` | `(krav)` | Ejer = rollen «owner» i et verificeret token. Uden token (auth slået fra, | [src](../../../core/runtime/ws_auth.py#L128) |
-| function | `til_klient` | `(item, *, ejer)` | Hvad der må sendes til denne klient, eller None. | [src](../../../core/runtime/ws_auth.py#L136) |
+| function | `_foerste_bearer` | `(vaerdi)` | — | [src](../../../core/runtime/ws_auth.py#L41) |
+| function | `token_fra_handshake` | `(headers)` | Find tokenet i et WS-handshake. | [src](../../../core/runtime/ws_auth.py#L48) |
+| function | `verificer` | `(token)` | Verificér tokenet. Returnerer claims, eller None hvis det ikke holder. | [src](../../../core/runtime/ws_auth.py#L77) |
+| function | `kraeves_auth` | `()` | Er auth slaaet til i denne runtime? | [src](../../../core/runtime/ws_auth.py#L94) |
+| function | `_private_familier` | `()` | — | [src](../../../core/runtime/ws_auth.py#L129) |
+| function | `er_ejer` | `(krav)` | Ejer = rollen «owner» i et verificeret token. Uden token (auth slået fra, | [src](../../../core/runtime/ws_auth.py#L139) |
+| function | `til_klient` | `(item, *, ejer)` | Hvad der må sendes til denne klient, eller None. | [src](../../../core/runtime/ws_auth.py#L147) |
 

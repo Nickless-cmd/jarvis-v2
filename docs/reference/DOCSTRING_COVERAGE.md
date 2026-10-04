@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8428/15993 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8435/15999 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8428/15993 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 715 | 1296 | 55% |
-| `core.services` | 5624 | 10888 | 51% |
+| `core.runtime` | 717 | 1297 | 55% |
+| `core.services` | 5629 | 10893 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -558,15 +558,15 @@ Generated from source. 8428/15993 functions/methods documented (52%). The list b
 - `core/runtime/plugin_lifecycle.py` :: `Registret.navne` (L327)
 - `core/runtime/process_lifecycle.py` :: `grund` (L63)
 - `core/runtime/profiles.py` :: `kendte` (L122)
-- `core/runtime/provider_router.py` :: `configure_provider_router_entry` (L30)
-- `core/runtime/provider_router.py` :: `list_provider_router_targets` (L325)
-- `core/runtime/provider_router.py` :: `load_provider_router_registry` (L18)
-- `core/runtime/provider_router.py` :: `main_agent_selection` (L183)
-- `core/runtime/provider_router.py` :: `main_agent_target` (L162)
-- `core/runtime/provider_router.py` :: `provider_router_lane_targets` (L320)
-- `core/runtime/provider_router.py` :: `provider_router_summary` (L125)
-- `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L254)
-- `core/runtime/provider_router.py` :: `select_main_agent_target` (L200)
+- `core/runtime/provider_router.py` :: `configure_provider_router_entry` (L33)
+- `core/runtime/provider_router.py` :: `list_provider_router_targets` (L336)
+- `core/runtime/provider_router.py` :: `load_provider_router_registry` (L21)
+- `core/runtime/provider_router.py` :: `main_agent_selection` (L186)
+- `core/runtime/provider_router.py` :: `main_agent_target` (L165)
+- `core/runtime/provider_router.py` :: `provider_router_lane_targets` (L331)
+- `core/runtime/provider_router.py` :: `provider_router_summary` (L128)
+- `core/runtime/provider_router.py` :: `resolve_provider_router_target` (L265)
+- `core/runtime/provider_router.py` :: `select_main_agent_target` (L203)
 - `core/runtime/secrets.py` :: `mail_config` (L103)
 - `core/runtime/session_handle.py` :: `SessionHandle.seq` (L181)
 - `core/runtime/session_handle.py` :: `SessionHandle.token` (L178)
@@ -770,7 +770,7 @@ Generated from source. 8428/15993 functions/methods documented (52%). The list b
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
 - `core/services/central_ghost.py` :: `get_profile` (L89)
 - `core/services/central_hypothesis_generator.py` :: `list_active_hypotheses` (L504)
-- `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L295)
+- `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)
 - `core/services/central_injection_registry.py` :: `set_injection_live` (L140)
@@ -785,7 +785,7 @@ Generated from source. 8428/15993 functions/methods documented (52%). The list b
 - `core/services/central_matrix_ensemble.py` :: `get_unaddressed` (L43)
 - `core/services/central_matrix_ensemble.py` :: `increment_unaddressed` (L47)
 - `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
-- `core/services/central_merovingian.py` :: `list_challenges` (L324)
+- `core/services/central_merovingian.py` :: `list_challenges` (L331)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L114)
 - `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L118)

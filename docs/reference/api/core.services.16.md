@@ -149,8 +149,8 @@ _OAuth/bearer til remote MCP-servere._
 | function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
 | function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
 | function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
-| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L91) |
-| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L117) |
+| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L96) |
+| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L122) |
 
 ## `core/services/mcp_client.py`
 _MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._

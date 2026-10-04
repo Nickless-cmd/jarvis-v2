@@ -22,10 +22,13 @@ Alt self-safe.
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 # ── Frossen kerne: værnenes egne konstanter (filosof-lensen: en selv-muterende Central skal have
 #    mindst ét punkt den ikke kan mutere). verify_frozen_core() er en tripwire mod runtime-mutation. ─
@@ -112,7 +115,12 @@ def is_expired(created_at_iso: str, ttl_seconds: float, *, now: datetime | None 
         if t.tzinfo is None:
             t = t.replace(tzinfo=timezone.utc)
     except Exception:
-        return False
+        # Kan datoen ikke laeses, er den ikke et bevis paa liv. Modulet hviler paa
+        # Popper-asymmetrien: en hypotese skal DO let og bekraeftes svaert. Foer
+        # 4/10-2026 gav en ulaeselig dato «ikke udloebet» — hypotesen levede for
+        # evigt, stik imod sin egen docstring om falsificering ved tavshed.
+        logger.warning("is_expired: ulaeselig created_at (%r) — regner den som udloebet", created_at_iso)
+        return True
     n = now or datetime.now(timezone.utc)
     return (n - t).total_seconds() > float(ttl_seconds)
 

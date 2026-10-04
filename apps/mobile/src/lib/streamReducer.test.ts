@@ -639,3 +639,70 @@ describe('blinket', () => {
     expect(s.activeRunId).toBe('visible-abc')
   })
 })
+
+// ── Arbejdsfasen er slut — `final_answer_start` (4/10-2026) ─────────────────
+//
+// Runde-linjens shimmer døde i hullet MELLEM to runder: sidste værktøjskald
+// fik sit resultat, og så tænkte modellen på den næste i et par sekunder mens
+// rækken stod død. Signalet der lukker hullet er serverens `final_answer_start`
+// — «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
+// Desk fik det 3/10 (`RaekkeTranskript.tsx:341`); mobilens reducer havde
+// hverken flaget eller grenen, så eventet faldt i `default` og gjorde intet.
+describe('final_answer_start saetter arbejdsfasen til ende', () => {
+  const start = (id: string) => ({
+    type: 'message_start' as const,
+    message: { id, model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  })
+  const system = (kind: string, payload: Record<string, unknown>) =>
+    ({ type: 'system_event' as const, kind, payload })
+
+  it('et friskt flag fra starten', () => {
+    expect(initialStreamState().finalAnswerStarted).toBe(false)
+  })
+
+  it('saetter flaget naar run-id matcher', () => {
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(true)
+  })
+
+  it('IGNORERER en forsinet start fra en tidligere koersel', () => {
+    // Uden run-id-tjekket ville et replay af en gammel `final_answer_start`
+    // slukke shimmeren i den koersel vi ser paa nu.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'old' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('et TOMT run-id taender ikke — vi kan ikke vide hvem den hoerer til', () => {
+    const s = [start('r1'), system('final_answer_start', {})]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('en NY koersel nulstiller flaget', () => {
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }), start('r2')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('samme run beholder flaget — en genforbindelse midt i svaret', () => {
+    // Ellers ville en reconnect taende shimmeren igen midt i slutsvaret.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }), start('r1')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(true)
+  })
+
+  it('en delta fra et NYT run nulstiller — naar den forrige koersel er slut', () => {
+    // Mens streamen ER i gang ignoreres en fremmed delta HELT (grenen vender
+    // tidligt om), saa flaget staar. Foerst efter `message_stop` genoptager et
+    // nyt run — og dér skal flaget nulstilles sammen med blokkene, ellers stod
+    // shimmeren slukket i en koersel der lige var begyndt.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }),
+      { type: 'message_stop' as const },
+      system('provisional_text_delta', { run_id: 'r2', delta: 'nyt' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.activeRunId).toBe('r2')
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+})

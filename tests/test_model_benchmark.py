@@ -6,6 +6,7 @@ deepseek-v4-pro. Sonden kan afgøre om en model KAN; den kan ikke afgøre hvor
 godt. Og at gøre den syntetiske prøve sværere hjalp ikke — gpt-4.1 bestod hver
 skærpelse og opdigtede alligevel i produktion.
 """
+import pathlib
 from pathlib import Path
 
 import core.services.agent_model_fitness as fit
@@ -23,6 +24,22 @@ def test_opdigtede_navne_giver_praecision_nul():
     d = bedøm_svar("route_provider_request (12), get_provider_status (56)", FACIT)
     assert d["praecision"] == 0.0 and d["score"] == 0
     assert "route_provider_request" in d["opfundne"]
+
+def _linje_for(fil: str, navn: str) -> int:
+    """Hvilken linje står `navn` på — udledt med AST, uafhængigt af koden under test.
+
+    Derfor AST og ikke en egen linje-scan: `facit_for` scanner netop linje for
+    linje med en regex, så en `enumerate`-løkke her ville være SAMME mekanisme,
+    og testen kunne ikke fejle hvis regexen var forkert. `ast` kommer frem ad
+    en anden vej og er derfor et ægte uafhængigt svar.
+    """
+    import ast
+    træ = ast.parse(pathlib.Path(fil).read_text(encoding="utf-8"))
+    for n in træ.body:                      # modul-niveau, som `^def ` matcher
+        if isinstance(n, ast.FunctionDef) and n.name == navn:
+            return n.lineno
+    raise AssertionError(f"{navn} findes ikke paa modul-niveau i {fil}")
+
 
 
 def test_et_helt_rigtigt_svar_faar_fuld_score():
@@ -57,10 +74,22 @@ def test_prosa_taelles_ikke_som_paastande():
 def test_facit_kommer_fra_den_RIGTIGE_fil():
     """Facit må aldrig være håndskrevet — så ville prøven være forkert to uger
     efter nogen omdøbte en funktion, og vi ville rangere modeller efter hvor
-    godt de husker gammel kode."""
-    f = facit_for(Path("core/runtime/provider_router.py"))
-    assert f.get("load_provider_router_registry") == 18
-    assert f.get("configure_provider_router_entry") == 30
+    godt de husker gammel kode.
+
+    RETTET 4/10-2026 (Opus): docstringen sagde præcis det rigtige, og
+    assertionen hardkodede `== 18` og `== 30`. Da Jarvis lagde en `logger`-linje
+    ind i `provider_router.py` kl. 10:22, skred funktionen til linje 21, og
+    testen faldt — ikke fordi facit var forkert, men fordi testen var det.
+
+    Ironien står i min egen commit-titel fra 7/9: «linjenumre skal kobles til
+    NAVNET, ikke til linjen». Jeg skrev den titel og hardkodede så et tal.
+    """
+    fil = "core/runtime/provider_router.py"
+    f = facit_for(Path(fil))
+    for navn in ("load_provider_router_registry", "configure_provider_router_entry"):
+        assert f.get(navn) == _linje_for(fil, navn), (
+            f"facit siger {f.get(navn)} for {navn}, kilden siger "
+            f"{_linje_for(fil, navn)}")
 
 
 def test_samme_froe_giver_samme_proeve():

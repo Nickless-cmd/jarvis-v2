@@ -1,19 +1,23 @@
-"""Ruten og middleware-fritagelsen for signerede fil-links (4/10-2026).
+"""Ruten, afgrænsningen og middleware-fritagelsen for udgivne filer.
 
-To lag, og de måles hver for sig:
+Bjørn 4/10-2026: «filer skal være per bruger». Tre lag, og de måles hver for
+sig — lag-1-dækning skjuler lag-2-huller, målt fire gange i dette hus samme
+døgn:
 
-* **Ruten** udsteder kun for en fil der findes, og kun med auth.
-* **Middlewaren** slipper kun en GET af præcis den fil forbi, kun mens
-  signaturen lever.
-
-Lag-1-dækning skjuler lag-2-huller — målt fire gange i dette hus samme døgn —
-så fritagelsen testes mod middleware-funktionen selv, ikke kun gennem ruten.
+* **Ruten** serverer kun MINE filer, og udsteder kun links til MINE filer.
+* **Signaturen** bærer workspacet, så den enes link ikke passer på den andens
+  fil med samme navn.
+* **Middlewaren** slipper kun en GET af præcis den signerede fil forbi.
 """
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
+from core.identity import workspace_context as wc
 from core.services import file_links
+
+BJORN, LOTTE = "u-bjorn", "u-lotte"
 
 
 @pytest.fixture(autouse=True)
@@ -22,20 +26,33 @@ def noegle(monkeypatch):
     monkeypatch.setattr(s, "read_runtime_key", lambda *a, **k: "test-grundlag-123")
 
 
+@pytest.fixture(autouse=True)
+def brugere(monkeypatch):
+    import core.runtime.workspace_paths as wp
+    monkeypatch.setattr(wp, "_user_id_to_workspace_name",
+                        lambda uid: {BJORN: "bjorn", LOTTE: "lotte"}[uid])
+
+
 @pytest.fixture
-def filmappe(monkeypatch, tmp_path):
-    """En RIGTIG mappe. Ruten slår filen op på disken, så en mock ville måle
-    sin egen stub frem for betingelsen «filen skal findes først»."""
-    import apps.api.jarvis_api.routes.files as r
-    monkeypatch.setattr(r, "FILES_DIR", tmp_path)
-    (tmp_path / "rapport.pdf").write_bytes(b"%PDF-1.4 ...")
+def hjem(monkeypatch, tmp_path):
+    """Rigtige mapper. Ruten slår filen op på disken, så en mock ville måle
+    sin egen stub frem for betingelsen «filen skal være din»."""
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    for ws in ("bjorn", "lotte"):
+        d = tmp_path / "files" / "u" / ws
+        d.mkdir(parents=True)
+        (d / "rapport.pdf").write_bytes(f"%PDF {ws}".encode())
+    (tmp_path / "files" / "u" / "bjorn" / "kun-bjorns.md").write_text("hemmelig")
+    # Den GAMLE faelles mappe findes stadig paa disken under migreringen.
+    (tmp_path / "files" / "gammel-faelles.md").write_text("fra foer")
     return tmp_path
 
 
+def _som(uid: str):
+    return wc.set_context(workspace_name="x", user_id=uid, role="member")
+
+
 def _foresp(sti: str, metode: str = "GET", query: str = ""):
-    """En minimal Request. `Request` er en tynd indpakning om ASGI-scope, så
-    den kan bygges direkte — en mock med `.url`/`.method` ville kun måle
-    mockens egen form."""
     from starlette.requests import Request
     return Request({
         "type": "http", "method": metode, "path": sti, "raw_path": sti.encode(),
@@ -44,138 +61,233 @@ def _foresp(sti: str, metode: str = "GET", query: str = ""):
     })
 
 
-# ── Ruten ──────────────────────────────────────────────────────────────────
+# ── Afgrænsningen ──────────────────────────────────────────────────────────
 
-def test_ruten_udsteder_et_brugbart_link(filmappe):
+def test_jeg_henter_MIN_egen_fil(hjem):
+    from apps.api.jarvis_api.routes.files import download_file
+    tok = _som(BJORN)
+    try:
+        svar = download_file("rapport.pdf")
+        assert svar.path.read_bytes() == b"%PDF bjorn"
+    finally:
+        wc.reset_context(tok)
+
+
+def test_samme_navn_giver_HVER_sin_fil(hjem):
+    """Det flade lager gjorde filnavnet globalt. Nu betyder «rapport.pdf»
+    noget forskelligt for de to."""
+    from apps.api.jarvis_api.routes.files import download_file
+    for uid, forventet in ((BJORN, b"%PDF bjorn"), (LOTTE, b"%PDF lotte")):
+        tok = _som(uid)
+        try:
+            assert download_file("rapport.pdf").path.read_bytes() == forventet
+        finally:
+            wc.reset_context(tok)
+
+
+def test_jeg_kan_IKKE_hente_en_andens_fil_og_faar_404_ikke_403(hjem):
+    """404, ikke 403: et 403 ville fortælle at filen FINDES hos en anden.
+    En liste over naboens filnavne er også en lækage."""
+    from apps.api.jarvis_api.routes.files import download_file
+    tok = _som(LOTTE)
+    try:
+        with pytest.raises(HTTPException) as e:
+            download_file("kun-bjorns.md")
+        assert e.value.status_code == 404
+    finally:
+        wc.reset_context(tok)
+
+
+def test_den_GAMLE_faelles_mappe_naas_IKKE(hjem):
+    """Ingen fallback. Et fald til den fælles mappe ville være nøjagtig den
+    lækage afgrænsningen lukker — og det ville ske tavst."""
+    from apps.api.jarvis_api.routes.files import download_file
+    tok = _som(BJORN)
+    try:
+        with pytest.raises(HTTPException) as e:
+            download_file("gammel-faelles.md")
+        assert e.value.status_code == 404
+    finally:
+        wc.reset_context(tok)
+
+
+def test_listningen_viser_KUN_mine(hjem):
+    from apps.api.jarvis_api.routes.files import list_files
+    tok = _som(LOTTE)
+    try:
+        navne = {f["name"] for f in list_files()["files"]}
+    finally:
+        wc.reset_context(tok)
+    assert navne == {"rapport.pdf"}
+    assert "kun-bjorns.md" not in navne and "gammel-faelles.md" not in navne
+
+
+def test_UDEN_bruger_svarer_ruten_401(hjem):
+    from apps.api.jarvis_api.routes.files import download_file, list_files
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        for kald in (lambda: download_file("rapport.pdf"), list_files):
+            with pytest.raises(HTTPException) as e:
+                kald()
+            assert e.value.status_code == 401
+    finally:
+        wc.reset_context(tok)
+
+
+# ── Mint-ruten ─────────────────────────────────────────────────────────────
+
+def test_jeg_kan_kun_udstede_link_til_MINE_filer(hjem):
+    """Ellers ville signeringen være vejen UDENOM afgrænsningen frem for en
+    del af den."""
     from apps.api.jarvis_api.routes.files import LinkOenske, udsted_link
-    r = udsted_link(LinkOenske(filename="rapport.pdf"))
-    assert r["status"] == "ok"
-    assert r["url"].startswith("/files/rapport.pdf?udloeb=")
-    assert "&sig=" in r["url"]
-    assert r["levetid_s"] == file_links.STANDARD_LEVETID_S
-
-
-def test_ruten_udsteder_IKKE_for_en_fil_der_ikke_findes(filmappe):
-    """Ellers kunne ruten bruges til at gætte filnavne: et gyldigt link til
-    noget der ikke findes er et svar om at det ikke findes."""
-    from fastapi import HTTPException
-
-    from apps.api.jarvis_api.routes.files import LinkOenske, udsted_link
-    with pytest.raises(HTTPException) as e:
-        udsted_link(LinkOenske(filename="findes-ikke.pdf"))
-    assert e.value.status_code == 404
+    tok = _som(LOTTE)
+    try:
+        with pytest.raises(HTTPException) as e:
+            udsted_link(LinkOenske(filename="kun-bjorns.md"))
+        assert e.value.status_code == 404
+        r = udsted_link(LinkOenske(filename="rapport.pdf"))
+        assert "ws=lotte" in r["url"]
+    finally:
+        wc.reset_context(tok)
 
 
 @pytest.mark.parametrize("ondt", ["../../etc/passwd", "mappe/fil.pdf", "", "   "])
-def test_ruten_afviser_en_sti(filmappe, ondt):
-    from fastapi import HTTPException
-
+def test_mint_ruten_afviser_en_sti(hjem, ondt):
     from apps.api.jarvis_api.routes.files import LinkOenske, udsted_link
-    with pytest.raises(HTTPException) as e:
-        udsted_link(LinkOenske(filename=ondt))
-    assert e.value.status_code == 400
+    tok = _som(BJORN)
+    try:
+        with pytest.raises(HTTPException) as e:
+            udsted_link(LinkOenske(filename=ondt))
+        assert e.value.status_code == 400
+    finally:
+        wc.reset_context(tok)
 
 
-def test_uden_signering_svarer_ruten_503_ikke_500(filmappe, monkeypatch):
-    """Ruten virker; signeringen er ikke konfigureret. De to er forskellige
-    tilstande og skal kunne skelnes i en log."""
-    from fastapi import HTTPException
-
+def test_uden_signering_svarer_mint_ruten_503(hjem, monkeypatch):
+    from apps.api.jarvis_api.routes.files import LinkOenske, udsted_link
     import core.runtime.secrets as s
     monkeypatch.setattr(s, "read_runtime_key", lambda *a, **k: "")
-    from apps.api.jarvis_api.routes.files import LinkOenske, udsted_link
-    with pytest.raises(HTTPException) as e:
-        udsted_link(LinkOenske(filename="rapport.pdf"))
-    assert e.value.status_code == 503
+    tok = _som(BJORN)
+    try:
+        with pytest.raises(HTTPException) as e:
+            udsted_link(LinkOenske(filename="rapport.pdf"))
+        assert e.value.status_code == 503
+    finally:
+        wc.reset_context(tok)
+
+
+# ── Det signerede link ende til ende ───────────────────────────────────────
+
+def test_et_signeret_link_henter_den_SIGNEREDE_brugers_fil(hjem):
+    """Uden token findes ingen kontekst, så `ws` fra adressen afgør mappen —
+    og middlewaren har allerede verificeret signaturen over netop den."""
+    from apps.api.jarvis_api.routes.files import download_file
+    r = file_links.signer("rapport.pdf", workspace="lotte")
+    svar = download_file("rapport.pdf", ws="lotte")
+    assert svar.path.read_bytes() == b"%PDF lotte"
+    assert r["status"] == "ok"
+
+
+def test_en_AUTENTIFICERET_bruger_kan_ikke_saette_ws_og_laese_med(hjem):
+    """`ws` gælder KUN når der intet token er. Ellers kunne enhver
+    autentificeret bruger læse naboens filer med én querystring."""
+    from apps.api.jarvis_api.routes.files import download_file
+    tok = _som(LOTTE)
+    try:
+        with pytest.raises(HTTPException) as e:
+            download_file("kun-bjorns.md", ws="bjorn")
+        assert e.value.status_code == 404
+    finally:
+        wc.reset_context(tok)
+
+
+@pytest.mark.parametrize("ondt", ["../bjorn", "a/b", "..", "", "/bjorn"])
+def test_et_ws_der_er_en_STI_afvises_af_ruten(hjem, ondt):
+    from apps.api.jarvis_api.routes.files import download_file
+    tok = wc.set_context(workspace_name="bjorn", user_id="", role="")
+    try:
+        with pytest.raises(HTTPException) as e:
+            download_file("rapport.pdf", ws=ondt)
+        assert e.value.status_code == 401
+    finally:
+        wc.reset_context(tok)
 
 
 # ── Middleware-fritagelsen ─────────────────────────────────────────────────
 
-def test_et_gyldigt_link_slipper_forbi_auth():
+def _fritaget(sti, query, metode="GET"):
     from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
         _er_signeret_filhentning,
     )
-    r = file_links.signer("rapport.pdf")
-    assert _er_signeret_filhentning(_foresp(
-        "/files/rapport.pdf", query=f"udloeb={r['udloeb']}&sig={r['sig']}")) is True
+    return _er_signeret_filhentning(_foresp(sti, metode, query))
+
+
+def test_et_gyldigt_link_slipper_forbi_auth():
+    r = file_links.signer("rapport.pdf", workspace="bjorn")
+    assert _fritaget("/files/rapport.pdf",
+                     f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}") is True
+
+
+def test_signaturen_gaelder_KUN_det_signerede_workspace():
+    """Kernen i afgrænsningen: Lottes link må ikke åbne Bjørns fil."""
+    r = file_links.signer("rapport.pdf", workspace="lotte")
+    q = f"udloeb={r['udloeb']}&sig={r['sig']}"
+    assert _fritaget("/files/rapport.pdf", f"ws=lotte&{q}") is True
+    assert _fritaget("/files/rapport.pdf", f"ws=bjorn&{q}") is False
+
+
+def test_UDEN_ws_slipper_intet_forbi():
+    r = file_links.signer("rapport.pdf", workspace="bjorn")
+    assert _fritaget("/files/rapport.pdf",
+                     f"udloeb={r['udloeb']}&sig={r['sig']}") is False
 
 
 def test_UDEN_signatur_slipper_INTET_forbi():
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
-    assert _er_signeret_filhentning(_foresp("/files/rapport.pdf")) is False
+    assert _fritaget("/files/rapport.pdf", "ws=bjorn") is False
 
 
-def test_signaturen_gaelder_KUN_den_signerede_fil():
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
-    r = file_links.signer("min-egen.pdf")
-    assert _er_signeret_filhentning(_foresp(
-        "/files/en-andens.pdf",
-        query=f"udloeb={r['udloeb']}&sig={r['sig']}")) is False
+def test_signaturen_gaelder_kun_den_signerede_FIL():
+    r = file_links.signer("min-egen.pdf", workspace="bjorn")
+    assert _fritaget("/files/en-andens.pdf",
+                     f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}") is False
 
 
 def test_en_POST_slipper_ALDRIG_forbi_paa_en_signatur():
-    """En signatur er ret til at LÆSE én fil. Slap en POST igennem, var
-    linket en skrivenøgle."""
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
-    r = file_links.signer("rapport.pdf")
-    assert _er_signeret_filhentning(_foresp(
-        "/files/rapport.pdf", metode="POST",
-        query=f"udloeb={r['udloeb']}&sig={r['sig']}")) is False
+    r = file_links.signer("rapport.pdf", workspace="bjorn")
+    assert _fritaget("/files/rapport.pdf",
+                     f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}", "POST") is False
 
 
 def test_LISTNINGEN_slipper_ikke_forbi_paa_et_fil_link():
-    """`/files/` lister hele mappen — 158 filer målt 4/10. En signatur på én
-    fil må ikke åbne fortegnelsen over dem alle."""
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
-    r = file_links.signer("rapport.pdf")
-    q = f"udloeb={r['udloeb']}&sig={r['sig']}"
-    assert _er_signeret_filhentning(_foresp("/files/", query=q)) is False
-    assert _er_signeret_filhentning(_foresp("/files/a/b.pdf", query=q)) is False
+    r = file_links.signer("rapport.pdf", workspace="bjorn")
+    q = f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}"
+    assert _fritaget("/files/", q) is False
+    assert _fritaget("/files/a/b.pdf", q) is False
 
 
 def test_en_anden_rute_kan_ikke_laane_signaturen():
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
-    r = file_links.signer("rapport.pdf")
-    q = f"udloeb={r['udloeb']}&sig={r['sig']}"
+    r = file_links.signer("rapport.pdf", workspace="bjorn")
+    q = f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}"
     for sti in ("/chat/history", "/api/jobs", "/attachments/rapport.pdf"):
-        assert _er_signeret_filhentning(_foresp(sti, query=q)) is False
+        assert _fritaget(sti, q) is False
 
 
 def test_et_URL_kodet_filnavn_verificerer():
-    """Ruten `quote`r navnet, så middlewaren skal `unquote`. Gjorde den ikke,
-    ville hver fil med mellemrum eller æøå give 401 — og kun dem."""
-    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
-        _er_signeret_filhentning,
-    )
     from urllib.parse import quote
     navn = "oktober tal æøå.xlsx"
-    r = file_links.signer(navn)
-    assert _er_signeret_filhentning(_foresp(
-        f"/files/{quote(navn)}",
-        query=f"udloeb={r['udloeb']}&sig={r['sig']}")) is True
+    r = file_links.signer(navn, workspace="bjorn")
+    assert _fritaget(f"/files/{quote(navn)}",
+                     f"ws=bjorn&udloeb={r['udloeb']}&sig={r['sig']}") is True
 
 
 def test_fritagelsen_fejler_LUKKET_naar_den_ikke_kan_afgoeres(monkeypatch, caplog):
     import logging
-
-    from apps.api.jarvis_api.middleware import jarvisx_user_routing as m
     import core.services.file_links as fl
     def eksploder(*a, **k):
         raise RuntimeError("signerings-laget er nede")
     monkeypatch.setattr(fl, "verificer", eksploder)
-    r = {"udloeb": 9_999_999_999, "sig": "a" * 64}
     with caplog.at_level(logging.WARNING):
-        assert m._er_signeret_filhentning(_foresp(
-            "/files/rapport.pdf", query=f"udloeb={r['udloeb']}&sig={r['sig']}")) is False
+        assert _fritaget("/files/rapport.pdf",
+                         f"ws=bjorn&udloeb=9999999999&sig={'a'*64}") is False
     assert any("fil-signatur" in x.message for x in caplog.records), \
         "fritagelsen fejlede TAVST"

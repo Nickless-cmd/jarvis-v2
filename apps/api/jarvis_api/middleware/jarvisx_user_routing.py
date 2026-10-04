@@ -226,7 +226,12 @@ def _er_signeret_filhentning(request: Request) -> bool:
       betingelse der stopper noget. Det bliver, fordi en eksplicit afvisning
       på auth-grænsen er lettere at læse end en der følger af en anden fils
       navne-rensning — men ingen må tro at det er dét der beskytter.
-    * `file_links.verificer` på filnavn + udløb + signatur.
+    * `file_links.verificer` på **workspace** + filnavn + udløb + signatur.
+      Workspacet kom til 4/10-2026 sammen med afgrænsningen: filer bor nu i
+      `files/u/<workspace>/`, så `rapport.pdf` kan findes hos to brugere, og
+      uden workspacet i signaturen ville den enes link passe på den andens
+      fil. `ws` er derfor ikke en fri parameter — den er en del af det der
+      signeres, og ruten læser den KUN når der intet token er.
     * **Fail-closed ved enhver undtagelse.** Kan vi ikke afgøre det, er det
       ikke autentificeret.
     """
@@ -244,7 +249,8 @@ def _er_signeret_filhentning(request: Request) -> bool:
         from core.services.file_links import verificer
         return verificer(unquote(rest),
                          request.query_params.get("udloeb"),
-                         request.query_params.get("sig"))
+                         request.query_params.get("sig"),
+                         workspace=request.query_params.get("ws") or "")
     except Exception as exc:  # noqa: BLE001
         # Fail-closed, og den SKAL ses: sker det hver gang, virker ingen
         # signerede links, og uden linjen stod det ingen steder.

@@ -13,25 +13,20 @@ kan en ekstern browser ikke hente filen. Derfor et signeret link.
 
 ## Hvad signaturen dækker, og hvorfor netop det
 
-HMAC over `filnavn|udloeb`. **Begge** led er nødvendige:
+HMAC over `workspace|filnavn|udloeb`. **Alle tre** led er nødvendige:
 
-* Uden filnavnet kunne ét gyldigt link hente enhver af de 158 filer i
-  `~/.jarvis-v2/files/`.
-* Uden udløbet i signaturen kunne udløbet selv skrues op i URL'en, og
+* Uden **workspacet** ville ét links signatur passe på en ANDEN brugers fil
+  med samme navn. Det led kom til samme dag som afgrænsningen (Bjørn:
+  «filer skal være per bruger»): da alle filer lå i én mappe, kunne et
+  filnavn kun betyde én fil, og workspacet ville have været pynt. Nu kan
+  `rapport.pdf` findes hos to brugere, og så er det hele forskellen.
+* Uden **filnavnet** kunne ét gyldigt link hente enhver fil i den mappe.
+* Uden **udløbet** i signaturen kunne udløbet skrues op i URL'en, og
   «kortlivet» ville være en tekst i en querystring frem for en egenskab.
 
-## Hvad den IKKE dækker: hvem
-
-Signaturen binder ikke et bruger-id, og det er et bevidst valg frem for en
-udeladelse. `/files/{filnavn}` har ingen bruger-afgrænsning overhovedet —
-målt 4/10: 158 filer i én delt mappe, og enhver autentificeret bruger i huset
-kan hente dem alle med sit eget token. Et bruger-bundet link ville altså se ud
-som en afgrænsning der ikke findes nedenunder, og det er værre end ingen: man
-ville tro filen var privat.
-
-Det signerede link gør derfor ikke adgangen bredere end i dag — det flytter et
-60-sekunders vindue ud i en adresse. At lageret er delt er en SELVSTÆNDIG
-beslutning, og den ligger hos Bjørn.
+Workspace-NAVNET, ikke bruger-id'et: det er mappen der slås op, og navnet er
+det eneste serveren skal bruge. Et discord-id i en adresse ville lægge en
+identifikator ud i browserhistorik og logs uden at gøre opslaget sikrere.
 
 ## Nøglen
 
@@ -91,20 +86,34 @@ def _rent_navn(filnavn: str) -> str:
     sted, kunne `../../etc/passwd` signeres som sig selv og verificeres som
     `passwd`.
     """
-    navn = str(filnavn or "").strip()
-    if not navn or navn != Path(navn).name or navn in (".", ".."):
-        return ""
-    return navn
+    from core.runtime.workspace_paths import rent_mappe_eller_filnavn
+    return rent_mappe_eller_filnavn(filnavn)
 
 
-def _signatur(navn: str, udloeb: int, noegle: bytes) -> str:
-    besked = f"{navn}|{udloeb}".encode("utf-8")
+def _rent_workspace(navn: str) -> str:
+    """Workspace-navnet som det må signeres. Samme rensning som filnavnet.
+
+    Et workspace er en MAPPE, så `..` og skråstreger er lige så farlige her
+    som i filnavnet — og en separat regel ville før eller siden drive fra
+    filnavnets.
+    """
+    from core.runtime.workspace_paths import rent_mappe_eller_filnavn
+    return rent_mappe_eller_filnavn(navn)
+
+
+def _signatur(ws: str, navn: str, udloeb: int, noegle: bytes) -> str:
+    besked = f"{ws}|{navn}|{udloeb}".encode("utf-8")
     return hmac.new(noegle, besked, hashlib.sha256).hexdigest()
 
 
-def signer(filnavn: str, *, levetid_s: int = STANDARD_LEVETID_S,
+def signer(filnavn: str, *, workspace: str, levetid_s: int = STANDARD_LEVETID_S,
            nu: float | None = None) -> dict[str, object]:
     """Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl.
+
+    `workspace` er påkrævet som nøgleord — ikke valgfrit med en default. En
+    default ville betyde at en kalder der glemmer det får et link der peger
+    et sted, og det sted ville være det samme for alle. Glemmer man det nu,
+    er det en TypeError i stedet for en lækage.
 
     Typet svar frem for en undtagelse: kalderen er en rute, og et manglende
     secret skal blive en ærlig 503 frem for en stakspor.
@@ -112,17 +121,20 @@ def signer(filnavn: str, *, levetid_s: int = STANDARD_LEVETID_S,
     navn = _rent_navn(filnavn)
     if not navn:
         return {"status": "fejl", "error": "ugyldigt filnavn"}
+    ws = _rent_workspace(workspace)
+    if not ws:
+        return {"status": "fejl", "error": "ugyldigt workspace"}
     noegle = _noegle()
     if not noegle:
         return {"status": "fejl", "error": "signering er ikke konfigureret"}
     levetid = max(1, min(int(levetid_s or STANDARD_LEVETID_S), MAKS_LEVETID_S))
     udloeb = int((nu if nu is not None else time.time()) + levetid)
-    return {"status": "ok", "navn": navn, "udloeb": udloeb,
-            "sig": _signatur(navn, udloeb, noegle), "levetid_s": levetid}
+    return {"status": "ok", "navn": navn, "workspace": ws, "udloeb": udloeb,
+            "sig": _signatur(ws, navn, udloeb, noegle), "levetid_s": levetid}
 
 
 def verificer(filnavn: str, udloeb: object, sig: object,
-              *, nu: float | None = None) -> bool:
+              *, workspace: str, nu: float | None = None) -> bool:
     """Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl.
 
     Rækkefølgen er med vilje: formen først, så udløbet, så signaturen. Et
@@ -134,6 +146,9 @@ def verificer(filnavn: str, udloeb: object, sig: object,
     """
     navn = _rent_navn(filnavn)
     if not navn:
+        return False
+    ws = _rent_workspace(workspace)
+    if not ws:
         return False
     try:
         udl = int(str(udloeb or "").strip())
@@ -149,7 +164,7 @@ def verificer(filnavn: str, udloeb: object, sig: object,
     noegle = _noegle()
     if not noegle:
         return False
-    return hmac.compare_digest(_signatur(navn, udl, noegle), sig_s)
+    return hmac.compare_digest(_signatur(ws, navn, udl, noegle), sig_s)
 
 
 __all__ = ["signer", "verificer", "STANDARD_LEVETID_S", "MAKS_LEVETID_S"]

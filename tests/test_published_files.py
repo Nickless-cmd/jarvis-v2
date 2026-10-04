@@ -143,10 +143,16 @@ def test_publish_file_laeser_den_run_id_executoren_stamper():
     `note()` fik derfor ALTID tom run_id og returnerede straks — udgivne filer
     blev aldrig hæftet, selvom hele mekanismen var bygget til det. Fejlen var
     usynlig fordi begge sider af koblingen så korrekte ud hver for sig.
+
+    4/10-2026: `_exec_publish_file` blev UDSKILT til `publish_file_tool.py`
+    (Boy Scout, da filer blev per bruger). Vagten pegede på den fil
+    funktionen tilfældigvis lå i, ikke på funktionen — og en vagt der følger
+    en fil frem for sin kode bliver grøn på det forkerte sted. Nu læses
+    funktionens EGEN kilde.
     """
     import inspect
-    from core.tools import simple_tools_native as N
-    kilde = inspect.getsource(N)
+    from core.tools.publish_file_tool import _exec_publish_file
+    kilde = inspect.getsource(_exec_publish_file)
     assert 'args.get("_runtime_turn_id")' in kilde, (
         "publish_file læser ikke den nøgle executoren stammer "
         "(_runtime_turn_id) — udgivne filer bliver aldrig hæftet"

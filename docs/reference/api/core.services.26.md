@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_batch_notice.py`
+_Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist, forrige_forrige_kald=…)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L37) |
+
 ## `core/services/tool_calling_evidence.py`
 _Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
 
@@ -522,11 +529,4 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L184) |
 | function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L195) |
 | function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L223) |
-
-## `core/services/user_scope.py`
-_Per-bruger data-scope (SECURITY #154, streng GDPR)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
 

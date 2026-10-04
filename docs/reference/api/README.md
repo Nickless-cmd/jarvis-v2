@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16045 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16053 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -49,14 +49,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16045 functions/
 - [`core.services.18`](core.services.18.md) — `offline_recomposition_engine` … `precision_bias`
 - [`core.services.19`](core.services.19.md) — `prepared_request` … `prompt_support_signals`
 - [`core.services.20`](core.services.20.md) — `prompt_variant_tracker` … `relation_dynamics`
-- [`core.services.21`](core.services.21.md) — `relation_map` … `runtime_decision_engine`
-- [`core.services.22`](core.services.22.md) — `runtime_flows` … `self_narrative_continuity_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `self_narrative_self_model_review_bridge` … `shadow_scan_daemon`
-- [`core.services.24`](core.services.24.md) — `share_guard_store` … `state_flag_store`
-- [`core.services.25`](core.services.25.md) — `stream_degeneration` … `tool_batch_notice`
-- [`core.services.26`](core.services.26.md) — `tool_calling_evidence` … `user_scope`
-- [`core.services.27`](core.services.27.md) — `user_temperature_engine` … `visible_run_trace`
-- [`core.services.28`](core.services.28.md) — `visible_runs` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `relation_map` … `runtime_cognitive_conductor`
+- [`core.services.22`](core.services.22.md) — `runtime_decision_engine` … `self_mutation_lineage`
+- [`core.services.23`](core.services.23.md) — `self_narrative_continuity_signal_tracking` … `shadow_ledger_writer`
+- [`core.services.24`](core.services.24.md) — `shadow_scan_daemon` … `state_file_retention`
+- [`core.services.25`](core.services.25.md) — `state_flag_store` … `tiny_webchat_execution_pilot`
+- [`core.services.26`](core.services.26.md) — `tool_batch_notice` … `user_model_daemon`
+- [`core.services.27`](core.services.27.md) — `user_scope` … `visible_run_terminal_recovery`
+- [`core.services.28`](core.services.28.md) — `visible_run_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

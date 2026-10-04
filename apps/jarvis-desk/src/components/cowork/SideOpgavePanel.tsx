@@ -17,6 +17,7 @@ import type { ApiConfig } from '../../lib/api'
  */
 const STATUS_TEKST: Record<string, string> = {
   pending: 'Venter',
+  queued: 'I kø',
   activated: 'I gang',
   completed: 'Færdig',
   dismissed: 'Fjernet',
@@ -61,7 +62,7 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
   }
 
   if (opgaver === null && !fejl) return <p className="settings-hint">Henter…</p>
-  const aabne = (opgaver ?? []).filter((t) => t.status === 'pending' || t.status === 'activated')
+  const aabne = (opgaver ?? []).filter((t) => t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
   const lukkede = (opgaver ?? []).filter((t) => t.status === 'completed' || t.status === 'dismissed')
 
   return (
@@ -87,8 +88,9 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
               {t.resolved_at ? <span> · lukket {naar(t.resolved_at)}</span> : null}
               {t.lukket_af ? <span> · af {t.lukket_af}</span> : null}
               {t.arbejds_session ? <span> · arbejde i {t.arbejds_session.slice(0, 16)}…</span> : null}
+              {t.arbejds_run_id ? <span> · run {t.arbejds_run_id.slice(0, 16)}…</span> : null}
             </p>
-            {t.status === 'pending' || t.status === 'activated' ? (
+            {t.status === 'pending' || t.status === 'queued' || t.status === 'activated' ? (
               <div className="sop-knapper">
                 <button type="button" disabled={travl === t.side_task_id}
                         onClick={() => void luk(t, 'completed')}>Markér færdig</button>

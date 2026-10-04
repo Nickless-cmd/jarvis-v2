@@ -46,7 +46,7 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     expect(await screen.findByRole('button', { name: 'Start i worktree' })).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Flere valg'))
     const punkter = screen.getAllByRole('menuitem').map((b) => b.textContent)
-    expect(punkter).toEqual(['Start i worktreeStandard', 'Start i ny samtale', 'Send til baggrunden', 'Løs i denne samtale', 'Markér som færdig'])
+    expect(punkter).toEqual(['Start i worktreeStandard', 'Start i ny samtale', 'Send til baggrunden', 'Løs i denne samtale', 'Sæt i kø', 'Markér som færdig'])
   })
 
   it('uden worktree (chat) er «Start i ny samtale» standard', async () => {
@@ -93,6 +93,21 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Markér som færdig' }))
     await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'b', 'completed'))
+  })
+
+  it('sæt i kø ændrer status uden at starte en samtale', async () => {
+    const server = [opg('a', 'Første')]
+    getSideTasks.mockImplementation(async () => server.map((x) => ({ ...x })))
+    setSideTaskStatus.mockImplementation(async (_c, id, st) => { const x = server.find((y) => y.side_task_id === id); if (x) x.status = st })
+    const hh = h()
+    render(<SideOpgaveKort config={cfg} handlinger={hh} />)
+    await screen.findByText('Første')
+    fireEvent.click(screen.getByLabelText('Flere valg'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sæt i kø' }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'queued'))
+    expect(hh.startLokalt).not.toHaveBeenCalled()
+    expect(hh.baggrund).not.toHaveBeenCalled()
+    expect(await screen.findByText('i kø')).toBeInTheDocument()
   })
 
   it('en start der fejler viser fejlen og saetter IKKE opgaven i gang', async () => {

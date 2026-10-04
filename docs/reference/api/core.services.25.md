@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/state_flag_store.py`
+_State-flag store (leak-kandidat #1, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
+| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
+| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
+| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
+| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
+| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
+| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
+| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
+| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
+
 ## `core/services/stream_degeneration.py`
 _Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
 
@@ -608,11 +623,4 @@ _Tick-scoped in-memory cache — lives exactly one heartbeat tick._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L462) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L471) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L478) |
-
-## `core/services/tool_batch_notice.py`
-_Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist, forrige_forrige_kald=…)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L37) |
 

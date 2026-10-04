@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shadow_scan_daemon.py`
+_Shadow Scan — my blindspots as visible signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L34) |
+| function | `_shadow_log_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L38) |
+| function | `_load` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L42) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/shadow_scan_daemon.py#L58) |
+| function | `_detect_apologize_then_repeat` | `()` | If conflict_memory has multiple similar pushback patterns. | [src](../../../core/services/shadow_scan_daemon.py#L72) |
+| function | `_detect_avoid_topic` | `()` | Pull from existing avoidance_detector. | [src](../../../core/services/shadow_scan_daemon.py#L101) |
+| function | `_detect_overclaim_then_retract` | `()` | Self-mutation followed by rollback within a short window. | [src](../../../core/services/shadow_scan_daemon.py#L122) |
+| function | `_detect_intent_behavior_gap` | `()` | Stale goals while related tools keep running. | [src](../../../core/services/shadow_scan_daemon.py#L146) |
+| function | `_run_all_detectors` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L175) |
+| function | `_append_shadow_log` | `(scan)` | — | [src](../../../core/services/shadow_scan_daemon.py#L195) |
+| function | `run_scan` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L230) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/shadow_scan_daemon.py#L260) |
+| function | `build_shadow_scan_surface` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L273) |
+| function | `_surface_summary` | `(last)` | — | [src](../../../core/services/shadow_scan_daemon.py#L287) |
+| function | `build_shadow_scan_prompt_section` | `()` | Surface strongest pattern if the last scan was within 48h. | [src](../../../core/services/shadow_scan_daemon.py#L297) |
+| function | `build_shadow_feedback_section` | `()` | Generate behavioral correction if shadow scan shows elevated avoidance. | [src](../../../core/services/shadow_scan_daemon.py#L321) |
+
 ## `core/services/share_guard_store.py`
 _Pending cross-user share-beslutninger — DB-backed kø (spec §4.4, Fase 6 #1)._
 
@@ -83,21 +105,23 @@ _Side-task flag — keep the main thread focused._
 | function | `_kort` | `(tekst, maks)` | Afkort ved en ORD-grænse, så en halv sætning ikke læses som en hel. | [src](../../../core/services/side_tasks.py#L42) |
 | function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L55) |
 | function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L62) |
-| function | `_age_label` | `(created_at)` | Kort alders-tag, fx ``3 dage`` eller ``5t`` — eller None hvis ukendt. | [src](../../../core/services/side_tasks.py#L66) |
-| function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L93) |
-| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L113) |
-| function | `list_open` | `()` | Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser. | [src](../../../core/services/side_tasks.py#L117) |
-| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L122) |
-| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, lukket_af=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L140) |
-| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L169) |
-| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L195) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L258) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L267) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L272) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L282) |
-| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L364) |
-| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L386) |
-| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Luk `activated` opgaver hvis arbejds-samtale har ligget stille. | [src](../../../core/services/side_tasks.py#L410) |
+| function | `_age_label` | `(created_at)` | Kort alders-tag, fx ``3 dage`` eller ``5t`` — eller None hvis ukendt. | [src](../../../core/services/side_tasks.py#L71) |
+| function | `flag` | `(*, title, prompt, tldr=…, session_id=…, finding_key=…, source_run_id=…, evidence=…)` | — | [src](../../../core/services/side_tasks.py#L98) |
+| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L132) |
+| function | `list_open` | `()` | Alle åbne — ventende, køede og igangværende. | [src](../../../core/services/side_tasks.py#L136) |
+| function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L141) |
+| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L145) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L163) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L204) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L230) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L293) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L322) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L327) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L337) |
+| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L437) |
+| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L459) |
+| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L483) |
+| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L494) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._
@@ -572,19 +596,4 @@ _Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
 | function | `_log_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L238) |
 | function | `er_roteret` | `(navn)` | Sandt for en logfil der er rullet fra, falsk for den der skrives til. | [src](../../../core/services/state_file_retention.py#L242) |
 | function | `prune_rotated_logs` | `(*, max_age_days=…, now=…)` | Slet roterede logfiler ældre end ``max_age_days``. Self-safe. | [src](../../../core/services/state_file_retention.py#L254) |
-
-## `core/services/state_flag_store.py`
-_State-flag store (leak-kandidat #1, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
-| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
-| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
-| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
-| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
-| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
-| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
-| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
-| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
 

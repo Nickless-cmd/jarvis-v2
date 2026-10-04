@@ -58,9 +58,28 @@
 .rullende .hjul {
   position: relative; display: inline-block;
   width: .62em; height: 1em; overflow: hidden;
-  vertical-align: -0.11em;
-  line-height: 1;
+  line-height: 1; white-space: nowrap;
 }
+/* ── Den usynlige STIV — den bærer hjulets baseline (4/10-2026) ─────────
+   Bjørn: «tallende sidder højere oppe end bogstaverne».
+
+   Årsagen er ikke en gættet forskydning: `.rullende` er `inline-flex`, og et
+   flex-item med `overflow: hidden` har INGEN baseline — browseren
+   syntetiserer en fra BUNDKANTEN. Hjulet landede derfor med sin bund på
+   tekstens baseline, og cifferet løftedes med fontens underlængde (~0,2em).
+
+   `vertical-align` kunne ikke rette det: det gælder kun for inline-bokse, og
+   et flex-item er ikke en. Derfor står den ikke her længere.
+
+   Denne `::before` er et almindeligt in-flow tegn (usynligt, men med i
+   layoutet), så hjulet får en ÆGTE baseline fra fontens egne mål — uden et
+   magisk tal der skal rammes pr. font.
+
+   MÅLT 4/10-2026 med headless chromium (blækkets nederste række, ciffer mod
+   bogstaverne i «tokens»):
+     uden stiven  → cifferet 3,0 px for højt
+     med stiven   → 0,0 px (identisk) */
+.rullende .hjul::before { content: "0"; visibility: hidden; }
 .rullende .hjul-spor {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;

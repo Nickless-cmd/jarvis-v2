@@ -11,7 +11,7 @@ export interface SideTask {
   prompt: string
   tldr: string
   /** `completed`/`dismissed` optræder kun i `scope=all` — kortet viser de åbne. */
-  status: 'pending' | 'activated' | 'completed' | 'dismissed'
+  status: 'pending' | 'queued' | 'activated' | 'completed' | 'dismissed'
   session_id: string
   created_at: string
   /** Sat når opgaven er lukket. */
@@ -20,9 +20,12 @@ export interface SideTask {
   lukket_af?: string
   /** Samtalen der løser/løste opgaven. */
   arbejds_session?: string
+  arbejds_run_id?: string
+  finding_key?: string
+  evidence?: string
 }
 
-export type SideTaskAfslutning = 'activated' | 'completed' | 'dismissed'
+export type SideTaskAfslutning = 'queued' | 'activated' | 'completed' | 'dismissed'
 
 export async function getSideTasks(config: ApiConfig): Promise<SideTask[]> {
   const d = await apiFetch<{ side_tasks?: SideTask[] }>(config, '/cowork/side-tasks', { retries: 0 })

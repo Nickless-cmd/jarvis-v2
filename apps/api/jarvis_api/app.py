@@ -506,13 +506,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("intentions-fejning fejlede: %s", _exc)
             try:
-                # Side-opgaver (3/10-2026): en `activated` opgave hvis
-                # arbejds-samtale er gaaet i staa lukkes ikke af sig selv.
-                # Samme doven-tilstand som intentionerne ovenfor.
+                # Et stille arbejdsforløb flyttes tilbage til ventende. Kun
+                # eksplicit verificering må markere sideopgaven færdig.
                 from core.services.side_tasks import fej_faerdige as _fej_side
                 _side = _fej_side()
-                if _side.get("lukket"):
-                    logger.info("side-opgaver lukket ved opstart: %s", _side)
+                if _side.get("tilbage_til_venter"):
+                    logger.info("side-opgaver tilbage til ventende ved opstart: %s", _side)
             except Exception as _exc:
                 logger.warning("side-opgave-fejning fejlede: %s", _exc)
             try:

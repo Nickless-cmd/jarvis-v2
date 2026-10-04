@@ -45,7 +45,7 @@ describe('LivenessIndicator · job-linjen i hvile', () => {
     vis({ status: 'working', runningJobs: 2, elapsedMs: 3000, onOpenJobs: aabn })
     fireEvent.click(screen.getByRole('button', { name: '2 jobs kører' }))
     expect(aabn).toHaveBeenCalledOnce()
-    expect(screen.getByRole('timer', { name: '00:03' }).closest('button')).toBeNull()
+    expect(screen.getByRole('timer', { name: '3s' }).closest('button')).toBeNull()
   })
 
   it('viser ikke rundetal fra serverens interne tænke-livstegn', () => {

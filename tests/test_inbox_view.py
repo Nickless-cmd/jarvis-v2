@@ -46,11 +46,11 @@ def _kilder(**kw) -> Kilder:
         "jobs": lambda _b: [], "godkendelser": lambda _b: [],
         "planlagte": lambda _b: [], "gentagende": lambda _b: [],
         "proces_lever": lambda _p: True, "turens_wakeup_id": lambda: "",
-        "backlog_tal": lambda: 0,
+        "backlog_tal": lambda: 0, "side_opgaver": lambda _b: [],
     }
     for n, v in kw.items():
         if n in ("poster", "vaekninger", "jobs", "godkendelser",
-                 "planlagte", "gentagende"):
+                 "planlagte", "gentagende", "side_opgaver"):
             tom[n] = (lambda vv: (lambda _b: vv))(v)
         elif n == "proces_lever":
             tom[n] = (lambda vv: (lambda _p: vv))(v)

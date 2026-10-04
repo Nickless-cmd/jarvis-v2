@@ -256,6 +256,11 @@
       "beskrivelse": "Predictive self-model — frequencies, not aspirations.",
       "registreret": "2026-09-20"
     },
+    "run_finding_decisions": {
+      "ejer": "core/services/run_finding_accounting.py",
+      "beskrivelse": "Revisionsspor over konkrete fund og deres beslutning ved afslutning af et run; side_tasks ejer opgavestatus.",
+      "registreret": "2026-10-04"
+    },
     "runtime_curiosity_budget": {
       "ejer": "core/services/curiosity_budget.py",
       "beskrivelse": "Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning).",

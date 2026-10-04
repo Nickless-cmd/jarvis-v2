@@ -216,14 +216,14 @@ def _aktiveret(lager, session="chat-arbejde"):
     return tid
 
 
-def test_en_opgave_lukkes_naar_samtalen_har_ligget_stille(lager, stilstand):
+def test_en_opgave_bliver_ventende_naar_samtalen_har_ligget_stille(lager, stilstand):
     tid = _aktiveret(lager)
     stilstand["min"] = 45.0
     ud = side_tasks.fej_faerdige()
-    assert ud["lukket"] == 1 and ud["ids"] == [tid]
-    assert side_tasks.list_open() == []
-    assert lager[0]["status"] == "completed"
-    assert lager[0]["lukket_af"].startswith("auto:stilstand")
+    assert ud["lukket"] == 0 and ud["tilbage_til_venter"] == 1 and ud["ids"] == [tid]
+    assert [t["side_task_id"] for t in side_tasks.list_open()] == [tid]
+    assert lager[0]["status"] == "pending"
+    assert "resolved_at" not in lager[0]
 
 
 def test_en_opgave_lukkes_IKKE_mens_samtalen_er_i_gang(lager, stilstand):
@@ -242,7 +242,7 @@ def test_graensen_er_praecis(lager, stilstand):
     stilstand["min"] = side_tasks.STILSTAND_MINUTTER - 0.1
     assert side_tasks.fej_faerdige()["lukket"] == 0
     stilstand["min"] = side_tasks.STILSTAND_MINUTTER + 0.1
-    assert side_tasks.fej_faerdige()["lukket"] == 1
+    assert side_tasks.fej_faerdige()["tilbage_til_venter"] == 1
 
 
 def test_en_PENDING_opgave_lukkes_aldrig_automatisk(lager, stilstand):
@@ -319,7 +319,7 @@ def test_taersklen_kan_overstyres_saa_den_kan_MAALES(lager, stilstand):
     _aktiveret(lager)
     stilstand["min"] = 10.0
     assert side_tasks.fej_faerdige()["lukket"] == 0
-    assert side_tasks.fej_faerdige(stilstand_minutter=5.0)["lukket"] == 1
+    assert side_tasks.fej_faerdige(stilstand_minutter=5.0)["tilbage_til_venter"] == 1
 
 
 # ── Visningen af ALLE opgaver, ogsaa de lukkede ──────────────────────────

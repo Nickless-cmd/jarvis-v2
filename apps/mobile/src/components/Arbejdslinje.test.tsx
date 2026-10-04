@@ -69,19 +69,24 @@ describe('Arbejdslinje', () => {
   })
 
   /**
-   * Rækkefølgen er Bjørns (30/9-2026): animation → tokens → min/sec → det
-   * linjen ellers viser. Tallene står FØR sætningen: de er det linjen melder
+   * Rækkefølgen er desks (Bjørn 4/10-2026): animation → min/sec → tokens →
+   * det linjen ellers viser. Samme orden som liveness-linjen over composeren
+   * (`LivenessIndicator.tsx`: ring → varighed → tokens → teksten), så de to
+   * klienter læser ens. Tallene står FØR sætningen: de er det linjen melder
    * om arbejdet, sætningen er hvad den laver.
+   *
+   * 4/10-2026: token-tallet stod FØRST indtil da. Bjørn: «min/sek først og så
+   * token count». MUT: byt de to blokke tilbage → fanger.
    */
-  it('stiller tallene i Bjørns rækkefølge: puls, tokens, tid, sætning', async () => {
+  it('stiller tallene som desk: puls, tid, tokens, sætning', async () => {
     jest.useFakeTimers()
     try {
       const s = await render(<Arbejdslinje tekst="Kører npm test" tokens={45200} />)
       await act(async () => { jest.advanceTimersByTime(3000) })
       const r = orden(s.toJSON())
-      expect(r.indexOf('puls-ikon')).toBeLessThan(r.indexOf('arbejdslinje-tokens'))
-      expect(r.indexOf('arbejdslinje-tokens')).toBeLessThan(r.indexOf('arbejdslinje-tid'))
-      expect(r.indexOf('arbejdslinje-tid')).toBeLessThan(r.indexOf('Kører npm test'))
+      expect(r.indexOf('puls-ikon')).toBeLessThan(r.indexOf('arbejdslinje-tid'))
+      expect(r.indexOf('arbejdslinje-tid')).toBeLessThan(r.indexOf('arbejdslinje-tokens'))
+      expect(r.indexOf('arbejdslinje-tokens')).toBeLessThan(r.indexOf('Kører npm test'))
     } finally {
       jest.useRealTimers()
     }
@@ -116,9 +121,10 @@ describe('Arbejdslinje', () => {
       expect(s.queryByTestId('arbejdslinje-tid')).toBeNull()
       await act(async () => { jest.advanceTimersByTime(3000) })
       expect(s.getByTestId('arbejdslinje-tid')).toBeTruthy()
-      // 4/10-2026: uret ruller nu min:sek (desk's form), og tallet bæres af
-      // hjulenes accessibilityLabel i stedet for én tekststreng.
-      expect(s.getByLabelText('00:03')).toBeTruthy()
+      // 4/10-2026: uret ruller, og tallet bæres af hjulenes
+      // accessibilityLabel i stedet for én tekststreng. Formatet er
+      // «Xs»/«XXs»/«Xm Xs» — derfor «3s» og ikke «00:03».
+      expect(s.getByLabelText('3s')).toBeTruthy()
     } finally {
       jest.useRealTimers()
     }

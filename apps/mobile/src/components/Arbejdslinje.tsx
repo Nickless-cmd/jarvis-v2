@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { AnimeretPuls } from './AnimeretPuls'
 import { Prikker } from './Prikker'
-import { RullendeTokens, RullendeUr } from './RullendeTal'
+import { CIF_HOEJDE, RullendeTokens, RullendeUr } from './RullendeTal'
 
 /**
  * Arbejdslinjen — nederst i beskeden, kun mens der streames.
@@ -27,8 +27,9 @@ import { RullendeTokens, RullendeUr } from './RullendeTal'
  * Runde-linjen bar sin egen klokke og sine egne tre prikker. Men runden er
  * kort og forsvinder, mens arbejdet fortsætter — så tallene hørte til den
  * linje der LEVER hele streamen, ikke til den der slukkes undervejs. Række-
- * følgen er Bjørns: **animation → tokens → min/sec → det linjen ellers
- * viser** (sætningen), med prikkerne til sidst.
+ * følgen er desks (Bjørn 4/10-2026): **animation → min/sec → tokens → det
+ * linjen ellers viser** (sætningen), med prikkerne til sidst. Token-tallet
+ * stod FØRST indtil da — nu matcher rækkefølgen liveness-linjen i desk.
  *
  * Desk har præcis samme indhold i sin liveness-linje over composeren
  * (`LivenessIndicator.tsx`: ring → varighed → tokens → arbejdsteksten). De to
@@ -76,15 +77,18 @@ export function Arbejdslinje({ tekst, tokens = 0 }: { tekst: string | null; toke
           9,15 dp — præcis de tal det statiske `PulsIkon` tegnede ved 15. Kun
           bevægelsen er ny. `testID` bevares, så tegnet kan findes som før. */}
       <AnimeretPuls size={15} farve={farver.color.accent} testID="puls-ikon" />
+      {/* Rækkefølgen er desks (Bjørn 4/10-2026): min:sek FØR token-tallet —
+          «min/sek først og så token count». Det er samme orden som
+          liveness-linjen over composeren, så de to klienter læser ens. */}
+      {sek >= 1 ? (
+        <View style={styles.talRaekke} testID="arbejdslinje-tid">
+          <RullendeUr sek={sek} farve={farver.color.fg2} tegnFarve={farver.color.fg3} />
+        </View>
+      ) : null}
       {tokens > 0 ? (
         <View style={styles.talRaekke} testID="arbejdslinje-tokens">
           <RullendeTokens tokens={tokens} farve={farver.color.fg2} tegnFarve={farver.color.fg3} />
           <Text style={styles.talTekst}> tokens</Text>
-        </View>
-      ) : null}
-      {sek >= 1 ? (
-        <View style={styles.talRaekke} testID="arbejdslinje-tid">
-          <RullendeUr sek={sek} farve={farver.color.fg2} tegnFarve={farver.color.fg3} />
         </View>
       ) : null}
       <Text style={styles.tekst} numberOfLines={2}>{tekst}</Text>
@@ -107,6 +111,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // Tallene står FAST: de er det linjen melder om arbejdet, og en lang sti må
   // ikke skubbe dem ud af skærmen. Det er teksten der viger.
   talRaekke: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, opacity: 0.65 },
-  talTekst: { color: tokens.color.fg2, fontSize: 12, fontVariant: ['tabular-nums'] },
+  // 4/10-2026: SAMME kasse som hjulene (`CIF_HOEJDE`). Uden den centrerer
+  // rækken en lavere tekstkasse (fontens egen line-height) mod hjulets 16 px,
+  // og cifferet løftes. Desk havde samme fejl i en anden form — der var det
+  // flex-baseline, her er det to kasser i forskellig højde. Med identiske
+  // kasser lander begge glyffer ens, uanset hvordan platformen placerer
+  // teksten i sin line-height.
+  talTekst: {
+    color: tokens.color.fg2, fontSize: 12, lineHeight: CIF_HOEJDE,
+    height: CIF_HOEJDE, fontVariant: ['tabular-nums'],
+  },
   tekst: { color: tokens.color.fg2, fontSize: 13.5, flexShrink: 1, minWidth: 0 },
 })

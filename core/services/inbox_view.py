@@ -137,6 +137,14 @@ def _aegte_poster(bruger_id: str) -> list[dict[str, Any]]:
     return db_inbox.liste_aktiv(bruger_id=bruger_id)
 
 
+def _aegte_side_opgaver(bruger_id: str) -> list[dict[str, Any]]:
+    """Kun ejerens åbne sideopgaver; status bliver i side_tasks-lageret."""
+    if bruger_id != _ejer_id():
+        return []
+    from core.services.side_tasks import list_open
+    return list_open()
+
+
 def _aegte_vaekninger(bruger_id: str) -> list[dict[str, Any]]:
     """`list_wakeups()` er GLOBAL — den har intet brugerfilter.
 
@@ -350,6 +358,8 @@ class Kilder:
     """
     poster: Callable[[str], list[dict[str, Any]]] = field(
         default=lambda b: _aegte_poster(b))
+    side_opgaver: Callable[[str], list[dict[str, Any]]] = field(
+        default=lambda b: _aegte_side_opgaver(b))
     vaekninger: Callable[[str], list[dict[str, Any]]] = field(
         default=lambda b: _aegte_vaekninger(b))
     jobs: Callable[[str], list[dict[str, Any]]] = field(
@@ -624,6 +634,7 @@ def byg_indbakke(
     paa_vej: list[dict[str, Any]] = []
     planlagte: list[dict[str, Any]] = []
     venter_paa_bjorn: list[dict[str, Any]] = []
+    sideopgaver: list[dict[str, Any]] = []
 
     turens_wake = str(k.turens_wakeup_id() or "").strip()
 
@@ -655,6 +666,26 @@ def byg_indbakke(
         post stå for evigt, og Opgave 8's hele formål var at den ikke skulle.
         """
         return kilde_id in afgjorte
+
+    # Sideopgaver er en projektion af deres eget lager. Der skrives ingen
+    # inbox_items-række, og hverken læsning eller statusmapping muterer kilden.
+    if bruger_id == _ejer_id():
+        navne = {"pending": "venter", "queued": "kø", "activated": "i gang"}
+        for t in k.side_opgaver(bruger_id):
+            status = navne.get(str(t.get("status") or ""))
+            sid = str(t.get("side_task_id") or "")
+            if not status or not sid:
+                continue
+            p = _post(
+                post_id=sid, status=status, kildetype="side_task",
+                beskrivelse=str(t.get("title") or ""),
+                ejer=db_inbox.EJER_JARVIS, nu_ts=nu,
+                alder_dage=_alder_dage(str(t.get("created_at") or ""), nu),
+            )
+            p["kraever_handling"] = False  # udsat arbejde må ikke gate aktuelle tools
+            p["session_id"] = str(t.get("arbejds_session") or "")
+            p["run_id"] = str(t.get("arbejds_run_id") or "")
+            sideopgaver.append(p)
 
     # 1. De durable poster. DE er sandheden om hvad der kræver handling —
     #    kilderne nedenfor bidrager med tilstand, ikke med gating.
@@ -821,6 +852,11 @@ def byg_indbakke(
         "vakte": vakte,
         "backlog_tal": int(k.backlog_tal() or 0),
     }
+    # Faktiske opgaver grupperes ikke på titel: to ens titler kan have hver
+    # sin kilde og afgørelse. Dedupe sker ved finding_key ved oprettelsen.
+    ud["sideopgaver"], skjulte_sideopgaver = _med_loft("sideopgaver", sideopgaver)
+    if skjulte_sideopgaver:
+        ud["sideopgaver_skjult"] = skjulte_sideopgaver
     for navn, poster in (("venter_paa_dig", venter_paa_dig), ("i_gang", i_gang),
                          ("paa_vej", paa_vej), ("planlagte", planlagte),
                          ("venter_paa_bjorn", venter_paa_bjorn)):

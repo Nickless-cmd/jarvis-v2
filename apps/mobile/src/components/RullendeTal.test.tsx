@@ -9,27 +9,26 @@ import { RullendeTokens, RullendeUr } from './RullendeTal'
  * forskel der gør rullingen mulig, og den er målbar i træet.
  */
 describe('RullendeTal', () => {
-  it('uret skriver min:sek — «00:03», ikke «3s»', async () => {
-    const s = await render(<RullendeUr sek={3} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByLabelText('00:03')).toBeTruthy()
-  })
-
-  it('uret tæller minutter med — «01:12»', async () => {
-    const s = await render(<RullendeUr sek={72} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByLabelText('01:12')).toBeTruthy()
-  })
-
   /**
-   * Sek-tiere har cyklus 6 (0-5), så 59 → 00 ruller rigtigt i stedet for at
-   * vise et 6-tal undervejs. Det kan ses på hjulenes indhold: de tre
-   * 10-cyklusser (min-tiere, min-enere, sek-enere) bærer hver en '9', mens
-   * sek-tiere-hjulet ikke gør.
+   * Bjørn 4/10-2026: «Den skal tælle Xs så XXs og så Xm og Xs». Under ét
+   * minut vises kun sekunderne («3s») — ikke et foranstillet «00:» der står
+   * og fylder uden at tælle.
    *
-   * MUT: giv alle hjul cyklus 10 → '9' findes fire gange i stedet for tre.
+   * MUT: brug `MM:SS`-formatet → «00:03» → fanger.
    */
-  it('sek-tiere har cyklus 6 — der findes ingen 9 på det hjul', async () => {
+  it('under ét minut viser uret «3s» — ikke «00:03»', async () => {
+    const s = await render(<RullendeUr sek={3} farve="#fff" tegnFarve="#888" />)
+    expect(s.getByLabelText('3s')).toBeTruthy()
+  })
+
+  it('to cifre sekunder — «45s»', async () => {
+    const s = await render(<RullendeUr sek={45} farve="#fff" tegnFarve="#888" />)
+    expect(s.getByLabelText('45s')).toBeTruthy()
+  })
+
+  it('minuttet skrives «1m 12s» — ikke «01:12»', async () => {
     const s = await render(<RullendeUr sek={72} farve="#fff" tegnFarve="#888" />)
-    expect(s.getAllByText('9')).toHaveLength(3)
+    expect(s.getByLabelText('1m 12s')).toBeTruthy()
   })
 
   /**
@@ -37,15 +36,15 @@ describe('RullendeTal', () => {
    * dubletten der gør at 9 → 0 kan rulle FORLÆNS i stedet for at springe
    * baglæns gennem 8-7-6.
    *
-   * «01:12» = fire hjul med cyklus 10, 10, 6, 10. Hvert 10-hjul bærer '0'
-   * to gange (0 og dubletten), det 6-cyklus hjul ligeså.
+   * «1m 12s» = tre ciffer-hjul (1, 1, 2). Hvert bærer '0' to gange: den
+   * ægte 0 og dubletten.
    *
    * MUT: fjern dubletten (`i < cyklus` i stedet for `i <= cyklus`) → '0'
-   * findes fire gange i stedet for otte → fanger.
+   * findes tre gange i stedet for seks → fanger.
    */
   it('hvert hjul bærer hele striben PLUS en dublet-0', async () => {
     const s = await render(<RullendeUr sek={72} farve="#fff" tegnFarve="#888" />)
-    expect(s.getAllByText('0')).toHaveLength(8)
+    expect(s.getAllByText('0')).toHaveLength(6)
   })
 
   it('token-tallet er kort — «45.2k»', async () => {

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
-import { useStream } from '../../hooks/useStream'
+import { useStreamUdsnit } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { maaPolle } from '../../lib/ro'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
@@ -69,7 +69,10 @@ export function Sidebar({
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
-  const { workingSessionId } = useStream()
+  // Udsnit, ikke hele vaerdien: ellers rendrer hele sessionslisten (566 hos
+  // Bjoern) om ved HVER stream-chunk. Maalt 30,2 ms per chunk mod et
+  // frame-budget paa 16,7 ms — se `useStreamUdsnit`.
+  const workingSessionId = useStreamUdsnit((s) => s.workingSessionId)
 
   // Inddeling af sessions-listen (8/9-2026). Bjørn: «sessioner i side panelet
   // er rodet». 278 chat + 181 autonome + 1 proaktiv i én flad liste.

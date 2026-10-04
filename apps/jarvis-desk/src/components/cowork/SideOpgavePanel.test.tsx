@@ -74,13 +74,15 @@ describe('SideOpgavePanel', () => {
   it('status-ordene er paa dansk og ikke rå felter', async () => {
     vi.mocked(getAlleSideTasks).mockResolvedValue([
       post({ side_task_id: 'a', status: 'pending' }),
+      post({ side_task_id: 'q', status: 'queued' }),
       post({ side_task_id: 'b', status: 'activated' }),
       post({ side_task_id: 'c', status: 'completed', resolved_at: '2026-10-03T13:37:13+00:00' }),
       post({ side_task_id: 'd', status: 'dismissed', resolved_at: '2026-10-03T13:37:13+00:00' }),
     ] as never)
     render(<SideOpgavePanel config={cfg} />)
-    for (const ord of ['Venter', 'I gang', 'Færdig', 'Fjernet']) {
+    for (const ord of ['Venter', 'I kø', 'I gang', 'Færdig', 'Fjernet']) {
       expect(await screen.findByText(ord)).toBeInTheDocument()
     }
+    expect(screen.getByText('3 åbne · 2 lukkede', { exact: false })).toBeInTheDocument()
   })
 })

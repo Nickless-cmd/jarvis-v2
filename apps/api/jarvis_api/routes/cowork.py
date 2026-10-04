@@ -127,16 +127,18 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
     status = str((payload or {}).get("status") or "").strip().lower()
-    if status not in ("activated", "completed", "dismissed"):
-        raise HTTPException(status_code=400, detail="status skal være 'activated', 'completed' eller 'dismissed'")
+    if status not in ("queued", "activated", "completed", "dismissed"):
+        raise HTTPException(status_code=400, detail="ukendt sideopgave-status")
     # `session` (3/10-2026): den samtale der LOESER opgaven. Uden den kan
     # hverken runtimen eller Jarvis selv vide at en given tur er arbejdet paa
     # opgaven — og saa stod den som «i gang» til et menneske greb ind.
     arbejds_session = str((payload or {}).get("session") or "").strip() or None
+    arbejds_run_id = str((payload or {}).get("run_id") or "").strip() or None
     from core.services.side_tasks import resolve
     return await asyncio.to_thread(
         resolve, side_task_id, decision=status,
         arbejds_session=arbejds_session,
+        arbejds_run_id=arbejds_run_id,
         lukket_af="desk" if status in ("completed", "dismissed") else "",
     )
 

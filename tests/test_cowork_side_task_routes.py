@@ -55,6 +55,17 @@ def test_start_fra_kortet_markerer_i_gang(monkeypatch, lager):
     assert [t["status"] for t in liste] == ["activated"]
 
 
+def test_koe_og_arbejds_run_bindes_gennem_samme_statusrute(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    tid = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    assert asyncio.run(cw.cowork_side_task_status(tid, {"status": "queued"}))["new_status"] == "queued"
+    assert asyncio.run(cw.cowork_side_task_status(
+        tid, {"status": "activated", "session": "chat-1", "run_id": "run-1"},
+    ))["new_status"] == "activated"
+    item = asyncio.run(cw.cowork_side_tasks())["side_tasks"][0]
+    assert item["arbejds_session"] == "chat-1" and item["arbejds_run_id"] == "run-1"
+
+
 @pytest.mark.parametrize("status", ["pending", "bogus", ""])
 def test_ugyldig_status_er_400(monkeypatch, lager, status):
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))

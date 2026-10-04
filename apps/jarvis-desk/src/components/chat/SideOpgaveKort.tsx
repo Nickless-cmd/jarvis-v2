@@ -22,13 +22,14 @@ export interface SideOpgaveHandlinger {
   worktree?: (t: SideTask) => Promise<ArbejdsSession>
 }
 
-type Valg = 'worktree' | 'lokalt' | 'baggrund' | 'her' | 'faerdig'
+type Valg = 'worktree' | 'lokalt' | 'baggrund' | 'her' | 'koe' | 'faerdig'
 
 const NAVN: Record<Valg, string> = {
   worktree: 'Start i worktree',
   lokalt: 'Start i ny samtale',
   baggrund: 'Send til baggrunden',
   her: 'Løs i denne samtale',
+  koe: 'Sæt i kø',
   faerdig: 'Markér som færdig',
 }
 
@@ -89,7 +90,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
   const idx = Math.min(i, n - 1)
   const t = opgaver[idx]!
   const standard: Valg = handlinger.worktree ? 'worktree' : 'lokalt'
-  const valg: Valg[] = [...(handlinger.worktree ? ['worktree' as const] : []), 'lokalt', 'baggrund', 'her']
+  const valg: Valg[] = [...(handlinger.worktree ? ['worktree' as const] : []), 'lokalt', 'baggrund', 'her', ...(t.status === 'activated' ? [] : ['koe' as const])]
 
   const udfoer = async (v: Valg) => {
     if (!config || travl) return
@@ -98,6 +99,9 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
       if (v === 'faerdig') {
         await setSideTaskStatus(config, t.side_task_id, 'completed')
         setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
+      } else if (v === 'koe') {
+        if (t.status !== 'queued') await setSideTaskStatus(config, t.side_task_id, 'queued')
+        setOpgaver((l) => l.map((x) => x.side_task_id === t.side_task_id ? { ...x, status: 'queued' } : x))
       } else {
         let arbejds: ArbejdsSession
         if (v === 'worktree') arbejds = await handlinger.worktree!(t)
@@ -138,7 +142,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
     <div className="sok-dok" ref={rod}>
       <section className={`sok${n > 1 ? ' sok-stak' : ''}`} aria-label="Sideopgave" data-testid="side-tasks" aria-busy={travl}>
         <div className="sok-top">
-          <span className="sok-overskrift">Sideopgave{t.status === 'activated' ? <span className="sok-igang">i gang</span> : null}</span>
+          <span className="sok-overskrift">Sideopgave{t.status === 'activated' ? <span className="sok-igang">i gang</span> : t.status === 'queued' ? <span className="sok-igang">i kø</span> : null}</span>
           <button type="button" className="sok-luk" aria-label="Fjern sideopgaven" title="Fjern sideopgaven" disabled={travl} onClick={() => void fjern()}>
             <X size={15} />
           </button>

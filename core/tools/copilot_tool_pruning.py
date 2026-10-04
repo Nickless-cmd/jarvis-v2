@@ -155,6 +155,35 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "mcp",
     # En fortrydelse man ikke kan naa er ingen fortrydelse.
     "checkpoint",
+    # ── Kontinuitetens to haandtag (4/10-2026, Bjoern: «de to vaerktoejer ──
+    #    hoerer til i det faste saet»)
+    #
+    # `start_session` og `write_handover` blev bygget 4/10 og laa i
+    # `_TOOL_HANDLERS`, men i INGEN af de to lister der afgoer hvad der
+    # faktisk sendes. Maalt i drift samme dag:
+    #
+    #     scope=None -> 491 defs -> 48 sendt | begge: IKKE sendt
+    #     scope=chat ->  65 defs -> 48 sendt | begge: IKKE sendt
+    #
+    # De var altsaa kaldbare og alligevel usynlige — samme moenster som
+    # `read_attachment` (6/9) og billedvaerktoejerne (13/9): bygget, korrekt,
+    # og naaet via `load_more_tools` hver eneste gang.
+    #
+    # Prisen er ikke bare en hentning. Session-laasen
+    # (`services/session_tool_pin`) fryser saettet ved sessionens FOERSTE tur,
+    # og `_med_garanterede` forener netop denne liste ind i laasen. Uden
+    # medlemskab her staar et nyt vaerktoej udenfor i HELE sessionens levetid
+    # — laasen nulstilles foerst ved compaction. Maalt 4/10: `auto-dream`
+    # (laast 03:30) og `auto-recurring` (laast 05:00) bar ingen af dem, fordi
+    # begge blev bygget senere samme dag.
+    #
+    # Begge hoerer her og ikke i `SAFETY_FLOOR`: gulvet er vaerktoejer hvis
+    # FRAVAER er en adfaerdsregression. Disse to er snarere et haandtag der
+    # skal kunne gripes i den tur hvor behovet opstaar — et run man vil saette
+    # i gang, en overdragelse man vil skrive — og et haandtag man foerst skal
+    # hente midt i turen er et haandtag man ikke griber.
+    "start_session",
+    "write_handover",
 )
 
 

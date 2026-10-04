@@ -32,6 +32,13 @@ _MAX_CAPSULE_SIZE_BYTES = 4096  # hard limit; truncate if exceeded
 # virkelig stod aabent, og til at sige hvorfor.
 _MAX_HANDOVER_CHARS = 3000
 
+# Hvor kort en tekst kan være og stadig være et fokus. Maalt 4/10-2026:
+# capsulen sagde «Focus: t» — en test-raekke fra 8. juli var det nyeste
+# goal-signal, og dens titel var eet bogstav. Et fokus-felt der baerer eet
+# bogstav er vaerre end et tomt felt: det lyver om at der ER et fokus.
+# Deles med visible_runs_memory, saa kilden og visningen er enige.
+MIN_FOCUS_CHARS = 3
+
 # ── Schema ────────────────────────────────────────────────────────────
 
 _EMPTY_CAPSULE: dict[str, Any] = {
@@ -60,6 +67,7 @@ _EMPTY_CAPSULE: dict[str, Any] = {
         "last_user_arousal": 0.5,
         "last_interaction_type": "chat",
         "session_count_today": 1,
+        "session_count_date": "",
         "total_sessions_with_user": 0,
         "relationship_phase": "co-development",
     },
@@ -177,6 +185,16 @@ def capture_state(
     # Relation
     merged_relation = dict(current.get("relation", {}))
     merged_relation.update(relation or {})
+    # session_count_today nulstilles ved dags-skift (4/10-2026).
+    #
+    # Maalt: capsulen stod paa 860. Tallet blev talt op hver gang session_id
+    # skiftede, og blev ALDRIG nulstillet — et tal der kun vokser er ikke et
+    # dagstal. Datoen gemmes sammen med tallet, saa skiftet kan ses; uden den
+    # kan hverken jeg eller den naeste mig afgoere om 860 er meget eller lidt.
+    i_dag = datetime.now(UTC).date().isoformat()
+    if str(merged_relation.get("session_count_date") or "") != i_dag:
+        merged_relation["session_count_today"] = 0
+        merged_relation["session_count_date"] = i_dag
     # Increment session count if fresh session
     if session_id and session_id != current.get("wake_provenance", {}).get("previous_session_id"):
         merged_relation["session_count_today"] = merged_relation.get("session_count_today", 0) + 1
@@ -563,8 +581,13 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     if bearing:
         lines.append(f"  Bearing: {bearing}")
 
-    focus = attention.get("current_focus") or attention.get("active_goal_title")
-    if focus:
+    focus = str(
+        attention.get("current_focus") or attention.get("active_goal_title") or ""
+    ).strip()
+    # Vagten staar ogsaa her, ikke kun ved kilden: en gammel capsule paa
+    # disken kan baere skrald fra foer fixet, og en visning der viderebringer
+    # det er lige saa forkert som kilden der skrev det.
+    if len(focus) >= MIN_FOCUS_CHARS:
         lines.append(f"  Focus: {focus}")
     open_thread = attention.get("open_thread")
     if open_thread:

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { AnimeretPuls } from './AnimeretPuls'
 import { Prikker } from './Prikker'
-import { CIF_HOEJDE, RullendeTokens, RullendeUr } from './RullendeTal'
+import { CIF_HOEJDE, RullendeTokens, RullendeUr, TAL_FONT } from './RullendeTal'
 
 /**
  * Arbejdslinjen — nederst i beskeden, kun mens der streames.
@@ -118,8 +118,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // kasser lander begge glyffer ens, uanset hvordan platformen placerer
   // teksten i sin line-height.
   talTekst: {
-    color: tokens.color.fg2, fontSize: 12, lineHeight: CIF_HOEJDE,
+    color: tokens.color.fg2, fontSize: TAL_FONT, lineHeight: CIF_HOEJDE,
     height: CIF_HOEJDE, fontVariant: ['tabular-nums'],
   },
-  tekst: { color: tokens.color.fg2, fontSize: 13.5, flexShrink: 1, minWidth: 0 },
+  tekst: { color: tokens.color.fg2, fontSize: TAL_FONT, flexShrink: 1, minWidth: 0 },
 })

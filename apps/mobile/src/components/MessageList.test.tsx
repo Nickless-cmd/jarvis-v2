@@ -74,7 +74,8 @@ it('fører token-tallet ned i arbejdslinjen', async () => {
     <MessageList messages={[]} blocks={[]} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
   )
   expect(s.getByTestId('arbejdslinje')).toBeTruthy()
-  expect(s.getByText('45.2k tokens')).toBeTruthy()
+  expect(s.getByLabelText('45.2k')).toBeTruthy()
+  expect(s.getByText(/tokens/)).toBeTruthy()
   expect(s.getByText('Kører npm test')).toBeTruthy()
 })
 

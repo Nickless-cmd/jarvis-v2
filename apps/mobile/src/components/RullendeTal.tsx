@@ -45,8 +45,21 @@ type Retning = 'op' | 'ned'
  *  cifferet løftes. Det er samme fejlklasse som desks 3 px-løft. */
 export const CIF_HOEJDE = 16
 
-/** Hjulets bredde i px — desk måler 8,05 px ved fontSize 13. */
-const CIF_BREDDE = 8
+/** Hjulets bredde i px — desk måler 8,05 px ved fontSize 13.
+ *
+ * 4/10-2026: 8 → 9 da ciffer-fonten gik fra 12 til 13,5 px. Ved 13,5 px er et
+ * tabular ciffer ~8,1 px bredt, så 8 klippede det yderste af stregen. */
+const CIF_BREDDE = 9
+
+/** Tekststørrelsen for HELE linjen (Bjørn 4/10-2026).
+ *
+ * «min/sek og token count og den sidste linje skal være samme tekststørrelse
+ * — den efter token count er den rette størrelse for hele linjen.»
+ *
+ * Sætningen i `Arbejdslinje` er 13,5, så hjulene og «tokens» er det også.
+ * Eksporteret så nabo-teksten kan bruge PRÆCIS samme tal: to steder der kan
+ * drive fra hinanden er den fejlklasse hele denne fil kæmper imod. */
+export const TAL_FONT = 13.5
 
 /** Rulningens varighed: desk's `.45s`. */
 const RUL_MS = 450
@@ -242,14 +255,14 @@ const stil = StyleSheet.create({
   ciffer: {
     height: CIF_HOEJDE,
     lineHeight: CIF_HOEJDE,
-    fontSize: 12,
+    fontSize: TAL_FONT,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
   tegn: {
     height: CIF_HOEJDE,
     lineHeight: CIF_HOEJDE,
-    fontSize: 12,
+    fontSize: TAL_FONT,
     fontVariant: ['tabular-nums'],
   },
 })

@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react-native'
 import { Arbejdslinje } from './Arbejdslinje'
+import { TAL_FONT } from './RullendeTal'
 
 /** Flad liste af testID'er og tekst i render-træets rækkefølge (oppefra og ned). */
 const orden = (node: unknown, ud: string[] = []): string[] => {
@@ -125,6 +126,44 @@ describe('Arbejdslinje', () => {
       // accessibilityLabel i stedet for én tekststreng. Formatet er
       // «Xs»/«XXs»/«Xm Xs» — derfor «3s» og ikke «00:03».
       expect(s.getByLabelText('3s')).toBeTruthy()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  /**
+   * Bjørn 4/10-2026: «min/sek og token count og den sidste linje skal være
+   * samme tekststørrelse — den efter token count er den rette størrelse for
+   * hele linjen.»
+   *
+   * Derfor er der ÉN skriftstørrelse i linjen, båret af `TAL_FONT`. Testen
+   * samler hver `fontSize` i træet: findes der to, er linjen skæv igen.
+   *
+   * MUT: sæt hjulenes `fontSize` tilbage til 12 → to værdier → fanger.
+   */
+  it('hele linjen har ÉN skriftstørrelse — tal, «tokens» og sætning', async () => {
+    jest.useFakeTimers()
+    try {
+      const s = await render(<Arbejdslinje tekst="Kører npm test" tokens={45200} />)
+      await act(async () => { jest.advanceTimersByTime(3000) })
+      const flad = (stil: unknown): Record<string, unknown> =>
+        Array.isArray(stil) ? Object.assign({}, ...stil.map(flad)) : ((stil ?? {}) as Record<string, unknown>)
+      const stoerrelser = new Set<number>()
+      let antal = 0
+      const gaa = (node: unknown): void => {
+        if (!node || typeof node !== 'object') return
+        if (Array.isArray(node)) { for (const n of node) gaa(n); return }
+        const n = node as { props?: { style?: unknown }; children?: unknown }
+        const fs = flad(n.props?.style).fontSize
+        if (typeof fs === 'number') { stoerrelser.add(fs); antal += 1 }
+        const boern = n.children
+        if (Array.isArray(boern)) boern.forEach(gaa)
+        else if (boern) gaa(boern)
+      }
+      gaa(s.toJSON())
+      // Både tal OG sætning skal være målt — ellers er testen tom.
+      expect(antal).toBeGreaterThan(5)
+      expect([...stoerrelser]).toEqual([TAL_FONT])
     } finally {
       jest.useRealTimers()
     }

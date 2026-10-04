@@ -947,8 +947,26 @@ app.whenReady().then(() => {
       ...(details.responseHeaders as Record<string, string[]>),
     }
 
-    // Set CSP for renderer HTML
-    if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
+    // Set CSP for VORES EGEN renderer — ikke for alt der er en mainFrame.
+    //
+    // Maalt 4/10-2026: denne hook ligger paa `session.defaultSession`, og
+    // Jarvis' browser-panel bruger SAMME session (ingen `partition`). Den
+    // ubetingede mainFrame-kontrol lagde derfor desk'ets egen CSP oven paa
+    // HVERT website Jarvis aabnede — og `script-src 'self'` (uden
+    // `'unsafe-inline'`) dræbte alt inline-script paa nettet.
+    //
+    // Beviset var et A/B i selve panelet: et INLINE script koerte ikke
+    // («INLINE: no-js»), mens et EKSTERNT script fra samme vaert koerte
+    // («EKSTERNT-SCRIPT-KOER»). Det er praecis signaturen paa `script-src
+    // 'self'` uden `'unsafe-inline'`.
+    //
+    // CSP'en skal beskytte VORES sider, ikke tredjeparters. Derfor afgraenses
+    // den til rendererens egen oprindelse: `file://` i prod, dev-serveren i
+    // dev — samme to vaerdier som `loadURL`/`loadFile` bruger ovenfor.
+    const egenSide = isDev
+      ? details.url.startsWith('http://localhost:5174')
+      : details.url.startsWith('file://')
+    if (egenSide && (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame')) {
       responseHeaders['Content-Security-Policy'] = [csp.join('; ')]
     }
 

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m/s — rullende tal</title>
+<style>
+  /* ── Tema: desk'ets egne tokens, så mockup'en matcher appen ───────── */
+  :root {
+    --bg-0: #16161a;
+    --bg-1: #1c1c21;
+    --bg-2: #232329;
+    --line: #2e2e36;
+    --fg-0: #f2f2f4;
+    --fg-1: #c8c8d0;
+    --fg-2: #8b8b98;
+    --fg-3: #5c5c68;
+    --accent: #6ee7a8;
+    --accent-dim: #2f6b4d;
+    --warn: #e8b96e;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-0);
+    color: var(--fg-0);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    gap: 32px;
+  }
+
+  .wrap { display: grid; gap: 40px; justify-items: center; }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--fg-2);
+    text-align: center;
+  }
+
+  /* ── Selve displayet ─────────────────────────────────────────────── */
+  .gauge {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 28px 40px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px -30px #000;
+  }
+
+  /* Vinduet er ÉT tal højt. Alt udenfor klippes, så rullingen sker
+     "indefra" og der ikke er nogen synlig bane. */
+  .reel {
+    position: relative;
+    height: 1.15em;
+    width: 3.6ch;
+    overflow: hidden;
+    font-size: 92px;
+    font-weight: 600;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+
+  .reel .col {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  /* Sporet der ruller IND skal ligge OVER det der ruller ud — ellers
+     glider det nye tal bag det gamle, og bevægelsen forsvinder. */
+  .reel .col.ind { z-index: 2; }
+
+  .reel .col span {
+    height: 1.15em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Retningen: op = tallet stiger, ned = tallet falder. Klassen sættes
+     af JS, og overgangen er den SAMME — det er translateY der skifter
+     fortegn, så bevægelsen følger værdien. */
+  .reel .col {
+    transition: transform .42s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .unit {
+    font-size: 22px;
+    color: var(--fg-2);
+    letter-spacing: .04em;
+  }
+
+  /* Retnings-pil: viser hvilken vej det gik, så det ikke kun er farven */
+  .dir {
+    font-size: 20px;
+    color: var(--fg-3);
+    transition: color .3s, transform .42s cubic-bezier(.22, 1, .36, 1);
+    transform: translateY(0);
+  }
+  .dir.op { color: var(--accent); transform: translateY(-6px); }
+  .dir.ned { color: var(--warn); transform: translateY(6px); }
+
+  /* ── Undertekst + kurve ──────────────────────────────────────────── */
+  .meta {
+    display: flex;
+    gap: 26px;
+    font-size: 12px;
+    color: var(--fg-2);
+    letter-spacing: .06em;
+  }
+  .meta b { color: var(--fg-0); font-weight: 600; }
+
+  canvas {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-1);
+    display: block;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-1);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  button:hover { background: var(--bg-1); color: var(--fg-0); border-color: var(--fg-3); }
+  button[aria-pressed="true"] { border-color: var(--accent-dim); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vind · m/s</h1>
+
+  <div class="gauge">
+    <!-- Rullen: to spor oven på hinanden. Det øverste viser det gamle
+         tal, det nederste det nye — og de glider i hver sin retning. -->
+    <div class="reel" id="reel" aria-live="polite" aria-atomic="true">
+      <div class="col" id="colA"></div>
+      <div class="col" id="colB"></div>
+    </div>
+    <span class="unit">m/s</span>
+    <span class="dir" id="dir">•</span>
+  </div>
+
+  <div class="meta">
+    <span>min <b id="vmin">–</b></span>
+    <span>max <b id="vmax">–</b></span>
+    <span>gns <b id="vavg">–</b></span>
+    <span>retning <b id="vtrend">–</b></span>
+  </div>
+
+  <canvas id="plot" width="520" height="120"></canvas>
+
+  <div class="controls">
+    <button id="btnAuto" aria-pressed="true">Auto</button>
+    <button id="btnOp">Tving op</button>
+    <button id="btnNed">Tving ned</button>
+    <button id="btnReset">Nulstil</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ── Tilstand ─────────────────────────────────────────────────────
+  const reel   = document.getElementById('reel');
+  const colA   = document.getElementById('colA');
+  const colB   = document.getElementById('colB');
+  const dirEl  = document.getElementById('dir');
+  const plot   = document.getElementById('plot');
+  const ctx    = plot.getContext('2d');
+
+  const vminEl = document.getElementById('vmin');
+  const vmaxEl = document.getElementById('vmax');
+  const vavgEl = document.getElementById('vavg');
+  const vtrendEl = document.getElementById('vtrend');
+
+  let vaerdi   = 0;      // den viste værdi (starter paa 0, saa foerste rul ses)
+  let maal     = 4.6;    // vaerdien vi ruller mod — realistisk vind
+  let aktiv    = colA;   // sporet der vises nu
+  let skjult   = colB;   // sporet der ruller ind
+  let historik = [];
+  let auto     = true;
+  let tving    = 0;      // -1 ned, 0 ingen, +1 op
+  let tvingTil = 0;
+
+  const MAX_PUNKTER = 120;
+
+  // ── Rullingen ────────────────────────────────────────────────────
+  // Nøglen: BEGGE spor bærer det nye tal. Det aktive starter på 0 og
+  // glider UD i den ene retning; det skjulte starter forskudt i den
+  // anden og glider IND. Retningen bestemmes af om tallet stiger
+  // eller falder — derfor skifter bevægelsen vej af sig selv.
+  function rul(ny) {
+    const gammel = vaerdi;
+    if (ny === gammel) return;
+
+    const op = ny > gammel;
+    const afstand = op ? 1 : -1;
+
+    // Begge spor får det NYE tal.
+    aktiv.innerHTML  = `<span>${gammel}</span><span>${ny}</span>`;
+    skjult.innerHTML = `<span>${ny}</span>`;
+
+    // Startpositioner: aktiv står på det gamle (0), skjult står forskudt.
+    aktiv.style.transition  = 'none';
+    skjult.style.transition = 'none';
+    aktiv.style.transform   = 'translateY(0%)';
+    // Skjult venter uden for vinduet — over hvis vi ruller op, under hvis ned.
+    skjult.style.transform  = `translateY(${op ? 100 : -100}%)`;
+
+    // Det indrullende spor skal ligge øverst, ellers glider det bag det
+    // andet og man ser kun halvdelen af bevægelsen.
+    skjult.classList.add('ind');
+    aktiv.classList.remove('ind');
+
+    // Tving en reflow, så browseren ikke slår de to sæt sammen.
+    void skjult.offsetHeight;
+
+    // Sæt overgangen og rul.
+    const ease = 'transform .42s cubic-bezier(.22, 1, .36, 1)';
+    aktiv.style.transition  = ease;
+    skjult.style.transition = ease;
+    aktiv.style.transform   = `translateY(${op ? -100 : 100}%)`;
+    skjult.style.transform  = 'translateY(0%)';
+
+    // Byt roller, så næste rul bruger det andet spor.
+    [aktiv, skjult] = [skjult, aktiv];
+
+    // Retnings-pilen
+    dirEl.className = 'dir ' + (op ? 'op' : 'ned');
+    dirEl.textContent = op ? '▲' : '▼';
+
+    vaerdi = ny;
+    vtrendEl.textContent = op ? 'stigende' : 'faldende';
+  }
+
+  // ── Data ─────────────────────────────────────────────────────────
+  function skub(v) {
+    historik.push(v);
+    if (historik.length > MAX_PUNKTER) historik.shift();
+    tegn();
+    opdaterMeta();
+  }
+
+  function opdaterMeta() {
+    if (!historik.length) return;
+    const min = Math.min(...historik);
+    const max = Math.max(...historik);
+    const avg = historik.reduce((a, b) => a + b, 0) / historik.length;
+    vminEl.textContent = min.toFixed(1);
+    vmaxEl.textContent = max.toFixed(1);
+    vavgEl.textContent = avg.toFixed(1);
+  }
+
+  function tegn() {
+    const w = plot.width, h = plot.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Gitter
+    ctx.strokeStyle = '#2e2e36';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = (h / 4) * i;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    if (historik.length < 2) return;
+
+    const maxV = Math.max(4, Math.max(...historik) * 1.15);
+    const steg = w / (MAX_PUNKTER - 1);
+
+    // Areal
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    historik.forEach((v, i) => {
+      const x = i * steg;
+      const y = h - (v / maxV) * h;
+      ctx.lineTo(x, y);
+    });
+    ctx.lineTo((historik.length - 1) * steg, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(110,231,168,.22)');
+    grad.addColorStop(1, 'rgba(110,231,168,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Linje
+    ctx.beginPath();
+    historik.forEach((v, i) => {
+      const x = i * steg;
+      const y = h - (v / maxV) * h;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.strokeStyle = '#6ee7a8';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Prik på nyeste
+    const sidsteX = (historik.length - 1) * steg;
+    const sidsteY = h - (historik[historik.length - 1] / maxV) * h;
+    ctx.beginPath();
+    ctx.arc(sidsteX, sidsteY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#6ee7a8';
+    ctx.fill();
+  }
+
+  // ── Drivkraft ────────────────────────────────────────────────────
+  function nytTal() {
+    if (tving && Date.now() < tvingTil) {
+      return Math.max(0, vaerdi + tving * (0.8 + Math.random() * 1.4));
+    }
+    tving = 0;
+    // Glidende tilfældig gang — vinden skifter ikke 8 m/s på ét sekund.
+    const d = (Math.random() - 0.48) * 2.6;
+    return Math.max(0, maal + d);
+  }
+
+  function tick() {
+    if (auto) {
+      maal = nytTal();
+      const afrundet = Math.round(maal * 10) / 10;
+      rul(afrundet);
+      skub(afrundet);
+    }
+  }
+
+  // ── Kontroller ───────────────────────────────────────────────────
+  const btnAuto = document.getElementById('btnAuto');
+  btnAuto.addEventListener('click', () => {
+    auto = !auto;
+    btnAuto.setAttribute('aria-pressed', String(auto));
+    btnAuto.textContent = auto ? 'Auto' : 'Pause';
+  });
+  document.getElementById('btnOp').addEventListener('click', () => {
+    tving = 1; tvingTil = Date.now() + 4000;
+  });
+  document.getElementById('btnNed').addEventListener('click', () => {
+    tving = -1; tvingTil = Date.now() + 4000;
+  });
+  document.getElementById('btnReset').addEventListener('click', () => {
+    historik = []; vaerdi = 0; maal = 4.6;
+    vminEl.textContent = vmaxEl.textContent = vavgEl.textContent = '–';
+    vtrendEl.textContent = '–';
+    dirEl.className = 'dir'; dirEl.textContent = '•';
+    tegn();
+  });
+
+  // ── Start ────────────────────────────────────────────────────────
+  // Første tal sættes uden rul, så vi ikke ruller fra 0 hver gang.
+  aktiv.innerHTML = '<span>0</span>';
+  // tick() ruller OG skubber til kurven — ét interval, ikke to, ellers
+  // ville hvert tal lande dobbelt i historikken.
+  setInterval(tick, 1400);
+  tick();
+})();
+</script>
+</body>
+</html>

@@ -893,16 +893,29 @@ def test_en_ANDEN_brugers_token_laeser_sin_EGEN_indbakke(inbox_db):
         wc.reset_context(tok)
 
 
-def test_de_FIRE_steder_bruger_SAMME_definition():
-    """Kilde-vagt. Tre af fire havde deres egen kopi, og kopierne drev fra
-    hinanden — tredje gang i dette spor. AST, ikke grep: docstringene nævner
-    `current_workspace_name` med vilje."""
+#: Hvert sted der skal oploese «hvilken indbakke» — LAESERE og SKRIVERE.
+#:
+#: Skriveren i `cluster_daemon_families` blev glemt da lækagen blev fundet,
+#: fordi lækagen stod i læse-retningen og vagten blev skrevet efter den. Den
+#: blev ved med at praege den anden indbakke, saa de to raekker der blev
+#: flyttet manuelt havde faaet selskab af en ny inden for timen. En vagt der
+#: kun daekker den retning fejlen blev fundet i, daekker halvdelen.
+_INDBAKKE_OPLOESERE: tuple[str, ...] = (
+    "core/services/inbox_prompt_section.py",          # laeser: prompten
+    "core/tools/inbox_tools.py",                      # laeser: vaerktoejerne
+    "apps/api/jarvis_api/routes/chat_inbox.py",       # skriver: Bjoerns rute
+    "core/services/cluster_daemon_families.py",       # skriver: beslutningerne
+)
+
+
+def test_ALLE_opløsere_bruger_SAMME_definition():
+    """Kilde-vagt over begge retninger. Fire af fem havde egen kopi, og
+    kopierne drev fra hinanden — femte gang i dette spor. AST, ikke grep:
+    docstringene nævner `current_workspace_name` med vilje."""
     import ast
     import pathlib
 
-    for sti in ("core/services/inbox_prompt_section.py",
-                "core/tools/inbox_tools.py",
-                "apps/api/jarvis_api/routes/chat_inbox.py"):
+    for sti in _INDBAKKE_OPLOESERE:
         træ = ast.parse(pathlib.Path(sti).read_text())
         navne = {n.name for x in ast.walk(træ)
                  if isinstance(x, ast.ImportFrom) for n in x.names}
@@ -912,3 +925,64 @@ def test_de_FIRE_steder_bruger_SAMME_definition():
             f"{sti} importerer workspacet selv — brug inbox_state.laese_bruger")
         assert "laese_bruger" in navne and "laese_bruger" in kaldt, (
             f"{sti} bruger ikke den faelles definition")
+
+
+# ── Oversættelsen navn → id: den femte kopi af reglen ──────────────────────
+
+def test_ejerens_workspace_oversaettes_til_hans_ID(inbox_db, monkeypatch):
+    """`self_wakeup` kendte kun navnet og skrev det råt i `bruger_id`.
+
+    Det blandede to navnerum i én kolonne, og resultatet var to indbakker
+    til samme person. Nu oversættes navnet.
+
+    Ejer-id'et sættes her til det RIGTIGE snowflake-id og ikke til fixturens
+    «bjorn». Første udgave af denne test brugte fixturen, hvor id og navn er
+    samme streng — så en mutation der svarede NAVNET bestod den. En test hvor
+    det rigtige og det forkerte svar er identiske måler ingenting.
+    """
+    import core.identity.owner_resolver as _or
+    monkeypatch.setattr(_or, "owner_user_id", lambda: "1246415163603816499")
+    assert inbox_state.bruger_for_workspace("bjorn") == "1246415163603816499"
+
+
+def test_en_ANDEN_brugers_workspace_oversaettes_til_HENDES_id(inbox_db, monkeypatch):
+    """Og aldrig til navnet. Et workspace-navn er ikke et bruger-id, heller
+    ikke for dem der HAR en række i tabellen."""
+    import types
+    import core.identity.users as _u
+    monkeypatch.setattr(_u, "find_user_by_workspace",
+                        lambda ws: types.SimpleNamespace(discord_id="2dce97")
+                        if ws == "lotte" else None)
+    assert inbox_state.bruger_for_workspace("lotte") == "2dce97"
+
+
+def test_et_ukendt_workspace_giver_TOMT_og_siger_til(inbox_db, monkeypatch, caplog):
+    """En post i den forkerte indbakke er værre end ingen post — men den må
+    ikke forsvinde uden spor."""
+    import logging
+    import core.identity.users as _u
+    monkeypatch.setattr(_u, "find_user_by_workspace", lambda _ws: None)
+    with caplog.at_level(logging.WARNING, logger="core.services.inbox_state"):
+        assert inbox_state.bruger_for_workspace("findes-ikke") == ""
+    assert any("ingen bruger" in r.message for r in caplog.records), \
+        "navnet forsvandt TAVST"
+
+
+def test_self_wakeup_skriver_ALDRIG_et_workspace_navn_i_bruger_id():
+    """Kilde-vagt på den femte kopi. AST, ikke grep: docstringen nævner
+    `workspace_name` med vilje, og det gjorde den gamle kommentar også."""
+    import ast
+    import pathlib
+
+    træ = ast.parse(pathlib.Path("core/services/self_wakeup.py").read_text())
+    for kald in [n for n in ast.walk(træ) if isinstance(n, ast.Call)]:
+        navn = getattr(kald.func, "id", None) or getattr(kald.func, "attr", None)
+        if navn != "registrer_kilde":
+            continue
+        arg = next((k.value for k in kald.keywords if k.arg == "bruger_id"), None)
+        assert arg is not None, "registrer_kilde kaldes uden bruger_id"
+        kilde = ast.unparse(arg)
+        assert "bruger_for_workspace" in kilde, (
+            f"bruger_id udledes uden oversaettelse: {kilde}")
+        return
+    raise AssertionError("fandt intet registrer_kilde-kald i self_wakeup")

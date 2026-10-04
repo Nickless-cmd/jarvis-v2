@@ -1294,18 +1294,31 @@ def _infra_beslutninger_i_indbakken_live(_snap: dict) -> dict[str, Any]:
     en adresse. Indbakken bærer dem uden at vokse prompten, fordi `inbox` er
     et værktøj han kalder.
 
-    Brugeren hentes fra workspace-konteksten. Er den ubundet, springer vi over
-    frem for at gætte: en beslutnings-post i den forkerte indbakke er værre
-    end ingen.
+    Brugeren hentes gennem `inbox_state.laese_bruger()` — ÉN definition, delt
+    med indbakkens tre læse-steder. Er den ubundet, springer vi over frem for
+    at gætte: en beslutnings-post i den forkerte indbakke er værre end ingen.
+
+    RETTET 4/10-2026. Her stod en fjerde kopi af reglen:
+
+        current_user_id() or current_workspace_name()
+
+    og det var DENNE der prægede den anden indbakke. Målt samme dag:
+    `bjorn` bar 36 poster, heraf 35 beslutninger, ingen af dem lukket —
+    mens de samme 34 kilde_id'er også stod under `1246415163603816499`,
+    hvor Jarvis faktisk arbejder. Daemonen kører uden bundet kontekst, så
+    `current_user_id()` var tom hver gang og workspace-NAVNET vandt.
+
+    Lækagen blev fundet i læse-vejene; vagten dækkede kun dem. Skriveren stod
+    tilbage og blev ved — de to raekker jeg flyttede manuelt var allerede
+    blevet selskab af en ny. Det er femte gang i dette spor at to definitioner
+    af samme regel driver fra hinanden, og den eneste rettelse der holder er
+    at der kun er én.
     """
     if not _infra_throttle_ready("beslutninger_i_indbakken", 60):
         return {"status": "throttled", "cadence_minutes": 60}
     try:
-        from core.identity.workspace_context import (
-            current_user_id, current_workspace_name,
-        )
-        bruger = (str(current_user_id() or "").strip()
-                  or str(current_workspace_name() or "").strip())
+        from core.services.inbox_state import laese_bruger
+        bruger = laese_bruger()
     except Exception as exc:  # noqa: BLE001
         logger.warning("cluster_infra: kunne ikke laese brugeren: %s", exc)
         return {"status": "error", "error": str(exc)}

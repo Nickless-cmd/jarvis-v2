@@ -142,13 +142,21 @@ def schedule_self_wakeup(
     try:
         from core.services.inbox_state import registrer_kilde
         from core.services.session_context_resolve import aktivt_run_id
+        from core.services.inbox_state import bruger_for_workspace
         _ib = registrer_kilde(
             # Vaekningen hoerer til den bruger den blev booket FOR. Er
-            # `user_id` tom (ejerens egen, ubundne vej), falder vi til
-            # workspacet — samme asymmetri som resten af indbakken, og
-            # `registrer_kilde` afgoer alligevel selv om ejerskabet KAN bevises.
-            bruger_id=(record.get("user_id")
-                       or record.get("workspace_name") or ""),
+            # `user_id` tom (ejerens egen, ubundne vej), OVERSAETTES workspacet
+            # til et bruger-id — det skrives aldrig raat.
+            #
+            # RETTET 4/10-2026: her stod `record.get("workspace_name")`
+            # direkte i `bruger_id`, og det blandede to navnerum i én kolonne.
+            # Maalt samme dag stod der to indbakker til samme person, 36
+            # raekker under navnet «bjorn» og 70 under hans rigtige id
+            # 1246415163603816499 — og de 36 blev aldrig arbejdet i, fordi
+            # hans sessioner oploeste til id'et. 34 kilde_id'er stod ordret
+            # under BEGGE.
+            bruger_id=(str(record.get("user_id") or "").strip()
+                       or bruger_for_workspace(record.get("workspace_name") or "")),
             kildetype="wakeup",
             kilde_id=wakeup_id,
             oprettende_run_id=aktivt_run_id(""),

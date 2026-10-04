@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8453/16019 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8454/16020 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8453/16019 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 718 | 1298 | 55% |
-| `core.services` | 5643 | 10909 | 51% |
+| `core.services` | 5644 | 10910 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1733,7 +1733,7 @@ Generated from source. 8453/16019 functions/methods documented (52%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L371)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L352)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L295)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L303)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)

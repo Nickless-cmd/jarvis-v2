@@ -186,6 +186,39 @@ def _advar_om_ubundet_fald(rolle: str) -> None:
         rolle)
 
 
+def bruger_for_workspace(navn: str) -> str:
+    """Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går.
+
+    Den findes fordi nogle kilder kun kender navnet: `self_wakeup` læser
+    vækningens egen række, hvor `user_id` kan være tom og `workspace_name`
+    udfyldt. Den gamle kode skrev så navnet direkte i `bruger_id` — og det er
+    netop sammenblandingen af to navnerum i én kolonne der lavede to
+    indbakker til samme person.
+
+    Ejerens workspace oversættes til `owner_user_id()`; alle andre slås op i
+    bruger-tabellen. Kan navnet ikke oversættes, svarer den tomt frem for at
+    gætte: en post i den forkerte indbakke er værre end ingen post.
+    """
+    navn = str(navn or "").strip()
+    if not navn:
+        return ""
+    if navn == _ejer_workspace():
+        return _ejer_id()
+    try:
+        from core.identity.users import find_user_by_workspace
+        u = find_user_by_workspace(navn)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_state: kunne ikke slaa workspace %r op: %s", navn, exc)
+        return ""
+    uid = str(getattr(u, "discord_id", "") or "").strip() if u is not None else ""
+    if not uid:
+        # Et navn uden bruger. Tavshed her ville lade posten forsvinde uden
+        # spor, og det er den fejlform hele dette spor handler om.
+        logger.warning("inbox_state: workspace %r har ingen bruger — posten "
+                       "kan ikke knyttes til en indbakke", navn)
+    return uid
+
+
 def laese_bruger() -> str:
     """HVIS indbakke skal læses? Tom streng når det ikke kan afgøres.
 

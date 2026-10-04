@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, FileText, Loader2 } from 'lucide-react'
+import { AlertCircle, AppWindow, Download, ExternalLink, FileText, Loader2 } from 'lucide-react'
 import { useSettings } from '../../hooks/useSettings'
-import { downloadBlob, fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
+import { absolutApiUrl, downloadBlob, fetchBlobWithAuth, hentSigneretFilLink, type ApiConfig } from '../../lib/api'
 import { KlikbartBillede } from './BilledLightbox'
 
 /**
@@ -24,6 +24,32 @@ import { KlikbartBillede } from './BilledLightbox'
  * `foldToolResults` tidligere droppede den: typen fandtes ikke i kæden, og
  * filen nåede aldrig skærmen (målt 15/9-2026 på et regneark der skulle leveres
  * i chatten). Spejler mobilens `MessageAttachments` — samme kontrakt.
+ *
+ * ## De tre handlinger (Bjørn 4/10-2026)
+ *
+ * «man bør kunne vælge at åbne i desk browser eller i egen browser eller
+ * download fil.» De tre har tre forskellige veje, og det er ikke tre knapper
+ * til samme ting:
+ *
+ *   - **Jarvis' browser** får den absolutte adresse. Electron-main injicerer
+ *     `Authorization` på API'ets oprindelse (`jarvisBrowser.saetApiAuth`), så
+ *     webvisningen henter som en autentificeret klient.
+ *   - **Egen browser** kan ikke bære en header. Den får et kortlivet signeret
+ *     link fra `POST /files/link` — 60 sekunder, bundet til netop det filnavn.
+ *   - **Download** henter med token og gemmer. Den vej er uændret; den var
+ *     bare den eneste der fandtes.
+ *
+ * De to første gælder KUN en udgivet fil (`/files/…`). En vedhæftning ligger
+ * på `/attachments/…`, hvor signeringen ikke rækker — den beholder derfor
+ * download alene frem for at få to knapper der giver 401.
+ *
+ * ## Formen
+ *
+ * En flad række, ikke en chip. `raekkevisning.css` siger det selv: «INGEN
+ * baggrund, ingen ramme … i hele samtalen findes kun to malede flader: siden
+ * og brugerens boble.» Chippen stammede fra `.paste-ref-chip`, som er ældre
+ * end rækkevisningen og aldrig blev flyttet med — den var husets tredje
+ * malede flade.
  */
 
 /** Den slags blokke denne komponent kan vise. */
@@ -119,6 +145,14 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
 
   const stoerrelse = formatSize(block.size_bytes)
 
+  // Kun en UDGIVET fil kan åbnes. En vedhæftning ligger på `/attachments/…`,
+  // og hverken browser-injektionen eller signeringen dækker den adresse —
+  // to knapper der gav 401 ville være værre end ingen.
+  const udgivetNavn = adresse.startsWith('/files/')
+    ? decodeURIComponent(adresse.slice('/files/'.length).split('?')[0] || '')
+    : ''
+  const kanAabnes = Boolean(config && udgivetNavn)
+
   const hent = () => {
     if (!config || !adresse || henter) return
     setHenter(true)
@@ -129,18 +163,72 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
       .finally(() => setHenter(false))
   }
 
+  const aabnIJarvisBrowser = () => {
+    if (!config || !kanAabnes) return
+    const url = absolutApiUrl(config, adresse)
+    const bro = (window as unknown as {
+      jarvisDesk?: { browser?: { aabn?: (u: string) => unknown } }
+    }).jarvisDesk?.browser
+    if (!url || !bro?.aabn) { setFejl(true); return }
+    setFejl(false)
+    void bro.aabn(url)
+  }
+
+  const aabnIEgenBrowser = () => {
+    if (!config || !kanAabnes || henter) return
+    setHenter(true)
+    setFejl(false)
+    // Linket hentes ved KLIK, ikke når rækken tegnes. Et link pr. visning
+    // ville udstede en signatur for hver fil i tråden ved hver render — og
+    // de ville være udløbet længe før nogen klikkede.
+    hentSigneretFilLink(config, udgivetNavn)
+      .then((url) => {
+        const d = (window as unknown as {
+          jarvisDesk?: { openExternal?: (u: string) => void }
+        }).jarvisDesk
+        if (d?.openExternal) d.openExternal(url)
+        else window.open(url, '_blank', 'noopener,noreferrer')
+      })
+      .catch(() => setFejl(true))
+      .finally(() => setHenter(false))
+  }
+
+  const Ikon = henter ? Loader2 : fejl ? AlertCircle : FileText
+
   return (
-    <button
-      type="button"
-      className="file-block"
-      onClick={hent}
-      disabled={!config || !adresse || henter}
-      title={adresse ? `Hent ${navn}` : 'Filen har ingen adresse'}
-    >
-      {henter ? <Loader2 size={15} className="spin" /> : fejl ? <AlertCircle size={15} /> : <FileText size={15} />}
-      <span className="file-block-name">{navn}</span>
-      {stoerrelse ? <span className="file-block-size">{stoerrelse}</span> : null}
-      {fejl ? <span className="file-block-size">kunne ikke hentes</span> : null}
-    </button>
+    <div className="fil-raekke">
+      <span className="fil-raekke-ikon">
+        <Ikon size={13} className={henter ? 'spin' : undefined} />
+      </span>
+      {/* Navnet er selv download-handlingen. Den var knappen før, og den
+          skal blive ved med at virke for den der bare klikker på filen. */}
+      <button type="button" className="fil-raekke-navn" onClick={hent}
+              disabled={!config || !adresse || henter}
+              title={adresse ? `Hent ${navn}` : 'Filen har ingen adresse'}>
+        {navn}
+      </button>
+      {stoerrelse ? <span className="fil-raekke-prik" aria-hidden="true" /> : null}
+      {stoerrelse ? <span className="fil-raekke-stoerrelse">{stoerrelse}</span> : null}
+      {fejl ? <span className="fil-raekke-prik" aria-hidden="true" /> : null}
+      {fejl ? <span className="fil-raekke-stoerrelse">kunne ikke hentes</span> : null}
+      <span className="fil-raekke-handlinger">
+        {kanAabnes ? (
+          <button type="button" onClick={aabnIJarvisBrowser} disabled={henter}
+                  title="Åbn i Jarvis' browser" aria-label="Åbn i Jarvis' browser">
+            <AppWindow size={14} />
+          </button>
+        ) : null}
+        {kanAabnes ? (
+          <button type="button" onClick={aabnIEgenBrowser} disabled={henter}
+                  title="Åbn i din egen browser" aria-label="Åbn i din egen browser">
+            <ExternalLink size={14} />
+          </button>
+        ) : null}
+        <button type="button" onClick={hent} disabled={!config || !adresse || henter}
+                title={`Hent ${navn}`} aria-label={`Hent ${navn}`}>
+          <Download size={14} />
+        </button>
+      </span>
+    </div>
   )
 }

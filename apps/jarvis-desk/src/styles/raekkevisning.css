@@ -635,3 +635,10 @@
 .raekkevisning .rv-opgaveLinje[data-s='completed'] .rv-opgaveT {
   color: var(--fg-3); text-decoration: line-through;
 }
+
+/* Den udgivne fils række (app.css `.fil-raekke`) bor globalt, fordi en
+   vedhæftning vises i BEGGE visninger. Inde i tråden løftes dens dæmpede
+   tekst til rækkevisningens fjerde teksttrin — scopet, som alt andet her,
+   så bobblevisningen ikke rammes. Tokenet findes kun her, og det har en
+   målt værdi i hvert tema (#a6a59c mørk, #6a6a64 lys). */
+.raekkevisning .fil-raekke-stoerrelse { color: var(--rv-tertiary); }

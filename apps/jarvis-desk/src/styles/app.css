@@ -1335,20 +1335,95 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   white-space: pre-wrap; word-break: break-word;
 }
 
-/* vedhæftninger i tråden — en fil Jarvis har lagt ud, eller et gemt billede.
-   Referencen hentes med token (se AttachmentBlock), så et almindeligt link
-   ville give 401. Chippen spejler .paste-ref-chip, så sproget er det samme. */
-.file-block {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px;
-  padding: 6px 10px; margin: 4px 0;
-  font-size: 12.5px; color: var(--fg-2); cursor: pointer;
+/* En udgivet fil er flyttet til `.fil-raekke` i raekkevisning.css (4/10-2026):
+   chippen var husets tredje malede flade i en traad der kun har to.
+   `.file-block`, `:hover`, `:disabled` og `-name` er fjernet her fordi INGEN
+   komponent renderer dem laengere — en CSS-regel mod en doed klasse er
+   usynlig gaeld, og den slags er fundet her foer.
+   `.file-block-size` BLIVER: `VideoBlock.tsx:105` bruger den stadig til
+   videoens stoerrelse. Den foelger med naar videoen en dag faar samme
+   behandling. */
+.file-block-size { color: var(--fg-3); white-space: nowrap; }
+/* En vedhaeftning vises i BEGGE visninger — raekkevisningen og bobblerne — saa
+   reglerne bor her og ikke i raekkevisning.css, hvor en vagt (se
+   RaekkeTranskript.test.tsx) kraever at ALT er scopet under `.raekkevisning`.
+   Den vagt er rigtig: en uscopet regel dér ville ramme bobblevisningen uden
+   at nogen havde valgt det. Geometrien laaner stadig raekkens tal, med
+   fallbacks saa raekken ogsaa holder uden for `.raekkevisning`-scopet. *//* ══ UDGIVEN FIL ══ En fil Jarvis har lagt ud, som en RÆKKE.
+   Bjørn 4/10-2026: «designet følger ikke resten af tema». Den var en chip
+   arvet fra `.paste-ref-chip` — baggrund, ramme, 8px radius — og dermed
+   husets TREDJE malede flade i en tråd hvor reglen ovenfor siger at der kun
+   findes to: siden og brugerens boble.
+   Geometrien er rækkens egen: 16px ikonboks + 6px, 24px højde, 14px/400,
+   2×2px prik som separator. Intet nyt tal er opfundet her. */
+.fil-raekke {
+  display: flex; align-items: center;
+  height: 24px;   /* = --rv-h i raekkevisning.css. Literal her, fordi
+                     det token er scopet til DEN visning — og en vagt
+                     (tokens.test.ts) naegter med god grund en global
+                     reference til et navn der kun findes under
+                     `.raekkevisning`: med fallback braender den en vaerdi
+                     ind der ikke foelger temaskift. */
   max-width: 100%;
 }
-.file-block:hover:not(:disabled) { color: var(--fg-1); border-color: var(--accent); }
-.file-block:disabled { cursor: default; opacity: 0.65; }
-.file-block-name { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-block-size { color: var(--fg-3); white-space: nowrap; }
+.fil-raekke-ikon {
+  flex: none; width: 16px; height: 16px; margin-right: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg-3);
+}
+/* Navnet ER download-knappen — den var hele chippens handling før, og den
+   skal blive ved med at virke for den der bare klikker på filen. Derfor en
+   `button` der ikke ser ud som en: ingen baggrund, ingen ramme, arvet font. */
+.fil-raekke-navn {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; font-size: 14px; line-height: 24px;
+  color: var(--fg-2); cursor: pointer; text-align: left;
+}
+.fil-raekke-navn:disabled { cursor: default; }
+.fil-raekke-prik {
+  flex: none; width: 2px; height: 2px; margin: 0 8px; border-radius: 1px;
+  background: var(--fg-3); opacity: .7;
+}
+.fil-raekke-stoerrelse {
+  flex: none; font-size: 14px; line-height: 24px;
+  /* --fg-3 globalt. Inde i traaden loeftes den til raekkevisningens fjerde
+     teksttrin af en SCOPET regel i raekkevisning.css — dér findes tokenet,
+     og dér har det en maalt vaerdi i hvert tema. */
+  color: var(--fg-3); white-space: nowrap;
+}
+/* Handlingerne står i enden, hvor chevronen står på en foldbar række — samme
+   16×16-boks og samme 4px fra teksten. Dæmpede i hvile: tre ikoner i fuld
+   styrke på hver fil ville gøre tråden til et værktøjsbælte. */
+.fil-raekke-handlinger {
+  flex: none; display: inline-flex; gap: 2px; margin-left: 10px;
+  opacity: .55; transition: opacity 100ms ease;
+}
+.fil-raekke-handlinger button {
+  width: 16px; height: 16px; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: 4px;
+  color: var(--fg-3); cursor: pointer;
+  transition: color 100ms ease;
+}
+/* Teksten vågner, handlingerne lyser op — samme affordans som en foldbar
+   række, og med rækkens egne 100/120 ms. */
+.fil-raekke:hover .fil-raekke-handlinger { opacity: 1; }
+.fil-raekke:hover .fil-raekke-navn,
+.fil-raekke:hover .fil-raekke-stoerrelse { color: var(--fg-1); }
+.fil-raekke:hover .fil-raekke-ikon { color: var(--fg-2); }
+.fil-raekke-handlinger button:hover { color: var(--fg-1); }
+.fil-raekke-handlinger button:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: 1px; color: var(--fg-1);
+}
+.fil-raekke-handlinger button:disabled { cursor: default; color: var(--fg-3); }
+/* Berøring har ingen hover. Står handlingerne dæmpet på en telefon, kan de
+   ikke findes — derfor fuld styrke når der ikke FINDES en hover. */
+@media (hover: none) {
+  .fil-raekke-handlinger { opacity: 1; }
+}
+
 .attachment-image { margin: 4px 0; }
 .attachment-fejl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-3); }
 

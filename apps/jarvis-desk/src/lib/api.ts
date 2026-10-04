@@ -591,6 +591,37 @@ export async function fetchBlobWithAuth(config: ApiConfig, url: string): Promise
   return res.blob()
 }
 
+/** En reference som en ABSOLUT adresse. `/files/x` → `https://api…/files/x`.
+ *
+ *  Findes fordi både Jarvis' browser og Bjørns egen skal have en hel URL:
+ *  en relativ sti ville de slå op mod sig selv. Målt 4/10-2026 var det netop
+ *  den fejl der gjorde udgivne filer uåbnelige.
+ */
+export function absolutApiUrl(config: ApiConfig, sti: string): string {
+  try {
+    return new URL(sti, config.apiBaseUrl).toString()
+  } catch {
+    return ''
+  }
+}
+
+/** Bed serveren om et kortlivet signeret link til én udgivet fil.
+ *
+ *  Til Bjørns EGEN browser, som ikke kan bære en `Authorization`-header.
+ *  Linket lever 60 sekunder og gælder kun det filnavn der blev signeret —
+ *  se `core/services/file_links.py` for hvorfor begge led er med.
+ */
+export async function hentSigneretFilLink(
+  config: ApiConfig, filnavn: string,
+): Promise<string> {
+  const r = await apiFetch<{ status?: string; url?: string }>(
+    config, '/files/link', { method: 'POST', body: { filename: filnavn } },
+  )
+  const sti = String(r?.url || '').trim()
+  if (!sti) throw new StreamError('unknown', 'serveren gav intet link', { retryable: false })
+  return absolutApiUrl(config, sti)
+}
+
 /** Trigger en browser-download af en blob under dens rigtige navn. */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)

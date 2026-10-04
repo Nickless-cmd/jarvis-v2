@@ -518,6 +518,7 @@ ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
     appId: existing.appId,
     channelPlugins: cfg.channelPlugins ?? existing.channelPlugins,
   })
+  jb.saetApiAuth(cfg.apiBaseUrl ?? existing.apiBaseUrl, cfg.authToken ?? existing.authToken)
   // Genstart operator-broen + lokale kanal-gateways med de nye credentials/plugins.
   void bootstrapBridge()
   void bootstrapLocalDiscord()
@@ -572,6 +573,10 @@ ipcMain.handle('tray:attention', (_event, on: boolean) => {
 ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
   runApiBaseUrl = apiBaseUrl
   runAuthToken = authToken
+  // OGSAA browseren. Uden denne linje stod den med opstartens token efter en
+  // fornyelse, og symptomet var 401 paa en fil der virkede for et minut siden
+  // — den slags fejl man leder efter paa serveren.
+  jb.saetApiAuth(apiBaseUrl, authToken)
 })
 // Renderer pusher den aktuelt fremme session → main kan binde operator_wakeup
 // til netop den desk-samtale (i stedet for en frisk/forkert).
@@ -857,6 +862,9 @@ app.on('before-quit', () => {
 app.whenReady().then(() => {
   const cfg = loadConfig()
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
+  // Jarvis' browser baerer Bjoerns token mod VORES API og kun der (4/10-2026).
+  // Uden den fik han 401 paa husets egne filer i sin egen browser.
+  jb.saetApiAuth(cfg.apiBaseUrl, cfg.authToken)
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
   // Login-skærmen (SetupScreen) fetcher ALTID hardcodet mod prod-API'en — også når der
   // endnu ikke findes en config (fresh install / logget ud → apiOrigin kan være 10.0.0.39).

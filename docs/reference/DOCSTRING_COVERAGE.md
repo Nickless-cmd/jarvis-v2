@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8481/16048 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8479/16045 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8481/16048 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 721 | 1301 | 55% |
-| `core.services` | 5661 | 10929 | 51% |
+| `core.services` | 5659 | 10926 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1432,13 +1432,13 @@ Generated from source. 8481/16048 functions/methods documented (52%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3644)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3492)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3781)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3589)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3437)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3726)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L152)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L100)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L127)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L5010)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4955)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)

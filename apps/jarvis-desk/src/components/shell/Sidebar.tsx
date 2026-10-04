@@ -291,16 +291,26 @@ export function Sidebar({
                 const foldet = foldedeGrupper[g.gruppe] ?? (g.gruppe === 'baggrund')
                 return (
                   <Fragment key={g.gruppe}>
-                    <button
-                      type="button"
-                      className="sidebar-label sidebar-group"
-                      aria-expanded={!foldet}
-                      onClick={() => setFoldedeGrupper((f) => ({ ...f, [g.gruppe]: !foldet }))}
-                    >
-                      {foldet ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                      <span>{g.navn}</span>
-                      <span className="sidebar-group-count">{g.sessioner.length}</span>
-                    </button>
+                    <div className="sidebar-group-raekke">
+                      <button
+                        type="button"
+                        className="sidebar-label sidebar-group"
+                        aria-expanded={!foldet}
+                        onClick={() => setFoldedeGrupper((f) => ({ ...f, [g.gruppe]: !foldet }))}
+                      >
+                        {foldet ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                        <span>{g.navn}</span>
+                        <span className="sidebar-group-count">{g.sessioner.length}</span>
+                      </button>
+                      {/* Plusset staar KUN paa kode-gruppen (Bjoern 4/10-2026:
+                          «projekt fold ud linjen mangler et plus i enden til at
+                          oprette nyt projekt»). Et projekt findes udelukkende
+                          som en faelles `workspace_root` — se `fjernProjekt`
+                          nedenfor — saa «nyt projekt» ER en kode-samtale med en
+                          mappe. Paa chat- og baggrunds-grupperne ville knappen
+                          ikke kunne lave noget. */}
+                      {g.gruppe === 'kode' && <NytProjektKnap />}
+                    </div>
                     {!foldet && (
                       // KODE-gruppen deles yderligere op efter PROJEKT — som i
                       // CC, hvor overskriften er «jarvis-v2 · /media/projects».
@@ -436,6 +446,59 @@ function CoworkMenu() {
  *  `workspace_root`, så at løsne samtalerne fra mappen ER at fjerne projektet.
  *  Der er ingen tabel at slette en række i — og derfor heller ikke to
  *  handlinger: «Løsn alle samtaler» ville være samme knap med et andet navn. */
+/** «+» i kode-gruppens fold-ud-linje: vælg en mappe, få et projekt.
+ *
+ *  Et projekt er ikke en post nogen steder — det findes udelukkende som den
+ *  `workspace_root` en eller flere samtaler deler (`grupperEfterProjekt`
+ *  grupperer på netop den, og `fjernProjekt` fjerner et projekt ved at løsne
+ *  hver samtale fra mappen). «Opret nyt projekt» er derfor præcis:
+ *  opret en kode-samtale, og peg den på en mappe.
+ *
+ *  Mappen vælges med husets EGEN vælger — `jarvisDesk.pickFolder`, samme
+ *  bro CodeView bruger. En egen dialog her ville være en anden vej til
+ *  samme valg, og de to ville kunne drive fra hinanden.
+ *
+ *  Rækkefølgen er vigtig: mappen FØRST, samtalen bagefter. Oprettede vi
+ *  samtalen først og brugeren fortrød i mappe-dialogen, stod der en tom
+ *  «Ny samtale» tilbage i listen som ingen havde bedt om.
+ */
+function NytProjektKnap() {
+  const { create, setWorkspace } = useSessions()
+  const [arbejder, setArbejder] = useState(false)
+
+  const nytProjekt = async () => {
+    // Ingen `stopPropagation` her, og det er MÅLT frem for antaget: en
+    // mutation der fjernede den ændrede ingen adfærd. Plusset er SØSKENDE
+    // til gruppe-knappen inde i `.sidebar-group-raekke`, ikke et barn af
+    // den, så et klik kan ikke boble op i overskriften. Havde jeg lagt
+    // knappen inde i overskriften, var den nødvendig — og så havde det
+    // været en knap i en knap, hvilket heller ikke er gyldigt HTML.
+    if (arbejder) return
+    const bro = (window as unknown as {
+      jarvisDesk?: { pickFolder?: () => Promise<string | null> }
+    }).jarvisDesk
+    if (!bro?.pickFolder) return
+    setArbejder(true)
+    try {
+      const mappe = await bro.pickFolder()
+      if (!mappe) return
+      const sess = await create('Ny samtale', 'code')
+      await setWorkspace(sess.id, 'workstation', mappe)
+    } finally {
+      setArbejder(false)
+    }
+  }
+
+  return (
+    <button type="button" className="sidebar-group-plus" onClick={nytProjekt}
+            disabled={arbejder} title="Nyt projekt — vælg en mappe"
+            aria-label="Nyt projekt — vælg en mappe">
+      <Plus size={13} />
+    </button>
+  )
+}
+
+
 function ProjektOverskrift({ navn, sti, rod, sessioner }: {
   navn: string; sti: string; rod: string; sessioner: string[]
 }) {

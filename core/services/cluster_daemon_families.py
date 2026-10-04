@@ -1282,6 +1282,39 @@ def _infra_visible_drift_live(_snap: dict) -> dict[str, Any]:
     return ryd_visible_drift_periodisk()
 
 
+def _infra_beslutninger_i_indbakken_live(_snap: dict) -> dict[str, Any]:
+    """Giv beslutninger under tærsklen en adresse i indbakken.
+
+    Self-throttler på 60 min: listen ændrer sig når en adherence-score bliver
+    reviewet, og det sker i timer, ikke minutter.
+
+    Hvorfor den findes: gatens `_MAKS_LINJER` er 12, og målt 4/10-2026 stod 34
+    beslutninger under tærsklen — 22 uden for prompten, syv af dem kritiske.
+    Gaten siger «… og N flere under tærsklen», men et tal uden id'er er ikke
+    en adresse. Indbakken bærer dem uden at vokse prompten, fordi `inbox` er
+    et værktøj han kalder.
+
+    Brugeren hentes fra workspace-konteksten. Er den ubundet, springer vi over
+    frem for at gætte: en beslutnings-post i den forkerte indbakke er værre
+    end ingen.
+    """
+    if not _infra_throttle_ready("beslutninger_i_indbakken", 60):
+        return {"status": "throttled", "cadence_minutes": 60}
+    try:
+        from core.identity.workspace_context import (
+            current_user_id, current_workspace_name,
+        )
+        bruger = (str(current_user_id() or "").strip()
+                  or str(current_workspace_name() or "").strip())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cluster_infra: kunne ikke laese brugeren: %s", exc)
+        return {"status": "error", "error": str(exc)}
+    if not bruger:
+        return {"status": "skipped", "grund": "ingen bruger i konteksten"}
+    from core.services.decision_adherence_gate import registrer_i_indbakken
+    return registrer_i_indbakken(bruger)
+
+
 def _infra_approval_expiry_live(_snap: dict) -> dict[str, Any]:
     """Markér udløbne, ikke-besluttede godkendelser. Rules-based, no LLM.
     Self-throttles INTERNALLY (5 min), so the family calls it every tick.
@@ -1313,6 +1346,11 @@ _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("file_awareness", _infra_file_awareness_live),
     ("cache_maintenance", _infra_cache_maintenance_live),
     ("approval_expiry", _infra_approval_expiry_live),
+    # Uden denne linje er registreringen built_but_not_connected — den
+    # fejl har ramt indbakke-sporet TRE gange paa to doegn: skriveren
+    # manglede, laeseren i prompten manglede, og lukkeren saa et andet
+    # sted end visningen. En funktion ingen kalder er ikke bygget.
+    ("beslutninger_i_indbakken", _infra_beslutninger_i_indbakken_live),
     ("feedback_review", _infra_feedback_review_live),
     ("signal_decay", _infra_signal_decay_live),
     ("wakeup_cleanup", _infra_wakeup_cleanup_live),

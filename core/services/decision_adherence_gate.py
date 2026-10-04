@@ -14,6 +14,7 @@ This module is imported lazily in prompt_contract.py to avoid circular imports.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -183,3 +184,76 @@ def decision_adherence_section() -> str:
 
     lines.append("[/DECISION-ADHERENCE-GATE]\n")
     return "\n".join(lines)
+
+# ── Indbakken (4/10-2026) ───────────────────────────────────────────────────
+
+def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
+    """Giv hver beslutning under tærsklen en post i indbakken.
+
+    ## Hvorfor
+
+    `_MAKS_LINJER` er et DISPLAY-loft, ikke et antal. Målt 4/10-2026: 75 aktive
+    beslutninger, 34 under tærsklen, 19 af dem kritiske — og gaten viser 12.
+    **Syv kritiske beslutninger står helt uden for prompten.**
+
+    Gaten er ikke tavs om dem; den skriver «… og N flere under tærsklen (ikke
+    vist her)». Men et tal uden id'er er ikke en adresse: man kan ikke lukke,
+    omformulere eller slå op på noget man ikke kan navngive. Indbakken kan bære
+    dem alle uden at vokse prompten, fordi `inbox` er et værktøj han KALDER.
+
+    ## De gater ikke, og det er med vilje
+
+    Posterne oprettes uden for et levende run, så `registrer_kilde` giver dem
+    `verificeret_ejer="ukendt"` og `kraever_handling=False`. Det er det rigtige
+    udfald: en beslutning er en forpligtelse Jarvis har givet sig selv, men den
+    er ikke et stykke arbejde der venter — og skrive-kontrakten siger at kun
+    verificerede, egne poster må nægte en mutation. Beslutnings-gaten har sin
+    EGEN eskalering; indbakken skal ikke lægge en anden oven på.
+
+    ## `drop` må ikke kunne tie en beslutning
+
+    Gatens egen begrundelse fra 26/9 er utvetydig: «Et bånd der kan revoke,
+    sletter systematisk de svære og beholder de lette: den modsatte af
+    læring.» Derfor sættes `expires_at` på hver post: et `inbox_drop` lukker
+    rækken, men ved næste registrering er posten tilbage, fordi beslutningen
+    stadig står under tærsklen i kilden. Indbakken kan altså udsætte, ikke
+    slette — og den beslutning den peger på er uberørt.
+    """
+    try:
+        from core.services.behavioral_decisions import (
+            count_decisions,
+            list_active_decisions,
+        )
+        active = list_active_decisions(limit=max(50, count_decisions(status="active")))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("decision_adherence_gate: kunne ikke laese beslutninger: %s", exc)
+        return {"status": "fejl", "error": str(exc)}
+
+    from core.services.inbox_state import registrer_kilde
+
+    oprettet = 0
+    fejl = 0
+    for d in active:
+        raa = d.get("adherence_score")
+        score = float(raa) if raa is not None else 1.0
+        if score >= _GOOD_THRESHOLD:
+            continue
+        dec_id = str(d.get("decision_id") or "").strip()
+        if not dec_id:
+            continue
+        baand = ("kritisk" if score < _CRITICAL_THRESHOLD
+                 else "imperativ" if score < _ADVISORY_THRESHOLD else "advisory")
+        r = registrer_kilde(
+            bruger_id=bruger_id,
+            kildetype="decision",
+            kilde_id=dec_id,
+            # Ingen `oprettende_run_id`: posten oprettes af en baggrundsvej,
+            # og et flag ville vaere en paastand. `ukendt` er det aerlige svar.
+            paastaaet_ejer="huset",
+            beskrivelse=f"[{baand} {score:.0%}] {str(d.get('directive') or '')}",
+        )
+        if r.get("status") == "ok":
+            oprettet += 1
+        else:
+            fejl += 1
+    return {"status": "ok", "registreret": oprettet, "fejlede": fejl}

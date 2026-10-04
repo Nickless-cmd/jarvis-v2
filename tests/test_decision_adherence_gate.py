@@ -155,3 +155,200 @@ def test_et_baand_UDEN_poster_faar_ingen_handlingslinje():
     assert "kan ikke opfyldes som formuleret" not in t
     assert "navngiv det eksplicit" not in t
     assert "dec_adv" in t
+
+
+# ── Indbakke-registreringen (4/10-2026) ─────────────────────────────────────
+
+def _beslutninger():
+    return [
+        {"decision_id": "dec_krit", "directive": "en kritisk", "adherence_score": 0.0},
+        {"decision_id": "dec_imp", "directive": "en imperativ", "adherence_score": 0.3},
+        {"decision_id": "dec_adv", "directive": "en advisory", "adherence_score": 0.5},
+        {"decision_id": "dec_god", "directive": "en der gaar godt",
+         "adherence_score": 0.9},
+        {"decision_id": "", "directive": "uden id", "adherence_score": 0.0},
+    ]
+
+
+def _med_db(monkeypatch, tmp_path):
+    """Rigtig sqlite — det er `registrer_kilde`s egen vej der skal måles."""
+    import sqlite3
+    from contextlib import contextmanager
+
+    from core.runtime import db_inbox
+
+    sti = tmp_path / "d.db"
+
+    @contextmanager
+    def _c():
+        k = sqlite3.connect(sti)
+        k.row_factory = sqlite3.Row
+        try:
+            yield k
+            k.commit()
+        finally:
+            k.close()
+
+    monkeypatch.setattr(db_inbox, "connect", _c)
+    monkeypatch.setattr(db_inbox, "_skema_klar", False)
+    return db_inbox
+
+
+def test_hver_beslutning_UNDER_taersklen_faar_en_adresse(monkeypatch, tmp_path):
+    """`_MAKS_LINJER` er et DISPLAY-loft, ikke et antal.
+
+    Målt 4/10-2026: 75 aktive, 34 under tærsklen, 19 kritiske — og gaten viser
+    12. Syv KRITISKE beslutninger stod helt uden for prompten. Gaten er ikke
+    tavs om dem («… og N flere under tærsklen»), men et tal uden id'er er ikke
+    en adresse: man kan ikke lukke, omformulere eller slå op på noget man ikke
+    kan navngive.
+    """
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=_beslutninger()), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=5):
+        r = g.registrer_i_indbakken("bjorn")
+    assert r["status"] == "ok"
+    ider = {p["id"] for p in dbi.liste(bruger_id="bjorn")}
+    assert ider == {"dec_krit", "dec_imp", "dec_adv"}, (
+        f"forkert udvalg: {ider}")
+    # Den der gaar godt skal IKKE have en post — ellers er indbakken en liste
+    # over alt, og saa er den ikke en indbakke.
+    assert "dec_god" not in ider
+    # Et tomt id springes over FOER kaldet. `assert "" not in ider` maalte
+    # ingenting: `registrer_kilde` afviser det alligevel med en typet fejl, saa
+    # posten ville ikke findes uanset. Mutationen «fjern `continue`» slap
+    # derfor igennem. `fejlede` er det der faktisk skelner: springes der over,
+    # er den 0; naar kaldet sker, bliver den 1.
+    assert "" not in ider
+    assert r["fejlede"] == 0, (
+        "et tomt id naaede kaldet i stedet for at blive sprunget over")
+
+
+def test_baandet_staar_i_beskrivelsen_saa_linjen_kan_laeses_alene(monkeypatch, tmp_path):
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=_beslutninger()), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=5):
+        g.registrer_i_indbakken("bjorn")
+    p = dbi.hent(bruger_id="bjorn", kilde_id="dec_krit")
+    assert p["beskrivelse"].startswith("[kritisk 0%]")
+    assert "en kritisk" in p["beskrivelse"]
+
+
+def test_en_beslutnings_post_GATER_ALDRIG(monkeypatch, tmp_path):
+    """Beslutnings-gaten har sin EGEN eskalering i tre bånd. Indbakken må ikke
+    lægge en anden oven på den — to gater der skubber til det samme er den
+    tredje mekanisme der skal reddes af den fjerde."""
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=_beslutninger()), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=5):
+        g.registrer_i_indbakken("bjorn")
+    from core.runtime.db_inbox import EJER_HUSET
+    for p in dbi.liste(bruger_id="bjorn"):
+        assert p["kraever_handling"] is False, f"{p['id']} kan gate"
+        # `huset`, ikke bare «ikke jarvis». Maerket betyder noget i visningen:
+        # [huset] siger at husets review satte scoren, mens [ukendt] siger at
+        # proveniensen ikke kunne afgoeres. For en beslutning ER den kendt.
+        #
+        # Mutations-proeven afsloerede forskellen: droppede jeg
+        # `paastaaet_ejer="huset"`, blev den `ukendt`, og en assertion paa
+        # `!= "jarvis"` kunne ikke se det.
+        assert p["verificeret_ejer"] == EJER_HUSET, (
+            f"{p['id']} er maerket {p['verificeret_ejer']}, ikke huset")
+
+
+def test_et_DROP_kan_ikke_tie_en_beslutning(monkeypatch, tmp_path):
+    """Gatens egen begrundelse fra 26/9: «Et bånd der kan revoke, sletter
+    systematisk de svære og beholder de lette: den modsatte af læring.»
+
+    Indbakken kan derfor UDSÆTTE, ikke slette. Et `drop` lukker rækken, men
+    beslutningen står uberørt i sin egen kilde, og næste registrering giver
+    den en ny post. Uden den egenskab ville indbakken være en vej til at
+    slippe for sin egen ansvarlighed.
+    """
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+    from core.services import inbox_state
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    beslutninger = _beslutninger()
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=beslutninger), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=5):
+        g.registrer_i_indbakken("bjorn")
+        assert inbox_state.drop("bjorn", "dec_krit", "ikke nu")["status"] == "ok"
+        assert dbi.hent(bruger_id="bjorn",
+                        kilde_id="dec_krit")["status"] == dbi.STATUS_DROP
+        # KILDEN er uberoert — beslutningen staar stadig under taersklen.
+        assert any(d["decision_id"] == "dec_krit" for d in beslutninger)
+        # Og gaten naevner den fortsat.
+        assert "dec_krit" in g.decision_adherence_section()
+
+
+def test_en_FEJLENDE_kilde_vaelter_ikke_familie_tikket(monkeypatch, tmp_path):
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+
+    _med_db(monkeypatch, tmp_path)
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               side_effect=RuntimeError("db nede")):
+        r = g.registrer_i_indbakken("bjorn")
+    assert r["status"] == "fejl" and "db nede" in r["error"]
+
+
+def test_kildetypen_er_et_SELVSTAENDIGT_vaern(monkeypatch, tmp_path):
+    """Lag 2, målt alene — og det var utestet indtil nu.
+
+    Mutations-prøven afslørede det: både «påstå jarvis-ejerskab» og «fjern
+    `decision` fra den ikke-gatende liste» slap igennem, fordi alle de andre
+    tests kører UDEN et levende run. Så svarede proveniensen `ukendt`, og
+    kildetype-spærren blev aldrig spurgt.
+
+    Det er samme hul jeg fandt i Jarvis' brugs-måling en time tidligere: fire
+    af fem spærrer var dækket, og den femte var usynlig fordi en anden fangede
+    sagen først.
+
+    Her STYRES proveniensen til at sige jarvis — levende run OG autentificeret
+    bruger — så kildetypen er det eneste der kan holde posten fra at gate.
+    """
+    from unittest.mock import patch
+
+    from core.identity import workspace_context as wc
+    from core.services import inbox_state
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    with patch.object(wc, "current_user_id", return_value="bjorn"), \
+         patch("core.services.session_context_resolve.aktivt_run_id",
+               return_value="visible-levende"):
+        # Modproeven FOERST: en kildetype der IKKE er paa listen gater nu.
+        r = inbox_state.registrer_kilde(
+            bruger_id="bjorn", kildetype="job", kilde_id="job-kontrol",
+            oprettende_run_id="visible-levende")
+        assert r["post"]["kraever_handling"] is True, (
+            "proveniensen siger ikke jarvis — testen maaler ikke lag 2")
+
+        # Og saa den rigtige: samme proveniens, kildetype `decision`.
+        r = inbox_state.registrer_kilde(
+            bruger_id="bjorn", kildetype="decision", kilde_id="dec_levende",
+            oprettende_run_id="visible-levende")
+    assert r["post"]["verificeret_ejer"] == inbox_state.EJER_JARVIS
+    assert r["post"]["kraever_handling"] is False, (
+        "en beslutning kan gate — to gater skubber nu til det samme")
+    assert dbi.hent(bruger_id="bjorn",
+                    kilde_id="dec_levende")["kraever_handling"] is False

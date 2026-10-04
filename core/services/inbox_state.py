@@ -78,6 +78,13 @@ def _spor(kind: str, payload: dict[str, Any]) -> None:
 #: blive Jarvis' blokering.
 IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     "daemon", "heartbeat", "recurring", "approval", "digest", "proposal",
+    # `decision` (4/10-2026): beslutnings-gaten har sin EGEN eskalering i tre
+    # bånd, og indbakken må ikke lægge en anden oven på den. I dag gater de
+    # alligevel ikke, fordi de registreres uden for et levende run og derfor
+    # får ejeren `huset` — men det er en KONSEKVENS af proveniensen, ikke en
+    # regel. Registrerede nogen senere en beslutning inde i et run, ville den
+    # kunne nægte en mutation, og så ville to gater skubbe til det samme.
+    "decision",
 })
 
 

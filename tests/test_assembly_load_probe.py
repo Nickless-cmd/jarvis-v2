@@ -165,3 +165,65 @@ def test_cpu_felterne_naar_timing_linjen():
     i = kilde.index("prompt-assembly-timing total_ms=")
     # Felterne bygges ind i `_phases_str`, som staar i selve f-strengen.
     assert "{_phases_str}" in kilde[i:i + 240]
+
+
+# ── Deadlines paa de varme resolves ────────────────────────────────────────
+
+def test_skill_relevance_har_en_DEADLINE():
+    """Målt 4/10-2026 over 89 ture: median 311 ms, p90 1.688, **max 14.905**.
+
+    Builderen er 99 % ventetid (cpu/vægur = 0,01), så halen er et opslag der
+    hænger — ikke arbejde der tager tid. Den var 1 af 11 `_timed_result`-kald
+    uden `max_s`, og den eneste af dem der er målt til at hænge i 15 sekunder.
+
+    Juli-rettelsen gav recall og embeddings `_HOT_RESOLVE_CAP_S` med netop den
+    begrundelse: «Ét langsomt embed-kald frøs HELE turen i ~30 s.»
+    `skill_relevance` kom aldrig med.
+
+    AST og ikke grep: kaldet er flerlinjet, så en linje-baseret søgning talte
+    det som ucappet selv efter rettelsen — min egen første kontrol gjorde
+    præcis det.
+    """
+    import ast
+    import pathlib
+
+    traeet = ast.parse(pathlib.Path("core/services/prompt_contract.py").read_text())
+    fundet = []
+    for node in ast.walk(traeet):
+        if not isinstance(node, ast.Call):
+            continue
+        navn = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+        if navn != "_timed_result" or len(node.args) < 2:
+            continue
+        etiket = getattr(node.args[1], "value", None)
+        if etiket != "skill_relevance":
+            continue
+        noegler = {k.arg for k in node.keywords}
+        fundet.append(noegler)
+    assert fundet, "fandt intet _timed_result for skill_relevance"
+    for noegler in fundet:
+        assert "max_s" in noegler, (
+            "skill_relevance resolves UDEN deadline — maalt til 14,9 s")
+
+
+def test_den_bruger_husets_EGET_loft_ikke_sit_eget_tal():
+    """Et nyt tal her ville være en anden sandhed om hvor længe en sektion må
+    vente. De varme resolves deler ét loft, så det kan ændres ét sted."""
+    import ast
+    import pathlib
+
+    traeet = ast.parse(pathlib.Path("core/services/prompt_contract.py").read_text())
+    for node in ast.walk(traeet):
+        if not isinstance(node, ast.Call):
+            continue
+        navn = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+        if navn != "_timed_result" or len(node.args) < 2:
+            continue
+        if getattr(node.args[1], "value", None) != "skill_relevance":
+            continue
+        for k in node.keywords:
+            if k.arg == "max_s":
+                assert ast.unparse(k.value) == "_HOT_RESOLVE_CAP_S", (
+                    f"eget tal i stedet for husets loft: {ast.unparse(k.value)}")
+                return
+    raise AssertionError("fandt ingen max_s paa skill_relevance")

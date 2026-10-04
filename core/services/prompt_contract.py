@@ -1747,9 +1747,28 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("formative state", _e)
     try:
+        # `max_s` tilfoejet 4/10-2026. Den var UCAPPET, og maalt over 12 timer
+        # (89 ture) er fordelingen laaang i halen:
+        #
+        #     median 311 ms · p75 717 · p90 1.688 · MAX 14.905
+        #
+        # Builderen er 99 % ventetid — maalt forhold cpu/vaegur = 0,01 — saa
+        # halen er et opslag der haenger, ikke arbejde der tager tid.
+        #
+        # Det er praecis den fejlform juli-rettelsen loeste for recall og
+        # embeddings: «Ét langsomt embed-kald froes HELE turen i ~30 s. Cap
+        # dem: mister sektionen for DEN tur frem for at fryse svaret.»
+        # `skill_relevance` kom bare aldrig med i den rettelse — den var 1 af
+        # 11 resolves uden deadline.
+        #
+        # Samme loft som de andre varme resolves, saa der ikke opstaar en
+        # anden sandhed om hvor laenge en sektion maa vente. Maalt pris: 7,9 %
+        # af turene mister sektionen (den er berigelse, ikke baerende — og
+        # `default=""` var allerede valgt med den begrundelse).
         _awareness_add(
             20, "relevant skills",
-            _timed_result(future_skill_relevance, "skill_relevance", default=""),
+            _timed_result(future_skill_relevance, "skill_relevance",
+                          default="", max_s=_HOT_RESOLVE_CAP_S),
         )
     except Exception as _e:
         _sec_err("relevant skills", _e)

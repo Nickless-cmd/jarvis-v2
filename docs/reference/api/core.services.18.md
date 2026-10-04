@@ -580,17 +580,12 @@ _Guards for tool turns that end in hollow final prose._
 | function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
 | function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
 
-## `core/services/precision_bias.py`
-_Precision Bias — emotional color-mapping for action style._
+## `core/services/praefiks_stabilitet.py`
+_Bliver de «uændrede» præfiks-sektioner ved med at være uændrede?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `PrecisionProfile` | `` | Computed precision bias for one turn. | [src](../../../core/services/precision_bias.py#L129) |
-| function | `compute_precision_bias` | `()` | Compute the current precision bias from pressure state. | [src](../../../core/services/precision_bias.py#L144) |
-| function | `format_precision_for_prompt` | `(profile)` | Format a precision profile for prompt injection. | [src](../../../core/services/precision_bias.py#L203) |
-| function | `get_precision_line` | `()` | Convenience: compute + format in one call. Returns None on any failure. | [src](../../../core/services/precision_bias.py#L223) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/precision_bias.py#L235) |
-| function | `_find_style_dominant_signal` | `(dominant_pressures)` | Find which signal family should drive style when multiple pressures exist. | [src](../../../core/services/precision_bias.py#L246) |
-| function | `build_precision_bias_surface` | `()` | — | [src](../../../core/services/precision_bias.py#L285) |
-| function | `_emit_bias_event` | `(class_id, bias)` | — | [src](../../../core/services/precision_bias.py#L294) |
+| function | `_fingeraftryk` | `(tekst)` | — | [src](../../../core/services/praefiks_stabilitet.py#L53) |
+| function | `tjek` | `(sektioner)` | Sammenlign med sidste tur. Returnér felter til timing-linjen. | [src](../../../core/services/praefiks_stabilitet.py#L57) |
+| function | `nulstil` | `()` | Glem alt. Kun til tests — produktionen nulstiller ved genstart. | [src](../../../core/services/praefiks_stabilitet.py#L102) |
 

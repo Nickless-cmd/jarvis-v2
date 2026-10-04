@@ -1,6 +1,6 @@
 import { GenoptagelsesVarselHost } from '../components/feedback/GenoptagelsesVarselHost'
 import { useEffect } from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
@@ -64,6 +64,11 @@ vi.mock('../lib/sideTasksApi', () => ({
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
+
+// Kladden og panel-tilstanden persisteres nu i localStorage (4/10-2026), så uden
+// denne lækker én tests åbne panel ind i den næste — og «de to ruder kan stå
+// SAMMEN» fejler, fordi panelet allerede ER åbent fra testen før.
+beforeEach(() => localStorage.clear())
 
 describe('ChatView integration', () => {
   it('viser rækkevisning når en ældre assistentbesked har et tomt blokindeks', async () => {
@@ -521,6 +526,17 @@ describe('ChatView — ændringer og jobs i samme skinne', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
     expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
+  })
+
+  it('husker at panelet var åbent — også efter et gen-mount (genstart)', async () => {
+    // Bjørn 4/10-2026: «appen husker ikk om de var åbne … alle paneler nulstiller
+    // ved app genstart». Et gen-mount er det tætteste testen kommer på en genstart.
+    const a = vis()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
+    a.unmount()
+    vis()
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
   })
 
   it('headeren gør plads KUN når skinnen er åben', async () => {

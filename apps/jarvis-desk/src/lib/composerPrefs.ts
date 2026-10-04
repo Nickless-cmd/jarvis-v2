@@ -4,6 +4,20 @@ export const PERM_KEY = 'jarvis-desk:permission'
 export const PROV_KEY = 'jarvis-desk:provChoice'
 export const MODEL_KEY = 'jarvis-desk:model'
 
+/**
+ * Kladden i skrivefeltet huskes pr. FLADE (chat / code / cowork).
+ *
+ * Bjørn 4/10-2026: teksten forsvandt i det øjeblik man skiftede mode, fordi
+ * ChatView og CodeView har HVER sin `<Composer>` — den ene unmountes og tager
+ * sin `useState('')` med sig. Én nøgle pr. flade betyder at chat-kladden bliver
+ * i chatten og kode-kladden i koden, og at begge overlever både skiftet og en
+ * genstart. (Deltes de om én nøgle, ville en kode-tekst dukke op i chatten.)
+ */
+export const DRAFT_PREFIX = 'jarvis-desk:composerDraft:'
+export function draftKeyFor(flade: string): string {
+  return `${DRAFT_PREFIX}${flade}`
+}
+
 /** Taenknings-effekt. 'think' = lad serveren vaelge (adaptivt); 'fast' og
  *  'deep' er eksplicitte overstyringer serveren ALTID respekterer. */
 export type ThinkingMode = 'fast' | 'think' | 'deep'

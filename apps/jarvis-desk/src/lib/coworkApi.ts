@@ -497,6 +497,17 @@ export type ReviewFil = {
   ny?: boolean
 }
 export type ReviewRisiko = { path: string; regel: string; note: string }
+/** Den seneste commit. Sat KUN når arbejdstræet er rent — så panelet kan vise
+ *  hvad man LIGE har lavet i stedet for at stå tomt (Bjørn 4/10-2026). */
+export type ReviewSeneste = {
+  hash: string
+  subject: string
+  when: string
+  files: ReviewFil[]
+  added: number
+  removed: number
+  diff: string
+}
 export type ReviewAendringer = {
   branch: string
   files: ReviewFil[]
@@ -510,6 +521,8 @@ export type ReviewAendringer = {
   /** Sat naar vi ikke KUNNE laese traeet. «Ingen aendringer» og «jeg kan ikke
    *  se traeet» er stik modsatte udsagn, og klienten skal sige forskel. */
   fejl?: string
+  /** Den seneste commit — kun naar arbejdstraeet er rent. */
+  seneste_commit?: ReviewSeneste
 }
 export async function getReviewAendringer(
   config: ApiConfig,

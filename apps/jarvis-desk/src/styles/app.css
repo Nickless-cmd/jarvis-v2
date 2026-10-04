@@ -4529,6 +4529,24 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .changes-klippet { color: var(--warn-fg); }
 
 .changes-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+/* Rent træ + seneste commit (4/10-2026): panelet må ikke stå tomt i det øjeblik
+   man committer — man ville se hvad man LIGE har lavet. */
+.changes-rent { padding: 4px 0 0; }
+.changes-rent-linje { color: var(--fg-3); padding: 18px 0 8px; text-align: center; font-size: 12px; }
+.changes-seneste-hoved {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--fg-3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  padding: 6px 10px 2px;
+}
+.changes-seneste-hoved code { text-transform: none; letter-spacing: 0; color: var(--fg-2); font-size: 11px; }
+.changes-seneste-emne {
+  padding: 0 10px 6px; color: var(--fg-1); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.changes-fil-rk.is-statisk { cursor: default; }
+.changes-fil-rk.is-statisk:hover { background: none; }
+
 .changes-fil-rk {
   display: flex; align-items: center; gap: 6px; width: 100%;
   background: none; border: 0; color: inherit; cursor: pointer;

@@ -21,6 +21,7 @@ import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
@@ -746,6 +747,7 @@ export function ChatView({
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
         koerselsTal={koerselsTal}
+        draftKey="chat"
       />
       <VoiceConversation
         active={voice.active}
@@ -765,17 +767,19 @@ export function ChatView({
   // i chat — hvor Bjoern arbejder mest — var der ingen vej til det overhovedet.
   // (16/9-2026: «hvorfor de ikk bliver vist overhovede … alt du naesten laver
   // bliver vist der i».)
-  const [jobsOpen, setJobsOpen] = useState(false)
-  const [browserOpen, setBrowserOpen] = useState(false)
+  // Panel-tilstand huskes i localStorage (Bjørn 4/10-2026: «appen husker ikk om
+  // de var åbne … alle paneler nulstiller ved app genstart»).
+  const [jobsOpen, setJobsOpen] = usePersistedState('jarvis-desk:panel:jobs', false)
+  const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
   // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
   // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
-  const [artifactsOpen, setArtifactsOpen] = useState(false)
-  const [plansOpen, setPlansOpen] = useState(false)
-  const [prOpen, setPrOpen] = useState(false)
+  const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
+  const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
+  const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
-  const [changesOpen, setChangesOpen] = useState(false)
+  const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')

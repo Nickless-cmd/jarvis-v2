@@ -57,6 +57,24 @@ describe('ChangesPanel', () => {
     expect(await screen.findByText('Ingen ændringer')).toBeInTheDocument()
   })
 
+  it('et rent træ viser hvad der LIGE blev committet — panelet må ikke blive tomt', async () => {
+    // Bjørn 4/10-2026: «ændrings panel der forsvinder indhold så snart du
+    // committer». Serveren sender seneste_commit KUN når træet er rent.
+    getReviewAendringer.mockResolvedValue({
+      ...SVAR, files: [], added: 0, removed: 0, diff: '',
+      seneste_commit: {
+        hash: 'abc1234', subject: 'fix(x): noget vigtigt', when: '2026-10-04T13:53:11+02:00',
+        files: [{ path: 'src/a.ts', added: 3, removed: 1, binary: false }],
+        added: 3, removed: 1, diff: '',
+      },
+    })
+    render(<ChangesPanel config={cfg} onClose={() => {}} />)
+    expect(await screen.findByText(/Sidste commit/)).toBeInTheDocument()
+    expect(screen.getByText('abc1234')).toBeInTheDocument()
+    expect(screen.getByText('fix(x): noget vigtigt')).toBeInTheDocument()
+    expect(screen.getByText('src/a.ts')).toBeInTheDocument()
+  })
+
   it('en FEJL er ikke «ingen ændringer»', async () => {
     getReviewAendringer.mockRejectedValue(new Error('git svarede ikke'))
     render(<ChangesPanel config={cfg} onClose={() => {}} />)

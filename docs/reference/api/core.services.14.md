@@ -457,8 +457,10 @@ _Proveniens og bogføring for indbakken._
 | function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L118) |
 | function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L142) |
 | function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L214) |
-| function | `done` | `(bruger_id, post_id)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L243) |
-| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L272) |
+| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L243) |
+| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L294) |
+| function | `done` | `(bruger_id, post_id)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L323) |
+| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L352) |
 
 ## `core/services/inbox_view.py`
 _Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload._

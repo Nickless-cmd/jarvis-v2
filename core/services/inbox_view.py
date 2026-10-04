@@ -223,6 +223,38 @@ def _aegte_godkendelser(bruger_id: str) -> list[dict[str, Any]]:
         return []
 
 
+def _aegte_backlog_tal() -> int:
+    """Hvor mange står i backloggen — ÉT tal, med en adresse.
+
+    Spec'ens egen afgørelse: kandidat-backloggen er **ude** af indbakken, kun
+    tællingen er med, fordi «1.896 poster ville drukne den dag ét». Men tallet
+    skal så faktisk VÆRE der.
+
+    Målt 4/10-2026: `Kilder.backlog_tal` stod som `lambda: 0`, altså den
+    standard jeg skrev da jeg byggede klassen. Linjen «Backlog: N → …» har
+    derfor aldrig stået i en visning. Det er den samme fejl som de tre andre i
+    dette spor — en korrekt mekanisme uden en kilde — og den er min.
+
+    Instrument-fundene er den store: 2.259 åbne, den ældste set 23/6-2026.
+    De hører IKKE som poster (samme argument som kandidaterne), men et tal
+    uden en adresse er ingen oplysning, og et tal der altid er nul er værre:
+    det siger at der ikke er noget.
+    """
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT count(*) FROM central_instrument_findings "
+                "WHERE status = 'open'").fetchone()
+        return int(r[0] or 0) if r else 0
+    except Exception as exc:  # noqa: BLE001
+        # Et tal vi ikke kan laese er ikke nul. Fald til 0 betyder «ingen
+        # backlog-linje», hvilket er aerligt — men fejlen skal ses, ellers
+        # ser en tabel der mangler ud som en tom backlog.
+        logger.warning("inbox_view: kunne ikke taelle backloggen: %s", exc)
+        return 0
+
+
 def _aegte_proces_lever(pid: int | None) -> bool | None:
     """Lever processen? `None` = kan ikke afgøres HER.
 
@@ -277,7 +309,8 @@ class Kilder:
     #: registrerede årsag — ikke gættes fra den seneste fyrede vækning, for så
     #: ville en tur han selv startede arve en tilfældig vækning som sin grund.
     turens_wakeup_id: Callable[[], str] = lambda: ""
-    backlog_tal: Callable[[], int] = lambda: 0
+    backlog_tal: Callable[[], int] = field(
+        default=lambda: _aegte_backlog_tal())
     planlagte: Callable[[str], list[dict[str, Any]]] = field(
         default=lambda _b: [])
     gentagende: Callable[[str], list[dict[str, Any]]] = field(

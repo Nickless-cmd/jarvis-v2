@@ -762,3 +762,64 @@ def test_en_FYRET_vaeknings_post_staar_i_VENTER():
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=k)
     assert [p["id"] for p in v["venter_paa_dig"]] == ["wake-fyret"]
     assert [p["id"] for p in v["paa_vej"]] == []
+
+
+def test_BACKLOG_tallet_er_koblet_til_en_rigtig_kilde(monkeypatch, tmp_path):
+    """`Kilder.backlog_tal` stod som `lambda: 0` — den standard jeg skrev da
+    jeg byggede klassen, og aldrig koblede.
+
+    Konsekvensen: spec'ens linje «Backlog: N kandidat-forslag → …» har ALDRIG
+    stået i en visning. Og et tal der altid er nul er værre end et manglende
+    tal: det siger at der ikke er noget.
+
+    Målt 4/10-2026 på CT105: 2.259 åbne instrument-fund, den ældste set
+    23/6-2026. De hører ikke som POSTER — samme argument som de 1.896
+    kandidater, der ville drukne fladen dag ét — men tallet skal være der.
+
+    Fjerde gang i dette spor at en korrekt mekanisme manglede sin kilde:
+    skriveren, læseren i prompten, lukkeren, og nu tælleren.
+    """
+    import sqlite3
+    from contextlib import contextmanager
+
+    import core.runtime.db_core as core_db
+    from core.services import inbox_view as iv
+
+    sti = tmp_path / "b.db"
+    c = sqlite3.connect(sti)
+    c.execute("CREATE TABLE central_instrument_findings (signature TEXT, status TEXT)")
+    c.executemany("INSERT INTO central_instrument_findings VALUES (?,?)",
+                  [(f"s{i}", "open") for i in range(7)] + [("lukket", "resolved")])
+    c.commit(); c.close()
+
+    @contextmanager
+    def _connect():
+        k = sqlite3.connect(sti)
+        k.row_factory = sqlite3.Row
+        try:
+            yield k
+        finally:
+            k.close()
+
+    monkeypatch.setattr(core_db, "connect", _connect)
+    # KUN de aabne. En taelling der tog de lukkede med ville vokse for evigt
+    # og dermed aldrig kunne falde, uanset hvad nogen ryddede.
+    assert iv._aegte_backlog_tal() == 7
+    assert iv.Kilder().backlog_tal() == 7, \
+        "standarden er ikke bundet til kilden — tallet er tilbage paa 0"
+
+
+def test_et_ULAESELIGT_backlog_tal_bliver_0_og_logges(monkeypatch, caplog):
+    """Fald til 0 betyder «ingen backlog-linje», og det er ærligt. Men en
+    tabel der mangler må ikke se ud som en tom backlog, så fejlen logges."""
+    import logging
+
+    import core.runtime.db_core as core_db
+    from core.services import inbox_view as iv
+
+    monkeypatch.setattr(core_db, "connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    with caplog.at_level(logging.WARNING):
+        assert iv._aegte_backlog_tal() == 0
+    assert any("backloggen" in r.message for r in caplog.records), \
+        "en ulaeselig backlog forsvandt i tavshed"

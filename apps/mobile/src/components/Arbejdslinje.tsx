@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { AnimeretPuls } from './AnimeretPuls'
 import { Prikker } from './Prikker'
-import { RullendeTokens, RullendeUr } from './RullendeTal'
+import { CIF_HOEJDE, RullendeTokens, RullendeUr } from './RullendeTal'
 
 /**
  * Arbejdslinjen — nederst i beskeden, kun mens der streames.
@@ -107,6 +107,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // Tallene står FAST: de er det linjen melder om arbejdet, og en lang sti må
   // ikke skubbe dem ud af skærmen. Det er teksten der viger.
   talRaekke: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, opacity: 0.65 },
-  talTekst: { color: tokens.color.fg2, fontSize: 12, fontVariant: ['tabular-nums'] },
+  // 4/10-2026: SAMME kasse som hjulene (`CIF_HOEJDE`). Uden den centrerer
+  // rækken en lavere tekstkasse (fontens egen line-height) mod hjulets 16 px,
+  // og cifferet løftes. Desk havde samme fejl i en anden form — der var det
+  // flex-baseline, her er det to kasser i forskellig højde. Med identiske
+  // kasser lander begge glyffer ens, uanset hvordan platformen placerer
+  // teksten i sin line-height.
+  talTekst: {
+    color: tokens.color.fg2, fontSize: 12, lineHeight: CIF_HOEJDE,
+    height: CIF_HOEJDE, fontVariant: ['tabular-nums'],
+  },
   tekst: { color: tokens.color.fg2, fontSize: 13.5, flexShrink: 1, minWidth: 0 },
 })

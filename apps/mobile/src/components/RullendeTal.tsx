@@ -38,8 +38,12 @@ import { kortTokens } from '../lib/arbejdslinje'
 
 type Retning = 'op' | 'ned'
 
-/** Én ciffer-højde i px. `lineHeight` på hvert ciffer skal matche. */
-const CIF_HOEJDE = 16
+/** Én ciffer-højde i px. `lineHeight` på hvert ciffer skal matche.
+ *
+ *  Eksporteret med vilje: nabo-teksten i `Arbejdslinje` SKAL have samme kasse
+ *  (se `talTekst`), ellers centrerer rækken en lavere tekstkasse mod denne og
+ *  cifferet løftes. Det er samme fejlklasse som desks 3 px-løft. */
+export const CIF_HOEJDE = 16
 
 /** Hjulets bredde i px — desk måler 8,05 px ved fontSize 13. */
 const CIF_BREDDE = 8

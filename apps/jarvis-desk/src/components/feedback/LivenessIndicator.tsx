@@ -2,15 +2,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LiveVerb } from '../shell/LiveVerb'
 import { varighed } from '../../lib/jobsApi'
+import { RullendeTokens, RullendeUr } from './RullendeTal'
 
 /** Skiftende status-verber i Jarvis' stemme (når der ikke er en konkret tool-
  *  handling). Roterer hvert par sekunder så det føles levende. */
 const VERBS = ['tænker', 'grunder', 'samler trådene', 'regner den ud', 'vejer mulighederne', 'kigger nærmere']
 
-/** Kort token-tal: 1234 → "1.2k". */
-function fmtTokens(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}
+/* Token-tallet formateres nu inde i `RullendeTokens` — samme regel («1.2k»
+   over 1000, ellers rå tal), men den skal ligge sammen med hjulene. */
 
 /** «1 job kører» / «3 jobs kører». */
 function jobTekst(n: number): string {
@@ -79,9 +78,15 @@ export function LivenessIndicator({
   } else {
     if (working && !compacting) {
       const sek = Math.floor(elapsedMs / 1000)
-      if (sek > 0) dele.push(varighed(sek))
+      if (sek > 0) dele.push(<RullendeUr key="ur" sek={sek} />)
     }
-    if (tokens > 0) dele.push(`${fmtTokens(tokens)} tokens`)
+    if (tokens > 0) {
+      dele.push(
+        <span key="tok">
+          <RullendeTokens tokens={tokens} /> tokens
+        </span>,
+      )
+    }
     if (thoughtMs != null && thoughtMs > 0) {
       dele.push(
         <span

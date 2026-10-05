@@ -63,6 +63,20 @@ describe('StreamContext', () => {
     expect(result.current.status).toBe('done')
   })
 
+  it('knytter et live approval-kort til den afsendende session', () => {
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 'session-a' }) })
+    act(() => {
+      handlersRef.current?.onEvent({
+        type: 'system_event', kind: 'approval_request',
+        payload: { approval_id: 'approval-a', tool: 'bash', message: 'ls' },
+      })
+    })
+    expect(result.current.pendingApproval).toMatchObject({
+      approvalId: 'approval-a', sessionId: 'session-a',
+    })
+  })
+
   it('onHung → hung status', () => {
     const { result } = renderHook(() => useStream(), { wrapper })
     act(() => { result.current.send('hej', { sessionId: 's' }) })
@@ -312,6 +326,17 @@ describe('generations-hegn paa reattach', () => {
  * men kun i præcis det vindue hvor han venter.
  */
 describe('StreamContext · opsamling af ventende godkendelse', () => {
+  it('bevarer sessions-id fra en godkendelse hentet paa tvaers af sessioner', async () => {
+    const { hentVentendeGodkendelseOveralt } = await import('../lib/api')
+    vi.mocked(hentVentendeGodkendelseOveralt).mockResolvedValueOnce({
+      approvalId: 'approval-b', tool: 'bash', action: 'pwd', sessionId: 'session-b',
+    })
+    const { result } = renderHook(() => useStream(), { wrapper })
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+    expect(result.current.pendingApproval).toMatchObject({
+      approvalId: 'approval-b', sessionId: 'session-b',
+    })
+  })
   it('spørger IKKE når der ikke kører en tur', async () => {
     const { hentVentendeGodkendelse } = await import('../lib/api')
     ;(hentVentendeGodkendelse as unknown as { mockClear: () => void }).mockClear()

@@ -1268,7 +1268,7 @@ export function CodeView({
             compacting={compacting}
           />
           <div className="composer-notices">
-            <GodkendelsesKort />
+            <GodkendelsesKort sessionId={sessionId} />
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

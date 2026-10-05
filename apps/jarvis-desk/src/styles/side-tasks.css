@@ -25,17 +25,17 @@
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   color: var(--fg-2); font-size: 12px;
 }
-/* To hele kort bagved. Lagene sidder på beholderen, så deres sidekanter
-   dækkes af det forreste kort; uden top/bottom kollapsede de til streger. */
+/* Ét bagkort ved to opgaver, to ved tre eller flere. Lagene sidder på
+   beholderen, så sidekanterne dækkes af det forreste kort. */
 .sok-dok-stak { isolation: isolate; }
-.sok-dok-stak > .sok { z-index: 1; }
-.sok-dok-stak::before, .sok-dok-stak::after {
-  content: ''; position: absolute; top: 0; bottom: 0; z-index: 0;
+.sok-dok-stak > .sok { z-index: 2; }
+.sok-dok-stak::before, .sok-dok-stak-tre::after {
+  content: ''; position: absolute; top: 0; bottom: 0;
   border-radius: 12px; border: 1px solid var(--overlay-line, var(--line));
   background: var(--overlay-bg, var(--bg-2));
 }
-.sok-dok-stak::before { left: 8px; right: 8px; transform: translateY(5px); }
-.sok-dok-stak::after { left: 16px; right: 16px; transform: translateY(10px); }
+.sok-dok-stak::before { z-index: 1; left: 8px; right: 8px; transform: translateY(5px); }
+.sok-dok-stak-tre::after { z-index: 0; left: 16px; right: 16px; transform: translateY(10px); }
 .sok-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .sok-overskrift { color: var(--fg-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
 .sok-igang {

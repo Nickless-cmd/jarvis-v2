@@ -14,18 +14,18 @@ import { useSettings } from '../../hooks/useSettings'
  * slet ikke — kun en OS-notits. Paa telefonen var der et kort. Kortet flyttede
  * sig aldrig; skrivebordet tegnede det bare ikke.
  *
- * Tilstanden var der hele tiden: `stream.pendingApproval` bor i den delte
- * StreamContext og fyldes af `hentVentendeGodkendelseOveralt`. Kun tegningen
- * manglede — samme figur som [[GenoptagelsesVarsel]] samme dag, ét lag under.
+ * Tilstanden bor i den delte StreamContext og fyldes ogsaa af
+ * `hentVentendeGodkendelseOveralt`. Kortet maa kun tegnes i sin egen session,
+ * selv om opsamlingen finder det fra en anden aktiv samtale.
  *
  * Rollen laeses fra `auth`, ikke fra en prop: hvem der maa svare er en
  * egenskab ved brugeren, ikke ved fladen.
  */
-export function GodkendelsesKort() {
+export function GodkendelsesKort({ sessionId }: { sessionId: string | null }) {
   const stream = useStream()
   const { auth } = useSettings()
   const p = stream.pendingApproval
-  if (!p) return null
+  if (!p || !sessionId || p.sessionId !== sessionId) return null
   return (
     <ApprovalCard
       approvalId={p.approvalId}

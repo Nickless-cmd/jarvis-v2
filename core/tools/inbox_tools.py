@@ -44,13 +44,15 @@ INBOX_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "inbox",
             "description": (
-                "Din indbakke: alt der venter paa dig, samlet. Seks sektioner — "
-                "hvad der vakte dig denne tur, hvad der VENTER PAA DIG (kun den "
-                "kan blokere mutationer), hvad der er i gang, hvad der er paa "
-                "vej, hvad der gentager sig, og hvad der venter paa Bjoern. "
+                "Din indbakke: alt der venter paa dig, samlet. Otte sektioner "
+                "— hvad der vakte dig denne tur, hvad der VENTER PAA DIG (kun "
+                "den kan blokere mutationer), hvad der er i gang, dine "
+                "sideopgaver, dine egne beslutninger, hvad der er paa vej, "
+                "hvad der er planlagt, og hvad der venter paa Bjoern. "
                 "Én linje per post med id, status, alder og en henvisning — "
-                "aldrig filindhold. Erstatter i praksis list_self_wakeups, "
-                "list_agents og bash_session_list som det du kalder."
+                "aldrig filindhold, og intet raat payload. Erstatter i "
+                "praksis list_self_wakeups, list_agents og bash_session_list "
+                "som det du kalder."
             ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
@@ -121,6 +123,28 @@ def _bruger() -> str:
         return ""
 
 
+#: Sektionerne i visningen — ÉN liste, delt af teksten og af skemaets
+#: beskrivelse. To lister drev fra hinanden: skemaet sagde «Seks sektioner»
+#: længe efter der var otte, og nævnte «hvad der gentager sig» — en sektion der
+#: ikke findes i visningen (`Kilder.gentagende` er `lambda _b: []` og har
+#: aldrig haft en kilde). Beskrivelsen er det modellen læser FØR den kalder, så
+#: et forkert tal der er ikke kosmetik.
+_SEKTIONER: tuple[tuple[str, str], ...] = (
+    ("VAKTE DENNE TUR", "vakte"),
+    ("VENTER PAA DIG", "venter_paa_dig"),
+    ("I GANG", "i_gang"),
+    ("SIDEOPGAVER", "sideopgaver"),
+    # Beslutnings-posterne fik deres egen sektion 5/10-2026. De gater ikke,
+    # så de hører ikke under «VENTER PÅ DIG» — men de bliver i VISNINGEN,
+    # fordi sektionen er det eneste sted alle beslutnings-id'er står
+    # (gaten navngiver kun de 12 værste). Se `inbox_view._UDEN_LOFT`.
+    ("BESLUTNINGER", "beslutninger"),
+    ("PAA VEJ", "paa_vej"),
+    ("PLANLAGTE", "planlagte"),
+    ("VENTER PAA BJOERN", "venter_paa_bjorn"),
+)
+
+
 def _tekst(v: dict[str, Any]) -> str:
     """Visningen som ÉN tekst. Tomme sektioner udelades helt.
 
@@ -128,22 +152,8 @@ def _tekst(v: dict[str, Any]) -> str:
     ingenting. Og rækkefølgen er fast — «VENTER PÅ DIG» øverst efter «VAKTE»,
     fordi det er den eneste sektion der kan blokere.
     """
-    sektioner = (
-        ("VAKTE DENNE TUR", "vakte"),
-        ("VENTER PAA DIG", "venter_paa_dig"),
-        ("I GANG", "i_gang"),
-        ("SIDEOPGAVER", "sideopgaver"),
-        # Beslutnings-posterne fik deres egen sektion 5/10-2026. De gater ikke,
-        # så de hører ikke under «VENTER PAA DIG» — men de bliver i VISNINGEN,
-        # fordi sektionen er det eneste sted alle beslutnings-id'er står
-        # (gaten navngiver kun de 12 værste). Se `inbox_view._UDEN_LOFT`.
-        ("BESLUTNINGER", "beslutninger"),
-        ("PAA VEJ", "paa_vej"),
-        ("PLANLAGTE", "planlagte"),
-        ("VENTER PAA BJOERN", "venter_paa_bjorn"),
-    )
     ud: list[str] = []
-    for titel, noegle in sektioner:
+    for titel, noegle in _SEKTIONER:
         poster = list(v.get(noegle) or [])
         if not poster:
             continue
@@ -167,9 +177,17 @@ def _exec_inbox(arguments: dict[str, Any] | None = None, **_kw) -> dict[str, Any
     v = byg_indbakke(bruger)
     if v.get("status") != "ok":
         return {"status": "error", "error": str(v.get("error") or "ukendt fejl")}
+    # INTET payload (rettet 5/10-2026). Her stod `"indbakke": v` — hele den rå
+    # struktur oveni teksten. Målt mod rigtige data samme dag: 4.441 tegn tekst
+    # og 28.014 tegn rå struktur oveni, altså 6,3x, hvoraf 9.601 tegn var
+    # posternes FULDE beskrivelser (`inbox_view._post` afkorter linjen, ikke
+    # den gemte tekst). Værktøjets eget løfte er «én linje per post, aldrig
+    # filindhold», og nøglen havde NUL læsere: desk og mobil henter deres tal
+    # fra `opmaerksomhed`-endpointet, og `inbox_prompt_section` kalder
+    # `byg_indbakke` direkte. Skal en fremtidig flade have strukturen, kalder
+    # den `byg_indbakke` — den vej findes allerede.
     return {"status": "ok", "tekst": _tekst(v),
-            "antal_venter_paa_dig": len(v.get("venter_paa_dig") or []),
-            "indbakke": v}
+            "antal_venter_paa_dig": len(v.get("venter_paa_dig") or [])}
 
 
 def _exec_inbox_done(arguments: dict[str, Any] | None = None, **_kw) -> dict[str, Any]:

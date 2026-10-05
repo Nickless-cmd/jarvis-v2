@@ -8,6 +8,7 @@ Testene her måler alle fem lag, ikke kun at funktionerne virker.
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sqlite3
 from contextlib import contextmanager
@@ -193,6 +194,54 @@ def test_en_TOM_indbakke_siger_det_frem_for_seks_tomme_overskrifter(inbox_db):
     assert r["tekst"] == "Indbakken er tom."
     for titel in ("VENTER PAA DIG", "I GANG", "PAA VEJ", "PLANLAGTE"):
         assert titel not in r["tekst"]
+
+
+def test_inbox_returnerer_TEKST_og_INTET_payload(inbox_db):
+    """Lækagen målt 5/10-2026: `_exec_inbox` returnerede HELE den rå struktur
+    under nøglen `indbakke` oveni `tekst`.
+
+    Målt mod rigtige data samme dag: 4.441 tegn tekst — og 28.014 tegn rå
+    struktur oveni, altså 6,3x, hvoraf 9.601 tegn var posternes FULDE
+    beskrivelser. Værktøjets eget løfte er «én linje per post, aldrig
+    filindhold», og nøglen havde NUL læsere: desk og mobil henter deres tal fra
+    `opmaerksomhed`-endpointet, og `inbox_prompt_section` kalder `byg_indbakke`
+    direkte.
+
+    Testen måler BEGGE veje. En gren der bare slettede hele posten ville gå
+    igennem den ene halvdel — derfor skal posten stadig være i `tekst`.
+    """
+    lang = ("noget jeg selv har lovet " * 12).strip()   # ~275 tegn
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="decision", kilde_id="dec_lang",
+        verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
+        beskrivelse=lang)
+    with _som_bjorn():
+        r = inbox_tools._exec_inbox({})
+    raa = json.dumps(r, ensure_ascii=False)
+    assert "indbakke" not in r, "den rå struktur er tilbage i svaret"
+    assert lang not in raa, "den FULDE beskrivelse stod i værktøjssvaret"
+    assert "dec_lang" in r["tekst"], "posten forsvandt helt — det er den anden fejl"
+
+
+#: Tallene skemaet må bruge om sektionerne. Kort med vilje: beskrivelsen er
+#: prosa for en model, ikke en oversættelsestabel.
+_TALORD = {6: "Seks", 7: "Syv", 8: "Otte", 9: "Ni"}
+
+
+def test_skemaets_beskrivelse_taeller_de_sektioner_der_FINDES():
+    """Skemaet sagde «Seks sektioner» længe efter der var otte, og nævnte «hvad
+    der gentager sig» — en sektion der ikke findes i visningen
+    (`Kilder.gentagende` er `lambda _b: []` og har aldrig haft en kilde).
+
+    Beskrivelsen er det modellen læser FØR den kalder, så et forkert tal der er
+    ikke kosmetik: den fortæller hvad værktøjet kan svare på, og en sektion den
+    lover men ikke har, er en dør der ikke findes.
+    """
+    n = len(inbox_tools._SEKTIONER)
+    d = inbox_tools.INBOX_TOOL_DEFINITIONS[0]["function"]["description"]
+    assert f"{_TALORD[n]} sektioner" in d, \
+        f"skemaet siger ikke «{_TALORD[n]} sektioner» (der er {n})"
+    assert "gentager sig" not in d, "beskrivelsen nævner en sektion der ikke findes"
 
 
 def test_inbox_done_paa_et_UKENDT_id_er_en_FEJL_ikke_et_ok(inbox_db):

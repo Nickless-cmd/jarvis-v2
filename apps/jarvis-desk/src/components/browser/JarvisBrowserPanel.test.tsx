@@ -87,6 +87,10 @@ describe('JarvisBrowserPanel', () => {
     broPaa()
     render(<JarvisBrowserPanel aaben />)
     const felt = await screen.findByLabelText('Adresse') as HTMLInputElement
+    // Vent paa at fanen er laest. Foer `aktiv` findes, gaar Enter til `aabn`
+    // — ikke `naviger` — saa testen maalte en anden vej end den den hedder.
+    // Samme race som knapperne: elementet findes foer tilstanden goer.
+    await waitFor(() => expect(felt.value).toBe('https://eksempel.dk/a'))
     // Fokus foerst — det er dét der holder pollet fra at aede tastningen, og
     // det er ogsaa det en bruger goer. Uden fokus er vaernet ikke i kraft.
     felt.focus()
@@ -117,7 +121,13 @@ describe('JarvisBrowserPanel', () => {
   it('kalder tilbage og genindlæs på den aktive fane', async () => {
     broPaa()
     render(<JarvisBrowserPanel aaben />)
-    fireEvent.click(await screen.findByLabelText('Tilbage'))
+    // Vent paa at fanen har meldt sin historik. Begge knapper er DISABLED
+    // indtil da (`disabled={!aktiv?.kanTilbage}` / `!aktiv`), og et klik paa
+    // en disabled knap kalder ingen handler. `findByLabelText` giver elementet
+    // med det samme — ogsaa mens det er doedt — saa klikket kunne ramme forbi.
+    // Maalt 5/10-2026: fejlede paa CI's langsommere runner, groen lokalt.
+    await waitFor(() => expect(screen.getByLabelText('Tilbage')).toBeEnabled())
+    fireEvent.click(screen.getByLabelText('Tilbage'))
     fireEvent.click(screen.getByLabelText('Genindlæs'))
     await waitFor(() => expect(tilbage).toHaveBeenCalled())
     expect(genindlaes).toHaveBeenCalled()

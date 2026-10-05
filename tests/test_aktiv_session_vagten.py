@@ -57,9 +57,18 @@ TILLADTE: dict[str, str] = {
     # Vagten selv og køens udløb — de ER mekanismen.
     "core/services/notification_bridge.py":
         "vagten selv: den skriver først EFTER at have spurgt om sessionen er aktiv",
-    "core/services/session_inbox.py":
-        "køens udløb: flusher det vagten holdt tilbage, efter Bjørns tur",
 }
+
+#: Fjernet 5/10-2026: `core/services/session_inbox.py` — «koeens udloeb:
+#: flusher det vagten holdt tilbage, efter Bjoerns tur».
+#:
+#: Bjoern samme dag: «alle disse beskeder der starter med [SYSTEM — IKKE FRA
+#: BJOERN] boer kun vises i mit notifikations feed og ikk dumpe ind i mit
+#: chatview». `flush_session` skriver derfor nu gennem
+#: `notifikationer.opret()` i stedet for `append_chat_message`, og saa daekker
+#: tilladelsen ingenting — praecis det `test_listen_er_ikke_raadnet` findes
+#: for. Skal koeen en dag skrive i chatten igen, hoerer linjen tilbage HER,
+#: med en ny begrundelse.
 
 RODMAPPER = ("core", "apps/api")
 

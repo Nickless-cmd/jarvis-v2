@@ -731,7 +731,27 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             surface["error"] = _udbyder_fejl
             return surface
 
-        if str(result.get("status") or "completed") in {"blocked", "failed", "needs_context"}:
+        _uden_resultat = str(result.get("status") or "completed")
+        if _uden_resultat in {"blocked", "failed", "needs_context"}:
+            # Nerven FOER raisen. `11f8d77cd` (5/10-2026, Actor: codex) indfoerte
+            # raisen her, og den ligger foer `note_agent_blocked` nedenfor — saa
+            # den typede blocked-nerve fra `6b8e6e646` (13/7) blev uopnaaelig
+            # for praecis den status den blev bygget til. Raisen er rigtig: en
+            # agent der ikke leverede noget brugbart skal fejle hoejt. Men
+            # HVORFOR den ikke leverede er hele nervens formaal, og «blocked»
+            # er ikke det samme som «failed» for den der ser paa Centralen.
+            if _uden_resultat in ("blocked", "needs_context"):
+                try:
+                    from core.services.agents import note_agent_blocked
+                    note_agent_blocked(
+                        agent_id, _uden_resultat,
+                        reason=str(result.get("text") or result.get("result") or "")[:160],
+                        role=str(agent.get("role") or ""),
+                    )
+                except Exception as exc:  # nerven maa aldrig staa i vejen for raisen nedenfor
+                    logger.warning(
+                        "agent_runtime_spawn: blocked-nerven fejlede for %s: %s",
+                        agent_id, exc)
             raise RuntimeError(
                 "Agent afsluttede uden et brugbart resultat: "
                 + str(result.get("result") or text or result.get("status"))[:350]

@@ -53,6 +53,19 @@ def db(monkeypatch, tmp_path):
     monkeypatch.setattr(_db, "connect", _connect)
     # Intet kendes af det andet lager → fraværet gælder.
     monkeypatch.setattr(sbr.in_flight_runs, "_load", lambda: {})
+    # MASKINENS UPTIME sivede ind i testen (5/10-2026). `_drift_graense`
+    # returnerer `max(seks timer, _container_start())`, og `_container_start`
+    # laeser `/proc/uptime` — saa paa en maskine der lige er bootet BLIVER
+    # alders-graensen uptimen. Maalt: maskinen bootede 18:46:29, suiten koerte
+    # 19:10 med 24 minutters uptime, og et run paa 29 minutter laa dermed FOER
+    # boot og blev drift af gren 2. `test_graensen_er_praecis` bestod alene
+    # (uptime 39 min) og fejlede i suiten (uptime 24 min);
+    # `test_et_LEVENDE_run...` kraever 120 minutters uptime for at bestaa.
+    #
+    # Testene her regner paa seks-timers-grenen — det staar i deres docstrings.
+    # `None` er den dokumenterede fallback i `_container_start` selv («et gaet
+    # maa aldrig blive til et stempel»), saa alders-reglen gaelder alene.
+    monkeypatch.setattr(sbr, "_container_start", lambda nu=None: None)
     # Stemplerne importeres LOKALT i loekken (importen er cirkulaer med vilje),
     # saa vagten skal sidde paa deres eget modul — `sbr` har dem aldrig.
     import core.services.visible_runs_outcomes as vro

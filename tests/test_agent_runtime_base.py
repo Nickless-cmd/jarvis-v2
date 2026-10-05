@@ -41,10 +41,31 @@ def test_undersoegende_agent_kan_soege_i_indhold_og_navne():
 
 
 def test_workstation_policy_er_strengt_laesekun():
+    """Intet vaerktoej her maa SKRIVE paa Bjoerns maskine.
+
+    Saettet blev udvidet 5/10-2026 i `11f8d77cd` (Actor: codex, «fix(scout):
+    require evidence and deliver results to inbox») med `web_search` og
+    `web_fetch`, saa scouten kan hente de beviser den nu kraeves at have.
+    Testen blev skrevet af samme forfatter i samme commit som policyen (9/9)
+    og var en selv-konsistens-pin, ikke et selvstaendigt vaern — den blev blot
+    ikke rettet med.
+
+    Pinnet paa EGENSKABEN frem for paa en liste, saa den naeste udvidelse ikke
+    fejler bare fordi den er en udvidelse: ingen `operator_*write`,
+    `operator_bash` eller andet der kan aendre noget paa maskinen.
+    """
     from core.services.agent_runtime_base import tools_for_policy
-    assert set(tools_for_policy("read-only-workstation")) == {
+    vaerktoejer = set(tools_for_policy("read-only-workstation"))
+    assert vaerktoejer >= {
         "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
-    }
+    }, "de fire laesende operator-vaerktoejer er selve policyen"
+    forbudt = [v for v in vaerktoejer if v.startswith("operator_")
+               and v not in {"operator_read_file", "operator_glob",
+                             "operator_grep", "operator_list_dir"}]
+    assert forbudt == [], f"ikke-laesende operator-vaerktoej i policyen: {forbudt}"
+    assert "operator_bash" not in vaerktoejer
+    assert not any("write" in v or "edit" in v or "delete" in v for v in vaerktoejer), \
+        f"noget her kan skrive: {sorted(vaerktoejer)}"
 
 
 def test_workstation_agent_stempler_operator_kald_med_desk_kontekst(monkeypatch):

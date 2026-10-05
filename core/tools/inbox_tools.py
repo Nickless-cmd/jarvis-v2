@@ -133,6 +133,11 @@ def _tekst(v: dict[str, Any]) -> str:
         ("VENTER PAA DIG", "venter_paa_dig"),
         ("I GANG", "i_gang"),
         ("SIDEOPGAVER", "sideopgaver"),
+        # Beslutnings-posterne fik deres egen sektion 5/10-2026. De gater ikke,
+        # så de hører ikke under «VENTER PAA DIG» — men de bliver i VISNINGEN,
+        # fordi sektionen er det eneste sted alle beslutnings-id'er står
+        # (gaten navngiver kun de 12 værste). Se `inbox_view._UDEN_LOFT`.
+        ("BESLUTNINGER", "beslutninger"),
         ("PAA VEJ", "paa_vej"),
         ("PLANLAGTE", "planlagte"),
         ("VENTER PAA BJOERN", "venter_paa_bjorn"),

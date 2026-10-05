@@ -393,11 +393,53 @@ def test_en_beslutnings_post_baerer_MIT_maerke_uden_at_paastaa_gating():
               verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
               beskrivelse="[kritisk 0%] en kritisk",
               created_at=_iso(TID - DAG))]))
-    post = v["venter_paa_dig"][0]
+    post = v["beslutninger"][0]
     assert post["id"] == "dec_krit"
     assert post["ejer_maerke"] == "[dig]", "min EGEN beslutning staar ikke som min"
     assert post["kraever_handling"] is False, (
         "visningen paastaar at en beslutning gater — gaten kan ikke naegte paa den")
+    assert v["venter_paa_dig"] == [], (
+        "en beslutning laa i den gatede sektion — den skal have sin EGEN")
+
+
+def test_beslutnings_poster_har_deres_EGEN_sektion():
+    """Bjørn 5/10-2026: «giv beslutnings-posterne deres egen sektion.»
+
+    Målt samme dag stod 42 åbne `dec_*`-poster i «VENTER PÅ DIG» — den eneste
+    sektion der betyder «noget DU skal svare på». De kan ikke gate, så de låste
+    ingenting; de lå bare under en overskrift der løj om hvad de var, og de
+    druknede de poster der FAKTISK kunne blokere.
+
+    Testen måler BEGGE veje: beslutningen må ikke stå i min sektion, og en
+    ikke-beslutning må ikke havne i beslutnings-sektionen. En gren der bare
+    flyttede ALT over ville gå igennem den ene.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id="dec_krit", kildetype="decision",
+              verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
+              beskrivelse="[kritisk 0%] en kritisk"),
+        _post(id="job-1", kildetype="job",
+              verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=True,
+              beskrivelse="hele suiten"),
+    ]))
+    assert [p["id"] for p in v["beslutninger"]] == ["dec_krit"]
+    assert [p["id"] for p in v["venter_paa_dig"]] == ["job-1"]
+
+
+def test_beslutnings_sektionen_har_INTET_loft():
+    """Den kan ikke gate — men den er det ENESTE sted alle beslutnings-id'er
+    står. Gaten navngiver kun de 12 værste og siger «… og N flere under
+    tærsklen». Et loft her ville skjule ADRESSER, ikke støj."""
+    from core.services.inbox_view import _SEKTION_LOFT, _UDEN_LOFT
+    n = _SEKTION_LOFT * 3
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id=f"dec-{i:02d}", kildetype="decision",
+              verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
+              beskrivelse=f"beslutning {i}", created_at=_iso(TID - i * DAG))
+        for i in range(n)]))
+    assert "beslutninger" in _UDEN_LOFT
+    assert len(v["beslutninger"]) == n, "en beslutnings-post blev skjult"
+    assert "beslutninger_skjult" not in v
 
 
 def test_godkendelser_er_SYNLIGE_men_gater_ALDRIG():
@@ -461,12 +503,14 @@ def test_backlog_er_ET_TAL_og_ikke_1896_linjer():
                for s in ("venter_paa_dig", "paa_vej"))
 
 
-def test_alle_SEKS_sektioner_findes_altid():
+def test_alle_OTTE_sektioner_findes_altid():
     """«Første udkast skrev de fire sektioner» — og det var forkert allerede da.
-    Tallet står nu med navnene, så det ikke kan drive igen."""
+    Tallet står nu med navnene, så det ikke kan drive igen. `beslutninger` kom
+    til 5/10-2026 og er med her, så en ny sektion ikke kan føjes til
+    `byg_indbakke` uden at nogen opdager at listen skal med."""
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder())
-    for navn in ("vakte", "venter_paa_dig", "i_gang", "paa_vej",
-                 "planlagte", "venter_paa_bjorn"):
+    for navn in ("vakte", "venter_paa_dig", "beslutninger", "i_gang", "paa_vej",
+                 "planlagte", "venter_paa_bjorn", "sideopgaver"):
         assert navn in v, f"sektionen {navn} mangler"
     assert "backlog_tal" in v
 
@@ -638,7 +682,7 @@ def test_TOMME_sektioner_er_tomme_lister_ikke_overskrifter():
     """En overskrift med nul linjer fylder i prompten og siger ingenting.
     Værktøjet udelader dem; visningen leverer dem som tomme lister."""
     v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder())
-    for navn in ("venter_paa_dig", "i_gang", "paa_vej", "planlagte"):
+    for navn in ("venter_paa_dig", "beslutninger", "i_gang", "paa_vej", "planlagte"):
         assert v[navn] == []
         assert f"{navn}_skjult" not in v
 

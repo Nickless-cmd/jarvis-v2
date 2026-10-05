@@ -1,4 +1,4 @@
-"""Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload.
+"""Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload.
 
 Opgave 2 i `docs/superpowers/specs/2026-10-03-indbakke-som-kontrolflade-design.md`.
 
@@ -590,8 +590,18 @@ def _dubletter_sammen(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # sige det meningsfuldt, gælder det ikke.
 _SEKTION_LOFT: Final[int] = 8
 
-#: Sektioner uden loft. Præcis én, og den er den eneste der kan gate.
-_UDEN_LOFT: Final[frozenset[str]] = frozenset({"venter_paa_dig"})
+#: Sektioner uden loft. To, og de er undtaget af HVER SIN grund.
+#:
+#: `venter_paa_dig`: en SKJULT blokerende post er en usynlig blokering.
+#:
+#: `beslutninger` (5/10-2026): sektionen kan ikke gate, men den er det ENESTE
+#: sted alle beslutnings-id'er står. Beslutnings-gaten viser de 12 værste og
+#: skriver «… og N flere under tærsklen» uden at kunne navngive resten — og der
+#: findes ingen anden flade hvor de kan slås op og lukkes. Målt 5/10: 42 poster
+#: stod der, og de 30 der ikke nåede gaten havde ingen anden adresse. Et loft
+#: her ville skjule ADRESSER, ikke støj.
+_UDEN_LOFT: Final[frozenset[str]] = frozenset(
+    {"venter_paa_dig", "beslutninger"})
 
 
 def _ordn(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -624,7 +634,7 @@ def byg_indbakke(
     nu_ts: float | None = None,
     kilder: Kilder | None = None,
 ) -> dict[str, Any]:
-    """Seks sektioner for ÉN bruger. Uden bruger-id: en typet fejl.
+    """Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl.
 
     Aldrig en liste over alle brugere. Husstanden har flere brugere, og de
     andres workspaces er krypterede — en indbakke der blander dem er et
@@ -648,6 +658,7 @@ def byg_indbakke(
 
     vakte: list[dict[str, Any]] = []
     venter_paa_dig: list[dict[str, Any]] = []
+    beslutninger: list[dict[str, Any]] = []
     i_gang: list[dict[str, Any]] = []
     paa_vej: list[dict[str, Any]] = []
     planlagte: list[dict[str, Any]] = []
@@ -746,6 +757,21 @@ def byg_indbakke(
         if (str(p.get("kildetype") or "") == "wakeup"
                 and str(p.get("kilde_id") or "") in planlagte_vaek_ids):
             paa_vej.append(post)
+        elif str(p.get("kildetype") or "") == "decision":
+            # Beslutnings-posterne har deres EGEN sektion (5/10-2026).
+            #
+            # Målt samme dag: 42 åbne `dec_*`-poster stod i «VENTER PÅ DIG» —
+            # den eneste sektion der pr. definition betyder «noget DU skal
+            # svare på». De kan ikke gate (`decision` står i
+            # `IKKE_GATENDE_KILDETYPER`, og rækken bærer `kraever_handling=0`),
+            # så de låste ingenting. De lå bare under en overskrift der løj om
+            # hvad de var — og de druknede de poster der FAKTISK kunne blokere.
+            #
+            # Det er postens ART der afgør sektionen, ikke dens ejer: en
+            # beslutning er min egen forpligtelse, også når nogen har flagget
+            # den. Ejer-grenen nedenfor betyder «min at MINDES om», og en
+            # beslutning er ikke noget Bjørn skylder at svare på.
+            beslutninger.append(post)
         elif post["ejer"] == db_inbox.EJER_BRUGER:
             # BJØRNS post er MIN at minde HAM om — ikke min at udføre.
             #
@@ -894,6 +920,7 @@ def byg_indbakke(
         ud["sideopgaver_skjult"] = skjulte_sideopgaver
     for navn, poster in (("venter_paa_dig", venter_paa_dig), ("i_gang", i_gang),
                          ("paa_vej", paa_vej), ("planlagte", planlagte),
+                         ("beslutninger", beslutninger),
                          ("venter_paa_bjorn", venter_paa_bjorn)):
         # Dubletter FOERST, saa loftet taeller grupper og ikke raa poster —
         # ellers kunne tre bookinger af samme vaekning spise tre af de otte

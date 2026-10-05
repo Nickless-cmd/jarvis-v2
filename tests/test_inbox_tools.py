@@ -167,6 +167,24 @@ def test_inbox_viser_poster_som_TEKST_uden_payload(inbox_db):
     assert r["antal_venter_paa_dig"] == 1
 
 
+def test_beslutnings_poster_faar_deres_EGEN_overskrift(inbox_db):
+    """5/10-2026: beslutnings-posterne stod i «VENTER PAA DIG» — den eneste
+    overskrift der betyder «noget du skal svare på». De gater ikke, og de
+    druknede de poster der faktisk kunne blokere."""
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="decision", kilde_id="dec_1",
+        verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
+        beskrivelse="[kritisk 0%] noget jeg selv har lovet")
+    with _som_bjorn():
+        r = inbox_tools._exec_inbox({})
+    assert r["status"] == "ok"
+    assert "BESLUTNINGER" in r["tekst"]
+    assert "dec_1" in r["tekst"]
+    assert "VENTER PAA DIG" not in r["tekst"], \
+        "beslutningen stod i den gatede sektion"
+    assert r["antal_venter_paa_dig"] == 0
+
+
 def test_en_TOM_indbakke_siger_det_frem_for_seks_tomme_overskrifter(inbox_db):
     """En overskrift med nul linjer fylder i prompten og siger ingenting."""
     with _som_bjorn():

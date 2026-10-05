@@ -66,14 +66,11 @@ _PROMPT_LOFT: int = 6
 #: første gang: 34 beslutnings-poster fyldte «VENTER PÅ DIG», og prompten ville
 #: have rapporteret de samme beslutninger to steder.
 #:
-#: Og overskriften ville lyve. Posterne er `[huset]` og gater ikke — spec'ens
-#: egen linje om sektionen er «KUN denne kan gate mutationer». 34 poster der
-#: ikke kan gate under netop den overskrift er den slags tal man holder op med
-#: at læse.
-#:
-#: De bliver i VISNINGEN, så `inbox` viser alle 34 med id, og `inbox_done`/
-#: `inbox_drop` kan ramme dem. Det er hele grunden til at de blev registreret:
-#: gaten siger «… og 22 flere under tærsklen» uden at kunne navngive dem.
+#: 5/10-2026 fik de deres EGEN sektion i visningen (`beslutninger`, se
+#: `inbox_view._UDEN_LOFT`) — den ligger uden loft, fordi gaten ikke kan
+#: navngive de poster der falder udenfor dens 12. De er stadig udeladt HER:
+#: 42 linjer i hver tur er præcis den pris `_PROMPT_LOFT` findes for at undgå,
+#: og gaten bærer dem allerede. `inbox` er adressen på resten.
 _IKKE_I_PROMPTEN: frozenset[str] = frozenset({"decision"})
 
 _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
@@ -81,6 +78,11 @@ _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
     ("venter_paa_dig", "VENTER PÅ DIG"),
     ("i_gang", "I GANG"),
     ("sideopgaver", "SIDEOPGAVER (venter / kø / i gang)"),
+    # Med her selvom `_IKKE_I_PROMPTEN` gør den tom i dag: de to lister skal
+    # følges ad, ellers ser en manglende sektion ud som en forglemmelse — og
+    # udelukkelsen skal ske på KILDETYPEN, ikke ved at sektionen mangler.
+    # `tests/test_inbox_prompt_section.py` måler begge veje.
+    ("beslutninger", "BESLUTNINGER (gater ikke)"),
     ("paa_vej", "PÅ VEJ"),
     ("planlagte", "PLANLAGTE (gentager sig)"),
     ("venter_paa_bjorn", "VENTER PÅ BJØRN (gater ikke)"),

@@ -481,8 +481,8 @@ _Indbakken i prompten — læseren hele kæden manglede._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L90) |
-| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L110) |
+| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L92) |
+| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L112) |
 
 ## `core/services/inbox_state.py`
 _Proveniens og bogføring for indbakken._
@@ -508,7 +508,7 @@ _Proveniens og bogføring for indbakken._
 | function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L708) |
 
 ## `core/services/inbox_view.py`
-_Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload._
+_Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
@@ -530,9 +530,9 @@ _Indbakken som LÆSEFLADE. Seks sektioner, én linje per post, aldrig payload._
 | function | `_ejer_id` | `()` | Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her. | [src](../../../core/services/inbox_view.py#L487) |
 | function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L500) |
 | function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L529) |
-| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L597) |
-| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L611) |
-| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Seks sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L621) |
+| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L607) |
+| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L621) |
+| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L631) |
 
 ## `core/services/indre_puls.py`
 _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._

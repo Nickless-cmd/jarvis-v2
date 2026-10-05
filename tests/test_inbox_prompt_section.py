@@ -35,8 +35,8 @@ def _v(**sektioner) -> dict:
     return d
 
 
-def _p(id: str, gater: bool = False, linje: str = "") -> dict:
-    return {"id": id, "kraever_handling": gater,
+def _p(id: str, gater: bool = False, linje: str = "", kildetype: str = "") -> dict:
+    return {"id": id, "kraever_handling": gater, "kildetype": kildetype,
             "linje": linje or f"{id} aaben «noget» [{'dig' if gater else 'ukendt'}]"}
 
 
@@ -58,6 +58,22 @@ def test_en_TOM_indbakke_giver_None():
 def test_UDEN_bruger_giver_None():
     with patch.object(ips, "_bruger_id", return_value=""):
         assert ips.inbox_prompt_section() is None
+
+
+def test_beslutnings_sektionen_naar_IKKE_prompten():
+    """Den har sin EGEN sektion i visningen (5/10-2026), men den skal ikke ind i
+    prompten: `[DECISION-ADHERENCE-GATE]` bærer dem allerede i den samme hale, og
+    42 linjer i hver tur er præcis den pris `_PROMPT_LOFT` findes for at undgå."""
+    assert _kald(_v(beslutninger=[_p("dec_1", kildetype="decision"),
+                                  _p("dec_2", kildetype="decision")])) is None
+
+
+def test_filteret_gaar_paa_KILDETYPEN_ikke_paa_sektionsnavnet():
+    """Modprøven til testen ovenfor. Uden den kunne filteret være et bredt
+    sektions-filter der skjulte ALT i `beslutninger` — og så ville en fremtidig
+    post af en anden type forsvinde i stilhed fra prompten."""
+    t = _kald(_v(beslutninger=[_p("x-1", kildetype="job")]))
+    assert t is not None and "x-1" in t
 
 
 def test_en_FEJLET_visning_giver_None_og_kaster_ikke():

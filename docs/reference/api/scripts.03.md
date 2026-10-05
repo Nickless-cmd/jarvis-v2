@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/phase7_build_probes.py`
+_Fase 7 — bygger proberne af arkivet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
+| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L98) |
+| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L106) |
+| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L115) |
+| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L125) |
+| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L142) |
+| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L149) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L171) |
+
 ## `scripts/phase7_collect.py`
 _Fase 7 — indsamler svarene._
 

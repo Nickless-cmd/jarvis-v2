@@ -80,3 +80,37 @@ def test_heartbeat_living_context_line_includes_experimental_prompt_fragments(
     assert "sleep_batch=true" in line
     assert "autonomy_from_trust=bounded" in line
 
+
+
+def test_batching_directive_is_present() -> None:
+    """Independent calls must be asked for explicitly, not conditionally.
+
+    Measured 5 Oct 2026: 1.59 tools per round, 55% of calls following a call to
+    the same tool, chains of up to 16 consecutive single bash calls of which 78%
+    were read-only. The runtime already executes every tool_call in a round, so
+    the shortfall was the instruction, which read "If a task needs multiple
+    reads, call multiple tools" — conditional, and it did not land.
+    """
+    text = _get_capability_truth_instruction()
+    assert "BATCH independent calls" in text
+    assert "SAME round" in text
+
+
+def test_batching_directive_keeps_the_sequential_guard() -> None:
+    """The counter-case must survive edits, or batching turns into wrong batching.
+
+    Dependent calls MUST stay sequential: an argument derived from a previous
+    result cannot be known before that result exists. Dropping this half of the
+    rule would trade latency for incorrect tool arguments.
+    """
+    text = _get_capability_truth_instruction()
+    assert "depend on the" in text
+    assert "previous call's result" in text
+
+
+def test_capability_summary_also_asks_for_batching() -> None:
+    """Both surfaces carry the rule — the summary line is a separate section."""
+    pc = importlib.import_module("core.services.prompt_contract")
+    summary = pc._visible_capability_id_summary() or ""
+    assert "Batch independent tool calls" in summary
+    assert "depends on a previous result" in summary

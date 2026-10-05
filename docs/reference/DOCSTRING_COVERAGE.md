@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8490/16059 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8490/16060 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8490/16059 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 252 | 553 | 45% |
+| `scripts` | 252 | 554 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2234)
+## Undocumented public functions (2235)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1438,7 +1438,7 @@ Generated from source. 8490/16059 functions/methods documented (52%). The list b
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L152)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L100)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L127)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4955)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4963)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -2173,6 +2173,7 @@ Generated from source. 8490/16059 functions/methods documented (52%). The list b
 - `scripts/luk_foraeldede_flows.py` :: `main` (L109)
 - `scripts/maal_indbakke.py` :: `maal` (L113)
 - `scripts/maal_indbakke.py` :: `main` (L214)
+- `scripts/maal_vaerktoejer_pr_runde.py` :: `main` (L69)
 - `scripts/maal_ventende_i_prompten.py` :: `main` (L252)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)

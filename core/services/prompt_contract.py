@@ -4409,7 +4409,13 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- Safe workspace paths are auto-approved by runtime; blocked or risky paths require user approval or return error.",
         "- The runtime handles all permissions and approvals automatically. You never need to ask the user.",
         "- If you need information, use tools proactively. Do not guess from fragments.",
-        "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",
+        "- BATCH independent calls: when your next steps do not depend on each "
+        "other's results, emit them as SEVERAL tool calls in the SAME round. Several "
+        "read-only bash commands, several read_file, a search plus a read — one round, "
+        "not one round each.",
+        "- Go one call per round ONLY when the next call's arguments depend on the "
+        "previous call's result. Anything that waits for nothing should travel together.",
+        "- Continue autonomously instead of asking permission.",
         "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",
         "- Project root (source code): " + str(PROJECT_ROOT),
         "- IMPORTANT: Your live workspace files (SOUL.md, MEMORY.md, USER.md, STANDING_ORDERS.md, SKILLS.md, etc.) "
@@ -4423,7 +4429,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
 def _visible_capability_id_summary() -> str | None:
     lines = [
         "Available tools: read_file, write_file, edit_file, search, find_files, bash, web_fetch, web_search.",
-        "Call multiple tools in one turn when exploring. Continue autonomously for read-only tasks.",
+        "Batch independent tool calls into one round; sequence only what depends on a "
+        "previous result.",
+        "Continue autonomously for read-only tasks.",
     ]
     return "\n".join(lines)
 

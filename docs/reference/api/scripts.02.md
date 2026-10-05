@@ -176,6 +176,13 @@ _Virker indbakkens to trin? Og er 2 det rigtige tal?_
 | function | `main` | `()` | — | [src](../../../scripts/maal_indbakke.py#L214) |
 | function | `registrer_vindue` | `(timer=…)` | Opgave 7 trin 3: registrér maalevinduet, saa paamindelsen melder. | [src](../../../scripts/maal_indbakke.py#L265) |
 
+## `scripts/maal_vaerktoejer_pr_runde.py`
+_Vaerktoejer pr. agentisk runde — dagsserie._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L69) |
+
 ## `scripts/maal_ventende_i_prompten.py`
 _Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
 
@@ -433,18 +440,4 @@ _Fase 7 — analyse, præcis som forhåndsregistreret._
 | function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L53) |
 | function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L61) |
 | function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L115) |
-
-## `scripts/phase7_build_probes.py`
-_Fase 7 — bygger proberne af arkivet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
-| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L98) |
-| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L106) |
-| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L115) |
-| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L125) |
-| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L142) |
-| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L149) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L171) |
 

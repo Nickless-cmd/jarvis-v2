@@ -51,16 +51,17 @@ _Read-only research-agent tool with runtime/Desk execution routing._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L25) |
-| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L30) |
-| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…, taalmodighed_s=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L62) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L107) |
-| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L121) |
-| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L225) |
-| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L243) |
-| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L325) |
-| function | `_vaelg_kandidat` | `(pool, brugt, runde, egnede_modeller)` | Hvilken model skal runde `runde` spoerge? ÉT sted ejer raekkefoelgen. | [src](../../../core/tools/simple_tools_explore.py#L342) |
-| function | `_modelnavn` | `(prov, mod)` | Modellens navn i en besked til Bjoern — eller at ingen blev valgt. | [src](../../../core/tools/simple_tools_explore.py#L370) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L380) |
+| function | `_oploes_bruger` | `(args)` | Hvem er den autentificerede Desk-bruger? ÉT sted ejer opslaget. | [src](../../../core/tools/simple_tools_explore.py#L30) |
+| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L42) |
+| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…, taalmodighed_s=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L83) |
+| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L128) |
+| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L142) |
+| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L246) |
+| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L264) |
+| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L346) |
+| function | `_vaelg_kandidat` | `(pool, brugt, runde, egnede_modeller)` | Hvilken model skal runde `runde` spoerge? ÉT sted ejer raekkefoelgen. | [src](../../../core/tools/simple_tools_explore.py#L363) |
+| function | `_modelnavn` | `(prov, mod)` | Modellens navn i en besked til Bjoern — eller at ingen blev valgt. | [src](../../../core/tools/simple_tools_explore.py#L391) |
+| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L401) |
 
 ## `core/tools/simple_tools_native.py`
 _Native (non-operator, non-web) tool executors for Jarvis._

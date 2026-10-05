@@ -27,6 +27,18 @@ def _facade():
     return module
 
 
+def _oploes_bruger(args: dict[str, Any]) -> str:
+    """Hvem er den autentificerede Desk-bruger? ÉT sted ejer opslaget."""
+    user_id = str(args.get("_runtime_user_id") or "").strip()
+    if not user_id:
+        try:
+            from core.identity.workspace_context import current_user_id
+            user_id = str(current_user_id() or "").strip()
+        except Exception:
+            pass
+    return user_id
+
+
 def _execution_context(args: dict[str, Any]) -> tuple[str, dict[str, object], str]:
     requested = str(args.get("target") or "auto").strip().lower()
     if requested not in {"auto", "runtime", "workstation"}:
@@ -39,24 +51,33 @@ def _execution_context(args: dict[str, Any]) -> tuple[str, dict[str, object], st
         session = None
     kind = str((session or {}).get("workspace_kind") or "").strip().lower()
     root = str((session or {}).get("workspace_root") or "").strip()
-    target = "workstation" if requested == "auto" and kind == "workstation" and root else requested
-    if target == "auto":
-        target = "runtime"
-    if target == "runtime":
-        return target, {"execution_target": target}, ""
+    user_id = _oploes_bruger(args)
+    _workstation_klar = bool(kind == "workstation" and root and session_id and user_id)
+    # `auto` VÆLGER — den fejler ikke.
+    #
+    # Maalt 5/10-2026 (Jarvis' eget fund): et scout_agent-kald uden `target`
+    # valgte workstation, fordi sessionen VAR et Desk-workspace — men uden en
+    # autentificeret Desk-bruger svarede vaerktoejet en HAARD fejl i stedet for
+    # at falde tilbage til runtime. Oppefra lignede det «tomt svar», men det var
+    # en afvisning i routingen: en helt tredje fejlform.
+    #
+    # `auto` betyder «vaelg selv». Kan det foretrukne valg ikke bruges, vaelger
+    # vi det andet. `workstation` betyder «jeg vil have workstation» — dér er en
+    # aerlig fejl stadig det rigtige svar.
+    if requested == "auto":
+        if not _workstation_klar:
+            return "runtime", {"execution_target": "runtime"}, ""
+        return "workstation", {"execution_target": "workstation", "workspace_root": root,
+                               "user_id": user_id, "session_id": session_id}, ""
+    if requested == "runtime":
+        return "runtime", {"execution_target": "runtime"}, ""
+    # Eksplicit workstation: fejl hvis den ikke kan bruges — det er aerligt.
     if kind != "workstation" or not root or not session_id:
         return "", {}, "workstation target requires an active Desk workstation-workspace"
-    user_id = str(args.get("_runtime_user_id") or "").strip()
-    if not user_id:
-        try:
-            from core.identity.workspace_context import current_user_id
-            user_id = str(current_user_id() or "").strip()
-        except Exception:
-            pass
     if not user_id:
         return "", {}, "workstation target requires an authenticated Desk user"
-    return target, {"execution_target": target, "workspace_root": root,
-                    "user_id": user_id, "session_id": session_id}, ""
+    return "workstation", {"execution_target": "workstation", "workspace_root": root,
+                           "user_id": user_id, "session_id": session_id}, ""
 
 
 def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: str = "",

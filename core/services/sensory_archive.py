@@ -354,13 +354,30 @@ def _record(
     if final_mood is None:
         final_mood = _extract_mood_from_content(content, modality)
 
-    # Append concept-perception note (Layer 2b memory enrichment)
+    # Concept-perception note (Layer 2b memory enrichment) — i METADATA, ikke
+    # i indholdet.
+    #
+    # MÅLT 5/10-2026: noten blev skrevet ind i `content`, og 841 af 2.744 poster
+    # (31%) bar den. Median 28% af en posts indhold var prompt-instruktion —
+    # «[concept-focus: Bemærk særligt menneskelig tilstedeværelse …]» — ikke et
+    # sanseindtryk. Det er samme fejlform som prompt-ekkoerne: stillads arkiveret
+    # som indhold, hvor det læses som noget Jarvis har sanset.
+    #
+    # Noten er en INSTRUKTION til hvad der skal lægges mærke til næste gang. Den
+    # hører i prompten (se `visual_memory.py`, hvor den stadig tilføjes) — ikke i
+    # arkivet over hvad der BLEV sanset. Ingen læser den ud af `content`; målt
+    # med grep over core/ og apps/ er `visual_memory.py` den eneste anden bruger,
+    # og den bygger en prompt.
+    #
+    # Funktionen bevares uændret: den er stadig tilgængelig på posten, nu under
+    # `metadata["concept_focus"]`, så intet går tabt — det flytter kun felt.
     final_content = content.strip()
+    extra_meta: dict[str, Any] = {}
     try:
         from core.services.affect_modulation import compute_concept_perception_focus
         focus = compute_concept_perception_focus()
         if focus:
-            final_content = f"{final_content}\n[concept-focus: {focus}]"
+            extra_meta["concept_focus"] = focus
     except Exception:
         pass
 
@@ -371,7 +388,7 @@ def _record(
         # Kilden er fri tekst fra kalderen, og når kalderen er en rutine, opdigtes
         # et nyt navn hver nat — målt 28/9-2026: 69 navne for ni kilder. Her er
         # det ene punkt alle skrivninger går igennem, så her foldes navnet.
-        metadata=normalize_metadata(metadata),
+        metadata=normalize_metadata({**(metadata or {}), **extra_meta}),
     )
     try:
         event_bus.publish(

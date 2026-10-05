@@ -18,6 +18,14 @@ def isolated_db(monkeypatch, tmp_path):
     monkeypatch.setattr(db_core, "DB_PATH", db_file)
     from core.runtime.db_core import invalidate_ensure_once_cache
     invalidate_ensure_once_cache()
+    # Throttle-tilstanden persisteres nu til state/ (fix 5/10-2026), saa testen
+    # skal ogsaa isolere DEN. Uden dette skriver testen til den aegte
+    # state-mappe, og en tidligere tests koersel faar naeste test til at svare
+    # cadence_not_reached — praecis den fejl testen selv blev ramt af.
+    from core.runtime import state_store
+    state_dir = tmp_path / "state"
+    state_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr(state_store, "_STATE_DIR", state_dir)
     return db_file
 
 

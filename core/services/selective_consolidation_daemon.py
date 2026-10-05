@@ -38,6 +38,45 @@ _MAX_CONTENT_FACTOR = 500    # maks content-længde der giver bonus
 
 _last_tick_at: datetime | None = None
 
+# Throttle-tilstanden SKAL persisteres. Foer laa den kun i processens hukommelse,
+# saa hver genstart nulstillede den og daemonen koerte sit 24-timers job forfra.
+# Maalt 5/10-2026 mod events-tabellen: 22 runtime.started -> 22
+# selective_consolidation.completed samme dag (4/10: 35 -> 34), 259 koersler siden
+# 21/9. Hver koersel sletter bund-50% af dagens records permanent, saa dagens
+# hukommelse blev halveret igen og igen — den eksterne kadence var i praksis
+# «ved hver genstart». 5/10 stod tilbage med 2 sensoriske poster mod 7-13 de
+# oevrige dage.
+_STATE_KEY = "selective_consolidation_last_tick"
+
+
+def _load_last_tick() -> datetime | None:
+    """Laes sidste koersel fra disk. Fejler bloedt — en manglende fil maa ikke
+    blokere daemonen, men en laesbar fil SKAL holde kadencen."""
+    try:
+        from core.runtime.state_store import load_json
+
+        raw = load_json(_STATE_KEY, None)
+        if isinstance(raw, str) and raw:
+            at = datetime.fromisoformat(raw)
+            if at.tzinfo is None:
+                at = at.replace(tzinfo=UTC)
+            return at
+    except Exception:
+        logger.warning("selective_consolidation: kunne ikke laese throttle-tilstand", exc_info=True)
+    return None
+
+
+def _save_last_tick(at: datetime) -> None:
+    """Gem sidste koersel. Best-effort: fejler skrivningen, koerer daemonen igen
+    ved naeste tick — det er den gamle (skadelige) adfaerd, men bedre end at
+    crashe midt i en konsolidering."""
+    try:
+        from core.runtime.state_store import save_json
+
+        save_json(_STATE_KEY, at.isoformat())
+    except Exception:
+        logger.warning("selective_consolidation: kunne ikke gemme throttle-tilstand", exc_info=True)
+
 
 def tick_selective_consolidation_daemon() -> dict[str, Any]:
     """Run selective consolidation if cadence elapsed.
@@ -48,8 +87,9 @@ def tick_selective_consolidation_daemon() -> dict[str, Any]:
     global _last_tick_at
 
     now = datetime.now(UTC)
-    if _last_tick_at is not None:
-        if (now - _last_tick_at) < timedelta(hours=_CADENCE_HOURS):
+    last = _last_tick_at if _last_tick_at is not None else _load_last_tick()
+    if last is not None:
+        if (now - last) < timedelta(hours=_CADENCE_HOURS):
             return {"consolidated": False, "reason": "cadence_not_reached"}
 
     today_start = now.strftime("%Y-%m-%dT00:00:00")
@@ -89,6 +129,11 @@ def tick_selective_consolidation_daemon() -> dict[str, Any]:
     results["total_archived"] = total_archived
 
     _last_tick_at = now
+    # Og til DISK. Uden dette skridt laeste _load_last_tick() ved naeste
+    # genstart en foraeldet vaerdi (eller None), og daemonen koerte sit
+    # 24-timers job forfra — praecis den adfaerd fixet skulle fjerne.
+    # Maalt 5/10-2026: 22 genstarter -> 22 konsolideringer samme dag.
+    _save_last_tick(now)
 
     if total_archived > 0:
         try:

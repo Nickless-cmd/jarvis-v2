@@ -529,14 +529,16 @@ _Selective Consolidation Daemon — D1._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_selective_consolidation_daemon` | `()` | Run selective consolidation if cadence elapsed. | [src](../../../core/services/selective_consolidation_daemon.py#L42) |
-| function | `_score_sensory` | `(row)` | Score a sensory memory 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L109) |
-| function | `_consolidate_sensory` | `(today_start)` | Score and archive bottom (100-K)% of today's sensory memories. | [src](../../../core/services/selective_consolidation_daemon.py#L121) |
-| function | `_score_brain` | `(entry)` | Score a brain entry 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L170) |
-| function | `_consolidate_brain` | `(today_start)` | Score and archive bottom (100-K)% of today's brain entries. | [src](../../../core/services/selective_consolidation_daemon.py#L181) |
-| function | `_score_private` | `(record)` | Score a private brain record 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L241) |
-| function | `_consolidate_private` | `(today_start)` | Score and archive bottom (100-K)% of today's private brain records. | [src](../../../core/services/selective_consolidation_daemon.py#L252) |
-| function | `build_selective_consolidation_surface` | `()` | Build surface data for mission control. | [src](../../../core/services/selective_consolidation_daemon.py#L306) |
+| function | `_load_last_tick` | `()` | Laes sidste koersel fra disk. Fejler bloedt — en manglende fil maa ikke | [src](../../../core/services/selective_consolidation_daemon.py#L52) |
+| function | `_save_last_tick` | `(at)` | Gem sidste koersel. Best-effort: fejler skrivningen, koerer daemonen igen | [src](../../../core/services/selective_consolidation_daemon.py#L69) |
+| function | `tick_selective_consolidation_daemon` | `()` | Run selective consolidation if cadence elapsed. | [src](../../../core/services/selective_consolidation_daemon.py#L81) |
+| function | `_score_sensory` | `(row)` | Score a sensory memory 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L154) |
+| function | `_consolidate_sensory` | `(today_start)` | Score and archive bottom (100-K)% of today's sensory memories. | [src](../../../core/services/selective_consolidation_daemon.py#L166) |
+| function | `_score_brain` | `(entry)` | Score a brain entry 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L215) |
+| function | `_consolidate_brain` | `(today_start)` | Score and archive bottom (100-K)% of today's brain entries. | [src](../../../core/services/selective_consolidation_daemon.py#L226) |
+| function | `_score_private` | `(record)` | Score a private brain record 0.0-1.0. | [src](../../../core/services/selective_consolidation_daemon.py#L286) |
+| function | `_consolidate_private` | `(today_start)` | Score and archive bottom (100-K)% of today's private brain records. | [src](../../../core/services/selective_consolidation_daemon.py#L297) |
+| function | `build_selective_consolidation_surface` | `()` | Build surface data for mission control. | [src](../../../core/services/selective_consolidation_daemon.py#L351) |
 
 ## `core/services/selective_forgetting_candidate_tracking.py`
 

@@ -56,6 +56,11 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "bg_jobs_grundlinje": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",
+      "registreret": "2026-10-03"
+    },
     "bg_jobs_rapporteret": {
       "ejer": "core/services/background_job_watch.py",
       "beskrivelse": "Færdige baggrunds-shells — set, ikke gættet.",
@@ -291,6 +296,11 @@
       "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
       "registreret": "2026-09-20"
     },
+    "selective_consolidation_last_tick": {
+      "ejer": "core/services/selective_consolidation_daemon.py",
+      "beskrivelse": "Throttle-tilstand: hvornaar selective consolidation sidst koerte. Persisteret 5/10-2026 — foer laa kadencen kun i en module-global, saa hver genstart udloeste en ny 50%-sletning af dagens hukommelse.",
+      "registreret": "2026-10-05"
+    },
     "self_model_predictions": {
       "ejer": "core/services/self_model_predictive.py",
       "beskrivelse": "Predictive self-model — frequencies, not aspirations.",
@@ -350,11 +360,6 @@
       "ejer": "core/services/agent_self_evaluation.py",
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
-    },
-    "bg_jobs_grundlinje": {
-      "ejer": "core/services/background_job_watch.py",
-      "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",
-      "registreret": "2026-10-03"
     }
   }
 }

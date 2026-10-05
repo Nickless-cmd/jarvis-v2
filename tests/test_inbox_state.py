@@ -239,6 +239,43 @@ def test_TOM_bruger_lister_ingenting(inbox_db):
     assert db_inbox.hent(bruger_id="", kilde_id="wake-x") is None
 
 
+def test_scout_result_lander_durabelt_uden_at_gate(inbox_db):
+    from core.services.scout_inbox_delivery import record_scout_completion
+    from core.services.inbox_view import byg_indbakke
+
+    surface = {
+        "agent_id": "agent-scout-1", "role": "researcher",
+        "tool_policy": "read-only-runtime", "status": "completed",
+        "goal": "Find en kilde om streaming",
+        "context": {"user_id": BJORN},
+        "latest_run": {"run_id": "agent-run-1", "status": "completed",
+                       "output_summary": "Fandt kilde i dokumentationen."},
+    }
+    assert record_scout_completion(surface) is True
+    assert record_scout_completion(surface) is True
+    poster = [p for p in db_inbox.liste(bruger_id=BJORN)
+              if p["kildetype"] == "agent_result"]
+    assert len(poster) == 1
+    assert poster[0]["kraever_handling"] is False
+    assert poster[0]["verificeret_ejer"] == inbox_state.EJER_JARVIS
+    view = byg_indbakke(BJORN)
+    assert any(p["id"] == poster[0]["id"] for p in view["venter_paa_dig"])
+    assert inbox_state.done(BJORN, poster[0]["kilde_id"])["status"] == "ok"
+
+
+def test_scout_result_uden_bruger_id_leveres_ikke_til_andre(inbox_db):
+    from core.services.scout_inbox_delivery import record_scout_completion
+
+    surface = {
+        "agent_id": "agent-scout-2", "role": "researcher",
+        "tool_policy": "read-only-runtime", "status": "failed",
+        "latest_run": {"run_id": "agent-run-2", "status": "failed"},
+        "context": {},
+    }
+    assert record_scout_completion(surface) is False
+    assert db_inbox.liste(bruger_id=BJORN) == []
+
+
 def test_en_GENSTART_bevarer_taeller_og_afgoerelse(inbox_db):
     """Tælleren er durabel i SQLite, ikke i en proces. En volatil tæller
     nulstillede sig ved en genstart, og påmindelsen kom aldrig — derfor måles

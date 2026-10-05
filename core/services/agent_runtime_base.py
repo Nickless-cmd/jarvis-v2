@@ -264,6 +264,10 @@ def _run_agent_tool_loop(
     rounds = 0
     error_str = ""
     tool_calls: list = []  # last round's tool_calls; truthy ⟺ exhausted mid-tool-use
+    scout = (str(agent.get("role") or "") == "researcher"
+             and str(agent.get("tool_policy") or "") in {
+                 "read-only-runtime", "read-only-workstation"})
+    scout_retries = 0
     # Bracket the whole model/tool loop so duration reflects real work even on
     # the failure path.
     _t0 = time.monotonic()
@@ -282,6 +286,20 @@ def _run_agent_tool_loop(
             final_text = str(result.get("text") or "")
             tool_calls = list(result.get("tool_calls") or [])
             if not tool_calls:
+                # A scout's opening sentence is not a research result. The
+                # model sometimes emits a preamble without calling any tool;
+                # give it one bounded chance to actually read a source.
+                progress = final_text.strip().lower().startswith((
+                    "jeg starter", "jeg vil", "prøver ", "proever ",
+                    "i will", "i'll ", "starting ", "let me "))
+                if scout and scout_retries < 1 and (total_tool_calls == 0 or progress):
+                    scout_retries += 1
+                    messages.append({"role": "assistant", "content": final_text})
+                    messages.append({"role": "user", "content": (
+                        "Du har endnu ikke leveret et research-resultat. Brug et af "
+                        "dine tilgængelige læseværktøjer nu. Afslut først med "
+                        "konkrete fund, kilde og hvad du ikke kunne verificere.")})
+                    continue
                 break
             # Record the assistant turn that requested the tools, then each
             # tool result, so the next round has full context.
@@ -398,6 +416,11 @@ def _run_agent_tool_loop(
     if error_str:
         status = DispatchStatus.FAILED
         result_payload: object = f"error: {error_str}"
+    elif scout and (total_tool_calls == 0 or final_text.strip().lower().startswith((
+            "jeg starter", "jeg vil", "prøver ", "proever ",
+            "i will", "i'll ", "starting ", "let me "))):
+        status = DispatchStatus.BLOCKED
+        result_payload = "Scout sluttede uden verificerede fund eller værktøjskald"
     elif final_text.strip():
         status = DispatchStatus.COMPLETED
         result_payload = final_text
@@ -499,9 +522,11 @@ def _role_prompt(intro: str, *, tools: bool = False, structured: bool = True) ->
 # efter et symbol eller en kaldsside. `operator_*` hoerer ikke til her — de
 # koerer paa Bjoerns maskine, ikke i runtimen.
 _READ_ONLY_TOOLS = ["read_file", "find_files", "search", "semantic_search_code",
-                    "find_symbol", "find_usages", "read_tool_result", "bash"]
+                    "find_symbol", "find_usages", "read_tool_result", "bash",
+                    "web_search", "web_fetch"]
 _READ_ONLY_WORKSTATION_TOOLS = [
     "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
+    "web_search", "web_fetch",
 ]
 _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "none": [],

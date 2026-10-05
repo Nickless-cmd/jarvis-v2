@@ -67,12 +67,14 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
     from core.services.agent_runtime_base import tools_for_policy
     policy = "read-only-workstation" if target == "workstation" else "read-only-runtime"
     target_prompt = (
-        "Du arbejder i Jarvis Desk-workspacet på brugerens maskine. Brug kun "
-        "operator_read_file, operator_glob, operator_grep og operator_list_dir. "
+        "Du arbejder i Jarvis Desk-workspacet på brugerens maskine. Brug "
+        "operator_read_file, operator_glob, operator_grep og operator_list_dir "
+        "til lokale filer; web_search og web_fetch til eksterne kilder. "
         "Alle filstier skal være absolutte og ligge under workspace_root i din context. "
         "operator_grep giver korrekte linjenumre."
         if target == "workstation" else
-        "Du arbejder i Jarvis' runtime-container. `search` giver korrekte linjenumre."
+        "Du arbejder i Jarvis' runtime-container. `search` giver korrekte "
+        "linjenumre; brug web_search og web_fetch til eksterne kilder."
     )
     return spawn_med_kvittering(
         taalmodighed_s=taalmodighed_s, efterbehandling=efterbehandling,
@@ -339,6 +341,7 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     herkomst = {k: v for k, v in (
         ("parent_session_id", str(args.get("_runtime_session_id") or "").strip()),
         ("parent_run_id", str(args.get("_runtime_turn_id") or "").strip()),
+        ("user_id", str(args.get("_runtime_user_id") or context.get("user_id") or "").strip()),
     ) if v}
     bredde = str(args.get("breadth") or "medium").strip().lower()
     vejledning = {"quick": "Kig ét sted og svar kort.",

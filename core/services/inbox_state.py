@@ -85,7 +85,7 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # får ejeren `huset` — men det er en KONSEKVENS af proveniensen, ikke en
     # regel. Registrerede nogen senere en beslutning inde i et run, ville den
     # kunne nægte en mutation, og så ville to gater skubbe til det samme.
-    "decision",
+    "decision", "agent_result",
 })
 
 

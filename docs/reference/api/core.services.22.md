@@ -461,6 +461,13 @@ _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 | function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L332) |
 | function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L337) |
 
+## `core/services/scout_inbox_delivery.py`
+_Deliver terminal scout runs to Jarvis' durable inbox._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
+
 ## `core/services/secret_redaction.py`
 _Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
 
@@ -763,14 +770,4 @@ _Predictive self-model — frequencies, not aspirations._
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/self_model_signal_tracking.py#L629) |
 | function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/self_model_signal_tracking.py#L636) |
 | function | `_quote` | `(text)` | — | [src](../../../core/services/self_model_signal_tracking.py#L640) |
-
-## `core/services/self_monitor.py`
-_Self-monitor — anti-loop detection from tool call history._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_tool_events` | `(limit=…)` | — | [src](../../../core/services/self_monitor.py#L37) |
-| function | `_looped_tools` | `(events)` | Find tools that errored repeatedly in succession. | [src](../../../core/services/self_monitor.py#L56) |
-| function | `_thrashing_score` | `(events)` | Crude thrash signal: count of tool.invoked in the recent window. | [src](../../../core/services/self_monitor.py#L88) |
-| function | `self_monitor_section` | `()` | Format anti-loop / thrash signals as a prompt section, or None. | [src](../../../core/services/self_monitor.py#L93) |
 

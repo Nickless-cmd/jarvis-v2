@@ -210,6 +210,17 @@ def spawn_agent_task(
             allowed_tools = [t for t in allowed_tools if t in set(parent_allowed)]
     context = context or {}
     context["spawn_depth"] = spawn_depth
+    if _scout_maa_betale(role, tool_policy) and not context.get("user_id"):
+        # Capture the principal before a background scout loses its request
+        # context. Never infer an owner later while delivering its result.
+        try:
+            from core.identity.workspace_context import current_user_id
+            user_id = str(current_user_id() or "").strip()
+            if user_id:
+                context["user_id"] = user_id
+        except Exception:
+            logger.warning("kunne ikke knytte scout til bruger ved oprettelse",
+                           exc_info=True)
     result_contract = result_contract or {
         "summary": True,
         "findings": True,
@@ -542,8 +553,15 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     """
     from core.services.child_authority import uden_foraeldrens_godkendelse
     with uden_foraeldrens_godkendelse():
-        return _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
-                                        execution_mode=execution_mode)
+        surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
+                                           execution_mode=execution_mode)
+    try:
+        from core.services.scout_inbox_delivery import record_scout_completion
+        record_scout_completion(surface)
+    except Exception:
+        logger.warning("kunne ikke levere scout-resultat til indbakken (%s)",
+                       agent_id, exc_info=True)
+    return surface
 
 
 def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
@@ -712,6 +730,12 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             surface["status"] = "failed"
             surface["error"] = _udbyder_fejl
             return surface
+
+        if str(result.get("status") or "completed") in {"blocked", "failed", "needs_context"}:
+            raise RuntimeError(
+                "Agent afsluttede uden et brugbart resultat: "
+                + str(result.get("result") or text or result.get("status"))[:350]
+            )
 
         # Detect and execute spawn_agent requests embedded in response (can-spawn policy)
         tool_policy = str(agent.get("tool_policy") or "")

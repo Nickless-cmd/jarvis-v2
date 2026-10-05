@@ -69,6 +69,7 @@ class TestExplore:
         assert f["tool_policy"] == "read-only-workstation"
         assert set(f["allowed_tools"]) == {
             "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
+            "web_search", "web_fetch",
         }
         # Delmaengde, ikke lighed: Fase 5 lagde HERKOMST i konteksten
         # (`parent_session_id`/`parent_run_id`), saa barnet kan findes under den

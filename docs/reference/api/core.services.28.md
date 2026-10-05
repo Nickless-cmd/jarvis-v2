@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_steers.py`
+_Keep real mid-flight user steers distinct from runtime turn notices._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `append_real_user_steers` | `(tail, steers)` | Append only genuine client steers with user role; stop at a cancel steer. | [src](../../../core/services/visible_run_steers.py#L12) |
+
 ## `core/services/visible_run_terminal_recovery.py`
 _Resolve whether an agentic run segment completed or needs recovery._
 

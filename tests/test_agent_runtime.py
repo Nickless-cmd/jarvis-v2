@@ -190,6 +190,57 @@ def test_run_agent_tool_loop_executes_and_stops(monkeypatch):
     assert result["execution_mode"] == "role-primary-tool-loop"
 
 
+def test_scout_preamble_must_continue_to_tool_use(monkeypatch):
+    responses = [
+        {"text": "Jeg starter med at kigge i workspacet.", "tool_calls": []},
+        {"text": "", "tool_calls": [{"id": "c1", "function": {
+            "name": "read_file", "arguments": "{}"}}]},
+        {"text": "Jeg fandt kilden og her er resultatet.", "tool_calls": []},
+    ]
+    monkeypatch.setattr(ar, "execute_with_role_or_fallback", lambda **kw: responses.pop(0))
+    monkeypatch.setattr(ar, "_build_agent_tools_payload", lambda allowed: [{
+        "type": "function", "function": {"name": "read_file"}}])
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda name, arguments: {"status": "ok"}, raising=False)
+    agent = {"agent_id": "a", "role": "researcher", "tool_policy": "read-only-runtime",
+             "allowed_tools_json": '["read_file"]'}
+    result = ar._run_agent_tool_loop(agent=agent, prompt="research", requires_tools=True)
+    assert result["status"] == "completed"
+    assert result["tool_calls"] == 1
+    assert result["tool_rounds"] == 3
+
+
+def test_scout_without_evidence_is_blocked(monkeypatch):
+    monkeypatch.setattr(ar, "execute_with_role_or_fallback", lambda **kw: {
+        "text": "Jeg starter med at undersøge det.", "tool_calls": []})
+    monkeypatch.setattr(ar, "_build_agent_tools_payload", lambda allowed: [{
+        "type": "function", "function": {"name": "read_file"}}])
+    agent = {"agent_id": "a", "role": "researcher", "tool_policy": "read-only-runtime",
+             "allowed_tools_json": '["read_file"]'}
+    result = ar._run_agent_tool_loop(agent=agent, prompt="research", requires_tools=True)
+    assert result["status"] == "blocked"
+    assert result["tool_calls"] == 0
+
+
+def test_scout_progress_after_read_is_not_a_final_report(monkeypatch):
+    responses = [
+        {"text": "", "tool_calls": [{"id": "c1", "function": {
+            "name": "read_file", "arguments": "{}"}}]},
+        {"text": "Prøver en anden vej.", "tool_calls": []},
+        {"text": "Prøver en anden vej.", "tool_calls": []},
+    ]
+    monkeypatch.setattr(ar, "execute_with_role_or_fallback", lambda **kw: responses.pop(0))
+    monkeypatch.setattr(ar, "_build_agent_tools_payload", lambda allowed: [{
+        "type": "function", "function": {"name": "read_file"}}])
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda name, arguments: {"status": "ok"}, raising=False)
+    agent = {"agent_id": "a", "role": "researcher", "tool_policy": "read-only-runtime",
+             "allowed_tools_json": '["read_file"]'}
+    result = ar._run_agent_tool_loop(agent=agent, prompt="research", requires_tools=True)
+    assert result["status"] == "blocked"
+    assert result["tool_calls"] == 1
+
+
 def test_run_agent_tool_loop_no_tools_falls_back_to_text(monkeypatch):
     monkeypatch.setattr(ar, "_build_agent_tools_payload", lambda allowed: [])
     seen: dict[str, object] = {}

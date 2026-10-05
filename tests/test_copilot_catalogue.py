@@ -108,11 +108,16 @@ def test_poolen_bruges_ogsaa_paa_RUNDE_0():
 
     from core.tools import simple_tools_explore as e
 
-    kilde = inspect.getsource(e._exec_explore)
-    i_pool = kilde.index("_ubrugte = ")
-    i_runde = kilde.index("elif runde:")
+    # 5/10-2026: raekkefoelgen bor nu i `_vaelg_kandidat`, som baade loekken og
+    # baggrunds-rotationen gaar gennem. Kravet er at poolen konsulteres FOER
+    # faldbacken — ikke hvilken funktion den staar i.
+    valg = inspect.getsource(e._vaelg_kandidat)
+    i_pool = valg.index("ubrugte = ")
+    i_runde = valg.index("if not runde:")
     assert i_pool < i_runde, (
         "poolen konsulteres foerst paa runde 1 — runde 0 er stadig udaekket")
+    assert "_vaelg_kandidat(" in inspect.getsource(e._exec_explore), (
+        "raekkefoelgen staar i en hjaelper ingen kalder")
 
 
 def test_opgaven_afgoer_hvilken_tier():
@@ -127,7 +132,12 @@ def test_opgaven_afgoer_hvilken_tier():
 
 def test_manglende_katalog_stopper_ikke_explore():
     """Kan kataloget ikke naas, falder vi tilbage til den gamle rotation frem
-    for at stoppe. En kilde der er nede maa ikke tage vaerktoejet med sig."""
+    for at stoppe. En kilde der er nede maa ikke tage vaerktoejet med sig.
+
+    5/10-2026: raekkefoelgen flyttede ud i `_vaelg_kandidat`, saa baade den
+    inline loekke OG baggrunds-rotationen foelger den. Kravet er det samme —
+    men det maa ikke kunne flyttes ud og blive foraeldreloest, saa vi kraever
+    BAADE at faldbacken staar der, og at loekken gaar gennem den."""
     import inspect
 
     from core.tools import simple_tools_explore as e
@@ -135,7 +145,11 @@ def test_manglende_katalog_stopper_ikke_explore():
     kilde = inspect.getsource(e._exec_explore)
     i = kilde.index("copilot_catalogue")
     assert "except Exception" in kilde[i:i + 500]
-    assert "elif runde:" in kilde, "den gamle rotation er fjernet i stedet for bevaret"
+    assert "_vaelg_kandidat(" in kilde, (
+        "loekken vaelger ikke model gennem den fælles vej")
+    valg = inspect.getsource(e._vaelg_kandidat)
+    assert "egnede_modeller(" in valg, (
+        "den gamle rotation er fjernet i stedet for bevaret")
 
 
 # ── LISTET ER IKKE KALDBAR — for tredje gang i dette hus ────────────────

@@ -92,12 +92,19 @@ def test_porten_fejler_AABENT(isolated_runtime, monkeypatch):
 
 def test_explore_kraever_vaerktoejer_af_sine_modeller():
     """Koblingen. Explore LAESER filer — en model der aldrig kalder dem,
-    fabrikerer svaret i stedet."""
+    fabrikerer svaret i stedet.
+
+    5/10-2026: kravet lever i `_vaelg_kandidat`, som baade loekken og
+    baggrunds-rotationen gaar gennem. Derfor kraeves BAADE porten der og
+    koblingen fra `_exec_explore` — ellers kunne hjaelperen blive foraeldreloes
+    og porten staa paa en vej ingen kalder."""
     import inspect
 
     from core.tools import simple_tools_explore as e
 
-    assert "kraever_vaerktoejer=True" in inspect.getsource(e._exec_explore)
+    assert "kraever_vaerktoejer=True" in inspect.getsource(e._vaelg_kandidat)
+    assert "_vaelg_kandidat(" in inspect.getsource(e._exec_explore), (
+        "porten staar paa en vej ingen kalder")
 
 
 # ── porten kaldes ÉN GANG PR. KANDIDAT — scannet maa ikke gentages ──────

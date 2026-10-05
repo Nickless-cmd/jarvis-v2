@@ -595,6 +595,27 @@ def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
     """
     with connect() as conn:
         _ensure_skema(conn)
+        # ── Bagudfyldning af fristen (målt 5/10-2026) ───────────────────────
+        #
+        # Produsenten i `opret_eller_hent` sætter kun en frist ved INDSÆTTELSE.
+        # En post der blev oprettet FØR reglen fandtes — eller af en kodevej
+        # der ikke går gennem den — stod derfor med tom frist, og tom betyder
+        # «udløber ALDRIG». Målt i drift: `wake-467df5d319` (oprettet 04:57,
+        # før fixet kl. 06:34) GATEDE med tom frist. Det er præcis den
+        # permanente lås Opgave 8 findes for at forhindre: «en post må ikke
+        # kunne gate i det uendelige ved at ingen rører den».
+        #
+        # Reglen er den SAMME som produsentens — kun en post der kan nægte en
+        # mutation får en frist — og den lægges her fordi fejeren er den
+        # eneste vej der ser ALLE åbne poster, uanset hvem der skrev dem.
+        # `kraever_handling = 1` er den præcise betingelse: en informerende
+        # post uden frist er harmløs.
+        frist = (datetime.now(UTC) + timedelta(days=_FRIST_DAGE)).isoformat()
+        bagud = conn.execute(
+            "UPDATE inbox_items SET expires_at = ? "
+            "WHERE status = ? AND kraever_handling = 1 AND expires_at = ''",
+            (frist, STATUS_AABEN))
+        bagudfyldt = bagud.rowcount
         cur = conn.execute(
             # `expires_at != ''` er ikke pynt: tom streng sorterer FØR enhver
             # ISO-dato, så uden den ville HVER post uden frist blive fejet.
@@ -606,9 +627,12 @@ def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
             (STATUS_UDLOEBET, _nu(), "udloebet", STATUS_AABEN, STATUS_AABEN,
              max(int(maks), 1)))
         n = cur.rowcount
+    if bagudfyldt:
+        logger.info("db_inbox: gav %d gatende post(er) en frist (bagudfyldning)",
+                    bagudfyldt)
     if n:
         logger.info("db_inbox: fejede %d udloebet post(er)", n)
-    return {"status": "ok", "fejet": int(n or 0)}
+    return {"status": "ok", "fejet": int(n or 0), "bagudfyldt": int(bagudfyldt or 0)}
 
 
 # ── Opgave 9: kildens terminale tilstand ────────────────────────────────────

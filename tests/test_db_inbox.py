@@ -383,6 +383,58 @@ def test_en_genaabnet_post_arver_IKKE_en_doed_frist(db):
     assert db_inbox.er_udloebet(p) is False
 
 
+def test_fejeren_BAGUDFYLDER_en_frist_paa_en_gatende_post_uden(db):
+    """Produsenten sætter kun en frist ved INDSÆTTELSE. En post der blev
+    oprettet før reglen fandtes stod derfor med tom frist — og tom betyder
+    «udløber ALDRIG», altså den permanente lås Opgave 8 findes for at
+    forhindre.
+
+    Målt i drift 5/10-2026: `wake-467df5d319` (oprettet 04:57, før fixet kl.
+    06:34) GATEDE med tom frist. Fejeren er den eneste vej der ser ALLE åbne
+    poster, uanset hvem der skrev dem, så bagudfyldningen hører her.
+
+    Rækken skrives i hånden med tom frist: `_opret` ville selv sætte den nu.
+    """
+    _opret("job-gammel", kraever_handling=True)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET expires_at = '' "
+                  "WHERE bruger_id = ? AND kilde_id = ?", (BRUGER, "job-gammel"))
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-gammel")["expires_at"] == ""
+    r = db_inbox.fej_udloebne()
+    assert r["bagudfyldt"] == 1, r
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-gammel")
+    assert p["expires_at"] != "", "den gatende post fik stadig ingen frist"
+    assert db_inbox.er_udloebet(p) is False, "bagudfyldningen lagde fristen i fortiden"
+
+
+def test_bagudfyldningen_roerer_IKKE_en_informativ_post(db):
+    """Samme grænse som produsenten: en informerende post uden frist er
+    harmløs. Blev den bagudfyldt, ville hver eneste notifikation i huset
+    pludselig kunne udløbe — og det er ikke hvad spec'en bad om."""
+    _opret("job-info-gammel")
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET expires_at = '' "
+                  "WHERE bruger_id = ? AND kilde_id = ?", (BRUGER, "job-info-gammel"))
+    r = db_inbox.fej_udloebne()
+    assert r["bagudfyldt"] == 0, r
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="job-info-gammel")["expires_at"] == ""
+
+
+def test_bagudfyldningen_er_IDEMPOTENT(db):
+    """Kørt to gange må den ikke give en NY frist hver gang — så ville en
+    post aldrig kunne udløbe, uanset hvor længe den stod."""
+    _opret("job-idem", kraever_handling=True)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET expires_at = '' "
+                  "WHERE bruger_id = ? AND kilde_id = ?", (BRUGER, "job-idem"))
+    assert db_inbox.fej_udloebne()["bagudfyldt"] == 1
+    foerste = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-idem")["expires_at"]
+    assert db_inbox.fej_udloebne()["bagudfyldt"] == 0, "fristen blev sat igen"
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-idem")["expires_at"] == foerste
+
+
 # ── Opgave 9: kildens terminale tilstand ────────────────────────────────────
 
 def test_exit_0_NEDGRADERER_posten_uden_at_nogen_kaldte_done(db):

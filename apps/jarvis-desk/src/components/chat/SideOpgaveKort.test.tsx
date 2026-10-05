@@ -27,6 +27,19 @@ const h = (): SideOpgaveHandlinger & { startLokalt: Mock; baggrund: Mock; loesHe
 describe('SideOpgaveKort (CC «Suggested task»)', () => {
   beforeEach(() => { getSideTasks.mockReset(); setSideTaskStatus.mockReset().mockResolvedValue(undefined) })
 
+  it.each([
+    [1, false, false],
+    [2, true, false],
+    [3, true, true],
+  ])('%i sideopgaver giver det rigtige antal kort i stakken', async (antal, stablet, treLag) => {
+    getSideTasks.mockResolvedValue(Array.from({ length: antal }, (_, nr) => opg(`id-${nr}`, `Opgave ${nr + 1}`)))
+    render(<SideOpgaveKort config={cfg} handlinger={h()} />)
+    const kort = await screen.findByTestId('side-tasks')
+    expect(kort.parentElement).toHaveClass('sok-dok')
+    expect(kort.parentElement?.classList.contains('sok-dok-stak')).toBe(stablet)
+    expect(kort.parentElement?.classList.contains('sok-dok-stak-tre')).toBe(treLag)
+  })
+
   it('et kort ad gangen, stablet, med «1 af 3» og bladring', async () => {
     getSideTasks.mockResolvedValue([opg('a', 'Første'), opg('b', 'Anden'), opg('c', 'Tredje')])
     render(<SideOpgaveKort config={cfg} handlinger={h()} />)

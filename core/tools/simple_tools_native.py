@@ -2964,7 +2964,11 @@ def _exec_operator_channel(args: dict[str, Any]) -> dict[str, Any]:
     """Aabn/luk/vis operator-kanalen. Owner-only for open/close."""
     from core.services import operator_channel as oc
     handling = str(args.get("action") or "status").strip().lower()
-    sid = oc.current_session_id()
+    # Samme noegle som bash bruger: det id executoren gav dette kald. Foer slog
+    # aabning og brug op i hver sin doede kilde, og noeglen blev `_default` for
+    # alle sessioner (maalt 5/10-2026).
+    sid = (str(args.get("_runtime_session_id") or "").strip()
+           or oc.current_session_id())
     if handling == "status":
         return oc.status(sid)
     ejer = oc.current_is_owner()

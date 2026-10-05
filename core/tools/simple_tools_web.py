@@ -376,9 +376,18 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # Er kanalen aaben, hoerer denne kommando til paa Bjoerns maskine og ikke
     # paa containeren. Owner-only, hardt gatet inde i modulet. Er den lukket,
     # returnerer den None og alt fortsaetter praecis som foer.
+    _kanal_note = ""
     try:
         from core.services import operator_channel as _oc
-        _sid, _owner = _oc.current_session_id(), _oc.current_is_owner()
+        # Session-noeglen kommer fra `_runtime_session_id` naar den findes: det
+        # er PRAECIS det id executoren gav dette kald, saa kanalen og bash'en
+        # ikke kan pege paa hvert sit. Maalt 5/10-2026 pegede de paa hvert sit
+        # (begge opslags-kilder var doede imports), noeglen blev `_default` for
+        # ALLE sessioner, og bash faldt stille tilbage til containeren midt i
+        # en tur — uden at sige det.
+        _sid = (str(args.get("_runtime_session_id") or "").strip()
+                or _oc.current_session_id())
+        _owner = _oc.current_is_owner()
         _via = _oc.maybe_reroute_bash(command, args.get("cwd"),
                                       is_owner=_owner, session_id=_sid)
         if _via is not None:
@@ -389,6 +398,11 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             # svaret — ikke ved at laese koden.
             from core.services.shell_confinement_report import OPERATOR, vedhaeft
             return vedhaeft(_via, OPERATOR)
+        # Kanalen faldt af sig selv og var for gammel til at genopstaa. Saa
+        # skal svaret SIGE at denne kommando koerte paa serveren — ellers ser
+        # et tomt eller fejlende svar ud som om filen ikke findes, naar den i
+        # virkeligheden ligger et andet sted. (Bjørn 5/10-2026.)
+        _kanal_note = _oc.kanal_note(_sid)
     except Exception:
         logger.debug("operator_channel: sprunget over", exc_info=True)
 
@@ -558,6 +572,8 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
                 "exit_code": run_result.get("exit_code"),
                 "status": "ok",
             }
+            if _kanal_note:
+                svar["kanal"] = {"note": _kanal_note}
             # ØNSKET vs. FAKTISK indespærring, også her (Fase 3, K9).
             #
             # Den VEDVARENDE shell kan ikke indespærres pr. kommando — et
@@ -672,6 +688,8 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         "exit_code": result.returncode,
         "status": "ok",
     }
+    if _kanal_note:
+        svar["kanal"] = {"note": _kanal_note}
     # Rapporten følger med SVARET og ikke kun loggen: den der læser resultatet
     # skal kunne se om kommandoen kørte indespærret. Kun når der var noget at
     # sige — et uændret «intet ønsket, intet sket» er støj.

@@ -112,19 +112,24 @@ _Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine.
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L41) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/operator_channel.py#L50) |
-| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L58) |
-| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L65) |
-| function | `is_open` | `(session_id)` | — | [src](../../../core/services/operator_channel.py#L76) |
-| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L80) |
-| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L94) |
-| function | `current_session_id` | `()` | Samme opslags-raekkefoelge som staged_edits_tools — ét moenster, ikke to. | [src](../../../core/services/operator_channel.py#L105) |
-| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L120) |
-| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L136) |
-| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L149) |
-| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L156) |
-| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L182) |
+| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L47) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/operator_channel.py#L56) |
+| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L64) |
+| function | `_udloebet` | `(post)` | Posten siger stadig åben, men TTL er passeret — ingen lukkede den. | [src](../../../core/services/operator_channel.py#L71) |
+| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L84) |
+| function | `is_open` | `(session_id)` | — | [src](../../../core/services/operator_channel.py#L95) |
+| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L99) |
+| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L113) |
+| function | `current_session_id` | `()` | Kanalens nøgle — og den SKAL være den samme som bash'ens. | [src](../../../core/services/operator_channel.py#L127) |
+| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L155) |
+| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L171) |
+| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L184) |
+| function | `_koer_over_broen` | `(command, cwd)` | Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det. | [src](../../../core/services/operator_channel.py#L191) |
+| function | `_naaede_frem` | `(r)` | Kom svaret fra hans maskine — eller var det broen der svigtede? | [src](../../../core/services/operator_channel.py#L209) |
+| function | `_forny` | `(session_id)` | Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede. | [src](../../../core/services/operator_channel.py#L224) |
+| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L231) |
+| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L261) |
+| function | `kanal_note` | `(session_id)` | Én linje når kanalen faldt af sig selv — til bash-svaret. | [src](../../../core/services/operator_channel.py#L278) |
 
 ## `core/services/orb_phase.py`
 _Desktop orb phase — writes current Jarvis pipeline state to a temp file._

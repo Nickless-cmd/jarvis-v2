@@ -66,61 +66,73 @@ def _insert_private_record(conn, summary: str, detail: str = "", salience: float
     return record_id
 
 
-# ── _score_sensory ────────────────────────────────────────────────────
+# ── længde er ikke et signal ─────────────────────────────────────────
 
 
-def test_score_sensory_short_content_is_zero():
-    """Content under _MIN_CONTENT_LENGTH must score 0."""
-    from core.services.selective_consolidation_daemon import _score_sensory
-    assert _score_sensory({"content": "hi"}) == 0.0
-    assert _score_sensory({"content": ""}) == 0.0
+def test_sensory_layer_has_no_scorer():
+    """Vaern: genindfoeres en scorer for sensory, fejler denne.
+
+    Maalt 5/10-2026: `_score_sensory` gav `len/500` + mood-bonus. Median-
+    laengden er IDENTISK for aegte indtryk og prompt-ekkoer (301 tegn for
+    begge), saa den skelnede ikke — men den spredte scorerne, og det var
+    nok til at udpege 1.362 af 2.725 aegte poster som «bund-50%».
+    """
+    import core.services.selective_consolidation_daemon as mod
+
+    assert not hasattr(mod, "_score_sensory")
+    assert not hasattr(mod, "_MAX_CONTENT_FACTOR")
+    assert not hasattr(mod, "_MIN_CONTENT_LENGTH")
 
 
-def test_score_sensory_long_content_scores_above_zero():
-    """Longer content must score > 0."""
-    from core.services.selective_consolidation_daemon import _score_sensory
-    content = "x" * 100
-    score = _score_sensory({"content": content})
-    assert 0.1 < score < 1.0
+def test_no_scorer_reads_content_length():
+    """Vaern: en scorer maa ikke laese indhold eller laengde. Det var fejlen.
 
+    Testen laeser KILDEKODEN, ikke et resultat. En scorer der genindfoerer
+    `len(content)` som led slipper ellers igennem alle andre tests, fordi
+    de maaler rangering — ikke hvad rangeringen bygger paa.
+    """
+    import inspect
 
-def test_score_sensory_with_mood_tone_gets_bonus():
-    """mood_tone must add 0.2 to the score."""
-    from core.services.selective_consolidation_daemon import _score_sensory
-    base = _score_sensory({"content": "x" * 100, "mood_tone": None})
-    boosted = _score_sensory({"content": "x" * 100, "mood_tone": "calm"})
-    assert boosted == pytest.approx(base + 0.2, rel=0.01)
+    import core.services.selective_consolidation_daemon as mod
+
+    for navn in ("_score_brain", "_score_private"):
+        src = inspect.getsource(getattr(mod, navn))
+        assert "len(" not in src, f"{navn} laeser laengde igen"
+        for felt in ("content", "detail", "summary"):
+            assert f'"{felt}"' not in src, f"{navn} laeser {felt} — kun salience maa rangere"
 
 
 # ── _score_private ────────────────────────────────────────────────────
 
 
-def test_score_private_uses_detail_and_salience():
-    """Private record score must incorporate detail length and salience."""
-    from core.services.selective_consolidation_daemon import _score_private
-    score = _score_private({"detail": "x" * 100, "salience": 0.5})
-    assert 0.5 < score < 1.0
+def test_score_private_is_salience_only():
+    """Scoren ER salience — hverken mere eller mindre.
 
-
-def test_score_private_zero_for_short():
-    """Short content must score 0."""
+    Foer gav den `salience + len/500`. Testen laaser at et langt indhold
+    med lav salience IKKE kan overhale et kort med hoej: laengde maa ikke
+    flytte tallet.
+    """
     from core.services.selective_consolidation_daemon import _score_private
-    assert _score_private({"detail": "hi", "salience": 0.0}) == 0.0
+
+    assert _score_private({"detail": "x" * 5000, "salience": 0.3}) == 0.3
+    assert _score_private({"detail": "kort", "salience": 0.9}) == 0.9
+    assert _score_private({"salience": 0.5}) == 0.5
+    assert _score_private({}) == 0.0
 
 
 # ── _consolidate_sensory ──────────────────────────────────────────────
 
 
-def test_consolidate_sensory_ranks_but_never_deletes(isolated_db):
-    """Bund-50% maa RANGERES men ikke slettes.
+def test_consolidate_sensory_ranks_nothing_and_deletes_nothing(isolated_db):
+    """Laget RANGERER ikke laengere — og sletter i hvert fald ikke.
 
-    Maalt 5/10-2026: den gamle udgave kaldte sin DELETE-blok for «arkivering»,
-    fordi sensory_memories ingen statuskolonne har. Resultatet var permanent tab
-    af aegte sanseindtryk — valgt efter LAENGDE, hvor et kort praecist indtryk
-    scorer 0.2 og et langt prompt-ekko 0.8. Ni aegte indtryk roeg i én koersel.
+    Maalt 5/10-2026: rangeringen byggede paa content-laengde, og
+    median-laengden er IDENTISK for aegte indtryk og prompt-ekkoer (301
+    tegn for begge). Den skelnede altsaa ikke, men udpegede 1.362 af 2.725
+    aegte poster som «bund-50%».
 
-    Testen beviser to ting: at rangeringen stadig beregnes (saa daemonen ikke
-    bliver blind), og at INGEN raekke forsvinder.
+    Testen beviser at der hverken udpeges eller fjernes noget: 10 ind,
+    10 tilbage, intet `would_archive`.
     """
     from core.runtime.db import connect
     from core.services.selective_consolidation_daemon import _consolidate_sensory
@@ -128,7 +140,8 @@ def test_consolidate_sensory_ranks_but_never_deletes(isolated_db):
     today_start = datetime.now(UTC).strftime("%Y-%m-%dT00:00:00")
 
     with connect() as conn:
-        # 5 korte (lav score) + 5 lange (hoej score)
+        # 5 korte + 5 lange. Under den gamle scorer var det netop denne
+        # forskel der afgjorde hvem der roeg.
         for i in range(5):
             _insert_sensory(conn, "short", mood_tone=None)
         for i in range(5):
@@ -137,7 +150,8 @@ def test_consolidate_sensory_ranks_but_never_deletes(isolated_db):
     result = _consolidate_sensory(today_start)
     assert result["scored"] == 10
     assert result["archived"] == 0  # intet slettet
-    assert result["would_archive"] == 5  # bund-50% stadig udpeget
+    assert result["ranked"] is False  # og intet udpeget
+    assert "would_archive" not in result
 
     # Beviset: ALLE 10 er der endnu.
     from core.runtime.db_sensory import count_sensory_memories
@@ -202,6 +216,29 @@ def test_consolidate_private_archives_bottom_half(isolated_db):
         ).fetchone()
     assert active["n"] <= 4  # at most 4 remain (to-keep = ceil(6*0.5) = 3)
     assert archived["n"] >= 2
+
+
+def test_no_spread_means_no_archiving(isolated_db):
+    """Er alle scorer ens, arkiveres der INTET — ikke en vilkaarlig halvdel.
+
+    Uden dette vaern ville 6 poster med identisk salience blive delt i en
+    «top-3» og en «bund-3» uden grundlag. Det er samme fejlform som
+    laengde-rangeringen: et tal der ser ud som et kvalitetsvalg uden at
+    vaere det.
+    """
+    from core.runtime.db import connect
+    from core.services.selective_consolidation_daemon import _consolidate_private
+
+    today_start = datetime.now(UTC).strftime("%Y-%m-%dT00:00:00")
+
+    with connect() as conn:
+        for i in range(6):
+            _insert_private_record(conn, f"ens {i}", detail="x" * 100, salience=0.5)
+
+    result = _consolidate_private(today_start)
+    assert result["scored"] == 6
+    assert result["archived"] == 0
+    assert result["skipped"] == "no_score_spread"
 
 
 # ── tick (integration smoke) ──────────────────────────────────────────

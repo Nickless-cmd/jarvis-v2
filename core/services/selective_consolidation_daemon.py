@@ -10,12 +10,24 @@ vi FØR langtidslagring.
 
 Konfiguration:
   - TOP_K_PERCENT (default 50): hvor mange % af dagens records der beholdes
-  - MIN_CONTENT_LENGTH (default 20): minimum content-længde for at få score > 0
 
 Scoring (0.0-1.0):
-  - Sensory: content_length/500 (capped) + 0.2 hvis mood_tone findes
-  - Brain entries: salience_base (0-1) + content_length/500 (capped)
-  - Private records: salience (0-1) + content_length/500 (capped)
+  - Brain entries: salience_base (0-1)
+  - Private records: salience (0-1)
+  - Sensory: RANGERES IKKE — se `_consolidate_sensory`
+
+LÆNGDE ER IKKE ET SIGNAL (målt 5/10-2026). Den gamle scorer lagde
+`content_length/500` oveni. Målt på alle 2.744 poster i arkivet er
+median-længden IDENTISK for ægte indtryk og prompt-ekkoer (301 tegn
+begge) — længde skelnede altså ikke, men den SPREDTE scorerne, og det
+var nok til at rangere. Konsekvensen pegede den forkerte vej: 1.362 af
+2.725 ægte poster lå i bund-50%, mens et 6.641-tegns prompt-ekko scorede
+1.00 og overlevede. «Atmosfæren var svær at fange» (29 tegn, et helt
+ægte indtryk) scorede 0.06.
+
+Rangeringen bruger nu KUN salience — et signal systemet selv sætter.
+Og skelner scorerne ikke (al ens), arkiveres der intet: uden spredning
+er der intet grundlag at rangere på.
 """
 from __future__ import annotations
 
@@ -30,9 +42,7 @@ logger = logging.getLogger(__name__)
 # ── Configuration ────────────────────────────────────────────────────
 
 _CADENCE_HOURS = 24
-_TOP_K_PERCENT = 50          # behold top 50%
-_MIN_CONTENT_LENGTH = 20     # kortere content får score = 0
-_MAX_CONTENT_FACTOR = 500    # maks content-længde der giver bonus
+_TOP_K_PERCENT = 50          # behold top 50% (rangeret efter salience)
 
 # ── Module-level state ──────────────────────────────────────────────
 
@@ -151,20 +161,25 @@ def tick_selective_consolidation_daemon() -> dict[str, Any]:
 # ── Layer 1: Sensory memories ────────────────────────────────────────
 
 
-def _score_sensory(row: dict[str, Any]) -> float:
-    """Score a sensory memory 0.0-1.0."""
-    content = row.get("content") or ""
-    content_len = len(content.strip())
-    if content_len < _MIN_CONTENT_LENGTH:
-        return 0.0
-    score = min(content_len / _MAX_CONTENT_FACTOR, 0.8)
-    if row.get("mood_tone"):
-        score += 0.2
-    return min(score, 1.0)
-
-
 def _consolidate_sensory(today_start: str) -> dict[str, Any]:
-    """Score and archive bottom (100-K)% of today's sensory memories."""
+    """Rangér IKKE dagens sanseindtryk — og slet dem i hvert fald ikke.
+
+    Laget havde to problemer, begge målt 5/10-2026.
+
+    Det ene var sletningen (rettet først): «arkivering» var et DELETE, fordi
+    `sensory_memories` ingen statuskolonne har, og top-K blev aldrig
+    promoveret nogen steder. Ni ægte indtryk røg i én kørsel.
+
+    Det andet er rangeringen selv — og den er grunden til at den er væk nu.
+    Den byggede på content-længde. Målt over hele arkivet er median-længden
+    IDENTISK for ægte indtryk og prompt-ekkoer (301 tegn for begge), så
+    længde skelnede ikke. Den spredte bare scorerne, og det var nok til at
+    udpege 1.362 af 2.725 ægte poster som «bund-50%».
+
+    Uden en rigtig arkiv-vej OG uden et signal der faktisk skelner, er et
+    `would_archive`-tal et tal der ser ud som kvalitet uden at være det.
+    Laget tæller derfor kun hvad der er der.
+    """
     from core.runtime.db_sensory import _ensure_sensory_memories_table
     from core.runtime.db import connect
 
@@ -179,48 +194,11 @@ def _consolidate_sensory(today_start: str) -> dict[str, Any]:
     if not rows:
         return {"layer": "sensory", "scored": 0, "archived": 0}
 
-    scored = []
-    for r in rows:
-        d = dict(r)
-        d["_score"] = _score_sensory(d)
-        scored.append(d)
-
-    scored.sort(key=lambda x: x["_score"])
-    keep_count = max(1, round(len(scored) * _TOP_K_PERCENT / 100))
-    archive_targets = scored[:-keep_count] if keep_count < len(scored) else []
-
-    if not archive_targets:
-        return {"layer": "sensory", "scored": len(scored), "archived": 0}
-
-    # Vi SLETTER IKKE. Maalt i drift 5/10-2026:
-    #
-    #   * Bund-50% blev valgt efter LAENGDE (`len/500` + mood-bonus). Laengde er
-    #     anti-korreleret med kvalitet her: et kort, praecist indtryk
-    #     («Rummet foeles tungere og mere tyst end sidst …», 100 tegn) scorer
-    #     0.2 og ryger; et langt prompt-ekko scorer 0.8 og overlever.
-    #   * 22 genstarter paa én dag gav 22 koersler (~1.690 poster «arkiveret»).
-    #     Dagsarkivet stod paa 2 poster mod 7-13 de oevrige dage. Ni aegte
-    #     indtryk blev slettet i én enkelt koersel.
-    #   * Brain-laget har `archive_entry` (status-kolonne) og arkiverer bloedt.
-    #     Sensory har ingen — saa «arkivering» blev til DELETE. Og top-K
-    #     promoveres INGEN steder: for sensory er daemonen ren sletning.
-    #
-    # Indtil der findes en rigtig arkiv-vej for sensory rangerer vi og
-    # rapporterer. Vi oedelaegger ikke det vi ikke kan gemme.
-    logger.info(
-        "selective_consolidation: sensory bund-%d%% ville vaere slettet "
-        "(%d poster, laveste score %.3f) — BEHOLDT",
-        100 - _TOP_K_PERCENT,
-        len(archive_targets),
-        scored[0]["_score"] if scored else 0.0,
-    )
-
     return {
         "layer": "sensory",
-        "scored": len(scored),
+        "scored": len(rows),
         "archived": 0,
-        "would_archive": len(archive_targets),
-        "threshold": scored[-keep_count]["_score"] if keep_count <= len(scored) else 0,
+        "ranked": False,
     }
 
 
@@ -228,14 +206,14 @@ def _consolidate_sensory(today_start: str) -> dict[str, Any]:
 
 
 def _score_brain(entry: dict[str, Any]) -> float:
-    """Score a brain entry 0.0-1.0."""
-    content = entry.get("content") or entry.get("summary") or ""
-    content_len = len(content.strip())
-    if content_len < _MIN_CONTENT_LENGTH:
-        return 0.0
-    salience = float(entry.get("salience_base") or 0.0)
-    content_score = min(content_len / _MAX_CONTENT_FACTOR, 0.5)
-    return min(salience + content_score, 1.0)
+    """Score a brain entry 0.0-1.0 — KUN efter salience.
+
+    Længde var tidligere et bonus-led (`len/500`, capped 0.5). Målt
+    5/10-2026 skelnede længde ikke mellem ægte indhold og prompt-ekkoer
+    (median 301 tegn for begge), så leddet tilførte ingen information —
+    kun spredning. Se modul-docstringen.
+    """
+    return min(max(float(entry.get("salience_base") or 0.0), 0.0), 1.0)
 
 
 def _consolidate_brain(today_start: str) -> dict[str, Any]:
@@ -272,6 +250,17 @@ def _consolidate_brain(today_start: str) -> dict[str, Any]:
     if not scored:
         return {"layer": "brain", "scored": 0, "archived": 0}
 
+    if len({round(e["_score"], 6) for e in scored}) <= 1:
+        # Ingen spredning = intet grundlag at rangere på. Vi arkiverer ikke
+        # vilkårligt: uden et signal der skelner, er en «bund-50%» et
+        # tilfældigt udvalg der ser ud som et kvalitetsvalg.
+        return {
+            "layer": "brain",
+            "scored": len(scored),
+            "archived": 0,
+            "skipped": "no_score_spread",
+        }
+
     scored.sort(key=lambda x: x["_score"])
     keep_count = max(1, round(len(scored) * _TOP_K_PERCENT / 100))
     archive_targets = scored[:-keep_count] if keep_count < len(scored) else []
@@ -299,14 +288,13 @@ def _consolidate_brain(today_start: str) -> dict[str, Any]:
 
 
 def _score_private(record: dict[str, Any]) -> float:
-    """Score a private brain record 0.0-1.0."""
-    content = record.get("detail") or record.get("summary") or ""
-    content_len = len(content.strip())
-    if content_len < _MIN_CONTENT_LENGTH:
-        return 0.0
-    salience = float(record.get("salience") or 0.0)
-    content_score = min(content_len / _MAX_CONTENT_FACTOR, 0.5)
-    return min(salience + content_score, 1.0)
+    """Score a private brain record 0.0-1.0 — KUN efter salience.
+
+    Længde var tidligere et bonus-led (`len/500`, capped 0.5). `salience`
+    er et reelt varieret signal her (målt 5/10-2026: 7.742 aktive poster,
+    45 unikke værdier), så det bærer rangeringen alene.
+    """
+    return min(max(float(record.get("salience") or 0.0), 0.0), 1.0)
 
 
 def _consolidate_private(today_start: str) -> dict[str, Any]:
@@ -333,6 +321,14 @@ def _consolidate_private(today_start: str) -> dict[str, Any]:
         d = dict(r)
         d["_score"] = _score_private(d)
         scored.append(d)
+
+    if len({round(r["_score"], 6) for r in scored}) <= 1:
+        return {
+            "layer": "private",
+            "scored": len(scored),
+            "archived": 0,
+            "skipped": "no_score_spread",
+        }
 
     scored.sort(key=lambda x: x["_score"])
     keep_count = max(1, round(len(scored) * _TOP_K_PERCENT / 100))

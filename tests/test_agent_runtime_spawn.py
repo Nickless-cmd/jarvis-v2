@@ -22,6 +22,27 @@ def test_kun_scouten_faar_lov_at_bruge_betalte_udbydere():
         assert not f(rolle, "read-only-runtime"), rolle
 
 
+def test_scout_policies_include_external_read_sources():
+    from core.services.agent_runtime_base import tools_for_policy
+
+    for policy in ("read-only-runtime", "read-only-workstation"):
+        names = tools_for_policy(policy)
+        assert "web_search" in names
+        assert "web_fetch" in names
+
+
+def test_agent_completion_calls_scout_inbox_delivery(monkeypatch):
+    from core.services import agent_runtime_spawn as M
+    from core.services import scout_inbox_delivery as delivery
+
+    surface = {"agent_id": "agent-1", "status": "completed"}
+    seen = []
+    monkeypatch.setattr(M, "_execute_agent_task_impl", lambda **kw: surface)
+    monkeypatch.setattr(delivery, "record_scout_completion", seen.append)
+    assert M.execute_agent_task(agent_id="agent-1") is surface
+    assert seen == [surface]
+
+
 def test_porten_var_bygget_men_aldrig_aabnet():
     """Mekanismen fandtes i forvejen: `cost_class: paid` holder en udbyder ude
     af cheap lane, og `central_route` lukker den ind i agent-puljen når

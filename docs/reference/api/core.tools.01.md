@@ -246,6 +246,17 @@ _Daemon health alert — detects inactive/crashed daemons and sends notification
 | function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L118) |
 | function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L133) |
 
+## `core/tools/db_query_tool.py`
+_`db_query` — laeseadgang til Jarvis' database, med skemaet i fejlen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_json_safe_cell` | `(v)` | Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8 | [src](../../../core/tools/db_query_tool.py#L46) |
+| function | `_tabeller` | `(conn)` | — | [src](../../../core/tools/db_query_tool.py#L65) |
+| function | `_kolonner` | `(conn, tabel)` | — | [src](../../../core/tools/db_query_tool.py#L72) |
+| function | `skema_hint` | `(conn, fejl, sql)` | De navne der FINDES, givet en fejl om et navn der ikke gjorde. | [src](../../../core/tools/db_query_tool.py#L81) |
+| function | `_exec_db_query` | `(args)` | Run a read-only SELECT query against Jarvis' database. | [src](../../../core/tools/db_query_tool.py#L129) |
+
 ## `core/tools/decisions_tools.py`
 _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
 
@@ -521,12 +532,4 @@ _`call_loaded_tool` — en transport, ikke en udfører._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L76) |
-
-## `core/tools/kommando_beskrivelse.py`
-_Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L55) |
-| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L59) |
 

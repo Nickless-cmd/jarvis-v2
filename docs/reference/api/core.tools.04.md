@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_execute.py`
+_Read-only capability-udførere (runtime-event-read, grep, multi-read, outline)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_execute_runtime_event_read` | `(summary)` | Execute the runtime-event-read tool: surface recent eventbus events. | [src](../../../core/tools/workspace_capabilities_execute.py#L33) |
+| function | `_execute_project_grep` | `(summary, command_text)` | Grep across PROJECT_ROOT for a pattern. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L90) |
+| function | `_execute_multi_file_read` | `(summary, command_text, workspace_dir)` | Read multiple project files in one call. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L160) |
+| function | `_execute_project_outline` | `(summary, command_text)` | List project files with line counts. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L217) |
+
 ## `core/tools/workspace_capabilities_memory.py`
 _Workspace-memory-fletning + støjfilter._
 

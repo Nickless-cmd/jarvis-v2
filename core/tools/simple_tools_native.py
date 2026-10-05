@@ -2573,89 +2573,20 @@ def _exec_interlanguage_protocol(args: dict[str, Any]) -> dict[str, Any]:
                 "error": f"interlanguage_protocol unavailable: {type(exc).__name__}: {exc}"}
 
 
-def _json_safe_cell(v: Any) -> Any:
-    """Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8
-    text if decodable, else a short base64 placeholder. str/int/float/None are
-    already JSON-safe and pass through untouched. Uden dette forgifter en
-    BLOB-kolonne downstream json.dumps → 'Object of type bytes is not JSON
-    serializable' → hele det synlige run crasher (set 2026-07-10)."""
-    if isinstance(v, (bytes, bytearray)):
-        b = bytes(v)
-        try:
-            return b.decode("utf-8")
-        except (UnicodeDecodeError, ValueError):
-            import base64
-            preview = base64.b64encode(b).decode("ascii")
-            if len(preview) > 88:
-                preview = preview[:88] + "…"
-            return f"<{len(b)} bytes base64:{preview}>"
-    return v
-
-
-def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
-    """Run a read-only SELECT query against Jarvis' database."""
-    sql = str(args.get("sql") or "").strip()
-    params_raw = str(args.get("params") or "").strip()
-
-    if not sql:
-        return {"error": "sql is required", "status": "error"}
-
-    # Security: only SELECT allowed — reject any write or schema-modifying statements
-    sql_upper = sql.upper().lstrip()
-    _FORBIDDEN = (
-        "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
-        "TRUNCATE", "REPLACE", "ATTACH", "DETACH", "PRAGMA",
-        "VACUUM", "REINDEX", "SAVEPOINT", "RELEASE", "ROLLBACK", "COMMIT", "BEGIN",
-    )
-    for keyword in _FORBIDDEN:
-        if re.match(rf"\b{keyword}\b", sql_upper, re.IGNORECASE):
-            return {
-                "error": f"Only SELECT statements are allowed. '{keyword}' is not permitted.",
-                "status": "error",
-            }
-    if not sql_upper.startswith("SELECT") and not sql_upper.startswith("WITH"):
-        return {"error": "Only SELECT (or WITH ... SELECT) statements are allowed.", "status": "error"}
-
-    params: list[Any] = []
-    if params_raw:
-        try:
-            parsed = json.loads(params_raw)
-            if not isinstance(parsed, list):
-                return {"error": "params must be a JSON array, e.g. [\"value\", 42]", "status": "error"}
-            params = parsed
-        except Exception:
-            return {"error": f"params is not valid JSON: {params_raw[:100]}", "status": "error"}
-
-    try:
-        from core.runtime.db import connect
-        with connect() as conn:
-            # `connect()` returns a POOLED thread-local connection (2026-07-12) — mutating
-            # its row_factory poisons EVERY later query on this thread (e.g. decision_gate's
-            # dict(sqlite3.Row) → ValueError "update sequence element has length N"; Central
-            # RED 2026-07-13). zip(cols, row) works identically on a sqlite3.Row (iterable) as
-            # on a raw tuple, so we don't even need row_factory=None — but if set, RESTORE it.
-            _prev_factory = conn.row_factory
-            try:
-                cur = conn.execute(sql, params)
-                cols = [d[0] for d in cur.description] if cur.description else []
-                rows = cur.fetchmany(200)  # cap at 200 rows
-                result_rows = [
-                    {k: _json_safe_cell(v) for k, v in zip(cols, row)} for row in rows
-                ]
-            finally:
-                conn.row_factory = _prev_factory  # never leave the shared conn poisoned
-        from core.tools.tool_text_render import render_rows
-        _capped = len(result_rows) == 200
-        return {
-            "columns": cols,
-            "rows": result_rows,
-            "row_count": len(result_rows),
-            "capped": _capped,
-            "status": "ok",
-            "text": render_rows(cols, result_rows, capped=_capped),
-        }
-    except Exception as exc:
-        return {"error": str(exc), "status": "error"}
+# Boy Scout 5/10-2026: `db_query` er flyttet til sin egen fil. Udskillelsen
+# var en forudsaetning for at roere den (denne fil var 3.110 linjer), og
+# enheden er naturlig: ét vaerktoej, ét ansvar. Den nye fil baerer ogsaa
+# skemaet i fejlen — maalt fejlede 185 af 777 db_query-kald, naesten alle paa
+# et gaettet tabel- eller kolonnenavn.
+#
+# Re-eksporteret her saa eksisterende imports ikke braekker
+# (`simple_tools.py` og `tests/test_simple_tools_native.py` henter dem herfra).
+# Ryd op naar alle kaldsteder er flyttet naturligt.
+from core.tools.db_query_tool import (  # noqa: E402
+    _exec_db_query,
+    _json_safe_cell,
+    skema_hint,
+)
 
 
 def _exec_compact_context_session(session_id: str | None) -> Any:

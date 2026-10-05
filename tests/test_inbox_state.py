@@ -1018,3 +1018,73 @@ def test_self_wakeup_skriver_ALDRIG_et_workspace_navn_i_bruger_id():
             f"bruger_id udledes uden oversaettelse: {kilde}")
         return
     raise AssertionError("fandt intet registrer_kilde-kald i self_wakeup")
+
+
+# ── Udsatte poster kommer tilbage (5/10-2026) ───────────────────────────────
+
+def test_en_droppet_beslutnings_post_kommer_TILBAGE(inbox_db):
+    """`drop` er en UDSÆTTELSE, ikke en afgørelse — kilden må genåbne den.
+
+    Docstringen i `registrer_i_indbakken` lovede det, men ingen af de tre veje
+    bar det: `expires_at` blev aldrig sat (tom = udløber ALDRIG), `saet_udloeb`
+    havde nul kaldere uden for tests, og `opret_eller_hent` returnerer en
+    eksisterende række urørt. Målt i drift: 76 beslutnings-poster stod i `drop`
+    og kom aldrig igen — den modsatte af læring.
+    """
+    def _registrer():
+        return inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="decision", kilde_id="dec-1",
+            kilde_ejer="jarvis", beskrivelse="[kritisk 0%] vis det")
+
+    r = _registrer()
+    assert r["post"]["status"] == db_inbox.STATUS_AABEN
+    assert r["post"]["verificeret_ejer"] == inbox_state.EJER_JARVIS
+    # Beslutnings-poster gater ikke: to gater der skubber til det samme.
+    assert r["post"]["kraever_handling"] is False
+
+    inbox_state.drop(BJORN, "dec-1", "ikke nu")
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="dec-1")["status"] == \
+        db_inbox.STATUS_DROP
+
+    r2 = _registrer()
+    assert r2["post"]["status"] == db_inbox.STATUS_AABEN, \
+        "en droppet beslutning kunne ties ihjel af indbakken"
+    assert r2.get("genaabnet") is True
+    assert r2["post"]["afgjort_grund"] == "", "en genaabnet post bar sin gamle grund"
+
+
+def test_en_GATENDE_post_genaabnes_IKKE_af_sin_kilde(inbox_db):
+    """Grænsen: kun en post der IKKE kan nægte en mutation må flyttes.
+
+    En `job`-post registreret inde i et levende run kan gate. Kunne dens kilde
+    også genåbne den, var skrive-kontrakten omgået ad en ny vej — en daemon
+    kunne genoplive en post der blokerer.
+    """
+    def _registrer():
+        with _som_bjorn():
+            return inbox_state.registrer_kilde(
+                bruger_id=BJORN, kildetype="job", kilde_id="job-1",
+                oprettende_run_id="visible-abc123", beskrivelse="et job")
+
+    r = _registrer()
+    assert r["post"]["kraever_handling"] is True, \
+        "forudsætningen for testen er at posten KAN gate"
+
+    inbox_state.drop(BJORN, "job-1", "nej")
+    r2 = _registrer()
+    assert r2["post"]["status"] == db_inbox.STATUS_DROP, \
+        "en gatende post blev genaabnet af sin kilde"
+
+
+def test_en_AFSLUTTET_post_genaabnes_ikke(inbox_db):
+    """`done` er udført arbejde, ikke en udsættelse — den må ikke genoplives."""
+    def _registrer():
+        return inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="decision", kilde_id="dec-2",
+            kilde_ejer="jarvis", beskrivelse="x")
+
+    _registrer()
+    inbox_state.done(BJORN, "dec-2")
+    r = _registrer()
+    assert r["post"]["status"] == db_inbox.STATUS_DONE, \
+        "afsluttet arbejde blev genoplivet af sin kilde"

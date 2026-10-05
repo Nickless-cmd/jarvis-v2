@@ -230,10 +230,28 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
 
     Gatens egen begrundelse fra 26/9 er utvetydig: «Et bånd der kan revoke,
     sletter systematisk de svære og beholder de lette: den modsatte af
-    læring.» Derfor sættes `expires_at` på hver post: et `inbox_drop` lukker
-    rækken, men ved næste registrering er posten tilbage, fordi beslutningen
-    stadig står under tærsklen i kilden. Indbakken kan altså udsætte, ikke
-    slette — og den beslutning den peger på er uberørt.
+    læring.» Derfor skal et `inbox_drop` kunne fortrydes: posten kommer tilbage
+    ved næste registrering, fordi beslutningen stadig står under tærsklen i
+    kilden.
+
+    ## Rettelse 5/10-2026: den gamle begrundelse var forkert
+
+    Her stod der at `expires_at` blev sat på hver post. Det gjorde den ikke —
+    og ingen af de tre veje bar påstanden:
+
+    * `registrer_kilde` sendte ikke `expires_at`, og tom streng betyder
+      UDLØBER ALDRIG.
+    * `db_inbox.saet_udloeb()` er den eneste skriver af feltet og havde nul
+      kaldere uden for tests.
+    * `opret_eller_hent` returnerer en eksisterende række urørt, så en
+      genregistrering var en no-op.
+
+    Målt i drift: 76 beslutnings-poster stod i `drop` og kom aldrig igen. Nu
+    bæres påstanden af `db_inbox.genaabn_af_kilde`, kaldt fra
+    `inbox_state.registrer_kilde` — og den er gated på at kildetypen ikke kan
+    nægte en mutation, så kun en post der i forvejen ikke kan gate må flyttes.
+    Indbakken kan altså udsætte, ikke slette — og den beslutning den peger på
+    er uberørt.
     """
     try:
         from core.services.behavioral_decisions import (

@@ -32,12 +32,13 @@ _Lageret bag indbakken: `inbox_items`._
 | function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L258) |
 | function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L273) |
 | function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L301) |
-| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L352) |
-| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L424) |
-| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L453) |
-| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L469) |
-| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L509) |
-| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L570) |
+| function | `genaabn_af_kilde` | `(*, bruger_id, kilde_id)` | Genåbn en post der blev UDSAT, når dens kilde stadig melder den aktuel. | [src](../../../core/runtime/db_inbox.py#L360) |
+| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L414) |
+| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L486) |
+| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L515) |
+| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L531) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L571) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L632) |
 
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._

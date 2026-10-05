@@ -416,10 +416,22 @@ def registrer_kilde(
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,
             "kraever_handling": kraever_handling, "error": str(r.get("error") or "")})
         return r
-    # Kun NYE poster spores. En genregistrering er idempotent og maa ikke
-    # taelle igen — ellers ville Opgave 7's «hvor mange blev
-    # handlingskraevende» vokse hver gang en notifikation blev genleveret.
+    # En UDSAT post kommer tilbage (målt 5/10-2026). `drop` og `udloebet` er
+    # udsættelser, ikke afgørelser — så en kilde der stadig melder posten aktuel
+    # må genåbne den. Uden dette var genregistrering en no-op: `opret_eller_hent`
+    # returnerer en eksisterende række urørt, `expires_at` blev aldrig sat, og
+    # 76 beslutnings-poster stod i `drop` og kom aldrig igen.
+    #
+    # Grænsen er den samme som for etiketten: kun en kildetype der IKKE kan
+    # nægte en mutation må flyttes af sin kilde — ellers kunne en daemon
+    # genåbne en blokerende post.
     post = r.get("post") or {}
+    if (kildetype_n in IKKE_GATENDE_KILDETYPER
+            and str(post.get("status") or "") in db_inbox.GENAABNING_STATUSSER):
+        g = db_inbox.genaabn_af_kilde(bruger_id=bruger_id, kilde_id=kilde_id)
+        if g.get("status") == "ok":
+            r = {**r, "post": g.get("post") or post, "genaabnet": True}
+            post = r["post"]
     if int(post.get("paamindelser") or 0) == 0 and not post.get("afgjort_at"):
         _spor("inbox.registreret", {
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,

@@ -349,6 +349,68 @@ def afgoer(
     return {"status": "ok", "id": kilde_id, "ny_status": ny_status}
 
 
+#: De to statusser der betyder UDSÆTTELSE, ikke afslutning. Kun de to må en
+#: kilde genåbne: `done` er udført arbejde, og `afsluttet_af_kilde` betyder
+#: kilden er væk — at genoplive nogen af dem ville genåbne noget afgjort.
+GENAABNING_STATUSSER: Final[frozenset[str]] = frozenset({
+    STATUS_DROP, STATUS_UDLOEBET,
+})
+
+
+def genaabn_af_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
+    """Genåbn en post der blev UDSAT, når dens kilde stadig melder den aktuel.
+
+    ## Hvorfor den findes (målt 5/10-2026)
+
+    `registrer_i_indbakken`s docstring lovede at en droppet beslutnings-post
+    «kommer tilbage ved næste registrering, fordi beslutningen stadig står under
+    tærsklen». Det kunne den ikke — og ingen af de tre veje bar det:
+
+    * `expires_at` blev aldrig sat (tom streng ⇒ udløber ALDRIG, se `er_udloebet`).
+    * `saet_udloeb()` er den eneste skriver af feltet og havde NUL kaldere
+      uden for tests.
+    * `opret_eller_hent` er `INSERT OR IGNORE` + opslag og returnerer en
+      EKSISTERENDE række urørt — så genregistrering var en no-op for en post der
+      allerede fandtes.
+
+    Målt i drift: 76 beslutnings-poster stod i `drop` og kom aldrig igen. Det er
+    præcis den fejlform gatens egen begrundelse advarer mod: «et bånd der kan
+    revoke, sletter systematisk de svære og beholder de lette — den modsatte af
+    læring.»
+
+    ## Grænsen, og hvorfor den er sikker
+
+    Kun `drop` og `udloebet` kan genåbnes. Kalderen (`registrer_kilde`) gater
+    desuden på KILDETYPEN: kun en post der ikke kan nægte en mutation må flyttes
+    af sin kilde. Ellers kunne en daemon genåbne en blokerende post og dermed
+    omgå skrive-kontrakten ad en ny vej.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        # `status IN (…)` i WHERE gør skrivningen atomar mod en samtidig
+        # afgørelse: rammer vi nul rækker, var posten ikke til at genåbne.
+        cur = conn.execute(
+            "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
+            "afgjort_at = '', afgjort_grund = '', paamindelser = 0, "
+            "sidste_paamindelse_at = '', sidste_paamindelse_tur = '' "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status IN (?, ?)",
+            (STATUS_AABEN, bruger_id, kilde_id, STATUS_DROP, STATUS_UDLOEBET),
+        )
+        if cur.rowcount == 0:
+            return {"status": "allerede", "id": kilde_id}
+        r = conn.execute(
+            "SELECT * FROM inbox_items WHERE bruger_id = ? AND kilde_id = ?",
+            (bruger_id, kilde_id),
+        ).fetchone()
+    if r is None:
+        return {"status": "fejl", "error": "posten kunne ikke genaabnes"}
+    return {"status": "ok", "id": kilde_id, "post": _post_fra_raekke(r)}
+
+
 def noter_paamindelse(*, bruger_id: str, kilde_id: str, tur: str) -> dict[str, Any]:
     """Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang.
 

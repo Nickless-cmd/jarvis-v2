@@ -91,28 +91,82 @@ def _file_mtime(path: Path) -> float:
         return 0.0
 
 
-def _chunk_markdown(text: str, source: str) -> list[Chunk]:
-    """Split markdown into chunks, tracking the nearest heading."""
-    chunks: list[Chunk] = []
-    current_heading = ""
-    current_lines: list[str] = []
+#: Maks tegn i én chunks tekst — stien tæller med.
+_CHUNK_MAX = 800
+#: Mindste krop der er værd at indeksere.
+_CHUNK_MIN = 20
+#: Adskiller i overskrifts-stien. Valgt fordi den ikke optræder i overskrifter.
+_STI = " › "
 
-    def flush():
-        nonlocal current_lines
-        joined = " ".join(l.strip() for l in current_lines if l.strip())
-        if len(joined) >= 20:
-            chunks.append(Chunk(text=joined[:800], source=source, section=current_heading))
-        current_lines = []
+
+def _chunk_markdown(text: str, source: str) -> list[Chunk]:
+    """Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten.
+
+    ## Hvorfor overskriften står i TEKSTEN (5/10-2026)
+
+    Målt på Bjørns MEMORY.md (980 KB, 792 `##`-sektioner): den gamle chunker
+    gav **2.859 chunks, og 2.844 af dem (99,5 %) indeholdt IKKE sin egen
+    overskrift** i den tekst der blev embeddet. Forespørgslen «VESC hardware
+    status» gav derfor «Curated Memory», «Årsagen», «Læren» og «Hairline-kanten
+    i mørkt tema» — mens filen har en 8.281-tegns sektion der HEDDER
+    «VESC — hardware-status». Titlen var usynlig for vektoren.
+
+    Scorerne lå inden for 0,007 af hinanden på tværs af urelaterede sektioner
+    (0,688–0,695), altså ren støj, og `raw_score == score` så ingen
+    transformation fladede dem. 2.859 embeddings kostede 6.121 ms pr. søgning,
+    mens den leksikalske fallback fandt de rigtige sektioner på 262 ms.
+
+    ## Tre ændringer
+
+    * **Stien står foran kroppen i `text`**, så den embeddes med.
+    * **`section` er STIEN**, ikke den nærmeste overskrift. Før blev
+      «VESC — hardware-status › Læren» bare «Læren» — og «Læren» optrådte 14
+      gange i filen med hver sin betydning, «Fejlen» 14, «Rettelsen» 13.
+    * **Der flushes på OVERSKRIFTER, ikke på blanke linjer.** En sektion med ti
+      afsnit blev ti chunks. Lange sektioner deles stadig, men i vinduer der
+      hver bærer stien — den gamle `joined[:800]` SMED resten væk, så 12.040 af
+      den største sektions 12.840 tegn var usøgbare.
+    """
+    chunks: list[Chunk] = []
+    stak: list[tuple[int, str]] = []
+    krop: list[str] = []
+
+    def sti() -> str:
+        # H1 udelades: det er filens titel, og `source` baerer allerede hvilken
+        # fil det er. Stod den med, ville «Jarvis Memory» vaere en KONSTANT paa
+        # hver af de 1.997 chunks — den udvander vektoren og spiser plads i
+        # prompt-linjen uden at skelne noget fra noget.
+        return _STI.join(h for niv, h in stak if niv > 1)
+
+    def flush() -> None:
+        nonlocal krop
+        samlet = " ".join(l for l in (x.strip() for x in krop) if l)
+        krop = []
+        if len(samlet) < _CHUNK_MIN:
+            return
+        s = sti()
+        praefiks = f"{s}: " if s else ""
+        plads = max(_CHUNK_MAX - len(praefiks), _CHUNK_MIN)
+        # Vinduer, ikke afklipning: en lang sektion skal stadig kunne soeges
+        # frem i sin helhed.
+        for i in range(0, len(samlet), plads):
+            stykke = samlet[i:i + plads]
+            if len(stykke) < _CHUNK_MIN and chunks:
+                break
+            chunks.append(Chunk(text=praefiks + stykke, source=source, section=s))
 
     for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith("#"):
             flush()
-            current_heading = stripped.lstrip("#").strip()
-        elif stripped == "" and current_lines:
-            flush()
+            niveau = len(stripped) - len(stripped.lstrip("#"))
+            titel = stripped.lstrip("#").strip()
+            while stak and stak[-1][0] >= niveau:
+                stak.pop()
+            if titel:
+                stak.append((niveau, titel))
         else:
-            current_lines.append(stripped)
+            krop.append(stripped)
     flush()
     return chunks
 

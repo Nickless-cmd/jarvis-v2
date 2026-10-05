@@ -149,3 +149,92 @@ class TestInkrementelReindex:
         ms._build_and_cache_index([], {"f": 2.0})
         assert seen[0] == ["ny"] and seen[1] == ["alfa", "beta", "ny"], \
             "fejlet delvis-embed skal falde tilbage til fuld rebuild"
+
+
+# ── Chunkeren baerer sin overskrifts-sti (5/10-2026) ────────────────────────
+#
+# Maalt paa Bjoerns MEMORY.md (980 KB, 792 `##`-sektioner): 2.859 chunks, og
+# 2.841 af dem indeholdt IKKE sin egen overskrift i den embeddede tekst.
+# «VESC hardware status» gav «Curated Memory», «Aarsagen» og «Laeren», mens
+# filen har en 8.281-tegns sektion der HEDDER «VESC — hardware-status».
+
+_MD = """# Jarvis Memory
+
+## VESC — hardware-status
+
+Controlleren svarer paa CAN-bus.
+
+Andet afsnit i SAMME sektion.
+
+### Læren
+
+Maal foer du gaetter.
+
+## Noget helt andet
+
+Uvedkommende krop her.
+"""
+
+
+def _chunks(text=_MD):
+    from core.services.memory_search import _chunk_markdown
+    return _chunk_markdown(text, "MEMORY.md")
+
+
+def test_hver_chunk_baerer_sin_overskrift_i_TEKSTEN():
+    """Hele fejlen: titlen var usynlig for vektoren i 99,5 % af chunkene."""
+    for c in _chunks():
+        assert c.section, "en chunk uden sektion kan ikke findes paa sin titel"
+        foerste = c.section.split("›")[0].strip()
+        assert foerste.lower() in c.text.lower(), \
+            f"overskriften staar ikke i teksten: {c.section!r} / {c.text[:60]!r}"
+
+
+def test_sektionen_er_STIEN_ikke_den_naermeste_overskrift():
+    """«Læren» optraadte 14 gange i filen med hver sin betydning, «Fejlen» 14,
+    «Rettelsen» 13. Uden forælderen er de ikke til at skelne."""
+    laeren = [c for c in _chunks() if c.section.endswith("Læren")]
+    assert laeren, "underoverskriften blev slet ikke chunket"
+    assert laeren[0].section == "VESC — hardware-status › Læren"
+
+
+def test_H1_udelades_af_stien():
+    """Filens titel er en KONSTANT paa hver chunk — den skelner intet, og
+    `source` baerer allerede hvilken fil det er."""
+    for c in _chunks():
+        assert not c.section.startswith("Jarvis Memory")
+        assert "Jarvis Memory" not in c.section
+
+
+def test_en_blank_linje_deler_IKKE_en_sektion():
+    """Foer blev en sektion med ti afsnit ti chunks, alle med samme titel."""
+    vesc = [c for c in _chunks() if c.section == "VESC — hardware-status"]
+    assert len(vesc) == 1, f"delt i {len(vesc)} chunks paa blanke linjer"
+    assert "CAN-bus" in vesc[0].text
+    assert "Andet afsnit" in vesc[0].text, "andet afsnit faldt ud af sektionen"
+
+
+def test_en_lang_sektion_VINDUES_og_klippes_ikke_vaek():
+    """Den gamle `joined[:800]` SMED resten vaek: 12.040 af den stoerste
+    sektions 12.840 tegn var usoegbare."""
+    from core.services.memory_search import _CHUNK_MAX
+    krop = " ".join(f"saetning-{i}" for i in range(600))
+    ch = _chunks(f"# T\n\n## Lang sektion\n\n{krop}\n")
+    assert len(ch) > 1, "en lang sektion skal deles i vinduer"
+    assert all(len(c.text) <= _CHUNK_MAX for c in ch)
+    assert all(c.section == "Lang sektion" for c in ch)
+    samlet = " ".join(c.text for c in ch)
+    assert "saetning-0" in samlet and "saetning-599" in samlet, "halen blev klippet vaek"
+
+
+def test_en_overskrift_paa_samme_niveau_popper_stakken():
+    """Ellers ville «Noget helt andet» arve VESC som foraelder."""
+    andet = [c for c in _chunks() if "Uvedkommende" in c.text]
+    assert andet, "den sidste sektion blev ikke chunket"
+    assert andet[0].section == "Noget helt andet"
+
+
+def test_en_krop_under_minimummet_indekseres_ikke():
+    from core.services.memory_search import _CHUNK_MIN
+    ch = _chunks("# T\n\n## Tom sektion\n\nkort\n")
+    assert all(len(c.text) >= _CHUNK_MIN for c in ch)

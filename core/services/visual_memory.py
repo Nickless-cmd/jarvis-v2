@@ -143,6 +143,13 @@ def tick_visual_memory_daemon() -> dict[str, object]:
         logger.warning("visual_memory: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
+    # Et dødt frame har intet at beskrive — og uden denne gate DIGTEDE modellen
+    # et rum ud af en sort flade. Se `_billede_er_doedt` for målingen.
+    kvalitet = _billede_er_doedt(image_b64)
+    if kvalitet["doedt"]:
+        logger.info("visual_memory: dødt frame — ingen beskrivelse (%s)", kvalitet["grund"])
+        return {"status": "image_unusable", "reason": kvalitet["grund"]}
+
     # Describe — feed most recent record for change detection
     existing_records = _load_records()
     previous = existing_records[-1] if existing_records else None
@@ -300,6 +307,13 @@ def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, 
         logger.warning("look_around: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
+    # Et dødt frame har intet at beskrive. Uden denne gate DIGTEDE modellen et
+    # rum ud af en sort flade (målt 5/10-2026). Se `_billede_er_doedt`.
+    kvalitet = _billede_er_doedt(image_b64)
+    if kvalitet["doedt"]:
+        logger.info("look_around: dødt frame — ingen beskrivelse (%s)", kvalitet["grund"])
+        return {"status": "image_unusable", "reason": kvalitet["grund"], "camera": camera_label}
+
     existing_records = _load_records()
     # Et bevidst kig skal beskrive rummet. Sammenligningen med forrige optagelse
     # hører til den passive kadence — her fik den værktøjet til at svare
@@ -388,6 +402,70 @@ def build_visual_memory_surface() -> dict[str, object]:
 # Internal: image capture
 # ---------------------------------------------------------------------------
 
+
+
+# ---------------------------------------------------------------------------
+# Dødt frame — bærer billedet information? (se `_billede_er_doedt`)
+# ---------------------------------------------------------------------------
+
+#: Et frame uden struktur bærer ingen information. Målt 5/10-2026 i gråtoner
+#: (std): helt sort 0,00 · sort med svag støj 0,50 · næsten sort 0,56 ·
+#: mørkt rum med ét lysglimt 3,87 · lyst rum 39,87. Springet mellem «dødt» og
+#: «levende» er syvfoldigt, så grænsen ligger roligt i den tomme dal.
+_MINDSTE_STRUKTUR = 1.0
+
+
+def _billede_er_doedt(image_b64: str) -> dict[str, object]:
+    """Bærer billedet information — eller er det en død flade?
+
+    ## Hvorfor det ikke er nok at spørge modellen
+
+    Målt 5/10-2026: tre poster i Sansernes Arkiv var ikke sanseindtryk.
+    Modellen havde fået et dødt frame og DIGTEDE et rum i stedet for at sige
+    at der ikke var noget at se:
+
+      «Da billedet er helt sort, bliver sanseoplevelsen ikke visuel, men
+       flytter sig i stedet ind i det, der sker i fraværet af lys.»
+      «Jeg kan desværre ikke se noget billede ... Hvis du uploader billedet
+       igen, vil jeg meget gerne beskrive stemningen ...»
+
+    Værn i arkivet kunne fange dem, men det ville være at lede efter
+    formuleringer — og formuleringer er uendelige. GENERATOREN er at et dødt
+    frame overhovedet når modellen. Er der intet at se, skal der ikke
+    beskrives: ingen model, intet indtryk, ingen post.
+
+    ## Hvad der måles
+
+    Standardafvigelsen i gråtoner — ikke gennemsnittet. Et mørkt rum er ikke
+    det samme som et dødt frame: målt 17/9-2026 beskrev arkivet «kun en svag
+    kornet tekstur anes», og den sansning er ægte. Struktur er signalet, og
+    en ensartet flade har ingen, uanset hvor lys den er.
+
+    Returnerer ``{"doedt": bool, "std": float | None, "grund": str}``. Et
+    frame der ikke kan afkodes regnes som dødt — hvad vi ikke kan måle, kan
+    modellen heller ikke se.
+    """
+    import numpy as _np
+
+    try:
+        import cv2
+
+        raa = base64.b64decode(image_b64, validate=False)
+        graa = cv2.imdecode(_np.frombuffer(raa, dtype=_np.uint8), cv2.IMREAD_GRAYSCALE)
+    except Exception as exc:  # hvad vi ikke kan måle, kan modellen heller ikke se
+        return {"doedt": True, "std": None, "grund": f"måling fejlede: {exc}"}
+
+    if graa is None:
+        return {"doedt": True, "std": None, "grund": "frame kunne ikke afkodes"}
+    std = float(graa.std())
+
+    if std < _MINDSTE_STRUKTUR:
+        return {
+            "doedt": True,
+            "std": std,
+            "grund": f"ingen struktur i frame (std {std:.2f} < {_MINDSTE_STRUKTUR})",
+        }
+    return {"doedt": False, "std": std, "grund": ""}
 
 
 # ---------------------------------------------------------------------------

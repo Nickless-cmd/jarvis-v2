@@ -1,5 +1,11 @@
 """Tests for core.services.visual_memory — coarse age bucketing."""
 
+import base64 as _b64
+
+import numpy as _np
+import pytest
+
+from core.services import visual_memory as VM
 from core.services.visual_memory import _coarse_age_label
 
 
@@ -56,10 +62,6 @@ def test_cache_stability_window():
 # ---------------------------------------------------------------------------
 # Kameraregistret: rammer det rigtige kamera — og siger til når det ikke kan
 # ---------------------------------------------------------------------------
-
-import pytest
-
-from core.services import visual_memory as VM
 
 
 class _Settings:
@@ -219,3 +221,105 @@ def test_archive_sensory_siger_falsk_for_kvittering(isolated_runtime) -> None:
     assert VM._archive_sensory(
         "En kop damper stadig på bordet, lyset er skiftet mod vest.", metadata={}
     ) is True
+
+
+# ---------------------------------------------------------------------------
+# Dødt frame: vision-vejen må ikke DIGTE et rum ud af en sort flade (5/10-2026)
+#
+# Målt samme dag: tre poster i Sansernes Arkiv var ikke sanseindtryk. Modellen
+# havde fået et dødt frame og skrev i stedet et digt om mørket, eller svarede
+# som en chatbot: «Hvis du uploader billedet igen, vil jeg meget gerne
+# beskrive stemningen ...». Værn i ARKIVET ville være formulerings-jagt;
+# generatoren er at det døde frame overhovedet når modellen.
+# ---------------------------------------------------------------------------
+
+
+def _jpg(arr) -> str:
+    import cv2
+
+    ok, buf = cv2.imencode(".jpg", arr, [cv2.IMWRITE_JPEG_QUALITY, 75])
+    assert ok, "kunne ikke kode testbilledet"
+    return _b64.b64encode(buf.tobytes()).decode("ascii")
+
+
+def _doedt_frame() -> str:
+    """En død flade: ingen struktur overhovedet."""
+    return _jpg(_np.zeros((240, 320, 3), _np.uint8))
+
+
+def _moerkt_men_levende_frame() -> str:
+    """Et MØRKT rum er ikke et dødt frame — ét lysglimt er nok struktur."""
+    arr = _np.zeros((240, 320, 3), _np.uint8) + 2
+    arr[100:140, 150:170] = 40
+    return _jpg(arr)
+
+
+def _lyst_frame() -> str:
+    return _jpg((_np.random.rand(240, 320, 3) * 200 + 55).astype(_np.uint8))
+
+
+def test_doedt_frame_har_ingen_struktur():
+    ud = VM._billede_er_doedt(_doedt_frame())
+    assert ud["doedt"] is True
+    assert ud["std"] is not None and ud["std"] < VM._MINDSTE_STRUKTUR
+
+
+def test_moerkt_rum_er_IKKE_et_doedt_frame():
+    """Falsk-positiv-vagten — den vigtigste af dem alle.
+
+    Et mørkt rum er en ægte sansning: målt 17/9-2026 beskrev arkivet «kun en
+    svag kornet tekstur anes», og 25/9 «rummet er lukket og sovende». Havde
+    gaten spist dem, ville den have dræbt nattens eneste rigtige indtryk for
+    at undgå tre digte.
+    """
+    ud = VM._billede_er_doedt(_moerkt_men_levende_frame())
+    assert ud["doedt"] is False, ud["grund"]
+
+
+def test_lyst_frame_er_brugbart():
+    assert VM._billede_er_doedt(_lyst_frame())["doedt"] is False
+
+
+def test_uaflaeseligt_frame_regnes_som_doedt():
+    """Hvad vi ikke kan måle, kan modellen heller ikke se."""
+    ud = VM._billede_er_doedt("ikke-base64-overhovedet")
+    assert ud["doedt"] is True
+    assert ud["std"] is None
+
+
+def _stub_kaeden(monkeypatch, b64: str) -> list[str]:
+    """Stub hele vejen frem til arkivet. Returnerer de arkiverede tekster."""
+    arkiveret: list[str] = []
+    monkeypatch.setattr(VM, "_enabled", lambda: True)
+    monkeypatch.setattr(VM, "_vision_model", lambda **_k: ("test-model", "ollama"))
+    monkeypatch.setattr(VM, "_prune_old_records", lambda: None)
+    monkeypatch.setattr(VM, "_load_records", lambda: [])
+    monkeypatch.setattr(VM, "set_runtime_state_value", lambda *_a, **_k: None)
+    monkeypatch.setattr(VM, "_capture_image", lambda *_a, **_k: (b64, "testkamera"))
+    monkeypatch.setattr(VM, "_describe_image", lambda *_a, **_k: "Rummet føles stille.")
+    monkeypatch.setattr(
+        VM, "_archive_sensory", lambda d, **_k: (arkiveret.append(d) or True)
+    )
+    return arkiveret
+
+
+def test_look_around_digter_IKKE_paa_et_doedt_frame(monkeypatch):
+    arkiveret = _stub_kaeden(monkeypatch, _doedt_frame())
+    ud = VM.look_around_now()
+    assert ud["status"] == "image_unusable", ud
+    assert arkiveret == [], "et dødt frame blev arkiveret som et indtryk"
+
+
+def test_kadencen_digter_IKKE_paa_et_doedt_frame(monkeypatch):
+    arkiveret = _stub_kaeden(monkeypatch, _doedt_frame())
+    ud = VM.tick_visual_memory_daemon()
+    assert ud["status"] == "image_unusable", ud
+    assert arkiveret == [], "kadencen arkiverede et indtryk fra en død flade"
+
+
+def test_levende_frame_gaar_uaendret_igennem(monkeypatch):
+    """Regression: gaten må ikke blokere den normale sansning."""
+    arkiveret = _stub_kaeden(monkeypatch, _moerkt_men_levende_frame())
+    ud = VM.look_around_now()
+    assert ud["status"] == "captured", ud
+    assert arkiveret == ["Rummet føles stille."]

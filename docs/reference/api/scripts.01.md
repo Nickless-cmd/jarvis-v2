@@ -41,9 +41,12 @@ _Monitor paa vaerktoejer pr. agentisk runde. Tier medmindre tallet rykker._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L66) |
-| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L92) |
-| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L108) |
+| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L76) |
+| function | `_spredning` | `(tal)` | — | [src](../../../scripts/batch_maaling_monitor.py#L115) |
+| function | `vurder_ab` | `(arme)` | Returnerer (dom, linje). Dommen er "knappen_virker_ikke", "forskel" eller None. | [src](../../../scripts/batch_maaling_monitor.py#L122) |
+| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L161) |
+| function | `_ab_besked` | `(dom, linje)` | (ref, titel, tekst). Ref'et er stabilt pr. dom, saa hver dom siges ÉN gang. | [src](../../../scripts/batch_maaling_monitor.py#L177) |
+| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L204) |
 
 ## `scripts/beacon_rapport.py`
 _Opgørelse fra vaertens crash-beacon-log._

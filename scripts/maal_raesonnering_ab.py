@@ -45,6 +45,66 @@ DB_PATH = HOME / "state" / "jarvis.db"
 DEPLOY = "2026-10-05T16:00:00"
 
 
+def armdata(
+    db: Path,
+    *,
+    dage: int = 7,
+    procent: int = 20,
+    siden: str = DEPLOY,
+) -> dict[str, dict]:
+    """{arm: {ud, raeson, runs, runder, pr_dag}} — kilden BAADE CLI og monitor laeser.
+
+    Én kilde til maalingen. `beacon_vagt.py` siger hvorfor: dens foerste udgave
+    havde sin egen parser, ramte ingenting, og meldte «ingen haendelser» i en
+    halv time. En monitor der gentager en forespoergsel kan maale noget andet
+    end rapporten uden at nogen ser det.
+
+    `pr_dag` baeres med fordi en sammenligning MELLEM arme kun betyder noget
+    naar man kender spredningen INDEN for dem. Et enkelt tal pr. arm kan ikke
+    skelne en effekt fra en travl tirsdag.
+    """
+    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+        conn.row_factory = sqlite3.Row
+        raekker = conn.execute(
+            """
+            select run_id, output_tokens, reasoning_tokens, created_at,
+                   cache_miss_tokens, cache_hit_tokens
+            from costs
+            where lane = 'agentic_round' and provider like '%deepseek%'
+              and (cache_hit_tokens + cache_miss_tokens) > 0
+              and created_at >= ?
+              and created_at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)
+            """,
+            (siden, f"-{int(dage)} days"),
+        ).fetchall()
+
+    arme: dict[str, dict] = {}
+    for r in raekker:
+        arm = arm_for_run(str(r["run_id"] or ""), procent=procent)
+        b = arme.setdefault(arm, {"ud": [], "raeson": [], "runs": set(),
+                                  "runder": 0, "pr_dag": {}})
+        b["ud"].append(int(r["output_tokens"] or 0))
+        b["raeson"].append(int(r["reasoning_tokens"] or 0))
+        b["runs"].add(str(r["run_id"] or ""))
+        b["runder"] += 1
+        dag = b["pr_dag"].setdefault(str(r["created_at"] or "")[:10],
+                                     {"runs": set(), "runder": 0})
+        dag["runs"].add(str(r["run_id"] or ""))
+        dag["runder"] += 1
+    return arme
+
+
+def runder_pr_run_pr_dag(arm: dict, *, min_runs: int = 3) -> list[float]:
+    """Dagsserien for én arm. Dage med for faa runs udelades — én run paa en
+    soendag er ikke et datapunkt, og med 20 % eksponering er tynde dage reglen."""
+    ud = []
+    for dag in (arm.get("pr_dag") or {}).values():
+        n = len(dag["runs"])
+        if n >= min_runs:
+            ud.append(dag["runder"] / n)
+    return ud
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dage", type=int, default=7)
@@ -59,35 +119,12 @@ def main() -> int:
         return 2
 
     graense = max(args.siden, "")
-    with sqlite3.connect(f"file:{args.db}?mode=ro", uri=True) as conn:
-        conn.row_factory = sqlite3.Row
-        raekker = conn.execute(
-            """
-            select run_id, output_tokens, reasoning_tokens, created_at,
-                   cache_miss_tokens, cache_hit_tokens
-            from costs
-            where lane = 'agentic_round' and provider like '%deepseek%'
-              and (cache_hit_tokens + cache_miss_tokens) > 0
-              and created_at >= ?
-              and created_at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)
-            """,
-            (graense, f"-{int(args.dage)} days"),
-        ).fetchall()
-
-    if not raekker:
+    arme = armdata(args.db, dage=args.dage, procent=args.procent, siden=graense)
+    if not arme:
         print(f"ingen agentiske runder siden {graense} — forsoeget har ikke data endnu")
         return 0
-
-    arme: dict[str, dict] = {}
-    for r in raekker:
-        arm = arm_for_run(str(r["run_id"] or ""), procent=args.procent)
-        b = arme.setdefault(arm, {"ud": [], "raeson": [], "runs": set(), "runder": 0})
-        b["ud"].append(int(r["output_tokens"] or 0))
-        b["raeson"].append(int(r["reasoning_tokens"] or 0))
-        b["runs"].add(str(r["run_id"] or ""))
-        b["runder"] += 1
-
-    print(f"graense {graense} · andel {args.procent} % · {len(raekker)} runder\n")
+    i_alt = sum(a["runder"] for a in arme.values())
+    print(f"graense {graense} · andel {args.procent} % · {i_alt} runder\n")
     print(f"{'arm':10s}{'runs':>6s}{'runder':>8s}{'runder/run':>12s}"
           f"{'ud median':>11s}{'raeson med':>12s}{'raeson %':>10s}")
     for arm in sorted(arme):

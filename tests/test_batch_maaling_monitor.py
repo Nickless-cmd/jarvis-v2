@@ -112,3 +112,102 @@ def test_graensen_slipper_ikke_hele_dagen_igennem(tmp_path: Path) -> None:
     conn.commit()
     conn.close()
     assert dagsserie(db, 14) == [], "en 30 dage gammel raekke maa ikke vaere med i 14-dages-vinduet"
+
+
+# ── Raesonnerings-A/B'en, hængt paa samme monitor (5/10-2026) ───────────────
+
+from scripts.batch_maaling_monitor import vurder_ab  # noqa: E402
+from scripts.maal_raesonnering_ab import runder_pr_run_pr_dag  # noqa: E402
+
+
+def _arm(*, raeson: int, dage: int, runder_pr_run: float, runs_pr_dag: int = 5) -> dict:
+    pr_dag = {}
+    for d in range(dage):
+        pr_dag[f"2026-10-{d+6:02d}"] = {
+            "runs": {f"r{d}-{i}" for i in range(runs_pr_dag)},
+            "runder": int(runs_pr_dag * runder_pr_run),
+        }
+    return {"raeson": [raeson] * 30, "ud": [900] * 30, "runs": set(),
+            "runder": 30, "pr_dag": pr_dag}
+
+
+def test_ab_tier_naar_kun_én_arm_har_data():
+    dom, linje = vurder_ab({"fuld": _arm(raeson=300, dage=5, runder_pr_run=12)})
+    assert dom is None
+    assert "én arm" in linje
+
+
+def test_ab_melder_naar_KNAPPEN_ikke_blev_drejet():
+    """Den daempede arm skal have ~0 raesonnering. Har den ikke det, maaler
+    forsoeget ikke det det tror."""
+    dom, linje = vurder_ab({
+        "daempet": _arm(raeson=300, dage=5, runder_pr_run=12),
+        "fuld": _arm(raeson=300, dage=5, runder_pr_run=12),
+    })
+    assert dom == "knappen_virker_ikke"
+    assert "raesonnerer stadig" in linje
+
+
+def test_en_braekket_knap_slaar_et_kvalitets_resultat():
+    """RAEKKEFOELGEN er det vigtige.
+
+    Her er forskellen enorm (12 mod 20 runder/run). Rapporterede monitoren
+    den, ville den melde et kvalitets-resultat fra et forsoeg der aldrig blev
+    koert — og det er vaerre end slet ingen maaling.
+    """
+    dom, _ = vurder_ab({
+        "daempet": _arm(raeson=300, dage=5, runder_pr_run=20),
+        "fuld": _arm(raeson=300, dage=5, runder_pr_run=12),
+    })
+    assert dom == "knappen_virker_ikke", "braekket knap skal vinde over enhver forskel"
+
+
+def test_ab_tier_ved_for_lidt_data():
+    dom, linje = vurder_ab({
+        "daempet": _arm(raeson=0, dage=1, runder_pr_run=12),
+        "fuld": _arm(raeson=0, dage=5, runder_pr_run=12),
+    })
+    assert dom is None
+    assert "for lidt data" in linje
+
+
+def test_ab_tier_naar_forskellen_er_inde_i_stoejen():
+    """Den fulde arm svinger 12-16 runder/run; en forskel paa 1 er stoej."""
+    d = _arm(raeson=0, dage=5, runder_pr_run=13)
+    f = _arm(raeson=300, dage=5, runder_pr_run=12)
+    list(f["pr_dag"].values())[0]["runder"] = 5 * 16
+    dom, linje = vurder_ab({"daempet": d, "fuld": f})
+    assert dom is None
+    assert "runder/run" in linje
+
+
+def test_ab_tier_ved_en_forskel_under_GULVET():
+    """To perfekt stabile arme med 0,2 runders forskel er ikke et fund.
+
+    Uden gulvet ville spredningen her vaere praecis nul, og enhver forskel
+    ville saa overstige taersklen.
+    """
+    dom, _ = vurder_ab({
+        "daempet": _arm(raeson=0, dage=5, runder_pr_run=12.2),
+        "fuld": _arm(raeson=300, dage=5, runder_pr_run=12),
+    })
+    assert dom is None
+
+
+def test_ab_melder_en_forskel_der_overstiger_stoejen():
+    dom, linje = vurder_ab({
+        "daempet": _arm(raeson=0, dage=5, runder_pr_run=20),
+        "fuld": _arm(raeson=300, dage=5, runder_pr_run=12),
+    })
+    assert dom == "forskel"
+    assert "daempet 20" in linje and "fuld 12" in linje
+
+
+def test_tynde_dage_taeller_ikke_i_arm_serien():
+    """Med 20 % eksponering er tynde dage reglen, ikke undtagelsen. Én run paa
+    en soendag er ikke et datapunkt."""
+    arm = _arm(raeson=0, dage=4, runder_pr_run=12, runs_pr_dag=5)
+    arm["pr_dag"]["2026-10-20"] = {"runs": {"enlig"}, "runder": 99}
+    serie = runder_pr_run_pr_dag(arm)
+    assert len(serie) == 4, "dagen med én run skal udelades"
+    assert max(serie) < 20, "99 runder paa én run maa ikke naa serien"

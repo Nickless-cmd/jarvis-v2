@@ -292,7 +292,19 @@ def _vurder_svar(result: dict, *, tjek_paastande: Any, bro_tjek: Any = None,
              else int(_raa or 0))
     _tomhaendet = _kald == 0 and _substans == 0
     fejl = [str(x) for x in (dom.get("fejl") or [])]
-    if _tomhaendet and not fejl:
+    # ET TOMT FORSOEG ER IKKE ET FABRIKERET SVAR — og kun det tomme maa rotere.
+    #
+    # Begge har 0 vaerktoejskald. Men det fabrikerede REJSTE en paastand der
+    # kunne efterproeves og faldt (`fejl` er fyldt) — det skal DOMMES, ikke
+    # skjules bag et nyt forsoeg. Det tomme rejste ingenting: ingen kald,
+    # intet bekraeftet, ingen paastand at holde op mod kilden. Det er praecis
+    # den form der maa sendes videre til naeste model.
+    #
+    # Maalt 5/10-2026: to scout_agent-kald med breadth=thorough kom hjem efter
+    # 3,0 og 3,2 s med tool_calls=0 og én hensigtserklaering. Ingen rotation
+    # blev forsoegt. (Jarvis.)
+    _intet_forsoeg = _tomhaendet and not fejl
+    if _intet_forsoeg:
         # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for
         # at blaastemple. Foer returnerede vi paa runde 0, saa den
         # mekanisme der skulle skifte modellen ud koerte ALDRIG: gaten
@@ -301,7 +313,12 @@ def _vurder_svar(result: dict, *, tjek_paastande: Any, bro_tjek: Any = None,
         fejl = [f"agenten udfoerte {_kald} vaerktoejskald og fik intet indhold "
                 "bekraeftet — svaret kan ikke hvile paa noget den har laest"]
     ud.update(tjekket=True, dom=dom, kontrolleret=kontrolleret, substans=_substans,
-              kald=_kald, fejl=fejl, holder=bool(dom.get("holder")) and not _tomhaendet)
+              kald=_kald, fejl=fejl, holder=bool(dom.get("holder")) and not _tomhaendet,
+              # Baerer dommen videre til baggrunds-vejen: dét der afgoer om
+              # opgaven maa sendes videre til naeste model. Uden feltet maatte
+              # modtageren gaette ud fra `fejl`, som ogsaa fyldes af den
+              # syntetiske note ovenfor — og saa kunne den ikke skelne.
+              tomt_forsoeg=_intet_forsoeg)
     return ud
 
 
@@ -320,6 +337,44 @@ def _vurdering_til_wakeup(vurdering: dict[str, Any]) -> str:
     return ("ADVARSEL — påstandene kunne IKKE bekræftes i kilden: "
             + "; ".join(list(vurdering.get("fejl") or [])[:4])
             + ". Brug ikke fundene uden at efterprøve dem.")
+
+
+def _vaelg_kandidat(pool: list[tuple[str, str]], brugt: set[tuple[str, str]],
+                    runde: int, egnede_modeller: Any) -> tuple[str, str] | None:
+    """Hvilken model skal runde `runde` spoerge? ÉT sted ejer raekkefoelgen.
+
+    Baade den inline loekke og baggrunds-rotationen bruger den her. Foer laa
+    valget KUN i loekken — og baggrunds-vejen, hvor svaret faktisk lander,
+    havde derfor ingen raekkefoelge at foelge overhovedet. (Jarvis, 5/10-2026.)
+
+    `None`  = der er ikke flere at spoerge om; stop.
+    `("","")` = runde 0 maa bruge default-modellen (kataloget kunne ikke naas).
+                Bevidst: runde 0 maa ikke fejle bare fordi poolen er tom.
+    """
+    ubrugte = [pm for pm in pool if pm not in brugt]
+    if ubrugte:
+        return ubrugte[0]
+    if not runde:
+        return "", ""
+    if egnede_modeller is None:
+        return None
+    # Explore LAESER filer — opgaven kraever vaerktoejer. En model der aldrig
+    # kalder dem, fabrikerer svaret i stedet.
+    kandidater = egnede_modeller(undtagen=frozenset(brugt), maks=4,
+                                 kraever_vaerktoejer=True)
+    if not kandidater:
+        return None
+    return kandidater[0]
+
+
+def _modelnavn(prov: str, mod: str) -> str:
+    """Modellens navn i en besked til Bjoern — eller at ingen blev valgt.
+
+    Uden faldbacken stod der «Foerste forsoeg () svarede...» naar kataloget
+    ikke kunne naas og runde 0 brugte default-modellen. Et tomt parentes-par
+    laeser som en fejl i beskeden, ikke som et svar om hvad der blev forsoegt.
+    """
+    return str(mod or prov or "").strip() or "default-modellen"
 
 
 def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
@@ -406,43 +461,83 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("kunne ikke hente copilot-kataloget — bruger den gamle "
                        "rotation", exc_info=True)
 
+    def _spawn_kwargs(prov: str, mod: str, *, taalmodighed_s: float,
+                      efterbehandling: Any = None) -> dict[str, Any]:
+        """Én form for et explore-spawn — brugt af runde 0 OG af rotationen."""
+        kw: dict[str, Any] = {"query": query, "vejledning": vejledning,
+                              "provider": prov, "model": mod,
+                              "taalmodighed_s": taalmodighed_s}
+        if target == "workstation":
+            kw.update({"target": target, "context": {**context, **herkomst}})
+        elif herkomst:
+            # Ogsaa paa runtime-stien: herkomsten hoerer til barnet,
+            # ikke til hvor det tilfaeldigvis koerer.
+            kw["context"] = {"execution_target": target, **herkomst}
+        if efterbehandling is not None:
+            kw["efterbehandling"] = efterbehandling
+        return kw
+
+    def _efterbehandling_for(runde: int, brugte: set[tuple[str, str]]) -> Any:
+        """Fabrikations-vaernet PLUS rotation, naar svaret lander bagefter.
+
+        Det er HER rotationen lever — og hvorfor den laa doed.
+
+        Med taalmodighed 0 gaar runde 0 ALTID ud som en kvittering. Loekken
+        nedenfor forlader derfor runde 0 uden nogensinde at se svaret, og den
+        rotation der ligger i loekken, blev aldrig naaet. Maalt 5/10-2026: to
+        scout-kald, begge tomme efter 3 s, nul forsoeg paa en anden model — ud
+        af en pool paa fire.
+
+        Slaar modellen tomt ud, sendes opgaven videre til naeste kandidat. Det
+        sker i BAGGRUNDSDRAADEN (det er dér efterbehandlingen kaldes) med
+        taalmodighed 0, saa foraelderens traad ikke holdes et eneste sekund.
+        Kaeden er bundet af _EXPLORE_MAKS_RUNDER og af kandidatlisten.
+        """
+        def _efterbehandling(res: dict) -> str:
+            vurdering = _vurder_svar(res, tjek_paastande=tjek_paastande,
+                                     bro_tjek=_bro_tjek, bro_linje=_bro_linje)
+            naeste_runde = runde + 1
+            if vurdering.get("tomt_forsoeg") and naeste_runde < _EXPLORE_MAKS_RUNDER:
+                valg = _vaelg_kandidat(_pool, brugte, naeste_runde, egnede_modeller)
+                # `any(valg)`: en rotation skal NAVNGIVE en model. Landede
+                # valget paa ("",""), var det default-modellen der netop
+                # fejlede — og et nyt spawn paa den samme er bare en ekstra
+                # agent, ikke et forsoeg mere.
+                if valg and any(valg):
+                    nprov, nmod = valg
+                    try:
+                        from core.services.child_authority import uden_foraeldrens_godkendelse
+                        with uden_foraeldrens_godkendelse():
+                            _facade()._explore_spawn(**_spawn_kwargs(
+                                nprov, nmod,
+                                taalmodighed_s=_EXPLORE_TAALMODIGHED_S,
+                                efterbehandling=_efterbehandling_for(
+                                    naeste_runde, brugte | {valg})))
+                    except Exception:
+                        logger.warning("explore: rotation til naeste model "
+                                       "fejlede", exc_info=True)
+                    else:
+                        return (
+                            f"Foerste forsoeg ({_modelnavn(prov, mod)}) svarede "
+                            "uden at kalde et eneste vaerktoej. Proever "
+                            f"{_modelnavn(nprov, nmod)} i stedet — svaret "
+                            "lander i en ny besked.")
+            return _vurdering_til_wakeup(vurdering)
+        return _efterbehandling
+
     for runde in range(_EXPLORE_MAKS_RUNDER):
-        prov, mod = "", ""
-        # Poolen bruges ogsaa paa RUNDE 0. Det var netop dér nemotron kom ind
-        # og fabrikerede tre gange i traek — runde 0 koerte default-modellen
-        # helt uden egnetheds-port.
-        _ubrugte = [pm for pm in _pool if pm not in brugt]
-        if _ubrugte:
-            prov, mod = _ubrugte[0]
-        elif runde:
-            if egnede_modeller is None:
-                break
-            # Explore LAESER filer — opgaven kraever vaerktoejer. En model
-            # der aldrig kalder dem, fabrikerer svaret i stedet.
-            kandidater = egnede_modeller(undtagen=frozenset(brugt), maks=4,
-                                         kraever_vaerktoejer=True)
-            if not kandidater:
-                break
-            prov, mod = kandidater[0]
+        valg = _vaelg_kandidat(_pool, brugt, runde, egnede_modeller)
+        if valg is None:
+            break
+        prov, mod = valg
         try:
-            spawn_args: dict[str, Any] = {"query": query, "vejledning": vejledning,
-                                          "provider": prov, "model": mod,
-                                          "taalmodighed_s": _taalmodighed}
-            if target == "workstation":
-                spawn_args.update({"target": target,
-                                   "context": {**context, **herkomst}})
-            elif herkomst:
-                # Ogsaa paa runtime-stien: herkomsten hoerer til barnet,
-                # ikke til hvor det tilfaeldigvis koerer.
-                spawn_args["context"] = {"execution_target": target, **herkomst}
-            if tjek_paastande is not None:
+            result = _facade()._explore_spawn(**_spawn_kwargs(
+                prov, mod, taalmodighed_s=_taalmodighed,
                 # Et svar der lander EFTER kvitteringen skal igennem samme værn
-                # før Jarvis vækkes med det.
-                spawn_args["efterbehandling"] = (
-                    lambda res, _t=tjek_paastande, _b=_bro_tjek, _l=_bro_linje:
-                    _vurdering_til_wakeup(_vurder_svar(res, tjek_paastande=_t,
-                                                       bro_tjek=_b, bro_linje=_l)))
-            result = _facade()._explore_spawn(**spawn_args)
+                # før Jarvis vækkes med det — og maa sende opgaven videre i
+                # stedet for bare at advare. Se _efterbehandling_for.
+                efterbehandling=(_efterbehandling_for(runde, brugt | {(prov, mod)})
+                                 if tjek_paastande is not None else None)))
         except Exception as exc:
             return {"status": "error", "error": str(exc), "breadth": bredde,
                     "target": target}

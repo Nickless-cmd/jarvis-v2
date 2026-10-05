@@ -201,3 +201,69 @@ def test_db_query_bytes_coerced_to_json_safe():
     # non-bytes pass through untouched
     assert _json_safe_cell(42) == 42
     assert _json_safe_cell(None) is None
+
+
+# ── Signaler i sidestraenge (5/10-2026) ────────────────────────────────────
+# `_exec_bash` laegger `kanal.note` og `confinement` paa svaret. Formateringen
+# returnerer `text` naar den findes og kaster ALLE andre noegler vaek — saa
+# begge beskeder naaede aldrig modellen. Maalt ved at aabne kanalen, udloebe den
+# og se at noten stod i dict'en men ikke i det svar der blev laest.
+
+
+def test_kanal_noten_naar_frem_til_modellen():
+    from core.tools.simple_tools import format_tool_result_for_model
+    note = ("[operator-kanal] kanalen udløb for 26 t siden og blev IKKE "
+            "genåbnet — denne kommando kørte på serveren, ikke på Bjørns maskine.")
+    out = format_tool_result_for_model("bash", {
+        "text": "Jarvis", "exit_code": 0, "status": "ok",
+        "kanal": {"note": note},
+    })
+    assert note in out, "noten skal staa i den tekst modellen laeser"
+    assert "Jarvis" in out, "kommandoens output maa ikke forsvinde"
+
+
+def test_kanal_genaabnet_siges_hoejt():
+    from core.tools.simple_tools import format_tool_result_for_model
+    out = format_tool_result_for_model("bash", {
+        "text": "CheifOne", "status": "ok",
+        "kanal": {"genaabnet": True, "udloebet_for_s": 3603},
+    })
+    assert "genaabnet" in out.lower()
+
+
+def test_indespaerring_siges_hoejt_naar_ikke_haandhaevet():
+    from core.tools.simple_tools import format_tool_result_for_model
+    out = format_tool_result_for_model("bash", {
+        "text": "output", "status": "ok",
+        "confinement": {"requested": True, "actual": False, "honored": False,
+                        "reason": "vedvarende delt shell"},
+    })
+    assert "IKKE håndhævet" in out
+    assert "vedvarende delt shell" in out
+
+
+def test_haandhaevet_indespaerring_er_stille():
+    """Er den håndhævet, er der intet at sige — ellers begraver linjen de
+    signaler der faktisk betyder noget."""
+    from core.tools.simple_tools import format_tool_result_for_model
+    out = format_tool_result_for_model("bash", {
+        "text": "output", "status": "ok",
+        "confinement": {"requested": True, "actual": True, "honored": True},
+    })
+    assert "IKKE håndhævet" not in out
+
+
+def test_ingen_signaler_er_stille():
+    from core.tools.simple_tools import format_tool_result_for_model
+    out = format_tool_result_for_model("bash", {"text": "output", "status": "ok"})
+    assert "output" in out
+    assert "operator-kanal" not in out
+
+
+def test_json_grenen_gentager_ikke_kanal_noten():
+    """Dumpes resultatet som JSON (ingen `text`), er noeglen i forvejen synlig —
+    linjen maa ikke komme oveni."""
+    from core.tools.simple_tools import format_tool_result_for_model
+    note = "[operator-kanal] kanalen udløb"
+    out = format_tool_result_for_model("bash", {"status": "ok", "kanal": {"note": note}})
+    assert out.count(note) == 1

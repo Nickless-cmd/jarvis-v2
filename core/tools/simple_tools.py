@@ -2182,6 +2182,42 @@ def _json_safe_default(o: Any) -> str:
     return str(o)
 
 
+def _signal_linjer(result: dict[str, Any]) -> str:
+    """Korte linjer for signaler der ellers forsvinder naar ``text`` findes.
+
+    MAALT 5/10-2026: ``_exec_bash`` laegger baade ``kanal.note`` (operator-
+    kanalen faldt af sig selv og blev IKKE genoprettet) og ``confinement``
+    (koerte kommandoen indespærret?) paa svaret. Formateringen returnerer
+    ``text`` naar den findes og kaster ALLE andre noegler vaek — saa begge
+    beskeder naaede aldrig modellen. Beskeden VAR der; den blev kastet vaek et
+    lag laengere fremme. Det er praecis den fejlform Bjørn bad om at faa lukket
+    («fiks kanalen saa du faar besked med det samme den ryger»): uden den koerer
+    kommandoen paa serveren i det stille, og «filen findes ikke» kan i
+    virkeligheden betyde «du maalte det forkerte sted».
+
+    Rammer KUN tekst-grenen: dumps resultatet som JSON, er noeglerne i
+    forvejen synlige og linjerne ville vaere gentagelser.
+    """
+    linjer: list[str] = []
+    kanal = result.get("kanal")
+    if isinstance(kanal, dict):
+        note = str(kanal.get("note") or "").strip()
+        if note:
+            linjer.append(note)
+        elif kanal.get("genaabnet"):
+            linjer.append("[operator-kanal] kanalen var udloebet og blev "
+                          "genaabnet af dette kald.")
+    # Kun naar indespærring var ØNSKET men IKKE håndhævet. Er den håndhævet,
+    # er der intet at sige — og en linje paa hvert eneste bash-kald ville
+    # begrave de signaler der faktisk betyder noget.
+    conf = result.get("confinement")
+    if isinstance(conf, dict) and conf.get("requested") and not conf.get("honored", True):
+        aarsag = str(conf.get("reason") or "").strip()
+        linjer.append("[indespaerring] ønsket, men IKKE håndhævet"
+                      + (f": {aarsag}" if aarsag else ""))
+    return ("\n" + "\n".join(linjer)) if linjer else ""
+
+
 def format_tool_result_for_model(
     name: str, result: dict[str, Any], *, clip: bool = True,
 ) -> str:
@@ -2223,6 +2259,10 @@ def format_tool_result_for_model(
     # daekkede kun vaerktoejer der returnerer hele teksten og lader
     # formateringen klippe.
     text = ""
+    # Sandt naar `text` blev dannet ved at dumpe HELE resultatet som JSON.
+    # Saa er sidestraenge som `kanal` og `confinement` i forvejen synlige, og
+    # `_signal_linjer` nedenfor skal ikke gentage dem.
+    _fra_json = False
     if not clip:
         text = str(result.get("text_full") or "")
     if not text:
@@ -2237,6 +2277,7 @@ def format_tool_result_for_model(
             n = result.get("replacements", 0)
             text = f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
         else:
+            _fra_json = True
             # Defense-in-depth: cap the raw JSON fallback so a tool returning a
             # fat payload can't spill thousands of tokens into visible context.
             # Raised from 1500 → 8000 so most tool results show in full.
@@ -2257,6 +2298,10 @@ def format_tool_result_for_model(
                     _clip_head_tail(_dumped, limit=_MAX_FALLBACK_CHARS)
                     + f"\n[keys: {_keys}. Tilføj en 'text'-nøgle i toolets exec for et rent resumé.]"
                 )
+
+    # Signaler der bor i sidestraenge (5/10-2026). Se `_signal_linjer`.
+    if text and not _fra_json:
+        text += _signal_linjer(result)
 
     # Phase 2 of verification-gate honesty (2026-05-14): attach a brief
     # verify hint to mutation results so it lands in the SAME breath as

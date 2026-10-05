@@ -320,6 +320,16 @@ class RuntimeSettings:
     # (87% af vinduet) UDEN nogensinde at compacte → near-fuldt vindue → loop/cut-off. 130k
     # rammer overgroede sessioner men lader sunde (~80k) være, og giver glm ~70k headroom.
     context_compact_threshold_tokens: int = 130_000
+
+    #: A/B 5/10-2026: andel af SYNLIGE runs der koerer mellem-runderne UDEN
+    #: raesonnering. 32,9 % af alt output er raesonnering, og latensen er
+    #: naesten linjaer i output — men det er paa mellem-runderne han vaelger
+    #: vaerktoej, saa kvalitetsprisen er umaalt. Armen er binaer: probet mod
+    #: API'en ignorerer deepseek-v4-flash `reasoning_effort` i tavshed
+    #: (high/medium/low giver alle 296-317 raeson-tokens), saa den eneste
+    #: indstilling der virker er `thinking: disabled`.
+    #: 0 = ingen eksponering. Se `core/services/raesonnering_eksperiment.py`.
+    raesonnering_daempet_procent: int = 20
     # 2026-06-30: model-BEVIDST compaction-tærskel. 130k flat var GLM-æra (200k-
     # vindue) — på deepseek-v4-flash (1M-vindue) betød det compaction ved ~13% af
     # vinduet = unødigt tidligt cache-reset hver gang en session voksede lidt. Hver
@@ -1114,6 +1124,7 @@ def load_settings() -> RuntimeSettings:
         visible_ollama_num_predict=int(data.get("visible_ollama_num_predict", defaults.visible_ollama_num_predict)),
         visible_context_headroom_tokens=int(data.get("visible_context_headroom_tokens", defaults.visible_context_headroom_tokens)),
         context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
+        raesonnering_daempet_procent=int(data.get("raesonnering_daempet_procent", defaults.raesonnering_daempet_procent)),
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         context_attention_budget_tokens=int(data.get("context_attention_budget_tokens", defaults.context_attention_budget_tokens)),

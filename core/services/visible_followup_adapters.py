@@ -933,6 +933,22 @@ class OpenAICompatFollowupAdapter:
                 deepseek_request_for_thinking_mode,
             )
             model, _mode_body = deepseek_request_for_thinking_mode(model, thinking_mode)
+            # A/B 5/10-2026: en andel af runs koerer MELLEM-runderne uden
+            # raesonnering. 32,9 % af alt output er raesonnering, og latensen er
+            # naesten linjaer i output (2,69 s ved 0-400 ud, 14,10 s ved 1600+).
+            # Men det er HER han vaelger vaerktoej, saa kvalitetsprisen er umaalt
+            # — kommentaren ved tool_choice-grenen nedenfor noterer selv tvivlen.
+            # Armen er en ren funktion af run_id, saa analysen kan regne den ud
+            # bagefter uden en ny kolonne. Andelen staar i runtime.json
+            # (`raesonnering_daempet_procent`); 0 slaar forsoeget helt fra.
+            from core.services.raesonnering_eksperiment import daemp_krop
+            _mode_body, _raeson_daempet = daemp_krop(
+                _mode_body, run_id, thinking_mode=thinking_mode,
+            )
+            if _raeson_daempet:
+                logger.info(
+                    "raesonnering-ab: run=%s runde=%d arm=daempet", run_id, round_index
+                )
 
         # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
         # afviser hele requesten hvis feltet mangler. Tidligere strippede vi

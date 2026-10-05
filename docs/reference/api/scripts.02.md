@@ -195,6 +195,13 @@ _Virker indbakkens to trin? Og er 2 det rigtige tal?_
 | function | `main` | `()` | — | [src](../../../scripts/maal_indbakke.py#L214) |
 | function | `registrer_vindue` | `(timer=…)` | Opgave 7 trin 3: registrér maalevinduet, saa paamindelsen melder. | [src](../../../scripts/maal_indbakke.py#L265) |
 
+## `scripts/maal_raesonnering_ab.py`
+_A/B: koster det noget at lade mellem-runderne vaere uden raesonnering?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/maal_raesonnering_ab.py#L48) |
+
 ## `scripts/maal_vaerktoejer_pr_runde.py`
 _Vaerktoejer pr. agentisk runde — dagsserie._
 
@@ -439,14 +446,4 @@ _Fase 6 «Bæres han på tværs af tid?» — analyse._
 | function | `cos` | `(a, b)` | — | [src](../../../scripts/phase6_analyze.py#L57) |
 | function | `centroid` | `(vs)` | — | [src](../../../scripts/phase6_analyze.py#L64) |
 | function | `main` | `()` | — | [src](../../../scripts/phase6_analyze.py#L69) |
-
-## `scripts/phase6_collect.py`
-_Fase 6 «Bæres han på tværs af tid?» — indsamler._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — bygges PÅ NY ved hvert tidspunkt. | [src](../../../scripts/phase6_collect.py#L52) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase6_collect.py#L66) |
-| function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
-| function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
 

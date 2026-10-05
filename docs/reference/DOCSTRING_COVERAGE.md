@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8495/16069 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8497/16073 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8495/16069 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 723 | 1303 | 55% |
-| `core.services` | 5670 | 10940 | 51% |
+| `core.services` | 5672 | 10943 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 111 | 187 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8495/16069 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 254 | 558 | 45% |
+| `scripts` | 254 | 559 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2236)
+## Undocumented public functions (2237)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -570,9 +570,9 @@ Generated from source. 8495/16069 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L671)
-- `core/runtime/settings.py` :: `load_settings` (L725)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1198)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L681)
+- `core/runtime/settings.py` :: `load_settings` (L735)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1209)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1945,7 +1945,7 @@ Generated from source. 8495/16069 functions/methods documented (52%). The list b
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1433)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1449)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L310)
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L897)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L197)
@@ -2174,6 +2174,7 @@ Generated from source. 8495/16069 functions/methods documented (52%). The list b
 - `scripts/luk_foraeldede_flows.py` :: `main` (L109)
 - `scripts/maal_indbakke.py` :: `maal` (L113)
 - `scripts/maal_indbakke.py` :: `main` (L214)
+- `scripts/maal_raesonnering_ab.py` :: `main` (L48)
 - `scripts/maal_vaerktoejer_pr_runde.py` :: `main` (L83)
 - `scripts/maal_ventende_i_prompten.py` :: `main` (L252)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)

@@ -102,7 +102,9 @@ def _gather_evidence() -> dict[str, Any]:
     # ── Active decisions with low adherence ───────────────────────
     try:
         from core.runtime.db_decisions import list_decisions
-        active_decisions = list_decisions(status="active", limit=50)
+        # Ingen grænse (5/10-2026): `limit=50` skjulte de nederste 30 af 80
+        # aktive beslutninger — se `agent_self_evaluation.decision_adherence_summary`.
+        active_decisions = list_decisions(status="active", limit=None)
         evidence["active_decisions"] = active_decisions
     except Exception as e:
         logger.warning("consolidation_judge: list_decisions failed: %s", e)
@@ -293,11 +295,16 @@ def _enforce_reject(j: dict[str, Any]) -> None:
 
     if item_type == "broken_decisions" and "revoke" in choice:
         try:
-            from core.runtime.db_decisions import list_decisions, update_decision_status
-            active = list_decisions(status="active", limit=50)
+            # RETTELSE 5/10-2026: importen hed `update_decision_status`, som ikke
+            # findes NOGEN steder i kodebasen. Den kastede ImportError, som
+            # `except Exception` slugte — saa hele revoke-grenen var DØD KODE.
+            # Den rigtige funktion er `set_status` (db_decisions.py:294).
+            from core.runtime.db_decisions import list_decisions, set_status
+            # Ingen grænse (5/10-2026): skjulte beslutninger undslipper oprydningen.
+            active = list_decisions(status="active", limit=None)
             for d in active:
                 if d.get("adherence_score") is not None and d.get("adherence_score", 1.0) < 0.5:
-                    update_decision_status(d["decision_id"], "revoked")
+                    set_status(d["decision_id"], "revoked")
                     event_bus.publish("consolidation_judge.revoked_decision", {
                         "decision_id": d["decision_id"],
                         "directive": d.get("directive", ""),
@@ -328,7 +335,8 @@ def _enforce_accept(j: dict[str, Any]) -> None:
         # Reset adherence tracking for a fresh start
         try:
             from core.runtime.db_decisions import list_decisions
-            active = list_decisions(status="active", limit=50)
+            # Ingen grænse (5/10-2026): skjulte beslutninger undslipper oprydningen.
+            active = list_decisions(status="active", limit=None)
             for d in active:
                 if d.get("adherence_score") is not None and d.get("adherence_score", 1.0) < 0.5:
                     event_bus.publish("consolidation_judge.recommitted", {

@@ -328,7 +328,14 @@ def decision_adherence_summary() -> dict[str, Any]:
     """
     try:
         from core.runtime.db_decisions import list_decisions
-        decisions = list_decisions(status="active", limit=50) or []
+        # INGEN grænse (5/10-2026). `limit=50` skar de sidste væk, og
+        # sorteringen er `priority DESC, updated_at DESC` — så et opdateret
+        # direktiv rykker op og skubber et andet UD af målingen uden at nogen
+        # kan se hvilke. Målt 5/10: 80 aktive beslutninger, 30 usynlige for
+        # tallet i prompten. Præcis samme fejl som `_ALL_ACTIVE=500` rettede i
+        # `decision_review_prompter` og `_ALLE_AKTIVE=500` i `decision_gate`;
+        # `list_decisions` tillader `limit=None` netop til dette.
+        decisions = list_decisions(status="active", limit=None) or []
     except Exception:
         return {"status": "ok", "score": None, "note": "no behavioral_decisions table or list API"}
     if not decisions:

@@ -236,3 +236,32 @@ def test_self_evaluation_section_combines_all():
     # Section text was lowercase "stagnerer"; now capitalized "Stagnerende"
     # (Danish gerund form, more readable as section header). Match either.
     assert "tagnerer" in section or "Stagnerende" in section or "stagnerende" in section
+
+
+def test_adherence_ser_alle_aktive_ikke_kun_de_foerste():
+    """Målt 5/10-2026: `limit=50` skjulte 30 af 80 aktive beslutninger for
+    tallet i prompten. Sorteringen er `priority DESC, updated_at DESC`, så
+    skæringen FLYTTEDE sig — et opdateret direktiv skubbede et andet ud, uden
+    at nogen kunne se hvilke. Præcis samme fejl som `_ALL_ACTIVE=500` rettede i
+    `decision_review_prompter` og `_ALLE_AKTIVE=500` i `decision_gate`.
+
+    Den falske liste RESPEKTERER `limit`, så testen kun består når måleren
+    spørger uden grænse. Sætter nogen en grænse tilbage, falder den.
+    """
+    alle = [
+        {"decision_id": f"d{i}", "directive": f"x{i}", "priority": 100 - i,
+         "adherence_score": 1.0, "created_at": str(i)}
+        for i in range(60)
+    ]
+
+    def falsk_liste(*, status="active", limit=50):
+        raekker = sorted(alle, key=lambda d: -int(d["priority"]))
+        return raekker if limit is None else raekker[: int(limit)]
+
+    with patch("core.runtime.db_decisions.list_decisions", side_effect=falsk_liste):
+        result = decision_adherence_summary()
+
+    assert result["total"] == 60, (
+        f"måleren ser kun {result['total']} af 60 aktive beslutninger — "
+        "en grænse skærer listen"
+    )

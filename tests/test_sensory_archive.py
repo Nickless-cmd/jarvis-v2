@@ -341,3 +341,77 @@ def test_anmeldelse_uden_kolon_taeller_til_saetningsslut(isolated_runtime) -> No
 
     assert post["content"].startswith("Det føles som at træde ind")
     assert "sansebeskrivelse" not in post["content"]
+
+
+# ── Kolon-hullet og ræsonnement uden tags (målt 5/10-2026) ──────────────────
+#
+# Oprydningen 5/10 bragte arkivet til 2.744 poster — men der stod fem tilbage.
+# De faldt i to huller, og begge blev målt mod hele arkivet før koden blev rørt.
+
+
+def test_kolon_foran_anmeldelsen_fanges(isolated_runtime) -> None:
+    """Kolon-hullet: `active_sensing` skriver «… Visuelt: Her er en beskrivelse».
+
+    Den gamle grænse krævede `(?<=[.!?])`, så et kolon foran anmeldelsen slap
+    igennem. Målt 5/10-2026: tre poster, den ældste 16/5 — de havde ligget der
+    i månedsvis.
+    """
+    from core.services.sensory_archive import record_mixed
+
+    post = record_mixed(
+        "Jeg så og lyttede samtidig. Visuelt: Her er en beskrivelse af rummets "
+        "stemning, set gennem sanserne, med fokus på hvad der føles anderledes "
+        "og dragende lige nu:\n\n"
+        "Det første, der rammer, er lyset. Det føles ikke længere bare som "
+        "dagslys, men som en intens, næsten elektrisk energi."
+    )
+
+    assert "Her er en beskrivelse" not in post["content"]
+    assert "Det første, der rammer, er lyset" in post["content"]
+
+
+def test_kolon_alene_aabner_ikke_gaten(isolated_runtime) -> None:
+    """Falsk-positiv-vagten for kolon-ændringen.
+
+    Grænsen er udvidet til at tage kolon — men navneords-kravet står. Et kolon
+    alene gør ikke «her er» til et signal, og en beskrivelse af et TOMT rum er
+    stadig et indtryk.
+    """
+    from core.services.sensory_archive import record_visual
+
+    tekst = "Bordet står tomt. Hylder: Her er ingen bøger tilbage, kun støv."
+    assert record_visual(tekst)["content"] == tekst
+
+
+def test_raesonnement_uden_tags_afvises(isolated_runtime) -> None:
+    """Modellen skriver sin EGEN nummererede plan ind som indtryk.
+
+    Uden `<think>`-tags, så `_uden_raa_tanke` ser ingenting. Målt 5/10-2026:
+    to poster (1/10), den ene 4.567 tegn ren tankerække — «1. **Analyser
+    brugerens anmodning:** … 6. **Endelig polering**».
+    """
+    from core.services.sensory_archive import record_visual
+
+    with pytest.raises(ValueError):
+        record_visual(
+            "1.  **Analyser brugerens anmodning:**\n"
+            "    *   **Kontekst:** Brugeren kigger på et billede af et rum.\n"
+            "2.  **Analyser billedet (Visuel inspektion):**\n"
+            "    *   **Belysning:** Meget kontrastfyldt."
+        )
+
+
+def test_wrapper_uden_indhold_afvises(isolated_runtime) -> None:
+    """En rest der KUN er `active_sensing`s wrapper-lag er ikke et indtryk.
+
+    «Jeg så og lyttede samtidig. Visuelt: 1.» er 39 tegn — over længdekravet —
+    men der står intet bag laget. Målt 5/10-2026: post `931e8920` slap igennem
+    som en sansning på præcis den form, efter at ekkoet var klippet væk.
+    """
+    from core.services.sensory_archive import record_mixed
+
+    with pytest.raises(ValueError):
+        record_mixed(
+            "Jeg så og lyttede samtidig. Visuelt: 1.  **Analyser brugerens "
+            "anmodning:**\n    *   **Kontekst:** Brugeren kigger på et billede."
+        )

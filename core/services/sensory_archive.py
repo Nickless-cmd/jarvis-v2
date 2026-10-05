@@ -173,6 +173,13 @@ _PROMPT_EKKO_MOENSTRE = (
     re.compile(r"\bhvis intet mærkbart\b", re.I),
     # Digtning: modellen opdager at billedet er ubrugeligt og finder paa et rum.
     re.compile(r"\bmin fantasi til at skabe\b", re.I),
+    # Raesonnement uden <think>-tags (maalt 5/10-2026): modellen skriver sin
+    # EGEN nummererede plan ind som indtryk — «1. **Analyser brugerens
+    # anmodning:** … 6. **Endelig polering**». `_uden_raa_tanke` fanger den
+    # ikke, for der er ingen tags. To poster (1/10), den ene 4.567 tegn ren
+    # tankeraekke. Bevidst smalt: vendingen hoerer til en PLAN, ikke til en
+    # beskrivelse af et rum.
+    re.compile(r"\banaly[sz]er brugerens\b", re.I),
 )
 
 # Svar-preamble — modellen ANMELDER sit svar i stedet for at sanse.
@@ -182,8 +189,15 @@ _PROMPT_EKKO_MOENSTRE = (
 #
 # Ledet efter et NAVNORD, ikke bare «her er»: «Her er ingen mennesker» er en
 # gyldig beskrivelse af et rum og maa ikke rammes.
+#
+# Kolon-hullet (maalt 5/10-2026): `active_sensing` skriver sin mixed-sansning
+# som «Jeg så og lyttede samtidig. Visuelt: Her er en beskrivelse af …». Der
+# staar altsaa et KOLON mellem leddet og anmeldelsen — og den gamle graense
+# kraevede `(?<=[.!?])`, saa tre poster slap igennem i maanedvis (16/5, 8/9).
+# Kolon er tilfoejet som graense, og `\s*` frem for `\s+` daekker ogsaa
+# «Visuelt:Her er» uden mellemrum.
 _PREAMBLE_MOENSTER = re.compile(
-    r"(?:\A|(?<=[.!?])\s+)(?:okay,?\s*)?(?:her er|lad os)\b[^:.]{0,80}?"
+    r"(?:\A|(?<=[.!?:])\s*)(?:okay,?\s*)?(?:her er|lad os)\b[^:.]{0,80}?"
     r"(?:beskrivelse|sansebeskrivelse|registrering|gengivelse|opsummering|skildring)\b",
     re.I,
 )
@@ -234,6 +248,24 @@ def _fjern_anmeldelse(tekst: str, traef: re.Match[str]) -> str:
     return f"{foer} {efter}".strip() if foer else efter
 
 
+#: Maskinelt lag fra `active_sensing`: «Jeg så og lyttede samtidig. Visuelt:
+#: … | Lyd: …». Det er STRUKTUR, ikke et indtryk — og naar gaten skal afgoere
+#: om der er noget tilbage efter et klip, maa laget ikke taelle med.
+#:
+#: Maalt 5/10-2026: post `931e8920` var en ren tankeraekke, men klippet efterlod
+#: «Jeg så og lyttede samtidig. Visuelt: 1.» — 39 tegn wrapper og et listetal,
+#: over `_MINDSTE_INDTRYK`, og derfor gemt som om det var en sansning.
+_WRAPPER_LAG = re.compile(
+    r"^\s*Jeg så og lyttede samtidig\.\s*|^\s*Visuelt:\s*|\s*\|\s*Lyd:\s*[^|]*",
+    re.I,
+)
+
+
+def _uden_wrapper(tekst: str) -> str:
+    """Teksten uden `active_sensing`s maskinelle lag — til VURDERING, ikke gem."""
+    return _WRAPPER_LAG.sub("", tekst or "").strip()
+
+
 def _uden_stillads(content: str) -> tuple[str, bool]:
     """Fjern stillads foran et indtryk. Returnerer `(tekst, var_stillads)`.
 
@@ -247,7 +279,9 @@ def _uden_stillads(content: str) -> tuple[str, bool]:
       stryges; indtrykket paa begge sider af den beholdes.
 
     Er der intet indtryk tilbage, er posten rent stillads, og `_record` afviser
-    den.
+    den. Det gaelder ogsaa naar resten kun er `active_sensing`s wrapper-lag:
+    «Jeg så og lyttede samtidig. Visuelt: 1.» ser ud som 39 tegn indhold, men
+    der staar intet bag laget.
     """
     tekst = (content or "").strip()
     roert = False
@@ -260,6 +294,10 @@ def _uden_stillads(content: str) -> tuple[str, bool]:
     if foerste is not None:
         tekst = _klip_ved_saetningsgraense(tekst, foerste)
         roert = True
+        # En rest der kun er wrapper-laget er ikke et indtryk. Uden dette
+        # stod «Jeg så og lyttede samtidig. Visuelt: 1.» tilbage som en post.
+        if len(_uden_wrapper(tekst)) < _MINDSTE_INDTRYK:
+            tekst = ""
 
     anmeldelse = _PREAMBLE_MOENSTER.search(tekst)
     if anmeldelse is not None:

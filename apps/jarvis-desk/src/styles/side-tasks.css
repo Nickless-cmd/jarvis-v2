@@ -25,14 +25,17 @@
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   color: var(--fg-2); font-size: 12px;
 }
-/* Stablen: to kort «bag» det forreste, som i CC, når der er flere. */
-.sok-stak::before, .sok-stak::after {
-  content: ''; position: absolute; left: 8px; right: 8px; z-index: -1;
+/* To hele kort bagved. Lagene sidder på beholderen, så deres sidekanter
+   dækkes af det forreste kort; uden top/bottom kollapsede de til streger. */
+.sok-dok-stak { isolation: isolate; }
+.sok-dok-stak > .sok { z-index: 1; }
+.sok-dok-stak::before, .sok-dok-stak::after {
+  content: ''; position: absolute; top: 0; bottom: 0; z-index: 0;
   border-radius: 12px; border: 1px solid var(--overlay-line, var(--line));
   background: var(--overlay-bg, var(--bg-2));
 }
-.sok-stak::before { bottom: -5px; }
-.sok-stak::after { bottom: -10px; left: 16px; right: 16px; }
+.sok-dok-stak::before { left: 8px; right: 8px; transform: translateY(5px); }
+.sok-dok-stak::after { left: 16px; right: 16px; transform: translateY(10px); }
 .sok-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .sok-overskrift { color: var(--fg-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
 .sok-igang {

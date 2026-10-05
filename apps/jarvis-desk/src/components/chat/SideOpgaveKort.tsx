@@ -139,7 +139,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
 
   const beskrivelse = t.tldr || t.prompt
   return (
-    <div className="sok-dok" ref={rod}>
+    <div className={`sok-dok${n > 1 ? ' sok-dok-stak' : ''}`} ref={rod}>
       <section className={`sok${n > 1 ? ' sok-stak' : ''}`} aria-label="Sideopgave" data-testid="side-tasks" aria-busy={travl}>
         <div className="sok-top">
           <span className="sok-overskrift">Sideopgave{t.status === 'activated' ? <span className="sok-igang">i gang</span> : t.status === 'queued' ? <span className="sok-igang">i kø</span> : null}</span>

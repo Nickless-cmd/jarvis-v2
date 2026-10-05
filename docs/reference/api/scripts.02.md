@@ -200,9 +200,9 @@ _A/B: koster det noget at lade mellem-runderne vaere uden raesonnering?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `armdata` | `(db, *, dage=…, procent=…, siden=…)` | {arm: {ud, raeson, runs, runder, pr_dag}} — kilden BAADE CLI og monitor laeser. | [src](../../../scripts/maal_raesonnering_ab.py#L48) |
-| function | `runder_pr_run_pr_dag` | `(arm, *, min_runs=…)` | Dagsserien for én arm. Dage med for faa runs udelades — én run paa en | [src](../../../scripts/maal_raesonnering_ab.py#L97) |
-| function | `main` | `()` | — | [src](../../../scripts/maal_raesonnering_ab.py#L108) |
+| function | `armdata` | `(db, *, dage=…, procent=…, siden=…)` | {arm: {ud, raeson, runs, runder, pr_dag}} — kilden BAADE CLI og monitor laeser. | [src](../../../scripts/maal_raesonnering_ab.py#L55) |
+| function | `runder_pr_run_pr_dag` | `(arm, *, min_runs=…)` | Dagsserien for én arm. Dage med for faa runs udelades — én run paa en | [src](../../../scripts/maal_raesonnering_ab.py#L104) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_raesonnering_ab.py#L115) |
 
 ## `scripts/maal_vaerktoejer_pr_runde.py`
 _Vaerktoejer pr. agentisk runde — dagsserie._

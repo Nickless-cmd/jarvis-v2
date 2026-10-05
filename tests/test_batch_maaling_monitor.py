@@ -211,3 +211,17 @@ def test_tynde_dage_taeller_ikke_i_arm_serien():
     serie = runder_pr_run_pr_dag(arm)
     assert len(serie) == 4, "dagen med én run skal udelades"
     assert max(serie) < 20, "99 runder paa én run maa ikke naa serien"
+
+
+def test_deploy_graensen_er_UTC_og_ikke_i_fremtiden():
+    """Foerste udgave stod i LOKAL tid mod en UTC-kolonne.
+
+    `costs.created_at` er UTC og vaerten koerer CEST, saa «16:00» blev en
+    graense to timer ude i fremtiden. Skriptet svarede «ingen data» mens der
+    var koert runder i otte minutter — og det svar lignede et gyldigt
+    «forsoeget er for ungt».
+    """
+    from datetime import UTC, datetime
+    from scripts.maal_raesonnering_ab import DEPLOY
+    graense = datetime.fromisoformat(DEPLOY).replace(tzinfo=UTC)
+    assert graense < datetime.now(UTC), "en graense i fremtiden skjuler alle data"

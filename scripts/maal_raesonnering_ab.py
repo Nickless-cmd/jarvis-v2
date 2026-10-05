@@ -42,7 +42,14 @@ DB_PATH = HOME / "state" / "jarvis.db"
 
 #: Forsoeget blev deployet her. Runs foer dette tidspunkt koerte med fuld
 #: raesonnering uanset hvad deres arm regner ud, saa de maa ikke taelle med.
-DEPLOY = "2026-10-05T16:00:00"
+#:
+#: **UTC.** `costs.created_at` er UTC, og vaerten koerer CEST. Foerste udgave
+#: stod paa «16:00» i lokal tid, altsaa 14:00 UTC i min hensigt men 16:00 UTC
+#: i sammenligningen — en graense to timer ude i FREMTIDEN. Skriptet svarede
+#: «ingen data» mens der var koert runder i otte minutter, og det svar lignede
+#: et gyldigt «forsoeget er for ungt». Tallet nedenfor er det tidspunkt
+#: processerne faktisk startede med koden, laest af systemd i UTC.
+DEPLOY = "2026-10-05T15:36:33"
 
 
 def armdata(

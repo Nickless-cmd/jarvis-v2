@@ -168,6 +168,11 @@ def append_review(
     return get_decision(decision_id)
 
 
+#: Hvor mange TAELLENDE domme der kraeves, foer en adherence-score maa dannes.
+#: Under graensen er svaret «ikke maalt» (None) — ikke «brudt».
+_MIN_VERDICTS: int = 3
+
+
 def _verified_adherence(
     conn: sqlite3.Connection, decision_id: str,
 ) -> tuple[float | None, str | None]:
@@ -183,7 +188,23 @@ def _verified_adherence(
     values = {"kept": 1.0, "partial": 0.5, "broken": 0.0}
     scored = [values[str(row["verdict"]).lower().strip()]
               for row in rows if str(row["verdict"]).lower().strip() in values]
-    score = sum(scored) / len(scored) if scored else None
+    # Et maal kraever mere end et par domme (5/10-2026).
+    #
+    # Maalt samme dag: 72 af 80 aktive beslutninger havde <=2 taellende domme,
+    # og ALLE 19 der stod paa 0.0 havde <=2 — ingen af dem havde >=5. Scoren er
+    # et gennemsnit over de sidste 20 domme, men de fleste beslutninger naar
+    # aldrig 20, og to domme i traek giver 0.0 i ugevis. En ung beslutning kan
+    # derfor ikke passere taersklen paa 0.6, og muren af «brudte» beslutninger
+    # voksede monotont — praecis den fejlform gatens egen begrundelse advarer
+    # mod: «et baand der kan revoke, sletter systematisk de svaere og beholder
+    # de lette.»
+    #
+    # Under graensen returneres None, som betyder IKKE MAALT: gaten laeser None
+    # som «aldrig reviewet» og springer beslutningen over, og indbakken
+    # registrerer den ikke. Dommene slettes ikke — de ligger append-only, saa
+    # grundlaget vokser videre og en score danner sig selv naar der er nok.
+    score = (sum(scored) / len(scored)
+             if len(scored) >= _MIN_VERDICTS else None)
     return score, str(rows[0]["created_at"]) if rows else None
 
 

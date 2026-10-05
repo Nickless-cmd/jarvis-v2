@@ -525,15 +525,15 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 | function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
 | function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
 | function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
-| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L171) |
-| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L190) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L211) |
-| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L273) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L290) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L302) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L333) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L344) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L359) |
+| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L176) |
+| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L211) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L232) |
+| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L294) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L311) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L323) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L354) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L365) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L380) |
 
 ## `core/runtime/db_devices.py`
 _Enheder — hvem må styre denne computer, og hvem må bruge code mode._

@@ -471,13 +471,13 @@ _restart_self tool — fire-and-forget service restart that survives process dea
 | function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L379) |
 
 ## `core/tools/screen_tool.py`
-_Screen control tool — Jarvis can turn monitors on/off/standby._
+_Screen control — turn Bjørn's monitors on/off/standby, or read their state._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_xset_dpms` | `(action)` | Run an xset dpms command and return structured result. | [src](../../../core/tools/screen_tool.py#L35) |
-| function | `_xset_dpms_status` | `()` | Query DPMS status and return structured result. | [src](../../../core/tools/screen_tool.py#L82) |
-| function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L119) |
+| function | `_dpms_command` | `(action)` | Shell command that sets (or reads) DPMS on every connected DP output. | [src](../../../core/tools/screen_tool.py#L78) |
+| function | `_run_on_operator` | `(command, args)` | Run `command` on the operator's desktop via the bridge. | [src](../../../core/tools/screen_tool.py#L85) |
+| function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L117) |
 
 ## `core/tools/security_predicates.py`
 _Nummererede security-predikater (spec E, 2026-07-10)._

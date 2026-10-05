@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8491/16061 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8493/16065 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8491/16061 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 252 | 554 | 45% |
+| `scripts` | 254 | 558 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2235)
+## Undocumented public functions (2236)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2091,6 +2091,7 @@ Generated from source. 8491/16061 functions/methods documented (52%). The list b
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)
 - `scripts/api_reference_gen.py` :: `main` (L74)
 - `scripts/api_reference_gen.py` :: `render_md` (L63)
+- `scripts/batch_maaling_monitor.py` :: `main` (L108)
 - `scripts/beacon_rapport.py` :: `main` (L207)
 - `scripts/beacon_rapport.py` :: `opgoer` (L144)
 - `scripts/beacon_rapport.py` :: `skriv` (L181)
@@ -2173,7 +2174,7 @@ Generated from source. 8491/16061 functions/methods documented (52%). The list b
 - `scripts/luk_foraeldede_flows.py` :: `main` (L109)
 - `scripts/maal_indbakke.py` :: `maal` (L113)
 - `scripts/maal_indbakke.py` :: `main` (L214)
-- `scripts/maal_vaerktoejer_pr_runde.py` :: `main` (L69)
+- `scripts/maal_vaerktoejer_pr_runde.py` :: `main` (L83)
 - `scripts/maal_ventende_i_prompten.py` :: `main` (L252)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)

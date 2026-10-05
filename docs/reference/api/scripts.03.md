@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/phase7_analyze.py`
+_Fase 7 — analyse, præcis som forhåndsregistreret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L38) |
+| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L44) |
+| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L53) |
+| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L61) |
+| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L115) |
+
 ## `scripts/phase7_build_probes.py`
 _Fase 7 — bygger proberne af arkivet._
 

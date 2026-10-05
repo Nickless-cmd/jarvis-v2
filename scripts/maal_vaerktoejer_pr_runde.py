@@ -66,6 +66,20 @@ order by pr_run.dag
 """
 
 
+def dagsserie(db: Path, dage: int) -> list[sqlite3.Row]:
+    """Dagsserien, som BAADE denne CLI og monitoren laeser.
+
+    Én kilde til maalingen. `beacon_vagt.py` siger hvorfor: dens foerste
+    udgave havde sin egen parser, ramte ingenting, og meldte «ingen
+    haendelser» i en halv time. En monitor der gentager en forespoergsel kan
+    maale noget andet end rapporten uden at nogen ser det.
+    """
+    graense = f"-{int(dage)} days"
+    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+        conn.row_factory = sqlite3.Row
+        return conn.execute(_SQL, (graense, graense)).fetchall()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dage", type=int, default=14, help="antal dage tilbage (default 14)")
@@ -76,10 +90,7 @@ def main() -> int:
         print(f"ingen database paa {args.db} — koerer du paa den rigtige vaert?", file=sys.stderr)
         return 2
 
-    graense = f"-{int(args.dage)} days"
-    with sqlite3.connect(f"file:{args.db}?mode=ro", uri=True) as conn:
-        conn.row_factory = sqlite3.Row
-        raekker = conn.execute(_SQL, (graense, graense)).fetchall()
+    raekker = dagsserie(args.db, args.dage)
 
     if not raekker:
         print("ingen runder i vinduet")

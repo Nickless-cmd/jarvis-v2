@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/installer_desk_appimage.py`
+_Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
+| function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
+| function | `byg_mappe` | `()` | electron-builders output-mappe, LÆST af package.json. | [src](../../../scripts/installer_desk_appimage.py#L81) |
+| function | `find_appimage` | `()` | Nyeste AppImage i electron-builders output-mappe. | [src](../../../scripts/installer_desk_appimage.py#L98) |
+| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L113) |
+| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L124) |
+| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L147) |
+| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L167) |
+| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L190) |
+| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L203) |
+| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
+| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
+
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._
 
@@ -181,7 +200,8 @@ _Vaerktoejer pr. agentisk runde — dagsserie._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L69) |
+| function | `dagsserie` | `(db, dage)` | Dagsserien, som BAADE denne CLI og monitoren laeser. | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L69) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L83) |
 
 ## `scripts/maal_ventende_i_prompten.py`
 _Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
@@ -429,15 +449,4 @@ _Fase 6 «Bæres han på tværs af tid?» — indsamler._
 | function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase6_collect.py#L66) |
 | function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
 | function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
-
-## `scripts/phase7_analyze.py`
-_Fase 7 — analyse, præcis som forhåndsregistreret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L38) |
-| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L44) |
-| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L53) |
-| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L61) |
-| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L115) |
 

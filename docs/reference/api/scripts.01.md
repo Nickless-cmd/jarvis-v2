@@ -36,6 +36,15 @@ _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._
 | function | `render_md` | `(rows, source=…)` | — | [src](../../../scripts/api_reference_gen.py#L63) |
 | function | `main` | `()` | — | [src](../../../scripts/api_reference_gen.py#L74) |
 
+## `scripts/batch_maaling_monitor.py`
+_Monitor paa vaerktoejer pr. agentisk runde. Tier medmindre tallet rykker._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L66) |
+| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L92) |
+| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L108) |
+
 ## `scripts/beacon_rapport.py`
 _Opgørelse fra vaertens crash-beacon-log._
 
@@ -417,23 +426,4 @@ _Install or verify the required commit-attribution Git hooks._
 | function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
 | function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
-
-## `scripts/installer_desk_appimage.py`
-_Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
-| function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
-| function | `byg_mappe` | `()` | electron-builders output-mappe, LÆST af package.json. | [src](../../../scripts/installer_desk_appimage.py#L81) |
-| function | `find_appimage` | `()` | Nyeste AppImage i electron-builders output-mappe. | [src](../../../scripts/installer_desk_appimage.py#L98) |
-| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L113) |
-| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L124) |
-| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L147) |
-| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L167) |
-| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L190) |
-| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L203) |
-| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
-| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
 

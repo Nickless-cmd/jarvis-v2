@@ -132,7 +132,11 @@ def tick_visual_memory_daemon() -> dict[str, object]:
 
     _prune_old_records()
 
-    model, provider = _vision_model()
+    # Kadencen er en sansning og tvinger derfor CONFIG-modellen (5/10-2026).
+    # Uden force_config låner den øjnene fra den tur der kører lige nu — og er
+    # den en tænke-model, skriver den sin egen instruktion ind i «indtrykket».
+    # Målt 2/10-2026: dagens eneste visuelle sans var 100% prompt-lækage.
+    model, provider = _vision_model(force_config=True)
     if not model:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
@@ -294,7 +298,9 @@ def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, 
     if not _enabled():
         return {"status": "disabled", "reason": "layer_visual_memory_enabled=false"}
     _prune_old_records()
-    model, provider = _vision_model()
+    # Også et bevidst kig er en sansning: config-modellen, ikke tur-modellen.
+    # Samme grund som i `tick_visual_memory_daemon` — se `_vision_model`.
+    model, provider = _vision_model(force_config=True)
     if not model:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
@@ -384,7 +390,10 @@ def build_visual_memory_surface() -> dict[str, object]:
     _prune_old_records()
     records = _load_records()
     latest = records[-1] if records else None
-    model, provider = _vision_model()
+    # Fladen beskriver SANSINGS-laget, og lagets øjne er config-modellen
+    # (5/10-2026). Uden force_config kunne feltet `configured_model` vise den
+    # valgte tur-model — et mærke der løj om hvad laget faktisk bruger.
+    model, provider = _vision_model(force_config=True)
     return {
         "enabled": _enabled(),
         "configured_model": model or "(ikke konfigureret)",
@@ -863,6 +872,13 @@ def _vision_model(*, force_config: bool = False) -> tuple[str, str]:
     sansningsværktøjer (look_around, natrutine) hvor thinking-modeller som
     deepseek-v4-flash lækker reasoning ind i impressionen. Se arkiv-tjek
     2/10-2026: dagens eneste visuelle sans var 100% prompt-lækage.
+
+    KOBLET TIL 5/10-2026: `tick_visual_memory_daemon`, `look_around_now` og
+    `build_visual_memory_surface` sender nu force_config=True. Indtil da var
+    parameteren bygget men kaldt af ingen — og sansnings-vejen lånte derfor den
+    valgte tur-models øjne. Den valgte model gælder stadig for læsning af
+    billeder Bjørn selv sender (attachment_service); grænsen går mellem at LÆSE
+    et billede nogen gav mig, og at PRODUCERE et sanseindtryk.
     """
     if not force_config:
         try:

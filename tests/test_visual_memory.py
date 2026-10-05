@@ -164,8 +164,16 @@ def test_navngivet_kamera_fejler_hoejlydt(monkeypatch):
         VM._capture_image("hoveddor")
 
 
-def test_look_around_bruger_den_valgte_synsmodel(monkeypatch):
-    """Har Bjørn valgt syns-modellen, skal look_around kigge gennem den."""
+def test_hjaelperen_uden_force_config_bruger_den_valgte_synsmodel(monkeypatch):
+    """Uden force_config gælder det valgte syn — det er vejen for BILLEDER.
+
+    Bjørn 5/9-2026: «med syn bruger tools flash model med syn.» Den beslutning
+    står ved magt for læsning af billeder han selv sender
+    (`attachment_service`). SANSKNINGS-vejen er undtagelsen (5/10-2026): den
+    tvinger config-modellen, fordi en tænke-model skriver sin egen instruktion
+    ind i indtrykket. Se
+    `test_sansnings_vejen_kigger_gennem_config_modellen`.
+    """
     from core.services import vision_backend as VB
 
     monkeypatch.setattr(
@@ -323,3 +331,59 @@ def test_levende_frame_gaar_uaendret_igennem(monkeypatch):
     ud = VM.look_around_now()
     assert ud["status"] == "captured", ud
     assert arkiveret == ["Rummet føles stille."]
+
+
+# ---------------------------------------------------------------------------
+# Sansnings-vejen tvinger CONFIG-modellen (5/10-2026)
+#
+# `force_config` blev bygget til netop dette og var kaldt af ingen: hele
+# sansnings-vejen gik gennem `_vision_model()` uden argument og lånte dermed
+# øjnene fra den tur der kørte lige nu. Er den en tænke-model, skriver den sin
+# egen instruktion ind i «indtrykket» — målt 2/10-2026 var dagens eneste
+# visuelle sans 100% prompt-lækage. Værnene i arkivet fanger formuleringer;
+# generatoren er at vejen overhovedet spørger den model.
+# ---------------------------------------------------------------------------
+
+
+def _stub_sansning(monkeypatch, *, b64: str) -> list[tuple[object, object]]:
+    """Stub hele kæden og fang (model, provider) der blev spurgt."""
+    from core.services import vision_backend as VB
+
+    brugt: list[tuple[object, object]] = []
+    monkeypatch.setattr(
+        VB, "active_visible_target", lambda: ("deepseek", "deepseek-flash")
+    )
+    monkeypatch.setattr(
+        VM, "load_settings",
+        lambda: _Settings({"vision_model_name": "gemma4:31b-cloud"}),
+    )
+    monkeypatch.setattr(VM, "_enabled", lambda: True)
+    monkeypatch.setattr(VM, "_prune_old_records", lambda: None)
+    monkeypatch.setattr(VM, "_load_records", lambda: [])
+    monkeypatch.setattr(VM, "set_runtime_state_value", lambda *_a, **_k: None)
+    monkeypatch.setattr(VM, "_archive_sensory", lambda d, **_k: True)
+    monkeypatch.setattr(VM, "_capture_image", lambda *_a, **_k: (b64, "testkamera"))
+    monkeypatch.setattr(
+        VM, "_describe_image",
+        lambda *_a, **k: (
+            brugt.append((k.get("model"), k.get("provider")))
+            or "Rummet føles stille."
+        ),
+    )
+    return brugt
+
+
+def test_sansnings_vejen_kigger_gennem_config_modellen(monkeypatch):
+    """Den valgte tur-model må ikke låne sine øjne til en sansning."""
+    brugt = _stub_sansning(monkeypatch, b64=_lyst_frame())
+
+    VM.look_around_now()
+    VM.tick_visual_memory_daemon()
+
+    assert brugt == [("gemma4:31b-cloud", "ollama")] * 2, brugt
+
+
+def test_fladen_siger_config_modellen_ikke_tur_modellen(monkeypatch):
+    """Feltet heder `configured_model` — og efter 5/10-2026 er det sandt."""
+    _stub_sansning(monkeypatch, b64=_lyst_frame())
+    assert VM.build_visual_memory_surface()["configured_model"] == "gemma4:31b-cloud"

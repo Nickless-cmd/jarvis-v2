@@ -8,6 +8,7 @@ faktisk koerer.
 from __future__ import annotations
 
 import ast
+import threading
 import time
 from pathlib import Path
 
@@ -184,12 +185,31 @@ def test_mekanisk_opsummering_baerer_det_forrige_resumé_i_fuld_laengde() -> Non
 
 def test_timeouten_afbryder_FAKTISK_ventetiden(monkeypatch) -> None:
     """`with ThreadPoolExecutor(...)` ventede ved exit paa det haengende kald.
-    Maalt 18/9: timeout 1 s, kalderen blokeret 4,0 s."""
+    Maalt 18/9: timeout 1 s, kalderen blokeret 4,0 s.
+
+    Beviset er at det haengende kald STADIG haenger naar vi faar svar — ikke at
+    uret viste under to sekunder. Foer stod her `assert time.monotonic() - t <
+    2.0` mod et `sleep(4)`, altsaa to taerskler der skulle holde afstand paa en
+    maskine der kan vaere optaget. Nu: spaerren slippes foerst i `finally`, saa
+    `faerdig == []` kan KUN vaere sandt hvis kalderen blev sluppet ved
+    timeouten. Spaerren har et loft, saa en regression fejler i stedet for at
+    laase testen fast.
+    """
     monkeypatch.setattr(kp, "_TIMEOUT_SEK", 1)
-    t = time.monotonic()
-    ud = kp._kald_med_timeout(lambda: time.sleep(4) or "for sent")
-    assert ud == ""
-    assert time.monotonic() - t < 2.0
+    slip = threading.Event()
+    faerdig: list[str] = []
+
+    def _haenger() -> str:
+        slip.wait(30)
+        faerdig.append("for sent")
+        return "for sent"
+
+    try:
+        ud = kp._kald_med_timeout(_haenger)
+        assert ud == ""
+        assert faerdig == [], "svaret kom foerst da det haengende kald var faerdigt"
+    finally:
+        slip.set()  # lad traaden doe, ogsaa naar assertionen fejler
 
 
 def test_opsummeringen_maa_bruge_primaer_modellen(monkeypatch) -> None:

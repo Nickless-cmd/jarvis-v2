@@ -115,6 +115,7 @@ export interface PendingApproval {
   approvalId: string
   tool: string
   action: string
+  sessionId: string
 }
 
 export interface PendingAppAction {
@@ -363,6 +364,7 @@ export function StreamProvider({
                 approvalId: p.approval_id,
                 tool: p.tool || 'tool',
                 action: [p.message, p.detail].filter(Boolean).join('\n') || p.tool || '',
+                sessionId: opts.sessionId,
               })
             }
           } else if (e.type === 'system_event' && e.kind === 'app_action_request') {
@@ -493,8 +495,9 @@ export function StreamProvider({
   // holder hans run». Målt i det øjeblik: FIRE kort ventede, alle i en
   // samtale desk ikke streamede. Begge gates lukkede dem ude.
   //
-  // Et kort hører til en EJER, ikke til det vindue der er åbent. Vi spørger
-  // derfor altid — men gennem `maaPolle`, så et skjult vindue falder til ro
+  // Vi finder ejerens kort uanset det aabne vindue og gemmer dets sessionId,
+  // saa kun den tilhoerende chat tegner det. Vi spoerger gennem `maaPolle`,
+  // saa et skjult vindue falder til ro
   // i stedet for at banke løs. Har vi allerede et kort, holder vi op.
   useEffect(() => {
     if (pendingApproval || !config.apiBaseUrl) return
@@ -506,7 +509,7 @@ export function StreamProvider({
       // desk selv har en tur i gang.
       if (!maaPolle('ventende-godkendelse', 4000, { ignorerSkjult: true, loftMs: 20_000 })) return
       void hentVentendeGodkendelseOveralt(cfg).then((k) => {
-        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action })
+        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId })
       })
     }
     const id = window.setInterval(spoerg, 2000)

@@ -437,6 +437,26 @@ def registrer_kilde(
         if g.get("status") == "ok":
             r = {**r, "post": g.get("post") or post, "genaabnet": True}
             post = r["post"]
+    # ── Teksten følger kilden (målt 5/10-2026) ──────────────────────────────
+    #
+    # `opret_eller_hent` er `INSERT OR IGNORE`: beskrivelsen blev skrevet ÉN
+    # gang og derefter frossen. Målt i drift stod `dec_b596dcde9db7` med
+    # «[imperativ 33%]» i indbakken mens gaten viste «Adherence 50% (advisory
+    # band)» — den flade Bjørn læser løj om båndet, fordi scoren havde ændret
+    # sig siden registreringen.
+    #
+    # Det er samme fejlform som `expires_at`: en regel der kun gælder ved INSERT
+    # dækker ikke de rækker der allerede står der. Kilden er den eneste der
+    # KENDER sin tekst, så den må rette den — men kun på en post der ikke er
+    # afgjort, og kun når teksten faktisk er en anden. Rækkefølgen er med vilje
+    # genåbning FØRst: en post der netop er genåbnet er `aaben`, og får derfor
+    # sin friske tekst i samme runde.
+    if beskrivelse:
+        o = db_inbox.opdater_beskrivelse(
+            bruger_id=bruger_id, kilde_id=kilde_id, beskrivelse=beskrivelse)
+        if o.get("status") == "ok":
+            r = {**r, "post": o.get("post") or post}
+            post = r["post"]
     if int(post.get("paamindelser") or 0) == 0 and not post.get("afgjort_at"):
         _spor("inbox.registreret", {
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,

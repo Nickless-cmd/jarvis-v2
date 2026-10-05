@@ -551,3 +551,61 @@ def test_NUL_poster_uden_for_vinduet_lader_visningen_uaendret(db):
 def test_liste_aktiv_afviser_tom_bruger(db):
     _opret("job-x")
     assert db_inbox.liste_aktiv(bruger_id="") == []
+
+
+# ── Kilden retter sin EGEN tekst (målt 5/10-2026) ───────────────────────────
+
+def test_en_AABEN_post_faar_sin_tekst_rettet(db):
+    """`opret_eller_hent` er `INSERT OR IGNORE`, så beskrivelsen blev skrevet ÉN
+    gang og derefter FROSSET. Et levende tal i den — beslutnings-postens bånd og
+    score — løj derfor fra det øjeblik det ændrede sig. Her måles at den kan
+    rettes, og at svaret bærer den NYE tekst og ikke den gamle.
+    """
+    _opret("job-t", beskrivelse="[imperativ 33%] noget")
+    r = db_inbox.opdater_beskrivelse(
+        bruger_id=BRUGER, kilde_id="job-t", beskrivelse="[advisory 50%] noget")
+    assert r["status"] == "ok", r
+    assert r["post"]["beskrivelse"] == "[advisory 50%] noget"
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-t")["beskrivelse"] == \
+        "[advisory 50%] noget"
+
+
+def test_en_AFGJORT_post_faar_IKKE_ny_tekst(db):
+    """`done` er udført arbejde, `afsluttet_af_kilde` betyder kilden er væk. Ny
+    tekst ind i dem ville ændre en afsluttet historik — og `status = ?`-ledet i
+    WHERE er det eneste der forhindrer det."""
+    _opret("job-d", beskrivelse="gammel")
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET status = ? WHERE kilde_id = 'job-d'",
+                  (db_inbox.STATUS_DONE,))
+    r = db_inbox.opdater_beskrivelse(
+        bruger_id=BRUGER, kilde_id="job-d", beskrivelse="ny")
+    assert r["status"] == "afgjort", r
+    assert r["status_fundet"] == db_inbox.STATUS_DONE, r
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-d")["beskrivelse"] == "gammel"
+
+
+def test_en_TOM_tekst_rydder_IKKE_beskrivelsen(db):
+    """En kilde der et øjeblik ikke KENDER sin tekst må ikke kunne slette den
+    eneste posten har."""
+    _opret("job-e", beskrivelse="noget")
+    r = db_inbox.opdater_beskrivelse(bruger_id=BRUGER, kilde_id="job-e", beskrivelse="")
+    assert r["status"] == "allerede", r
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="job-e")["beskrivelse"] == "noget"
+
+
+def test_UAENDRET_tekst_er_ikke_en_skrivning(db):
+    """En kilde melder det samme hvert tick. Uden `beskrivelse != ?` ville hvert
+    tick være en skrivning — og `uaendret` kunne ikke skelnes fra `ok`."""
+    _opret("job-u", beskrivelse="samme")
+    r = db_inbox.opdater_beskrivelse(
+        bruger_id=BRUGER, kilde_id="job-u", beskrivelse="samme")
+    assert r["status"] == "uaendret", r
+
+
+def test_en_UKENDT_post_giver_ukendt_og_ikke_succes(db):
+    """`ukendt` må aldrig komme ud som en succes: en kalder der læser «uaendret»
+    om en post der ikke findes bygger på et fravær der ikke er der."""
+    r = db_inbox.opdater_beskrivelse(
+        bruger_id=BRUGER, kilde_id="findes-ikke", beskrivelse="x")
+    assert r["status"] == "ukendt", r

@@ -1088,3 +1088,44 @@ def test_en_AFSLUTTET_post_genaabnes_ikke(inbox_db):
     r = _registrer()
     assert r["post"]["status"] == db_inbox.STATUS_DONE, \
         "afsluttet arbejde blev genoplivet af sin kilde"
+
+
+def test_kilden_retter_TEKSTEN_naar_scoren_aendrer_sig(inbox_db):
+    """Den målte sag (5/10-2026): `dec_b596dcde9db7` stod med «[imperativ 33%]»
+    i indbakken mens gaten viste «Adherence 50% (advisory band)».
+
+    Beskrivelsen skrives af `opret_eller_hent`, som er `INSERT OR IGNORE` — så
+    uden en opdaterings-vej var teksten frosset ved første registrering, og
+    båndet i den flade Bjørn læser løj fra det øjeblik scoren ændrede sig.
+    """
+    def _registrer(tekst):
+        return inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="decision", kilde_id="dec-baand",
+            kilde_ejer="jarvis", beskrivelse=tekst)
+
+    r = _registrer("[imperativ 33%] en forpligtelse")
+    assert r["post"]["beskrivelse"] == "[imperativ 33%] en forpligtelse"
+
+    r2 = _registrer("[advisory 50%] en forpligtelse")
+    assert r2["post"]["beskrivelse"] == "[advisory 50%] en forpligtelse", \
+        "baandet i posten fulgte ikke beslutningens score"
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="dec-baand")["beskrivelse"] == \
+        "[advisory 50%] en forpligtelse"
+
+
+def test_en_GENAABNET_post_faar_sin_FRISKE_tekst(inbox_db):
+    """Rækkefølgen er med vilje genåbning FØRst: en post der netop er genåbnet
+    er `aaben`, og skal derfor have den nye tekst i SAMME runde — ikke først
+    næste gang kilden melder sig."""
+    def _registrer(tekst):
+        return inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="decision", kilde_id="dec-gen",
+            kilde_ejer="jarvis", beskrivelse=tekst)
+
+    _registrer("[imperativ 20%] en forpligtelse")
+    inbox_state.drop(BJORN, "dec-gen", "udsat")
+
+    r = _registrer("[advisory 55%] en forpligtelse")
+    assert r["post"]["status"] == db_inbox.STATUS_AABEN, r
+    assert r["post"]["beskrivelse"] == "[advisory 55%] en forpligtelse", \
+        "den genaabnede post bar sin gamle tekst"

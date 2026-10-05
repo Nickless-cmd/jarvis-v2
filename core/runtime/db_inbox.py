@@ -466,6 +466,88 @@ def genaabn_af_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
     return {"status": "ok", "id": kilde_id, "post": _post_fra_raekke(r)}
 
 
+def opdater_beskrivelse(
+    *, bruger_id: str, kilde_id: str, beskrivelse: str,
+) -> dict[str, Any]:
+    """Lad kilden rette TEKSTEN på en post der ikke er afgjort.
+
+    ## Hvorfor den findes (målt 5/10-2026)
+
+    `opret_eller_hent` er `INSERT OR IGNORE` plus et opslag, så en posts
+    beskrivelse blev skrevet ÉN gang og derefter FROSSET. For en beslutnings-post
+    er teksten «[<bånd> <score>%] <direktiv>» — og scoren er LEVENDE: den ændrer
+    sig hver gang et review dømmer beslutningen. Målt i drift:
+    `dec_b596dcde9db7` stod med «[imperativ 33%]» i indbakken mens
+    `decision_adherence_section()` viste «Adherence 50% (advisory band)». Den
+    flade Bjørn læser løj om båndet.
+
+    Det er samme fejlform som `expires_at` (samme dag): en regel der kun gælder
+    ved INSERT dækker ikke de rækker der allerede står der.
+
+    ## Snapshot eller visning?
+
+    Beskrivelsen er en VISNING, ikke et snapshot. Et snapshot beskriver hvad der
+    skete på et tidspunkt, og dér er en frossen tekst korrekt. Denne post peger
+    på en AKTUEL forpligtelse, og båndet er en egenskab ved beslutningen NU — så
+    teksten skal følge den. Derfor opdateres den, frem for at visningen
+    genberegner båndet: tærsklerne (`_CRITICAL_THRESHOLD`, `_ADVISORY_THRESHOLD`)
+    bor i gaten, og en kopi i visningen ville drive fra dem.
+
+    ## Grænsen
+
+    Kun en post der er `aaben`. `done` er udført arbejde og
+    `afsluttet_af_kilde` betyder kilden er væk; ny tekst ind i dem ville ændre
+    en afsluttet historik. En `drop`/`udloebet`-post får sin tekst i samme runde
+    den genåbnes — `genaabn_af_kilde` sætter `aaben` først, og kalderen
+    (`inbox_state.registrer_kilde`) retter teksten EFTER genåbningen.
+
+    Returnerer typet, aldrig prosa: `ok` (retter nu), `uaendret` (teksten var
+    identisk — nul rækker, ingen skrivning), `afgjort` (posten er ikke aaben),
+    `ukendt` (ingen sådan post) eller `fejl`.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    ny = str(beskrivelse or "")
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    if not ny:
+        # En tom tekst er ikke en rettelse. Uden dette led ville en kilde der et
+        # øjeblik ikke KENDER sin tekst kunne slette den eneste posten har.
+        return {"status": "allerede", "id": kilde_id, "grund": "tom beskrivelse"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        # `beskrivelse != ?` gør skrivningen idempotent: uændret tekst rører nul
+        # rækker, så en kilde der melder det samme hvert tick er gratis.
+        cur = conn.execute(
+            "UPDATE inbox_items SET beskrivelse = ? "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ? "
+            "AND beskrivelse != ?",
+            (ny, bruger_id, kilde_id, STATUS_AABEN, ny),
+        )
+        if cur.rowcount == 0:
+            # Nul rækker betyder ÉN af tre ting, og de er ikke det samme. Vi
+            # skelner, fordi en kalder der læser «uaendret» om en post der ikke
+            # findes bygger på et fravær der ikke er der — og `ukendt` må aldrig
+            # komme ud som en succes.
+            r0 = conn.execute(
+                "SELECT status FROM inbox_items WHERE bruger_id = ? AND kilde_id = ?",
+                (bruger_id, kilde_id),
+            ).fetchone()
+            if r0 is None:
+                return {"status": "ukendt", "id": kilde_id}
+            if str(r0["status"]) != STATUS_AABEN:
+                return {"status": "afgjort", "id": kilde_id,
+                        "status_fundet": str(r0["status"])}
+            return {"status": "uaendret", "id": kilde_id}
+        r = conn.execute(
+            "SELECT * FROM inbox_items WHERE bruger_id = ? AND kilde_id = ?",
+            (bruger_id, kilde_id),
+        ).fetchone()
+    if r is None:
+        return {"status": "fejl", "error": "posten forsvandt under opdateringen"}
+    return {"status": "ok", "id": kilde_id, "post": _post_fra_raekke(r)}
+
+
 def noter_paamindelse(*, bruger_id: str, kilde_id: str, tur: str) -> dict[str, Any]:
     """Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang.
 

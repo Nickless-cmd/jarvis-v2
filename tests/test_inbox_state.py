@@ -149,6 +149,38 @@ def test_huset_kan_maerke_sig_selv_som_huset(inbox_db):
     assert r["post"]["kraever_handling"] is False
 
 
+def test_kilde_ejer_kan_MAERKE_men_aldrig_LOEFTE_til_gating(inbox_db):
+    """Kildens EGEN ejer må flytte etiketten — ikke evnen til at nægte.
+
+    Målt 4/10-2026: beslutnings-posterne blev mærket `huset`, fordi de skrives
+    fra en baggrundsvej uden et levende run. Mærket beskriver SKRIVEREN, ikke
+    hvem forpligtelsen tilhører — og det fik mig til at aflæse min EGEN
+    beslutning som husets og afvise den over for Bjørn. Beslutningen er min:
+    `behavioral_decisions.created_by` står `jarvis` i 79 af 80 rækker.
+
+    Grænsen er kildetypen, og den ER sikkerheden: `kilde_ejer` accepteres kun
+    for typer der ikke kan gate. Uden den kunne et `kilde_ejer="jarvis"` på en
+    `job`-post både mærke OG låse, og skrive-kontrakten («huset kan informere,
+    men ikke kræve») var omgået ad en ny vej — bare med et andet parameter-navn.
+    """
+    # (1) Ikke-gatende kildetype: etiketten følger kilden.
+    r = inbox_state.registrer_kilde(
+        bruger_id=BJORN, kildetype="decision", kilde_id="dec-1",
+        kilde_ejer="jarvis")
+    assert r["post"]["verificeret_ejer"] == inbox_state.EJER_JARVIS, \
+        "kildens egen ejer naaede ikke frem til etiketten"
+    assert r["post"]["kraever_handling"] is False, \
+        "en beslutnings-post fik lov at gate — den har sin egen eskalering"
+
+    # (2) GATENDE kildetype: samme parameter må IKKE løfte den.
+    r2 = inbox_state.registrer_kilde(
+        bruger_id=BJORN, kildetype="job", kilde_id="job-1",
+        kilde_ejer="jarvis")
+    assert r2["post"]["verificeret_ejer"] == inbox_state.EJER_UKENDT, \
+        "kildens egen ejer løftede en post der kan gate"
+    assert r2["post"]["kraever_handling"] is False
+
+
 # ── Opgave 1, trin 4: idempotens, genstart, anden bruger ────────────────────
 
 def test_genregistrering_nulstiller_IKKE_paamindelser_eller_afgoerelse(inbox_db):

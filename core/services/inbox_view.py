@@ -45,6 +45,7 @@ from datetime import UTC, datetime
 from typing import Any, Final
 
 from core.runtime import db_inbox
+from core.services.inbox_state import IKKE_GATENDE_KILDETYPER
 
 logger = logging.getLogger(__name__)
 
@@ -433,7 +434,16 @@ def _post(
         # Bruger-poster gater kun naar `bloker` er sat. Uden `bloker`-leddet
         # ville visningen sige «kraever handling: nej» om en post gaten
         # faktisk naegter paa — to svar om samme post.
-        "kraever_handling": (ejer == db_inbox.EJER_JARVIS
+        #
+        # Og kildetypen taeller med (4/10-2026). Feltet blev udledt af EJEREN
+        # alene, mens skriveren (`inbox_state.registrer_kilde`) ogsaa kraever at
+        # kildetypen ikke staar i `IKKE_GATENDE_KILDETYPER`. De to var derfor
+        # uenige om praecis de poster hvor uenigheden kan ses: beslutnings-poster
+        # baerer nu `[dig]`, og uden dette led ville visningen paastaa at de
+        # kraever handling, mens gaten — der laeser raekkens EGET flag — aldrig
+        # kunne naegte paa dem. ÉN definition, hentet fra skriveren.
+        "kraever_handling": ((ejer == db_inbox.EJER_JARVIS
+                              and kildetype not in IKKE_GATENDE_KILDETYPER)
                              or (ejer == db_inbox.EJER_BRUGER and bloker)),
         "dubletter": 1,
         "kilde_ider": [post_id],

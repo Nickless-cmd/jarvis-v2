@@ -333,6 +333,21 @@ def verificeret_jarvis_run(oprettende_run_id: str, bruger_id: str) -> bool:
     return _autentificeret_bruger_matcher(bruger_id)
 
 
+def _kilde_ejer_kan_loefte(kildetype: str, kilde_ejer: str) -> bool:
+    """Må KILDENS egen ejer sætte etiketten til `jarvis`?
+
+    Kun når kildetypen ikke kan gate. Den grænse ER sikkerheden: uden den
+    kunne et `kilde_ejer="jarvis"` på en `job`-post både mærke OG låse, og så
+    var skrive-kontrakten omgået ad en ny vej — «huset kan informere, men ikke
+    kræve» ville være uden virkning igen, bare med et andet parameter-navn.
+
+    Med grænsen kan denne vej ændre ETIKETTEN og aldrig magten.
+    """
+    if str(kilde_ejer or "").strip().lower() != EJER_JARVIS:
+        return False
+    return str(kildetype or "").strip().lower() in IKKE_GATENDE_KILDETYPER
+
+
 def registrer_kilde(
     *,
     bruger_id: str,
@@ -340,6 +355,7 @@ def registrer_kilde(
     kilde_id: str,
     oprettende_run_id: str = "",
     paastaaet_ejer: str = "",
+    kilde_ejer: str = "",
     beskrivelse: str = "",
     output_sti: str = "",
     output_bytes: int | None = None,
@@ -349,11 +365,27 @@ def registrer_kilde(
     `paastaaet_ejer` ignoreres som bevis — den læses KUN for at kunne mærke en
     post `huset` når kalderen selv siger det. Den kan aldrig løfte en post til
     `jarvis`; det afgør den levende kontekst.
+
+    `kilde_ejer` er den ANDEN slags ejerskab, og den er ikke en påstand om
+    noget kalderen selv fandt på: den er ejeren som KILDENS EGEN RÆKKE bærer
+    den — i dag `behavioral_decisions.created_by`. Den accepteres kun for
+    kildetyper der ikke kan gate (`_kilde_ejer_kan_loefte`), så den flytter
+    etiketten `[huset]` → `[dig]` og aldrig evnen til at nægte en mutation.
+
+    ## Hvorfor den findes (målt 4/10-2026)
+
+    Beslutnings-posterne blev mærket `huset`, fordi de registreres fra en
+    baggrundsvej uden et levende run. Mærket beskriver SKRIVEREN — og blev
+    læst som et udsagn om EJERSKABET. Bjørn: «du må aldrig være i tvivl om
+    hvad der er til dig.» En beslutning er Jarvis' egen forpligtelse
+    (`created_by` står `jarvis` i 79 af 80 rækker), og posten skal sige det.
     """
     kildetype_n = str(kildetype or "").strip().lower()
 
     ejer = EJER_UKENDT
     if verificeret_jarvis_run(oprettende_run_id, bruger_id):
+        ejer = EJER_JARVIS
+    elif _kilde_ejer_kan_loefte(kildetype_n, kilde_ejer):
         ejer = EJER_JARVIS
     elif str(paastaaet_ejer or "").strip().lower() == EJER_HUSET:
         ejer = EJER_HUSET

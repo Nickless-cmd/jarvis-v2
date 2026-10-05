@@ -160,13 +160,24 @@ def test_et_baand_UDEN_poster_faar_ingen_handlingslinje():
 # ── Indbakke-registreringen (4/10-2026) ─────────────────────────────────────
 
 def _beslutninger():
+    """Rækker som `behavioral_decisions` giver dem — inkl. `created_by`.
+
+    `created_by` er ikke pynt: indbakkens ETIKET kommer fra kildens egen række
+    (målt 4/10-2026: `jarvis` i 79 af 80 rækker i drift). Uden feltet her ville
+    testen måle et mærke kilden aldrig ville give — og det var præcis hvad den
+    gjorde: den pinnede `[huset]`, mens den rigtige række siger `jarvis`.
+    """
     return [
-        {"decision_id": "dec_krit", "directive": "en kritisk", "adherence_score": 0.0},
-        {"decision_id": "dec_imp", "directive": "en imperativ", "adherence_score": 0.3},
-        {"decision_id": "dec_adv", "directive": "en advisory", "adherence_score": 0.5},
+        {"decision_id": "dec_krit", "directive": "en kritisk",
+         "adherence_score": 0.0, "created_by": "jarvis"},
+        {"decision_id": "dec_imp", "directive": "en imperativ",
+         "adherence_score": 0.3, "created_by": "jarvis"},
+        {"decision_id": "dec_adv", "directive": "en advisory",
+         "adherence_score": 0.5, "created_by": "jarvis"},
         {"decision_id": "dec_god", "directive": "en der gaar godt",
-         "adherence_score": 0.9},
-        {"decision_id": "", "directive": "uden id", "adherence_score": 0.0},
+         "adherence_score": 0.9, "created_by": "jarvis"},
+        {"decision_id": "", "directive": "uden id",
+         "adherence_score": 0.0, "created_by": "jarvis"},
     ]
 
 
@@ -244,31 +255,65 @@ def test_baandet_staar_i_beskrivelsen_saa_linjen_kan_laeses_alene(monkeypatch, t
     assert "en kritisk" in p["beskrivelse"]
 
 
-def test_en_beslutnings_post_GATER_ALDRIG(monkeypatch, tmp_path):
-    """Beslutnings-gaten har sin EGEN eskalering i tre bånd. Indbakken må ikke
-    lægge en anden oven på den — to gater der skubber til det samme er den
-    tredje mekanisme der skal reddes af den fjerde."""
+def test_en_beslutnings_post_er_MAERKET_som_min_og_GATER_ALDRIG(monkeypatch, tmp_path):
+    """Etiketten og gaten er to svar, og begge skal være rigtige.
+
+    (1) GATER ALDRIG. Beslutnings-gaten har sin EGEN eskalering i tre bånd.
+        Indbakken må ikke lægge en anden oven på den — to gater der skubber til
+        det samme er den tredje mekanisme der skal reddes af den fjerde.
+
+    (2) MÆRKET ER MIT. Posterne stod `[huset]`, fordi de registreres fra en
+        baggrundsvej uden et levende run. Mærket beskriver SKRIVEREN — og jeg
+        læste det som et udsagn om EJERSKABET og afviste min egen beslutning
+        over for Bjørn. Bjørn 4/10: «du må aldrig være i tvivl om hvad der er
+        til dig.» Beslutningen ER min: `created_by` står `jarvis` i kilden.
+
+    De to hænger sammen: netop fordi kildetypen `decision` ikke kan gate, må
+    etiketten gerne være `jarvis`. Mærket flytter ikke magten.
+    """
     from unittest.mock import patch
 
     import core.services.decision_adherence_gate as g
+    from core.runtime.db_inbox import EJER_JARVIS
 
     dbi = _med_db(monkeypatch, tmp_path)
     with patch("core.services.behavioral_decisions.list_active_decisions",
                return_value=_beslutninger()), \
          patch("core.services.behavioral_decisions.count_decisions", return_value=5):
         g.registrer_i_indbakken("bjorn")
-    from core.runtime.db_inbox import EJER_HUSET
-    for p in dbi.liste(bruger_id="bjorn"):
+    poster = dbi.liste(bruger_id="bjorn")
+    assert poster, "ingen poster — saa maaler resten ingenting"
+    for p in poster:
         assert p["kraever_handling"] is False, f"{p['id']} kan gate"
-        # `huset`, ikke bare «ikke jarvis». Maerket betyder noget i visningen:
-        # [huset] siger at husets review satte scoren, mens [ukendt] siger at
-        # proveniensen ikke kunne afgoeres. For en beslutning ER den kendt.
-        #
-        # Mutations-proeven afsloerede forskellen: droppede jeg
-        # `paastaaet_ejer="huset"`, blev den `ukendt`, og en assertion paa
-        # `!= "jarvis"` kunne ikke se det.
-        assert p["verificeret_ejer"] == EJER_HUSET, (
-            f"{p['id']} er maerket {p['verificeret_ejer']}, ikke huset")
+        assert p["verificeret_ejer"] == EJER_JARVIS, (
+            f"{p['id']} er maerket {p['verificeret_ejer']} — beslutningen er min")
+
+
+def test_etiketten_foelger_KILDENS_egen_created_by(monkeypatch, tmp_path):
+    """Mærket er ikke hardkodet til `jarvis` — KILDENS række afgør det.
+
+    En beslutning oprettet af en anden må ikke stjæle mit mærke. Uden dette
+    test kunne `kilde_ejer="jarvis"` skrives som en konstant i registreringen,
+    og så var mærket igen en påstand frem for en læsning — den samme fejl,
+    bare med modsat fortegn.
+    """
+    from unittest.mock import patch
+
+    import core.services.decision_adherence_gate as g
+    from core.runtime.db_inbox import EJER_UKENDT
+
+    dbi = _med_db(monkeypatch, tmp_path)
+    rows = [{"decision_id": "dec_fremmed", "directive": "en andens",
+             "adherence_score": 0.1, "created_by": "lotte"}]
+    with patch("core.services.behavioral_decisions.list_active_decisions",
+               return_value=rows), \
+         patch("core.services.behavioral_decisions.count_decisions", return_value=1):
+        g.registrer_i_indbakken("bjorn")
+    p = dbi.hent(bruger_id="bjorn", kilde_id="dec_fremmed")
+    assert p is not None, "posten blev ikke oprettet — saa maaler testen intet"
+    assert p["verificeret_ejer"] == EJER_UKENDT, (
+        f"en fremmed beslutning blev maerket {p['verificeret_ejer']}")
+    assert p["kraever_handling"] is False
 
 
 def test_et_DROP_kan_ikke_tie_en_beslutning(monkeypatch, tmp_path):

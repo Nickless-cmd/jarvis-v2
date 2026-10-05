@@ -203,12 +203,28 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
 
     ## De gater ikke, og det er med vilje
 
-    Posterne oprettes uden for et levende run, så `registrer_kilde` giver dem
-    `verificeret_ejer="ukendt"` og `kraever_handling=False`. Det er det rigtige
-    udfald: en beslutning er en forpligtelse Jarvis har givet sig selv, men den
-    er ikke et stykke arbejde der venter — og skrive-kontrakten siger at kun
-    verificerede, egne poster må nægte en mutation. Beslutnings-gaten har sin
-    EGEN eskalering; indbakken skal ikke lægge en anden oven på.
+    Posterne oprettes uden for et levende run, så `verificeret_jarvis_run` kan
+    intet bevise — den kræver et run der KØRER. Derfor bliver
+    `kraever_handling=False`, og det er det rigtige udfald: en beslutning er en
+    forpligtelse Jarvis har givet sig selv, men den er ikke et stykke arbejde
+    der venter — og skrive-kontrakten siger at kun verificerede, egne poster må
+    nægte en mutation. `decision` står desuden i `IKKE_GATENDE_KILDETYPER` som
+    et selvstændigt værn. Beslutnings-gaten har sin EGEN eskalering; indbakken
+    skal ikke lægge en anden oven på.
+
+    ## Mærket: `[dig]`, ikke `[huset]` (målt 4/10-2026)
+
+    Posterne blev mærket `huset`, fordi de registreres fra en baggrundsvej og
+    ikke fra et levende run. Mærket beskriver SKRIVEREN — og jeg læste det som
+    et udsagn om EJERSKABET: posten stod på Bjørns bord med `[huset]`, og jeg
+    afviste den over for ham som husets sag. Bjørn: «du må aldrig være i tvivl
+    om hvad der er til dig.»
+
+    Beslutningen ER min egen. `behavioral_decisions.created_by` står `jarvis` i
+    79 af 80 rækker (målt 4/10), og den række ER kilden — så ejerskabet gives
+    videre derfra gennem `kilde_ejer`, som kun kan flytte etiketten. Den gamle
+    begrundelse for `huset` («husets review satte scoren») beskrev hvem der
+    REGNEDE, ikke hvem forpligtelsen tilhører.
 
     ## `drop` må ikke kunne tie en beslutning
 
@@ -247,9 +263,11 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
             bruger_id=bruger_id,
             kildetype="decision",
             kilde_id=dec_id,
-            # Ingen `oprettende_run_id`: posten oprettes af en baggrundsvej,
-            # og et flag ville vaere en paastand. `ukendt` er det aerlige svar.
-            paastaaet_ejer="huset",
+            # Ingen `oprettende_run_id`: posten oprettes af en baggrundsvej, og
+            # et run-id der ikke kører ville være en påstand. Ejerskabet kommer
+            # i stedet fra KILDENS egen række — `created_by` — og kildetypen
+            # `decision` kan ikke gate, så det flytter etiketten og intet andet.
+            kilde_ejer=str(d.get("created_by") or ""),
             beskrivelse=f"[{baand} {score:.0%}] {str(d.get('directive') or '')}",
         )
         if r.get("status") == "ok":

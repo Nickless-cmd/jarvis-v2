@@ -379,6 +379,27 @@ def test_engangs_og_GENTAGENDE_opgaver_staar_i_HVER_SIN_sektion():
     assert "hver 1440m" in v["planlagte"][0]["linje"]
 
 
+def test_en_beslutnings_post_baerer_MIT_maerke_uden_at_paastaa_gating():
+    """Ejer-mærket og gate-flaget er to forskellige spørgsmål.
+
+    `_post` udledte `kraever_handling` af EJEREN alene, mens skriveren
+    (`inbox_state.registrer_kilde`) også kræver at kildetypen ikke står i
+    `IKKE_GATENDE_KILDETYPER`. Da beslutnings-posterne blev mærket `[dig]`,
+    ville visningen derfor påstå at de krævede handling — mens gaten, der læser
+    rækkens EGET flag, aldrig kunne nægte på dem. To svar om samme post.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id="dec_krit", kildetype="decision",
+              verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=False,
+              beskrivelse="[kritisk 0%] en kritisk",
+              created_at=_iso(TID - DAG))]))
+    post = v["venter_paa_dig"][0]
+    assert post["id"] == "dec_krit"
+    assert post["ejer_maerke"] == "[dig]", "min EGEN beslutning staar ikke som min"
+    assert post["kraever_handling"] is False, (
+        "visningen paastaar at en beslutning gater — gaten kan ikke naegte paa den")
+
+
 def test_godkendelser_er_SYNLIGE_men_gater_ALDRIG():
     """Han skal kunne se at en tråd venter på Bjørn, uden at Bjørns svartid
     bliver Jarvis' blokering."""

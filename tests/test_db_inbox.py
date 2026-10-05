@@ -334,6 +334,55 @@ def test_fejeren_roerer_ikke_en_AFGJORT_post(db):
                          kilde_id="job-mit")["status"] == db_inbox.STATUS_DONE
 
 
+# ── Produsenten: hvem får en frist? (5/10-2026) ──────────────────────────────
+#
+# Funktionerne ovenfor var grundigt dækket. Det var FORBINDELSEN der manglede:
+# `saet_udloeb` havde nul kaldere uden for tests, `er_udloebet` blev læst nul
+# steder, og `fej_udloebne` blev aldrig kørt. Målt i drift: NUL poster havde
+# nogensinde båret en frist, så hele subsystemet var virkningsløst — og de
+# tests der fandtes, kunne ikke se det, fordi de kaldte funktionerne selv.
+
+def test_en_GATENDE_post_faar_en_frist_og_en_informativ_goer_IKKE(db):
+    """Reglen følger spec'ens egen sætning om HVORFOR udløb findes: «en post
+    ikke kan gate i det uendelige ved at ingen rører den.»
+
+    Derfor fristen på de poster der KAN nægte en mutation — ikke på alle. En
+    informativ post uden frist er harmløs; en blokerende post uden frist er en
+    permanent lås.
+    """
+    gatende = _opret("job-gater", kraever_handling=True)["post"]
+    informativ = _opret("job-info")["post"]
+    assert gatende["expires_at"] != "", "en gatende post fik ingen frist"
+    assert db_inbox.er_udloebet(gatende) is False, "fristen laa i fortiden"
+    assert informativ["expires_at"] == "", "en informativ post fik en frist"
+
+
+def test_en_BLOKERENDE_brugerpost_faar_ogsaa_en_frist(db):
+    """Bjørns `bloker` er den anden vej ind i gaten. Den skal bære samme
+    grænse — ellers kunne netop den post låse ham fast for evigt, og det var
+    dead-locken i `mark_wakeup_consumed` han selv pegede på."""
+    p = _opret("bug-x", kildetype="bug", verificeret_ejer=db_inbox.EJER_BRUGER,
+               kraever_handling=True, bloker=True)["post"]
+    assert p["expires_at"] != ""
+
+
+def test_en_genaabnet_post_arver_IKKE_en_doed_frist(db):
+    """`genaabn_af_kilde` sætter `kraever_handling = 0`, så posten ikke længere
+    kan gate. Ryddes fristen ikke SAMME sted, er posten død igen i samme
+    sekund: `er_udloebet` er beregnet ved læsning, og den arvede frist ligger
+    i fortiden. Genåbningen ville være en no-op der så ud som en succes."""
+    _opret("job-gen", kraever_handling=True)
+    db_inbox.saet_udloeb(bruger_id=BRUGER, kilde_id="job-gen", expires_at=_i(-60))
+    db_inbox.afgoer(bruger_id=BRUGER, kilde_id="job-gen",
+                    ny_status=db_inbox.STATUS_DROP, grund="udsat")
+    g = db_inbox.genaabn_af_kilde(bruger_id=BRUGER, kilde_id="job-gen")
+    assert g["status"] == "ok", g
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="job-gen")
+    assert p["status"] == db_inbox.STATUS_AABEN
+    assert p["expires_at"] == "", "den genaabnede post arvede en doed frist"
+    assert db_inbox.er_udloebet(p) is False
+
+
 # ── Opgave 9: kildens terminale tilstand ────────────────────────────────────
 
 def test_exit_0_NEDGRADERER_posten_uden_at_nogen_kaldte_done(db):

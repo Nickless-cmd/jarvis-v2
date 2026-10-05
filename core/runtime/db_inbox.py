@@ -30,7 +30,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from core.runtime.db_core import connect
@@ -164,7 +164,7 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
     artefaktet er forsvundet.
     """
     b = r["output_bytes"]
-    return {
+    post = {
         "id": str(r["kilde_id"]),
         "bruger_id": str(r["bruger_id"]),
         "kildetype": str(r["kildetype"]),
@@ -185,6 +185,26 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "expires_at": _felt(r, "expires_at"),
         "bloker": _felt(r, "bloker") in ("1", "True", "true"),
     }
+    # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
+    #
+    # Den sættes her, ved LÆSNINGEN — ikke kun i fejeren. Posten dør i det
+    # øjeblik nogen læser den, uden at et job skal køre. Fejeren skriver
+    # derefter den terminale tilstand, så en post INGEN læser også får den;
+    # det er hele grunden til at Opgave 8 bygges som begge dele og ikke som
+    # beregningen alene (se `fej_udloebne`).
+    #
+    # `kraever_handling` falder SAMME sted, og det er spec'ens egen
+    # begrundelse: «en post ikke kan gate i det uendelige ved at ingen rører
+    # den.» Uden det led ville en udløbet post blive ved med at nægte en
+    # mutation — en død post der blokerer.
+    #
+    # MÅLT 5/10-2026: funktionen fandtes, men blev kaldt NUL steder i
+    # produktionen, så enhver frist var virkningsløs. Samme fejlform som
+    # `expire_stale` havde, før `approval_expiry_daemon` blev skrevet.
+    post["udloebet"] = er_udloebet(post)
+    if post["udloebet"]:
+        post["kraever_handling"] = False
+    return post
 
 
 def _felt(r: sqlite3.Row, navn: str) -> str:
@@ -201,6 +221,14 @@ def _felt(r: sqlite3.Row, navn: str) -> str:
     return "" if v is None else str(v)
 
 
+#: Opgave 8: hvor længe en post der KAN nægte en mutation må leve.
+#:
+#: Tallet står ét sted og kan ændres uden at røre andet. 30 dage er valgt som
+#: «længere end nogen forpligtelse i dette hus har levet målt, og kortere end
+#: for evigt» — den eneste grænse der ikke kan være vilkårlig er den øvre.
+_FRIST_DAGE: Final[int] = 30
+
+
 def opret_eller_hent(
     *,
     bruger_id: str,
@@ -213,6 +241,7 @@ def opret_eller_hent(
     output_sti: str = "",
     output_bytes: int | None = None,
     bloker: bool = False,
+    expires_at: str = "",
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -227,6 +256,25 @@ def opret_eller_hent(
     kildetype = str(kildetype or "").strip()
     if not bruger_id or not kilde_id or not kildetype:
         return {"status": "fejl", "error": "bruger_id, kildetype og kilde_id kraeves"}
+    # ── Produsenten for `expires_at` (Opgave 8, målt 5/10-2026) ─────────────
+    #
+    # Feltet havde nul skrivere i drift: `saet_udloeb()` fandtes, men blev
+    # kaldt NUL steder uden for tests, og ingen post havde nogensinde båret en
+    # frist. Reglen lægges HER og ikke hos de fire kaldere, fordi både
+    # `kraever_handling` og `bloker` er kendt netop her — tre kopier ville
+    # være tre steder at holde enige.
+    #
+    # HVEM får en frist: kun en post der KAN nægte en mutation. Det er
+    # spec'ens egen sætning — «kraever_handling falder ved udløb, så en post
+    # ikke kan gate i det uendelige ved at ingen rører den». En informerende
+    # post uden frist er harmløs; en blokerende post uden frist er en
+    # permanent lås.
+    #
+    # HVEM får den IKKE: de kildetyper der ikke kan gate. En beslutnings-post
+    # genregistreres af sin kilde hver runde, og en frist ville slås mod
+    # `genaabn_af_kilde` — posten ville udløbe og blive genåbnet i ét væk.
+    if not str(expires_at or "").strip() and (kraever_handling or bloker):
+        expires_at = (datetime.now(UTC) + timedelta(days=_FRIST_DAGE)).isoformat()
     with connect() as conn:
         _ensure_skema(conn)
         conn.execute(
@@ -234,13 +282,13 @@ def opret_eller_hent(
             INSERT OR IGNORE INTO inbox_items (
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
-                output_sti, output_bytes, created_at, bloker
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                output_sti, output_bytes, created_at, bloker, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
-             output_bytes, _nu(), 1 if bloker else 0),
+             output_bytes, _nu(), 1 if bloker else 0, str(expires_at or "")),
         )
         r = conn.execute(
             "SELECT * FROM inbox_items WHERE bruger_id = ? AND kildetype = ? "
@@ -396,7 +444,14 @@ def genaabn_af_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
         cur = conn.execute(
             "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
             "afgjort_at = '', afgjort_grund = '', paamindelser = 0, "
-            "sidste_paamindelse_at = '', sidste_paamindelse_tur = '' "
+            "sidste_paamindelse_at = '', sidste_paamindelse_tur = '', "
+            # Fristen ryddes SAMMEN med genåbningen (5/10-2026). Ellers arvede
+            # en genåbnet post den frist der netop fik den til at udløbe, og
+            # den ville være død igen i samme sekund — `er_udloebet` er
+            # beregnet ved læsning. Genåbningen sætter samtidig
+            # `kraever_handling = 0`, så posten ikke længere kan gate og
+            # derfor heller ikke har brug for en frist.
+            "expires_at = '' "
             "WHERE bruger_id = ? AND kilde_id = ? AND status IN (?, ?)",
             (STATUS_AABEN, bruger_id, kilde_id, STATUS_DROP, STATUS_UDLOEBET),
         )

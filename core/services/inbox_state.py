@@ -359,6 +359,7 @@ def registrer_kilde(
     beskrivelse: str = "",
     output_sti: str = "",
     output_bytes: int | None = None,
+    expires_at: str = "",
 ) -> dict[str, Any]:
     """Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id).
 
@@ -404,6 +405,10 @@ def registrer_kilde(
         beskrivelse=beskrivelse,
         output_sti=output_sti,
         output_bytes=output_bytes,
+        # En kilde der KENDER en frist kan sætte den (5/10-2026). Er den tom,
+        # afgør `db_inbox.opret_eller_hent` om posten skal have en: kun en post
+        # der kan nægte en mutation får en, og reglen står ét sted.
+        expires_at=expires_at,
     )
     if r.get("status") != "ok":
         # Spec'ens Global Constraint: en handlingskrævende post der ikke blev

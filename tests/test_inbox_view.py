@@ -918,7 +918,8 @@ def test_BACKLOG_tallet_er_koblet_til_en_rigtig_kilde(monkeypatch, tmp_path):
     c.execute("CREATE TABLE central_instrument_findings (signature TEXT, status TEXT)")
     c.executemany("INSERT INTO central_instrument_findings VALUES (?,?)",
                   [(f"s{i}", "open") for i in range(7)] + [("lukket", "resolved")])
-    c.commit(); c.close()
+    c.commit()
+    c.close()
 
     @contextmanager
     def _connect():
@@ -997,3 +998,21 @@ def test_kan_ejeren_ikke_oploeses_vises_INGEN_ejerloese(monkeypatch):
                  "status": "running", "pid": 1}
     v = byg_indbakke(BJORN, kilder=_kilder(jobs=[ejerloest]), nu_ts=TID)
     assert [p["id"] for s in v.values() if isinstance(s, list) for p in s] == []
+
+
+def test_en_UDLOEBET_post_er_ikke_handlingskraevende_i_visningen():
+    """Visningen GENBEREGNER `kraever_handling` af ejer + kildetype.
+
+    Uden udløbs-leddet ville den sige «kræver handling: ja» om en post hvis
+    frist er passeret — mens gaten, der læser den beregnede tilstand i
+    `db_inbox`, siger nej. To svar om samme post, præcis som 4/10-fejlen med
+    beslutnings-posterne. Posten skal samtidig blive ved med at KUNNE LÆSES:
+    udløb er en tilstand, ikke en sletning.
+    """
+    udloebet = _post(id="wake-udl", kilde_id="wake-udl",
+                     expires_at=_iso(TID - DAG))
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[udloebet]))
+    alle = [p for s in v.values() if isinstance(s, list) for p in s]
+    fundet = [p for p in alle if p["id"] == "wake-udl"]
+    assert fundet, "posten forsvandt — udloeb er en tilstand, ikke en sletning"
+    assert fundet[0]["kraever_handling"] is False

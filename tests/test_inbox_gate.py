@@ -555,3 +555,40 @@ def test_en_vaekning_uden_foraeldre_gater_som_foer(inbox_db, monkeypatch):
     v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")
     assert v["blokeret"] is True, v
     assert "wake-uden-kilde" in v["poster"]
+
+
+# ── Opgave 8's FORBINDELSE: en udløbet post gater ikke (5/10-2026) ───────────
+#
+# Funktionerne i `db_inbox` var grundigt dækket. Det var FORBINDELSEN der
+# manglede: `er_udloebet` blev kaldt NUL steder i produktionen, og
+# `fej_udloebne` blev aldrig kørt. Målt 5/10-2026 i drift: nul poster havde
+# nogensinde båret en frist, så en hvilken som helst frist var virkningsløs.
+# Testen her måler derfor vejen gennem GATEN — ikke funktionen, som allerede
+# havde sin egen test og bestod hele tiden.
+
+def test_en_UDLOEBET_post_gater_IKKE_selv_om_raekken_staar_aaben(inbox_db):
+    """Den beregnede tilstand skal bide i gaten, ikke kun i fejeren.
+
+    Rækken står bevidst stadig `aaben` i basen — fejeren har IKKE kørt. Det er
+    den beregnede tilstand alene der skal holde posten fra at nægte. Ellers
+    kunne en post gate i det uendelige, hvis blot ingen rørte den, og det er
+    præcis hvad spec'ens Opgave 8 findes for at forhindre.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    post = _egen_aaben_post(id="wake-udloebet")
+    _lever_paamindelse(post, "t1")
+    _lever_paamindelse(post, "t2")
+    assert evaluer_inbox_mutation(BJORN, "edit_file", tur="t3")["blokeret"] is True
+
+    db_inbox.saet_udloeb(
+        bruger_id=BJORN, kilde_id="wake-udloebet",
+        expires_at=(datetime.now(UTC) - timedelta(minutes=1)).isoformat())
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="wake-udloebet")["status"] == db_inbox.STATUS_AABEN
+
+    v = evaluer_inbox_mutation(BJORN, "edit_file", tur="t4")
+    assert v["blokeret"] is False, v
+    # ... og posten kan stadig LÆSES. Udløb er en tilstand, ikke en sletning.
+    p = db_inbox.hent(bruger_id=BJORN, kilde_id="wake-udloebet")
+    assert p is not None and p["kraever_handling"] is False

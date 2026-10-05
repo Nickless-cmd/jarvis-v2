@@ -399,6 +399,7 @@ def _post(
     alder_dage: int | None = None,
     tid_tekst: str = "",
     bloker: bool = False,
+    udloebet: bool = False,
 ) -> dict[str, Any]:
     """Byg én post med de seks felter — og ÉN linje, uden payload.
 
@@ -442,9 +443,16 @@ def _post(
         # baerer nu `[dig]`, og uden dette led ville visningen paastaa at de
         # kraever handling, mens gaten — der laeser raekkens EGET flag — aldrig
         # kunne naegte paa dem. ÉN definition, hentet fra skriveren.
-        "kraever_handling": ((ejer == db_inbox.EJER_JARVIS
-                              and kildetype not in IKKE_GATENDE_KILDETYPER)
-                             or (ejer == db_inbox.EJER_BRUGER and bloker)),
+        # En UDLØBET post må ikke gate (5/10-2026). Uden dette led ville
+        # visningen sige «kraever handling: ja» om en post hvis frist er
+        # passeret — og da gaten læser den SAMME beregnede tilstand i
+        # `db_inbox._post_fra_raekke`, ville de to flader igen være uenige om
+        # præcis den post hvor uenigheden kan ses. Det var fejlen 4/10, ét
+        # felt til.
+        "kraever_handling": (not udloebet and (
+            (ejer == db_inbox.EJER_JARVIS
+             and kildetype not in IKKE_GATENDE_KILDETYPER)
+            or (ejer == db_inbox.EJER_BRUGER and bloker))),
         "dubletter": 1,
         "kilde_ider": [post_id],
         "linje": linje,
@@ -721,6 +729,11 @@ def byg_indbakke(
             alder_dage=_alder_dage(str(p.get("created_at") or ""), nu),
             forfalden_dage=_alder_dage(str(p.get("created_at") or ""), nu),
             bloker=bool(p.get("bloker")),
+            # Udløb er BEREGNET (Opgave 8), og den læses fra `db_inbox` — ikke
+            # genberegnet her. To definitioner af «død» ville drive fra
+            # hinanden på præcis samme måde som to definitioner af «venter»
+            # gjorde det 4/10.
+            udloebet=bool(p.get("udloebet")) or db_inbox.er_udloebet(p),
             nu_ts=nu,
         )
         if post["id"] == turens_wake:

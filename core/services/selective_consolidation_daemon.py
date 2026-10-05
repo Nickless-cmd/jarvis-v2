@@ -192,19 +192,34 @@ def _consolidate_sensory(today_start: str) -> dict[str, Any]:
     if not archive_targets:
         return {"layer": "sensory", "scored": len(scored), "archived": 0}
 
-    # Mark for deletion: we can't "archive" sensory memories (no status column),
-    # so we delete them outright. Low-quality sensory noise has no recall value.
-    ids_to_delete = [s["id"] for s in archive_targets]
-    with connect() as conn:
-        _ensure_sensory_memories_table(conn)
-        for mid in ids_to_delete:
-            conn.execute("DELETE FROM sensory_memories WHERE id = ?", (mid,))
-        conn.commit()
+    # Vi SLETTER IKKE. Maalt i drift 5/10-2026:
+    #
+    #   * Bund-50% blev valgt efter LAENGDE (`len/500` + mood-bonus). Laengde er
+    #     anti-korreleret med kvalitet her: et kort, praecist indtryk
+    #     («Rummet foeles tungere og mere tyst end sidst …», 100 tegn) scorer
+    #     0.2 og ryger; et langt prompt-ekko scorer 0.8 og overlever.
+    #   * 22 genstarter paa én dag gav 22 koersler (~1.690 poster «arkiveret»).
+    #     Dagsarkivet stod paa 2 poster mod 7-13 de oevrige dage. Ni aegte
+    #     indtryk blev slettet i én enkelt koersel.
+    #   * Brain-laget har `archive_entry` (status-kolonne) og arkiverer bloedt.
+    #     Sensory har ingen — saa «arkivering» blev til DELETE. Og top-K
+    #     promoveres INGEN steder: for sensory er daemonen ren sletning.
+    #
+    # Indtil der findes en rigtig arkiv-vej for sensory rangerer vi og
+    # rapporterer. Vi oedelaegger ikke det vi ikke kan gemme.
+    logger.info(
+        "selective_consolidation: sensory bund-%d%% ville vaere slettet "
+        "(%d poster, laveste score %.3f) — BEHOLDT",
+        100 - _TOP_K_PERCENT,
+        len(archive_targets),
+        scored[0]["_score"] if scored else 0.0,
+    )
 
     return {
         "layer": "sensory",
         "scored": len(scored),
-        "archived": len(archive_targets),
+        "archived": 0,
+        "would_archive": len(archive_targets),
         "threshold": scored[-keep_count]["_score"] if keep_count <= len(scored) else 0,
     }
 

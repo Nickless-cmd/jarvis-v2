@@ -111,15 +111,24 @@ def test_score_private_zero_for_short():
 # ── _consolidate_sensory ──────────────────────────────────────────────
 
 
-def test_consolidate_sensory_archives_bottom_half(isolated_db):
-    """With 10 sensory memories, bottom 50% must be deleted, top 5 kept."""
+def test_consolidate_sensory_ranks_but_never_deletes(isolated_db):
+    """Bund-50% maa RANGERES men ikke slettes.
+
+    Maalt 5/10-2026: den gamle udgave kaldte sin DELETE-blok for «arkivering»,
+    fordi sensory_memories ingen statuskolonne har. Resultatet var permanent tab
+    af aegte sanseindtryk — valgt efter LAENGDE, hvor et kort praecist indtryk
+    scorer 0.2 og et langt prompt-ekko 0.8. Ni aegte indtryk roeg i én koersel.
+
+    Testen beviser to ting: at rangeringen stadig beregnes (saa daemonen ikke
+    bliver blind), og at INGEN raekke forsvinder.
+    """
     from core.runtime.db import connect
     from core.services.selective_consolidation_daemon import _consolidate_sensory
 
     today_start = datetime.now(UTC).strftime("%Y-%m-%dT00:00:00")
 
     with connect() as conn:
-        # Insert 5 short (low quality) + 5 long (high quality)
+        # 5 korte (lav score) + 5 lange (hoej score)
         for i in range(5):
             _insert_sensory(conn, "short", mood_tone=None)
         for i in range(5):
@@ -127,12 +136,26 @@ def test_consolidate_sensory_archives_bottom_half(isolated_db):
 
     result = _consolidate_sensory(today_start)
     assert result["scored"] == 10
-    assert result["archived"] == 5  # bottom 50% deleted
+    assert result["archived"] == 0  # intet slettet
+    assert result["would_archive"] == 5  # bund-50% stadig udpeget
 
-    # Verify: only 5 remain
+    # Beviset: ALLE 10 er der endnu.
     from core.runtime.db_sensory import count_sensory_memories
-    remaining = count_sensory_memories()
-    assert remaining == 5
+    assert count_sensory_memories() == 10
+
+
+def test_sensory_layer_has_no_delete():
+    """Vaern: genindfoeres en DELETE mod sensory_memories, fejler denne test.
+
+    Uden dette vaern kan nogen (ogsaa jeg) genopstaa sletningen uden at nogen
+    af de andre tests opdager det — de maaler rangering, ikke datatab.
+    """
+    import inspect
+
+    import core.services.selective_consolidation_daemon as mod
+
+    src = inspect.getsource(mod)
+    assert "DELETE FROM sensory_memories" not in src
 
 
 def test_consolidate_sensory_no_today_records(isolated_db):

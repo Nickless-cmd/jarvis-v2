@@ -137,6 +137,138 @@ def _uden_raa_tanke(content: str) -> tuple[str, bool]:
     return tekst[sidste.end():].strip(), True
 
 
+# Prompt-ekko — modellens EGEN instruktion ekkoet tilbage som «indtryk».
+#
+# Maalt 5/10-2026: 30 poster i `sensory_memories` var ikke sanseindtryk men
+# vision-modellens gengivelse af sin opgave: «We need answer in Danish only.
+# Need describe changes since previous observation…». Familien er
+# SELVFORSTAERKENDE — den forrige beskrivelse foeres tilbage ind i prompten, saa
+# et ekko bliver til naeste ekko. Maalt 13/9: tre poster i traek, hvor den
+# sidste citerer den forrige — «previous description provided is weird: "We need
+# answer in Danish only…"».
+#
+# Vaernene fandtes i forvejen, men ingen af dem kigger efter dette:
+# `_uden_raa_tanke` fjerner `<think>`-blokke, og `er_kvittering` fanger «Intet
+# maerkbart aendret.». Ekkoet har ingen tags og er ingen kvittering.
+#
+# Bevidst smalt: hvert moenster er en vending en BESKRIVELSE af et rum ikke
+# bruger. En falsk positiv koster et aegte indtryk, og det er dyere end at
+# overse et ekko.
+_PROMPT_EKKO_MOENSTRE = (
+    # Den engelske familie — modellen taenker hoejt paa engelsk.
+    re.compile(r"\bwe need (?:answer|describe|infer|observe|compare|analy[sz]e)\b", re.I),
+    re.compile(r"\bneed (?:to )?(?:describe|infer|answer|observe|compare|analy[sz]e)\b", re.I),
+    re.compile(r"\banswer (?:only )?in danish\b", re.I),
+    re.compile(r"\bwe have (?:only )?(?:one |current |the )?(?:image|billede)\b", re.I),
+    re.compile(r"\bprevious description\b", re.I),
+    re.compile(r"\b(?:the )?user (?:wants|asks)\b", re.I),
+    re.compile(r"\bi need to describe\b", re.I),
+    # Den danske familie — samme ekko, andet sprog.
+    re.compile(r"\b(?:vi|jeg) skal beskrive\b", re.I),
+    re.compile(r"\bsidste beskrivelse var\b", re.I),
+    re.compile(r"\bbrugeren (?:vil|beder|spørger)\b", re.I),
+    # Prompten selv, ordret indsat midt i teksten.
+    re.compile(r"\bspørgsmålet\s*:", re.I),
+    re.compile(r"\bsvar kun\b", re.I),
+    re.compile(r"\bhvis intet mærkbart\b", re.I),
+    # Digtning: modellen opdager at billedet er ubrugeligt og finder paa et rum.
+    re.compile(r"\bmin fantasi til at skabe\b", re.I),
+)
+
+# Svar-preamble — modellen ANMELDER sit svar i stedet for at sanse.
+# «Her er en beskrivelse af rummet: **Atmosfæren og lyset** Der hersker …»
+# Maalt 5/10-2026: 20 poster. Her STRYGES anmeldelsen frem for at posten
+# afvises — modsat ekkoet baerer resten et aegte indtryk.
+#
+# Ledet efter et NAVNORD, ikke bare «her er»: «Her er ingen mennesker» er en
+# gyldig beskrivelse af et rum og maa ikke rammes.
+_PREAMBLE_MOENSTER = re.compile(
+    r"(?:\A|(?<=[.!?])\s+)(?:okay,?\s*)?(?:her er|lad os)\b[^:.]{0,80}?"
+    r"(?:beskrivelse|sansebeskrivelse|registrering|gengivelse|opsummering|skildring)\b",
+    re.I,
+)
+
+#: Hvor en saetning slutter. Bruges til at rykke et klip tilbage til sidste
+#: hele led, saa der ikke staar et halvt stykke tilbage.
+_SAETNINGSSLUT = re.compile(r"[.!?](?=\s|$)|\n\n")
+
+
+def _klip_ved_saetningsgraense(tekst: str, pos: int) -> str:
+    """Klip `tekst` ved `pos`, men ryk tilbage til sidste saetningsgraense.
+
+    Uden det stod «Da billedet er helt sort, maa jeg bruge» tilbage som et halvt
+    led — over laengdekravet, og derfor vaerre end ingenting: det ligner et
+    indtryk. Er der ingen graense foer `pos`, findes der intet indtryk.
+    """
+    hale = tekst[:pos]
+    sidste = None
+    for traef in _SAETNINGSSLUT.finditer(hale):
+        sidste = traef
+    return hale[: sidste.end()].strip() if sidste else ""
+
+
+def _fjern_anmeldelse(tekst: str, traef: re.Match[str]) -> str:
+    """Fjern selve anmeldelsen — ikke resten af posten.
+
+    Maalt 5/10-2026: «Det er sent paa aftenen, og rummet er praeget af en daempet
+    atmosfaere. Her er en detaljeret beskrivelse: **Lys og skygger:** …» har et
+    aegte indtryk PAA BEGGE SIDER af anmeldelsen. Baade at klippe foran og at
+    klippe bagved ville tabe et af dem, saa kun anmeldelses-leddet fjernes.
+
+    Slutter anmeldelsen med kolon, er det den der afgraenser. Goer den ikke
+    («… baseret paa det visuelle indtryk. Det foeles som …»), er det foerste
+    saetningsslutning i stedet.
+    """
+    rest = tekst[traef.end():]
+    kolon = rest.find(":")
+    punktum = _SAETNINGSSLUT.search(rest)
+    if kolon >= 0 and (punktum is None or kolon < punktum.start()):
+        slut = traef.end() + kolon + 1
+    elif punktum is not None:
+        slut = traef.end() + punktum.end()
+    else:
+        slut = len(tekst)
+
+    foer = tekst[: traef.start()].strip()
+    efter = tekst[slut:].strip()
+    return f"{foer} {efter}".strip() if foer else efter
+
+
+def _uden_stillads(content: str) -> tuple[str, bool]:
+    """Fjern stillads foran et indtryk. Returnerer `(tekst, var_stillads)`.
+
+    To familier, begge maalt i drift 5/10-2026 (29 + 20 poster):
+
+    * **Prompt-ekko** — modellens egen instruktion. Her KLIPPES der ved foerste
+      traef, men kun ved en saetningsgraense, saa et aegte indtryk FORAN ekkoet
+      bevares. Maalt 27/9 begyndte en post med «Billedet viser en stue med to
+      personer …» og fortsatte med prompten ordret.
+    * **Svar-preamble** — «Her er en beskrivelse af rummet: …». Anmeldelsen
+      stryges; indtrykket paa begge sider af den beholdes.
+
+    Er der intet indtryk tilbage, er posten rent stillads, og `_record` afviser
+    den.
+    """
+    tekst = (content or "").strip()
+    roert = False
+
+    foerste = None
+    for moenster in _PROMPT_EKKO_MOENSTRE:
+        traef = moenster.search(tekst)
+        if traef is not None and (foerste is None or traef.start() < foerste):
+            foerste = traef.start()
+    if foerste is not None:
+        tekst = _klip_ved_saetningsgraense(tekst, foerste)
+        roert = True
+
+    anmeldelse = _PREAMBLE_MOENSTER.search(tekst)
+    if anmeldelse is not None:
+        tekst = _fjern_anmeldelse(tekst, anmeldelse)
+        roert = True
+
+    return tekst, roert
+
+
 def _record(
     modality: str,
     content: str,
@@ -151,6 +283,17 @@ def _record(
     if var_raesonnement and len(content) < _MINDSTE_INDTRYK:
         raise ValueError(
             "sensory memory content is model reasoning, not an impression"
+        )
+
+    # Stillads-gaten — den tredje indgangsgraense (5/10-2026). Fjerner
+    # prompt-ekko og svar-preamble FOER kvitterings-gaten, fordi et ekko kan
+    # indeholde en pladsholder og omvendt. Er der intet indtryk tilbage, er
+    # posten rent stillads og afvises som raesonnement ovenfor.
+    content, var_stillads = _uden_stillads(content)
+    if var_stillads and len(content) < _MINDSTE_INDTRYK:
+        raise ValueError(
+            "sensory memory content is scaffolding (prompt echo or answer "
+            "preamble), not an impression"
         )
 
     # Kvitterings-gaten — den anden indgangsgrænse. Et sanseindtryk markerer at

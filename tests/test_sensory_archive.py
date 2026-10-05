@@ -207,3 +207,137 @@ def test_er_kvittering_fanger_begge_familier() -> None:
         "En akustisk snapshot med kategori 'silence' betyder, at der er en "
         "meget lav lydintensitet i rummet lige nu."
     )
+
+
+# ── Stillads-gaten (målt 5/10-2026) ─────────────────────────────────────────
+#
+# 50 af 2.775 poster var ikke sanseindtryk men modellens gengivelse af sin
+# opgave eller en anmeldelse af sit eget svar. Familien er selvforstærkende:
+# den forrige beskrivelse føres tilbage ind i prompten, så et ekko bliver til
+# næste ekko. Målt 13/9 tre poster i træk, hvor den sidste citerer den forrige.
+
+
+def test_prompt_ekko_gemmes_ikke_som_indtryk(isolated_runtime) -> None:
+    """Det engelske spor er det største — modellen tænker højt på engelsk."""
+    from core.services.sensory_archive import record_visual
+
+    with pytest.raises(ValueError):
+        record_visual(
+            "We need answer in Danish only. Need describe changes since "
+            "previous observation 18 min ago. We have only one image."
+        )
+
+
+def test_dansk_prompt_ekko_gemmes_ikke_som_indtryk(isolated_runtime) -> None:
+    """Samme ekko på dansk: «Vi skal beskrive ændringer siden …»."""
+    from core.services.sensory_archive import record_visual
+
+    with pytest.raises(ValueError):
+        record_visual(
+            "Vi skal beskrive ændringer siden sidste observation (for 24 min "
+            "siden). Sidste beskrivelse var «Intet mærkbart ændret.»"
+        )
+
+
+def test_indtrykket_FORAN_ekkoet_bevares(isolated_runtime) -> None:
+    """Grænsen: et ægte indtryk foran ekkoet må ikke ryge med.
+
+    Målt 27/9-2026 begyndte en post med en rigtig beskrivelse og fortsatte med
+    prompten ordret. At afvise hele posten ville tabe det første afsnit.
+    """
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Billedet viser en stue med to personer. Den ene står foroverbøjet "
+        "ved et sofabord. Udenfor er det mørkt.\n\n"
+        "Spørgsmålet: Beskriv hvad der er ændret siden sidste observation. "
+        "Svar kun på dansk."
+    )
+
+    assert post["content"].startswith("Billedet viser en stue")
+    assert "Spørgsmålet" not in post["content"]
+    assert "Svar kun" not in post["content"]
+
+
+def test_halvt_led_efter_klip_afvises(isolated_runtime) -> None:
+    """Et afklippet led er værre end ingenting — det ligner et indtryk.
+
+    «Da billedet er helt sort, må jeg bruge» er over længdekravet og ville
+    slippe igennem, hvis klippet ikke rykkede tilbage til en sætningsgrænse.
+    """
+    from core.services.sensory_archive import record_visual
+
+    with pytest.raises(ValueError):
+        record_visual(
+            "Da billedet er helt sort, må jeg bruge min fantasi til at skabe "
+            "en scene, hvor rummet er præget af mørke."
+        )
+
+
+def test_svar_preamble_stryges_men_indtrykket_beholdes(isolated_runtime) -> None:
+    """Målt 5/10-2026: 19 poster indledte med «Her er en beskrivelse af …».
+
+    Anmeldelsen er stillads; indtrykket bagefter er ægte. Derfor stryges den
+    frem for at posten afvises.
+    """
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Her er en præcis beskrivelse af rummet baseret på billedet:\n\n"
+        "Rummet er badet i et intenst, monokromatisk rødt lys."
+    )
+
+    assert post["content"].startswith("Rummet er badet")
+    assert "Her er en" not in post["content"]
+
+
+def test_anmeldelse_MIDT_I_bevarer_begge_sider(isolated_runtime) -> None:
+    """Har anmeldelsen indtryk på BEGGE sider, må ingen af dem tabe.
+
+    Målt 21/8-2026: «Det er sent på aftenen … Her er en detaljeret
+    beskrivelse: **Lys og skygger:** …». Både at klippe foran og bagved ville
+    tabe et ægte afsnit.
+    """
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Det er sent på aftenen, og rummet er præget af en dæmpet atmosfære. "
+        "Her er en detaljeret beskrivelse:\n\n"
+        "**Lys og skygger:** Belysningen er kunstig og uensartet."
+    )
+
+    assert "Det er sent på aftenen" in post["content"]
+    assert "**Lys og skygger:**" in post["content"]
+    assert "Her er en detaljeret" not in post["content"]
+
+
+def test_her_er_ingen_er_et_indtryk(isolated_runtime) -> None:
+    """Falsk-positiv-vagten. «Her er ingen mennesker» er en gyldig sansning.
+
+    Uden den ville et værn mod stillads spise rigtige beskrivelser af tomme
+    rum — og det er dyere end at overse et ekko.
+    """
+    from core.services.sensory_archive import record_visual
+
+    tekst = "Her er ingen mennesker i rummet, kun et bord og en stol."
+    assert record_visual(tekst)["content"] == tekst
+
+
+def test_anmeldelse_uden_kolon_taeller_til_saetningsslut(isolated_runtime) -> None:
+    """Anmeldelsen slutter ikke altid med kolon.
+
+    Målt 20/9-2026: «Her er en sansebeskrivelse af rummet, baseret på det
+    visuelle indtryk. Det føles som at træde ind i en stille tidslomme.» —
+    uden sætningsslut-faldt tilbage ville hele den rige beskrivelse blive
+    kasseret, fordi der ikke findes noget kolon at klippe ved.
+    """
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Her er en sansebeskrivelse af rummet, baseret på det visuelle "
+        "indtryk. Det føles som at træde ind i en stille, uafsluttet "
+        "tidslomme."
+    )
+
+    assert post["content"].startswith("Det føles som at træde ind")
+    assert "sansebeskrivelse" not in post["content"]

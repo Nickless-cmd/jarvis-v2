@@ -42,7 +42,26 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "self_wakeups"
 _MIN_DELAY_SECONDS = 60
 _MAX_DELAY_SECONDS = 86400  # 24 hours
+#: Loft paa SAMTIDIGE ventende. Det fanger ikke en kaede, for en kaede har
+#: altid dybde 0 eller 1: Jarvis forbruger én og booker én. Maalt 5/10-2026 i
+#: `self_wakeups.json`: 140 poster, 116 consumed, 24 cancelled, NUL ventende —
+#: dette loft har aldrig vaeret i naerheden af at fyre.
 _MAX_PENDING = 20
+
+#: Loft paa KAEDEN, pr. samtale pr. rullende doegn. Det er det loft der mangler.
+#:
+#: Bjoern 5/10-2026: «Hvorfor for jeg 3 til 5 beskeder på et svar??» Hver
+#: kvitteret vaekning bookede en ny — hans egne ord i chatten: «Vaekningen
+#: kvitteret, ny kontrol booket om 30 minutter». Kaeden 30/9 koerte fjorten led
+#: paa fire timer, hvert kvarter, alle med samme indhold: «allerede haandteret».
+#: Oprettede vaekninger pr. dag: 2/10: 15 · 3/10: 69 · 4/10: 141.
+#:
+#: TALLET er maalt, ikke valgt. Fordelingen pr. samtale:
+#:   pr. TIME : p50 2, p90 4, maks 6   → timeniveauet er sundt, ikke her
+#:   pr. DOEGN: 44 · 28 · 12 · 11 · 11 · 7 · 5 · 4
+#: Normalen topper ved 12; 28 og 44 er loebet. 20 giver normalen rigelig luft
+#: og skaerer kun loebet. Et lavere tal ville ramme en legitim CI-vagt.
+_MAX_PR_SAMTALE_PR_DOEGN = 20
 
 
 def _load() -> list[dict[str, Any]]:
@@ -84,6 +103,19 @@ def schedule_self_wakeup(
         return {
             "status": "error",
             "error": f"max {_MAX_PENDING} pending wakeups; cancel one first",
+        }
+    sid = (session_id or "").strip()
+    i_doegnet = bookinger_seneste_doegn(records, sid)
+    if sid and i_doegnet >= _MAX_PR_SAMTALE_PR_DOEGN:
+        return {
+            "status": "error",
+            "error": (
+                f"{i_doegnet} wakeups already booked from this conversation in the "
+                f"last 24h (limit {_MAX_PR_SAMTALE_PR_DOEGN}). You are in a chain: "
+                "each handled wakeup booking another one is how this gets here. "
+                "Stop re-booking, or ask Bjoern whether the watch is still wanted."
+            ),
+            "bookinger_seneste_doegn": i_doegnet,
         }
 
     fire_at = datetime.now(UTC) + timedelta(seconds=delay)
@@ -172,7 +204,57 @@ def schedule_self_wakeup(
         logger.warning("self_wakeup: kunne ikke registrere %s i indbakken: %s",
                        wakeup_id, exc)
 
-    return {"status": "ok", "wakeup": record}
+    # Tallet med i SVARET, ikke kun i afvisningen. Han ser det altsaa hver
+    # gang han booker — og det er der beslutningen om et led mere tages.
+    # `i_doegnet` blev talt FOER denne blev tilfoejet, derfor +1.
+    return {"status": "ok", "wakeup": record,
+            "bookinger_seneste_doegn": i_doegnet + 1,
+            "loft_pr_samtale_pr_doegn": _MAX_PR_SAMTALE_PR_DOEGN}
+
+
+def bookinger_seneste_doegn(
+    records: list[dict[str, Any]],
+    session_id: str,
+    *,
+    nu: datetime | None = None,
+) -> int:
+    """Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn.
+
+    Taelles paa `scheduled_at`, altsaa hvornaar den blev BOOKET — ikke hvornaar
+    den fyrer. En kaede bygges af bookinger, og en vaekning der er sat til at
+    fyre i morgen er stadig et led i kaeden i dag.
+
+    Status ignoreres med vilje: consumed, cancelled og pending taeller alle med.
+    Taltes kun de ventende, ville vi maale `_MAX_PENDING` om igen og ramme
+    samme blinde vinkel — en kaede forbruger hvert led foer den booker det
+    naeste, saa de forbrugte ER kaeden.
+
+    Oprydningen holder consumed og cancelled i 7 dage
+    (`cleanup_old_wakeups`), saa doegn-vinduet bliver ikke beskaaret under os.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+    # `nu` kan gives udefra, saa vinduet kan ankres et andet sted end dette
+    # oejeblik. Uden det kan vagten ikke afspilles mod historikken: hver
+    # historisk booking ligger uden for et vindue maalt fra i dag, saa
+    # afspilningen svarer «nul afvist» uanset hvor slemt loebet var. Den
+    # fejl gjorde jeg, og det tomme svar lignede en virkende vagt.
+    graense = (nu or datetime.now(UTC)) - timedelta(hours=24)
+    n = 0
+    for r in records:
+        if str(r.get("session_id") or "").strip() != sid:
+            continue
+        stamp = str(r.get("scheduled_at") or "")
+        if not stamp:
+            continue
+        try:
+            tid = datetime.fromisoformat(stamp)
+        except ValueError:  # skraldet tidsstempel: kan ikke placeres i vinduet, taeller ikke med
+            continue
+        if tid >= graense:
+            n += 1
+    return n
 
 
 def due_wakeups(*, include_fired_unconsumed: bool = True) -> list[dict[str, Any]]:
@@ -408,6 +490,25 @@ def self_wakeup_section() -> str | None:
         "Når du har handlet på en af dem, brug `mark_wakeup_consumed(wakeup_id)` "
         "så den ikke gentager sig i din awareness."
     )
+    # Kaeden skal vaere synlig HER — det er her du beslutter om du booker en ny.
+    # Et loft der rammer uden varsel er ikke en hjaelp. Taelles kun op naar den
+    # er halvvejs, saa den ikke stoejer i det normale tilfaelde (p90 er 4/time,
+    # og normalen topper ved 12 pr. doegn).
+    # Ingen try her, med vilje. `current_session_id()` giver "" naar
+    # ContextVar'en er vaek, og `_load()` falder tilbage til [] paa en
+    # oedelagt fil — begge faldene er paa plads NEDENFOR. En except her kunne
+    # aldrig fyre af den grund jeg foerst skrev, og saa var fejlen blevet en
+    # vaerdi jeg ikke kunne skelne fra et lovligt svar.
+    from core.identity.workspace_context import current_session_id
+    _sid = str(current_session_id() or "")
+    _n = bookinger_seneste_doegn(_load(), _sid) if _sid else 0
+    if _n >= _MAX_PR_SAMTALE_PR_DOEGN // 2:
+        lines.append(
+            f"⚠️ Du har booket {_n} wakeups i DENNE samtale det seneste døgn "
+            f"(loft {_MAX_PR_SAMTALE_PR_DOEGN}). Hver kvitteret vækning der "
+            "booker en ny er en kæde, og hvert led skriver i Bjørns chat. "
+            "Fandt kontrollen intet nyt, så book ikke en ny — luk den."
+        )
     return "\n".join(lines)
 
 

@@ -262,3 +262,100 @@ def test_mark_consumed_paa_en_UKENDT_tilstand_er_STADIG_en_fejl(monkeypatch):
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: None)
     assert sw.mark_wakeup_consumed("w1")["status"] == "error"
+
+
+# ── Kaede-loftet (5/10-2026) ────────────────────────────────────────────────
+#
+# Bjoern: «Hvorfor for jeg 3 til 5 beskeder på et svar??» Hver kvitteret
+# vaekning bookede en ny. `_MAX_PENDING` kunne ikke se det: en kaede forbruger
+# hvert led foer den booker det naeste, saa de ventende er altid 0 eller 1.
+# Maalt i `self_wakeups.json`: 140 poster, 116 consumed, NUL ventende.
+
+def _poster(n: int, *, sid: str = "chat-A", status: str = "consumed",
+            timer_siden: float = 1.0) -> list[dict]:
+    stamp = (datetime.now(UTC) - timedelta(hours=timer_siden)).isoformat()
+    return [{"wakeup_id": f"wake-{i}", "session_id": sid, "status": status,
+             "scheduled_at": stamp} for i in range(n)]
+
+
+def test_kaede_loftet_AFVISER_ved_graensen(monkeypatch):
+    """Den test hooken kraever: vagten skal ses afvise."""
+    monkeypatch.setattr(sw, "_load", lambda: _poster(sw._MAX_PR_SAMTALE_PR_DOEGN))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="tjek igen",
+                                  session_id="chat-A")
+    assert res["status"] == "error"
+    assert "chain" in res["error"]
+    assert res["bookinger_seneste_doegn"] == sw._MAX_PR_SAMTALE_PR_DOEGN
+
+
+def test_loftet_taeller_FORBRUGTE_med(monkeypatch):
+    """Det er hele pointen — og praecis det `_MAX_PENDING` ikke kunne.
+
+    Nul ventende, tyve forbrugte: den gamle vagt ville slippe det igennem.
+    """
+    poster = _poster(sw._MAX_PR_SAMTALE_PR_DOEGN, status="consumed")
+    assert not [p for p in poster if p["status"] == "pending"]
+    monkeypatch.setattr(sw, "_load", lambda: poster)
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="x", session_id="chat-A")
+    assert res["status"] == "error", "forbrugte led ER kaeden"
+
+
+def test_loftet_er_pr_samtale(monkeypatch):
+    """En anden samtale maa ikke blokeres af denne samtales kaede."""
+    monkeypatch.setattr(sw, "_load", lambda: _poster(sw._MAX_PR_SAMTALE_PR_DOEGN, sid="chat-A"))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="x", session_id="chat-B")
+    assert res["status"] == "ok"
+
+
+def test_poster_aeldre_end_et_doegn_taeller_ikke(monkeypatch):
+    """Vinduet ruller. 25 timer gamle led er ikke en aktiv kaede."""
+    monkeypatch.setattr(
+        sw, "_load",
+        lambda: _poster(sw._MAX_PR_SAMTALE_PR_DOEGN * 2, timer_siden=25.0))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="x", session_id="chat-A")
+    assert res["status"] == "ok"
+
+
+def test_uden_samtale_blokerer_loftet_ikke(monkeypatch):
+    """En vaekning uden session kan ikke tilskrives en kaede — og maa ikke
+    rammes af en anden samtales."""
+    monkeypatch.setattr(sw, "_load", lambda: _poster(sw._MAX_PR_SAMTALE_PR_DOEGN))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="x", session_id=None)
+    assert res["status"] == "ok"
+
+
+def test_svaret_baerer_taellingen_saa_han_ser_den(monkeypatch):
+    """Tallet skal staa i SVARET, ikke kun i afvisningen — beslutningen om et
+    led mere tages naar han booker, ikke naar loftet rammer."""
+    state = _poster(3)
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=900, prompt="x", session_id="chat-A")
+    assert res["status"] == "ok"
+    assert res["bookinger_seneste_doegn"] == 4, "de tre plus denne"
+    assert res["loft_pr_samtale_pr_doegn"] == sw._MAX_PR_SAMTALE_PR_DOEGN
+
+
+def test_taelleren_ignorerer_uparselige_tidsstempler(monkeypatch):
+    """En raekke med skraldet tidsstempel maa hverken taelle med eller kaste."""
+    poster = _poster(2) + [{"wakeup_id": "x", "session_id": "chat-A",
+                            "status": "consumed", "scheduled_at": "ikke-en-dato"}]
+    assert sw.bookinger_seneste_doegn(poster, "chat-A") == 2
+
+
+def test_vinduet_kan_ankres_saa_vagten_kan_afspilles():
+    """Uden et anker svarer en afspilning mod historikken ALTID «nul afvist».
+
+    Posterne nedenfor er 40 dage gamle. Maalt fra nu er de uden for vinduet;
+    maalt fra deres egen tid er de en kaede paa tre.
+    """
+    da = datetime.now(UTC) - timedelta(days=40)
+    poster = [{"wakeup_id": f"w{i}", "session_id": "chat-A", "status": "consumed",
+               "scheduled_at": (da + timedelta(hours=i)).isoformat()} for i in range(3)]
+    assert sw.bookinger_seneste_doegn(poster, "chat-A") == 0
+    assert sw.bookinger_seneste_doegn(poster, "chat-A", nu=da + timedelta(hours=3)) == 3

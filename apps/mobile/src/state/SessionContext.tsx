@@ -204,6 +204,27 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   const serverAsstTexts = new Set(
     server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean)
   )
+  // DELVIS MATCH (målt 6/10-2026, Bjørn: «mobil klienten viser 2 beskeder i
+  // chatview når du svarer»). Broen bærer HELE turen — `blocksToAssistantText`
+  // joiner alle text-blokke fra den levende stream. Serveren persisterer derimod
+  // alle text-blokke UNDTAGEN den første (målt: `content == join(blok 1..slut)`
+  // på message-48f9616a og message-e46058df). Teksterne er derfor ALDRIG ens,
+  // den eksakte match ovenfor fejler, og da transcriptet samtidig slutter på en
+  // tool-række (81.750 tool-rækker i DB'en) er serverCaughtUp=false → broen blev
+  // holdt VED SIDEN AF serverens kopi, og slutteksten stod to gange på skærmen.
+  //
+  // Reglen her: broens ENDELIGE svar (sidste text-blok) skal kunne findes inde i
+  // serverens samlede assistant-tekst. Minimum-længden forhindrer at en kort,
+  // generisk linje giver falsk match — og et endnu ikke persisteret svar bevares.
+  const serverAsstTekst = [...serverAsstTexts].join(' \n ')
+  // Præcis sluttekst-match: serverens SIDSTE text-blok mod broens. Det er den
+  // rene sammenligning — «er det endelige svar persisteret?» — og den kræver
+  // hverken længde-grænse eller delvis match. `assistantFinalText` falder
+  // tilbage til hele content-strengen når en besked ikke har blokke.
+  const serverAsstSlut = new Set(
+    server.filter((m) => m.role === 'assistant').map(assistantFinalText).filter(Boolean)
+  )
+  const MIN_SLUTTEKST = 24
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
@@ -211,7 +232,11 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
       if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
-      const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      const sluttekst = assistantFinalText(lm)
+      const persisted = serverCaughtUp
+        || serverAsstTexts.has(assistantNorm(lm))
+        || serverAsstSlut.has(sluttekst)
+        || (sluttekst.length >= MIN_SLUTTEKST && serverAsstTekst.includes(sluttekst))
       if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
     // persisteret → drop placeholder; serverens rensede besked vises i stedet

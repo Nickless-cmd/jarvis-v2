@@ -144,6 +144,33 @@ def test_kan_owneren_ikke_afgoeres_bliver_telemetrien_intern(db, monkeypatch):
     assert [c["user_id"] for c in PC.list_pending()] == [""]
 
 
+def test_kerne_curator_og_development_ritual_naar_owner(db):
+    """Værn: de to forslag-kilder maa ikke ligge tavse.
+
+    Maalt 6/10-2026: begge stod i `_INTERNE_KILDER` med en note om at de hørte
+    i en «delinger»-flade der ikke var bygget. Konsekvensen var at ugens
+    Kerne-forslag og SOUL.md-forslaget aldrig naaede nogen — de blev skrevet
+    og kastet vaek. De er ikke telemetri; de er forslag TIL owner.
+    """
+    for kilde, kind in (("kerne_curator", "kerne_curation"),
+                        ("development_ritual", "development_proposal")):
+        r = PC.add_candidate(source=kilde, kind=kind,
+                             text=f"Forslag fra {kilde} til ejeren")
+        assert r["status"] == "added", f"{kilde} blev afvist"
+        assert [c["user_id"] for c in PC.list_pending()] == [BJOERN], (
+            f"{kilde} landede ikke hos owner"
+        )
+        PC.mark([r["candidate_id"]], "dismissed")
+
+
+def test_kerne_forslag_naar_ikke_en_anden_bruger(db):
+    """Owner only — ogsaa for forslag-kilderne, ikke kun telemetrien."""
+    tekst = "Kerne-kurator: skal «du kan lide kaffe om morgenen» op i Kerne?"
+    PC.add_candidate(source="kerne_curator", kind="kerne_curation", text=tekst)
+    assert PC.relevant_for(tekst, user_id=MICHELLE) == []
+    assert len(PC.relevant_for(tekst, user_id=BJOERN)) == 1
+
+
 def test_aegte_kilde_slipper_igennem(db):
     assert PC.add_candidate(source="repeated_requests", kind="rule_proposal:request",
                             text="Skal natrutinen være en fast regel?")["status"] == "added"
@@ -293,15 +320,18 @@ def test_session_id_parameter_taeller_naar_contextvar_er_tom(db, monkeypatch):
                                     session_id="sess-b", user_id=None).startswith("Siden sidst")
 
 
-def test_interne_kilder_tvinger_tom_uanset_kontekst(db, monkeypatch):
-    """Bogholderi uden ejer-mening forbliver tavst — også når konteksten er sat.
+def test_ukendt_kilde_uden_kontekst_forbliver_tavs(db, monkeypatch):
+    """En kilde der hverken er telemetri eller et forslag maa ikke gættes.
 
-    Telemetri hører IKKE her længere; den går til owner. Se
-    `test_telemetri_lander_hos_owner`.
+    Den gamle udgave af denne test hed `test_interne_kilder_tvinger_tom_uanset_kontekst`
+    og brugte `development_ritual` som eksempel. Maalt 6/10-2026 viste det sig
+    forkert: det er et forslag TIL owner, ikke bogholderi. Reglen der staar
+    tilbage er den generelle: uden kontekst OG uden owner-kendskab → tavs.
     """
-    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: BJOERN, raising=False)
-    r = PC.add_candidate(source="development_ritual",
-                         text="ugens udvikling: jeg vil skrive om mig selv i SOUL.md")
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "", raising=False)
+    monkeypatch.setattr("core.identity.workspace_context.current_session_id", lambda: "", raising=False)
+    monkeypatch.setattr(PC, "_owner_uid", lambda: "")
+    r = PC.add_candidate(source="en_ukendt_kilde", text="noget ingen kontekst har ejet")
     assert r["status"] == "added"
     assert [c["user_id"] for c in PC.list_pending() if c["candidate_id"] == r["candidate_id"]] == [""]
 

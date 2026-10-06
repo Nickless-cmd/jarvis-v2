@@ -88,15 +88,21 @@ _TELEMETRI_KINDS = frozenset({"heartbeat_ping"})
 
 #: Telemetri hører til OWNER og til ingen anden. Før kastede indgangen den væk
 #: («skipped»), så Bjørns EGEN telemetri var usynlig for alle — også ham.
+#:
+#: `kerne_curator` og `development_ritual` stod her oprindeligt som «interne»
+#: med en note om at de hørte i en «delinger»-flade der ikke var bygget. Målt
+#: 6/10-2026: de er ikke telemetri — de er forslag TIL owner («skal den op i
+#: Kerne?», «det her vil jeg skrive om mig selv i SOUL.md»). At lægge dem i en
+#: flade der ikke findes betød at de aldrig nåede nogen. De hører til owner nu;
+#: en egen «delinger»-flade er stadig en åben beslutning, ikke en forudsætning.
 _OWNER_KILDER = frozenset({
     "wakeup_dispatcher", "heartbeat", "run_closure_gate", "autonomous_run",
-    "autonomy_budget",
+    "autonomy_budget", "kerne_curator", "development_ritual",
 })
 
-#: Bogholderi uden en ejer-mening — vises aldrig. Bemærk: `kerne_curator` og
-#: `development_ritual` er ikke telemetri; de er forslag TIL owner og hører i
-#: «delinger»-fladen, som ikke er bygget endnu. De står her til den beslutning.
-_INTERNE_KILDER = frozenset({"kerne_curator", "development_ritual"})
+#: Bogholderi uden en ejer-mening — vises aldrig. Tom for nu; den findes som
+#: det sted en kilde skal hen når den hverken er telemetri eller et forslag.
+_INTERNE_KILDER: frozenset[str] = frozenset()
 
 #: Et spørgsmål der ER stillet og ikke besvaret skal ikke hænge for evigt.
 #: Målt 3/10-2026: 155 `surfaced` + 118 `mentioned` — den ældste fra 4/9,

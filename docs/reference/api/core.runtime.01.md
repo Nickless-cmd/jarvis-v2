@@ -602,7 +602,7 @@ _FTS5 full-text search over session summaries and chat messages._
 | function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
 | function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
 | function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L136) |
-| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages. Each hit: id, message_id, session_id, | [src](../../../core/runtime/db_fts.py#L196) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L196) |
 
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._

@@ -196,11 +196,24 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
 def search_chat_messages(
     query: str, *, limit: int = 8, session_id: str | None = None, role: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Keyword search over chat_messages. Each hit: id, message_id, session_id,
-    role, content, created_at, score."""
+    """Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id,
+    session_id, role, content, created_at, score.
+
+    Samme bruger-scope som `search_session_summaries` (målt 6/10-2026): `chat` er
+    en opt-in recall-kilde (recall.py:194, `_source_chat`), så uden scope kunne et
+    recall med `sources=['chat']` læse en anden brugers sessioner. Kilden er ikke i
+    DEFAULT_SOURCES, men det er samme dør i samme væg — og et halvt fix på en
+    lækage giver falsk tryghed.
+    """
     match = to_match_query(query)
     if not match:
         return []
+    try:
+        from core.services.user_scope import scope_uid
+
+        uid = (scope_uid() or "").strip()
+    except Exception:
+        uid = ""
     sql = (
         "SELECT m.id, m.message_id, m.session_id, m.role, m.content, m.created_at, "
         "bm25(chat_messages_fts) AS rank FROM chat_messages_fts f "
@@ -213,6 +226,13 @@ def search_chat_messages(
     if role:
         sql += " AND m.role = ?"
         params.append(role)
+    if uid:
+        sql += (
+            " AND m.session_id NOT IN ("
+            "  SELECT DISTINCT session_id FROM chat_messages "
+            "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?)"
+        )
+        params.append(uid)
     sql += " ORDER BY rank LIMIT ?"
     params.append(int(limit))
     try:

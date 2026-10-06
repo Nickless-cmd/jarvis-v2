@@ -159,3 +159,39 @@ def test_search_lets_unstamped_legacy_through(conn):
         assert "s-other" not in sids
     finally:
         reset_context(t)
+
+
+def test_chat_search_scopes_to_current_user(conn):
+    """Værn: `chat`-kilden i recall må ikke læse en anden brugers sessioner.
+
+    `chat` er opt-in (recall.py:194, `_source_chat`) og ikke i DEFAULT_SOURCES,
+    men uden scope kunne et recall med `sources=['chat']` hente en anden brugers
+    beskeder. Samme dør i samme væg som session_summary.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-owner', 's-owner', 'user', 'pfsense noeglen min', 'owner-uid', '2026-09-03T10:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-other', 's-other', 'user', 'pfsense noeglen anden', 'other-uid', '2026-09-03T11:00:00')"
+    )
+    db_fts.ensure_fts_tables(conn)
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        mids = [h["message_id"] for h in db_fts.search_chat_messages("pfsense noegle", limit=10)]
+        assert "m-owner" in mids
+        assert "m-other" not in mids, "en anden brugers chatbesked lækkede ind i chat-kilden"
+    finally:
+        reset_context(t)
+
+    t = set_context(workspace_name="michelle", user_id="other-uid")
+    try:
+        mids = [h["message_id"] for h in db_fts.search_chat_messages("pfsense noegle", limit=10)]
+        assert "m-other" in mids, "ejeren skal kunne søge sin EGEN chat"
+        assert "m-owner" not in mids
+    finally:
+        reset_context(t)

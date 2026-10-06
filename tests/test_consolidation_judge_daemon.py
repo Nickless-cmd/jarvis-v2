@@ -32,10 +32,24 @@ def _falsk_liste(alle: list[dict], *, status: str = "active", limit: int | None 
     return raekker if limit is None else raekker[: int(limit)]
 
 
-class _StilleBus:
-    @staticmethod
-    def publish(*_a, **_k) -> None:
-        return None
+def _stille_bus(monkeypatch) -> None:
+    """Daemp `publish` PAA det aegte bus-objekt — udskift ikke modul-navnet.
+
+    MAALT 6/10-2026: den gamle udgave gjorde `monkeypatch.setattr(cjd,
+    "event_bus", _StilleBus)`. `cjd.event_bus` ER singletonen
+    (`cjd.event_bus is bus.event_bus`), saa lappen lagde en attrappe ind i
+    modulet. Et modul der importeres FOERSTE gang i det vindue binder
+    attrappen for altid — og `monkeypatch` gendanner kun modul-navnet, aldrig
+    kopien inde i det modul der naaede at importere den. Vagten
+    `test_event_bus_singleton_maa_ikke_udskiftes.py` fangede det.
+
+    At lappe metoden paa det aegte objekt rammer enhver der holder bussen,
+    foer eller efter — og `monkeypatch` ruller den tilbage.
+    """
+    from core.services import consolidation_judge_daemon as cjd
+
+    monkeypatch.setattr(cjd.event_bus, "publish", lambda *_a, **_k: None,
+                        raising=False)
 
 
 def test_set_status_findes_i_db_decisions():
@@ -59,7 +73,7 @@ def test_revoke_kalder_set_status_for_alle_aktive(monkeypatch):
                         lambda **kw: _falsk_liste(alle, **kw))
     monkeypatch.setattr(db_decisions, "set_status",
                         lambda did, st: revoked.append((did, st)) or {})
-    monkeypatch.setattr(cjd, "event_bus", _StilleBus)
+    _stille_bus(monkeypatch)
 
     cjd._enforce_reject({"item_type": "broken_decisions", "choice": "revoke"})
 
@@ -82,7 +96,7 @@ def test_recommit_ser_alle_aktive(monkeypatch):
         return _falsk_liste(alle, **kw)
 
     monkeypatch.setattr(db_decisions, "list_decisions", fanger)
-    monkeypatch.setattr(cjd, "event_bus", _StilleBus)
+    _stille_bus(monkeypatch)
 
     cjd._enforce_accept({"item_type": "broken_decisions", "choice": "recommit"})
 

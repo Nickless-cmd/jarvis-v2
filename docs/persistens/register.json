@@ -56,6 +56,11 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "baggrundsjob_vagt": {
+      "ejer": "core/services/baggrundsjob_vagt.py",
+      "beskrivelse": "Hvilke afsluttede baggrundsjob der ER meldt, saa det samme job ikke meldes to gange. {initialiseret: bool, meldt: {job_id: iso}}. `initialiseret` baerer koldstart-reglen: er den falsk, skrives alle nuvaerende faerdige jobs ind UDEN at melde, saa featuren ikke leverer en byge af gamle jobs naar den gaar live.",
+      "registreret": "2026-10-06"
+    },
     "bg_jobs_grundlinje": {
       "ejer": "core/services/background_job_watch.py",
       "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",

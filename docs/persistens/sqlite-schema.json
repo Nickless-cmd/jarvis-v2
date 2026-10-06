@@ -21551,7 +21551,7 @@
       ]
     },
     "proactive_candidates": {
-      "digest": "8a:57:86:22:cd:6a:4e:7a:11:e1:45:0b:e8:51:73:1e:0c:c7:77:db:50:51:c8:97:c7:fd:f6:4a:10:cf:7f:be",
+      "digest": "47:da:e6:4e:3a:91:0f:13:74:bb:7f:8d:be:81:cc:0d:3b:82:b5:b0:53:85:9c:96:bb:1c:0e:bb:eb:53:de:81",
       "schema": {
         "columns": [
           {
@@ -21649,6 +21649,14 @@
             "default": null,
             "pk": 0,
             "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
           }
         ],
         "indexes": [
@@ -21675,6 +21683,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_proactive_candidates_status ON proactive_candidates(status, created_at)"
+          },
+          {
+            "name": "idx_proactive_candidates_user",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_proactive_candidates_user ON proactive_candidates(user_id, status)"
           },
           {
             "name": "sqlite_autoindex_proactive_candidates_1",

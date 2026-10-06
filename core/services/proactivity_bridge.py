@@ -188,7 +188,7 @@ def collect_candidates() -> list[dict[str, Any]]:
     # (run_closure_gate, mail, wakeups, outreach, indre stemmer …).
     try:
         from core.services.proactive_candidates import bridge_candidates
-        out.extend(bridge_candidates())
+        out.extend(bridge_candidates(_owner_uid()))
     except Exception:
         pass
     try:

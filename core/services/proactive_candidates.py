@@ -1,4 +1,4 @@
-"""Proactive candidates — the ONE queue for "Jarvis wants to tell Bjørn something".
+"""Proactive candidates — the ONE queue for "Jarvis wants to tell a user something".
 
 Replaces the two nudge wells as a decision surface (redesign 2026-09-04):
 
@@ -16,6 +16,30 @@ Now:
 
 Statuses: pending → surfaced (sent by the bridge) | mentioned (Jarvis said it
 in a reply) | dismissed | expired.
+
+Bruger-dimension (bygget 6/10-2026, Bjørn). Køen var GLOBAL: 312 rækker og
+ingen `user_id`-kolonne overhovedet. Leverings-vejen matchede på TEKST-overlap,
+ikke på ejerskab — så «Alarm: Bjørn skal til møde med Line» var en kandidat for
+enhver der skrev ordet «møde». Fem brugere deler runtime'en (bjorn, michelle,
+mikkel, lotte, rune), og hver har sit eget workspace.
+
+Nu bærer hver kandidat en `user_id`:
+
+* ``''`` = INTERN. Vises ALDRIG i en samtale eller DM. Det er telemetri og
+  maskinrums-støj, og det er den SIKRE default: kan ejeren ikke afgøres, bliver
+  kandidaten tavs frem for at blive gættet.
+* ``<discord_id>`` = vises KUN for den bruger.
+
+Ejeren afgøres ved INDGANGEN (`_bruger_for`): eksplicit argument →
+`current_user_id()` → session-ejeren → ``''``. Session-ejer-leddet er ikke
+pynt: owner (Bjørn) har ofte tom `current_user_id()` inde i run-generatoren —
+samme fælde som `memory_tools._resolve_memory_uid` løser — så uden det ville
+hans EGNE kandidater blive mærket «interne» og gjort tavse. Fejlen ville ramme
+den ene bruger vi har flest af.
+
+Kilder i `_INTERNE_KILDER` tvinger ``''`` uanset kontekst: et autonomt run kan
+have en session, men «run efterlod 5 ucommittede filer» er ikke en besked til
+den der ejer sessionen.
 """
 from __future__ import annotations
 
@@ -59,6 +83,15 @@ _SHOWN_TTL_S = 900.0
 _TELEMETRI_KILDER = frozenset({"wakeup_dispatcher", "heartbeat"})
 _TELEMETRI_KINDS = frozenset({"heartbeat_ping"})
 
+#: Kilder der er INTERNE uanset hvem der kører. Et autonomt run kan have en
+#: session — men «run efterlod 5 ucommittede filer» er ikke en besked til den
+#: der ejer sessionen. Uden denne liste ville kontekst-opslaget i `_bruger_for`
+#: gætte et ejerskab der ikke findes, og telemetrien ville lande hos en bruger.
+_INTERNE_KILDER = frozenset({
+    "wakeup_dispatcher", "heartbeat", "run_closure_gate", "autonomous_run",
+    "kerne_curator", "autonomy_budget", "development_ritual",
+})
+
 #: Et spørgsmål der ER stillet og ikke besvaret skal ikke hænge for evigt.
 #: Målt 3/10-2026: 155 `surfaced` + 118 `mentioned` — den ældste fra 4/9,
 #: 29 dage gammel — og `expire_stale` ramte kun `pending`. Et ubesvaret
@@ -83,6 +116,39 @@ _CITERET_RE = re.compile(r"«([^»]{4,300})»")
 def er_telemetri(source: str, kind: str = "") -> bool:
     """Er dette intern telemetri frem for en besked Bjørn skal se?"""
     return str(source or "") in _TELEMETRI_KILDER or str(kind or "") in _TELEMETRI_KINDS
+
+
+def _bruger_for(user_id: str | None, source: str, session_id: str = "") -> str:
+    """Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig).
+
+    Rækkefølgen er den samme som `memory_tools._resolve_memory_uid`: eksplicit
+    argument → ``current_user_id()`` → session-ejeren → ``''``. Session-ejer-
+    leddet er ikke pynt — se docstringen øverst. Self-safe: enhver fejl i
+    opslaget giver ``''``, altså tavs frem for gættet.
+
+    `session_id` tages med fordi prompt-byggeren kender sessionen som PARAMETER,
+    hvor contextvar'en ikke altid er sat. Uden den ville en kandidat kunne
+    falde tilbage til «intern» midt i en samtale den hører til.
+    """
+    if user_id is not None:
+        return str(user_id).strip()[:64]
+    if str(source or "") in _INTERNE_KILDER:
+        return ""
+    try:
+        from core.identity.workspace_context import current_session_id, current_user_id
+
+        uid = (current_user_id() or "").strip()
+        if uid:
+            return uid[:64]
+        sid = (current_session_id() or "").strip() or str(session_id or "").strip()
+        if sid:
+            from core.services.chat_sessions import get_session_owner
+
+            return (get_session_owner(sid) or "").strip()[:64]
+    except Exception as exc:
+        logger.debug("proactive_candidates: bruger-opslag fejlede: %s", exc)
+        return ""
+    return ""
 
 
 def _kerne(text: str) -> str:
@@ -144,18 +210,27 @@ def ensure_table(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             surfaced_at TEXT NOT NULL DEFAULT '',
-            mentioned_run_id TEXT NOT NULL DEFAULT ''
+            mentioned_run_id TEXT NOT NULL DEFAULT '',
+            user_id TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    # Migrering af DB'er skabt før 6/10-2026. Kolonnen lægges SIDST, så
+    # rækkefølgen matcher CREATE'en ovenfor — `_row`s tuple-gren læser efter
+    # position, og en forskel mellem ny og migreret DB ville give `user_id`
+    # en anden plads i de to.
+    kolonner = {str(r[1]) for r in conn.execute("PRAGMA table_xinfo(proactive_candidates)")}
+    if "user_id" not in kolonner:
+        conn.execute("ALTER TABLE proactive_candidates ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_proactive_candidates_status ON proactive_candidates(status, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_proactive_candidates_user ON proactive_candidates(user_id, status)")
 
 
 def _row(r: Any) -> dict[str, Any]:
     if isinstance(r, sqlite3.Row):
         return dict(r)
     cols = ["id", "candidate_id", "source", "kind", "text", "norm_text", "priority", "status",
-            "created_at", "updated_at", "surfaced_at", "mentioned_run_id"]
+            "created_at", "updated_at", "surfaced_at", "mentioned_run_id", "user_id"]
     return dict(zip(cols, r))
 
 
@@ -168,8 +243,14 @@ def normalize_priority(importance: str) -> str:
     return "medium"
 
 
-def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str = "") -> dict[str, Any]:
-    """Queue a message for Bjørn. Deduped on normalized text within 24 h.
+def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str = "",
+                  user_id: str | None = None) -> dict[str, Any]:
+    """Queue a message for a user. Deduped on normalized text within 24 h.
+
+    `user_id=None` (default) → ejeren afgøres af `_bruger_for`. Giv den
+    eksplicit når kalderen allerede VED hvem beskeden er til (fx en planlagt
+    opgave der blev oprettet i en bestemt brugers tur).
+
     Returns {"status": "added"|"duplicate"|"skipped", "candidate_id": ...}."""
     body = " ".join(str(text or "").split()).strip()
     if len(body) < 8:
@@ -190,6 +271,7 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         grund = ""
     if grund:
         return {"status": "skipped", "reason": grund}
+    uid = _bruger_for(user_id, source)
     norm = _norm_text(body)
     now = _now_iso()
     cutoff = (datetime.now(UTC) - timedelta(hours=_DEDUPE_HOURS)).isoformat()
@@ -227,9 +309,9 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         cid = f"pc-{uuid4().hex[:12]}"
         conn.execute(
             "INSERT INTO proactive_candidates (candidate_id, source, kind, text, norm_text, priority, "
-            "status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+            "user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
             (cid, str(source or "unknown")[:80], str(kind or "")[:50], body[:1000], norm,
-             normalize_priority(priority), now, now),
+             normalize_priority(priority), uid, now, now),
         )
         # cap: the oldest pending beyond the limit expire
         rows = conn.execute(
@@ -245,9 +327,20 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
     return {"status": "added", "candidate_id": cid}
 
 
-def list_pending(*, limit: int = 20, priorities: tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+def list_pending(*, limit: int = 20, priorities: tuple[str, ...] | None = None,
+                 user_id: str | None = None) -> list[dict[str, Any]]:
+    """Pending kandidater. `user_id` er et FILTER på kolonnen:
+
+    * ``None`` (default) → alle rækker, uanset ejer. Til diagnostik og
+      overflader — ikke til levering.
+    * ``''`` → kun INTERNE rækker.
+    * ``'<discord_id>'`` → kun den brugers egne.
+    """
     sql = "SELECT * FROM proactive_candidates WHERE status='pending'"
     params: list[Any] = []
+    if user_id is not None:
+        sql += " AND user_id = ?"
+        params.append(str(user_id))
     if priorities:
         sql += f" AND priority IN ({','.join('?' for _ in priorities)})"
         params.extend(priorities)
@@ -308,16 +401,38 @@ def counts() -> dict[str, int]:
             "SELECT status, count(*) FROM proactive_candidates GROUP BY status").fetchall()}
 
 
+def counts_per_user() -> dict[str, int]:
+    """Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres."""
+    with connect() as conn:
+        ensure_table(conn)
+        return {(str(k) or "(intern)"): int(v) for k, v in conn.execute(
+            "SELECT user_id, count(*) FROM proactive_candidates "
+            "WHERE status IN ('pending', 'surfaced') GROUP BY user_id").fetchall()}
+
+
 # ── in-conversation surface ─────────────────────────────────────────────
 
 
-def relevant_for(user_message: str, *, limit: int = 1, min_coverage: float = 0.34) -> list[dict[str, Any]]:
-    """Pending items lexically relevant to what Bjørn just wrote (best first)."""
+def relevant_for(user_message: str, *, user_id: str | None = None, session_id: str = "",
+                 limit: int = 1, min_coverage: float = 0.34) -> list[dict[str, Any]]:
+    """Pending items for THIS user, lexically relevant to what they just wrote.
+
+    `user_id=None` → ejeren afgøres af `_bruger_for` (konteksten, eller
+    `session_id`). `''` → ingen bruger, intet vises.
+
+    Uden en bruger returneres intet. Før matchede den på tekst alene, så en
+    anden brugers kandidat kunne dukke op i denne samtale — «Alarm: Bjørn skal
+    til møde med Line» matchede ordet «møde» i enhver samtale. Kravet om en
+    bruger er hele fixet: overlap er ikke ejerskab.
+    """
     msg = str(user_message or "").strip()
     if len(msg) < 8:
         return []
+    uid = str(user_id).strip() if user_id is not None else _bruger_for(None, "", session_id)
+    if not uid:
+        return []
     scored = []
-    for c in list_pending(limit=60):
+    for c in list_pending(limit=60, user_id=uid):
         cov = lexical_coverage(msg, f"{c.get('text', '')}")
         if cov >= min_coverage:
             scored.append((cov, c))
@@ -336,10 +451,14 @@ def remember_shown(session_id: str, candidate_ids: list[str]) -> None:
             _SHOWN.pop(k, None)
 
 
-def build_since_last_line(user_message: str, *, session_id: str = "") -> str:
-    """At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message."""
+def build_since_last_line(user_message: str, *, session_id: str = "",
+                          user_id: str | None = None) -> str:
+    """At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message.
+
+    `user_id=None` → `relevant_for` afgør ejeren (kontekst eller `session_id`).
+    """
     try:
-        items = relevant_for(user_message, limit=1)
+        items = relevant_for(user_message, user_id=user_id, session_id=session_id, limit=1)
     except Exception as exc:
         logger.debug("proactive_candidates: relevant_for failed: %s", exc)
         return ""
@@ -379,10 +498,17 @@ def mark_mentioned_if_overlap(*, session_id: str, answer_text: str, run_id: str 
 # ── bridge integration ──────────────────────────────────────────────────
 
 
-def bridge_candidates() -> list[dict[str, Any]]:
-    """Shape expected by proactivity_bridge.collect_candidates()."""
+def bridge_candidates(user_id: str = "") -> list[dict[str, Any]]:
+    """Shape expected by proactivity_bridge.collect_candidates().
+
+    Kun ÉN brugers kandidater. Uden en bruger returneres intet: bridgen
+    leverer til en navngiven modtager, og «hvem som helst» er ikke en modtager.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return []
     out = []
-    for c in list_pending(limit=30):
+    for c in list_pending(limit=30, user_id=uid):
         out.append({
             "kind": str(c.get("kind") or "candidate"),
             "text": str(c.get("text") or ""),
@@ -399,4 +525,9 @@ def build_proactive_candidates_surface() -> dict[str, Any]:
         c = counts()
     except Exception:
         c = {}
-    return {"active": bool(c), "counts": c, "summary": f"{c.get('pending', 0)} pending proactive candidates"}
+    try:
+        per_bruger = counts_per_user()
+    except Exception:
+        per_bruger = {}
+    return {"active": bool(c), "counts": c, "per_user": per_bruger,
+            "summary": f"{c.get('pending', 0)} pending proactive candidates"}

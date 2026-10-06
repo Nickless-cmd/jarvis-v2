@@ -387,3 +387,83 @@ def test_fladen_siger_config_modellen_ikke_tur_modellen(monkeypatch):
     """Feltet heder `configured_model` — og efter 5/10-2026 er det sandt."""
     _stub_sansning(monkeypatch, b64=_lyst_frame())
     assert VM.build_visual_memory_surface()["configured_model"] == "gemma4:31b-cloud"
+
+
+# ---------------------------------------------------------------------------
+# Klippet sker ved en SAETNINGSGRAENSE, ikke blindt ved tegnet (6/10-2026)
+#
+# Maalt i drift: 818 poster (30% af arkivet) var klippet midt i en saetning,
+# fordi `num_predict: 150` tillader ~450-600 tegn mens `_MAX_DESC_CHARS` er
+# 300. Et halvt led LIGNER et indtryk — det har laengde, og «…» laeses som
+# stil — men det er et svar der aldrig blev faerdigt, arkiveret som om det var
+# en sansning. Maalt mod alle 818 foer aendringen: 0 blev tomme, 813 kortere
+# men HELE.
+# ---------------------------------------------------------------------------
+
+
+class _FakeSvar:
+    """Stub for urllib-svaret — kun `read()` og context-manager bruges."""
+
+    def __init__(self, tekst: str):
+        import json as _json
+
+        self._b = _json.dumps({"response": tekst}).encode("utf-8")
+
+    def read(self) -> bytes:
+        return self._b
+
+    def __enter__(self) -> "_FakeSvar":
+        return self
+
+    def __exit__(self, *_a) -> bool:
+        return False
+
+
+def _kald_beskriv(monkeypatch, svar: str) -> str:
+    """Kald `_describe_via_ollama` med et stubbet Ollama-svar."""
+    monkeypatch.setattr(
+        VM.urllib.request, "urlopen", lambda *_a, **_k: _FakeSvar(svar)
+    )
+    return VM._describe_via_ollama("b64", model="test-model")
+
+
+_LANGT_SVAR = (
+    "Rummet er daempet og blaaligt i aftensolen. "
+    "Der staar en kop paa bordet, og skaermen lyser svagt. "
+    "Stemningen er rolig, naesten sovende, og der er ingen bevaegelse at se. "
+    "I baggrunden anes en stol, og lyset falder skraat ind over gulvet. "
+    "Der ligger en bog opslaaet paa bordet, og en jakke over stoleryggen. "
+    "Udenfor er det ved at blive moerkt, og himlen er graa og tung."
+)
+
+
+def test_langt_svar_klippes_ved_saetningsgraense(monkeypatch):
+    assert len(_LANGT_SVAR) > VM._MAX_DESC_CHARS, "testens svar skal vaere for langt"
+    ud = _kald_beskriv(monkeypatch, _LANGT_SVAR)
+    assert len(ud) <= VM._MAX_DESC_CHARS, ud
+    assert ud.endswith("."), f"klippet landede midt i en saetning: {ud[-40:]!r}"
+
+
+def test_helt_indtryk_faar_ikke_ellipse(monkeypatch):
+    """«…» betyder herefter praecis: her blev der klippet midt i noget."""
+    ud = _kald_beskriv(monkeypatch, _LANGT_SVAR)
+    assert not ud.endswith("…"), ud
+
+
+def test_svar_uden_saetningsgraense_klippes_blindt(monkeypatch):
+    """Fallback: findes ingen hel saetning, er et klippet indtryk bedre end intet."""
+    ud = _kald_beskriv(monkeypatch, "ord " * 120)
+    assert len(ud) <= VM._MAX_DESC_CHARS + 1, ud
+    assert ud.endswith("…"), ud
+
+
+def test_kort_svar_roeres_ikke(monkeypatch):
+    assert _kald_beskriv(monkeypatch, "Rummet er stille.") == "Rummet er stille."
+
+
+def test_vision_vejen_klipper_ikke_blindt():
+    """Kildevagt: fejler hvis nogen genindfoerer `text[:_MAX_DESC_CHARS] + "…"`."""
+    import pathlib
+
+    kilde = pathlib.Path(VM.__file__).read_text(encoding="utf-8")
+    assert "klip_ved_saetningsgraense(" in kilde, "vision-vejen klipper blindt igen"

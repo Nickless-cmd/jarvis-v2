@@ -377,11 +377,11 @@ _Visual memory — webcam snapshots beskrevet af vision-model._
 | function | `_previous_time_label` | `(captured_at)` | — | [src](../../../core/services/visual_memory.py#L757) |
 | function | `_build_prompt` | `(previous=…, prompt_index=…)` | Assemble the full vision prompt: prefix + rotating focus + optional compare. | [src](../../../core/services/visual_memory.py#L772) |
 | function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L794) |
-| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L849) |
-| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L856) |
-| function | `_vision_model` | `(*, force_config=…)` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L864) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L910) |
-| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L915) |
+| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L862) |
+| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L869) |
+| function | `_vision_model` | `(*, force_config=…)` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L877) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L923) |
+| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L928) |
 
 ## `core/services/voice_anchor.py`
 _Voice anchor — combined static seed + auto-refreshed external exemplars._

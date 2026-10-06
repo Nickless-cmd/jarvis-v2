@@ -53,6 +53,21 @@ def test_en_forladt_opgave_genoptages_praecis_EN_gang(spawn):
     assert spawn[0]["recovery_generation"] == 1
 
 
+def test_halv_relay_post_uden_anmodning_maa_ikke_starte_betalt_run(spawn):
+    """Den ydre stream har et andet id end modellens run og bærer ingen tekst."""
+    ifr.stempl_genoptagelse(
+        run_id="relay-1", session_id="chat-1", task_id="old-task",
+        recovery_attempt=2, recovery_generation=2,
+    )
+    ifr.settle_recovering("relay-1", reason="shutdown")
+
+    assert D.recover_due_once()["started"] == 0
+    assert spawn == []
+    post = ifr.get_record("relay-1")
+    assert post["status"] == "failed_terminal"
+    assert post["notice_pending"] is False
+
+
 def test_genoptagelse_bevarer_composer_og_afsenderflade(spawn, monkeypatch):
     monkeypatch.setattr("core.services.session_permission.hent_permission", lambda sid: "trust")
     ifr.mark_started(

@@ -604,12 +604,12 @@ _Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
 | function | `_udskydelses_backoff` | `(tidligere)` | Vent længere for hver gang samtalen var optaget — men aldrig i det uendelige. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L44) |
 | function | `_er_runtime_processen` | `()` | Runtime-processen dispatcher ikke. Den må forlige, ikke starte. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L54) |
 | function | `_besked_fra` | `(record)` | Den oprindelige anmodning — det er DEN opgaven handler om. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L60) |
-| function | `_samtalen_gik_videre` | `(session_id, efter)` | Er brugeren gået videre, siden den her kørsel døde? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L71) |
-| function | `recover_due_once` | `(*, owner=…)` | Tag ÉN forfalden opgave og start dens fortsættelse. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L117) |
-| function | `signal_recovery_dispatcher` | `()` | Væk dispatcheren nu — kaldes lige efter en durabel afregning. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L268) |
-| function | `_loop` | `()` | — | [src](../../../core/services/visible_run_recovery_dispatcher.py#L273) |
-| function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L287) |
-| function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L304) |
+| function | `_samtalen_gik_videre` | `(session_id, efter)` | Er brugeren gået videre, siden den her kørsel døde? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L70) |
+| function | `recover_due_once` | `(*, owner=…)` | Tag ÉN forfalden opgave og start dens fortsættelse. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L116) |
+| function | `signal_recovery_dispatcher` | `()` | Væk dispatcheren nu — kaldes lige efter en durabel afregning. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L274) |
+| function | `_loop` | `()` | — | [src](../../../core/services/visible_run_recovery_dispatcher.py#L279) |
+| function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L293) |
+| function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L310) |
 
 ## `core/services/visible_run_segment_exit.py`
 _Afgoer hvad et agentisk segment blev til, og goer det durabelt._

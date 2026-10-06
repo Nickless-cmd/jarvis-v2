@@ -767,6 +767,20 @@ def claim_due_recovery(
                 continue
             if str(rec.get("kind") or "visible") != "visible":
                 continue
+            # Den ydre detached stream har sit eget run-id og kan efterlade en
+            # halv recovery-post uden original_request. At genoptage den ville
+            # starte en betalt model med kun "Fortsæt hvor du slap." som opgave.
+            if not any(str(rec.get(field) or "").strip() for field in (
+                "original_request", "user_message", "original_message", "excerpt",
+            )):
+                rec["status"] = "failed_terminal"
+                rec["exit_reason"] = "recovery-original-request-missing"
+                rec["settled_at"] = instant.isoformat()
+                rec["recovery_owner"] = ""
+                rec["recovery_lease_until"] = ""
+                rec["next_attempt_at"] = ""
+                rec["notice_pending"] = False
+                continue
             if is_non_retryable_recovery_reason(rec.get("exit_reason")):
                 rec["status"] = "failed_terminal"
                 rec["settled_at"] = instant.isoformat()

@@ -59,13 +59,12 @@ def _er_runtime_processen() -> bool:
 
 def _besked_fra(record: dict[str, object]) -> str:
     """Den oprindelige anmodning — det er DEN opgaven handler om."""
-    # `original_request` er journalens eget navn (mark_started); de øvrige er
-    # der for ældre poster og for en opgave der kun har et resumé.
-    for felt in ("original_request", "user_message", "original_message", "excerpt", "summary"):
+    # Et fejl-resumé er ikke en brugerbesked og må ikke bruges som opgave.
+    for felt in ("original_request", "user_message", "original_message", "excerpt"):
         value = str(record.get(felt) or "").strip()
         if value:
             return value
-    return "Fortsæt hvor du slap."
+    return ""
 
 
 def _samtalen_gik_videre(session_id: str, efter: str) -> bool:
@@ -182,6 +181,13 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
                 "error": "samtalen-gik-videre"}
 
     besked = _besked_fra(krav)
+    if not besked:
+        in_flight_runs.settle_terminal(
+            task_id, status="cancelled", reason="recovery-original-request-missing",
+            expected_generation=generation, expected_owner=ejer,
+        )
+        return {"started": 0, "released": 1, "claimed": task_id,
+                "error": "missing-original-request"}
     # SIDSTE SLUTRUNDE (opgave 3/4). Er genoptagelserne brugt op, beder
     # journalen om en AFSLUTNING — ikke om mere arbejde. Uden dette fik den
     # samme besked som en almindelig fortsættelse og kunne bruge sin sidste

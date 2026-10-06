@@ -39,6 +39,7 @@ def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message:
     upåvirket (den dømmer på aktive beslutninger, ikke på bruger-pres)."""
     from core.services.gate_kernel import Decision, GateClass
     from core.services import gate_enforcement
+    from core.services.central_decentralization import lokal_groen
 
     _veto_blocked = False
     _veto_reason: str | None = None
@@ -52,21 +53,17 @@ def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message:
         _veto_ctx = {"tool_name": name, "user_message": user_message,
                      "session_id": session_id, "run_id": run_id,
                      "user_present": user_present}
-        # Decentralisering (Keymaker): en bevist altid-grøn veto-gate MED en gyldig optjent+godkendt
-        # nøgle resolver LOKALT — spring Centralens chokepoint-round-trip over (central_decentralization-
-        # doktrinen: altid-grønne højvolumen-gates er ren overhead). Gatens dømmekraft KØRER altid
-        # (selv-tilbageholdenhed bevaret); kun overhead fjernes. Eskalér ved ikke-grøn ELLER lokal fejl
-        # til fuld central-arbitrage (recording + enforcement). is_decentralized tjekker en ÆGTE
-        # approved+ikke-udløbet nøgle — ALDRIG is_enabled (som defaulter ON).
-        _vv = None
-        try:
-            from core.services import central_keymaker as _km
-            if _km.is_decentralized("veto"):
-                _local = _veto_gate_fn(_veto_ctx)
-                if _local is not None and _local.decision is Decision.GREEN:
-                    _vv = _local  # lokalt grønt → tillad uden central-skat
-        except Exception:
-            _vv = None  # enhver decentral-fejl → fald tilbage til fuld central (fail-safe)
+        # Decentralisering (Keymaker): en bevist altid-grøn veto-gate MED en gyldig
+        # optjent+godkendt nøgle resolverer LOKALT — spring Centralens chokepoint-
+        # round-trip over. Gatens dømmekraft KØRER altid; kun overhead fjernes, og
+        # alt ikke-grønt eller enhver fejl eskalerer til fuld central-arbitrage.
+        #
+        # 6/10-2026: mønstret stod inline her og talte IKKE verdiktet — så da
+        # nøglen blev godkendt, stoppede `veto`s grønne tælling i ledgeren, som er
+        # præcis den kilde der optjener og fornyer nøglen. Flyttet til
+        # `central_decentralization.lokal_groen`, som tæller lokalt (en dict-
+        # increment, ingen DB) og nu deles med decision_gate og self_review.
+        _vv = lokal_groen("veto", "commit", _veto_gate_fn, _veto_ctx)
         if _vv is None:  # ikke decentraliseret, eller lokalt ikke-grønt/fejl → fuld arbitrage
             _vv = _central_veto().decide(
                 "veto", _veto_ctx,
@@ -91,13 +88,20 @@ def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message:
     try:
         from core.services.central_core import central as _central_commit
         from core.services.gate_commit import commit_gate as _commit_gate_fn
-        _cv = _central_commit().decide(
-            "decision_gate",
-            {"tool_name": name, "tool_args": arguments,
-             "user_message": user_message, "run_id": run_id,
-             "session_id": session_id or ""},
-            _commit_gate_fn, cluster="commit", klass=GateClass.COGNITIVE,
-        )
+        _commit_ctx = {"tool_name": name, "tool_args": arguments,
+                       "user_message": user_message, "run_id": run_id,
+                       "session_id": session_id or ""}
+        # Samme decentralisering som veto ovenfor. decision_gate er den
+        # STØRSTE kandidat målt 6/10-2026: 74.898 grønne mod 12 røde (seneste
+        # røde 7/9) og 2 gule. YELLOW må IKKE resolvere lokalt — den surfacer
+        # som blød advarsel nedenfor og skal recordes, så kun GREEN tages
+        # lokalt (det er netop hvad `lokal_groen` gør).
+        _cv = lokal_groen("decision_gate", "commit", _commit_gate_fn, _commit_ctx)
+        if _cv is None:
+            _cv = _central_commit().decide(
+                "decision_gate", _commit_ctx,
+                _commit_gate_fn, cluster="commit", klass=GateClass.COGNITIVE,
+            )
         if _cv.decision is Decision.RED:
             if gate_enforcement.is_enforced("decision_gate", GateClass.COGNITIVE):
                 _decision_blocked = True          # hård grad → blokér (tool kører ikke)

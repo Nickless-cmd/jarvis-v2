@@ -397,9 +397,10 @@ _Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find s
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_never_decentralize` | `(nerve)` | True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY | [src](../../../core/services/central_decentralization.py#L30) |
-| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
-| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
-| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
+| function | `lokal_groen` | `(nerve, cluster, gate_fn, ctx)` | Koer gaten LOKALT og returnér verdiktet hvis det er groent — ellers None. | [src](../../../core/services/central_decentralization.py#L42) |
+| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L84) |
+| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L127) |
+| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L138) |
 
 ## `core/services/central_dejavu.py`
 _Déjà Vu — ufrivillig erindring._

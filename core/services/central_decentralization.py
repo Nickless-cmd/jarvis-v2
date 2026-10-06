@@ -39,6 +39,48 @@ def _never_decentralize(nerve: str) -> bool:
     return nerve in _NEVER_DECENTRALIZE
 
 
+def lokal_groen(nerve: str, cluster: str, gate_fn, ctx: dict[str, Any]):
+    """Koer gaten LOKALT og returnér verdiktet hvis det er groent — ellers None.
+
+    Doktrinen: en altid-groen hoejvolumen-gate er ren overhead i Centralens
+    chokepoint. Med en gyldig optjent+godkendt noegle resolverer den lokalt, og
+    kun ikke-groent (eller enhver fejl) eskalerer til fuld central-arbitrage.
+    Gatens doemmekraft KOERER altid; kun round-trippet fjernes.
+
+    `None` betyder ALTID «brug Centralen» — ikke noegle, ikke groent, eller en
+    fejl. Fail-safe i den retning der standser: en decentral fejl maa aldrig
+    kunne give et groent svar.
+
+    **Verdiktet taelles lokalt.** Maalt 6/10-2026: da veto-noeglen blev godkendt
+    13:19:15, stoppede `veto`s groenne taelling i `gate_verdict_counts` 13:18:46
+    — mens `decision_gate` i SAMME funktionskald taellede videre til 13:27:54.
+    Decentraliseringen slukkede altsaa det bevis der optjener og fornyer noeglen,
+    og baade `analyze_chokepoint` og `central_keymaker.evaluate_keys` laeser
+    praecis den ledger. `gate_verdict_ledger.record` er en dict-increment under
+    en laas — ingen DB, ingen I/O — saa den hoerer ikke til det overhead der
+    skulle spares. Den bliver.
+    """
+    try:
+        from core.services.central_keymaker import is_decentralized
+        if not is_decentralized(nerve):
+            return None
+    except Exception:  # noegle-opslag nede → brug Centralen
+        return None
+    try:
+        from core.services.gate_kernel import Decision
+        verdikt = gate_fn(ctx)
+        if verdikt is None or verdikt.decision is not Decision.GREEN:
+            return None
+        try:
+            from core.services.gate_verdict_ledger import record
+            record(nerve, cluster, "green", getattr(verdikt, "reason", "") or "")
+        except Exception:  # en taeller maa aldrig paavirke governance
+            pass
+        return verdikt
+    except Exception:  # lokal gate-fejl → eskalér til fuld central
+        return None
+
+
 def analyze_chokepoint() -> dict[str, Any]:
     """Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings-
     kandidater. Læser gate_verdict_counts (verdict-ledgeren). Self-safe."""

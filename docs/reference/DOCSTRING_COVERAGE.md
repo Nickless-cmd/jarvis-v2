@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8524/16099 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8525/16100 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8524/16099 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 723 | 1303 | 55% |
-| `core.services` | 5688 | 10958 | 51% |
+| `core.services` | 5689 | 10959 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1311,8 +1311,8 @@ Generated from source. 8524/16099 functions/methods documented (52%). The list b
 - `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L92)
 - `core/services/notifikations_emittere.py` :: `system` (L109)
 - `core/services/notifikations_opstart.py` :: `koer_ved_opstart` (L13)
-- `core/services/notifikations_valg.py` :: `kanal_for` (L100)
-- `core/services/notifikations_valg.py` :: `saet` (L117)
+- `core/services/notifikations_valg.py` :: `kanal_for` (L115)
+- `core/services/notifikations_valg.py` :: `saet` (L132)
 - `core/services/ntfy_gateway.py` :: `is_configured` (L26)
 - `core/services/oauth_flow.py` :: `is_known_provider` (L46)
 - `core/services/oauth_flow.py` :: `redirect_uri` (L50)
@@ -1726,8 +1726,8 @@ Generated from source. 8524/16099 functions/methods documented (52%). The list b
 - `core/services/self_review_signal_tracking.py` :: `build_runtime_self_review_signal_surface` (L53)
 - `core/services/self_review_signal_tracking.py` :: `refresh_runtime_self_review_signal_statuses` (L49)
 - `core/services/self_review_signal_tracking.py` :: `track_runtime_self_review_signals_for_visible_turn` (L41)
-- `core/services/self_review_unified.py` :: `build_self_review_surface` (L371)
-- `core/services/self_review_unified.py` :: `list_self_reviews` (L352)
+- `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
+- `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
 - `core/services/self_wakeup.py` :: `list_wakeups` (L385)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)

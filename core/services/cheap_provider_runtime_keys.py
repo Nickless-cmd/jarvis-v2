@@ -52,6 +52,7 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "tuzi": ("tuzi_api_key", "TUZI_API_KEY"),
     "fujcloud": ("fujcloud_api_key", "FUJCLOUD_API_KEY"),
     "freeai": ("freeai_api_key", "FREEAI_API_KEY"),
+    "gonkarouter": ("gonkarouter_api_key", "GONKAROUTER_API_KEY"),
 }
 
 

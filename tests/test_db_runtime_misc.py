@@ -28,6 +28,53 @@ def test_db_runtime_misc_read_paths_are_callable(isolated_runtime):
     assert m.signal_archive_cleanup() == 0
 
 
+def test_session_summary_recent_scopes_to_current_user(isolated_runtime):
+    """Værn: de nyeste summaries må ikke lække på tværs af brugere.
+
+    Målt 6/10-2026: funktionen hentede de nyeste på tværs af ALLE brugere, og
+    `build_previous_session_summaries` injicerede dem i prompten
+    (transcript_sections.py:120) — så Michelles eller Mikkels samtale kunne ligge
+    i Bjørns prompt mens han talte med Jarvis.
+    """
+    import core.runtime.db_runtime_misc as m
+    from core.identity.workspace_context import reset_context, set_context
+    from core.runtime.db_core import connect
+
+    with connect() as conn:
+        m._ensure_session_summaries_table(conn)
+        conn.execute(
+            "INSERT INTO session_summaries (session_id, summary, created_at) "
+            "VALUES ('s-owner', 'ejerens samtale', '2026-09-03T10:00:00')"
+        )
+        conn.execute(
+            "INSERT INTO session_summaries (session_id, summary, created_at) "
+            "VALUES ('s-other', 'en anden brugers samtale', '2026-09-03T11:00:00')"
+        )
+        for sid, uid in (("s-owner", "owner-uid"), ("s-other", "other-uid")):
+            conn.execute(
+                "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+                "VALUES (?, ?, 'user', 'x', ?, '2026-09-03T10:00:00')",
+                (f"m-{sid}", sid, uid),
+            )
+        conn.commit()
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        sids = [r["session_id"] for r in m.session_summary_recent(limit=10)]
+        assert "s-owner" in sids
+        assert "s-other" not in sids, "en anden brugers summary lækkede ind i prompt-vejen"
+    finally:
+        reset_context(t)
+
+    t = set_context(workspace_name="michelle", user_id="other-uid")
+    try:
+        sids = [r["session_id"] for r in m.session_summary_recent(limit=10)]
+        assert "s-other" in sids, "ejeren skal kunne se sin EGEN samtale"
+        assert "s-owner" not in sids
+    finally:
+        reset_context(t)
+
+
 def test_recurrence_iteration_round_trip(isolated_runtime):
     import core.runtime.db_runtime_misc as m
 

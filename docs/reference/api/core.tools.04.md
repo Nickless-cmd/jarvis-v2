@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_exec.py`
+_Exec-kommando-klassifikation for workspace-capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_classify_exec_command` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L33) |
+| function | `_classify_shell_composed_exec_command` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L123) |
+| function | `_classify_exec_command_no_shell` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L187) |
+| function | `_split_shell_exec_segments` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L265) |
+| function | `_normalize_exec_argv` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L270) |
+| function | `_classify_git_exec_command` | `(argv, *, path_normalization_applied=…, normalization_source=…)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L302) |
+| function | `_resolve_git_exec_context` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L397) |
+| function | `_is_allowed_bounded_git_log_args` | `(log_args)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L424) |
+| function | `_classify_cd_exec_command` | `(argv, *, path_normalization_applied=…, normalization_source=…)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L432) |
+| function | `_classify_git_mutation_subcommand` | `(subcommand)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L463) |
+| function | `_mutating_exec_proposal_metadata` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L480) |
+
 ## `core/tools/workspace_capabilities_execute.py`
 _Read-only capability-udførere (runtime-event-read, grep, multi-read, outline)._
 

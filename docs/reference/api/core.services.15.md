@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/initiative_queue.py`
+_Persistent initiative queue — bridges inner voice thoughts to heartbeat actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_ikke_et_initiativ` | `(focus)` | Returnér en grund hvis dette ikke er et forslag. Tom streng = behold. | [src](../../../core/services/initiative_queue.py#L58) |
+| function | `push_initiative` | `(*, focus, source=…, source_id=…, priority=…)` | Push a new initiative to the queue. Returns the initiative_id. | [src](../../../core/services/initiative_queue.py#L92) |
+| function | `seed_long_term_intention` | `(*, title, why, source=…, source_id=…, priority=…)` | Create or refresh a long-term intention owned by Jarvis. | [src](../../../core/services/initiative_queue.py#L209) |
+| function | `get_pending_initiatives` | `()` | Return all pending (non-expired, non-acted) initiatives. | [src](../../../core/services/initiative_queue.py#L275) |
+| function | `mark_acted` | `(initiative_id, *, action_summary=…)` | Mark an initiative as acted upon. Returns True if found. | [src](../../../core/services/initiative_queue.py#L292) |
+| function | `mark_attempted` | `(initiative_id, *, blocked_reason=…, retry_delay_minutes=…, action_summary=…)` | Record a bounded attempt and schedule a retry if still pending. | [src](../../../core/services/initiative_queue.py#L348) |
+| function | `approve_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-approved. Returns the updated record or None if not found. | [src](../../../core/services/initiative_queue.py#L391) |
+| function | `reject_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-rejected and expire it. Returns updated record or None. | [src](../../../core/services/initiative_queue.py#L407) |
+| function | `get_initiative_queue_state` | `()` | Return full queue state for MC observability. | [src](../../../core/services/initiative_queue.py#L423) |
+| function | `_expire_stale` | `(now)` | Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK. | [src](../../../core/services/initiative_queue.py#L461) |
+| function | `_trim_pending` | `(now)` | — | [src](../../../core/services/initiative_queue.py#L483) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/initiative_queue.py#L503) |
+| function | `_initiative_due` | `(initiative, now)` | — | [src](../../../core/services/initiative_queue.py#L513) |
+| function | `_initiative_sort_key` | `(initiative)` | — | [src](../../../core/services/initiative_queue.py#L523) |
+| function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L535) |
+| function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L550) |
+| function | `endorse_long_term_intention` | `(initiative_id, *, note=…)` | Bjørn siger «det er i orden» til et livsprojekt. | [src](../../../core/services/initiative_queue.py#L576) |
+| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L612) |
+| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L635) |
+
 ## `core/services/inner_dialectic_engine.py`
 _Compact inner critic / ally / synthesizer dialectic._
 
@@ -665,11 +690,4 @@ _Living Heartbeat Cycle — Jarvis' inner life rhythm._
 | function | `format_life_phase_for_prompt` | `(phase)` | Format life phase info for heartbeat prompt injection. | [src](../../../core/services/living_heartbeat_cycle.py#L176) |
 | function | `build_living_heartbeat_cycle_surface` | `()` | MC surface for living heartbeat cycle. | [src](../../../core/services/living_heartbeat_cycle.py#L193) |
 | function | `_emit_living_heartbeat_cycle_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/living_heartbeat_cycle.py#L204) |
-
-## `core/services/llm_json.py`
-_Traek et JSON-objekt ud af et LLM-svar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `udtraek_json` | `(raw)` | Foerste komplette JSON-objekt i `raw`, eller None. | [src](../../../core/services/llm_json.py#L33) |
 

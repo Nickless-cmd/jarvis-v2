@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_activity.py`
+_Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og hvordan"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_q1` | `(conn, sql, params)` | — | [src](../../../core/services/user_activity.py#L17) |
+| function | `build_user_activity_surface` | `(*, active_within_s=…)` | Pr. registreret bruger: sidst aktiv (flettet fra alle kilder), via hvad, aktiv nu, | [src](../../../core/services/user_activity.py#L25) |
+
 ## `core/services/user_contradiction_tracker.py`
 _User Contradiction Tracker — detects when the user contradicts themselves._
 
@@ -624,19 +632,4 @@ _Durable, idempotent settlement for every visible-run segment ending._
 | class | `RecoverySettlement` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L41) |
 | function | `_was_same_recovery` | `(before, *, reason, final_synthesis)` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L49) |
 | function | `settle_segment` | `(request)` | Settle exactly once before stream closure or continuation dispatch. | [src](../../../core/services/visible_run_recovery_coordinator.py#L60) |
-
-## `core/services/visible_run_recovery_dispatcher.py`
-_Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_udskydelses_backoff` | `(tidligere)` | Vent længere for hver gang samtalen var optaget — men aldrig i det uendelige. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L44) |
-| function | `_er_runtime_processen` | `()` | Runtime-processen dispatcher ikke. Den må forlige, ikke starte. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L54) |
-| function | `_besked_fra` | `(record)` | Den oprindelige anmodning — det er DEN opgaven handler om. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L60) |
-| function | `_samtalen_gik_videre` | `(session_id, efter)` | Er brugeren gået videre, siden den her kørsel døde? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L70) |
-| function | `recover_due_once` | `(*, owner=…)` | Tag ÉN forfalden opgave og start dens fortsættelse. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L116) |
-| function | `signal_recovery_dispatcher` | `()` | Væk dispatcheren nu — kaldes lige efter en durabel afregning. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L274) |
-| function | `_loop` | `()` | — | [src](../../../core/services/visible_run_recovery_dispatcher.py#L279) |
-| function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L293) |
-| function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L310) |
 

@@ -415,6 +415,14 @@ _Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
 | function | `_exec_goal_list` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L86) |
 | function | `_exec_goal_get` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L108) |
 
+## `core/tools/graf_tools.py`
+_`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_graf_dir` | `()` | — | [src](../../../core/tools/graf_tools.py#L44) |
+| function | `_exec_vis_graf` | `(args)` | Tegn en graf og laeg den i traaden. Kaster aldrig. | [src](../../../core/tools/graf_tools.py#L49) |
+
 ## `core/tools/health_monitor_tools.py`
 _API health monitor tools — Jarvis can watch services and be notified of outages._
 
@@ -525,11 +533,4 @@ _Single source of truth for what jarvis-code (jc) presents as tools._
 | function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L120) |
 | function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
 | function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
-
-## `core/tools/kaldt_vaerktoej.py`
-_`call_loaded_tool` — en transport, ikke en udfører._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L76) |
 

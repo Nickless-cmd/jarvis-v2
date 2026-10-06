@@ -51,6 +51,7 @@ from core.tools.comfyui_tools import (
     _exec_comfyui_history,
     _exec_comfyui_objects,
 )
+from core.tools.graf_tools import _exec_vis_graf
 from core.tools.pollinations_tools import (
     POLLINATIONS_TOOL_DEFINITIONS,
     _exec_pollinations_image,
@@ -1666,6 +1667,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "comfyui_history": _exec_comfyui_history,
     "comfyui_objects": _exec_comfyui_objects,
     # Pollinations.ai free image gen (no RAM, no auth)
+    "vis_graf": _exec_vis_graf,
     "pollinations_image": _exec_pollinations_image,
     "pollinations_video": _exec_pollinations_video,
     "pollinations_video_edit": _exec_pollinations_video_edit,

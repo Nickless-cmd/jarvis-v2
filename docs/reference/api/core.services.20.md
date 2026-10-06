@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_section_impact.py`
+_Lightweight prompt-section answer-impact telemetry._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SectionImpact` | `` | — | [src](../../../core/services/prompt_section_impact.py#L19) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_section_impact.py#L27) |
+| function | `estimate_section_impact` | `(label, section_text, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L35) |
+| function | `observe_answer_impact` | `(*, run_id, answer_text, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L50) |
+| function | `remember_prompt_sections` | `(*, session_id, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L75) |
+| function | `observe_last_prompt_answer_impact` | `(*, session_id, run_id, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L86) |
+
 ## `core/services/prompt_section_reevaluation.py`
 _Revurderings-løkke for slukkede prompt-sektioner._
 
@@ -608,21 +620,4 @@ _Reflection → Plan — konvertér reflection/tanke til eksekverbar plan._
 | function | `_quote` | `(text)` | — | [src](../../../core/services/reflective_critic_tracking.py#L403) |
 | function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L410) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L414) |
-
-## `core/services/regret_engine.py`
-_Regret Engine — systematisk tracking af fortrydelser og læring._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/regret_engine.py#L28) |
-| function | `_clamp` | `(value, default=…, lo=…, hi=…)` | — | [src](../../../core/services/regret_engine.py#L32) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/regret_engine.py#L44) |
-| function | `compute_regret_level` | `(*, expected_outcome, actual_outcome, confidence_before=…, confidence_after=…)` | Compute regret level ∈ [0, 1] from outcome mismatch + confidence drop. | [src](../../../core/services/regret_engine.py#L78) |
-| function | `_row_to_dict` | `(row)` | — | [src](../../../core/services/regret_engine.py#L108) |
-| function | `open_or_update_regret` | `(*, decision_id, context=…, expected_outcome, actual_outcome, lesson=…, confidence_before=…, confidence_after=…, linked_run_id=…, linked_session_id=…, linked_incident_id=…)` | Open a new regret, or update an existing open one for this decision_id. | [src](../../../core/services/regret_engine.py#L119) |
-| function | `resolve_regret` | `(*, regret_id, actual_outcome=…, lesson=…, confidence_after=…)` | Mark a regret as resolved. Optionally update final outcome + lesson. | [src](../../../core/services/regret_engine.py#L256) |
-| function | `list_regrets` | `(*, status=…, limit=…)` | — | [src](../../../core/services/regret_engine.py#L303) |
-| function | `summarize_regrets` | `()` | — | [src](../../../core/services/regret_engine.py#L326) |
-| function | `reconcile_open_regrets` | `(*, close_below=…)` | Auto-resolve regrets whose level has decayed below the threshold. | [src](../../../core/services/regret_engine.py#L359) |
-| function | `build_regret_engine_surface` | `()` | MC surface — returns current regret state for Mission Control. | [src](../../../core/services/regret_engine.py#L400) |
 

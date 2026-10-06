@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/kaldt_vaerktoej.py`
+_`call_loaded_tool` — en transport, ikke en udfører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L76) |
+
 ## `core/tools/kommando_beskrivelse.py`
 _Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
 
@@ -509,19 +516,4 @@ _Sensory archive tools — record and recall sensory experiences._
 |---|---|---|---|---|
 | function | `_exec_record_sensory_memory` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L18) |
 | function | `_exec_recall_sensory_memories` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L79) |
-
-## `core/tools/session_search.py`
-_search_sessions tool — cross-channel session search with keyword and semantic modes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_channel_title_filter` | `(channel)` | — | [src](../../../core/tools/session_search.py#L60) |
-| function | `_row_to_result` | `(row, *, match_type)` | — | [src](../../../core/tools/session_search.py#L69) |
-| function | `_user_scope_clause` | `(user_id)` | Privatlivs-guard (multi-user northstar): begræns søgningen til sessions der | [src](../../../core/tools/session_search.py#L86) |
-| function | `_keyword_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L103) |
-| function | `_embed_query` | `(text)` | Embed text via Ollama. Returns None if unavailable. | [src](../../../core/tools/session_search.py#L144) |
-| function | `_cosine_similarity` | `(a, b)` | — | [src](../../../core/tools/session_search.py#L171) |
-| function | `_semantic_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L181) |
-| function | `_merge_results` | `(keyword_results, semantic_results, limit)` | — | [src](../../../core/tools/session_search.py#L238) |
-| function | `exec_search_sessions` | `(args)` | — | [src](../../../core/tools/session_search.py#L262) |
 

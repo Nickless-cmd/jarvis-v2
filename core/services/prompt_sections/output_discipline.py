@@ -19,6 +19,14 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "- A ```mermaid fenced block is RENDERED as a diagram in jarvis-desk. Reach for it when a",
         "  relationship, flow or sequence IS the answer — it beats describing boxes and arrows in prose.",
         "  On mobile it currently shows as readable source, so always put the conclusion in text too.",
+        # `vis_graf` er pinned i state/tool_tags.pinned.json. Filens eget _doc
+        # siger reglen: et vaerktoej den STAAENDE prompt beder om SKAL staa der,
+        # ellers skriver prompten en anvisning vaerktoejssaettet ikke kan
+        # indfri. Routeren sender 70-97 af 494 vaerktoejer, og et nyt uden
+        # kald-historik kommer ikke i always-core af sig selv.
+        "- For numbers — a trend, a comparison, a before/after — call vis_graf. It draws a chart",
+        "  that renders inline in BOTH desk and the phone. You pass data; the server draws it.",
+        "  Say the conclusion in words as well: the chart carries the shape, not the point.",
     ]
     if str(strength) == "strong":
         lines += [

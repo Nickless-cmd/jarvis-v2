@@ -29,6 +29,7 @@
     "git_show",
     "inbox",
     "inbox_done",
-    "inbox_drop"
+    "inbox_drop",
+    "vis_graf"
   ]
 }

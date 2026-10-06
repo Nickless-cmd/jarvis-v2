@@ -7,6 +7,8 @@ import queue
 import sqlite3
 import threading
 import time
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from core.eventbus.events import Event
@@ -26,6 +28,16 @@ _EGNE_IDS_MAX = 50_000
 _WRITER_BATCH_MAX = 128
 _FLUSH_POLL_SECS = 0.001
 _WRITER_SHUTDOWN_TIMEOUT = 5.0
+
+# Dead-letter: en batch der ikke kunne committes SKRIVES til disk i stedet for at
+# blive kastet. Målt 6/10-2026: uden dette var tabet endeligt — rækken nåede
+# hverken events-tabellen eller abonnenterne, og hverken krydsproces-relæet
+# (krydsproces.py) eller de fem poll-veje (recent_since_id) kunne genskabe den,
+# fordi de alle læser tabellen hvor rækken aldrig kom. Filen er append-only og
+# rører ikke DB'en, så den kan skrives netop når DB'en er låst.
+_DEAD_LETTER_FILENAME = "eventbus_dead_letter.jsonl"
+# Hvor tit writer'en forsøger at genindlæse filen — kun når køen er tom (roligt).
+_DRAIN_INTERVAL_SECS = 60.0
 
 
 class EventBus:
@@ -65,6 +77,13 @@ class EventBus:
         self._egne_ids: collections.deque[int] = collections.deque(maxlen=_EGNE_IDS_MAX)
         self._egne_set: set[int] = set()
         self._egne_lock = threading.Lock()
+
+        # Dead-letter-tilstand (se _DEAD_LETTER_FILENAME). Tællerne lever kun i
+        # denne proces; FILEN er den durable sandhed på tværs af genstarter.
+        self._dead_letter_lock = threading.Lock()
+        self._spilled_total = 0
+        self._drained_total = 0
+        self._last_drain_attempt = 0.0
 
         self._writer_shutdown = threading.Event()
         self._writer_thread = threading.Thread(
@@ -246,6 +265,7 @@ class EventBus:
             try:
                 item = self._writer_queue.get(timeout=0.5)
             except queue.Empty:
+                self._maaske_drain()
                 continue
 
             if item is None:  # poison pill
@@ -266,21 +286,17 @@ class EventBus:
 
             try:
                 self._write_events_batch(batch)
-            except sqlite3.OperationalError as exc:
+            except sqlite3.OperationalError:
                 # Rygraden: DB-lås trods busy_timeout (fx lang checkpoint) → ét retry efter
-                # kort pause før vi opgiver. Undgår at tabe events på kortvarig kontention.
+                # kort pause. Går det også galt, SPILLES batchen til disk — den kastes
+                # aldrig (se _spill_batch). Før 6/10-2026 blev den kastet her.
                 time.sleep(0.2)
                 try:
                     self._write_events_batch(batch)
-                except Exception:
-                    logger.warning(
-                        "eventbus-writer: dropped %d events efter retry (%s)",
-                        len(batch), exc,
-                    )
-            except Exception:
-                logger.exception(
-                    "eventbus-writer: failed to write batch of %d events", len(batch),
-                )
+                except Exception as retry_exc:
+                    self._spill_batch(batch, retry_exc)
+            except Exception as exc:
+                self._spill_batch(batch, exc)
             finally:
                 # Always advance the sequence so flush() doesn't deadlock.
                 max_seq = max((it.get("seq", -1) for it in batch), default=-1)
@@ -290,6 +306,148 @@ class EventBus:
 
             if poison:
                 break
+
+    # ---- Dead-letter: tab bliver forsinkelse, ikke hul -----------------
+
+    def _dead_letter_path(self) -> Path:
+        """Stien til spill-filen. Læses lazy, så DB_PATH kan omdirigeres i tests."""
+        from core.runtime.db_core import DB_PATH
+
+        return Path(DB_PATH).parent / _DEAD_LETTER_FILENAME
+
+    def _spill_batch(
+        self, batch: list[dict[str, Any]], exc: BaseException | None
+    ) -> None:
+        """Skriv en batch der ikke kunne committes til dead-letter-filen.
+
+        Filen er append-only og rører ikke DB'en — derfor kan den skrives netop
+        når DB'en er låst, hvilket er den eneste situation hvor vi er her.
+        Fejler spillet selv, falder vi tilbage til det gamle tab (logget).
+        """
+        linjer: list[str] = []
+        for item in batch:
+            post = dict(item)
+            post["spilled_at"] = datetime.now(UTC).isoformat()
+            try:
+                linjer.append(json.dumps(post, ensure_ascii=False))
+            except (TypeError, ValueError):
+                # En payload der ikke kan serialiseres kan ikke genindlæses —
+                # den ene linje tabes, resten af batchen reddes.
+                logger.warning(
+                    "eventbus-writer: kunne ikke serialisere %r til dead-letter",
+                    post.get("kind"),
+                )
+        if not linjer:
+            return
+        try:
+            path = self._dead_letter_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with self._dead_letter_lock:
+                with path.open("a", encoding="utf-8") as fh:
+                    fh.write("\n".join(linjer) + "\n")
+            self._spilled_total += len(linjer)
+            logger.warning(
+                "eventbus-writer: %d events spillet til disk efter fejlet skrivning (%s)",
+                len(linjer),
+                exc,
+            )
+        except Exception:
+            logger.exception(
+                "eventbus-writer: dropped %d events — spill til disk fejlede", len(batch)
+            )
+
+    def _drain_dead_letter(self) -> int:
+        """Genindlæs spillede events. Returnerer antal skrevet tilbage til DB'en.
+
+        Rækkerne får NYE id'er, så krydsproces-relæet og poll-vejene ser dem (de
+        læser recent_since_id), og lokale abonnenter får notifikationen gennem
+        den normale commit-vej. `created_at` bevares, så eventet beholder sin
+        ægte tid. Kun linjer der faktisk blev skrevet fjernes fra filen.
+        """
+        path = self._dead_letter_path()
+        with self._dead_letter_lock:
+            if not path.exists():
+                return 0
+            try:
+                raa = path.read_text(encoding="utf-8")
+            except OSError:  # filen kan ikke læses — behandl den som tom
+                return 0
+            poster: list[dict[str, Any]] = []
+            for linje in raa.splitlines():
+                if not linje.strip():
+                    continue
+                try:
+                    poster.append(json.loads(linje))
+                except (TypeError, ValueError):
+                    continue  # korrupt linje kan ikke genindlæses — spring den over
+            if not poster:
+                try:
+                    path.write_text("", encoding="utf-8")
+                except OSError:  # kan ikke tømme filen nu — næste drain forsøger igen
+                    pass
+                return 0
+
+            skrevet = 0
+            rest: list[dict[str, Any]] = []
+            for i in range(0, len(poster), _WRITER_BATCH_MAX):
+                chunk = poster[i : i + _WRITER_BATCH_MAX]
+                try:
+                    self._write_events_batch(chunk)
+                    skrevet += len(chunk)
+                except Exception:
+                    # Stadig låst — behold alt fra og med denne chunk til næste
+                    # rolige vindue. Intet kastes.
+                    rest = poster[i:]
+                    break
+
+            try:
+                tmp = path.with_name(path.name + ".tmp")
+                tmp.write_text(
+                    "".join(json.dumps(p, ensure_ascii=False) + "\n" for p in rest),
+                    encoding="utf-8",
+                )
+                tmp.replace(path)
+            except OSError:
+                logger.exception(
+                    "eventbus-writer: kunne ikke skrive dead-letter-resten tilbage"
+                )
+
+            self._drained_total += skrevet
+            return skrevet
+
+    def _maaske_drain(self) -> None:
+        """Forsøg genindlæsning — kun når køen er tom, og højst hvert minut."""
+        nu = time.monotonic()
+        if nu - self._last_drain_attempt < _DRAIN_INTERVAL_SECS:
+            return
+        self._last_drain_attempt = nu
+        try:
+            path = self._dead_letter_path()
+            if not path.exists() or path.stat().st_size == 0:
+                return
+        except OSError:  # ingen fil eller stat — der er intet at dræne
+            return
+        try:
+            antal = self._drain_dead_letter()
+        except Exception:
+            logger.exception("eventbus-writer: drain af dead-letter fejlede")
+            return
+        if antal:
+            logger.info("eventbus-writer: genindlæste %d spillede events fra disk", antal)
+
+    def dead_letter_stats(self) -> dict[str, Any]:
+        """Tællere + filstørrelse — så «taber vi events?» er et tal, ikke en eftersøgning."""
+        path = self._dead_letter_path()
+        try:
+            pending = path.stat().st_size if path.exists() else 0
+        except OSError:
+            pending = 0
+        return {
+            "spilled_total": self._spilled_total,
+            "drained_total": self._drained_total,
+            "pending_bytes": pending,
+            "file": str(path),
+        }
 
     def _write_event(self, item: dict[str, Any]) -> None:
         """Backward-compat single-event wrapper (tests/callers)."""

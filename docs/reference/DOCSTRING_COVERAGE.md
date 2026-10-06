@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8536/16124 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8541/16129 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,7 +20,7 @@ Generated from source. 8536/16124 functions/methods documented (52%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.eventbus` | 15 | 32 | 46% |
+| `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
@@ -258,11 +258,11 @@ Generated from source. 8536/16124 functions/methods documented (52%). The list b
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
 - `core/costing/ledger.py` :: `telemetry_summary` (L118)
-- `core/eventbus/bus.py` :: `EventBus.recent` (L161)
-- `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L182)
-- `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L207)
-- `core/eventbus/bus.py` :: `EventBus.subscribe` (L229)
-- `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L235)
+- `core/eventbus/bus.py` :: `EventBus.recent` (L180)
+- `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L201)
+- `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L226)
+- `core/eventbus/bus.py` :: `EventBus.subscribe` (L248)
+- `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L254)
 - `core/eventbus/events.py` :: `Event.create` (L311)
 - `core/eventbus/events.py` :: `Event.family` (L307)
 - `core/eventbus/events.py` :: `Event.from_record` (L317)

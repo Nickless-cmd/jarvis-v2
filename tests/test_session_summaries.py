@@ -98,19 +98,28 @@ class TestSessionSummaryInsert:
 
 
 class TestSessionSummaryRecent:
-    def test_returns_recent_entries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Koerer mod RIGTIG sqlite med husets eget schema, ikke mod en
+    `:memory:`-forbindelse med én tabel.
+
+    Begge tests herunder var ROEDE fra 6/10-2026 med
+    `sqlite3.OperationalError: no such table: chat_messages`. Aarsagen var ikke
+    en fejl i koden: `session_summary_recent` fik samme dag et privatlivs-filter
+    der udelukker sessioner der beviseligt tilhoerer en ANDEN bruger, og det
+    slaar op i `chat_messages`. Produktionen er sund (maalt: 3 raekker, 99.248
+    beskeder i tabellen), og udelukkelsen har sin egen test i
+    `tests/test_db_runtime_misc.py::test_session_summary_recent_scopes_to_current_user`.
+
+    Det der braekkede, var fixturen: en forbindelse der kun har den ene tabel
+    kan ALDRIG se at forespoergslen fik en ny afhaengighed — samme familie som
+    «en fake forbindelse kan ikke se en ny WHERE-gren». `init_db()` opretter
+    `chat_messages`, men aabner sin egen forbindelse og kan derfor ikke koere
+    mod en `:memory:`-conn, saa en hjemmelavet CREATE TABLE her ville vaere en
+    efterligning der kan drive fra produktionens schema. `isolated_runtime` +
+    den aegte `connect()` giver begge tabeller som de faktisk er.
+    """
+
+    def test_returns_recent_entries(self, isolated_runtime) -> None:
         from core.runtime import db as db_mod
-        from core.runtime import db_runtime_misc as _misc
-
-        conn = _memory_conn()
-
-        from contextlib import contextmanager
-
-        @contextmanager
-        def fake_connect():
-            yield conn
-
-        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         for i in range(5):
             db_mod.session_summary_insert(
@@ -123,19 +132,30 @@ class TestSessionSummaryRecent:
         assert "summary" in results[0]
         assert "session_id" in results[0]
 
-    def test_empty_when_no_summaries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_ustemplede_sessioner_slipper_igennem_til_deres_egen_ejer(
+        self, isolated_runtime
+    ) -> None:
+        """De fem summaries ovenfor har INGEN raekker i `chat_messages`, og de
+        skal stadig komme igennem.
+
+        Det er den bevidste retning i filterets docstring: udelukkelsen rammer
+        kun sessioner der beviseligt tilhoerer en anden — ustemplede (25.212 af
+        74.411 raekker fra enbruger-aeraen) og egne slipper igennem. Et
+        fail-closed filter ville gøre en bruger blind for sin egen historik.
+        """
+        from core.identity.workspace_context import reset_context, set_context
         from core.runtime import db as db_mod
-        from core.runtime import db_runtime_misc as _misc
 
-        conn = _memory_conn()
+        db_mod.session_summary_insert(session_id="chat-ustemplet", summary="min egen")
+        t = set_context(workspace_name="bjorn", user_id="owner-uid")
+        try:
+            sids = [r["session_id"] for r in db_mod.session_summary_recent(limit=10)]
+        finally:
+            reset_context(t)
+        assert "chat-ustemplet" in sids
 
-        from contextlib import contextmanager
-
-        @contextmanager
-        def fake_connect():
-            yield conn
-
-        monkeypatch.setattr(_misc, "connect", fake_connect)
+    def test_empty_when_no_summaries(self, isolated_runtime) -> None:
+        from core.runtime import db as db_mod
 
         results = db_mod.session_summary_recent(limit=3)
         assert results == []

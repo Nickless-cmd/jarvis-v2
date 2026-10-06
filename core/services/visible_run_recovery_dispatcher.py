@@ -154,9 +154,13 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     # ville næste tick tage det igen og droppe det igen, i det uendelige.
     # `cancelled` frem for `failed_terminal`, fordi `failed_terminal` sætter
     # `notice_pending` — og en forældet opgave skal ikke give Bjørn et varsel.
-    if _samtalen_gik_videre(
-        session_id, str(krav.get("settled_at") or krav.get("interrupted_at") or "")
-    ):
+    # Første afbrydelse er grænsen for HELE opgaven. En senere retry kan dø
+    # igen efter at brugeren skrev videre; dens nye settled_at må ikke få den
+    # gamle opgave til at ligne noget, der stadig afventer et svar.
+    if _samtalen_gik_videre(session_id, str(
+        krav.get("first_interrupted_at") or krav.get("settled_at")
+        or krav.get("interrupted_at") or ""
+    )):
         try:
             in_flight_runs.settle_terminal(
                 task_id, status="cancelled",

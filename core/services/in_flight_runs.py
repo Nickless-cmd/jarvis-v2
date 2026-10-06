@@ -601,7 +601,9 @@ def mark_interrupted(run_id: str, *, reason: str = "", summary: str = "") -> Non
         rec["status"] = "interrupted"
         rec["interruption_reason"] = str(reason or "")[:120]
         rec["interruption_summary"] = str(summary or "")[:240]
-        rec["interrupted_at"] = _iso()
+        now = _iso()
+        rec.setdefault("first_interrupted_at", rec.get("interrupted_at") or now)
+        rec["interrupted_at"] = now
     _mutate(change)
 
 
@@ -639,6 +641,7 @@ def settle_recovering(
         rec["recovery_limit"] = max(0, int(recovery_limit))
         rec.setdefault("recovery_attempt", 0)
         rec.setdefault("recovery_generation", 0)
+        rec.setdefault("first_interrupted_at", rec.get("interrupted_at") or now)
         rec["settled_at"] = now
         rec["interrupted_at"] = now
         rec["notice_pending"] = True

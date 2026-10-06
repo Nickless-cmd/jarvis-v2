@@ -319,14 +319,12 @@ def test_direktivet_goer_rapporten_BETINGET():
     assert "UDEN at skrive" in d, "der skal staa hvad han goer naar der intet er"
 
 
-def test_direktivet_naevner_at_bjoern_allerede_har_faaet_besked():
-    """Begrundelsen skal med, ellers er reglen bare en forbudt handling.
-
-    Nudget i trin A er allerede sendt naar direktivet koerer, saa en tom
-    kvittering tilfoejer intet.
-    """
+def test_direktivet_beder_om_intern_tavs_afslutning_naar_intet_er_nyt():
+    """Nudget routes som telemetri og er ikke en leveret chatbesked."""
     d = _fang_direktivet()
-    assert "allerede fået besked" in d
+    assert "allerede fået besked" not in d
+    assert "[wakeup:no-update]" in d
+    assert "notify_user" in d
 
 
 def test_direktivet_forbyder_at_booke_en_ny_naar_intet_aendrede_sig():

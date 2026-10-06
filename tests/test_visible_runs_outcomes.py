@@ -156,6 +156,16 @@ def test_autonomous_notify_only_suppresses_receipt_after_real_delivery(
     assert len(gemte) == expected_messages
 
 
+def test_wakeup_without_new_information_stays_out_of_user_chat(gemte):
+    run = _Run(session_id="chat-1")
+    run.autonomous = True
+    run.user_message = "[SELF-WAKEUP FIRED — wakeup_id=w1]\nTjek CI"
+    vro._persist_session_assistant_message(run, "[wakeup:no-update]")
+    assert gemte == []
+    vro._persist_session_assistant_message(run, "CI er rød; jeg fandt en ny fejl.")
+    assert len(gemte) == 1
+
+
 def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch):
     class _Connection:
         def __enter__(self):

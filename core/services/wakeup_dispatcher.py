@@ -305,11 +305,12 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                             # frem for at blive modarbejdet.
                             "RAPPORTÉR KUN hvis der er noget NYT Bjørn skal vide: et resultat "
                             "han venter på, noget der er gået i stykker, eller en beslutning "
-                            "han skal tage. Fandt kontrollen intet nyt — alt grønt, allerede "
-                            "håndteret, uændret, allerede forbrugt — så luk den UDEN at skrive. "
-                            "Han har allerede fået besked om at vækningen fyrede, og en "
-                            "kvittering uden indhold lander i hans arbejdssamtale midt i "
-                            "noget andet.\n"
+                            "han skal tage. Brug da notify_user til at levere den konkrete "
+                            "besked. Nudget i trin A er intern telemetri, ikke en besked til ham. "
+                            "Fandt kontrollen intet nyt — alt grønt, allerede håndteret, "
+                            "uændret, allerede forbrugt — så afslut med præcis "
+                            "[wakeup:no-update] og intet andet. Det er en intern markør; "
+                            "den gemmes ikke som svar i hans chat. Luk UDEN at skrive til ham.\n"
                             "Og book ikke en ny kontrol når denne fandt noget uændret. Det er "
                             "sådan en kæde opstår, og hvert led skriver i hans chat."
                         )

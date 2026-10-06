@@ -233,6 +233,10 @@ def _persist_session_assistant_message(
     normalized = str(text or "").strip()
     if not normalized:
         return
+    if (getattr(run, "autonomous", False)
+            and str(getattr(run, "user_message", "") or "").startswith("[SELF-WAKEUP FIRED")
+            and normalized == "[wakeup:no-update]"):
+        return
     # notify_user has already written the user-facing message. The model's
     # closing receipt belongs to the run, not to the chat transcript.
     if getattr(run, "autonomous", False) and blocks:

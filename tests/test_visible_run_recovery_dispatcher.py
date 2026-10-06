@@ -468,6 +468,7 @@ def _doede_for(run_id: str, *, minutter: int) -> None:
     t = (datetime.now(UTC) - timedelta(minutes=minutter)).isoformat()
     poster[n]["settled_at"] = t
     poster[n]["interrupted_at"] = t
+    poster[n]["first_interrupted_at"] = t
     ifr._save(poster)
 
 
@@ -491,6 +492,29 @@ def test_en_forladt_opgave_droppes_naar_brugeren_skrev_noget_nyere(spawn, monkey
     svar = D.recover_due_once()
     assert svar["started"] == 0 and svar["error"] == "samtalen-gik-videre"
     assert spawn == [], "der blev startet en fortsaettelse han ikke ventede paa"
+
+
+def test_ny_besked_mellem_to_afbrydelser_opgiver_den_gamle_opgave(spawn, monkeypatch):
+    """En senere retry maa ikke flytte graensen for om brugeren gik videre."""
+    monkeypatch.setattr("core.runtime.db.connect", _falsk_chat([
+        _besked_for(10, rolle="user"),
+    ]))
+    _forladt_opgave()
+    _doede_for("task-1", minutter=5)
+    poster = ifr._load()
+    poster["task-1"]["first_interrupted_at"] = _besked_for(20)[2]
+    ifr._save(poster)
+
+    svar = D.recover_due_once()
+    assert svar["error"] == "samtalen-gik-videre"
+    assert spawn == []
+
+
+def test_foerste_afbrydelse_bevares_naar_samme_opgave_dor_igen():
+    _forladt_opgave()
+    foerste = ifr.get_record("task-1")["first_interrupted_at"]
+    ifr.settle_recovering("task-1", reason="shutdown")
+    assert ifr.get_record("task-1")["first_interrupted_at"] == foerste
 
 
 def test_en_forladt_opgave_uden_nye_beskeder_genoptages_stadig(spawn, monkeypatch):

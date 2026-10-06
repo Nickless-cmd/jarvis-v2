@@ -557,6 +557,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
   const aabnetTurRef = useRef<string | null>(null)
+  //: Scroll-offsettet i content-rummet. Inverteret liste: 0 = bunden.
+  //: Bruges til at holde skaermen bomstille naar et tur-hoved foldes.
+  const scrollTopRef = useRef(0)
   // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
   // Hele det synlige spænd — sticky prompt skal vide om DIN besked er i syne.
   const [synlige, setSynlige] = useState<[number, number] | null>(null)
@@ -746,10 +749,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
   const toggleFor = useRaekkeFn((id) => {
     const aaben = turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
-    // Listen er inverteret og fastholder normalt bunden. Indsatte arbejdsrækker
-    // skubber derfor headeren OP i viewporten. Naar den foldes ud, ankrer vi
-    // headeren efter ny layout, saa indholdet aabner NED under den.
-    aabnetTurRef.current = aaben ? null : id
+    // Skaermen maa IKKE rykke sig naar et tur-hoved foldes (Bjoern 6/10-2026).
+    //
+    // Listen er inverteret, saa indsatte arbejdsraekker ligger paa HOEJERE
+    // content-y end headeren. Uden kompensation skubber de headeren OP i
+    // viewporten. Vi noterer turen her og lader `onContentSizeChange` skyde
+    // offsettet praecis lige saa meget som indholdet voksede — saa staar
+    // headeren stille og arbejdet folder NED under den.
+    //
+    // Samme vej begge retninger: ved fold-ind bliver delta negativ, og
+    // kompensationen loefter skaermen tilsvarende op. Derfor saettes ref'en
+    // ogsaa naar turen LUKKES — den gamle udgave ryddede den og lod
+    // fold-ind skubbe headeren den anden vej.
+    aabnetTurRef.current = id
     setTurnOverrides((current) => ({ ...current, [id]: !aaben }))
   })
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
@@ -914,15 +926,22 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => {
+        const foer = contentLenRef.current
         contentLenRef.current = h
-        const id = aabnetTurRef.current
-        if (!id) return
-        const index = ordered.findIndex((row) => row.kind === 'turn-header' && row.turnId === id && row.open)
-        if (index < 0) return
+        if (!aabnetTurRef.current) return
         aabnetTurRef.current = null
-        flatRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
+        // Foerste maaling nogensinde (foer = 0) har intet at kompensere imod.
+        if (!foer) return
+        const delta = h - foer
+        if (!delta) return
+        // `animated: false` — med animation glider skaermen, og kravet er at
+        // den staar bomstille mens indholdet folder ud under hovedet.
+        flatRef.current?.scrollToOffset({ offset: scrollTopRef.current + delta, animated: false })
       }}
-      onScroll={onScrollOffset ? (e) => onScrollOffset(e.nativeEvent.contentOffset.y) : undefined}
+      onScroll={(e) => {
+        scrollTopRef.current = e.nativeEvent.contentOffset.y
+        onScrollOffset?.(e.nativeEvent.contentOffset.y)
+      }}
       scrollEventThrottle={120}
       onViewableItemsChanged={onViewable}
       onScrollToIndexFailed={(info) => {

@@ -1,0 +1,69 @@
+import { render } from '@testing-library/react-native'
+import { WidgetFlade, MAX_WIDGET_BYTES } from './WidgetFlade'
+
+/**
+ * Mobilen har ingen `sandbox`-attribut, saa graensen er bygget af FLAG. Disse
+ * tests fejler hvis et af dem forsvinder — enten ved en rettelse her eller
+ * ved at nogen fjerner det eksplicitte flag og lader bibliotekets standard
+ * gaelde.
+ */
+
+// WebView-mocken bor i jest.setup.js — den er et miljoe-forhold, ikke
+// denne tests egen sag.
+
+async function props(html = '<p>hej</p>') {
+  // Husets moenster: `render` ventes paa, og `screen` baerer forespoergslerne.
+  const screen = await render(<WidgetFlade html={html} titel="proeve" />)
+  return screen.getByTestId('widget-webview').props as Record<string, unknown>
+}
+
+describe('WidgetFlade', () => {
+  it('dokumentet faar INGEN baseUrl — origin skal vaere about:blank', async () => {
+    const p = await props()
+    expect(p.source).toEqual({ html: '<p>hej</p>' })
+    expect((p.source as Record<string, unknown>).baseUrl).toBeUndefined()
+  })
+
+  it('ingen origin er tilladt, og navigation efter foerste indlaesning afvises', async () => {
+    const p = await props()
+    expect(p.originWhitelist).toEqual([])
+    const guard = p.onShouldStartLoadWithRequest as () => boolean
+    expect(guard()).toBe(true)    // selve dokumentet
+    expect(guard()).toBe(false)   // alt derefter er navigation
+    expect(guard()).toBe(false)
+  })
+
+  it('fil-adgang, storage, cookies og flere vinduer er LUKKET eksplicit', async () => {
+    const p = await props()
+    for (const flag of [
+      'domStorageEnabled', 'allowFileAccess', 'allowFileAccessFromFileURLs',
+      'allowUniversalAccessFromFileURLs', 'allowsInlineMediaPlayback',
+      'setSupportMultipleWindows', 'cacheEnabled', 'thirdPartyCookiesEnabled',
+    ]) {
+      expect(p[flag]).toBe(false)
+    }
+    expect(p.incognito).toBe(true)
+  })
+
+  it('javascript er TAENDT — en widget uden det er et billede', async () => {
+    expect((await props()).javaScriptEnabled).toBe(true)
+  })
+
+  it('hoejde-scriptet injiceres', async () => {
+    expect(String((await props()).injectedJavaScript)).toContain('jarvis-widget-hoejde')
+  })
+
+  it('en uparsebar besked vaelter ikke komponenten', async () => {
+    const p = await props()
+    const paa = p.onMessage as (e: unknown) => void
+    expect(() => paa({ nativeEvent: { data: 'ikke json' } })).not.toThrow()
+    expect(() => paa({ nativeEvent: { data: '{}' } })).not.toThrow()
+  })
+
+  it('et tomt eller for stort dokument siger det frem for at staa tomt', async () => {
+    const tom = await render(<WidgetFlade html="" />)
+    expect(tom.getByText(/tomt dokument/)).toBeTruthy()
+    const stor = await render(<WidgetFlade html={'x'.repeat(MAX_WIDGET_BYTES + 1)} />)
+    expect(stor.getByText(/for stor/)).toBeTruthy()
+  })
+})

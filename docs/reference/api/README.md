@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16118 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16121 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -56,8 +56,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16118 functions/
 - [`core.services.25`](core.services.25.md) — `spatial_entity_ledger` … `thought_action_proposal_daemon`
 - [`core.services.26`](core.services.26.md) — `thought_leak_guard` … `upload_sandbox`
 - [`core.services.27`](core.services.27.md) — `user_activity` … `visible_run_recovery_coordinator`
-- [`core.services.28`](core.services.28.md) — `visible_run_recovery_dispatcher` … `world_model_auto_extraction`
-- [`core.services.29`](core.services.29.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `visible_run_recovery_dispatcher` … `world_facts`
+- [`core.services.29`](core.services.29.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -66,8 +66,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16118 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `jc_tool_catalog`
 - [`core.tools.02`](core.tools.02.md) — `kaldt_vaerktoej` … `sensory_tools`
-- [`core.tools.03`](core.tools.03.md) — `session_search` … `workspace_capabilities_documents`
-- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_exec` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `session_search` … `workspace_capabilities_const`
+- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_documents` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

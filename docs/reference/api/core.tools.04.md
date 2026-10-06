@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_documents.py`
+_Workspace-dokument-parsing (TOOLS.md / SKILLS.md → capability-sektioner)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_approval_policy_for_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L49) |
+| function | `_document_summary` | `(path, *, kind)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L87) |
+| function | `_document_sections` | `(path, *, kind)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L124) |
+| function | `_document_section_by_id` | `(path, *, kind, capability_id)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L163) |
+| function | `_section_summary` | `(section)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L170) |
+| function | `_runtime_capability_record` | `(item)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L289) |
+| function | `_normalize_body` | `(lines)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L312) |
+| function | `_slugify` | `(value)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L317) |
+
 ## `core/tools/workspace_capabilities_exec.py`
 _Exec-kommando-klassifikation for workspace-capabilities._
 

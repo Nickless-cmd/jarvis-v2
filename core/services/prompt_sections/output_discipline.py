@@ -35,6 +35,12 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "- For numbers — a trend, a comparison, a before/after — call vis_graf. It draws a chart",
         "  that renders inline in BOTH desk and the phone. You pass data; the server draws it.",
         "  Say the conclusion in words as well: the chart carries the shape, not the point.",
+        # `vis_widget` er ogsaa pinned. Samme regel som vis_graf: beder prompten
+        # om et vaerktoej, SKAL det staa i state/tool_tags.pinned.json.
+        "- When a surface should be read or operated — a sortable table, a legend, a tiny",
+        "  calculator, a layout sketch — call vis_widget with an HTML fragment. It renders",
+        "  sandboxed in both clients, with NO network: no external src/href, no fetch; use",
+        "  data: URIs. Prefer vis_graf for a plain chart — it is lighter and needs no sandbox.",
     ]
     if str(strength) == "strong":
         lines += [

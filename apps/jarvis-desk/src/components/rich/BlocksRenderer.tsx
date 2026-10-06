@@ -7,6 +7,7 @@ import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
+import { WidgetBlock } from './WidgetBlock'
 import { VideoBlock } from './VideoBlock'
 import { ThinkingLine } from './ThinkingLine'
 import { SkillLine, SkillSurfaceLine } from './SkillLine'
@@ -123,6 +124,16 @@ export function resumeerFraBlokke(blocks: ContentBlock[]): Record<string, string
   }
   return ud
 }
+
+/** En genereret `text/html` er en widget. Begge betingelser skal holde:
+ *  `kilde: 'generated'` udelukker en UDGIVET html-fil (`publish_file`), som
+ *  Bjørn selv har bedt om at få som fil — den skal stadig være et kort. */
+function erWidget(b: { mime_type?: string; kilde?: string; attachment_id?: string }): boolean {
+  return String(b.mime_type || '').toLowerCase().startsWith('text/html')
+    && String(b.kilde || '') === 'generated'
+    && !!String(b.attachment_id || '').trim()
+}
+
 
 export function BlocksRenderer({
   blocks,
@@ -252,6 +263,15 @@ function BlockView({
     case 'image_gallery':
       return <GeneratedImageGallery images={block.images} />
     case 'file':
+      // En GENERERET text/html er en widget, ikke en fil man henter. Grenen
+      // ligger her og ikke i serverens `_bloktype`, fordi en ny bloktype ville
+      // ramme `default: return null` i en ældre desk — og så forsvandt den
+      // helt. Som `file` viser en gammel klient et download-kort: ringere,
+      // men synligt. (Auto-opdateringen er ikke øjeblikkelig.)
+      // Uden config kan dokumentet ikke hentes (token). Så falder den tilbage
+      // til kortet — ringere, men ærligt; en widget der ikke kan hente sit
+      // indhold ville stå som en tom rude.
+      if (config && erWidget(block)) return <WidgetBlock block={block} config={config} />
       // UDGIVET fil (`publish_file`) eller en vedhæftning. Havde ingen gren
       // før, så den ramte `default: return null` — filen lå i beskeden og nåede
       // aldrig skærmen (målt 15/9-2026).

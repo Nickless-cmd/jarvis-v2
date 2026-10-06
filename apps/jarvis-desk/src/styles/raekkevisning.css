@@ -642,3 +642,33 @@
    så bobblevisningen ikke rammes. Tokenet findes kun her, og det har en
    målt værdi i hvert tema (#a6a59c mørk, #6a6a64 lys). */
 .raekkevisning .fil-raekke-stoerrelse { color: var(--rv-tertiary); }
+
+/* Widget: en sandkasset flade i tråden.
+ *
+ * Ingen baggrund og ingen ramme som standard — dokumentet har selv
+ * gennemsigtig baggrund, så widget'en flyder på trådens flade i stedet for at
+ * stå i en kasse i en kasse. Rammen kommer kun frem mens den hentes eller hvis
+ * den fejler, hvor der ER noget at afgrænse. */
+.rv-widget {
+  width: 100%;
+  border: 0;
+  display: block;
+  /* En iframe er inline som standard og får dermed en baseline-stribe under
+   * sig. `block` fjerner den; uden det stod der 4px luft under hver widget. */
+  margin: 4px 0;
+  color-scheme: light dark;
+}
+
+.rv-widget-venter,
+.rv-widget-fejl {
+  font-size: 0.86rem;
+  opacity: 0.72;
+  padding: 10px 12px;
+}
+
+.rv-widget-fejl {
+  /* Samme dæmpede rødtone som resten af husets fejlflader — en widget der
+   * ikke kan vises er en oplysning, ikke en alarm. */
+  color: var(--fejl-tekst, #d98a7a);
+  opacity: 1;
+}

@@ -30,6 +30,7 @@
     "inbox",
     "inbox_done",
     "inbox_drop",
-    "vis_graf"
+    "vis_graf",
+    "vis_widget"
   ]
 }

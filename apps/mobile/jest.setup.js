@@ -190,3 +190,16 @@ jest.mock('lucide-react-native', () => {
     }
   )
 })
+
+// react-native-webview kraever en native modul (`RNCWebViewModule`) der ikke
+// findes i jest. Uden denne mock braekker ENHVER test der indirekte importerer
+// `WidgetFlade` — foerst og fremmest `MessageAttachments`, som nu har en
+// widget-gren. Mocken hoerer her og ikke i de enkelte tests: det er et forhold
+// ved miljoeet, ikke ved den enkelte test, og den naeste der tilfoejer en
+// WebView et nyt sted skal ikke opdage det samme forfra.
+jest.mock('react-native-webview', () => {
+  const React = require('react')
+  return {
+    WebView: (props) => React.createElement('WebViewMock', props),
+  }
+})

@@ -4,6 +4,7 @@ import { planlaegPreview } from '../lib/filePreview'
 import { aabnUdgivetFil, blokUrl } from '../lib/aabnFil'
 import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
+import { WidgetVedhaeftning, erWidget } from './WidgetVedhaeftning'
 import { AuthImage } from './AuthImage'
 import { AuthVideo } from './AuthVideo'
 import type { PersistedBlock } from '../lib/persistedBlocks'
@@ -122,6 +123,11 @@ export function MessageAttachments({ items, side = 'right', kantlos = false }: {
             </View>
           )
         }
+        // En genereret text/html er en WIDGET. Grenen ligger foer fil-kortet,
+        // for serveren giver den typen `file` med vilje: en ny bloktype ville
+        // falde igennem i en aeldre app, og saa forsvandt fladen helt. Som
+        // `file` ville en gammel app vise et kort — ringere, men synligt.
+        if (erWidget(b as never)) return <WidgetVedhaeftning key={id} blok={b as never} />
         if (b.type === 'video') {
           // En video skal SES, ikke hentes. Foer 28/9-2026 faldt den igennem
           // til fil-kortet nedenfor: `filePreview` kendte godt `mp4` og

@@ -170,10 +170,10 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 | function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L209) |
 | function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L224) |
 | function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L236) |
-| function | `surface_matured` | `(result, *, kind=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L273) |
-| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L296) |
-| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L308) |
-| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L318) |
+| function | `surface_matured` | `(result, *, kind=…, session_id=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L273) |
+| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L303) |
+| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L315) |
+| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L325) |
 
 ## `core/services/report_claim_guard.py`
 _Efterproev det et barn PAASTAAR — Fase 6._

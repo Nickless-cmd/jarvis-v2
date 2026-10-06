@@ -270,8 +270,15 @@ def record_decision(*, request_id: str, accepted: bool) -> dict[str, Any]:
     return {"decided": True, "accepted": True, "written": True, "line": body}
 
 
-def surface_matured(result: dict[str, Any], *, kind: str = "request") -> dict[str, Any]:
-    """Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang."""
+def surface_matured(result: dict[str, Any], *, kind: str = "request",
+                    session_id: str = "") -> dict[str, Any]:
+    """Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang.
+
+    `session_id` gives videre til `add_candidate`: denne vej kaldes fra
+    `end_of_run_memory_consolidation` — altså ved RUN-SLUT, hvor
+    `current_user_id()` er tom. Uden sessionen ville regel-forslaget blive
+    mærket «internt» og aldrig vist til den bruger det hører til.
+    """
     if not result.get("matured"):
         return {"surfaced": False}
     question = build_question(
@@ -284,7 +291,7 @@ def surface_matured(result: dict[str, Any], *, kind: str = "request") -> dict[st
         from core.services.proactive_candidates import add_candidate
         res = add_candidate(
             source="repeated_requests", kind=f"rule_proposal:{kind}",
-            text=question, priority="medium",
+            text=question, priority="medium", session_id=session_id,
         )
     except Exception as exc:
         logger.debug("repeated_requests: add_candidate failed: %s", exc)
@@ -301,7 +308,7 @@ def note_and_surface(*, text: str, session_id: str = "", kind: str = "request") 
         logger.debug("repeated_requests: note failed: %s", exc)
         return {"status": "error"}
     if result.get("matured"):
-        result.update(surface_matured(result, kind=kind))
+        result.update(surface_matured(result, kind=kind, session_id=session_id))
     return result
 
 

@@ -314,3 +314,28 @@ def test_per_user_overflade_taeller_interne_for_sig(db):
     PC.add_candidate(source="mail_checker", text="Bjørns egen besked her", user_id=BJOERN)
     PC.add_candidate(source="autonomous_run", text="intern telemetri om et run", user_id="")
     assert PC.counts_per_user() == {"(intern)": 1, BJOERN: 1}
+
+
+def test_add_candidate_tager_sessionen_naar_konteksten_er_tom(db, monkeypatch):
+    """Run-slut-vejen: `current_user_id()` er tom, men kalderen har sessionen.
+
+    `repeated_requests.surface_matured` kaldes fra
+    `end_of_run_memory_consolidation` og giver nu sin `session_id` videre.
+    Uden den blev regel-forslaget mærket «internt» og aldrig vist.
+    """
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "", raising=False)
+    monkeypatch.setattr("core.identity.workspace_context.current_session_id", lambda: "", raising=False)
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_session_owner",
+        lambda sid: BJOERN if sid == "sess-run" else "", raising=False,
+    )
+    r = PC.add_candidate(source="repeated_requests", kind="rule_proposal:request",
+                         text="Skal natrutinen være en fast regel?", session_id="sess-run")
+    assert r["status"] == "added"
+    assert [c["user_id"] for c in PC.list_pending() if c["candidate_id"] == r["candidate_id"]] == [BJOERN]
+    # ... og uden sessionen ville den være intern — det er den sikre default.
+    # (Anden kind: ellers fanger kærne-dubletten den som samme spørgsmål.)
+    r2 = PC.add_candidate(source="repeated_requests", kind="rule_proposal:correction",
+                          text="Skal tandlægetiden ligge fast om torsdagen?")
+    assert r2["status"] == "added"
+    assert [c["user_id"] for c in PC.list_pending() if c["candidate_id"] == r2["candidate_id"]] == [""]

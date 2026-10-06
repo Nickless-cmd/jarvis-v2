@@ -102,6 +102,24 @@ def test_it_is_only_asked_once(db, monkeypatch):
     assert again.get("surfaced") is not True and len(added) == 1
 
 
+def test_sessionen_foelger_med_til_koeen(db, monkeypatch):
+    """Regel-forslaget skal baere sin SESSION med videre.
+
+    Maalt 6/10-2026: `surface_matured` tabte `session_id`, og denne vej kaldes
+    fra `end_of_run_memory_consolidation` — altsaa ved RUN-SLUT, hvor
+    `current_user_id()` er tom for owner. Uden sessionen blev forslaget maerket
+    «internt» i den proaktive koe og aldrig vist til nogen.
+    """
+    added: list[dict] = []
+    monkeypatch.setattr("core.services.proactive_candidates.add_candidate",
+                        lambda **kw: (added.append(kw), {"status": "added"})[1])
+    RR.note_and_surface(text="husk at committe arbejdet", session_id="s1")
+    RR.note_and_surface(text="commit arbejdet husk", session_id="s1")
+    RR.note_and_surface(text="husk commit af arbejdet", session_id="s2")
+    assert len(added) == 1
+    assert added[0].get("session_id") == "s2", "sessionen blev tabt undervejs"
+
+
 def test_yes_writes_a_kerne_line_with_its_reason(db, tmp_path, monkeypatch):
     ws = tmp_path / "ws"
     ws.mkdir()

@@ -244,12 +244,13 @@ def normalize_priority(importance: str) -> str:
 
 
 def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str = "",
-                  user_id: str | None = None) -> dict[str, Any]:
+                  user_id: str | None = None, session_id: str = "") -> dict[str, Any]:
     """Queue a message for a user. Deduped on normalized text within 24 h.
 
-    `user_id=None` (default) → ejeren afgøres af `_bruger_for`. Giv den
-    eksplicit når kalderen allerede VED hvem beskeden er til (fx en planlagt
-    opgave der blev oprettet i en bestemt brugers tur).
+    `user_id=None` (default) → ejeren afgøres af `_bruger_for`, som også ser på
+    `session_id`. Giv `user_id` eksplicit når kalderen allerede VED hvem
+    beskeden er til; giv `session_id` når kalderen har en session men ingen
+    kontekst — fx ved run-slut, hvor `current_user_id()` er tom for owner.
 
     Returns {"status": "added"|"duplicate"|"skipped", "candidate_id": ...}."""
     body = " ".join(str(text or "").split()).strip()
@@ -271,7 +272,7 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         grund = ""
     if grund:
         return {"status": "skipped", "reason": grund}
-    uid = _bruger_for(user_id, source)
+    uid = _bruger_for(user_id, source, session_id)
     norm = _norm_text(body)
     now = _now_iso()
     cutoff = (datetime.now(UTC) - timedelta(hours=_DEDUPE_HOURS)).isoformat()

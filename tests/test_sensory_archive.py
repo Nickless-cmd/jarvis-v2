@@ -415,3 +415,54 @@ def test_wrapper_uden_indhold_afvises(isolated_runtime) -> None:
             "Jeg så og lyttede samtidig. Visuelt: 1.  **Analyser brugerens "
             "anmodning:**\n    *   **Kontekst:** Brugeren kigger på et billede."
         )
+
+
+# ── klip ved sætningsgrænse (målt 6/10-2026) ─────────────────────────────
+
+
+def test_klip_rykker_tilbage_til_saetningsgraense() -> None:
+    """Klippet må ikke efterlade et halvt led.
+
+    Målt 6/10-2026: 818 poster (30% af arkivet) var klippet midt i en sætning,
+    fordi `_MAX_DESC_CHARS=300` skar blindt mens `num_predict: 150` tillod
+    ~450-600 tegn. Et halvt led LIGNER et indtryk — det har længde, og «…»
+    læses som stil — men det er et svar der aldrig blev færdigt.
+    """
+    from core.services.sensory_archive import klip_ved_saetningsgraense
+
+    tekst = "Lyset falder skråt ind. Støvet driver i strålen. En stol står tom."
+    hel = klip_ved_saetningsgraense(tekst, 40)
+    assert hel == "Lyset falder skråt ind."
+    assert hel.endswith(".")
+    # Grænsen er den SIDSTE der ligger før pos — ikke den nærmeste efter.
+    assert klip_ved_saetningsgraense(tekst, 60) == "Lyset falder skråt ind. Støvet driver i strålen."
+
+
+def test_klip_uden_graense_giver_intet_indtryk() -> None:
+    """Er der ingen sætningsgrænse før `pos`, findes der intet indtryk.
+
+    At returnere det halve led ville være værre end ingenting — det ville blive
+    arkiveret som en sansning. Tomt tvinger kalderen til at vælge.
+    """
+    from core.services.sensory_archive import klip_ved_saetningsgraense
+
+    assert klip_ved_saetningsgraense("et langt led uden nogen afslutning", 20) == ""
+
+
+def test_vision_vejen_klipper_ved_graense_ikke_blindt() -> None:
+    """Værn: genindføres den blinde klipning som PRIMÆR vej, fejler denne.
+
+    Kilden læses, fordi fejlen var netop at `text[:300] + "…"` stod i
+    `_describe_via_ollama` — ikke i arkivet. Et kald til funktionen er ikke
+    nok; den skal også BRUGES. Den blinde klipning må kun stå som fallback
+    (når der slet ingen sætningsgrænse findes).
+    """
+    import inspect
+
+    from core.services import visual_memory
+
+    kilde = inspect.getsource(visual_memory._describe_via_ollama)
+    assert "klip_ved_saetningsgraense(" in kilde, "vision-vejen klipper blindt igen"
+    # Fallback-linjen skal være bundet til `hel if hel else` — står den frit,
+    # er den blevet den primære vej igen.
+    assert "hel if hel else" in kilde, "den blinde klipning er tilbage som primær vej"

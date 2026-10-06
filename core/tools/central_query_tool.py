@@ -158,6 +158,7 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
     try:
         # ── status: kompakt snapshot ─────────────────────────────────────
         if action == "status":
+            from core.eventbus.bus import event_bus as _bus
             from core.services.central_realtime import realtime_snapshot
             s = realtime_snapshot(trace_limit=8)
             _anom = s.get("anomalies") or {}
@@ -168,6 +169,15 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                  "location": a.get("location"), "last_seen": a.get("last_seen")}
                 for a in (_anom.get("recent") or [])[:6]
             ]
+            # 6/10-2026: eventbus-writerens dead-letter — så «taber vi events?» er et
+            # tal og ikke en eftersøgning i journalen. `pending_bytes > 0` betyder at
+            # events ligger spillet til disk og venter på et roligt vindue: de er
+            # forsinkede, ikke tabte. `spilled_total` er kumulativt for denne proces.
+            _dead_letter: dict = {}
+            try:
+                _dead_letter = _bus.dead_letter_stats()
+            except Exception:  # en manglende tæller må ikke vælte hele status-svaret
+                pass
             data = {
                 "status": s.get("status"),
                 "coverage": s.get("coverage"),
@@ -190,6 +200,7 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 "anomalies": {"counts": _anom.get("counts", {}), "recent": _recent},
                 "known_signals": s.get("known_signals") or [],
                 "config_drift": bool(s.get("config_drift")),
+                "eventbus_dead_letter": _dead_letter,
                 "clusters": {c["cluster"]: c["status"] for c in (s.get("clusters") or [])},
             }
             return _envelope("ok", action, data, None, "central_realtime", t0)

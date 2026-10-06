@@ -117,7 +117,12 @@ def beskedtekst(job: dict[str, Any]) -> str:
     """Én linje der kan staa alene i en inbox. Udfaldet FOERST — det er det der
     afgoer om han skal gribe ind."""
     kode = job.get("exit_code")
-    kommando = str(job.get("kommando") or "").strip() or "(baggrunds-shell)"
+    # `navn` er Jarvis egen etiket naar han gav jobbet en («Bygger APK 280
+    # (kun arm64)»), ellers kommandoen. Begge var TOMME indtil 6/10-2026, hvor
+    # listen holdt op med at laese dem fra en forkert sti.
+    kommando = (str(job.get("navn") or "").strip()
+                or str(job.get("kommando") or "").strip()
+                or "(baggrunds-shell)")
     tid = _varighed(job.get("sekunder"))
     halen = f" efter {tid}" if tid else ""
     if kode is None:

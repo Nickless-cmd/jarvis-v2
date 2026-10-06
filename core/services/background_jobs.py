@@ -80,9 +80,19 @@ _LISTE_CMD = (
     f'rc=""; [ -f "{_ROD}/$id.rc" ] && rc=$(cat "{_ROD}/$id.rc" 2>/dev/null); '
     'st="dead"; if kill -0 "$pid" 2>/dev/null; then st=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1); fi; '
     'start=$(stat -c %Y "$f" 2>/dev/null); '
-    'cmd=$(tr "\\n" " " < "$f".cmd 2>/dev/null | cut -c1-200); '
-    'titel=$(tr "\\n" " " < "$f".title 2>/dev/null | cut -c1-120); '
-    'echo "$id|$pid|$st|$rc|$start|$cmd|$titel"; '
+    # `$id`, IKKE `"$f"`. `$f` ER pid-filen, saa `"$f".cmd` pegede paa
+    # `<id>.pid.cmd` — en fil der ikke findes. `operator_background` skriver
+    # `<id>.cmd` og `<id>.title`. Maalt 6/10-2026 paa ni aegte jobs: begge
+    # felter var TOMME, saa hvert operator-job stod som «(baggrunds-shell)» —
+    # ogsaa efter at titlen blev bygget 3/10 praecis for at raade bod paa at
+    # «Jarvis' kommandoer var usynlige». Stien var det sidste led.
+    #
+    # Titlen staar nu FOER kommandoen og faar sine egne `|` fjernet, og
+    # kommandoen samles igen fra resten: en pipe i kommandoen delte foer linjen
+    # midt over, saa titel-feltet fik halen af kommandoen i stedet for titlen.
+    f'titel=$(tr "\\n|" "  " < "{_ROD}/$id.title" 2>/dev/null | cut -c1-120); '
+    f'cmd=$(tr "\\n" " " < "{_ROD}/$id.cmd" 2>/dev/null | cut -c1-200); '
+    'echo "$id|$pid|$st|$rc|$start|$titel|$cmd"; '
     'done'
 )
 
@@ -109,8 +119,8 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
         if len(dele) < 5 or not dele[0]:
             continue
         jid, pid, st, rc, start = dele[0], dele[1], dele[2], dele[3], dele[4]
-        kommando = dele[5] if len(dele) > 5 else ""
-        titel = dele[6] if len(dele) > 6 else ""
+        titel = dele[5].strip() if len(dele) > 5 else ""
+        kommando = "|".join(dele[6:]).strip() if len(dele) > 6 else ""
         levende = st not in ("dead", "", "Z")
         jobs.append({
             "id": jid,
@@ -122,6 +132,10 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
             # i tooltip + aria-label.
             "navn": titel or kommando or "(baggrunds-shell)",
             "kommando": kommando,
+            # Titlen baeres ogsaa raa videre: `navn` falder tilbage paa
+            # kommandoen, og en forbruger skal kunne se forskel paa «Jarvis
+            # gav den et navn» og «vi viser kommandoen i mangel af bedre».
+            "titel": titel,
             # T = standset af et signal. Den kommer GRATIS med i `ps -o stat=`
             # og skulle ellers gaettes.
             "status": "paused" if st == "T" else ("running" if levende else "exited"),

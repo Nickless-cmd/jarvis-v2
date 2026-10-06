@@ -165,22 +165,22 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L90) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L94) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L136) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L140) |
-| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L147) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L161) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L196) |
-| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L203) |
-| function | `_tool_jobs` | `()` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L255) |
-| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L377) |
-| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L400) |
-| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L456) |
-| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L517) |
-| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L548) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L561) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L599) |
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L100) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L104) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L150) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L154) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L161) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L175) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L210) |
+| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L217) |
+| function | `_tool_jobs` | `()` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L269) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L391) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L414) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L470) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L531) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L562) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L575) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L613) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
@@ -208,8 +208,8 @@ _Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
 | function | `_ejer_uid` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L94) |
 | function | `_varighed` | `(sekunder)` | — | [src](../../../core/services/baggrundsjob_vagt.py#L102) |
 | function | `beskedtekst` | `(job)` | Én linje der kan staa alene i en inbox. Udfaldet FOERST — det er det der | [src](../../../core/services/baggrundsjob_vagt.py#L116) |
-| function | `_meld` | `(job)` | Levér meldingen. Returnerer (leveret, hvordan). | [src](../../../core/services/baggrundsjob_vagt.py#L133) |
-| function | `tick_baggrundsjob_vagt` | `(*, trigger=…, last_visible_at=…)` | Kadence-producer: meld hvert nyligt afsluttet baggrundsjob ÉN gang. | [src](../../../core/services/baggrundsjob_vagt.py#L177) |
+| function | `_meld` | `(job)` | Levér meldingen. Returnerer (leveret, hvordan). | [src](../../../core/services/baggrundsjob_vagt.py#L138) |
+| function | `tick_baggrundsjob_vagt` | `(*, trigger=…, last_visible_at=…)` | Kadence-producer: meld hvert nyligt afsluttet baggrundsjob ÉN gang. | [src](../../../core/services/baggrundsjob_vagt.py#L182) |
 
 ## `core/services/bash_sandbox.py`
 _bwrap-indespærring om én bash-kommando. SLUKKET som standard._

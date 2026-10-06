@@ -354,3 +354,53 @@ def test_en_daemon_uden_busy_feltet_paastaar_ingenting(monkeypatch):
     kommando = bj.liste()["jobs"][0]["kommando"]
     assert "kører:" not in kommando
     assert "åben shell" in kommando
+
+
+# ── Operator-linjen: titel og kommando kom fra en forkert sti ────────────────
+#
+# Maalt 6/10-2026 paa ni aegte jobs paa Bjoerns maskine: BEGGE felter var tomme,
+# saa hvert operator-job stod som «(baggrunds-shell)» — ogsaa efter at titlen
+# blev bygget 3/10 praecis for at raade bod paa at «Jarvis' kommandoer var
+# usynlige». `cmd` og `titel` blev laest fra `"$f".cmd`/`"$f".title`, hvor `$f`
+# ER pid-filen, altsaa `<id>.pid.cmd`. Skriveren laegger dem i `<id>.cmd`.
+
+
+def test_listekommandoen_laeser_cmd_og_title_fra_id_ikke_fra_pid_filen():
+    """Vagten mod at stien falder tilbage til `"$f"`. Egenskaben er at der
+    laeses fra `<id>.cmd`, ikke fra pid-filens navn med en endelse paa."""
+    kommando = bj._LISTE_CMD
+    assert '"$f".cmd' not in kommando, "cmd laeses igen fra pid-filens sti"
+    assert '"$f".title' not in kommando, "title laeses igen fra pid-filens sti"
+    assert "$id.cmd" in kommando and "$id.title" in kommando
+
+
+def test_titel_og_kommando_naar_frem(monkeypatch):
+    linje = "bg_1|4242|S||1700000000|Bygger APK 280 (kun arm64)|cd /x && gradle assemble"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert len(j) == 1
+    assert j[0]["titel"] == "Bygger APK 280 (kun arm64)"
+    assert j[0]["navn"] == "Bygger APK 280 (kun arm64)"
+    assert j[0]["kommando"] == "cd /x && gradle assemble"
+
+
+def test_en_pipe_i_kommandoen_afkorter_den_ikke_og_spiser_ikke_titlen():
+    """Kommandoen staar SIDST og samles igen. Stod den foer titlen, delte
+    `split("|")` den midt over, og titel-feltet fik halen af kommandoen."""
+    linje = "bg_2|7|S||1700000000|Finder fejl|grep -r x . | head -20 | wc -l"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["titel"] == "Finder fejl"
+    assert j[0]["kommando"] == "grep -r x . | head -20 | wc -l"
+
+
+def test_uden_titel_falder_navnet_tilbage_paa_kommandoen():
+    linje = "bg_3|7|S||1700000000||npm run build"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["titel"] == ""
+    assert j[0]["navn"] == "npm run build"
+
+
+def test_uden_baade_titel_og_kommando_staar_der_noget_aerligt():
+    linje = "bg_4|7|S||1700000000||"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["navn"] == "(baggrunds-shell)"
+    assert j[0]["kommando"] == ""

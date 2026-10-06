@@ -14,8 +14,17 @@ from core.services import baggrundsjob_vagt as V
 
 
 def _job(jid: str, *, status: str = "exited", kode: int | None = 0,
-         sek: int = 90, kommando: str = "npm run build") -> dict:
-    return {"id": jid, "kilde": "operator", "navn": jid, "kommando": kommando,
+         sek: int = 90, kommando: str = "npm run build", titel: str = "") -> dict:
+    """Samme form som `background_jobs._operator_jobs` producerer.
+
+    `navn` beregnes som DÉR (`titel or kommando or fallback`) og saettes ALDRIG
+    til job-id'et: en melding der sagde «bg_ny er faerdig» ville vaere ulaeselig,
+    og en fixture der opfinder sin egen form kan ikke fange det
+    ([[pin_feltnavne_mod_produktion]]).
+    """
+    return {"id": jid, "kilde": "operator",
+            "navn": titel or kommando or "(baggrunds-shell)",
+            "titel": titel, "kommando": kommando,
             "status": status, "pid": 1234, "sekunder": sek, "exit_code": kode}
 
 
@@ -182,3 +191,26 @@ def test_en_proces_uden_rc_kaldes_ikke_lykkedes():
     maaske blev draebt."""
     tekst = V.beskedtekst(_job("bg_y", kode=None))
     assert "exit 0" not in tekst and "faerdigt" not in tekst
+
+
+def test_titlen_foretraekkes_over_kommandoen_i_meldingen(rig):
+    """«Bygger APK 280 (kun arm64)» siger mere end 70 tegn af en afkortet
+    `cd … && gradle …`. Begge felter var tomme indtil 6/10-2026."""
+    rig["jobs"] = []
+    V.tick_baggrundsjob_vagt()
+    rig["jobs"] = [_job("bg_t", titel="Bygger APK 280 (kun arm64)",
+                        kommando="cd /x && ./gradlew assembleRelease")]
+    V.tick_baggrundsjob_vagt()
+    tekst = rig["sendt"][0][0]
+    assert "Bygger APK 280 (kun arm64)" in tekst
+    assert "gradlew" not in tekst
+
+
+def test_meldingen_viser_ALDRIG_bare_et_job_id(rig):
+    rig["jobs"] = []
+    V.tick_baggrundsjob_vagt()
+    rig["jobs"] = [_job("bg_02c8cfc248ea", titel="", kommando="")]
+    V.tick_baggrundsjob_vagt()
+    tekst = rig["sendt"][0][0]
+    assert "bg_02c8cfc248ea" not in tekst
+    assert "(baggrunds-shell)" in tekst

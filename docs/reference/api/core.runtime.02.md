@@ -442,21 +442,21 @@ _Persistence for small self-contained runtime CRUD domains._
 | function | `list_attention_blink_results` | `(limit=…)` | Return up to `limit` attention-blink results as dicts, newest first ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L432) |
 | function | `_ensure_session_summaries_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L460) |
 | function | `session_summary_insert` | `(*, session_id, run_id=…, summary, key_topics=…, decisions_made=…)` | Insert one session summary row (summary/topics/decisions truncated, timestamped now). | [src](../../../core/runtime/db_runtime_misc.py#L482) |
-| function | `session_summary_recent` | `(limit=…)` | Return the most recent session summaries (across all sessions). | [src](../../../core/runtime/db_runtime_misc.py#L503) |
-| function | `session_summary_for_session` | `(session_id)` | Return the latest summary for a specific session. | [src](../../../core/runtime/db_runtime_misc.py#L525) |
-| function | `session_summary_cleanup` | `(max_age_days=…)` | Delete session summaries older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L546) |
-| function | `_ensure_signal_archive_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L561) |
-| function | `signal_decay_archive_and_delete` | `(*, stale_hours=…)` | Archive and delete signals marked stale for longer than stale_hours. | [src](../../../core/runtime/db_runtime_misc.py#L585) |
-| function | `signal_archive_cleanup` | `(max_age_days=…)` | Delete archived signals older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L649) |
-| function | `signal_archive_recent` | `(limit=…)` | Return recent archived signals for debugging. | [src](../../../core/runtime/db_runtime_misc.py#L659) |
-| function | `_ensure_aesthetic_motif_log_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L678) |
-| function | `aesthetic_motif_log_insert` | `(*, source, motif, confidence)` | Insert one aesthetic-motif observation (source, motif, confidence) timestamped now. | [src](../../../core/runtime/db_runtime_misc.py#L695) |
-| function | `aesthetic_motif_log_unique_motifs` | `()` | Return the distinct motif strings from the aesthetic-motif log, sorted alphabetically ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L714) |
-| function | `aesthetic_motif_log_summary` | `()` | Return per-motif aggregates (motif, count, avg_confidence) ordered by count desc ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L724) |
-| function | `_ensure_channel_attachments_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L746) |
-| function | `store_channel_attachment` | `(*, conn, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | Insert a channel-attachment metadata row on the given connection (no-op if attachment_id already exists). | [src](../../../core/runtime/db_runtime_misc.py#L769) |
-| function | `get_channel_attachment` | `(*, conn, attachment_id)` | Return the channel attachment matching attachment_id as a dict, or None if absent (uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L800) |
-| function | `list_channel_attachments` | `(*, conn, session_id, limit=…)` | Return up to `limit` attachments for `session_id` as dicts, newest first ([] if none; uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L818) |
+| function | `session_summary_recent` | `(limit=…)` | Return the most recent session summaries FOR THIS USER. | [src](../../../core/runtime/db_runtime_misc.py#L503) |
+| function | `session_summary_for_session` | `(session_id)` | Return the latest summary for a specific session. | [src](../../../core/runtime/db_runtime_misc.py#L553) |
+| function | `session_summary_cleanup` | `(max_age_days=…)` | Delete session summaries older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L574) |
+| function | `_ensure_signal_archive_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L589) |
+| function | `signal_decay_archive_and_delete` | `(*, stale_hours=…)` | Archive and delete signals marked stale for longer than stale_hours. | [src](../../../core/runtime/db_runtime_misc.py#L613) |
+| function | `signal_archive_cleanup` | `(max_age_days=…)` | Delete archived signals older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L677) |
+| function | `signal_archive_recent` | `(limit=…)` | Return recent archived signals for debugging. | [src](../../../core/runtime/db_runtime_misc.py#L687) |
+| function | `_ensure_aesthetic_motif_log_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L706) |
+| function | `aesthetic_motif_log_insert` | `(*, source, motif, confidence)` | Insert one aesthetic-motif observation (source, motif, confidence) timestamped now. | [src](../../../core/runtime/db_runtime_misc.py#L723) |
+| function | `aesthetic_motif_log_unique_motifs` | `()` | Return the distinct motif strings from the aesthetic-motif log, sorted alphabetically ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L742) |
+| function | `aesthetic_motif_log_summary` | `()` | Return per-motif aggregates (motif, count, avg_confidence) ordered by count desc ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L752) |
+| function | `_ensure_channel_attachments_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L774) |
+| function | `store_channel_attachment` | `(*, conn, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | Insert a channel-attachment metadata row on the given connection (no-op if attachment_id already exists). | [src](../../../core/runtime/db_runtime_misc.py#L797) |
+| function | `get_channel_attachment` | `(*, conn, attachment_id)` | Return the channel attachment matching attachment_id as a dict, or None if absent (uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L828) |
+| function | `list_channel_attachments` | `(*, conn, session_id, limit=…)` | Return up to `limit` attachments for `session_id` as dicts, newest first ([] if none; uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L846) |
 
 ## `core/runtime/db_runtime_private.py`
 _Persistence for Jarvis' runtime private-* signal cluster._

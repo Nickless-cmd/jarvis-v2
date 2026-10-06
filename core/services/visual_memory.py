@@ -289,11 +289,22 @@ def _coarse_age_label(minutes_ago: int) -> str:
     return "(for over en uge siden)"
 
 
-def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, object]:
+def look_around_now(
+    *,
+    where: str = "",
+    prompt_override: str = "",
+    arkiver: bool = True,
+) -> dict[str, object]:
     """On-demand capture — Jarvis chooses to look. Bypasses cadence-limit.
 
     Returns {status, description, captured_at} or {status, error}.
     Called from the `look_around` tool.
+
+    `arkiver=False` giver beskrivelsen UDEN at spejle den i Sansernes Arkiv.
+    Brugt af sanse-daemonens atmosphere- og mixed-grene (6/10-2026): de skriver
+    deres EGEN post og ejer dermed modaliteten. Uden flaget skrev hver
+    atmosphere-sansning TO rækker med samme tekst — én `visual` (herfra) og én
+    `atmosphere` (fra kalderen) — og `count(modality='visual')` talte dem begge.
     """
     if not _enabled():
         return {"status": "disabled", "reason": "layer_visual_memory_enabled=false"}
@@ -358,17 +369,18 @@ def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, 
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
 
-    _archive_sensory(
-        description,
-        metadata={
-            "source": "look_around",
-            "model": model,
-            "provider": provider,
-            "on_demand": True,
-            "camera": camera_label,
-            "custom_prompt": bool(prompt_to_use),
-        },
-    )
+    if arkiver:
+        _archive_sensory(
+            description,
+            metadata={
+                "source": "look_around",
+                "model": model,
+                "provider": provider,
+                "on_demand": True,
+                "camera": camera_label,
+                "custom_prompt": bool(prompt_to_use),
+            },
+        )
 
     try:
         event_bus.publish(

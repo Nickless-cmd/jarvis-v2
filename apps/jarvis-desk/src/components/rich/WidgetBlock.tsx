@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
 
 /**
@@ -33,17 +33,44 @@ import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
  *  ind i hukommelsen. */
 const MAX_BYTES = 512 * 1024
 
+/** Takt-grænser for `jarvis.sendPrompt`. Widget'en kører model-skrevet JS, så
+ *  grænserne er ikke høflighed — de er loftet over hvad en løkke kan koste.
+ *  Hver sendt besked starter et run. */
+const MAX_PROMPTS = 5
+const MIN_MS_MELLEM = 2000
+const MAX_PROMPT_TEGN = 2000
+
 export interface WidgetBlok {
   attachment_id?: string
   filename?: string
   size_bytes?: number
 }
 
-export function WidgetBlock({ block, config }: { block: WidgetBlok; config: ApiConfig }) {
+/** Hvor en widget-initieret besked skal hen.
+ *
+ *  Context og ikke en prop: vejen fra ChatView til WidgetBlock gaar gennem
+ *  RaekkeTranskript og BlocksRenderer, og en prop ville aendre to signaturer
+ *  der intet har med widgets at goere. Samme valg som MermaidBlock traf for
+ *  sit streaming-vaern i samme fil-familie.
+ *
+ *  Standard er en NO-OP: en widget i en visning der ikke kan sende (et
+ *  arkiv, en test uden provider) skal tie, ikke kaste. */
+export const WidgetPrompt = createContext<((markeretTekst: string) => void) | null>(null)
+
+export function WidgetBlock({ block, config }: {
+  block: WidgetBlok
+  config: ApiConfig
+}) {
+  // Teksten er FAERDIG-MAERKET naar den naar hertil — kalderen sender den som
+  // den er og maa ikke lave sit eget maerke.
+  const onPrompt = useContext(WidgetPrompt)
   const [html, setHtml] = useState<string | null>(null)
   const [fejl, setFejl] = useState<string | null>(null)
   const iframe = useRef<HTMLIFrameElement | null>(null)
   const [hoejde, setHoejde] = useState(160)
+  /** Takt-tilstand pr. widget-instans. En ref og ikke state: en ændring her
+   *  må ikke gentegne iframen (det ville nulstille widget'ens egen tilstand). */
+  const sendte = useRef({ antal: 0, sidst: 0 })
 
   const id = String(block.attachment_id || '').trim()
 
@@ -61,21 +88,45 @@ export function WidgetBlock({ block, config }: { block: WidgetBlok; config: ApiC
   }, [id, config])
 
   // Højden kommer FRA widget'en: en iframe har ingen indholds-højde udefra, og
-  // en fast højde ville give en rude med rullepanel midt i tråden. Beskeden er
-  // det ENESTE vi lytter efter, og vi tjekker at den kom fra netop vores egen
-  // iframe — et andet vindue må ikke kunne ændre højden her.
+  // en fast højde ville give en rude med rullepanel midt i tråden. Vi tjekker
+  // at beskeden kom fra netop VORES egen iframe — et andet vindue må ikke kunne
+  // ændre højden eller sende noget i samtalen.
   useEffect(() => {
     function paaBesked(e: MessageEvent) {
       if (!iframe.current || e.source !== iframe.current.contentWindow) return
       const d = e.data
-      if (!d || typeof d !== 'object' || d.type !== 'jarvis-widget-hoejde') return
-      const h = Number(d.hoejde)
-      if (!Number.isFinite(h) || h <= 0) return
-      setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+      if (!d || typeof d !== 'object') return
+
+      if (d.type === 'jarvis-widget-hoejde') {
+        const h = Number(d.hoejde)
+        if (!Number.isFinite(h) || h <= 0) return
+        setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+        return
+      }
+
+      if (d.type === 'jarvis-widget-prompt') {
+        // Widget'en kører MODEL-SKREVET javascript. Uden takt- og antals-
+        // grænser kunne en løkke fylde samtalen, og hver besked koster et run.
+        const nu = Date.now()
+        if (sendte.current.antal >= MAX_PROMPTS) return
+        if (nu - sendte.current.sidst < MIN_MS_MELLEM) return
+
+        const tekst = typeof d.tekst === 'string' ? d.tekst.trim() : ''
+        if (!tekst || tekst.length > MAX_PROMPT_TEGN) return
+
+        // MÆRKET kommer fra serveren og bages ind i dokumentet, så desk og
+        // mobil ikke kan have hver sit format. Mangler det, sender vi ikke:
+        // en umærket besked ville læses som Bjørns egne ord.
+        const maerke = typeof d.maerke === 'string' ? d.maerke.trim() : ''
+        if (!maerke.startsWith('[fra widget')) return
+
+        sendte.current = { antal: sendte.current.antal + 1, sidst: nu }
+        onPrompt?.(`${maerke} ${tekst}`)
+      }
     }
     window.addEventListener('message', paaBesked)
     return () => window.removeEventListener('message', paaBesked)
-  }, [])
+  }, [onPrompt])
 
   if (fejl) {
     return <div className="rv-kort rv-widget-fejl">Widget kunne ikke vises: {fejl}</div>

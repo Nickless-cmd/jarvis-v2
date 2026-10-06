@@ -53,3 +53,32 @@ def test_ordloftet_forbyder_ikke_det_han_lige_fik_lov_til():
     # Weak har intet loft, saa en undtagelse ville vaere stoej der peger paa en
     # regel der ikke findes.
     assert "100 words" not in weak and "word cap" not in weak
+
+
+def test_de_tre_visuelle_vaerktoejer_er_alle_NAEVNT_og_pinned():
+    """Et vaerktoej prompten beder om SKAL vaere pinned — routeren sender 70-97
+    af ~495, og et nyt uden kald-historik kommer ikke i always-core af sig selv.
+    Reglen staar i pinned-filens eget `_doc`.
+
+    `suggest_next_message` er med fordi den var det tredje tilfaelde af samme
+    moenster: maalt 6/10-2026 kaldt 281 gange af 96.399 vaerktoejskald (0,29 %)
+    og naevnt NUL steder i prompten — mens de forslag han faktisk skrev blev
+    accepteret 49 af 192 gange (25,5 %)."""
+    from core.services.tool_tagger import get_pinned_set, invalidate_cache
+
+    invalidate_cache()
+    pinned = get_pinned_set()
+    tekst = _output_discipline_instruction(strength="strong")
+    for navn in ("vis_graf", "vis_widget", "suggest_next_message"):
+        assert navn in tekst, f"{navn} naevnes ikke i prompten"
+        assert navn in pinned, (
+            f"prompten beder om {navn}, men det er ikke pinned — anvisningen "
+            f"kan ikke indfries"
+        )
+
+
+def test_forslaget_loves_at_overleve_en_genstart():
+    """Linjen siger det, OG koden gør det (`test_composer_suggest`). Et loefte
+    i prompten uden daekning i koden er vaerre end ingen linje."""
+    t = _output_discipline_instruction(strength="weak")
+    assert "survives an app restart" in t

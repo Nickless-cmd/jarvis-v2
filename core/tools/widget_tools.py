@@ -116,6 +116,10 @@ WIDGET_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "<html>/<head>): the server wraps it in a document with a strict policy and "
                 "the client renders it sandboxed, with no network access. Inline <style> and "
                 "<script> work; images and fonts must be data: URIs. Max 256 KB. "
+                "The widget can speak back ONCE in a while: call jarvis.sendPrompt('text') from "
+                "inside it and that text is sent as a message — PREFIXED with a visible marker "
+                "saying it came from the widget, never as Bjørn's own words. At most 5 per widget "
+                "and one every 2 seconds, so build it around a click, not a loop. "
                 "For a plain chart use vis_graf instead — it is lighter and works everywhere."
             ),
             "parameters": {

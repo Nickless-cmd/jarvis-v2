@@ -1,5 +1,5 @@
 import { maaPolle } from '../lib/ro'
-import { Fragment } from 'react'
+import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
@@ -65,6 +65,7 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail } from '../components/chat/MessageRail'
+import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
@@ -690,6 +691,24 @@ export function ChatView({
   // Stabile props til rækkerne — ellers holder MessageRow's memo aldrig,
   // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
   const resendStabil = useSenesteFn(resend)
+  /** En widget bad om at sige noget i samtalen.
+   *
+   *  Teksten er FAERDIG-MAERKET af serveren (`[fra widget «…»] …`) og sendes
+   *  som den er. Vi laegger ikke vores eget maerke paa: formatet har ÉN kilde,
+   *  saa desk og mobil ikke kan drive fra hinanden.
+   *
+   *  Staaende regel (Bjoern 3/10-2026): alt der ikke er skrevet fra composeren
+   *  skal vaere maerket. Maerket staar derfor i selve beskeden — ikke kun i et
+   *  felt klienten kunne glemme at vise — saa BAADE Bjoern og Jarvis kan se at
+   *  det var en widget der skrev. `WidgetBlock` sender slet ikke en besked
+   *  uden maerke.
+   *
+   *  Samme vej som side-opgaver og forslag bruger, saa model-, provider- og
+   *  taenke-valg arver det VALGTE. */
+  const widgetPrompt = useCallback((markeretTekst: string) => {
+    const t = markeretTekst.trim()
+    if (t) resendStabil(t)
+  }, [resendStabil])
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
   const raekkeConfig = useMemo(
@@ -965,6 +984,7 @@ export function ChatView({
       {sideKort}
       {jobsRude}
       <div className="transcript-wrap">
+      <WidgetPrompt.Provider value={widgetPrompt}>
       <MessageRail
         containerRef={transcriptRef}
         anchors={railAnchors}
@@ -1027,6 +1047,7 @@ export function ChatView({
             og intet flytter sig. */}
         <div className="bund-anker" aria-hidden="true" />
       </div>
+      </WidgetPrompt.Provider>
       </div>
 
       <div className="composer-area">

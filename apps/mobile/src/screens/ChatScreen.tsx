@@ -33,6 +33,7 @@ import { ErrorCard } from '../components/ErrorCard'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
+import { WidgetPrompt } from '../components/WidgetFlade'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { useFollowupQueue, type FollowupItem } from '../lib/useFollowupQueue'
@@ -341,6 +342,23 @@ export function ChatScreen({
   }, [panelOpen, config])
   const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
   const listRef = useRef<MessageListHandle>(null)
+  /** En widget bad om at sige noget i samtalen.
+   *
+   *  Teksten er FAERDIG-MAERKET af serveren (`[fra widget «…»] …`) og sendes som
+   *  den er — formatet har ÉN kilde, saa mobil og desk ikke kan drive fra
+   *  hinanden. Staaende regel (Bjoern 3/10-2026): alt der ikke er skrevet fra
+   *  composeren skal vaere maerket, og maerket staar derfor i selve beskeden —
+   *  ikke i et felt en klient kunne glemme at vise. `WidgetFlade` sender slet
+   *  ikke uden maerke. */
+  //: `sendNu` defineres 600 linjer laengere nede, og provideren skal monteres
+  //: foer den. En ref loeser raekkefoelgen uden at flytte noget: callbacken har
+  //: stabil identitet, saa WebView'en ikke gentegnes (det ville nulstille
+  //: widget'ens egen tilstand midt i en betjening).
+  const sendNuRef = useRef<((t: string) => Promise<void>) | null>(null)
+  const widgetPrompt = useCallback((markeretTekst: string) => {
+    const t = markeretTekst.trim()
+    if (t) void sendNuRef.current?.(t)
+  }, [])
   // Rul-til-bunden: vises naar man har rullet OP i traaden. Listen er inverteret,
   // saa offset 0 = nederst ved det nyeste. Taerskel paa en halv skaerm — under det
   // er man reelt stadig i bunden, og en knap ville bare staa og blinke.
@@ -961,6 +979,10 @@ export function ChatScreen({
     })
   }
 
+  // Ref'en peger paa den NUVAERENDE sendNu, saa en widget sender med de valg
+  // der gaelder nu — ikke dem der gjaldt da provideren blev monteret.
+  sendNuRef.current = (t: string) => sendNu(t)
+
   const followups = useFollowupQueue({
     sessionId: sessions.activeId,
     busy: stream.state.status === 'working' || serverBusy,
@@ -1207,6 +1229,7 @@ export function ChatScreen({
           {showGreeting ? (
             <GreetingHero userName={displayName} presence={presence} />
           ) : (
+            <WidgetPrompt.Provider value={widgetPrompt}>
             <MessageList
               ref={listRef}
               topInset={topInset}
@@ -1242,6 +1265,7 @@ export function ChatScreen({
               onScrollOffset={onScrollOffset}
               bottomInset={liftPadding}
             />
+            </WidgetPrompt.Provider>
           )}
         </Animated.View>
         {!showGreeting ? (

@@ -41,6 +41,17 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "  calculator, a layout sketch — call vis_widget with an HTML fragment. It renders",
         "  sandboxed in both clients, with NO network: no external src/href, no fetch; use",
         "  data: URIs. Prefer vis_graf for a plain chart — it is lighter and needs no sandbox.",
+        # Maalt 6/10-2026: kaldt 281 gange af 96.399 vaerktoejskald (0,29 %), og
+        # naevnt NUL steder i prompten. Men naar han skriver ét, bliver det
+        # accepteret 49 af 192 gange — 25,5 %. Vaerktoejet virker; han blev
+        # bare ikke bedt om det. Samme moenster som mermaid-rendereren.
+        #
+        # Pinned sammen med vis_graf og vis_widget: pinned-filens eget _doc
+        # siger at et vaerktoej den STAAENDE prompt beder om SKAL staa der.
+        "- Before you finish a turn that leaves an obvious next step, call suggest_next_message",
+        "  with the line Bjørn would plausibly write. It waits in his composer until he types,",
+        "  and it survives an app restart. One line, his voice, no question mark — skip it when",
+        "  the thread is genuinely done.",
     ]
     if str(strength) == "strong":
         lines += [

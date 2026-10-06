@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { WidgetBlock } from './WidgetBlock'
+import { WidgetBlock, WidgetPrompt } from './WidgetBlock'
 
 /**
  * Sandkassen er GRÆNSEN om model-skrevet HTML. De to første tests er derfor de
@@ -91,5 +91,81 @@ describe('WidgetBlock', () => {
     render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
     const ramme = await waitFor(() => screen.getByTitle('w.html'))
     expect(ramme.getAttribute('srcdoc')).toContain('jarvis-widget-hoejde')
+  })
+})
+
+describe('WidgetBlock sendPrompt-kanalen', () => {
+  async function medIframe(onPrompt?: (t: string) => void) {
+    render(
+      <WidgetPrompt.Provider value={onPrompt ?? null}>
+        <WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />
+      </WidgetPrompt.Provider>,
+    )
+    const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
+    // `contentWindow` er den eneste afsender vi accepterer.
+    const kilde = ramme.contentWindow as unknown as MessageEventSource
+    const send = (data: unknown) => window.dispatchEvent(
+      new MessageEvent('message', { data, source: kilde }))
+    return { send }
+  }
+
+  it('en MAERKET besked naar frem med maerket foran', async () => {
+    const set: string[] = []
+    const { send } = await medIframe((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: 'sorter efter miss', maerke: '[fra widget «Tabel»]' })
+    await waitFor(() => expect(set).toHaveLength(1))
+    expect(set[0]).toBe('[fra widget «Tabel»] sorter efter miss')
+  })
+
+  it('en UMAERKET besked sendes IKKE', async () => {
+    // Staaende regel: umaerket tekst ville laeses som Bjoerns egne ord.
+    const set: string[] = []
+    const { send } = await medIframe((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: 'gør noget' })
+    send({ type: 'jarvis-widget-prompt', tekst: 'gør noget', maerke: 'Bjørn:' })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(set).toEqual([])
+  })
+
+  it('en besked fra et FREMMED vindue sendes ikke', async () => {
+    const set: string[] = []
+    render(
+      <WidgetPrompt.Provider value={(t) => set.push(t)}>
+        <WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />
+      </WidgetPrompt.Provider>,
+    )
+    await waitFor(() => screen.getByTitle('w.html'))
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'jarvis-widget-prompt', tekst: 'x', maerke: '[fra widget]' },
+      source: window as unknown as MessageEventSource,
+    }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(set).toEqual([])
+  })
+
+  it('takten begraenses — en loekke kan ikke spamme samtalen', async () => {
+    const set: string[] = []
+    const { send } = await medIframe((t) => set.push(t))
+    for (let i = 0; i < 20; i++) {
+      send({ type: 'jarvis-widget-prompt', tekst: `nr ${i}`, maerke: '[fra widget]' })
+    }
+    await new Promise((r) => setTimeout(r, 0))
+    // Foerste slipper igennem; resten falder paa minimums-afstanden.
+    expect(set).toHaveLength(1)
+  })
+
+  it('tom og overlang tekst afvises', async () => {
+    const set: string[] = []
+    const { send } = await medIframe((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: '   ', maerke: '[fra widget]' })
+    send({ type: 'jarvis-widget-prompt', tekst: 'x'.repeat(2001), maerke: '[fra widget]' })
+    send({ type: 'jarvis-widget-prompt', tekst: 42 as never, maerke: '[fra widget]' })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(set).toEqual([])
+  })
+
+  it('uden onPrompt sker der ingenting — ingen kasten', async () => {
+    const { send } = await medIframe(undefined)
+    expect(() => send({ type: 'jarvis-widget-prompt', tekst: 'x', maerke: '[fra widget]' })).not.toThrow()
   })
 })

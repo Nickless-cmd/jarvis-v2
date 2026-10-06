@@ -88,9 +88,20 @@ describe('CodeView', () => {
     })
   })
 
-  it('viser kørselstal under composer i code mode', () => {
+  it('viser INGEN kørselstal-linje — den er fjernet, og det er tredje gang', () => {
+    // Bjørn 6/10-2026: «fjerne denne linje mellem compose og disclamer: 93
+    // turns 1625 steps / TTFT 25335ms · 22 tok/s / 124K tokens».
+    //
+    // Det er TREDJE afvisning af usage-tal i chatfladen. De to foerste gjaldt
+    // «1,284 tokens · Ran for 41.2s» under hvert svar. Linjen her var samme
+    // slags tal et andet sted, og nu er den vaek — baade visningen, prop'en,
+    // udregningen og CSS'en, saa der ikke staar doed kode der ser levende ud.
+    //
+    // Testen er vendt om frem for slettet: en slettet test siger ingenting til
+    // den naeste der faar den gode idé at vise koerselstal i composeren.
+    // Tallene bor i sessionslinjen.
     const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
-    expect(container.querySelector('.composer-tal')).toHaveTextContent('0 turns 0 steps')
+    expect(container.querySelector('.composer-tal')).toBeNull()
   })
 
   it('viser aktivitet fra en anden enhed som ikon ved Central i headeren', async () => {

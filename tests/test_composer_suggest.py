@@ -219,14 +219,52 @@ def test_uden_hans_forslag_staar_FELTET_TOMT(isolated_runtime, monkeypatch):
         "forslag": "", "forslag_id": "", "kilde_besked_id": ""}
 
 
-def test_efter_forbrug_staar_feltet_TOMT_igen(isolated_runtime, monkeypatch):
-    """Forslaget forbruges ved laesning. Naeste hentning i samme session giver
-    intet — der er ingen model at falde tilbage til laengere."""
+def test_forslaget_OVERLEVER_en_ny_hentning(isolated_runtime, monkeypatch):
+    """Bjoern 6/10-2026: forslaget skal overleve en app-genstart.
+
+    Foer slettede hentningen raekken, saa klienten der hentede holdt den eneste
+    kopi — en genstart tabte baade hukommelsen og raekken, og forslaget var vaek
+    uden at nogen havde set det. En genstart er praecis en ny hentning.
+    """
     _med_svar(monkeypatch)
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
 
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+    assert dj.kig_forslag(session_id="s1") is not None
+
+
+def _svar_med_tid(monkeypatch, *tider: str):
+    """En samtale med N assistent-svar, hver med sit `created_at`."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [
+        {"role": "assistant", "message_id": f"m{i}", "content": _ASSISTENT_SVAR,
+         "created_at": tid}
+        for i, tid in enumerate(tider)
+    ])
+
+
+def test_ÉT_svar_efter_forslaget_er_AKTUELT(isolated_runtime, monkeypatch):
+    """Forslaget skrives MENS turen koerer, saa dens eget svar lander bagefter.
+    Ét svar efter betyder derfor «hoerer til det der staar nederst»."""
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
+    _svar_med_tid(monkeypatch, "2026-10-06T10:00:05")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+
+
+def test_TO_svar_efter_forslaget_er_FORAELDET_og_ryddes(isolated_runtime, monkeypatch):
+    """Samtalen er koert videre. Et bud skrevet til en anden tur er vaerre end
+    ingenting — og raekken ryddes, saa den ikke bliver maalt igen."""
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
+    _svar_med_tid(monkeypatch, "2026-10-06T10:00:05", "2026-10-06T10:02:00")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+    assert dj.kig_forslag(session_id="s1") is None, "det foraeldede forslag skal ryddes"
+
+
+def test_INGEN_svar_efter_forslaget_lader_det_VENTE(isolated_runtime, monkeypatch):
+    """Turen er ikke landet endnu. Forslaget er paa vej, ikke foraeldet."""
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:05:00")
+    _svar_med_tid(monkeypatch, "2026-10-06T10:00:00")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
 
 
 def test_hans_forslag_bruges_ikke_naar_turen_IKKE_er_faerdig(isolated_runtime, monkeypatch):

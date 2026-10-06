@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8534/16121 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8535/16123 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8534/16121 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 723 | 1303 | 55% |
-| `core.services` | 5695 | 10972 | 51% |
+| `core.runtime` | 724 | 1304 | 55% |
+| `core.services` | 5695 | 10973 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8534/16121 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2238)
+## Undocumented public functions (2239)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2004,6 +2004,7 @@ Generated from source. 8534/16121 functions/methods documented (52%). The list b
 - `core/services/weighted_slot_health.py` :: `quota_snapshot` (L69)
 - `core/services/weighted_slot_health.py` :: `rolling_average` (L204)
 - `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L215)
+- `core/services/widget_dokument.py` :: `maerke` (L70)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)
 - `core/services/witness_signal_tracking.py` :: `track_runtime_witness_signals_for_visible_turn` (L29)

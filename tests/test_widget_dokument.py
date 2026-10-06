@@ -106,3 +106,70 @@ def test_fragmentet_staar_uaendret_i_dokumentet():
     nogen ikke senere tilfoejer en saniteringsliste og tror den er vaernet."""
     frag = "<div class='k'><b>tal</b> &amp; tegn</div>"
     assert frag in pak(frag)
+
+
+# ── sendPrompt-kanalen og dens MAERKNING ────────────────────────────────────
+#
+# Staaende regel (Bjoern 3/10-2026): «alt der ikk er mig der har skrevet fra
+# composer skal mærkes som fra systemet». Begrundelsen var konkret — umaerket
+# injiceret tekst startede runder i hans navn.
+#
+# Memoryen navngiver tre fejl i den note der udloeste reglen. Testene nedenfor
+# daekker alle tre: maerket SKAL vaere der, det maa IKKE vaere i jeg-form, og
+# det maa IKKE baere en invitation.
+
+
+def test_maerket_siger_hvem_der_skrev():
+    from core.services.widget_dokument import maerke
+    assert maerke("Cache-tal") == "[fra widget «Cache-tal»]"
+    assert maerke("") == "[fra widget]"
+    assert maerke("   ") == "[fra widget]"
+
+
+def test_maerket_er_IKKE_i_jeg_form_og_baerer_INGEN_invitation():
+    """De to oevrige fejl fra `alt_ikke_fra_composeren_skal_maerkes`. En
+    kilde-angivelse er ikke en stemme, og «sig til, saa…» laeses paa naeste
+    runde som om nogen HAR sagt til."""
+    from core.services.widget_dokument import maerke
+    m = maerke("Tabel").lower()
+    for jeg in ("jeg ", "mig", "min ", "mit "):
+        assert jeg not in m, f"maerket taler i jeg-form: {jeg!r}"
+    for invitation in ("sig til", "bare sig", "skal jeg", "vil du"):
+        assert invitation not in m, f"maerket inviterer: {invitation!r}"
+
+
+def test_maerket_bages_IND_i_dokumentet():
+    """Formatet maa kun have ÉN kilde. Skrev desk og mobil hver sin, ville de
+    drive fra hinanden — `tool_text_two_copies`."""
+    d = pak("<p>x</p>", titel="Cache-tal")
+    assert "[fra widget «Cache-tal»]" in d
+    assert "jarvis-widget-prompt" in d
+
+
+def test_kanalen_findes_og_er_den_ENESTE_vej_tilbage():
+    d = pak("<p>x</p>")
+    assert "sendPrompt" in d and "window.jarvis" in d
+    # Frosset, saa widget-koden ikke kan bytte funktionen ud under sig selv.
+    assert "Object.freeze" in d
+    # Begge klienter: iframe-vejen og WebView-vejen.
+    assert "parent.postMessage" in d and "ReactNativeWebView" in d
+
+
+def test_kanalen_afviser_det_der_ikke_er_tekst():
+    """Vagten staar i dokumentet, saa den gaelder BEGGE klienter ens — en
+    validering kun i desk ville mangle paa telefonen."""
+    d = pak("<p>x</p>")
+    assert "typeof tekst !== 'string'" in d
+    assert "if (!t) return false" in d
+
+
+def test_titlen_kan_ikke_bryde_ud_af_SCRIPTET():
+    """To lag: `<`/`>` fjernes af `maerke`, OG maerket bages ind som en
+    JSON-streng hvor `</` escapes. Strippen goer escapen unaaelig i dag — den
+    staar som dybde, saa en senere fjernelse af strippen ikke aabner noget."""
+    d = pak("<p>x</p>", titel="a</script><script>alert(1)")
+    blok = d[d.index("<script>"):d.index("</script>")]
+    assert "</script" not in blok, "titlen kunne lukke script-elementet"
+    # Og maerket i chatten baerer ikke HTML-skrald videre.
+    from core.services.widget_dokument import maerke
+    assert "<" not in maerke("a</script>") and ">" not in maerke("a</script>")

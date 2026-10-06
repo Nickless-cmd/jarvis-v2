@@ -493,8 +493,9 @@ _Pak model-skrevet HTML i et dokument der ikke kan naa noget._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L52) |
-| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L56) |
+| function | `maerke` | `(titel=…)` | — | [src](../../../core/services/widget_dokument.py#L70) |
+| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L78) |
+| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L82) |
 
 ## `core/services/witness_signal_tracking.py`
 

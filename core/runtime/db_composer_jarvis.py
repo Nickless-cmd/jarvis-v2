@@ -21,14 +21,32 @@ den NÆSTE besked, og den findes ikke mens han taler. Han lægger det derfor
 ned mens han er i turen (`suggest_next_message`), og komponisten henter det
 når feltet er tomt og svaret er færdigt.
 
-## Hvorfor ÉN række pr. forslag, og hvorfor den forbruges
+## Hvorfor ÉN række pr. forslag — og hvorfor den IKKE længere forbruges
 
-Forslaget hører til ÉN tur. Lå det og ventede, ville næste turs slutning
-kunne gribe et forældet forslag — skrevet til en samtale der er kørt videre.
-Derfor forbruges det ved læsning (`tag_forslag`): hentet er hentet, og næste
-hentning falder tilbage til den lokale model. Et forslag der bliver hentet
-to gange (to vinduer) giver ét rigtigt og ét fra qwen — det er den rigtige
-pris, for det forkerte ville være at vise ham noget der ikke passer længere.
+Forslaget hører til ÉN tur. Lå det og ventede, ville næste turs slutning kunne
+gribe et forældet forslag — skrevet til en samtale der er kørt videre.
+
+Det blev oprindeligt løst ved at SLETTE rækken ved læsning: hentet var hentet.
+Men den løsning havde en pris Bjørn fandt 6/10-2026: **forslaget overlevede
+ikke en app-genstart.** Klienten der hentede det holdt den eneste kopi, så en
+genstart tabte både hukommelsen og rækken — og forslaget var væk uden at nogen
+havde set det.
+
+Forældelsen afgøres nu på TID i stedet for på sletning. Rækken bærer
+`skrevet_at`, og forslaget skrives MENS turen kører — altså før svaret
+persisteres. Så:
+
+  * 0 assistent-beskeder efter `skrevet_at` → turen er ikke landet endnu.
+    Forslaget er stadig på vej og gemmes.
+  * 1 → forslaget hører til det svar der står nederst. AKTUELT.
+  * 2 eller flere → samtalen er kørt videre. FORÆLDET, og rækken ryddes.
+
+Det giver begge egenskaber: et forældet bud kan ikke gribes, OG en genstart
+taber ikke et forslag han ikke har set. To vinduer får nu begge det RIGTIGE
+forslag i stedet for at det ene fik et fald-tilbage.
+
+`tag_forslag` er bevaret for kaldere der stadig vil forbruge éngangs, men
+komponist-vejen bruger `kig_forslag` + `ryd_forslag`.
 """
 from __future__ import annotations
 
@@ -158,6 +176,27 @@ def tag_forslag(*, session_id: str) -> dict[str, str] | None:
             return dict(raekke)
 
     return skriv_med_genforsoeg(_tag)
+
+
+def ryd_forslag(*, session_id: str) -> int:
+    """Slet sessionens forslag. Returnerer antal slettede raekker.
+
+    Bruges naar et forslag er FORAELDET (samtalen er koert videre) — ikke naar
+    det er hentet. Se `foreslaa_naeste_detaljer` for hvorfor hentningen ikke
+    laengere sletter.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+
+    def _ryd() -> int:
+        with connect() as conn:
+            _sikr_tabel(conn)
+            n = conn.execute(f"DELETE FROM {_TABEL} WHERE session_id = ?", (sid,))
+            conn.commit()
+            return int(n.rowcount or 0)
+
+    return skriv_med_genforsoeg(_ryd)
 
 
 def kig_forslag(*, session_id: str) -> dict[str, str] | None:

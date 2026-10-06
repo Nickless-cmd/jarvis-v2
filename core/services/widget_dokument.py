@@ -29,6 +29,8 @@ er ogsaa derfor `allow-same-origin` ALDRIG maa staa sammen med
 
 from __future__ import annotations
 
+import json as _json
+
 #: Et dokument er en visning, ikke en applikation. 256 KB er rigeligt til en
 #: tabel, et diagram eller en lille beregner — og lille nok til at en
 #: loebsk generering ikke fylder hans vedhaeftninger.
@@ -47,6 +49,30 @@ CSP = (
     "form-action 'none'; "
     "base-uri 'none'"
 )
+
+
+#: Hvad en widget-initieret besked maerkes med.
+#:
+#: Staaende regel (Bjoern 3/10-2026): «alt der ikk er mig der har skrevet fra
+#: composer skal mærkes som fra systemet». Hans begrundelse var konkret: umaerket
+#: injiceret tekst startede runder i hans navn, fordi Jarvis troede beskederne
+#: var hans.
+#:
+#: Memoryen navngiver tre fejl i den note der udloeste reglen, og maerket her
+#: undgaar alle tre: det er MAERKET (praefikset siger hvem der skrev), det er
+#: IKKE i jeg-form (det er en kilde-angivelse, ikke en stemme), og det baerer
+#: INGEN invitation (ingen «sig til, saa…» der paa naeste runde laeses som om
+#: nogen har sagt til).
+#:
+#: Teksten bygges HER paa serveren og bages ind i dokumentet, saa desk og mobil
+#: kun saetter den foran. Et format skrevet i to klienter driver fra hinanden —
+#: det er praecis `tool_text_two_copies`.
+def maerke(titel: str = "") -> str:
+    # `<` og `>` fjernes som i <title>-elementet. Ikke for sikkerhedens skyld —
+    # JSON-indbagningen i scriptet daekker det — men fordi maerket ender som
+    # praefiks paa en besked i HANS chat, og HTML-skrald dér er stoej.
+    t = (titel or "").replace("<", "").replace(">", "").strip()
+    return f"[fra widget «{t}»]" if t else "[fra widget]"
 
 
 class WidgetFejl(ValueError):
@@ -72,6 +98,11 @@ def pak(html: str, *, titel: str = "") -> str:
             "og dets sikkerheds-politik laegges af serveren"
         )
     t = (titel or "widget").replace("<", "").replace(">", "").strip() or "widget"
+    # Maerket bages ind som en JSON-streng, saa en titel med citationstegn eller
+    # en afsluttende `</script>` ikke kan bryde ud af scriptet.
+    _SEND_PROMPT_JS = _SEND_PROMPT_JS_TMPL % _json.dumps(
+        maerke(titel), ensure_ascii=False
+    ).replace("</", "<\\/")
     return (
         "<!doctype html>\n<html><head><meta charset=\"utf-8\">\n"
         f'<meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
@@ -82,7 +113,37 @@ def pak(html: str, *, titel: str = "") -> str:
         "  body { font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;\n"
         "         color:#8a8a8a; padding:12px; }\n"
         "  a { pointer-events:none; text-decoration:none; color:inherit; }\n"
-        "</style>\n</head><body>\n"
+        "</style>\n"
+        f"<script>{_SEND_PROMPT_JS}</script>\n"
+        "</head><body>\n"
         f"{raa}\n"
         "</body></html>\n"
     )
+
+
+#: `jarvis.sendPrompt(tekst)` — widget'ens eneste vej TILBAGE i samtalen.
+#:
+#: Maerket foelger med i beskeden, saa klienten ikke skal kende formatet.
+#: Klienten validerer alligevel afsender, form og takt: en widget koerer
+#: model-skrevet JS, og en loekke der kalder sendPrompt ville ellers kunne
+#: spamme samtalen.
+_SEND_PROMPT_JS_TMPL = """
+(function () {
+  var MAERKE = %s;
+  function send(tekst) {
+    if (typeof tekst !== 'string') return false;
+    var t = tekst.trim();
+    if (!t) return false;
+    var pakke = { type: 'jarvis-widget-prompt', tekst: t, maerke: MAERKE };
+    try {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(pakke));
+      } else {
+        parent.postMessage(pakke, '*');
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+  window.jarvis = Object.freeze({ sendPrompt: send });
+})();
+"""

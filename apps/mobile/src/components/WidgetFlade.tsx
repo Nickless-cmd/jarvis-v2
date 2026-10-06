@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { WebView } from 'react-native-webview'
 
@@ -33,6 +33,20 @@ import { WebView } from 'react-native-webview'
  *  forkert reference ikke kan trække en stor fil ind paa telefonen. */
 export const MAX_WIDGET_BYTES = 512 * 1024
 
+/** Takt-graenser for `jarvis.sendPrompt`. Widget'en koerer model-skrevet JS, saa
+ *  graenserne er ikke hoeflighed — de er loftet over hvad en loekke kan koste.
+ *  Hver sendt besked starter et run. Samme tal som desk. */
+const MAX_PROMPTS = 5
+const MIN_MS_MELLEM = 2000
+const MAX_PROMPT_TEGN = 2000
+
+/** Hvor en widget-initieret besked skal hen. Context og ikke en prop: vejen fra
+ *  ChatScreen gaar gennem MessageBubble og MessageAttachments, og en prop ville
+ *  aendre to signaturer der intet har med widgets at goere.
+ *
+ *  Standard er `null`: en widget i en visning der ikke kan sende skal tie. */
+export const WidgetPrompt = createContext<((markeretTekst: string) => void) | null>(null)
+
 const HOEJDE_SCRIPT = `
 (function () {
   function sig() {
@@ -56,6 +70,9 @@ true;
 export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   const [hoejde, setHoejde] = useState(160)
   const foerste = useRef(true)
+  // Teksten er FAERDIG-MAERKET naar den naar hertil.
+  const onPrompt = useContext(WidgetPrompt)
+  const sendte = useRef({ antal: 0, sidst: 0 })
 
   useEffect(() => { foerste.current = true }, [html])
 
@@ -85,12 +102,29 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
         onMessage={(e) => {
           try {
             const d = JSON.parse(String(e.nativeEvent.data || '{}'))
-            if (d?.type !== 'jarvis-widget-hoejde') return
-            const h = Number(d.hoejde)
-            if (!Number.isFinite(h) || h <= 0) return
-            setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+
+            if (d?.type === 'jarvis-widget-hoejde') {
+              const h = Number(d.hoejde)
+              if (!Number.isFinite(h) || h <= 0) return
+              setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+              return
+            }
+
+            if (d?.type === 'jarvis-widget-prompt') {
+              const nu = Date.now()
+              if (sendte.current.antal >= MAX_PROMPTS) return
+              if (nu - sendte.current.sidst < MIN_MS_MELLEM) return
+              const tekst = typeof d.tekst === 'string' ? d.tekst.trim() : ''
+              if (!tekst || tekst.length > MAX_PROMPT_TEGN) return
+              // MAERKET kommer fra serveren. Mangler det, sender vi IKKE: en
+              // umaerket besked ville laeses som Bjoerns egne ord.
+              const maerke = typeof d.maerke === 'string' ? d.maerke.trim() : ''
+              if (!maerke.startsWith('[fra widget')) return
+              sendte.current = { antal: sendte.current.antal + 1, sidst: nu }
+              onPrompt?.(`${maerke} ${tekst}`)
+            }
           } catch {
-            // En uparsebar besked er ikke en hoejde. Ingen handling.
+            // En uparsebar besked er hverken en hoejde eller en prompt.
           }
         }}
         // Alt herunder er lukket MED VILJE og staar eksplicit, saa en aendret

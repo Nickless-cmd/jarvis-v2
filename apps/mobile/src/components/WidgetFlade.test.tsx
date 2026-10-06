@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native'
-import { WidgetFlade, MAX_WIDGET_BYTES } from './WidgetFlade'
+import { WidgetFlade, MAX_WIDGET_BYTES, WidgetPrompt } from './WidgetFlade'
 
 /**
  * Mobilen har ingen `sandbox`-attribut, saa graensen er bygget af FLAG. Disse
@@ -65,5 +65,56 @@ describe('WidgetFlade', () => {
     expect(tom.getByText(/tomt dokument/)).toBeTruthy()
     const stor = await render(<WidgetFlade html={'x'.repeat(MAX_WIDGET_BYTES + 1)} />)
     expect(stor.getByText(/for stor/)).toBeTruthy()
+  })
+})
+
+describe('WidgetFlade sendPrompt-kanalen', () => {
+  async function medFlade(onPrompt?: (t: string) => void) {
+    const screen = await render(
+      <WidgetPrompt.Provider value={onPrompt ?? null}>
+        <WidgetFlade html="<p>hej</p>" titel="Tabel" />
+      </WidgetPrompt.Provider>,
+    )
+    const p = screen.getByTestId('widget-webview').props as Record<string, unknown>
+    const paa = p.onMessage as (e: unknown) => void
+    return (data: unknown) => paa({ nativeEvent: { data: JSON.stringify(data) } })
+  }
+
+  it('en MAERKET besked naar frem med maerket foran', async () => {
+    const set: string[] = []
+    const send = await medFlade((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: 'sorter efter miss', maerke: '[fra widget «Tabel»]' })
+    expect(set).toEqual(['[fra widget «Tabel»] sorter efter miss'])
+  })
+
+  it('en UMAERKET besked sendes IKKE', async () => {
+    const set: string[] = []
+    const send = await medFlade((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: 'goer noget' })
+    send({ type: 'jarvis-widget-prompt', tekst: 'goer noget', maerke: 'Bjørn:' })
+    expect(set).toEqual([])
+  })
+
+  it('takten begraenses — en loekke kan ikke spamme samtalen', async () => {
+    const set: string[] = []
+    const send = await medFlade((t) => set.push(t))
+    for (let i = 0; i < 20; i++) {
+      send({ type: 'jarvis-widget-prompt', tekst: `nr ${i}`, maerke: '[fra widget]' })
+    }
+    expect(set).toHaveLength(1)
+  })
+
+  it('tom og overlang tekst afvises', async () => {
+    const set: string[] = []
+    const send = await medFlade((t) => set.push(t))
+    send({ type: 'jarvis-widget-prompt', tekst: '  ', maerke: '[fra widget]' })
+    send({ type: 'jarvis-widget-prompt', tekst: 'x'.repeat(2001), maerke: '[fra widget]' })
+    send({ type: 'jarvis-widget-prompt', tekst: 7, maerke: '[fra widget]' })
+    expect(set).toEqual([])
+  })
+
+  it('uden provider sker der ingenting — ingen kasten', async () => {
+    const send = await medFlade(undefined)
+    expect(() => send({ type: 'jarvis-widget-prompt', tekst: 'x', maerke: '[fra widget]' })).not.toThrow()
   })
 })

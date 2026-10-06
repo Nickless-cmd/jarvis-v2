@@ -31,6 +31,7 @@
     "inbox_done",
     "inbox_drop",
     "vis_graf",
-    "vis_widget"
+    "vis_widget",
+    "suggest_next_message"
   ]
 }

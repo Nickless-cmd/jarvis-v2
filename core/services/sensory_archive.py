@@ -207,7 +207,7 @@ _PREAMBLE_MOENSTER = re.compile(
 _SAETNINGSSLUT = re.compile(r"[.!?](?=\s|$)|\n\n")
 
 
-def _klip_ved_saetningsgraense(tekst: str, pos: int) -> str:
+def klip_ved_saetningsgraense(tekst: str, pos: int) -> str:
     """Klip `tekst` ved `pos`, men ryk tilbage til sidste saetningsgraense.
 
     Uden det stod «Da billedet er helt sort, maa jeg bruge» tilbage som et halvt
@@ -292,7 +292,7 @@ def _uden_stillads(content: str) -> tuple[str, bool]:
         if traef is not None and (foerste is None or traef.start() < foerste):
             foerste = traef.start()
     if foerste is not None:
-        tekst = _klip_ved_saetningsgraense(tekst, foerste)
+        tekst = klip_ved_saetningsgraense(tekst, foerste)
         roert = True
         # En rest der kun er wrapper-laget er ikke et indtryk. Uden dette
         # stod «Jeg så og lyttede samtidig. Visuelt: 1.» tilbage som en post.

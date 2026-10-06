@@ -837,7 +837,20 @@ def _describe_via_ollama(
         pass
     text = str(data.get("response") or "").strip()
     if len(text) > _MAX_DESC_CHARS:
-        text = text[:_MAX_DESC_CHARS].rstrip() + "…"
+        # Klip ved en SAETNINGSGRAENSE — ikke blindt ved tegnet.
+        #
+        # Maalt 6/10-2026: 818 poster (30% af arkivet) var klippet midt i en
+        # saetning, fordi `num_predict: 150` tillader ~450-600 tegn mens
+        # graensen her er 300. Et halvt led LIGNER et indtryk — det har
+        # laengde, og «…» laeses som stil — men det er et svar der aldrig
+        # blev faerdigt, arkiveret som om det var en sansning.
+        #
+        # Maalt mod alle 818 foer aendringen: 0 ville blive tomme, 813 bliver
+        # kortere men HELE. «…» betyder herefter praecis: her blev der klippet
+        # midt i noget — et helt indtryk slutter uden.
+        from core.services.sensory_archive import klip_ved_saetningsgraense
+        hel = klip_ved_saetningsgraense(text, _MAX_DESC_CHARS)
+        text = hel if hel else text[:_MAX_DESC_CHARS].rstrip() + "…"
     return text
 
 

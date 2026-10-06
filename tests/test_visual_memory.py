@@ -334,6 +334,32 @@ def test_levende_frame_gaar_uaendret_igennem(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# `arkiver=False` — kalderen ejer modaliteten (6/10-2026)
+#
+# Sanse-daemonens atmosphere- og mixed-grene skriver deres EGEN post. Uden
+# flaget skrev hver atmosphere-sansning TO rækker med samme tekst — én `visual`
+# (herfra) og én `atmosphere` (fra kalderen). 120 sådanne par lå i arkivet,
+# jævnt fordelt fra maj til oktober, og `count(modality='visual')` talte dem
+# alle som selvstændige visuelle indtryk.
+# ---------------------------------------------------------------------------
+
+
+def test_look_around_uden_arkivering_skriver_ingen_visual_raekke(monkeypatch):
+    arkiveret = _stub_kaeden(monkeypatch, _moerkt_men_levende_frame())
+    ud = VM.look_around_now(arkiver=False)
+    assert ud["status"] == "captured", ud
+    assert arkiveret == [], "flaget blev ikke båret igennem til arkiveringen"
+
+
+def test_look_around_arkiverer_som_foer_uden_flaget(monkeypatch):
+    """Regression: et bevidst kig ER en sansning — standarden må ikke ændre sig."""
+    arkiveret = _stub_kaeden(monkeypatch, _moerkt_men_levende_frame())
+    ud = VM.look_around_now()
+    assert ud["status"] == "captured", ud
+    assert arkiveret == ["Rummet føles stille."]
+
+
+# ---------------------------------------------------------------------------
 # Sansnings-vejen tvinger CONFIG-modellen (5/10-2026)
 #
 # `force_config` blev bygget til netop dette og var kaldt af ingen: hele

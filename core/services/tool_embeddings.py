@@ -60,7 +60,14 @@ def _hash_desc(desc: str) -> str:
     return hashlib.sha256(desc.encode("utf-8")).hexdigest()[:16]
 
 
-def _compute_embedding(text: str) -> list[float]:
+#: Default-timeout paa ét embed-kald. Lang med vilje: `warmup_all` embedder
+#: alle ~485 vaerktoejs-beskrivelser ved opstart, og en kold model dér maa
+#: gerne tage tid. Den HOTTE sti sender sin egen, korte — se
+#: `tool_router_embed_timeout_s`.
+_DEFAULT_TIMEOUT_S = 15.0
+
+
+def _compute_embedding(text: str, *, timeout_s: float = _DEFAULT_TIMEOUT_S) -> list[float]:
     """Call Ollama embedding endpoint. Override in tests."""
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
@@ -73,7 +80,7 @@ def _compute_embedding(text: str) -> list[float]:
     r = requests.post(
         f"{base_url}/api/embeddings",
         json={"model": model, "prompt": text},
-        timeout=15,
+        timeout=timeout_s,
     )
     r.raise_for_status()
     return list(r.json().get("embedding") or [])
@@ -116,9 +123,17 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
-def top_k_similar(query: str, k: int = 30) -> list[tuple[str, float]]:
-    """Return (tool_name, similarity) sorted desc by cosine similarity."""
-    qv = _compute_embedding(query)
+def top_k_similar(query: str, k: int = 30, *,
+                  timeout_s: float = _DEFAULT_TIMEOUT_S) -> list[tuple[str, float]]:
+    """Return (tool_name, similarity) sorted desc by cosine similarity.
+
+    `timeout_s` er kalderens deadline paa selve embed-kaldet. Ollama
+    SERIALISERER pr. model, og `memory_search` bruger SAMME model paa SAMME
+    vaert — saa en enkelt forespoergsel kan staa i koe bag en batch. Maalt
+    6/10-2026: det raa embed er 28 ms naar det er alene, og 5-7 s naar det
+    ikke er.
+    """
+    qv = _compute_embedding(query, timeout_s=timeout_s)
     out: list[tuple[str, float]] = []
     with _connect() as c:
         rows = c.execute("SELECT name, embedding FROM tool_embeddings").fetchall()

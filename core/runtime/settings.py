@@ -636,6 +636,29 @@ class RuntimeSettings:
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"
     tool_router_embedding_provider: str = "ollama"
+    #: Deadline paa routerens ENE embed-kald, i sekunder.
+    #:
+    #: Maalt 6/10-2026 paa CT105, 1.650 beslutninger over 7 dage:
+    #:   MED picks  (1.407): p50 364 ms · p75 2.246 · p90 5.346 · p99 12.487
+    #:   UDEN picks   (243): p50 15.197 ms — HVER ENESTE var `timeout=15`
+    #: De 243 ventede altsaa et kvarter og fik INGEN picks. De gik videre med
+    #: de 70 kerne-vaerktoejer — praecis det de ville have faaet med det samme.
+    #:
+    #: Aarsagen er koe, ikke en kold model: `nomic-embed-text` er varm
+    #: (KEEP_ALIVE=-1), men ollama SERIALISERER pr. model, og `memory_search`
+    #: bruger samme model paa samme vaert. Maalt alene: 28 ms. Maalt under en
+    #: batch: 5-7 s.
+    #:
+    #: 4 sekunder er KNAEET i maalingen, ikke et oensket tal:
+    #:    500 ms → taber picks paa 33,8 % · sparer 88 min/uge
+    #:   2000 ms → 26,1 % · 73 min/uge
+    #:   4000 ms → 14,6 % · 55 min/uge   ← holder 85 % af picks
+    #:   8000 ms → 3,6 %  · 31 min/uge
+    #: Og prisen for at miste picks er maalt: `load_more`-raten gaar fra 6,8 %
+    #: til 8,2 % — 1,4 procentpoint. Degraderingen fandtes i forvejen
+    #: (`except` → `sim = []` → koer videre); den udloeses nu efter 4 s i
+    #: stedet for efter 15.
+    tool_router_embed_timeout_s: float = 4.0
     # Anthropic-compat endpoint (added 2026-05-06)
     anthropic_compat_enabled: bool = True
     # When true, requests without x-api-key are accepted in dev (resolves to default workspace).
@@ -727,7 +750,8 @@ _TIDLIGERE_UINDLAESTE = (
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",
-    "tool_router_embedding_provider", "anthropic_compat_enabled",
+    "tool_router_embedding_provider", "tool_router_embed_timeout_s",
+    "anthropic_compat_enabled",
     "anthropic_compat_dev_mode_open", "decision_signals_enabled",
 )
 

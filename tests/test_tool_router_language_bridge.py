@@ -46,11 +46,42 @@ def test_scoren_faar_den_RAA_besked_ikke_den_broede():
 
     Ellers ville broen ændre confidence — og målingen viste netop at porten
     er uændret (median +0,0000, ingen tærskel-krydsninger på 60 beskeder).
+
+    Vagten laeste FOER en streng: `"top_k_similar(_embedding_query(user_message)"`.
+    Den braekkede 6/10-2026 af en ren ombrydning — kaldet fik et `timeout_s`
+    og blev delt over flere linjer. Egenskaben var uaendret; kun tegnene
+    flyttede sig. En kilde-vagt der greper efter en streng maaler altsaa
+    formatering, ikke adfaerd. Nu parses AST'en, som huset har skrevet ned.
     """
+    import ast
     import inspect
-    kilde = inspect.getsource(R._select_inner)
-    assert "top_k_similar(_embedding_query(user_message)" in kilde
-    assert "_score(user_message or \"\"" in kilde, "scoren må ikke få den broede tekst"
+    import textwrap
+
+    traeet = ast.parse(textwrap.dedent(inspect.getsource(R._select_inner)))
+
+    def foerste_arg(funktionsnavn: str):
+        for knude in ast.walk(traeet):
+            if (isinstance(knude, ast.Call)
+                    and isinstance(knude.func, ast.Name)
+                    and knude.func.id == funktionsnavn
+                    and knude.args):
+                return knude.args[0]
+        return None
+
+    emb = foerste_arg("top_k_similar")
+    assert emb is not None, "top_k_similar kaldes ikke laengere i _select_inner"
+    assert isinstance(emb, ast.Call) and isinstance(emb.func, ast.Name) \
+        and emb.func.id == "_embedding_query", \
+        "embedding-inputtet skal gaa gennem broen"
+    assert any(isinstance(a, ast.Name) and a.id == "user_message" for a in emb.args), \
+        "broen skal have den raa besked som input"
+
+    sc = foerste_arg("_score")
+    assert sc is not None, "_score kaldes ikke laengere i _select_inner"
+    raa = (isinstance(sc, ast.Name) and sc.id == "user_message") or (
+        isinstance(sc, ast.BoolOp)
+        and any(isinstance(v, ast.Name) and v.id == "user_message" for v in sc.values))
+    assert raa, "scoren maa IKKE faa den broede tekst — den skal maale hans faktiske sprog"
 
 
 def test_broen_er_default_TIL(monkeypatch):

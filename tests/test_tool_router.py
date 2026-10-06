@@ -123,3 +123,43 @@ def test_en_doed_base_giver_tomt_svar_og_ikke_en_undtagelse(monkeypatch):
         yield
     monkeypatch.setattr(tool_router, "connect", _brudt)
     assert tool_router.kald_pr_bruger() == {}
+
+
+def test_routeren_sender_sin_egen_korte_deadline(monkeypatch):
+    """Et timeout i routeren er et FRAVALG, ikke en fejl: den gaar videre med
+    kerne-vaerktoejerne frem for at lade turen staa stille i 15 sekunder.
+
+    Maalt 6/10-2026: 243 af 1.650 beslutninger ventede 15.197 ms og fik NUL
+    picks. Prisen for at miste picks er 1,4 procentpoint hoejere
+    `load_more`-rate; prisen for at vente er 55-88 minutter om ugen.
+    """
+    from core.services import tool_router as tr
+
+    set_t = {}
+
+    def _top_k(q, k=30, timeout_s=None):
+        set_t["timeout_s"] = timeout_s
+        return []
+
+    monkeypatch.setattr("core.services.tool_embeddings.top_k_similar", _top_k)
+    monkeypatch.setattr(tr, "_persist", lambda *a, **k: None)
+    tr.select_tools(user_message="hvor ligger pfsense-noeglen",
+                    session_id="s", lane="visible", run_id="r")
+    assert set_t["timeout_s"] == 4.0, \
+        f"routeren brugte {set_t.get('timeout_s')!r} i stedet for sin egen deadline"
+
+
+def test_et_timeout_giver_stadig_et_brugbart_vaerktoejssaet(monkeypatch):
+    """Degraderingen fandtes i forvejen — den skal BLIVE der. Fejler embeddet,
+    maa routeren ikke returnere tomt; den skal give kerne-vaerktoejerne."""
+    from core.services import tool_router as tr
+
+    def _boom(q, k=30, timeout_s=None):
+        raise TimeoutError("embed tog for lang tid")
+
+    monkeypatch.setattr("core.services.tool_embeddings.top_k_similar", _boom)
+    monkeypatch.setattr(tr, "_persist", lambda *a, **k: None)
+    sel = tr.select_tools(user_message="hvor ligger pfsense-noeglen",
+                          session_id="s", lane="visible", run_id="r")
+    assert sel.selected_names, "et timeout maa ikke efterlade turen uden vaerktoejer"
+    assert not sel.embedding_picks, "der kan ikke vaere picks naar embeddet fejlede"

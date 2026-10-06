@@ -108,12 +108,12 @@ _Tool description embedding cache._
 | function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L50) |
 | function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L54) |
 | function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L59) |
-| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L63) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L82) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L102) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L108) |
-| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L119) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L132) |
+| function | `_compute_embedding` | `(text, *, timeout_s=…)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L70) |
+| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L89) |
+| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L109) |
+| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L115) |
+| function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L126) |
+| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L147) |
 
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._
@@ -290,7 +290,7 @@ _Per-turn tool selection._
 | function | `_sprog_bro_taendt` | `()` | Live-kontakt for sprog-broen. Self-safe: kan config ikke laeses, er den TIL. | [src](../../../core/services/tool_router.py#L386) |
 | function | `_embedding_query` | `(user_message)` | Forespoergslen der embeddes — dansk broet til engelsk. | [src](../../../core/services/tool_router.py#L395) |
 | function | `_select_inner` | `(*, user_message, session_id, lane, run_id, settings, started_at)` | — | [src](../../../core/services/tool_router.py#L426) |
-| function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L486) |
+| function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L494) |
 
 ## `core/services/tool_router_runtime.py`
 _Nightly daemon: refresh always-core ranking, recompute embeddings,_

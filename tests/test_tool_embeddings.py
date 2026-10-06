@@ -128,3 +128,64 @@ def test_ingen_hardkodet_vaert_i_embed_kaldet() -> None:
         and ("://" in n.value or "localhost" in n.value or "127.0.0.1" in n.value)
     ]
     assert not syndere, "værten er skrevet ind i kaldet:\n  " + "\n  ".join(syndere)
+
+
+# ── Kalderens deadline (6/10-2026) ─────────────────────────────────────────
+#
+# Maalt paa CT105, 1.650 router-beslutninger over 7 dage: de 243 der endte
+# UDEN embedding-picks havde ALLE p50 = 15.197 ms, altsaa det gamle faste
+# `timeout=15`. De ventede et kvarter og fik ingenting.
+
+def test_timeouten_er_kalderens_valg(monkeypatch):
+    """Hele rettelsen: den hotte sti skal kunne saette sin EGEN deadline."""
+    import requests
+    from core.services import tool_embeddings as te
+
+    set_timeout = {}
+
+    class _Svar:
+        def raise_for_status(self): pass
+        def json(self): return {"embedding": [0.1, 0.2]}
+
+    def _post(url, json=None, timeout=None):
+        set_timeout["v"] = timeout
+        return _Svar()
+
+    monkeypatch.setattr(requests, "post", _post)
+    te._compute_embedding("x", timeout_s=4.0)
+    assert set_timeout["v"] == 4.0, "kalderens deadline naaede ikke requesten"
+
+
+def test_defaulten_er_stadig_lang(monkeypatch):
+    """`warmup_all` embedder ~485 vaerktoejs-beskrivelser ved opstart og maa
+    gerne tage tid. Kun den hotte sti skal vaere utaalmodig."""
+    import requests
+    from core.services import tool_embeddings as te
+
+    set_timeout = {}
+
+    class _Svar:
+        def raise_for_status(self): pass
+        def json(self): return {"embedding": [0.0]}
+
+    monkeypatch.setattr(requests, "post",
+                        lambda url, json=None, timeout=None: (set_timeout.__setitem__("v", timeout), _Svar())[1])
+    te._compute_embedding("x")
+    assert set_timeout["v"] == te._DEFAULT_TIMEOUT_S == 15.0
+
+
+def test_top_k_similar_traader_deadlinen_igennem(monkeypatch):
+    from core.services import tool_embeddings as te
+    set_t = {}
+    monkeypatch.setattr(te, "_compute_embedding",
+                        lambda q, timeout_s=None: set_t.__setitem__("v", timeout_s) or [1.0])
+    monkeypatch.setattr(te, "_connect", lambda: _TomDb())
+    te.top_k_similar("q", k=3, timeout_s=4.0)
+    assert set_t["v"] == 4.0
+
+
+class _TomDb:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, *a, **k): return self
+    def fetchall(self): return []

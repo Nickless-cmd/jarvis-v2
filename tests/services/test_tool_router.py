@@ -43,7 +43,10 @@ def test_low_confidence_falls_back(monkeypatch):
     monkeypatch.setattr(tr, "_load_more_rate_7d", lambda: 0.0)
     monkeypatch.setattr(
         "core.services.tool_embeddings.top_k_similar",
-        lambda query, k=30: [],
+        # `timeout_s` kom til 6/10-2026: en fake der ikke tager imod det
+        # maaler en ANDEN funktion end produktionen kalder — og routeren
+        # sluger TypeError'en og degraderer, saa fejlen ville vaere tavs.
+        lambda query, k=30, timeout_s=None: [],
     )
     sel = tr.select_tools(user_message="ok", session_id=None, lane="visible")
     # Semantics changed (~2026-05-x): when confidence is below threshold,
@@ -60,7 +63,7 @@ def test_selection_returns_subset_when_confident(monkeypatch):
     monkeypatch.setattr(tr, "_load_more_rate_7d", lambda: 0.0)
     monkeypatch.setattr(
         "core.services.tool_embeddings.top_k_similar",
-        lambda query, k=30: [("read_file", 0.85), ("grep", 0.8)],
+        lambda query, k=30, timeout_s=None: [("read_file", 0.85), ("grep", 0.8)],
     )
     monkeypatch.setattr(tr, "_always_core_set", lambda limit: ["bash", "pause_and_ask"])
     sel = tr.select_tools(

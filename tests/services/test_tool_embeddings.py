@@ -5,8 +5,10 @@ from core.services import tool_embeddings as te
 
 @pytest.fixture
 def fake_embed(monkeypatch):
-    def _embed(text: str) -> list[float]:
-        # Deterministic fake: hash-based vector
+    def _embed(text: str, *, timeout_s: float | None = None) -> list[float]:
+        # Deterministic fake: hash-based vector. `timeout_s` skal med i
+        # signaturen (6/10-2026) — produktionen sender den nu, og en fake uden
+        # den maaler ikke laengere det produktionen kalder.
         h = sum(ord(c) for c in text) % 100
         return [float(h), 0.5, 0.5]
     monkeypatch.setattr(te, "_compute_embedding", _embed)

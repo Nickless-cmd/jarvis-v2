@@ -433,7 +433,15 @@ def _select_inner(
     load_more_rate = _load_more_rate_7d()
 
     try:
-        sim = top_k_similar(_embedding_query(user_message), k=settings.tool_router_k_embeddings)
+        sim = top_k_similar(
+            _embedding_query(user_message),
+            k=settings.tool_router_k_embeddings,
+            # Kort deadline MED VILJE. Et timeout her er ikke en fejl, det er
+            # et fravalg: vi gaar videre med kerne-vaerktoejerne frem for at
+            # lade turen staa stille. Se `tool_router_embed_timeout_s` for
+            # maalingen bag de 4 sekunder.
+            timeout_s=float(getattr(settings, "tool_router_embed_timeout_s", 4.0) or 4.0),
+        )
     except Exception as exc:
         logger.warning("tool_router: embedding lookup failed: %s", exc)
         sim = []

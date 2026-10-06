@@ -556,7 +556,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   }, [working])
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
-  const aabnetTurRef = useRef<string | null>(null)
+  //: Folden der er undervejs: hvor skaermen stod, hvor hoejt indholdet var, og
+  //: hvilken vej folden skal aendre det. Sat af `toggleFor`, laest af
+  //: `onContentSizeChange`. `null` = ingen fold undervejs.
+  //:
+  //: MAALT 6/10-2026 (Bjoern): den foerste udgave tog den FOERSTE
+  //: stoerrelsesaendring efter et tryk, uanset fortegn. Kom der en maaling i
+  //: den forkerte retning foerst, blev den brugt — og den aegte aendring stod
+  //: ukompenseret tilbage. Skaermen foer derfor til BUNDS ved fold-ud og
+  //: naesten til TOPS ved fold-ind. Nu sigtes der paa et FAST maal:
+  //: udgangs-offsettet plus hele aendringen siden trykket. Saa kan en
+  //: mellemliggende maaling ikke flytte skaermen, hvor mange der end kommer.
+  const foldVenter = useRef<
+    { offset: number; hoejde: number; retning: 1 | -1; udloeb: number } | null
+  >(null)
   //: Scroll-offsettet i content-rummet. Inverteret liste: 0 = bunden.
   //: Bruges til at holde skaermen bomstille naar et tur-hoved foldes.
   const scrollTopRef = useRef(0)
@@ -757,11 +770,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     // offsettet praecis lige saa meget som indholdet voksede — saa staar
     // headeren stille og arbejdet folder NED under den.
     //
-    // Samme vej begge retninger: ved fold-ind bliver delta negativ, og
-    // kompensationen loefter skaermen tilsvarende op. Derfor saettes ref'en
-    // ogsaa naar turen LUKKES — den gamle udgave ryddede den og lod
-    // fold-ind skubbe headeren den anden vej.
-    aabnetTurRef.current = id
+    // Samme vej begge retninger: ved fold-ind bliver aendringen negativ, og
+    // kompensationen loefter skaermen tilsvarende op. Derfor noteres
+    // udgangspunktet ogsaa naar turen LUKKES — den gamle udgave ryddede det og
+    // lod fold-ind skubbe headeren den anden vej.
+    //
+    // `aaben` er tilstanden FOER trykket: er turen aaben, er dette en fold
+    // SAMMEN, og indholdet skal blive kortere (retning -1).
+    foldVenter.current = {
+      offset: scrollTopRef.current,
+      hoejde: contentLenRef.current,
+      retning: aaben ? -1 : 1,
+      udloeb: Date.now() + 600,
+    }
     setTurnOverrides((current) => ({ ...current, [id]: !aaben }))
   })
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
@@ -926,17 +947,22 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => {
-        const foer = contentLenRef.current
         contentLenRef.current = h
-        if (!aabnetTurRef.current) return
-        aabnetTurRef.current = null
-        // Foerste maaling nogensinde (foer = 0) har intet at kompensere imod.
-        if (!foer) return
-        const delta = h - foer
+        const venter = foldVenter.current
+        if (!venter) return
+        if (Date.now() > venter.udloeb) { foldVenter.current = null; return }
+        // Foerste maaling nogensinde har intet at maale aendringen imod.
+        if (!venter.hoejde) return
+        const delta = h - venter.hoejde
         if (!delta) return
+        // Maalinger i den FORKERTE retning er ikke folden. Den foerste udgave
+        // brugte dem alligevel, og skaermen foer til bunds ved fold-ud og
+        // naesten til tops ved fold-ind (maalt 6/10-2026). Nu ignoreres de, og
+        // vinduet staar aabent til den aegte aendring kommer.
+        if ((delta > 0 ? 1 : -1) !== venter.retning) return
         // `animated: false` — med animation glider skaermen, og kravet er at
         // den staar bomstille mens indholdet folder ud under hovedet.
-        flatRef.current?.scrollToOffset({ offset: scrollTopRef.current + delta, animated: false })
+        flatRef.current?.scrollToOffset({ offset: venter.offset + delta, animated: false })
       }}
       onScroll={(e) => {
         scrollTopRef.current = e.nativeEvent.contentOffset.y

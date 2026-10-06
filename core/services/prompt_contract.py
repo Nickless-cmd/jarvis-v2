@@ -41,6 +41,12 @@ _RELEVANCE_DECISION_HISTORY_LIMIT = 8
 # at optræde i rigtigt prompt-indhold.
 DYNAMIC_TAIL_SENTINEL = "⟦◆DYNAMIC-TAIL-DO-NOT-CACHE◆⟧"
 
+# Boy Scout 6/10-2026: assembly-telemetrien er flyttet til
+# `core/services/prompt_assembly_telemetri.py`. Der er INTET at re-eksportere —
+# `_label_of` var en nested funktion og de oevrige var lokale variabler, saa
+# ingen kunne importere dem herfra i forvejen. Det nye modul laeser til gengaeld
+# sentinel'en HERFRA, og importeres derfor dovent paa kaldestedet.
+
 
 def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
     global _RELEVANCE_DECISION_HISTORY
@@ -3311,81 +3317,21 @@ def _build_visible_chat_prompt_assembly_impl(
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
-    _per_part_chars = [len(p) for p in parts if p]
-    # NAVNET AFLEDES AF INDHOLDET, ikke af et indeks i en parallel liste.
-    #
-    # Den gamle udgave zippede `derived_inputs` mod `parts` på indeks — men de
-    # to lister vokser IKKE i takt (25 `parts.append` mod 42
-    # `derived_inputs.append` i samme funktion, plus `extend`). Hvert navn sad
-    # derfor på et vilkårligt andet stykke, og telemetrien har peget forkert så
-    # længe den har eksisteret. Den fejl er værre end ingen måling: et kort der
-    # peger forkert får en til at skære det forkerte sted.
-    #
-    # Tegnet på at noget var galt: `quick_facts` blev målt til 7051 tegn, mens
-    # dens egen builder har et loft på 1800.
-    #
-    # Første linje af et stykke ER dets overskrift i praksis, og den kan ikke
-    # komme ud af trit med sit eget indhold.
-    def _label_of(text: str) -> str:
-        head = (text or "").lstrip().split("\n", 1)[0].strip()
-        head = head.lstrip("#").strip().rstrip(":").strip()
-        return (head[:48] or "(uden overskrift)").replace(" ", "_")
-
-    _ranked = sorted(
-        ((_label_of(part), len(part)) for part in parts if part),
-        key=lambda kv: kv[1], reverse=True,
-    )
-    _largest = _ranked[:8]
+    # Telemetrien er udskilt til `prompt_assembly_telemetri` (Boy Scout 6/10-2026).
+    # Den udleder navne af indholdet, rangordner, udsender `prompt.assembly_size`
+    # — nu MED halens tegn, saa en beskaering af den ucachede hale kan maales i
+    # stedet for diskuteres — skriver de to journal-linjer og afleverer
+    # sektionerne til impact-telemetrien. Self-safe hele vejen.
     try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish("prompt.assembly_size", {
-            "mode": "visible_chat",
-            "compact": compact,
-            "total_chars": _total_chars,
-            "approx_tokens": _approx_tokens,
-            "part_count": len(_per_part_chars),
-            "largest_sections": [
-                {"label": label, "chars": chars} for label, chars in _largest if chars > 0
-            ],
-            "assembly_ms": _total_ms,
-        })
-    except Exception:
-        pass
-    print(
-        f"prompt-assembly-size chars={_total_chars} approx_tokens={_approx_tokens} "
-        f"parts={len(_per_part_chars)}",
-        file=_sys_mod.stderr,
-        flush=True,
-    )
-    # Fordelingen på ÉN linje, så et døgns journal kan summeres uden at parse
-    # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
-    # så interessant som en der fylder.
-    # I ASSEMBLY-RÆKKEFØLGE, ikke sorteret efter størrelse.
-    #
-    # Størrelsen siger hvad der fylder; RÆKKEFØLGEN siger hvad der ødelægger
-    # cachen. DeepSeek matcher fra begyndelsen, så en del der skifter størrelse
-    # — eller kommer og går — forskyder alt EFTER sig. Ligger den tidligt, er
-    # hele præfikset tabt hver tur; ligger den sidst, koster den ingenting.
-    # Sorterer man listen, kan man ikke se forskel på de to tilfælde.
-    print(
-        "prompt-assembly-parts " + " ".join(
-            f"{_label_of(part)}={len(part)}" for part in parts if part
-        ),
-        file=_sys_mod.stderr,
-        flush=True,
-    )
-
-    # Impact-telemetri (prompt.section_answer_impact): husk sektionerne HER, hvor
-    # _label_of er defineret. Den oprindelige placering (før transcript/katalog)
-    # kaldte den nested def før den var bundet → UnboundLocalError, fanget stille
-    # → 0 events nogensinde (verificeret live 4/9 efter to ægte ture).
-    try:
-        from core.services.prompt_section_impact import remember_prompt_sections
-        remember_prompt_sections(
+        from core.services.prompt_assembly_telemetri import rapporter_assembly
+        rapporter_assembly(
+            parts,
+            assembled_text=_assembled_text,
+            compact=compact,
             session_id=session_id or "",
-            sections=[(_label_of(part), part) for part in parts if part],
+            assembly_ms=_total_ms,
         )
-    except Exception:
+    except Exception:  # telemetri maa aldrig vaelte en prompt-build
         pass
 
     # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates

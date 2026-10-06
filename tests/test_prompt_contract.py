@@ -473,20 +473,39 @@ def test_delfordelingens_navne_kan_ikke_komme_ud_af_trit_med_indholdet():
 
     Navnet afledes nu af stykkets FØRSTE LINJE, som ikke kan komme ud af trit
     med sit eget indhold.
+
+    6/10-2026: vagten læste tidligere KILDETEKSTEN i prompt_contract. Da
+    telemetrien blev udskilt til `prompt_assembly_telemetri`, målte den ikke
+    længere noget — og en streng-vagt måler i forvejen formatering, ikke
+    adfærd (husets regel: parse AST'en, eller test adfærden). Nu testes
+    PARRINGEN direkte: hvert navn skal komme fra sit EGET stykke.
     """
-    import re
-    import pathlib
+    from core.services.prompt_assembly_telemetri import label_of, rangordn
 
-    kilde = pathlib.Path("core/services/prompt_contract.py").read_text()
-    afsnit = kilde[kilde.index("NAVNET AFLEDES AF INDHOLDET"):]
-    afsnit = afsnit[: afsnit.index("_largest = _ranked[:8]")]
+    stykker = [
+        "# Alfa\nkrop der er lang nok til at vinde\n" + "x" * 100,
+        "Beta:\nkortere krop",
+        "",                                   # tomme stykker skal falde ud
+        "## Gamma\n" + "y" * 50,
+    ]
+    rang = rangordn(stykker)
+    assert [n for n, _ in rang] == ["Alfa", "Gamma", "Beta"], rang
+    # og tegn-tallet hører til NAVNETS eget stykke, ikke til et naboindeks
+    efter_navn = dict(rang)
+    for s in stykker:
+        if s:
+            assert efter_navn[label_of(s)] == len(s), s[:20]
 
-    assert "_label_of(part) " in afsnit or "_label_of(part)," in afsnit, (
-        "navnet skal komme fra stykket selv"
-    )
-    assert "enumerate(derived_inputs)" not in afsnit, (
-        "indeks-zip mod en liste der ikke vokser i takt må ikke komme tilbage"
-    )
+
+def test_navnet_taaler_et_stykke_uden_overskrift():
+    """Fallback'en faar ogsaa `.replace(" ", "_")` — den har altid returneret
+    `(uden_overskrift)` med underscore. Pinnet som FORLAEGGET er, ikke som det
+    kunne se paenere ud: en bevidst forbedring her ville aendre et navn som
+    telemetri og scripts allerede grupperer paa."""
+    from core.services.prompt_assembly_telemetri import label_of
+    assert label_of("") == "(uden_overskrift)"
+    assert label_of("   \n\n") == "(uden_overskrift)"
+    assert label_of("to ord her") == "to_ord_her"
 
 
 # ---------------------------------------------------------------------------

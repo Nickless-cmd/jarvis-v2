@@ -946,7 +946,7 @@ class OpenAICompatFollowupAdapter:
                 _mode_body, run_id, thinking_mode=thinking_mode,
             )
             if _raeson_daempet:
-                logger.info(
+                _log.info(
                     "raesonnering-ab: run=%s runde=%d arm=daempet", run_id, round_index
                 )
 

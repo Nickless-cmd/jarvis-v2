@@ -1154,6 +1154,24 @@ def test_deepseek_followup_sends_thinking_mode_params_like_first_pass(monkeypatc
         assert "reasoning_effort" not in body
 
 
+def test_deepseek_damped_reasoning_still_sends_followup_request(monkeypatch) -> None:
+    """The damped A/B arm must not fail before the paid follow-up request."""
+    from core.services import raesonnering_eksperiment
+
+    _stub_deepseek_compat(monkeypatch)
+    monkeypatch.setattr(raesonnering_eksperiment, "_procent", lambda: 100)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"done"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash", run_id="visible-damped",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+
+    assert len(bodies) == 1
+    assert any(isinstance(event, vf.FollowupDone) for event in events)
+
+
 def test_deepseek_v4_pro_followup_sends_no_thinking_params(monkeypatch) -> None:
     _stub_deepseek_compat(monkeypatch)
     bodies = _sequenced_urlopen(monkeypatch, [_sse(

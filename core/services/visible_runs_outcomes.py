@@ -233,6 +233,32 @@ def _persist_session_assistant_message(
     normalized = str(text or "").strip()
     if not normalized:
         return
+    # notify_user has already written the user-facing message. The model's
+    # closing receipt belongs to the run, not to the chat transcript.
+    if getattr(run, "autonomous", False) and blocks:
+        notify_ids = {
+            str(block.get("id") or "") for block in blocks
+            if isinstance(block, dict) and block.get("type") == "tool_use"
+            and block.get("name") == "notify_user"
+        }
+        delivered = any(
+            isinstance(block, dict)
+            and block.get("type") == "tool_result"
+            and str(block.get("tool_use_id") or "") in notify_ids
+            and not block.get("is_error")
+            and str(block.get("status") or "") == "done"
+            and str(block.get("content") or "").startswith("Delivered to: ")
+            and any(
+                (destination.startswith("webchat:")
+                 and not destination.startswith(("webchat:failed(", "webchat:error(")))
+                or destination.startswith("discord:dm:")
+                for destination in str(block.get("content") or "")
+                .removeprefix("Delivered to: ").split(", ")
+            )
+            for block in blocks
+        )
+        if delivered:
+            return
     # ── Leak/dump-guard (2026-06-23) ────────────────────────────────────────
     # Model echoer et råt (kæmpe) tool-result som svar i stedet for at opsummere
     # (Bjørns 27KB-dumps). Observe-only → synlig i Centralen, raffineres med data.

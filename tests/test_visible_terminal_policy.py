@@ -46,6 +46,13 @@ def test_providerens_http_400_starter_ikke_nye_betalte_runs():
     assert is_recoverable_exit_reason(reason) is False
 
 
+def test_local_name_error_does_not_repeat_paid_user_run():
+    reason = "interrupted:followup-round-1-provider-error: name 'logger' is not defined"
+    decision = classify_terminal(TerminalEvidence(exit_reason=reason))
+    assert decision.state is TerminalState.FAILED_TERMINAL
+    assert decision.should_continue is False
+
+
 def test_budget_shutdown_and_provider_failures_are_recoverable_segments():
     for reason in (
         "budget-opbrugt",

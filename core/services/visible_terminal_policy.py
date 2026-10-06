@@ -53,8 +53,12 @@ def has_pending_tool_intent(text: str | None) -> bool:
 
 
 def is_non_retryable_recovery_reason(reason: str | None) -> bool:
-    """A rejected provider request will fail again with the same checkpoint."""
-    return bool(re.search(r"\bhttp\s+400\b|\b400 bad request\b", str(reason or ""), re.I))
+    """Reject retries for deterministic request and local-code failures."""
+    value = str(reason or "")
+    return bool(re.search(
+        r"\bhttp\s+400\b|\b400 bad request\b|\bname\s+['\"]?[^'\"]+['\"]?\s+is not defined\b",
+        value, re.I,
+    ))
 
 
 def is_recoverable_exit_reason(reason: str | None) -> bool:

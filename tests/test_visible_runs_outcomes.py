@@ -114,6 +114,48 @@ def test_autonomous_answer_does_not_create_owner_action_metric(gemte, monkeypatc
     assert recorded == []
 
 
+def test_successful_autonomous_notify_does_not_append_delivery_receipt(gemte):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Morgenbriefen er leveret.", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "done",
+         "content": "Delivered to: webchat:chat-1", "is_error": False},
+    ])
+    assert gemte == []
+
+
+def test_failed_autonomous_notify_keeps_visible_result(gemte):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Jeg kunne ikke levere briefen.", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "error",
+         "content": "webchat:failed(network)", "is_error": True},
+    ])
+    assert len(gemte) == 1
+
+
+@pytest.mark.parametrize("destination,expected_messages", [
+    ("webchat:queued:chat-1", 0),
+    ("webchat:chat-1, discord:error(disconnected)", 0),
+    ("webchat:failed(network)", 1),
+    ("webchat:error(network)", 1),
+    ("discord:not-connected", 1),
+])
+def test_autonomous_notify_only_suppresses_receipt_after_real_delivery(
+    gemte, destination, expected_messages,
+):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Leveringsstatus", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "done",
+         "content": f"Delivered to: {destination}", "is_error": False},
+    ])
+    assert len(gemte) == expected_messages
+
+
 def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch):
     class _Connection:
         def __enter__(self):

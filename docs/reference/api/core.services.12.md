@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/encryption.py`
+_AES-256-GCM kryptering for bruger-data at-rest (spec §16, Lag 1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DecryptionError` | `` | Dekryptering fejlede — forkert nøgle eller manipuleret data (GCM-tag). | [src](../../../core/services/encryption.py#L23) |
+| function | `encrypt` | `(plaintext, key)` | AES-256-GCM. Returnerer IV(12) || ciphertext+tag. key skal være 32 byte. | [src](../../../core/services/encryption.py#L27) |
+| function | `decrypt` | `(blob, key)` | Dekryptér IV || ciphertext. Rejser DecryptionError ved forkert key/tamper. | [src](../../../core/services/encryption.py#L36) |
+| function | `encrypt_file` | `(path, key)` | Krypter en fil → <path>.enc, fjern originalen. Returnér .enc-stien. | [src](../../../core/services/encryption.py#L49) |
+| function | `decrypt_file` | `(enc_path, key)` | Dekryptér en .enc-fil i memory (skrives ALDRIG i klartekst til disk, §16.5). | [src](../../../core/services/encryption.py#L64) |
+| function | `new_key` | `()` | Ny tilfældig 256-bit nøgle som bytearray (kan zeroes). | [src](../../../core/services/encryption.py#L70) |
+| function | `zero_key` | `(key)` | Nulstil nøgle-bytes i memory (§16.3 regel 4). Best-effort i Python. | [src](../../../core/services/encryption.py#L75) |
+
 ## `core/services/end_of_run_memory_consolidation.py`
 _End-of-run memory consolidation driven by the local model._
 
@@ -635,15 +648,4 @@ _Daemon for the forgetting (Lag 11) auto-track._
 | function | `_loop` | `()` | — | [src](../../../core/services/forgetting_runtime.py#L78) |
 | function | `start_forgetting_runtime` | `()` | Start the periodic forgetting daemon. Idempotent. | [src](../../../core/services/forgetting_runtime.py#L98) |
 | function | `stop_forgetting_runtime` | `()` | Signal the loop to exit. | [src](../../../core/services/forgetting_runtime.py#L111) |
-
-## `core/services/gate_adapters.py`
-_Gate-adaptere (unified-gate A.5) — wrapper EKSISTERENDE gates som Verdict-returnerende._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `claim_scanner_adapter` | `(ctx)` | claim_scanner.scan_response: repareret tekst ≠ input → claims fanget (YELLOW). | [src](../../../core/services/gate_adapters.py#L17) |
-| function | `fact_gate_adapter` | `(ctx)` | fact_gate_enforce: uverificerede tal-/status-påstande → YELLOW (warn/fodnote). | [src](../../../core/services/gate_adapters.py#L32) |
-| function | `diagnosis_adapter` | `(ctx)` | analyze_completion_claim: blocked→RED, ikke-verificeret completion→YELLOW. | [src](../../../core/services/gate_adapters.py#L74) |
-| function | `register_truthgate_adapters` | `(k)` | Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv). | [src](../../../core/services/gate_adapters.py#L96) |
-| function | `register_truthgate_adapters_once` | `(k)` | Idempotent — registrér KUN hvis ikke allerede registreret (kaldes pr. run i | [src](../../../core/services/gate_adapters.py#L103) |
 

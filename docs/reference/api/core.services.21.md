@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reflective_critic_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_reflective_critics_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L27) |
+| function | `refresh_runtime_reflective_critic_statuses` | `()` | — | [src](../../../core/services/reflective_critic_tracking.py#L69) |
+| function | `build_runtime_reflective_critic_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflective_critic_tracking.py#L99) |
+| function | `_extract_critic_candidates` | `(*, user_message, session_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L122) |
+| function | `_repeated_correction_mismatch` | `(message, *, session_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L145) |
+| function | `_matching_active_focus` | `(message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L184) |
+| function | `_persist_critics` | `(*, critics, session_id, run_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L195) |
+| function | `_apply_resolution_signals` | `(*, user_message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L271) |
+| function | `_detect_resolution_context` | `(lower, active_critics)` | Detect which critic context the resolution message refers to. | [src](../../../core/services/reflective_critic_tracking.py#L339) |
+| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/reflective_critic_tracking.py#L363) |
+| function | `_message_matches_focus_key` | `(canonical_key, text)` | — | [src](../../../core/services/reflective_critic_tracking.py#L391) |
+| function | `_quote` | `(text)` | — | [src](../../../core/services/reflective_critic_tracking.py#L403) |
+| function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L410) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L414) |
+
 ## `core/services/regret_engine.py`
 _Regret Engine — systematisk tracking af fortrydelser og læring._
 
@@ -676,16 +695,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L530) |
 | function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L543) |
 | function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L565) |
-
-## `core/services/runtime_action_outcome_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_runtime_action_outcome` | `(*, action_id, mode, reason, score, payload, result)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L13) |
-| function | `build_runtime_action_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L53) |
-| function | `recent_runtime_action_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L77) |
-| function | `_persist_runtime_action_outcome` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L86) |
-| function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L105) |
-| function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L130) |
-| function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L141) |
 

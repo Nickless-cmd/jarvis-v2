@@ -43,6 +43,11 @@ export interface ChatMessage {
   content: ContentBlock[]       // ændret fra string — understøtter tool_use/image
   created_at: string
   parent_id?: string | null     // branch-søm
+  /** Run'et der skrev beskeden. Serveren sender det KUN når den ved det, så
+   *  `undefined` betyder «uvist» — aldrig «et andet run». Bruges til at droppe
+   *  bro-kopien præcist i stedet for at sammenligne prosa serveren selv har
+   *  omskrevet; se `mergeServer` og `core/services/besked_run_kobling.py`. */
+  run_id?: string
 }
 
 export interface CompactionStats {

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/docs_drift_watchdog.py`
+_SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a docs:drift nerve._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `read_report` | `(report_path=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L19) |
+| function | `_report_stale` | `(report_path=…, repo=…)` | True if the drift audit itself is old — the report is missing, or its own | [src](../../../core/services/docs_drift_watchdog.py#L29) |
+| function | `check_docs_drift` | `(report_path=…, repo=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L49) |
+| function | `observe_docs_drift` | `()` | Emit the docs:drift signal to Central (timeseries + observe trace). Self-safe. | [src](../../../core/services/docs_drift_watchdog.py#L69) |
+| function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L87) |
+| function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
+| function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
+
 ## `core/services/dream_action_executor.py`
 _Dream-to-Action: den ende der manglede._
 
@@ -664,17 +677,4 @@ _Emotional memory engine._
 | function | `_compile_directive` | `(*, match_count, mood_distribution, outcome_distribution)` | — | [src](../../../core/services/emotional_memory_engine.py#L568) |
 | function | `build_emotional_memory_prompt_section` | `(*, anchor_type, context_features)` | Compact one-line section for inclusion in cognitive_frame_prompt. | [src](../../../core/services/emotional_memory_engine.py#L593) |
 | function | `build_emotional_memory_overview` | `(*, limit=…)` | Mission Control overview surface. | [src](../../../core/services/emotional_memory_engine.py#L610) |
-
-## `core/services/encryption.py`
-_AES-256-GCM kryptering for bruger-data at-rest (spec §16, Lag 1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DecryptionError` | `` | Dekryptering fejlede — forkert nøgle eller manipuleret data (GCM-tag). | [src](../../../core/services/encryption.py#L23) |
-| function | `encrypt` | `(plaintext, key)` | AES-256-GCM. Returnerer IV(12) || ciphertext+tag. key skal være 32 byte. | [src](../../../core/services/encryption.py#L27) |
-| function | `decrypt` | `(blob, key)` | Dekryptér IV || ciphertext. Rejser DecryptionError ved forkert key/tamper. | [src](../../../core/services/encryption.py#L36) |
-| function | `encrypt_file` | `(path, key)` | Krypter en fil → <path>.enc, fjern originalen. Returnér .enc-stien. | [src](../../../core/services/encryption.py#L49) |
-| function | `decrypt_file` | `(enc_path, key)` | Dekryptér en .enc-fil i memory (skrives ALDRIG i klartekst til disk, §16.5). | [src](../../../core/services/encryption.py#L64) |
-| function | `new_key` | `()` | Ny tilfældig 256-bit nøgle som bytearray (kan zeroes). | [src](../../../core/services/encryption.py#L70) |
-| function | `zero_key` | `(key)` | Nulstil nøgle-bytes i memory (§16.3 regel 4). Best-effort i Python. | [src](../../../core/services/encryption.py#L75) |
 

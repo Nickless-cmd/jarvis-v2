@@ -452,6 +452,18 @@ def _persist_session_assistant_message(
         reasoning_content=str(reasoning_content or ""),
         content_json=content_json,
     )
+    # HVILKET RUN SKREV DEN (6/10-2026). Uden denne linje har klienten ingen
+    # præcis nøgle og må afdublere sin bro-kopi på en byte-sammenligning af
+    # prosa — en prosa vi selv har omskrevet lige ovenfor (`_with_thinking_block`,
+    # `_med_udgivne_filer`, `_normaliser_tekstblokke`). Det slog fejl, og Bjørn så
+    # samme svar to gange i tråden. Se `besked_run_kobling` for hele kæden.
+    #
+    # Self-safe med vilje: en afdublerings-hjælp må aldrig koste et gemt svar.
+    try:
+        from core.services.besked_run_kobling import noter as _noter_run
+        _noter_run(str((message or {}).get("id") or ""), str(run.run_id or ""))
+    except Exception as exc:
+        logger.warning("besked-run-kobling fejlede run_id=%s: %s", run.run_id, exc)
     if not bool(getattr(run, "autonomous", False)):
         try:
             from core.services.decision_action_gate import record_outcomes

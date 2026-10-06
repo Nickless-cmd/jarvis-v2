@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_recovery_coordinator.py`
+_Durable, idempotent settlement for every visible-run segment ending._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FailureClass` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L17) |
+| class | `RecoverySettlementRequest` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L27) |
+| class | `RecoverySettlement` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L41) |
+| function | `_was_same_recovery` | `(before, *, reason, final_synthesis)` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L49) |
+| function | `settle_segment` | `(request)` | Settle exactly once before stream closure or continuation dispatch. | [src](../../../core/services/visible_run_recovery_coordinator.py#L60) |
+
 ## `core/services/visible_run_recovery_dispatcher.py`
 _Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
 
@@ -196,19 +207,19 @@ _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main).
 | function | `_indsaet_ved_deres_vaerktoej` | `(blocks, filer)` | Sæt hver udgiven fil DÉR hvor den blev lavet. | [src](../../../core/services/visible_runs_outcomes.py#L128) |
 | function | `_with_thinking_block` | `(blocks, run, reasoning)` | Sæt turens tænkning FORREST i blok-arrayet, hvis der blev tænkt. | [src](../../../core/services/visible_runs_outcomes.py#L176) |
 | function | `_persist_session_assistant_message` | `(run, text, *, reasoning_content=…, blocks=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L224) |
-| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L486) |
-| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L527) |
-| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L582) |
-| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L596) |
-| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L611) |
-| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L632) |
-| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L676) |
-| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L745) |
-| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L794) |
-| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L815) |
-| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L829) |
-| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L893) |
-| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L966) |
+| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L498) |
+| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L539) |
+| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L594) |
+| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L608) |
+| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L623) |
+| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L644) |
+| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L688) |
+| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L757) |
+| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L806) |
+| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L827) |
+| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L841) |
+| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L905) |
+| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L978) |
 
 ## `core/services/visible_runs_sse_v2.py`
 _Translator: legacy SSE-events → Anthropic-style v2-protokol._
@@ -568,13 +579,4 @@ _Trusted-folder gate for code/cowork workspaces._
 | function | `clear_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L194) |
 | function | `current_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L198) |
 | function | `guard_code_write` | `(tool_name)` | Returnér en fejl-besked hvis ``tool_name`` er en skrive-/exec-handling i et | [src](../../../core/services/workspace_trust.py#L202) |
-
-## `core/services/world_facts.py`
-_Evidence-bounded world facts and their visible prompt representation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_world_fact` | `(*, canonical_key, statement, status, confidence, source_kind, source_ref=…, observed_at=…, valid_from=…, valid_until=…, contradicts_fact_id=…, supersedes_fact_id=…, evidence_count=…, distinct_source_count=…)` | — | [src](../../../core/services/world_facts.py#L37) |
-| function | `list_world_facts` | `(*, status=…, limit=…)` | — | [src](../../../core/services/world_facts.py#L98) |
-| function | `build_world_fact_prompt_section` | `(*, limit=…, facts=…)` | — | [src](../../../core/services/world_facts.py#L107) |
 

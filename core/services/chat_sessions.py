@@ -720,14 +720,34 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
                     role, content, row["content_json"], hent_resultat=(role != "tool")
                 )
             )
-        message_items.append({
+        item = {
             "id": str(row["message_id"]),
             "role": role,
             "content": content,
             "content_json": blocks,
             "ts": _time_label(str(row["created_at"])),
             "created_at": str(row["created_at"]),
-        })
+        }
+        # RUN-ID MED UD (6/10-2026). Klienten holder en bro-kopi af det
+        # streamede svar efter `message_stop` og skal kunne se hvilken af
+        # serverens rækker der ER den — ellers afdublerer den på prosa vi selv
+        # har omskrevet, og brugeren ser samme svar to gange. Se
+        # `besked_run_kobling` for målingen og for hvorfor koblingen bor i
+        # hukommelsen i stedet for i en kolonne.
+        #
+        # Feltet UDELADES når vi ikke ved det (tomt kort efter en genstart), så
+        # klienten kan skelne «uvist» fra «et andet run» og falde tilbage på sit
+        # tekst-match. Et tomt felt der betød «fremmed» ville droppe en bro der
+        # skulle bevares — og så forsvinder svaret i stedet for at stå dobbelt.
+        if role == "assistant":
+            try:
+                from core.services.besked_run_kobling import run_for
+                _rid = run_for(str(row["message_id"]))
+            except Exception:
+                _rid = ""
+            if _rid:
+                item["run_id"] = _rid
+        message_items.append(item)
     summary = _session_summary(
         {
             **dict(session),

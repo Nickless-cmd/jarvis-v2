@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_xproc.py`
+_Cross-proces trace-tee for Den Intelligente Central._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `process_role` | `()` | 'api' (visible-lane, JARVIS_ENABLE_RUNTIME_SERVICES=0) eller 'runtime' (daemons). | [src](../../../core/services/central_xproc.py#L37) |
+| function | `maybe_publish` | `()` | Throttled publish af denne proces' feed + sundhed. Kaldt fra trace-record (hot path) | [src](../../../core/services/central_xproc.py#L43) |
+| function | `_publish_now` | `()` | — | [src](../../../core/services/central_xproc.py#L70) |
+| function | `foreign_feeds` | `(own_role)` | Records fra ALLE andre processer end ens egen (ens egen har vi in-memory, friskere). | [src](../../../core/services/central_xproc.py#L120) |
+| function | `merged_timeseries` | `()` | Alle processers per-nerve tidsserie merget: nerve-key → {proces: {latest,count,meta,recent}}. | [src](../../../core/services/central_xproc.py#L139) |
+| function | `all_health` | `()` | Per-proces sundhed for hver kendt proces der har publiceret (ikke udløbet). Self-safe. | [src](../../../core/services/central_xproc.py#L161) |
+
 ## `core/services/channel_inbound.py`
 _Kanal-plugin inbound-routing (spec §5.2/§5.3, Fase 5 Lag 1)._
 
@@ -50,30 +62,30 @@ _Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
 | function | `_afkort_tool_resultater` | `(blokke)` | Lange værktøjs-resultater bærer kun deres begyndelse ud til klienten. | [src](../../../core/services/chat_sessions.py#L581) |
 | function | `get_message_tool_result` | `(message_id, tool_use_id)` | Ét fuldt værktøjs-resultat — dovent, kun når nogen folder linjen ud. | [src](../../../core/services/chat_sessions.py#L618) |
 | function | `get_chat_session` | `(session_id)` | HELE samtalens historik i ét synkront kald. UDFASET for nye kaldere. | [src](../../../core/services/chat_sessions.py#L643) |
-| function | `set_session_workspace` | `(session_id, *, kind, root)` | Bind (eller skift) en sessions Code-mode workspace. | [src](../../../core/services/chat_sessions.py#L746) |
-| function | `append_chat_message` | `(*, session_id, role, content, created_at=…, tool_name=…, tool_arguments=…, full_content=…, user_id=…, workspace_name=…, reasoning_content=…, content_json=…)` | — | [src](../../../core/services/chat_sessions.py#L761) |
-| function | `_er_pladsholder` | `(titel)` | Er titlen en pladsholder — uanset hvordan den er stavet? | [src](../../../core/services/chat_sessions.py#L1037) |
-| function | `_navngiv_fra_foerste_besked` | `(session_id, content)` | Doeb sessionen efter det foerste brugeren skrev i den. | [src](../../../core/services/chat_sessions.py#L1056) |
-| function | `_recent_duplicate_user_message` | `(session_id, content, now_ts)` | Returnér den seneste besked-række HVIS den er en identisk brugerbesked inden | [src](../../../core/services/chat_sessions.py#L1093) |
-| function | `_infer_tool_name_from_content` | `(content)` | — | [src](../../../core/services/chat_sessions.py#L1128) |
-| function | `recent_user_message_texts` | `(*, limit=…)` | Brugerens seneste beskeder paa TVAERS af sessioner — kun teksten. | [src](../../../core/services/chat_sessions.py#L1135) |
-| function | `recent_chat_session_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L1165) |
-| function | `chat_session_messages_since_last_compact` | `(session_id, *, max_total=…)` | Hent ALT efter seneste compact_marker (eller hele session hvis ingen). | [src](../../../core/services/chat_sessions.py#L1203) |
-| function | `recent_chat_session_messages_by_user_turns` | `(session_id, *, user_turns=…, max_total=…)` | Hent de seneste N *user-turns* og alt der hører til dem. | [src](../../../core/services/chat_sessions.py#L1272) |
-| function | `_ensure_compact_marker_git_sha_column` | `()` | Add git_sha column to chat_messages if it doesn't exist (idempotent migration). | [src](../../../core/services/chat_sessions.py#L1355) |
-| function | `store_compact_marker` | `(session_id, summary_text, git_sha=…)` | Store a compact marker for the session. Returns the marker message_id. | [src](../../../core/services/chat_sessions.py#L1367) |
-| function | `get_compact_marker_with_sha` | `(session_id)` | Return (summary, git_sha) of the most recent compact marker, or (None, None). | [src](../../../core/services/chat_sessions.py#L1444) |
-| function | `get_compact_marker` | `(session_id)` | Return the most recent compact marker summary for the session, or None. | [src](../../../core/services/chat_sessions.py#L1468) |
-| function | `recent_chat_tool_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L1486) |
-| function | `rename_chat_session` | `(session_id, *, title)` | — | [src](../../../core/services/chat_sessions.py#L1518) |
-| function | `delete_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L1532) |
-| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L1554) |
-| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1576) |
-| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1583) |
-| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1590) |
-| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L1598) |
-| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L1628) |
-| function | `latest_user_content_json` | `(session_id)` | `content_json` for sessionens SENESTE brugerbesked. | [src](../../../core/services/chat_sessions.py#L1644) |
+| function | `set_session_workspace` | `(session_id, *, kind, root)` | Bind (eller skift) en sessions Code-mode workspace. | [src](../../../core/services/chat_sessions.py#L766) |
+| function | `append_chat_message` | `(*, session_id, role, content, created_at=…, tool_name=…, tool_arguments=…, full_content=…, user_id=…, workspace_name=…, reasoning_content=…, content_json=…)` | — | [src](../../../core/services/chat_sessions.py#L781) |
+| function | `_er_pladsholder` | `(titel)` | Er titlen en pladsholder — uanset hvordan den er stavet? | [src](../../../core/services/chat_sessions.py#L1057) |
+| function | `_navngiv_fra_foerste_besked` | `(session_id, content)` | Doeb sessionen efter det foerste brugeren skrev i den. | [src](../../../core/services/chat_sessions.py#L1076) |
+| function | `_recent_duplicate_user_message` | `(session_id, content, now_ts)` | Returnér den seneste besked-række HVIS den er en identisk brugerbesked inden | [src](../../../core/services/chat_sessions.py#L1113) |
+| function | `_infer_tool_name_from_content` | `(content)` | — | [src](../../../core/services/chat_sessions.py#L1148) |
+| function | `recent_user_message_texts` | `(*, limit=…)` | Brugerens seneste beskeder paa TVAERS af sessioner — kun teksten. | [src](../../../core/services/chat_sessions.py#L1155) |
+| function | `recent_chat_session_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L1185) |
+| function | `chat_session_messages_since_last_compact` | `(session_id, *, max_total=…)` | Hent ALT efter seneste compact_marker (eller hele session hvis ingen). | [src](../../../core/services/chat_sessions.py#L1223) |
+| function | `recent_chat_session_messages_by_user_turns` | `(session_id, *, user_turns=…, max_total=…)` | Hent de seneste N *user-turns* og alt der hører til dem. | [src](../../../core/services/chat_sessions.py#L1292) |
+| function | `_ensure_compact_marker_git_sha_column` | `()` | Add git_sha column to chat_messages if it doesn't exist (idempotent migration). | [src](../../../core/services/chat_sessions.py#L1375) |
+| function | `store_compact_marker` | `(session_id, summary_text, git_sha=…)` | Store a compact marker for the session. Returns the marker message_id. | [src](../../../core/services/chat_sessions.py#L1387) |
+| function | `get_compact_marker_with_sha` | `(session_id)` | Return (summary, git_sha) of the most recent compact marker, or (None, None). | [src](../../../core/services/chat_sessions.py#L1464) |
+| function | `get_compact_marker` | `(session_id)` | Return the most recent compact marker summary for the session, or None. | [src](../../../core/services/chat_sessions.py#L1488) |
+| function | `recent_chat_tool_messages` | `(session_id, *, limit=…)` | — | [src](../../../core/services/chat_sessions.py#L1506) |
+| function | `rename_chat_session` | `(session_id, *, title)` | — | [src](../../../core/services/chat_sessions.py#L1538) |
+| function | `delete_chat_session` | `(session_id)` | — | [src](../../../core/services/chat_sessions.py#L1552) |
+| function | `_session_summary` | `(row)` | — | [src](../../../core/services/chat_sessions.py#L1574) |
+| function | `_normalize_title` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1596) |
+| function | `_preview_text` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1603) |
+| function | `_time_label` | `(value)` | — | [src](../../../core/services/chat_sessions.py#L1610) |
+| function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L1618) |
+| function | `get_session_owner` | `(session_id)` | Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel. | [src](../../../core/services/chat_sessions.py#L1648) |
+| function | `latest_user_content_json` | `(session_id)` | `content_json` for sessionens SENESTE brugerbesked. | [src](../../../core/services/chat_sessions.py#L1664) |
 
 ## `core/services/cheap_lane_admission.py`
 _Cross-process pause, drain, and active-call leases for Cheap Lane._
@@ -779,16 +791,4 @@ _Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er d
 | function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L211) |
 | function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L226) |
 | function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L236) |
-
-## `core/services/code_aesthetic_daemon.py`
-_Code aesthetic daemon — weekly aesthetic reflection on the codebase._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_code_aesthetic_daemon` | `()` | Run aesthetic analysis if cadence elapsed. Returns {generated, reflection}. | [src](../../../core/services/code_aesthetic_daemon.py#L39) |
-| function | `get_latest_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L64) |
-| function | `build_code_aesthetic_surface` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L68) |
-| function | `_get_recent_git_changes` | `()` | Get last 10 commit messages and changed file summary. | [src](../../../core/services/code_aesthetic_daemon.py#L81) |
-| function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
-| function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L119) |
 

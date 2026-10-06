@@ -423,3 +423,65 @@ it('et 304 efter en ny samtale bringer den gamle samtales beskeder tilbage', asy
   await act(async () => { await screen.getByText('select').props.onPress() })
   await waitFor(() => expect(screen.getByText('g1')).toBeTruthy())
 })
+
+// ── RUN-ID SOM PRÆCIS NØGLE (Bjørn 6/10-2026) ──────────────────────────────
+//
+// De tre tekst-regler er heuristikker paa en prosa serveren selv skriver om, og
+// hver ny false-positive har krævet en ny regel. Serveren sender nu `run_id`
+// med, og det kan ikke brækkes af en omskrivning.
+describe('mergeServer: run-id slaar tekst-heuristikkerne', () => {
+  // PRODUKTIONENS FORMAT, ikke et opdigtet. `StreamContext` bygger
+  // `local-assistant-<runId>-<timestamp>` — desk bygger `a-<runId>`. Foerste
+  // udgave af rettelsen var en kopi af desks `startsWith('a-')` og var derfor
+  // DOED KODE paa mobilen; en test der pinnede mit eget format havde bekraeftet
+  // den.
+  const bro = (runId: string, tekst: string) => ({
+    id: `local-assistant-${runId}-1791312000000`,
+    role: 'assistant' as const,
+    content: tekst,
+    created_at: 'now',
+    clientStatus: 'server_missing_keep_stream' as const,
+  })
+
+  it('dropper broen naar run-id matcher, OGSAA naar teksten er forskellig', () => {
+    const server = [
+      { ...asstMsg('srv-a', 'kort'), run_id: 'visible-bd1727a4' },
+      toolMsg('srv-t'),
+    ]
+    const merged = mergeServer(
+      [bro('visible-bd1727a4', 'et helt andet og meget laengere svar end serverens')],
+      server)
+    expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
+    expect(merged.find((m) => m.id.startsWith('local-assistant-'))).toBeUndefined()
+  })
+
+  it('run-id med bindestreger i sig parses korrekt', () => {
+    const server = [
+      { ...asstMsg('srv-a', 'kort'), run_id: 'visible-bd1727a4-631641feb6dd' },
+      toolMsg('srv-t'),
+    ]
+    const merged = mergeServer(
+      [bro('visible-bd1727a4-631641feb6dd', 'noget helt andet og langt nok til at undgaa delvis match')],
+      server)
+    expect(merged.find((m) => m.id.startsWith('local-assistant-'))).toBeUndefined()
+  })
+
+  it('BEHOLDER broen naar serveren ikke sender run_id', () => {
+    const server = [asstMsg('srv-a', 'kort'), toolMsg('srv-t')]
+    const merged = mergeServer(
+      [bro('visible-bd1727a4', 'et helt andet og meget laengere svar end serverens')],
+      server)
+    expect(merged.find((m) => m.id.startsWith('local-assistant-'))).toBeDefined()
+  })
+
+  it('BEHOLDER broen naar run_id ligger paa et ANDET run', () => {
+    const server = [
+      { ...asstMsg('srv-a', 'kort'), run_id: 'visible-et-andet-run' },
+      toolMsg('srv-t'),
+    ]
+    const merged = mergeServer(
+      [bro('visible-bd1727a4', 'et helt andet og meget laengere svar end serverens')],
+      server)
+    expect(merged.find((m) => m.id.startsWith('local-assistant-'))).toBeDefined()
+  })
+})

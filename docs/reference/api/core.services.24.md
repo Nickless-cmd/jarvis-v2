@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_view.py`
+_Samtalens visningstilstand — Claude Desktops tre (cc-desktop-chatview.md §1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_view.py#L33) |
+| function | `hent_visning` | `(session_id)` | Samtalens tilstand; `normal` for en ukendt samtale eller værdi. | [src](../../../core/services/session_view.py#L40) |
+| function | `saet_visning` | `(session_id, visning)` | — | [src](../../../core/services/session_view.py#L58) |
+| function | `vil_have_tanke_resume` | `(session_id)` | Skal kørslen lave tænke-resuméer for denne samtale? Kaster aldrig. | [src](../../../core/services/session_view.py#L75) |
+
 ## `core/services/session_wakeup.py`
 _Eventbus → visible-prompt wake-up digest._
 
@@ -561,21 +571,4 @@ _Source-confidence gate (epistemisk gate, 2026-07-10)._
 | function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
 | function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
 | function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
-
-## `core/services/spaced_repetition.py`
-_Spaced Repetition — schedule reviews for things Jarvis learned._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/spaced_repetition.py#L39) |
-| function | `_load` | `()` | — | [src](../../../core/services/spaced_repetition.py#L43) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/spaced_repetition.py#L59) |
-| function | `schedule_reviews_on_completion` | `(*, topic, plan_id=…, intervals_days=…)` | Create review entries for a topic at expanding intervals. | [src](../../../core/services/spaced_repetition.py#L71) |
-| function | `list_due_reviews` | `(*, now=…, limit=…)` | — | [src](../../../core/services/spaced_repetition.py#L103) |
-| function | `complete_review` | `(review_id, *, score)` | Mark a review as completed with score in [0, 1], update profile. | [src](../../../core/services/spaced_repetition.py#L120) |
-| function | `_update_profile` | `(profile, score)` | — | [src](../../../core/services/spaced_repetition.py#L150) |
-| function | `get_profile` | `(topic)` | — | [src](../../../core/services/spaced_repetition.py#L170) |
-| function | `build_spaced_repetition_surface` | `()` | — | [src](../../../core/services/spaced_repetition.py#L174) |
-| function | `_summary_line` | `(due, profiles, avg_conf)` | — | [src](../../../core/services/spaced_repetition.py#L205) |
-| function | `build_spaced_repetition_prompt_section` | `()` | — | [src](../../../core/services/spaced_repetition.py#L214) |
 

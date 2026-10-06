@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_profiles.py`
+_Profil-overfladen til Centralen — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_profil_rækker` | `()` | — | [src](../../../core/services/central_profiles.py#L36) |
+| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L56) |
+| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L87) |
+
 ## `core/services/central_projection_cache.py`
 _Kortlivet cache for Centralens projektioner — så polling ikke koster._
 
@@ -617,16 +626,4 @@ _Follow the White Rabbit — serendipitets-motoren._
 | function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L49) |
 | function | `build_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_white_rabbit.py#L58) |
 | function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
-
-## `core/services/central_xproc.py`
-_Cross-proces trace-tee for Den Intelligente Central._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `process_role` | `()` | 'api' (visible-lane, JARVIS_ENABLE_RUNTIME_SERVICES=0) eller 'runtime' (daemons). | [src](../../../core/services/central_xproc.py#L37) |
-| function | `maybe_publish` | `()` | Throttled publish af denne proces' feed + sundhed. Kaldt fra trace-record (hot path) | [src](../../../core/services/central_xproc.py#L43) |
-| function | `_publish_now` | `()` | — | [src](../../../core/services/central_xproc.py#L70) |
-| function | `foreign_feeds` | `(own_role)` | Records fra ALLE andre processer end ens egen (ens egen har vi in-memory, friskere). | [src](../../../core/services/central_xproc.py#L120) |
-| function | `merged_timeseries` | `()` | Alle processers per-nerve tidsserie merget: nerve-key → {proces: {latest,count,meta,recent}}. | [src](../../../core/services/central_xproc.py#L139) |
-| function | `all_health` | `()` | Per-proces sundhed for hver kendt proces der har publiceret (ikke udløbet). Self-safe. | [src](../../../core/services/central_xproc.py#L161) |
 

@@ -225,6 +225,29 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
     server.filter((m) => m.role === 'assistant').map(assistantFinalText).filter(Boolean)
   )
   const MIN_SLUTTEKST = 24
+  // RUN-ID: DEN PRÆCISE NØGLE (6/10-2026). De tre tekst-regler ovenfor er
+  // heuristikker på en prosa serveren selv omskriver — og hver ny false-positive
+  // har krævet en ny regel (eksakt match → sluttekst → delvis match med
+  // længde-grænse). Serveren sender nu `run_id` med på de beskeder den VED hvem
+  // der skrev, og broens eget id er `a-<run_id>`. Den match kan ikke brækkes af
+  // en omskrivning, og den er heller ikke følsom over for at serveren dropper
+  // den første text-blok (se DELVIS MATCH ovenfor).
+  //
+  // Heuristikkerne BEVARES som fallback: kortet i `besked_run_kobling` er tomt
+  // efter en server-genstart, og uden dem ville dubletten blive permanent i
+  // netop det tilfælde.
+  const serverAsstRuns = new Set(
+    server.filter((m) => m.role === 'assistant')
+      .map((m) => String(m.run_id ?? '')).filter(Boolean)
+  )
+  // MOBILENS EGET ID-FORMAT. Desk bygger `a-<run_id>`; mobilen bygger
+  // `local-assistant-<run_id>-<timestamp>` (StreamContext). Første udgave her
+  // var en kopi af desks `startsWith('a-')` — altså død kode på mobilen, og en
+  // test der pinnede mit eget opdigtede format ville have bekræftet den.
+  // Run-id'et kan selv indeholde bindestreger (`visible-bd1727a4…`), så halen
+  // ankres på tidsstemplets cifre og `(.+)` får resten.
+  const BRO_ID = /^local-assistant-(.+)-\d+$/
+  const broRun = (m: LocalMessage): string => BRO_ID.exec(m.id)?.[1] ?? ''
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
@@ -233,7 +256,9 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
       const sluttekst = assistantFinalText(lm)
-      const persisted = serverCaughtUp
+      const broensRun = broRun(lm)
+      const persisted = (!!broensRun && serverAsstRuns.has(broensRun))
+        || serverCaughtUp
         || serverAsstTexts.has(assistantNorm(lm))
         || serverAsstSlut.has(sluttekst)
         || (sluttekst.length >= MIN_SLUTTEKST && serverAsstTekst.includes(sluttekst))

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_model_distiller.py`
+_Rig selv-model-distiller (#4, b + 2 guards) — genopliver validerings-ROLLEN._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_model` | `()` | — | [src](../../../core/services/self_model_distiller.py#L33) |
+| function | `_richness` | `(model)` | Groft richness-mål: hvor meningsfuld/specifik er identiteten. Højere = rigere. | [src](../../../core/services/self_model_distiller.py#L41) |
+| function | `_is_meaningful` | `(model)` | En model er meningsfuld hvis dens identity_focus er en ægte (ikke-generisk) frase. | [src](../../../core/services/self_model_distiller.py#L60) |
+| function | `_fields_specificity` | `(fields)` | — | [src](../../../core/services/self_model_distiller.py#L69) |
+| function | `_gather_inputs` | `()` | Saml Jarvis' egen nylige selv-historie + nuværende model som distillations-grundlag. | [src](../../../core/services/self_model_distiller.py#L80) |
+| function | `_build_prompt` | `(inputs)` | — | [src](../../../core/services/self_model_distiller.py#L101) |
+| function | `_parse` | `(raw)` | Parse det labelede LLM-svar defensivt. Manglende linjer → udeladt (kalder falder tilbage). | [src](../../../core/services/self_model_distiller.py#L114) |
+| function | `distill_self_model` | `(*, trigger=…)` | Distillér en rig selv-model + anti-flatten-guard + skriv (kun hvis ikke tyndere). Self-safe. | [src](../../../core/services/self_model_distiller.py#L129) |
+| function | `run_self_model_distill_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-indgang (GUARD 2: langsom rytme). Self-safe. | [src](../../../core/services/self_model_distiller.py#L197) |
+| function | `register_self_model_distiller_producer` | `()` | Registrér distilleren som DAGLIG cadence-producer (GUARD 2). Identitet er stabil. | [src](../../../core/services/self_model_distiller.py#L202) |
+
 ## `core/services/self_model_history.py`
 _Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
 
@@ -742,14 +758,4 @@ _Session topic tracker — real-time topic extraction and accumulation._
 | function | `_format_topics_for_prompt` | `(store, max_topics=…)` | Format topics sorted by mention count descending. | [src](../../../core/services/session_topic_tracker.py#L331) |
 | function | `build_session_topics_prompt_section` | `(session_id=…)` | Build a compact section showing active topics for this session. | [src](../../../core/services/session_topic_tracker.py#L351) |
 | function | `clear_session_topics` | `(session_id)` | Clear in-memory topics for a session. Called at session end. | [src](../../../core/services/session_topic_tracker.py#L389) |
-
-## `core/services/session_view.py`
-_Samtalens visningstilstand — Claude Desktops tre (cc-desktop-chatview.md §1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_view.py#L33) |
-| function | `hent_visning` | `(session_id)` | Samtalens tilstand; `normal` for en ukendt samtale eller værdi. | [src](../../../core/services/session_view.py#L40) |
-| function | `saet_visning` | `(session_id, visning)` | — | [src](../../../core/services/session_view.py#L58) |
-| function | `vil_have_tanke_resume` | `(session_id)` | Skal kørslen lave tænke-resuméer for denne samtale? Kaster aldrig. | [src](../../../core/services/session_view.py#L75) |
 

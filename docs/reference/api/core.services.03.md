@@ -254,6 +254,16 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L321) |
 | function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L340) |
 
+## `core/services/besked_run_kobling.py`
+_Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `noter` | `(message_id, run_id)` | Husk at ``run_id`` skrev ``message_id``. Self-safe: kaster aldrig. | [src](../../../core/services/besked_run_kobling.py#L69) |
+| function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L87) |
+| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L100) |
+| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L106) |
+
 ## `core/services/body_memory.py`
 _Body Memory — Jarvis' kropslige erindringer._
 
@@ -594,12 +604,4 @@ _Causal inference daemon — three-tier matching against event allowlist._
 | function | `_prune_old_edges` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L299) |
 | function | `run_inference_cycle` | `(*, since_minutes=…)` | Run one inference tick. Returns stats dict. | [src](../../../core/services/causal_inference_daemon.py#L317) |
 | function | `tick_causal_inference_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/causal_inference_daemon.py#L408) |
-
-## `core/services/central_absorb.py`
-_central_absorb — den fælles "fuld behandling"-absorption._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_compact` | `(value, *, limit=…)` | Kompakt, egress-venlig repræsentation af en værdi til flag-payloads. | [src](../../../core/services/central_absorb.py#L27) |
-| function | `absorb` | `(cluster, nerve, value, *, flag_if=…, flag_reason=…, learn_key=…)` | Absorbér en producent-værdi som en levende central-nerve. Kaster ALDRIG. | [src](../../../core/services/central_absorb.py#L55) |
 

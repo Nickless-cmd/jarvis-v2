@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/upload_sandbox.py`
+_Uploadede filer og arkiver — pakket ud ét sted, og aldrig eksekverbart._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ExtractResult` | `` | — | [src](../../../core/services/upload_sandbox.py#L47) |
+| method | `ExtractResult.as_dict` | `(self)` | — | [src](../../../core/services/upload_sandbox.py#L55) |
+| function | `looks_like_archive` | `(path)` | Er filen et arkiv? Afgøres på INDHOLD, ikke på navn. | [src](../../../core/services/upload_sandbox.py#L61) |
+| function | `harden_upload` | `(path)` | Gør en uploadet fil ulæselig for andre og umulig at eksekvere. | [src](../../../core/services/upload_sandbox.py#L76) |
+| function | `sandbox_root_for` | `(attachment_id)` | Mappen et bestemt arkiv pakkes ud i. Én pr. vedhæftning. | [src](../../../core/services/upload_sandbox.py#L89) |
+| function | `_is_inside` | `(root, candidate)` | Ligger `candidate` under `root` — også efter symlink-opløsning? | [src](../../../core/services/upload_sandbox.py#L95) |
+| function | `_reject_name` | `(name)` | Tom streng hvis navnet er i orden, ellers grunden til at det ikke er. | [src](../../../core/services/upload_sandbox.py#L109) |
+| function | `_write_entry` | `(dest, data_iter, remaining)` | Skriv én post og returnér antal skrevne bytes. Rejser ValueError ved loft. | [src](../../../core/services/upload_sandbox.py#L122) |
+| function | `_chunks` | `(fileobj, size=…)` | — | [src](../../../core/services/upload_sandbox.py#L136) |
+| function | `safe_extract` | `(archive_path, attachment_id)` | Pak et arkiv ud i sin egen sandkasse — post for post. | [src](../../../core/services/upload_sandbox.py#L144) |
+| function | `scan_tree` | `(root)` | Kør ClamAV på en udpakket sandkasse. (ren, begrundelse). | [src](../../../core/services/upload_sandbox.py#L234) |
+
 ## `core/services/user_activity.py`
 _Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og hvordan"._
 
@@ -621,15 +638,4 @@ _Et synligt runs terminale beslutning — og vagten mod en optimistisk standard.
 | method | `RunOutcomeState.set_error` | `(self, error)` | — | [src](../../../core/services/visible_run_outcome_state.py#L93) |
 | method | `RunOutcomeState.downgrade_if_abandoned` | `(self, abort_kind=…)` | Nedgradér en aldrig-nået standard til `interrupted`. Returnerer om | [src](../../../core/services/visible_run_outcome_state.py#L98) |
 | method | `RunOutcomeState.__repr__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L113) |
-
-## `core/services/visible_run_recovery_coordinator.py`
-_Durable, idempotent settlement for every visible-run segment ending._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FailureClass` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L17) |
-| class | `RecoverySettlementRequest` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L27) |
-| class | `RecoverySettlement` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L41) |
-| function | `_was_same_recovery` | `(before, *, reason, final_synthesis)` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L49) |
-| function | `settle_segment` | `(request)` | Settle exactly once before stream closure or continuation dispatch. | [src](../../../core/services/visible_run_recovery_coordinator.py#L60) |
 

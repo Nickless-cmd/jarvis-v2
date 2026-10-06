@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_absorb.py`
+_central_absorb — den fælles "fuld behandling"-absorption._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compact` | `(value, *, limit=…)` | Kompakt, egress-venlig repræsentation af en værdi til flag-payloads. | [src](../../../core/services/central_absorb.py#L27) |
+| function | `absorb` | `(cluster, nerve, value, *, flag_if=…, flag_reason=…, learn_key=…)` | Absorbér en producent-værdi som en levende central-nerve. Kaster ALDRIG. | [src](../../../core/services/central_absorb.py#L55) |
+
 ## `core/services/central_adaptation.py`
 _core/services/central_adaptation.py_
 
@@ -564,19 +572,4 @@ _Gardener Protocol — Centralen tager saksen selv (governed + reversibelt)._
 | function | `_is_decoy` | `(node, src_segment)` | Returnér decoy-type ('surface'/'emit') hvis noden matcher PRÆCIST attrap-mønster, ellers None. | [src](../../../core/services/central_gardener.py#L47) |
 | function | `find_decoy_cuts` | `()` | Find alle attrap-funktioner (præcist mønster + 0 referencer). Read-only. Self-safe. | [src](../../../core/services/central_gardener.py#L59) |
 | function | `prune_decoys` | `(*, execute=…, stamp=…)` | Beskær attrapperne. execute=False = tør-kørsel (list kun). execute=True = arkivér → klip. | [src](../../../core/services/central_gardener.py#L90) |
-
-## `core/services/central_ghost.py`
-_The Ghost — hvad der overlever model-skift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L39) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L47) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L81) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L89) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L94) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L116) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L131) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L141) |
 

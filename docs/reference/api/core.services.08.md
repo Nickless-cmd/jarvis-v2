@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/code_aesthetic_daemon.py`
+_Code aesthetic daemon — weekly aesthetic reflection on the codebase._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_code_aesthetic_daemon` | `()` | Run aesthetic analysis if cadence elapsed. Returns {generated, reflection}. | [src](../../../core/services/code_aesthetic_daemon.py#L39) |
+| function | `get_latest_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L64) |
+| function | `build_code_aesthetic_surface` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L68) |
+| function | `_get_recent_git_changes` | `()` | Get last 10 commit messages and changed file summary. | [src](../../../core/services/code_aesthetic_daemon.py#L81) |
+| function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
+| function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L119) |
+
 ## `core/services/cognitive_architecture_surface.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -556,19 +568,4 @@ _Conversation-continuity topics, deliberately separate from world truth._
 |---|---|---|---|---|
 | function | `record_conversation_topic` | `(*, canonical_key, title, summary=…, source_kind=…, session_id=…, run_id=…)` | — | [src](../../../core/services/conversation_topics.py#L14) |
 | function | `list_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/services/conversation_topics.py#L43) |
-
-## `core/services/copilot_catalogue.py`
-_Hvad Copilot-abonnementet FAKTISK giver — spurgt, ikke antaget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_api_token` | `()` | — | [src](../../../core/services/copilot_catalogue.py#L82) |
-| function | `hent_modeller` | `(*, tving=…)` | Live-listen fra API'et. Tom liste hvis den ikke kan hentes. | [src](../../../core/services/copilot_catalogue.py#L90) |
-| function | `_ensure_naabar` | `(conn)` | — | [src](../../../core/services/copilot_catalogue.py#L131) |
-| function | `_naabar_i_db` | `(model)` | Den holdbare dom, eller `None` hvis den mangler/er for gammel. | [src](../../../core/services/copilot_catalogue.py#L143) |
-| function | `_gem_naabar` | `(model, naabar)` | — | [src](../../../core/services/copilot_catalogue.py#L175) |
-| function | `_naabar` | `(model, *, timeout_s=…)` | Svarer modellen overhovedet? ÉT lille kald, cachet et doegn. | [src](../../../core/services/copilot_catalogue.py#L192) |
-| function | `_maalt_uegnet` | `()` | Modeller der ER proevet og ALDRIG svarede. | [src](../../../core/services/copilot_catalogue.py#L247) |
-| function | `_brugbar` | `(m, *, uegnet=…)` | Kun modeller der kan KALDE VAERKTOEJER og er valgbare. | [src](../../../core/services/copilot_catalogue.py#L272) |
-| function | `rangeret` | `(opgave=…, *, maks=…)` | Modeller til denne opgave, bedste foerst. | [src](../../../core/services/copilot_catalogue.py#L322) |
 

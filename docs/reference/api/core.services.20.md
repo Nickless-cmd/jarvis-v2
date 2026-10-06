@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_relevance_backend.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_with_wall_clock_timeout` | `(fn, *, timeout)` | Run ``fn()`` in a daemon thread with a hard wall-clock deadline. | [src](../../../core/services/prompt_relevance_backend.py#L22) |
+| class | `_BoundedLLMCall` | `` | Result of a bounded LLM call — neutral across Ollama / OllamaFreeAPI. | [src](../../../core/services/prompt_relevance_backend.py#L51) |
+| function | `_call_bounded_relevance_llm` | `(prompt)` | Dispatch a bounded relevance/memory-selection prompt. | [src](../../../core/services/prompt_relevance_backend.py#L62) |
+| function | `_call_openai_compat_relevance` | `(*, provider, prompt, model, timeout)` | Generic openai-compat relevance call (mistral, nim, openrouter, ...). | [src](../../../core/services/prompt_relevance_backend.py#L123) |
+| function | `_call_opencode_relevance` | `(*, prompt, model, timeout)` | Call OpenCode Zen free models via the OpenAI-compatible cheap lane. | [src](../../../core/services/prompt_relevance_backend.py#L244) |
+| function | `_call_ollamafreeapi_relevance` | `(*, prompt, model, timeout)` | OllamaFreeAPI silently drops its ``timeout`` kwarg, so we run the call | [src](../../../core/services/prompt_relevance_backend.py#L319) |
+| function | `_call_local_ollama_relevance` | `(*, prompt)` | — | [src](../../../core/services/prompt_relevance_backend.py#L381) |
+| class | `BoundedPromptRelevanceResult` | `` | — | [src](../../../core/services/prompt_relevance_backend.py#L445) |
+| class | `BoundedPromptRelevanceAttempt` | `` | — | [src](../../../core/services/prompt_relevance_backend.py#L457) |
+| class | `BoundedMemorySelectionResult` | `` | — | [src](../../../core/services/prompt_relevance_backend.py#L468) |
+| class | `BoundedMemorySelectionAttempt` | `` | — | [src](../../../core/services/prompt_relevance_backend.py#L475) |
+| function | `run_bounded_nl_prompt_relevance` | `(*, text, mode, compact, workspace_dir)` | — | [src](../../../core/services/prompt_relevance_backend.py#L485) |
+| function | `bounded_nl_prompt_relevance_smoke` | `(*, text, workspace_dir, mode=…, compact=…)` | — | [src](../../../core/services/prompt_relevance_backend.py#L556) |
+| function | `run_bounded_nl_memory_entry_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_relevance_backend.py#L581) |
+| function | `load_visible_relevance_prompt` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_relevance_backend.py#L658) |
+| function | `load_visible_memory_selection_prompt` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_relevance_backend.py#L672) |
+| function | `_resolve_relevance_target` | `()` | — | [src](../../../core/services/prompt_relevance_backend.py#L686) |
+| function | `_selected_relevance_model` | `()` | — | [src](../../../core/services/prompt_relevance_backend.py#L706) |
+| function | `_build_relevance_prompt` | `(*, instructions, text, mode, compact)` | — | [src](../../../core/services/prompt_relevance_backend.py#L712) |
+| function | `_build_memory_selection_prompt` | `(*, instructions, user_message, entries, max_lines, mode=…)` | — | [src](../../../core/services/prompt_relevance_backend.py#L733) |
+| function | `_parse_relevance_response` | `(text, mode)` | — | [src](../../../core/services/prompt_relevance_backend.py#L758) |
+| function | `_parse_memory_selection_response` | `(text, *, entry_count, max_lines)` | — | [src](../../../core/services/prompt_relevance_backend.py#L795) |
+| function | `_bounded_memory_candidates` | `(entries)` | — | [src](../../../core/services/prompt_relevance_backend.py#L846) |
+| function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/prompt_relevance_backend.py#L857) |
+
 ## `core/services/prompt_section_impact.py`
 _Lightweight prompt-section answer-impact telemetry._
 
@@ -601,23 +630,4 @@ _Reflection → Plan — konvertér reflection/tanke til eksekverbar plan._
 | function | `plan_from_inner_voice_thought` | `(*, thought, voice_id=…)` | Convenience: convert inner_voice thought to plan if substantive enough. | [src](../../../core/services/reflection_to_plan.py#L372) |
 | function | `plan_from_blind_spot` | `(*, description, blind_spot_id=…)` | — | [src](../../../core/services/reflection_to_plan.py#L382) |
 | function | `plan_from_self_review` | `(*, lessons, review_id=…)` | — | [src](../../../core/services/reflection_to_plan.py#L391) |
-
-## `core/services/reflective_critic_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_reflective_critics_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L27) |
-| function | `refresh_runtime_reflective_critic_statuses` | `()` | — | [src](../../../core/services/reflective_critic_tracking.py#L69) |
-| function | `build_runtime_reflective_critic_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflective_critic_tracking.py#L99) |
-| function | `_extract_critic_candidates` | `(*, user_message, session_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L122) |
-| function | `_repeated_correction_mismatch` | `(message, *, session_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L145) |
-| function | `_matching_active_focus` | `(message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L184) |
-| function | `_persist_critics` | `(*, critics, session_id, run_id)` | — | [src](../../../core/services/reflective_critic_tracking.py#L195) |
-| function | `_apply_resolution_signals` | `(*, user_message)` | — | [src](../../../core/services/reflective_critic_tracking.py#L271) |
-| function | `_detect_resolution_context` | `(lower, active_critics)` | Detect which critic context the resolution message refers to. | [src](../../../core/services/reflective_critic_tracking.py#L339) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/reflective_critic_tracking.py#L363) |
-| function | `_message_matches_focus_key` | `(canonical_key, text)` | — | [src](../../../core/services/reflective_critic_tracking.py#L391) |
-| function | `_quote` | `(text)` | — | [src](../../../core/services/reflective_critic_tracking.py#L403) |
-| function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L410) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/reflective_critic_tracking.py#L414) |
 

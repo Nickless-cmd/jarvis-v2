@@ -459,6 +459,32 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   const serverAsstTexts = new Set(
     server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean),
   )
+  // RUN-ID FØRST (Bjørn 2026-10-06, "Jeg ser 2 runs i tråden med samme svar").
+  //
+  // Tekst-matchet ovenfor er `assistantNorm` = whitespace-kollaps af de
+  // sammenkædede `text`-blokke. Men serveren OMSKRIVER og OMORDNER blokkene når
+  // den persisterer (`_with_thinking_block`, `_med_udgivne_filer`,
+  // `_indsaet_ved_deres_vaerktoej`, plus en guard der kan sanitere en
+  // tool-echo-leak). Flytter en text-blok sig, giver `join('')` en anden streng
+  // → intet match → broen blev holdt VED SIDEN AF serverens kopi.
+  //
+  // Og `serverCaughtUp` redder den ikke: tool-rækker persisteres (målt 7.974
+  // `tool_use` + 7.974 `tool_result` mod 4.849 `text` i 400 beskeder), så i en
+  // flerrunde-tool-tur står transcriptet midlertidigt
+  // [...assistant(svar), tool, tool] og flaget er falsk. Det er præcis det
+  // vindue 29/6-kommentaren nedenfor beskriver.
+  //
+  // Serveren sender nu `run_id` med på de beskeder den VED hvem der skrev, og
+  // broens eget id er `a-<run_id>` (se ChatView). Det er en præcis nøgle, og den
+  // kan ikke brækkes af en omskrivning.
+  const serverAsstRuns = new Set(
+    server.filter((m) => m.role === 'assistant')
+      .map((m) => String(m.run_id ?? '')).filter(Boolean),
+  )
+  // "" naar broen ikke baerer et run (ældre bro, eller et andet id-skema) —
+  // og "" maa ALDRIG kunne matche, derfor `filter(Boolean)` ovenfor.
+  const broRun = (m: LocalMessage): string =>
+    m.id.startsWith('a-') ? m.id.slice(2) : ''
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
@@ -466,10 +492,20 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
       if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
-      // Drop broen hvis serveren allerede har persisteret SAMME svar (run-dedup
-      // på indhold) ELLER turen er fuldt færdig (serverCaughtUp). Ellers behold.
+      // Drop broen hvis serveren har persisteret SAMME run (præcist), eller
+      // samme svar (tekst-match, for broer uden run-id), eller turen er fuldt
+      // færdig (serverCaughtUp). Ellers behold.
       // (Broens tool-blokke er allerede re-injiceret i serverens kopi via localToolsByNorm ovenfor.)
-      const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      //
+      // Rækkefølgen er med vilje: run-id'et er den eneste af de tre der ikke kan
+      // give et falsk svar. Tekst-matchet beholdes som fallback, fordi kortet i
+      // `besked_run_kobling` er tomt efter en server-genstart — så uden det ville
+      // rettelsen gøre dubletten PERMANENT i netop det tilfælde.
+      const samme_run = (() => {
+        const r = broRun(lm)
+        return !!r && serverAsstRuns.has(r)
+      })()
+      const persisted = samme_run || serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
       if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
     // persisteret → drop placeholder; serverens rensede besked (nu m. re-injicerede tool-blokke) vises

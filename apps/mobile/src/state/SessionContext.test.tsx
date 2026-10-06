@@ -305,6 +305,68 @@ describe('mergeServer afdublering', () => {
     const merged = mergeServer(local, server)
     expect(merged.some((m) => m.id === 'a-ws')).toBe(false)
   })
+
+  // MÅLT 6/10-2026 (Bjørn: «mobil klienten viser 2 beskeder i chatview når du
+  // svarer»). Broen bærer HELE turen — `blocksToAssistantText` joiner alle
+  // text-blokke fra den levende stream. Serveren persisterer derimod alle
+  // text-blokke UNDTAGEN den første (målt på message-48f9616a og
+  // message-e46058df: content == join(blok 1..slut)). Derfor er de to tekster
+  // ALDRIG ens, `serverAsstTexts.has(assistantNorm(lm))` fejler, og da
+  // transcriptet slutter på en tool-række (81.750 tool-rækker i DB'en;
+  // nyeste session slutter på `tool`) er serverCaughtUp=false → broen blev
+  // holdt VED SIDEN AF serverens kopi → slutteksten stod to gange.
+  it('DUBLET: broens sluttekst findes i serverens tekst selv når teksterne ikke er ens', () => {
+    const foerste = 'Jeg går til sagen: de to forslag skal godkendes og verificeres.'
+    const anden = 'De to forslag i køen er mine egne: bruger-scope i db_fts.py og db_runtime_misc.py.'
+    const slut = 'Begge ting er fikset, pushet og bevist.'
+    const local = [{
+      id: 'local-assistant-run1',
+      role: 'assistant' as const,
+      // Broens content = HELE turen (alle blokke, inkl. den første).
+      content: `${foerste} ${anden} ${slut}`,
+      content_json: [
+        { type: 'text', text: foerste },
+        { type: 'text', text: anden },
+        { type: 'text', text: slut }
+      ],
+      created_at: 'now',
+      clientStatus: 'server_missing_keep_stream' as const
+    }]
+    // Serveren har persisteret ALT undtagen den første blok — og slutter på tool.
+    const server = [
+      userMsg('srv-u', 'spm'),
+      asstMsg('srv-a', `${anden} ${slut}`),
+      toolMsg('srv-t1')
+    ]
+    const merged = mergeServer(local, server)
+    expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
+    expect(merged.some((m) => m.id === 'local-assistant-run1')).toBe(false)
+  })
+
+  it('DUBLET-VÆRN: distinkt sluttekst bevares når serveren kun har mellemteksten', () => {
+    // Samme form som ovenfor, men serveren mangler det ENDELIGE svar. Broen
+    // SKAL bevares — ellers forsvinder svaret (Bjørn 23/6-regressionen).
+    const mellem = 'Lad mig tjekke koden først.'
+    const slut = 'Det endelige svar står her, og det er ikke persisteret endnu.'
+    const local = [{
+      id: 'local-assistant-run2',
+      role: 'assistant' as const,
+      content: `${mellem} ${slut}`,
+      content_json: [
+        { type: 'text', text: mellem },
+        { type: 'text', text: slut }
+      ],
+      created_at: 'now',
+      clientStatus: 'server_missing_keep_stream' as const
+    }]
+    const server = [
+      userMsg('srv-u', 'spm'),
+      asstMsg('srv-a', mellem),
+      toolMsg('srv-t1')
+    ]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'local-assistant-run2')).toBe(true)
+  })
 })
 
 it('select() bevarer local-assistant-snapshot når serveren endnu ikke har indhentet (G1)', async () => {

@@ -390,4 +390,29 @@ def ryd_visible_drift_periodisk() -> dict[str, Any]:
         logger.warning("session_boot_reconciler: periodisk drift-rydning fejlede: %s", exc)
         return {"status": "error", "error": str(exc), "enforced": enforced}
 
+    # SIG AT DEN KØRTE (6/10-2026). Indtil nu loggede denne vej INTET ved
+    # succes, og familiens ledger-resumé klippede `members_ran` væk efter tre
+    # nøgler. Da `visible-bd1727a4` stod fejeberettiget i 18 minutter uden at
+    # blive taget, fandtes der derfor ingen måde at afgøre om fejeren var kørt
+    # og havde fundet nul, eller slet ikke var blevet kaldt. De to er ikke det
+    # samme fejl, og tavshed kan ikke skelne dem.
+    #
+    # Kun INFO, og kun når der blev ryddet. Nul-tilfældet hører i LEDGEREN, ikke
+    # i loggen — af to grunde:
+    #
+    #  * Målt samme dag: `jarvis-runtime` havde 0 DEBUG-linjer i journalen over
+    #    25 minutter, mens `jarvis-api` havde 36. Fejeren kører i RUNTIME, så en
+    #    `logger.debug` her ville skrive ud i ingenting og foregive et spor der
+    #    ikke findes. INFO fra samme modul-logger når derimod frem.
+    #  * Medlemmet kører hvert 2. minut efter at dets throttle er fjernet. En
+    #    INFO-linje per nul-resultat ville være 720 linjer om dagen i en journal
+    #    der allerede er på 3,9 GB.
+    #
+    # `record_daemon_tick` bærer nu `members_ran` ind i `last_result_summary`
+    # (se `daemon_manager._tick_resume`), så «kørte medlemmet?» kan slås op
+    # durabelt uden en log-linje per tick.
+    if antal:
+        logger.info(
+            "session_boot_reconciler: periodisk drift-rydning lukkede %d raekke(r) "
+            "(enforced=%s)", antal, enforced)
     return {"status": "ok", "ryddet": antal, "enforced": enforced}

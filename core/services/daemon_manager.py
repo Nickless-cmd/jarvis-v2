@@ -865,13 +865,66 @@ def get_effective_cadence(name: str) -> int:
     return int(_REGISTRY[name]["default_cadence_minutes"])
 
 
+#: Felter der svarer på «hvad udrettede tikket», og som derfor skal stå FØRST i
+#: resuméet. Resten følger efter i deres egen rækkefølge.
+_SUMMARY_FORTRIN: tuple[str, ...] = (
+    "status", "members_ran", "member_errors", "members_skipped", "ryddet",
+    "error", "skipped",
+)
+#: Tegn-budget for resuméet. En grænse der klipper i tavshed er værre end ingen,
+#: så en afkortning navngives — se `_tick_resume`.
+_SUMMARY_MAKS_TEGN = 400
+
+
+def _tick_resume(result: dict[str, Any]) -> str:
+    """Et resumé der kan svare på om et medlem kørte.
+
+    ## Hullet (målt 6/10-2026)
+
+    Resuméet var ``", ".join(... for k, v in list(result.items())[:3])``. For
+    ``cluster_infra`` er de tre første nøgler ``family``, ``shadow`` og
+    ``gate_calls``, så ledgeren stod på::
+
+        family: cluster_infra, shadow: False, gate_calls: 1
+
+    ``members_ran`` — det ENESTE felt der siger hvilke medlemmer der faktisk
+    kørte — lå efter snittet og nåede aldrig frem. Da `visible_drift_cleanup`
+    ikke fejede en zombie der havde stået fejeberettiget i 18 minutter, fandtes
+    der derfor ingen måde at se udefra om medlemmet overhovedet blev nået. Det
+    måtte gættes, og et gæt kostede en forkert konklusion.
+
+    En grænse på antal NØGLER skjuler halen uden at sige det. Her er grænsen
+    derfor på tegn, de svarende felter står først, og bliver der klippet, står
+    der hvor mange felter der mangler.
+
+    Bærer resultatet selv en ``summary``-streng, er den kalderens eget ord og
+    vinder over alt dette.
+    """
+    egen = result.get("summary")
+    if isinstance(egen, str) and egen.strip():
+        return egen.strip()[:_SUMMARY_MAKS_TEGN]
+
+    noegler = [k for k in _SUMMARY_FORTRIN if k in result]
+    noegler += [k for k in result if k not in _SUMMARY_FORTRIN and k != "summary"]
+
+    dele: list[str] = []
+    brugt = 0
+    for i, k in enumerate(noegler):
+        del_ = f"{k}: {result[k]}"
+        if brugt + len(del_) > _SUMMARY_MAKS_TEGN and dele:
+            return ", ".join(dele) + f", …+{len(noegler) - i} felter"
+        dele.append(del_)
+        brugt += len(del_) + 2
+    return ", ".join(dele)
+
+
 def record_daemon_tick(name: str, result: dict[str, Any]) -> None:
     """Record last_run_at and a summary of the tick result. Called by heartbeat_runtime."""
     if name not in _REGISTRY:
         return
     now = datetime.now(UTC).isoformat()
-    summary = ", ".join(f"{k}: {v}" for k, v in list(result.items())[:3])
-    _set_daemon_state(name, {"last_run_at": now, "last_result_summary": summary})
+    _set_daemon_state(
+        name, {"last_run_at": now, "last_result_summary": _tick_resume(result or {})})
 
 
 def _hours_since(iso: str | None) -> float | None:

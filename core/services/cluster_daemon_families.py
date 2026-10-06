@@ -1267,17 +1267,31 @@ def _infra_visible_drift_live(_snap: dict) -> dict[str, Any]:
     """Luk `visible_runs`-rækker der står `recovering`, men er beviseligt slut.
 
     Samme regel som boot-reconcileren bruger (`_ryd_visible_drift`), men uden at
-    vente på en genstart. Self-throttler på 30 min: reglen er billig, og en række
-    bliver ikke mere sand af at blive talt oftere — `finished_at` er beviset
-    uanset hvor tit vi kigger.
+    vente på en genstart.
 
     Målt 25/9-2026: 16 rækker stod `recovering` med `finished_at` sat, den nyeste
     29 sekunder gammel. Ingen proces kendte dem. Boot-vejen krævede enten en
     genstart eller seks timers alder, så de lå der indtil nogen ryddede dem i
     hånden. Nu lukker familien dem af sig selv.
+
+    ## Throttlen er fjernet (6/10-2026)
+
+    Medlemmet self-throttlede på 30 min, med den begrundelse at «en række bliver
+    ikke mere sand af at blive talt oftere». Det er rigtigt om SANDHEDEN og
+    forkert om NYTTEN, og forskellen koster deploys.
+
+    Reglens tredje gren kræver selv 30 minutters alder. To uafhængige
+    30-minutters-ure giver et vindue på 30 TIL 60 minutter, afhængigt af fase —
+    og fasen er ren tilfældighed, fordi `_INFRA_THROTTLE` er en in-process dict
+    som hver genstart nulstiller. Målt samme dag: `visible-bd1727a4` stod
+    fejeberettiget fra 19:06 og var stadig `running` 19:24, gennem ~9
+    familie-tick. Hvert af de minutter er et minut hvor genstarts-vagten
+    blokerer, altså hvor der ikke kan deployes.
+
+    Reglen er én indekseret forespørgsel mod `visible_runs` plus en læsning af
+    `in_flight_runs`. Familien tikker hvert 2. minut, så det er prisen — og den
+    er lavere end at lade en zombie blokere en halv time ekstra.
     """
-    if not _infra_throttle_ready("visible_drift_cleanup", 30):
-        return {"status": "throttled", "cadence_minutes": 30}
     from core.services.session_boot_reconciler import ryd_visible_drift_periodisk
     return ryd_visible_drift_periodisk()
 

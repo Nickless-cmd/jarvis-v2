@@ -194,29 +194,30 @@ _Proactive candidates — the ONE queue for "Jarvis wants to tell a user somethi
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `er_telemetri` | `(source, kind=…)` | Er dette intern telemetri frem for en besked Bjørn skal se? | [src](../../../core/services/proactive_candidates.py#L116) |
-| function | `_bruger_for` | `(user_id, source, session_id=…)` | Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig). | [src](../../../core/services/proactive_candidates.py#L121) |
-| function | `_kerne` | `(text)` | Anmodningen selv — ikke skabelonen den er pakket ind i. | [src](../../../core/services/proactive_candidates.py#L154) |
-| function | `_kerne_similarity` | `(a, b)` | Jaccard mellem to kærners ord (0-1). | [src](../../../core/services/proactive_candidates.py#L166) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L174) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L178) |
-| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L187) |
-| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L194) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L198) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L229) |
-| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L237) |
-| function | `add_candidate` | `(*, source, text, priority=…, kind=…, user_id=…, session_id=…)` | Queue a message for a user. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L246) |
-| function | `list_pending` | `(*, limit=…, priorities=…, user_id=…)` | Pending kandidater. `user_id` er et FILTER på kolonnen: | [src](../../../core/services/proactive_candidates.py#L331) |
-| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L356) |
-| function | `expire_stale` | `(*, days=…, aabne_days=…)` | Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned` | [src](../../../core/services/proactive_candidates.py#L377) |
-| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L398) |
-| function | `counts_per_user` | `()` | Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres. | [src](../../../core/services/proactive_candidates.py#L405) |
-| function | `relevant_for` | `(user_message, *, user_id=…, session_id=…, limit=…, min_coverage=…)` | Pending items for THIS user, lexically relevant to what they just wrote. | [src](../../../core/services/proactive_candidates.py#L417) |
-| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L444) |
-| function | `build_since_last_line` | `(user_message, *, session_id=…, user_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L455) |
-| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L474) |
-| function | `bridge_candidates` | `(user_id=…)` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L502) |
-| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L524) |
+| function | `er_telemetri` | `(source, kind=…)` | Er dette intern telemetri frem for en besked Bjørn skal se? | [src](../../../core/services/proactive_candidates.py#L122) |
+| function | `_owner_uid` | `()` | Owner'ens discord-id — samme kanoniske vej som `proactivity_bridge._owner_uid`. | [src](../../../core/services/proactive_candidates.py#L127) |
+| function | `_bruger_for` | `(user_id, source, session_id=…, kind=…)` | Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig). | [src](../../../core/services/proactive_candidates.py#L144) |
+| function | `_kerne` | `(text)` | Anmodningen selv — ikke skabelonen den er pakket ind i. | [src](../../../core/services/proactive_candidates.py#L185) |
+| function | `_kerne_similarity` | `(a, b)` | Jaccard mellem to kærners ord (0-1). | [src](../../../core/services/proactive_candidates.py#L197) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L205) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L209) |
+| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L218) |
+| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L225) |
+| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L229) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L260) |
+| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L268) |
+| function | `add_candidate` | `(*, source, text, priority=…, kind=…, user_id=…, session_id=…)` | Queue a message for a user. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L277) |
+| function | `list_pending` | `(*, limit=…, priorities=…, user_id=…)` | Pending kandidater. `user_id` er et FILTER på kolonnen: | [src](../../../core/services/proactive_candidates.py#L363) |
+| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L388) |
+| function | `expire_stale` | `(*, days=…, aabne_days=…)` | Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned` | [src](../../../core/services/proactive_candidates.py#L409) |
+| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L430) |
+| function | `counts_per_user` | `()` | Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres. | [src](../../../core/services/proactive_candidates.py#L437) |
+| function | `relevant_for` | `(user_message, *, user_id=…, session_id=…, limit=…, min_coverage=…)` | Pending items for THIS user, lexically relevant to what they just wrote. | [src](../../../core/services/proactive_candidates.py#L449) |
+| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L476) |
+| function | `build_since_last_line` | `(user_message, *, session_id=…, user_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L487) |
+| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L506) |
+| function | `bridge_candidates` | `(user_id=…)` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L534) |
+| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L556) |
 
 ## `core/services/proactive_context_governor.py`
 _Proactive context governor — auto-trigger compaction + sub-agent slicing._

@@ -133,7 +133,19 @@ def push_nudge(
     route = route_for(source=source, kind=kind)
     if route == "telemetry":
         _publish_routed(source, kind, importance, "telemetry")
-        return {"status": "telemetry", "route": "telemetry"}
+        # Telemetri er ikke en besked til en bruger — men den er heller ikke
+        # spild. Den lander hos OWNER (og kun der), så den der ejer maskinen
+        # kan se den. Før forsvandt den her, samtidig med at `add_candidate`
+        # kastede den væk for anden gang: to veje, samme svar. Prioritet «low»
+        # — telemetri må aldrig fortrænge et rigtigt spørgsmål.
+        try:
+            from core.services.proactive_candidates import add_candidate
+            res = add_candidate(source=source, kind=kind, text=message, priority="low")
+        except Exception as exc:
+            logger.debug("outbound_nudges: telemetri-koe fejlede: %s", exc)
+            res = {"status": "error", "error": str(exc)[:120]}
+        return {"status": "telemetry", "route": "telemetry",
+                "nudge_id": str(res.get("candidate_id") or ""), "candidate": res}
     if route == "bridge":
         try:
             from core.services.proactive_candidates import add_candidate

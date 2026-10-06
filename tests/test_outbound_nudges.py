@@ -109,12 +109,23 @@ class TestRouter:
         assert ob.route_for(source="action_router", kind="autonomous_run") == "telemetry"
         assert ob.route_for(source="run_closure_gate", kind="runtime") == "bridge"
 
-    def test_telemetry_is_never_stored(self):
+    def test_telemetry_goes_to_owner_not_to_the_well(self):
+        """Telemetri maa ikke gemmes i BRØNDEN — den skal til owner-koeen.
+
+        Maalt 6/10-2026: grenen returnerede foer uden at gemme NOGET sted, saa
+        Bjørns EGEN telemetri var usynlig for alle — ogsaa ham. Testen fanger
+        baade at brønden forbliver urørt, og at kandidaten faktisk oprettes.
+        """
+        seen = {}
         with patch.object(ob, "_enabled", return_value=True), \
+             patch("core.services.proactive_candidates.add_candidate",
+                   lambda **kw: (seen.update(kw), {"status": "added", "candidate_id": "pc-t"})[1]), \
              patch.object(ob, "ensure_schema") as ens, patch.object(ob, "connect") as conn:
             out = ob.push_nudge(source="autonomous_run", kind="autonomous_run", message="Autonom run ✓ færdig: x")
         assert out["status"] == "telemetry"
         ens.assert_not_called(); conn.assert_not_called()
+        assert seen.get("source") == "autonomous_run"
+        assert seen.get("priority") == "low"  # telemetri maa ikke fortraenge et spoergsmaal
 
     def test_real_messages_go_to_bridge_candidates(self):
         seen = {}

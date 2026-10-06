@@ -23,11 +23,15 @@ ikke på ejerskab — så «Alarm: Bjørn skal til møde med Line» var en kandi
 enhver der skrev ordet «møde». Fem brugere deler runtime'en (bjorn, michelle,
 mikkel, lotte, rune), og hver har sit eget workspace.
 
-Nu bærer hver kandidat en `user_id`:
+Nu bærer hver kandidat en `user_id` — tre betydninger:
 
-* ``''`` = INTERN. Vises ALDRIG i en samtale eller DM. Det er telemetri og
-  maskinrums-støj, og det er den SIKRE default: kan ejeren ikke afgøres, bliver
-  kandidaten tavs frem for at blive gættet.
+* ``''`` = INTERN. Vises ALDRIG. Bogholderi uden en ejer-mening, og den SIKRE
+  default: kan ejeren ikke afgøres, bliver kandidaten tavs frem for gættet.
+* ``<owner_id>`` = OWNER-KUN. Maskinrummets telemetri — wakeups, heartbeat,
+  run-status. Den er ikke en besked til en bruger, men den er heller ikke
+  spild: den hører til den der ejer maskinen, og til ingen anden. (Bjørn,
+  6/10-2026: «telemetrien bør være owner only». Før blev den kastet væk ved
+  indgangen, så hans EGEN telemetri var usynlig for alle — også ham.)
 * ``<discord_id>`` = vises KUN for den bruger.
 
 Ejeren afgøres ved INDGANGEN (`_bruger_for`): eksplicit argument →
@@ -37,9 +41,10 @@ samme fælde som `memory_tools._resolve_memory_uid` løser — så uden det vill
 hans EGNE kandidater blive mærket «interne» og gjort tavse. Fejlen ville ramme
 den ene bruger vi har flest af.
 
-Kilder i `_INTERNE_KILDER` tvinger ``''`` uanset kontekst: et autonomt run kan
+Kilder i `_OWNER_KILDER` tvinger owner-uid uanset kontekst: et autonomt run kan
 have en session, men «run efterlod 5 ucommittede filer» er ikke en besked til
-den der ejer sessionen.
+den der ejer sessionen — den er til den der ejer maskinen. `_INTERNE_KILDER`
+tvinger ``''``.
 """
 from __future__ import annotations
 
@@ -73,24 +78,25 @@ _STOP = frozenset({
 _SHOWN: dict[str, tuple[float, list[str]]] = {}
 _SHOWN_TTL_S = 900.0
 
-#: Kilder der er INTERN telemetri — ikke beskeder til Bjørn. Målt 3/10-2026:
-#: `wakeup_dispatcher` (179) og `heartbeat` (64) udgjorde 243 af 311 rækker
-#: (78 %) i køen. Princippet stod allerede i docstringen øverst («telemetry
-#: ("run finished") never becomes a candidate — it is an event»); det var bare
-#: ikke håndhævet for disse to. Værnet ligger her ved INDGANGEN af samme grund
-#: som `thought_leak_guard`: ét sted dækker alle seks kaldesteder — også dem
-#: der kalder `add_candidate` udenom `outbound_nudges`' router.
+#: Maskinrummets telemetri. `er_telemetri` holder `outbound_nudges.route_for`
+#: og dette modul enige om HVAD der er telemetri; `_OWNER_KILDER` er den
+#: bredere flok der skal lande hos owner. Målt 6/10-2026 over 7 døgn:
+#: `wakeup_dispatcher` 48 kandidater, `heartbeat` 3, `run_closure_gate` 4,
+#: `autonomous_run` og `autonomy_budget` 1 hver.
 _TELEMETRI_KILDER = frozenset({"wakeup_dispatcher", "heartbeat"})
 _TELEMETRI_KINDS = frozenset({"heartbeat_ping"})
 
-#: Kilder der er INTERNE uanset hvem der kører. Et autonomt run kan have en
-#: session — men «run efterlod 5 ucommittede filer» er ikke en besked til den
-#: der ejer sessionen. Uden denne liste ville kontekst-opslaget i `_bruger_for`
-#: gætte et ejerskab der ikke findes, og telemetrien ville lande hos en bruger.
-_INTERNE_KILDER = frozenset({
+#: Telemetri hører til OWNER og til ingen anden. Før kastede indgangen den væk
+#: («skipped»), så Bjørns EGEN telemetri var usynlig for alle — også ham.
+_OWNER_KILDER = frozenset({
     "wakeup_dispatcher", "heartbeat", "run_closure_gate", "autonomous_run",
-    "kerne_curator", "autonomy_budget", "development_ritual",
+    "autonomy_budget",
 })
+
+#: Bogholderi uden en ejer-mening — vises aldrig. Bemærk: `kerne_curator` og
+#: `development_ritual` er ikke telemetri; de er forslag TIL owner og hører i
+#: «delinger»-fladen, som ikke er bygget endnu. De står her til den beslutning.
+_INTERNE_KILDER = frozenset({"kerne_curator", "development_ritual"})
 
 #: Et spørgsmål der ER stillet og ikke besvaret skal ikke hænge for evigt.
 #: Målt 3/10-2026: 155 `surfaced` + 118 `mentioned` — den ældste fra 4/9,
@@ -118,13 +124,36 @@ def er_telemetri(source: str, kind: str = "") -> bool:
     return str(source or "") in _TELEMETRI_KILDER or str(kind or "") in _TELEMETRI_KINDS
 
 
-def _bruger_for(user_id: str | None, source: str, session_id: str = "") -> str:
+def _owner_uid() -> str:
+    """Owner'ens discord-id — samme kanoniske vej som `proactivity_bridge._owner_uid`.
+
+    Self-safe: kan den ikke afgøres, gives ``''``, og telemetrien bliver intern
+    frem for at blive gættet til en tilfældig bruger.
+    """
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+
+        uid = (get_owner_discord_id() or "").strip()
+        if uid:
+            return uid[:64]
+    except Exception as exc:
+        logger.debug("proactive_candidates: owner-opslag fejlede: %s", exc)
+    return ""
+
+
+def _bruger_for(user_id: str | None, source: str, session_id: str = "",
+                kind: str = "") -> str:
     """Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig).
 
-    Rækkefølgen er den samme som `memory_tools._resolve_memory_uid`: eksplicit
-    argument → ``current_user_id()`` → session-ejeren → ``''``. Session-ejer-
-    leddet er ikke pynt — se docstringen øverst. Self-safe: enhver fejl i
-    opslaget giver ``''``, altså tavs frem for gættet.
+    Telemetri (`er_telemetri` / `_OWNER_KILDER`) får owner-uid uanset kontekst:
+    et autonomt run kan have en session, men «run efterlod 5 ucommittede filer»
+    er ikke en besked til den der ejer sessionen — den er til den der ejer
+    maskinen.
+
+    Ellers er rækkefølgen den samme som `memory_tools._resolve_memory_uid`:
+    eksplicit argument → ``current_user_id()`` → session-ejeren → ``''``.
+    Session-ejer-leddet er ikke pynt — se docstringen øverst. Self-safe: enhver
+    fejl i opslaget giver ``''``, altså tavs frem for gættet.
 
     `session_id` tages med fordi prompt-byggeren kender sessionen som PARAMETER,
     hvor contextvar'en ikke altid er sat. Uden den ville en kandidat kunne
@@ -132,6 +161,8 @@ def _bruger_for(user_id: str | None, source: str, session_id: str = "") -> str:
     """
     if user_id is not None:
         return str(user_id).strip()[:64]
+    if er_telemetri(source, kind) or str(source or "") in _OWNER_KILDER:
+        return _owner_uid()
     if str(source or "") in _INTERNE_KILDER:
         return ""
     try:
@@ -256,11 +287,12 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
     body = " ".join(str(text or "").split()).strip()
     if len(body) < 8:
         return {"status": "skipped", "reason": "empty"}
-    if er_telemetri(source, kind):
-        # Intern telemetri er et EVENT, ikke en besked. Uden dette stod
-        # self-wakeups og heartbeat-pings side om side med rigtige spørgsmål
-        # til Bjørn — med samme prioritet og samme hentning.
-        return {"status": "skipped", "reason": "telemetry"}
+    # Telemetri afvises IKKE længere her (6/10-2026). Før returnerede dette
+    # sted «skipped», og det var forkert ad to veje: det kastede Bjørns EGEN
+    # telemetri væk, så den var usynlig for alle — også ham — og
+    # `push_nudge`s telemetri-gren svarede det samme et andet sted. Nu bærer
+    # telemetrien owner-uid (`_bruger_for`), så den findes for den ene der ejer
+    # maskinen og for ingen anden.
     # Laekage-vaern ved INDGANGEN (8/9-2026). Uden det stod den indre daemons
     # telemetri og generatorens egen output-kontrakt som Jarvis' tanker i den
     # proaktive kanal. Her frem for ved visningen, saa ét vaern daekker alle
@@ -272,7 +304,7 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         grund = ""
     if grund:
         return {"status": "skipped", "reason": grund}
-    uid = _bruger_for(user_id, source, session_id)
+    uid = _bruger_for(user_id, source, session_id, kind)
     norm = _norm_text(body)
     now = _now_iso()
     cutoff = (datetime.now(UTC) - timedelta(hours=_DEDUPE_HOURS)).isoformat()

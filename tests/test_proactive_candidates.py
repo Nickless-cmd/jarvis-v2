@@ -29,6 +29,9 @@ def db(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "core.identity.workspace_context.current_session_id", lambda: "", raising=False,
     )
+    # Owner-uid'et er konfiguration, ikke logik. Uden denne patch ville testene
+    # afhaenge af maskinens users.json og maale noget andet end de tror.
+    monkeypatch.setattr(PC, "_owner_uid", lambda: BJOERN)
     PC._SHOWN.clear()
     return path
 
@@ -100,21 +103,45 @@ def test_expire_stale(db):
 # ── de tre støj-fixes (3/10-2026) ───────────────────────────────────────
 
 
-def test_telemetri_afvises_ved_indgangen(db):
-    """Self-wakeups og heartbeat-pings er EVENTS, ikke beskeder til Bjørn.
+def test_telemetri_lander_hos_owner(db):
+    """Telemetri er ikke en besked til en bruger — men den er heller ikke spild.
 
-    Målt 3/10: 243 af 311 rækker (78 %) i køen var netop disse to kilder.
+    Målt 3/10-2026: 243 af 311 rækker (78 %) var netop disse kilder, og
+    indgangen begyndte at kaste dem væk. Det var forkert ad to veje: Bjørns
+    EGEN telemetri blev usynlig for alle — også ham. Bjørn 6/10-2026:
+    «telemetrien bør være owner only».
     """
     a = PC.add_candidate(source="wakeup_dispatcher", text="Self-wakeup fyrede: resume afbrudt kørsel", priority="high")
     b = PC.add_candidate(source="heartbeat", text="Heartbeat-ping leveret til webchat-session", priority="high")
-    assert a["status"] == "skipped" and a["reason"] == "telemetry"
-    assert b["status"] == "skipped" and b["reason"] == "telemetry"
-    assert PC.counts().get("pending") is None  # intet nåede ind
+    assert a["status"] == "added" and b["status"] == "added"
+    assert {c["user_id"] for c in PC.list_pending()} == {BJOERN}
 
 
-def test_heartbeat_ping_kind_afvises_uanset_kilde(db):
-    assert PC.add_candidate(source="hvad_som_helst", kind="heartbeat_ping",
-                            text="en ping formet som en besked")["reason"] == "telemetry"
+def test_telemetri_naar_aldrig_en_anden_bruger(db):
+    """Kernen i «owner only».
+
+    Teksten matcher ORD FOR ORD, saa det er EJERSKABET der afgoer og ikke
+    relevansen. Uden kravet ville den vaere landet hos Michelle.
+    """
+    tekst = "Self-wakeup fyrede: resume af afbrudt kørsel i nat"
+    PC.add_candidate(source="wakeup_dispatcher", text=tekst, priority="high")
+    assert PC.relevant_for(tekst, user_id=MICHELLE) == []
+    assert len(PC.relevant_for(tekst, user_id=BJOERN)) == 1
+
+
+def test_heartbeat_ping_kind_lander_ogsaa_hos_owner(db):
+    r = PC.add_candidate(source="hvad_som_helst", kind="heartbeat_ping",
+                         text="en ping formet som en besked")
+    assert r["status"] == "added"
+    assert [c["user_id"] for c in PC.list_pending()] == [BJOERN]
+
+
+def test_kan_owneren_ikke_afgoeres_bliver_telemetrien_intern(db, monkeypatch):
+    """Self-safe: hellere tavs end gættet til en tilfældig bruger."""
+    monkeypatch.setattr(PC, "_owner_uid", lambda: "")
+    r = PC.add_candidate(source="heartbeat", text="Heartbeat-ping uden kendt ejer")
+    assert r["status"] == "added"
+    assert [c["user_id"] for c in PC.list_pending()] == [""]
 
 
 def test_aegte_kilde_slipper_igennem(db):
@@ -267,10 +294,14 @@ def test_session_id_parameter_taeller_naar_contextvar_er_tom(db, monkeypatch):
 
 
 def test_interne_kilder_tvinger_tom_uanset_kontekst(db, monkeypatch):
-    """Et autonomt run kan have en session — men dets telemetri er ikke en
-    besked til den der ejer sessionen."""
+    """Bogholderi uden ejer-mening forbliver tavst — også når konteksten er sat.
+
+    Telemetri hører IKKE her længere; den går til owner. Se
+    `test_telemetri_lander_hos_owner`.
+    """
     monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: BJOERN, raising=False)
-    r = PC.add_candidate(source="run_closure_gate", text="run efterlod 3 ucommittede filer i repoet")
+    r = PC.add_candidate(source="development_ritual",
+                         text="ugens udvikling: jeg vil skrive om mig selv i SOUL.md")
     assert r["status"] == "added"
     assert [c["user_id"] for c in PC.list_pending() if c["candidate_id"] == r["candidate_id"]] == [""]
 

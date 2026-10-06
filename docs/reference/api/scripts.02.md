@@ -231,10 +231,10 @@ _Hvor ofte svarer Jarvis VISUELT? — nulpunkt og dagsserie._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_conn` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L33) |
-| function | `dagsserie` | `(c, dage)` | Pr. dag: assistent-beskeder, heraf med et tegnebart hegn, og raten. | [src](../../../scripts/maal_visuelle_svar.py#L40) |
-| function | `i_alt` | `(c)` | — | [src](../../../scripts/maal_visuelle_svar.py#L67) |
-| function | `main` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L81) |
+| function | `_conn` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L38) |
+| function | `dagsserie` | `(c, dage)` | Pr. dag: assistent-beskeder, heraf med et tegnebart hegn, og raten. | [src](../../../scripts/maal_visuelle_svar.py#L45) |
+| function | `i_alt` | `(c)` | — | [src](../../../scripts/maal_visuelle_svar.py#L72) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L86) |
 
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._

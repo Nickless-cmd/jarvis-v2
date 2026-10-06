@@ -10,12 +10,20 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",
         "- Tool results are for you — refer to them in your own words, never reproduce them verbatim.",
         "- Before finishing code work, account for concrete unresolved findings: fix relevant new test failures now; for a deferred coverage gap call flag_side_task with finding_kind, disposition, path, behavior and evidence. Never remove a failed test and silently claim the behavior is verified.",
-        # Rendereren har eksisteret i desk siden foraaret (MermaidBlock.tsx) og
-        # stod ikke ét sted i prompten. Maalt 6/10-2026: **0 af 10.774**
-        # assistent-beskeder har et mermaid-hegn. (Et foerste opslag gav 3 — de
-        # var en compact_marker og to tool-resultater; jeg havde glemt at
-        # filtrere paa rolle.) En kapabilitet ingen har fortalt ham om, er ikke
-        # en kapabilitet.
+        # Maalt 6/10-2026: **0 af 10.774** assistent-beskeder har et
+        # mermaid-hegn. (Et foerste opslag gav 3 — de var en compact_marker og
+        # to tool-resultater; jeg havde glemt at filtrere paa rolle.)
+        #
+        # RETTELSE til min egen begrundelse: jeg skrev at rendereren «har
+        # eksisteret siden foraaret». Den var SLETTET 29/9 af Codex
+        # (`93be59bb6`: «wiring them would alter settled HTML»). Jeg laeste
+        # MermaidBlock.tsx fra mit eget checkout, som stod paa en gammel gren
+        # med ukommitterede aendringer — ikke fra main. Da linjen her gik live,
+        # var den altsaa FALSK.
+        #
+        # Jarvis gjorde den sand: han laeste den, fandt ingen renderer, og byggede
+        # en ny med et streaming-vaern der respekterer netop det krav Codex
+        # slettede den gamle for at beskytte (`c78754043`).
         "- A ```mermaid fenced block is RENDERED as a diagram in jarvis-desk. Reach for it when a",
         "  relationship, flow or sequence IS the answer — it beats describing boxes and arrows in prose.",
         "  On mobile it currently shows as readable source, so always put the conclusion in text too.",

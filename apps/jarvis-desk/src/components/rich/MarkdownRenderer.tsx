@@ -7,6 +7,7 @@ import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
 import { ChatCodeBlock } from './ChatCodeBlock'
+import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -31,6 +32,11 @@ const KOMPONENTER: Components = {
     const props = children.props as { className?: string; children?: unknown }
     const code = typeof props.children === 'string' ? props.children : String(props.children ?? '')
     const lang = /^language-([^\s]+)/.exec(props.className ?? '')?.[1] ?? ''
+    // 6/10-2026: ```mermaid tegnes som diagram. Blokken venter til den er
+    // færdig (se MermaidStreamingContext) — en uafsluttet fence kan ikke
+    // parses, og et forsøg ville skifte blokken fra kode til diagram midt i
+    // turen. Alt andet går til ChatCodeBlock som før.
+    if (lang === 'mermaid') return <MermaidBlock code={code} />
     return <ChatCodeBlock code={code} lang={lang} className={props.className} />
   },
   a: ({ href, children }) => {
@@ -52,11 +58,21 @@ const KOMPONENTER: Components = {
 }
 
 /** Én blok markdown. Memoiseret på strengen: en færdig blok parses én gang. */
-export const MarkdownBlok = memo(function MarkdownBlok({ md }: { md: string }) {
+export const MarkdownBlok = memo(function MarkdownBlok({
+  md,
+  streaming = false,
+}: {
+  md: string
+  streaming?: boolean
+}) {
   // 29/9-2026: en frossen blok har stabil tekst, så strukturarbejdet skal
   // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
   const struktureret = useMemo(() => enforceStructure(md), [md])
-  return <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
+  return (
+    <MermaidStreamingContext.Provider value={streaming}>
+      <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
+    </MermaidStreamingContext.Provider>
+  )
 })
 
 export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
@@ -69,9 +85,13 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
   // endelige gengivelse, og blokdelingen skal aldrig kunne ændre den.
   const blokke = useMemo(() => (streaming ? delIBlokke(md) : null), [md, streaming])
   if (!blokke) return <MarkdownBlok md={md} />
+  // Kun den SIDSTE blok er levende — de øvrige er frosne og færdige. Det er
+  // samme antagelse delIBlokke selv bygger på (kun halen parses igen). Derfor
+  // må et diagram i en frossen blok gerne tegnes straks, mens halen venter.
+  const sidste = blokke.length - 1
   return (
     <>
-      {blokke.map((b, i) => <MarkdownBlok key={i} md={b} />)}
+      {blokke.map((b, i) => <MarkdownBlok key={i} md={b} streaming={i === sidste} />)}
     </>
   )
 }

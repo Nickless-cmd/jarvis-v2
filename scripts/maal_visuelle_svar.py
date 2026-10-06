@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 """Hvor ofte svarer Jarvis VISUELT? — nulpunkt og dagsserie.
 
-Baggrund: desk har renderet ```mermaid-hegn til SVG siden foraaret
-(`MermaidBlock.tsx`), og intet sted i prompten naevnte det. Maalt 6/10-2026:
-**0 af 10.774 assistent-beskeder** — han har aldrig emitteret ét hegn.
-Kapabiliteten var bygget og utalt.
+Baggrund: maalt 6/10-2026 havde **0 af 10.774 assistent-beskeder** et
+```mermaid-hegn — han har aldrig emitteret ét.
+
+To grunde, ikke én. Prompten naevnte det ikke, OG rendereren var slettet 29/9
+(`93be59bb6`, Codex: «wiring them would alter settled HTML»). Jeg paastod
+foerst kun det foerste, fordi jeg laeste `MermaidBlock.tsx` fra et gammelt
+checkout. Begge er lukket nu: prompt-linjen i
+`prompt_sections/output_discipline.py` og Jarvis egen renderer i
+`c78754043`.
 
 Et foerste opslag gav 3 traef og blev meldt som «0,03 %». Det var FORKERT: de
 tre var en `compact_marker` og to `tool`-resultater fra 2/10, fordi

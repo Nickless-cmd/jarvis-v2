@@ -23,10 +23,14 @@ def test_self_safe_on_bad_input():
 
 
 def test_begge_niveauer_faar_at_vide_at_mermaid_tegnes():
-    """Rendereren fandtes i desk hele foraaret og stod ikke ét sted i prompten.
-    Maalt 6/10-2026: **0 af 10.774** assistent-beskeder havde et mermaid-hegn —
-    han har aldrig emitteret ét. (Foerste opslag gav 3; de var en
+    """Maalt 6/10-2026: **0 af 10.774** assistent-beskeder havde et
+    mermaid-hegn — han har aldrig emitteret ét. (Foerste opslag gav 3; de var en
     compact_marker og to tool-resultater, fordi jeg ikke filtrerede paa rolle.)
+
+    Jeg begrundede det med at rendereren «fandtes men var utalt». Det var
+    forkert: den var slettet 29/9 (`93be59bb6`, Codex), og jeg laeste den fra et
+    gammelt checkout. Linjen var FALSK da den gik live — og Jarvis gjorde den
+    sand ved selv at bygge rendereren (`c78754043`).
 
     Testen findes fordi en kapabilitet kun eksisterer hvis den er NAEVNT —
     linjen her er hele forbindelsen mellem en bygget renderer og en model der

@@ -891,7 +891,7 @@ def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
 
 
 def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
-    """Luk en ``recovering``-række hvis genoptagelse skete under et andet run_id.
+    """Luk en afløst række hvis genoptagelse skete under et andet run_id.
 
     ## Hullet (målt 25/9-2026)
 
@@ -915,9 +915,29 @@ def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
     journalen under et andet run_id. ``settlement_shadow`` normaliserer allerede
     ``recovering`` → ``interrupted``, så de to lag siger nu det samme.
 
-    Rører ALDRIG ``finished_at`` eller ``error`` — begge er allerede sat og
-    sande. Kalderen afgør om rækken er forældreløs; denne funktion stempler
-    kun. Self-safe: kaster aldrig.
+    ## Også ``running`` (målt 6/10-2026)
+
+    ``recovering`` var ikke den eneste blindgyde. Genoptagelses-dispatcheren
+    afregnede kun journal-posten, så en kørsel der døde UDEN at nå sin egen
+    afslutning blev liggende ``running`` med tom ``finished_at``:
+    ``visible-bd1727a4`` stod sådan uden ét eneste ``costs``-opslag, mens dens
+    fortsættelse ``visible-3433cf05`` kørte færdig med 16. Først
+    ``_ryd_visible_drift`` lukkede den 30 minutter senere — og indtil da
+    blokerede den genstarts-vagten, altså hvert deploy.
+
+    Derfor dækker WHERE nu begge tilstande. ``finished_at`` sættes KUN hvis den
+    er tom: en ``recovering``-række har den allerede, og den er sand.
+
+    ## Hvorfor netop denne, og ikke ``stamp_visible_run_interrupted``
+
+    Den anden udsender ``runtime.visible_run_interrupted``, og
+    ``living_executive`` planlægger en self-wakeup på det event («Resume from
+    interrupted visible run»). Kaldt fra dispatcherens succes-sti ville den
+    altså bede om en genoptagelse af noget der LIGE blev genoptaget. Denne er
+    tavs med vilje — rækken er afløst, ikke efterladt.
+
+    Rører aldrig ``error``: den er allerede sat og sand. Kalderen afgør om
+    rækken er forældreløs; denne funktion stempler kun. Self-safe: kaster aldrig.
     """
     rid = str(run_id or "").strip()
     if not rid:
@@ -925,18 +945,20 @@ def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
     try:
         with connect() as conn:
             cur = conn.execute(
-                "UPDATE visible_runs SET status = 'interrupted' "
-                "WHERE run_id = ? AND status = 'recovering'",
-                (rid,),
+                "UPDATE visible_runs SET status = 'interrupted', "
+                "finished_at = CASE WHEN finished_at = '' OR finished_at IS NULL "
+                "THEN ? ELSE finished_at END "
+                "WHERE run_id = ? AND status IN ('recovering', 'running')",
+                (datetime.now(UTC).isoformat(), rid),
             )
             stemplet = bool(cur.rowcount)
     except Exception:
         logger.debug(
-            "kunne ikke lukke foraeldet recovering-raekke %s", rid, exc_info=True)
+            "kunne ikke lukke afloest raekke %s", rid, exc_info=True)
         return False
     if stemplet:
         logger.info(
-            "visible_runs: %s stod 'recovering' uden en post i journalen — "
+            "visible_runs: %s var afloest under et andet run_id — "
             "stemplet 'interrupted' (%s)", rid, str(reason or "")[:120])
     return stemplet
 

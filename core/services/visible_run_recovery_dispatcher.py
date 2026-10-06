@@ -67,6 +67,47 @@ def _besked_fra(record: dict[str, object]) -> str:
     return ""
 
 
+def _luk_afloest_raekke(run_id: str, *, reason: str) -> None:
+    """Luk den afløste kørsels EGEN række i `visible_runs`.
+
+    Dispatcheren afregnede kun journal-posten (JSON), og det var hele hullet:
+    målt 6/10-2026 stod `visible-bd1727a4` som `running` uden ét eneste
+    `costs`-opslag mens dens fortsættelse `visible-3433cf05` kørte færdig.
+    Rækken blev først lukket af `_ryd_visible_drift` 30 minutter senere, og
+    indtil da blokerer den genstarts-vagten — altså hvert deploy.
+
+    `stamp_visible_run_superseded` og IKKE `stamp_visible_run_interrupted`:
+    den anden udsender `runtime.visible_run_interrupted`, og `living_executive`
+    planlægger en self-wakeup på netop det event («Resume from interrupted
+    visible run»). Herfra ville den altså bede om en genoptagelse af det der
+    LIGE blev genoptaget — dobbelt-run'et gjort værre, ikke bedre. Den tavse er
+    også den sande: rækken er afløst, ikke efterladt.
+
+    Er rækken allerede terminal, er stemplet en no-op (dens WHERE kræver
+    `recovering` eller `running`), så den må gerne kaldes igen.
+
+    Importen af `visible_runs` FØRST er ikke pynt: `visible_runs_outcomes` er
+    cirkulær, og uden den kaster den «cannot import name … from partially
+    initialized module» — men kun nogle gange, afhængigt af hvad der i forvejen
+    er importeret i processen. Samme fælde er dokumenteret i
+    `session_boot_reconciler`.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return
+    try:
+        import core.services.visible_runs  # noqa: F401
+        from core.services.visible_runs_outcomes import stamp_visible_run_superseded
+        stamp_visible_run_superseded(rid, reason=reason)
+    except Exception:
+        # IKKE tavs. Netop den cirkulære import kan fejle, og uden loggen ville
+        # rækken blive stående `running` uden at nogen kunne se hvornår
+        # oprydningen holdt op med at virke.
+        logger.warning(
+            "recovery-dispatcher: kunne ikke lukke afloest raekke %s", rid[:24],
+            exc_info=True)
+
+
 def _samtalen_gik_videre(session_id: str, efter: str) -> bool:
     """Er brugeren gået videre, siden den her kørsel døde?
 
@@ -174,6 +215,7 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
                 retry_after_s=BACKOFF_SECONDS)
             return {"started": 0, "released": 1, "claimed": task_id,
                     "error": "settle-fejlede"}
+        _luk_afloest_raekke(task_id, reason="samtalen gik videre efter afbrydelsen")
         logger.info(
             "recovery-dispatcher: %s droppet — brugeren skrev nyt i %s efter kørslen døde",
             task_id[:24], session_id[:28])
@@ -186,6 +228,7 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             task_id, status="cancelled", reason="recovery-original-request-missing",
             expected_generation=generation, expected_owner=ejer,
         )
+        _luk_afloest_raekke(task_id, reason="oprindelig anmodning mangler")
         return {"started": 0, "released": 1, "claimed": task_id,
                 "error": "missing-original-request"}
     # SIDSTE SLUTRUNDE (opgave 3/4). Er genoptagelserne brugt op, beder
@@ -265,6 +308,11 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
                        "tilbage", task_id, exc_info=True)
         return {"started": 0, "released": 1, "claimed": task_id, "error": str(exc)[:160]}
 
+    # Først NU, hvor fortsættelsen er i luften. Lukkede vi rækken før starten
+    # og starten fejlede, havde vi stemplet en opgave død som stadig skulle
+    # tages igen — og `release_recovery_claim` ovenfor ville ikke kunne rulle
+    # stemplet tilbage.
+    _luk_afloest_raekke(task_id, reason=f"afloest af {str(run_id)[:40]}")
     logger.info("recovery-dispatcher: genoptog %s som run %s (generation %d)",
                 task_id, run_id, generation)
     return {"started": 1, "released": 0, "claimed": task_id, "run_id": str(run_id),

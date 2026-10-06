@@ -226,6 +226,16 @@ _Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
 | function | `_maal_aendring` | `(tekster)` | Hvilke sektioner ændrede sig mellem bygningerne? | [src](../../../scripts/maal_ventende_i_prompten.py#L194) |
 | function | `main` | `()` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L252) |
 
+## `scripts/maal_visuelle_svar.py`
+_Hvor ofte svarer Jarvis VISUELT? — nulpunkt og dagsserie._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_conn` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L33) |
+| function | `dagsserie` | `(c, dage)` | Pr. dag: assistent-beskeder, heraf med et tegnebart hegn, og raten. | [src](../../../scripts/maal_visuelle_svar.py#L40) |
+| function | `i_alt` | `(c)` | — | [src](../../../scripts/maal_visuelle_svar.py#L67) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L81) |
+
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._
 
@@ -438,14 +448,4 @@ _Fase 5 «Bor der nogen?» — indsamler._
 | function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L79) |
 | function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
 | function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
-
-## `scripts/phase6_analyze.py`
-_Fase 6 «Bæres han på tværs af tid?» — analyse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `embed` | `(text)` | — | [src](../../../scripts/phase6_analyze.py#L39) |
-| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase6_analyze.py#L57) |
-| function | `centroid` | `(vs)` | — | [src](../../../scripts/phase6_analyze.py#L64) |
-| function | `main` | `()` | — | [src](../../../scripts/phase6_analyze.py#L69) |
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createSession, getSession, listSessions } from '../lib/apiClient'
+import { parseBlocks } from '../lib/persistedBlocks'
 import type { ApiConfig, ChatMessage, ChatSession } from '../lib/types'
 
 // G1 (spec §10) — porteret fra desk's bevist-virkende mergeServer-bro
@@ -97,7 +98,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // i live indtil serveren har persisteret svaret.
         const clientStatus: ClientStatus =
           message.role === 'assistant' ? 'server_missing_keep_stream' : 'optimistic_user'
-        setMessages((current) => [...current, { ...message, clientStatus }])
+        setMessages((current) => {
+          if (message.role === 'assistant') {
+            const final = assistantFinalText(message)
+            // Efter en baggrunds-genforbindelse kan et afsluttet run afspilles
+            // igen fra relay-bufferen. Serverens svar kan allerede staa her,
+            // men have en anden samling mellemtekster end live-snapshottet.
+            // Det sidste tekststykke er det samme endelige svar i begge.
+            for (let i = current.length - 1; i >= 0 && current[i]?.role !== 'user'; i--) {
+              if (current[i]?.role === 'assistant' && final && assistantFinalText(current[i]!) === final) {
+                return current
+              }
+            }
+          }
+          // Et 304 betyder kun at SERVEREN er uaendret. En ny lokal bro skal
+          // stadig flettes ved naeste select(), ellers kan den blive staaende
+          // ved siden af serverens kopi i det uendelige.
+          sidstFlettet.current = null
+          return [...current, { ...message, clientStatus }]
+        })
       },
       replaceMessages: (nextMessages) => {
         sidstFlettet.current = null
@@ -142,6 +161,12 @@ function assistantNorm(message: ChatMessage): string {
       .join('')
   }
   return raw.replace(/\s+/g, ' ').trim()
+}
+
+function assistantFinalText(message: ChatMessage): string {
+  const blocks = parseBlocks(message)
+  const last = blocks && [...blocks].reverse().find((block) => block.type === 'text' && block.text?.trim())
+  return (last?.text ?? assistantNorm(message)).replace(/\s+/g, ' ').trim()
 }
 
 /**

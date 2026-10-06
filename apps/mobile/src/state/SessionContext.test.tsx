@@ -55,12 +55,16 @@ function Probe() {
             id: 'local-assistant-run1-1',
             role: 'assistant',
             content: 'Streamet svar',
+            content_json: [{ type: 'text', text: 'Før arbejdet' }, { type: 'text', text: 'Endeligt svar' }],
             created_at: 'now'
           })
         }
       >
         appendAssistant
       </Text>
+      <Text onPress={() => appendLocalMessage({
+        id: 'local-assistant-replay', role: 'assistant', content: 'Andet snapshot', created_at: 'now',
+      })}>appendOtherAssistant</Text>
       <Text
         onPress={() =>
           replaceMessages([
@@ -172,6 +176,38 @@ it('clears sessions, active id, and messages after provider remount', async () =
   await waitFor(() => expect(remounted.getByText('none')).toBeTruthy())
   expect(remounted.getByText('inactive')).toBeTruthy()
   expect(remounted.getByText('empty')).toBeTruthy()
+})
+
+it('tilføjer ikke et replay-snapshot efter serverens endelige svar allerede er hentet', async () => {
+  const serverMessages = [
+    { id: 'u1', role: 'user', content: 'Godkend prop', created_at: 'now' },
+    { id: 'a1', role: 'assistant', content: 'Status. Endeligt svar',
+      content_json: [{ type: 'text', text: 'Status' }, { type: 'text', text: 'Endeligt svar' }], created_at: 'now' },
+  ]
+  mockGetSession.mockResolvedValue({
+    session: { id: 's2', title: 'Two', updated_at: 'now' }, messages: serverMessages,
+  })
+  const screen = await render(<SessionProvider><Probe /></SessionProvider>)
+  await act(async () => { await screen.getByText('select').props.onPress() })
+  await act(async () => { screen.getByText('appendAssistant').props.onPress() })
+  expect(screen.getByText('u1,a1')).toBeTruthy()
+})
+
+it('304 fletter lokale snapshots igen selv om serverens array er uændret', async () => {
+  const serverMessages = [
+    { id: 'u1', role: 'user', content: 'Godkend prop', created_at: 'now' },
+    { id: 'a1', role: 'assistant', content: 'Endeligt svar', created_at: 'now' },
+  ]
+  mockGetSession.mockResolvedValue({
+    session: { id: 's2', title: 'Two', updated_at: 'now' }, messages: serverMessages,
+    uaendret: true,
+  })
+  const screen = await render(<SessionProvider><Probe /></SessionProvider>)
+  await act(async () => { await screen.getByText('select').props.onPress() })
+  await act(async () => { screen.getByText('appendOtherAssistant').props.onPress() })
+  expect(screen.getByText('u1,a1,local-assistant-replay')).toBeTruthy()
+  await act(async () => { await screen.getByText('select').props.onPress() })
+  expect(screen.getByText('u1,a1')).toBeTruthy()
 })
 
 // G1 (spec §10): porteret fra desk's bevist-virkende mergeServer-bro. Disse

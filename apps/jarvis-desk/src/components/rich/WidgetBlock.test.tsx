@@ -51,7 +51,7 @@ describe('WidgetBlock', () => {
   it('henter fra den DB-backede /media/-sti, ikke sessions-registret', async () => {
     render(<WidgetBlock block={{ attachment_id: 'a-9', filename: 'w.html' }} config={config} />)
     await waitFor(() => expect(hent).toHaveBeenCalled())
-    const sti = String(hent.mock.calls[0][1])
+    const sti = String(hent.mock.calls[0]?.[1])
     expect(sti).toBe('/attachments/media/a-9')
     // `/attachments/{id}` kender kun denne sessions registry og ville dø ved reload.
     expect(sti).not.toBe('/attachments/a-9')

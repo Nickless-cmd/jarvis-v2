@@ -114,3 +114,33 @@ describe('mermaid i chatview', () => {
     }
   })
 })
+
+// ── Animations-stripningen må ikke ramme hele appen ──────────────────────────
+//
+// 0.6.202 gik ud med `* { animation: none !important }` indsat i diagrammets
+// `<style>`. En `<style>` inde i et INLINE svg er ikke scopet til svg'en — den
+// er et dokument-niveau stylesheet som alle andre, så reglen slog hver
+// animation og transition i HELE desk ud. Bjørn så det straks: «desk
+// animationer er stuck dem alle sammen på det nye build».
+//
+// Fejlen var usynlig for de otte eksisterende tests, fordi ingen af dem
+// renderer et diagram OG måler en animation i samme dokument. Testen her måler
+// i stedet TEKSTEN: reglen skal bære diagrammets eget id.
+
+describe('animations-stripningen', () => {
+  it('reglen er scopet til diagrammets eget id — aldrig et bart `*`', async () => {
+    const { udenAnimationForTest } = await import('./MermaidBlock')
+    const svg = '<svg id="mermaid-abc"><style>.edge{animation:flow 1s infinite}</style></svg>'
+    const ud = udenAnimationForTest(svg, 'mermaid-abc')
+    expect(ud).toContain('#mermaid-abc * { animation: none !important')
+    // Et bart `* {` ville gælde hele dokumentet.
+    expect(ud).not.toMatch(/<style[^>]*>\s*\*\s*\{/)
+  })
+
+  it('diagrammets egne animationer bliver stadig slået fra', async () => {
+    const { udenAnimationForTest } = await import('./MermaidBlock')
+    const ud = udenAnimationForTest('<svg id="m1"><style>x</style></svg>', 'm1')
+    expect(ud).toContain('animation: none !important')
+    expect(ud).toContain('transition: none !important')
+  })
+})

@@ -31,11 +31,21 @@ function hentMermaid(): Promise<typeof import('mermaid')> {
 }
 
 /** Mermaid lægger loopende CSS-animationer i sit output (kant-flow, puls).
- *  De kører for evigt og stjæler opmærksomhed i en samtale der står stille. */
-function udenAnimation(svg: string): string {
+ *  De kører for evigt og stjæler opmærksomhed i en samtale der står stille.
+ *
+ *  **Reglen SKAL scopes til diagrammets eget id.** En `<style>` inde i et
+ *  INLINE svg er ikke scopet til svg'en — den er et dokument-niveau stylesheet
+ *  som alle andre. Et bart `* { animation: none !important }` dér slog derfor
+ *  hver animation og transition i HELE desk ud, og `!important` gjorde den
+ *  uovervindelig. Bjørn så det med det samme på 0.6.202: «desk animationer er
+ *  stuck dem alle sammen på det nye build». Fejlen var usynlig i test, fordi
+ *  ingen test renderer et diagram OG en animation i samme dokument.
+ *
+ *  `id` er `mermaid-<base36>` og dermed en gyldig CSS-identifikator. */
+function udenAnimation(svg: string, id: string): string {
   return svg.replace(
     /(<style[^>]*>)/,
-    '$1* { animation: none !important; transition: none !important; }',
+    `$1#${id} * { animation: none !important; transition: none !important; }`,
   )
 }
 
@@ -75,7 +85,7 @@ export function MermaidBlock({ code }: { code: string }) {
     hentMermaid()
       .then((m) => m.default.render(id, code))
       .then(({ svg: tegnet }) => {
-        const ren = udenAnimation(tegnet)
+        const ren = udenAnimation(tegnet, id)
         svgCache.set(code, ren)
         if (alive) {
           setSvg(ren)
@@ -110,3 +120,8 @@ export function MermaidBlock({ code }: { code: string }) {
     />
   )
 }
+
+/** Test-søm. Egenskaben «reglen er scopet» kan ikke måles gennem en render:
+ *  mermaid er 4 MB og lazy, og ingen test renderer et diagram OG en animation
+ *  i samme dokument — det var præcis derfor 0.6.202 slap igennem. */
+export const udenAnimationForTest = udenAnimation

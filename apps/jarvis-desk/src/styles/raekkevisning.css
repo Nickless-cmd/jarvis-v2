@@ -647,9 +647,17 @@
  *
  * Ingen baggrund og ingen ramme som standard — dokumentet har selv
  * gennemsigtig baggrund, så widget'en flyder på trådens flade i stedet for at
- * stå i en kasse i en kasse. Rammen kommer kun frem mens den hentes eller hvis
- * den fejler, hvor der ER noget at afgrænse. */
-.rv-widget {
+ * stå i en kasse i en kasse.
+ *
+ * SCOPET under `.raekkevisning` som alt andet her: vi deler stylesheet med
+ * bobblevisningen, og `.rv-widget { … }` uden rod-klassen ville ramme klasser
+ * vi ikke ejer. Vagten i RaekkeTranskript.test fangede netop det i min første
+ * udgave.
+ *
+ * Og padding gennem tokens, ikke tal: `10px 12px` lagde et andet literalt
+ * `12px` ind, og rvTokens-vagten fanger det — tokenet ER rollen «side-padding»,
+ * så et tal ved siden af er en anden sandhed om samme afstand. */
+.raekkevisning .rv-widget {
   width: 100%;
   border: 0;
   display: block;
@@ -659,14 +667,14 @@
   color-scheme: light dark;
 }
 
-.rv-widget-venter,
-.rv-widget-fejl {
+.raekkevisning .rv-widget-venter,
+.raekkevisning .rv-widget-fejl {
   font-size: 0.86rem;
   opacity: 0.72;
-  padding: 10px 12px;
+  padding: var(--rv-pad-lodret) var(--rv-pad-side);
 }
 
-.rv-widget-fejl {
+.raekkevisning .rv-widget-fejl {
   /* Samme dæmpede rødtone som resten af husets fejlflader — en widget der
    * ikke kan vises er en oplysning, ikke en alarm. */
   color: var(--fejl-tekst, #d98a7a);

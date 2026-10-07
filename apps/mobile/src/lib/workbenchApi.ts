@@ -15,14 +15,25 @@ export type OperatorChannel = {
   udloeber_om_s?: number
 }
 
-export async function fetchOperatorChannel(config: ApiConfig): Promise<OperatorChannel> {
-  return apiFetch<OperatorChannel>(config, '/workbench/operator-channel')
+export async function fetchOperatorChannel(
+  config: ApiConfig,
+  sessionId?: string,
+): Promise<OperatorChannel> {
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''
+  return apiFetch<OperatorChannel>(config, `/workbench/operator-channel${q}`)
 }
 
-export async function lukOperatorChannel(config: ApiConfig): Promise<OperatorChannel> {
+export async function lukOperatorChannel(
+  config: ApiConfig,
+  sessionId?: string,
+): Promise<OperatorChannel> {
+  // Session-id'et SKAL med (målt 7/10-2026): kanalen er pr. session, og et kald
+  // uden id ramte nøglen `_default` — mens bash bruger `chat-<session>`. Uden
+  // det viste telefonen «Luk» om en kanal den aldrig rørte. Serveren afviser
+  // nu et kald uden id med 400 frem for at skrive en nøgle ingen bruger.
   return apiFetch<OperatorChannel>(config, '/workbench/operator-channel/close', {
     method: 'POST',
-    body: {},
+    body: sessionId ? { session_id: sessionId } : {},
   })
 }
 

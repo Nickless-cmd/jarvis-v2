@@ -133,7 +133,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
       setReviews(rev)
       // Fejler kaldet, står feltet tomt frem for at lægge en fejlbjælke over
       // de godkendelser der FAKTISK blokerer et run — samme regel som tankerne.
-      setKanal(await fetchOperatorChannel(config).catch(() => null))
+      setKanal(await fetchOperatorChannel(config, sessions.activeId ?? undefined).catch(() => null))
       if (d) {
         setDecisions(d.items)
         setUbesvarede(d.expiredUnanswered)
@@ -343,7 +343,7 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
                 style={styles.kanalKnap}
                 onPress={() => {
                   if (!config) return
-                  void lukOperatorChannel(config).then(setKanal).catch(() => undefined)
+                  void lukOperatorChannel(config, sessions.activeId ?? undefined).then(setKanal).catch(() => undefined)
                 }}
               >
                 <Text style={styles.kanalKnapTekst}>Luk</Text>

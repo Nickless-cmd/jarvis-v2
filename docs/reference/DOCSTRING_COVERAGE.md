@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8517/16094 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8524/16105 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8517/16094 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 735 | 1319 | 55% |
-| `core.services` | 5689 | 10961 | 51% |
+| `core.runtime` | 739 | 1327 | 55% |
+| `core.services` | 5692 | 10964 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8517/16094 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2239)
+## Undocumented public functions (2241)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -332,6 +332,8 @@ Generated from source. 8517/16094 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
+- `core/runtime/db_agent_wait.py` :: `ensure_wait_tables` (L30)
+- `core/runtime/db_agent_wait.py` :: `get_contract` (L134)
 - `core/runtime/db_approval_bridge.py` :: `state` (L315)
 - `core/runtime/db_autonomy.py` :: `create_autonomy_proposal` (L82)
 - `core/runtime/db_autonomy.py` :: `get_autonomy_proposal` (L152)
@@ -1153,7 +1155,7 @@ Generated from source. 8517/16094 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L844)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L845)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L291)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L269)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)

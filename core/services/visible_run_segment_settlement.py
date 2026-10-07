@@ -111,7 +111,16 @@ def settle_user_stop(*, run_id: str, session_id: str = "", task_id: str = "",
     vide bagefter, hvis nogen nåede det. Et stop der ikke er skrevet ned, ser
     ud som en afbrudt tur — og en afbrudt tur bliver genoptaget. Brugeren ville
     altså se sit eget stop starte igen af sig selv.
+
+    agent-contract-v1 (B2): stopmarkoeren for agent-vaekninger skrives ALLERFOERST,
+    saa et barn der bliver faerdigt mens stoppet afvikles ikke kan vaekke parenten.
     """
+    try:
+        from core.runtime.db_agent_wait import block_wakes_for_run
+        block_wakes_for_run(run_id=str(run_id), reason=str(reason))
+    except Exception:
+        logger.warning("kunne ikke spaerre agent-vaekninger ved brugerstop af %s", run_id,
+                       exc_info=True)
     return settle_segment_exit(
         run_id=run_id, session_id=session_id, task_id=task_id,
         exit_reason=reason, explicit_user_cancel=True,

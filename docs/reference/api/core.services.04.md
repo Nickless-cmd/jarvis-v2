@@ -2,6 +2,50 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/candidate_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_contract_candidates_for_visible_turn` | `(*, session_id, run_id, user_message, assistant_message)` | — | [src](../../../core/services/candidate_tracking.py#L45) |
+| function | `track_runtime_contract_candidates_for_session_review` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L76) |
+| function | `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L136) |
+| function | `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L165) |
+| function | `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L194) |
+| function | `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L223) |
+| function | `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L259) |
+| function | `auto_apply_safe_user_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L290) |
+| function | `auto_apply_safe_memory_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L299) |
+| function | `_preference_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L308) |
+| function | `_extract_candidates_from_user_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L397) |
+| function | `_extract_candidates_from_memory_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L416) |
+| function | `_extract_candidates_from_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L435) |
+| function | `_extract_candidates_from_selfhood_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L454) |
+| function | `_extract_candidates_from_chronicle_consolidation_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L473) |
+| function | `_memory_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L497) |
+| function | `_is_explicit_repo_context_memory` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L552) |
+| function | `_repo_context_memory_line` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L570) |
+| function | `_candidate_from_user_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L579) |
+| function | `_candidate_from_memory_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L646) |
+| function | `_candidate_from_self_authored_prompt_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L729) |
+| function | `_candidate_from_selfhood_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L792) |
+| function | `_candidate_from_chronicle_consolidation_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L846) |
+| function | `_extract_candidates_from_messages` | `(messages, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L898) |
+| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L920) |
+| function | `_candidate_already_applied` | `(candidate)` | True når denne nøgle allerede er AFGJORT og ikke må genopstå. | [src](../../../core/services/candidate_tracking.py#L1009) |
+| function | `_memory_proposal_domain` | `(canonical_key)` | Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del. | [src](../../../core/services/candidate_tracking.py#L1027) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1040) |
+| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1048) |
+| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1098) |
+| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1122) |
+| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1143) |
+| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1167) |
+| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1178) |
+| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1184) |
+| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1196) |
+| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1228) |
+| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1240) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1247) |
+
 ## `core/services/causal_graph.py`
 _Causal graph query API._
 
@@ -560,22 +604,4 @@ _The Exiles — et sind der ikke er Jarvis._
 | function | `list_exchanges` | `(*, limit=…)` | — | [src](../../../core/services/central_exile.py#L119) |
 | function | `exile_state` | `()` | Exilens tilstand: dens mål + hvor stor dens egen hukommelse er + seneste replik. Self-safe. | [src](../../../core/services/central_exile.py#L129) |
 | function | `build_exile_surface` | `()` | Owner/self-view: exilens tilstand + seneste udveksling + følt linje. Self-safe. | [src](../../../core/services/central_exile.py#L141) |
-
-## `core/services/central_existence_feel.py`
-_core/services/central_existence_feel.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hold_reading` | `(name, reading)` | Hold en kompakt aflæsning durabelt så describe_self kan læse den model-frit efter genstart. | [src](../../../core/services/central_existence_feel.py#L48) |
-| function | `_read_held` | `(name)` | Ren KV-læsning (ingen syntese på læse-tid → hot-path-sikker). Self-safe. | [src](../../../core/services/central_existence_feel.py#L58) |
-| function | `_continuity_signal` | `()` | continuity_kernel: existence_feeling (0-1) + tick_count + narrativ. None hvis intet tick endnu. | [src](../../../core/services/central_existence_feel.py#L71) |
-| function | `_idle_hours` | `()` | Timer siden sidste synlige run (samme kilde som cognitive_state_assembly bruger). Self-safe → 0. | [src](../../../core/services/central_existence_feel.py#L93) |
-| function | `_subjective_time_signal` | `()` | subjective_time: den oplevede tids-fornemmelse (feel-label) + idle_hours som skalar-akse. | [src](../../../core/services/central_existence_feel.py#L110) |
-| function | `_mortality_signal` | `()` | mortality_awareness: mortality (0-1) + label + meaning_weight. None hvis intet beregnes. | [src](../../../core/services/central_existence_feel.py#L128) |
-| function | `get_continuity_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L151) |
-| function | `get_subjective_time_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L155) |
-| function | `get_mortality_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L159) |
-| function | `describe_existence_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de tre holdte aflæsninger. | [src](../../../core/services/central_existence_feel.py#L163) |
-| function | `register_existence_feel_layers` | `()` | Registrér de tre stille selv-lag som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_existence_feel.py#L196) |
-| function | `build_existence_feel_surface` | `()` | Mission Control (read-only): de tre holdte aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_existence_feel.py#L219) |
 

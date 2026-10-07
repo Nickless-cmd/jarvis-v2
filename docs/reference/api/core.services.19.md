@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/post_tool_answer_guard.py`
+_Guards for tool turns that end in hollow final prose._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tool_call_count` | `(exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L13) |
+| function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
+| function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
+
 ## `core/services/precision_bias.py`
 _Precision Bias — emotional color-mapping for action style._
 
@@ -734,16 +743,4 @@ _Prompt-cluster (Den Intelligente Central) — Phase 1: live on/off + trace for 
 | function | `_parse_memory_selection_response` | `(text, *, entry_count, max_lines)` | — | [src](../../../core/services/prompt_relevance_backend.py#L795) |
 | function | `_bounded_memory_candidates` | `(entries)` | — | [src](../../../core/services/prompt_relevance_backend.py#L846) |
 | function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/prompt_relevance_backend.py#L857) |
-
-## `core/services/prompt_section_impact.py`
-_Lightweight prompt-section answer-impact telemetry._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SectionImpact` | `` | — | [src](../../../core/services/prompt_section_impact.py#L19) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_section_impact.py#L27) |
-| function | `estimate_section_impact` | `(label, section_text, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L35) |
-| function | `observe_answer_impact` | `(*, run_id, answer_text, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L50) |
-| function | `remember_prompt_sections` | `(*, session_id, sections)` | — | [src](../../../core/services/prompt_section_impact.py#L75) |
-| function | `observe_last_prompt_answer_impact` | `(*, session_id, run_id, answer_text)` | — | [src](../../../core/services/prompt_section_impact.py#L86) |
 

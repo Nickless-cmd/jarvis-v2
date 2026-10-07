@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_wake_intentions.py`
+_Varig fortsaettelsesintention for en parent der venter paa agenter (B2, §6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `wake_message` | `(*, condition, assignment_ids)` | Teksten der starter det vaagnede run. Maerket som fra systemet (staaende | [src](../../../core/services/agent_wake_intentions.py#L26) |
+| function | `stage_wake` | `(*, task_id, session_id, owner_user_id, message, parent_run_id=…)` | Skriv intentionen. Idempotent paa `task_id`. Findes der allerede en anden | [src](../../../core/services/agent_wake_intentions.py#L39) |
+| function | `cancel_pending_wake` | `(task_id, *, reason)` | Aflys en vaekning der endnu IKKE er startet. En allerede claimet (`running`) | [src](../../../core/services/agent_wake_intentions.py#L79) |
+
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._
 
@@ -570,22 +579,4 @@ _Autonomous goals — persistent top-level goals with decomposition._
 | function | `_exec_goal_list` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L241) |
 | function | `_exec_goal_decompose` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L251) |
 | function | `_exec_goal_update_status` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L255) |
-
-## `core/services/autonomous_lease.py`
-_visible↔autonomous mutual-exclusion lease (marker-default)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `(now_ts)` | — | [src](../../../core/services/autonomous_lease.py#L37) |
-| function | `acquire_visible` | `(ttl_s=…, now_ts=…)` | Visible lane claims the lease for ``ttl_s`` seconds (fail-open). | [src](../../../core/services/autonomous_lease.py#L41) |
-| function | `release_visible` | `()` | Visible lane releases the lease (fail-open). | [src](../../../core/services/autonomous_lease.py#L52) |
-| function | `visible_active` | `(now_ts=…)` | True if a visible lease is currently held and not expired (fail-open). | [src](../../../core/services/autonomous_lease.py#L60) |
-| function | `_read_markers` | `()` | — | [src](../../../core/services/autonomous_lease.py#L75) |
-| function | `_write_markers` | `(markers)` | — | [src](../../../core/services/autonomous_lease.py#L85) |
-| function | `pending_markers` | `()` | Read (without draining) the deferred autonomous markers. | [src](../../../core/services/autonomous_lease.py#L92) |
-| function | `consume_markers` | `()` | Read AND drain the deferred markers (a second call returns empty). | [src](../../../core/services/autonomous_lease.py#L97) |
-| function | `try_autonomous_dispatch` | `(payload, now_ts=…, *, scope=…, session_id=…, control_plane=…)` | Gate an autonomous dispatch against the visible lane. | [src](../../../core/services/autonomous_lease.py#L105) |
-| function | `_resolve_role` | `(user_id, role)` | Resolve the member role, preferring an explicit ``role``. | [src](../../../core/services/autonomous_lease.py#L149) |
-| function | `nudge_allowed_for` | `(marker, *, user_id=…, session_id=…, role=…)` | Role- AND session-gate: may this nudge surface for this user/session? | [src](../../../core/services/autonomous_lease.py#L170) |
-| function | `markers_for` | `(*, user_id=…, session_id=…, role=…, drain=…)` | Return the deferred markers this user/session/role is allowed to see. | [src](../../../core/services/autonomous_lease.py#L213) |
 

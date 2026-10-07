@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_lease.py`
+_visible↔autonomous mutual-exclusion lease (marker-default)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `(now_ts)` | — | [src](../../../core/services/autonomous_lease.py#L37) |
+| function | `acquire_visible` | `(ttl_s=…, now_ts=…)` | Visible lane claims the lease for ``ttl_s`` seconds (fail-open). | [src](../../../core/services/autonomous_lease.py#L41) |
+| function | `release_visible` | `()` | Visible lane releases the lease (fail-open). | [src](../../../core/services/autonomous_lease.py#L52) |
+| function | `visible_active` | `(now_ts=…)` | True if a visible lease is currently held and not expired (fail-open). | [src](../../../core/services/autonomous_lease.py#L60) |
+| function | `_read_markers` | `()` | — | [src](../../../core/services/autonomous_lease.py#L75) |
+| function | `_write_markers` | `(markers)` | — | [src](../../../core/services/autonomous_lease.py#L85) |
+| function | `pending_markers` | `()` | Read (without draining) the deferred autonomous markers. | [src](../../../core/services/autonomous_lease.py#L92) |
+| function | `consume_markers` | `()` | Read AND drain the deferred markers (a second call returns empty). | [src](../../../core/services/autonomous_lease.py#L97) |
+| function | `try_autonomous_dispatch` | `(payload, now_ts=…, *, scope=…, session_id=…, control_plane=…)` | Gate an autonomous dispatch against the visible lane. | [src](../../../core/services/autonomous_lease.py#L105) |
+| function | `_resolve_role` | `(user_id, role)` | Resolve the member role, preferring an explicit ``role``. | [src](../../../core/services/autonomous_lease.py#L149) |
+| function | `nudge_allowed_for` | `(marker, *, user_id=…, session_id=…, role=…)` | Role- AND session-gate: may this nudge surface for this user/session? | [src](../../../core/services/autonomous_lease.py#L170) |
+| function | `markers_for` | `(*, user_id=…, session_id=…, role=…, drain=…)` | Return the deferred markers this user/session/role is allowed to see. | [src](../../../core/services/autonomous_lease.py#L213) |
+
 ## `core/services/autonomous_outreach_daemon.py`
 _Autonomous Outreach Daemon — Jarvis reaches out on his own initiative._
 
@@ -565,48 +583,4 @@ _Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshe
 | function | `format_candidate_review_digest` | `(digest)` | Kort, ærlig tekst. Kun tal der faktisk står i digest'en. | [src](../../../core/services/candidate_review_digest.py#L129) |
 | function | `tick_candidate_review_digest` | `()` | Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe. | [src](../../../core/services/candidate_review_digest.py#L146) |
 | function | `build_candidate_review_digest_surface` | `()` | State til Mission Control / health-visninger. | [src](../../../core/services/candidate_review_digest.py#L188) |
-
-## `core/services/candidate_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_contract_candidates_for_visible_turn` | `(*, session_id, run_id, user_message, assistant_message)` | — | [src](../../../core/services/candidate_tracking.py#L45) |
-| function | `track_runtime_contract_candidates_for_session_review` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L76) |
-| function | `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L136) |
-| function | `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L165) |
-| function | `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L194) |
-| function | `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L223) |
-| function | `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L259) |
-| function | `auto_apply_safe_user_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L290) |
-| function | `auto_apply_safe_memory_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L299) |
-| function | `_preference_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L308) |
-| function | `_extract_candidates_from_user_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L397) |
-| function | `_extract_candidates_from_memory_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L416) |
-| function | `_extract_candidates_from_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L435) |
-| function | `_extract_candidates_from_selfhood_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L454) |
-| function | `_extract_candidates_from_chronicle_consolidation_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L473) |
-| function | `_memory_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L497) |
-| function | `_is_explicit_repo_context_memory` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L552) |
-| function | `_repo_context_memory_line` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L570) |
-| function | `_candidate_from_user_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L579) |
-| function | `_candidate_from_memory_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L646) |
-| function | `_candidate_from_self_authored_prompt_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L729) |
-| function | `_candidate_from_selfhood_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L792) |
-| function | `_candidate_from_chronicle_consolidation_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L846) |
-| function | `_extract_candidates_from_messages` | `(messages, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L898) |
-| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L920) |
-| function | `_candidate_already_applied` | `(candidate)` | True når denne nøgle allerede er AFGJORT og ikke må genopstå. | [src](../../../core/services/candidate_tracking.py#L1009) |
-| function | `_memory_proposal_domain` | `(canonical_key)` | Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del. | [src](../../../core/services/candidate_tracking.py#L1027) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1040) |
-| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1048) |
-| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1098) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1122) |
-| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1143) |
-| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1167) |
-| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1178) |
-| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1184) |
-| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1196) |
-| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1228) |
-| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1240) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1247) |
 

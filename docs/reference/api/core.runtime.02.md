@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_governance_ledger.py`
+_Governance-ledger — PERSISTENT log af governerede mutationer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | Opret governance_ledger-tabellen hvis den ikke findes. Idempotent. | [src](../../../core/runtime/db_governance_ledger.py#L23) |
+| function | `record_mutation` | `(area, key, value)` | Skriv én række til governance_ledger. Self-safe — sluger fejl. | [src](../../../core/runtime/db_governance_ledger.py#L50) |
+| function | `read_ledger` | `(area=…, limit=…)` | Læs seneste mutationer. Filtrér på area hvis givet. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_governance_ledger.py#L73) |
+| function | `summary` | `()` | Aggregér pr. area: {area: {total, latest_ts, keys: [distinkte nøgler]}}. | [src](../../../core/runtime/db_governance_ledger.py#L110) |
+
 ## `core/runtime/db_heartbeat.py`
 _Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
 
@@ -940,14 +950,4 @@ _JarvisX bearer-token authentication._
 | function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L307) |
 | function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L348) |
 | function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L381) |
-
-## `core/runtime/ollamafreeapi_provider.py`
-_OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_client` | `()` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L19) |
-| function | `collapse_messages_to_prompt` | `(messages)` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L26) |
-| function | `list_ollamafreeapi_models` | `()` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L39) |
-| function | `call_ollamafreeapi` | `(*, model, messages=…, prompt=…, timeout=…)` | Call OllamaFreeAPI and return an Ollama-compatible response shape. | [src](../../../core/runtime/ollamafreeapi_provider.py#L43) |
 

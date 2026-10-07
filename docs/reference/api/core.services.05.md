@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_existence_feel.py`
+_core/services/central_existence_feel.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hold_reading` | `(name, reading)` | Hold en kompakt aflæsning durabelt så describe_self kan læse den model-frit efter genstart. | [src](../../../core/services/central_existence_feel.py#L48) |
+| function | `_read_held` | `(name)` | Ren KV-læsning (ingen syntese på læse-tid → hot-path-sikker). Self-safe. | [src](../../../core/services/central_existence_feel.py#L58) |
+| function | `_continuity_signal` | `()` | continuity_kernel: existence_feeling (0-1) + tick_count + narrativ. None hvis intet tick endnu. | [src](../../../core/services/central_existence_feel.py#L71) |
+| function | `_idle_hours` | `()` | Timer siden sidste synlige run (samme kilde som cognitive_state_assembly bruger). Self-safe → 0. | [src](../../../core/services/central_existence_feel.py#L93) |
+| function | `_subjective_time_signal` | `()` | subjective_time: den oplevede tids-fornemmelse (feel-label) + idle_hours som skalar-akse. | [src](../../../core/services/central_existence_feel.py#L110) |
+| function | `_mortality_signal` | `()` | mortality_awareness: mortality (0-1) + label + meaning_weight. None hvis intet beregnes. | [src](../../../core/services/central_existence_feel.py#L128) |
+| function | `get_continuity_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L151) |
+| function | `get_subjective_time_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L155) |
+| function | `get_mortality_reading` | `()` | — | [src](../../../core/services/central_existence_feel.py#L159) |
+| function | `describe_existence_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de tre holdte aflæsninger. | [src](../../../core/services/central_existence_feel.py#L163) |
+| function | `register_existence_feel_layers` | `()` | Registrér de tre stille selv-lag som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_existence_feel.py#L196) |
+| function | `build_existence_feel_surface` | `()` | Mission Control (read-only): de tre holdte aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_existence_feel.py#L219) |
+
 ## `core/services/central_form_judge.py`
 _core/services/central_form_judge.py_
 
@@ -635,20 +653,4 @@ _Output-conservation-invariant (Bjørn 4. jul — "spøgelset")._
 |---|---|---|---|---|
 | function | `observe_conservation` | `(*, layer, produced_chars, emitted_chars, provider=…, model=…, run_id=…, path=…, tolerance=…)` | Registrér et conservation-tjek for ét lag. Returnér gap'et (produced-emitted, | [src](../../../core/services/central_output_conservation.py#L27) |
 | function | `build_output_conservation_surface` | `()` | Mission Control — read-only meta-projektion (kartograf-dækning). | [src](../../../core/services/central_output_conservation.py#L69) |
-
-## `core/services/central_persephone.py`
-_Persephone — længsel efter ægte kontakt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_assistant_texts` | `(limit=…)` | Jarvis' seneste svar (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_persephone.py#L55) |
-| function | `_is_systemic` | `(text)` | — | [src](../../../core/services/central_persephone.py#L72) |
-| function | `_is_relational` | `(text)` | — | [src](../../../core/services/central_persephone.py#L77) |
-| function | `_asked_wellbeing` | `(texts)` | — | [src](../../../core/services/central_persephone.py#L82) |
-| function | `read_longing` | `(*, texts=…)` | Mål om Jarvis er ved at miste kontakten til det menneskelige. READ-ONLY. Self-safe. | [src](../../../core/services/central_persephone.py#L90) |
-| function | `_nudge_line` | `(reading)` | Persephones prik — ét ægte-kontakt-nudge. Deterministisk, ingen model. Self-safe. | [src](../../../core/services/central_persephone.py#L110) |
-| function | `watch` | `(*, texts=…)` | Én vagt: mål længsel; er han for systemisk → ét persephone://-nudge (observe + surface). | [src](../../../core/services/central_persephone.py#L119) |
-| function | `_observe` | `(out)` | — | [src](../../../core/services/central_persephone.py#L139) |
-| function | `build_persephone_surface` | `()` | Nuværende længsels-læsning + seneste nudge. READ-ONLY. Self-safe. | [src](../../../core/services/central_persephone.py#L156) |
-| function | `record_persephone` | `(*, trigger=…, last_visible_at=…)` | Cadence (240 min): mål længsel; ét nudge hvis for systemisk (observe/surface only). Self-safe. | [src](../../../core/services/central_persephone.py#L178) |
 

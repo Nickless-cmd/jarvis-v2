@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16094 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16105 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -26,38 +26,38 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16094 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_governance_ledger`
-- [`core.runtime.02`](core.runtime.02.md) — `db_heartbeat` … `ollamafreeapi_provider`
-- [`core.runtime.03`](core.runtime.03.md) — `operational_preference_alignment` … `ws_auth`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_governance`
+- [`core.runtime.02`](core.runtime.02.md) — `db_governance_ledger` … `jarvisx_auth`
+- [`core.runtime.03`](core.runtime.03.md) — `ollamafreeapi_provider` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_transcript`
-- [`core.services.02`](core.services.02.md) — `agentic_checkpoints` … `autonomous_lease`
-- [`core.services.03`](core.services.03.md) — `autonomous_outreach_daemon` … `candidate_tracking`
-- [`core.services.04`](core.services.04.md) — `causal_graph` … `central_existence_feel`
-- [`core.services.05`](core.services.05.md) — `central_form_judge` … `central_persephone`
-- [`core.services.06`](core.services.06.md) — `central_private_observe` … `central_valence`
-- [`core.services.07`](core.services.07.md) — `central_watch` … `cluster_family_scheduler`
-- [`core.services.08`](core.services.08.md) — `code_aesthetic_daemon` … `conversation_topics`
-- [`core.services.09`](core.services.09.md) — `copilot_catalogue` … `decision_enforcement`
-- [`core.services.10`](core.services.10.md) — `decision_evidence` … `dream_action_executor`
-- [`core.services.11`](core.services.11.md) — `dream_adoption_candidate_tracking` … `end_of_run_memory_consolidation`
-- [`core.services.12`](core.services.12.md) — `endpoint_usage_store` … `gate_auth`
-- [`core.services.13`](core.services.13.md) — `gate_commit` … `hallucination_guard`
-- [`core.services.14`](core.services.14.md) — `handover_tools` … `initiative_queue`
-- [`core.services.15`](core.services.15.md) — `inner_dialectic_engine` … `llm_pricing`
-- [`core.services.16`](core.services.16.md) — `local_intent_gate` … `meta_learning_retrospective`
-- [`core.services.17`](core.services.17.md) — `meta_reflection_daemon` … `oauth_flow`
-- [`core.services.18`](core.services.18.md) — `oauth_store` … `post_tool_answer_guard`
-- [`core.services.19`](core.services.19.md) — `precision_bias` … `prompt_section_impact`
-- [`core.services.20`](core.services.20.md) — `prompt_section_reevaluation` … `regret_engine`
-- [`core.services.21`](core.services.21.md) — `regulation_homeostasis_signal_tracking` … `runtime_action_registry`
-- [`core.services.22`](core.services.22.md) — `runtime_awareness_signal_tracking` … `self_model_history`
-- [`core.services.23`](core.services.23.md) — `self_model_predictive` … `session_wakeup`
-- [`core.services.24`](core.services.24.md) — `settlement_shadow` … `spatial_entity_ledger`
-- [`core.services.25`](core.services.25.md) — `spild` … `thought_leak_guard`
-- [`core.services.26`](core.services.26.md) — `thought_stream_daemon` … `user_activity`
-- [`core.services.27`](core.services.27.md) — `user_contradiction_tracker` … `visible_run_recovery_dispatcher`
-- [`core.services.28`](core.services.28.md) — `visible_run_segment_exit` … `world_facts`
-- [`core.services.29`](core.services.29.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agent_wake_intentions` … `autonomous_goals`
+- [`core.services.03`](core.services.03.md) — `autonomous_lease` … `candidate_review_digest`
+- [`core.services.04`](core.services.04.md) — `candidate_tracking` … `central_exile`
+- [`core.services.05`](core.services.05.md) — `central_existence_feel` … `central_output_conservation`
+- [`core.services.06`](core.services.06.md) — `central_persephone` … `central_twins`
+- [`core.services.07`](core.services.07.md) — `central_valence` … `cluster_daemon_families`
+- [`core.services.08`](core.services.08.md) — `cluster_family_scheduler` … `conversation_rhythm`
+- [`core.services.09`](core.services.09.md) — `conversation_topics` … `decision_adherence_gate`
+- [`core.services.10`](core.services.10.md) — `decision_enforcement` … `docs_drift_watchdog`
+- [`core.services.11`](core.services.11.md) — `dream_action_executor` … `encryption`
+- [`core.services.12`](core.services.12.md) — `end_of_run_memory_consolidation` … `gate_adapters`
+- [`core.services.13`](core.services.13.md) — `gate_auth` … `habits_pipeline`
+- [`core.services.14`](core.services.14.md) — `hallucination_guard` … `initiative_accumulator`
+- [`core.services.15`](core.services.15.md) — `initiative_queue` … `llm_json`
+- [`core.services.16`](core.services.16.md) — `llm_pricing` … `meta_learning_hypotheses`
+- [`core.services.17`](core.services.17.md) — `meta_learning_retrospective` … `nudge_broend`
+- [`core.services.18`](core.services.18.md) — `oauth_flow` … `policy_abstraction`
+- [`core.services.19`](core.services.19.md) — `post_tool_answer_guard` … `prompt_relevance_backend`
+- [`core.services.20`](core.services.20.md) — `prompt_section_impact` … `reflective_critic_tracking`
+- [`core.services.21`](core.services.21.md) — `regret_engine` … `runtime_action_outcome_tracking`
+- [`core.services.22`](core.services.22.md) — `runtime_action_registry` … `self_model_distiller`
+- [`core.services.23`](core.services.23.md) — `self_model_history` … `session_view`
+- [`core.services.24`](core.services.24.md) — `session_wakeup` … `spaced_repetition`
+- [`core.services.25`](core.services.25.md) — `spatial_entity_ledger` … `thought_action_proposal_daemon`
+- [`core.services.26`](core.services.26.md) — `thought_leak_guard` … `upload_sandbox`
+- [`core.services.27`](core.services.27.md) — `user_activity` … `visible_run_recovery_coordinator`
+- [`core.services.28`](core.services.28.md) — `visible_run_recovery_dispatcher` … `workspace_trust`
+- [`core.services.29`](core.services.29.md) — `world_facts` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

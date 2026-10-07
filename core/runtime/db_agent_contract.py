@@ -13,11 +13,14 @@ kolonner. Eksisterende rækker har INGEN verificerbar ejer og mærkes
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import uuid
 from typing import Any
 
 from core.runtime.db_core import _now_iso, connect
+
+logger = logging.getLogger(__name__)
 
 LEGACY_UNSCOPED = "legacy_unscoped"
 CONTRACT_VERSION = "agent-contract-v1"
@@ -133,6 +136,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_agent_result_outbox_recipient "
         "ON agent_result_outbox(owner_user_id, origin_session_id, delivery_status)"
     )
+    from core.runtime.db_agent_wait import ensure_wait_tables
+
+    ensure_wait_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -335,10 +341,19 @@ def commit_terminal_outcome(
              a["origin_session_id"], a["agent_id"], a["parent_agent_id"],
              a["parent_run_id"], last, json.dumps(payload), now, now),
         )
+        from core.runtime.db_agent_wait import evaluate_in_tx
+        fired = evaluate_in_tx(conn, assignment_id)  # ventekontrakter, samme transaktion
         conn.commit()
     except BaseException:
         conn.rollback()
         raise
+    if fired:
+        from core.runtime.db_agent_wait import materialize_pending_wakes
+        try:
+            materialize_pending_wakes()
+        except Exception:
+            logger.warning("vaekning kunne ikke skrives nu; tages op af dispatcheren",
+                           exc_info=True)
     return {"committed": True, "assignment_status": status,
             "message": _row(conn.execute(
                 "SELECT * FROM agent_result_outbox WHERE message_id=?", (message_id,)

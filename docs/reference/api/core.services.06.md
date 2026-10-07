@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_persephone.py`
+_Persephone — længsel efter ægte kontakt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_assistant_texts` | `(limit=…)` | Jarvis' seneste svar (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_persephone.py#L55) |
+| function | `_is_systemic` | `(text)` | — | [src](../../../core/services/central_persephone.py#L72) |
+| function | `_is_relational` | `(text)` | — | [src](../../../core/services/central_persephone.py#L77) |
+| function | `_asked_wellbeing` | `(texts)` | — | [src](../../../core/services/central_persephone.py#L82) |
+| function | `read_longing` | `(*, texts=…)` | Mål om Jarvis er ved at miste kontakten til det menneskelige. READ-ONLY. Self-safe. | [src](../../../core/services/central_persephone.py#L90) |
+| function | `_nudge_line` | `(reading)` | Persephones prik — ét ægte-kontakt-nudge. Deterministisk, ingen model. Self-safe. | [src](../../../core/services/central_persephone.py#L110) |
+| function | `watch` | `(*, texts=…)` | Én vagt: mål længsel; er han for systemisk → ét persephone://-nudge (observe + surface). | [src](../../../core/services/central_persephone.py#L119) |
+| function | `_observe` | `(out)` | — | [src](../../../core/services/central_persephone.py#L139) |
+| function | `build_persephone_surface` | `()` | Nuværende længsels-læsning + seneste nudge. READ-ONLY. Self-safe. | [src](../../../core/services/central_persephone.py#L156) |
+| function | `record_persephone` | `(*, trigger=…, last_visible_at=…)` | Cadence (240 min): mål længsel; ét nudge hvis for systemisk (observe/surface only). Self-safe. | [src](../../../core/services/central_persephone.py#L178) |
+
 ## `core/services/central_private_observe.py`
 _core/services/central_private_observe.py_
 
@@ -595,21 +611,4 @@ _The Twins — gentagelses-detektor på tværs af tid._
 | function | `_observe` | `(out)` | — | [src](../../../core/services/central_twins.py#L183) |
 | function | `build_twins_surface` | `()` | Detekterede gentagende mønstre + følt linje. READ-ONLY. Self-safe. | [src](../../../core/services/central_twins.py#L200) |
 | function | `record_twins` | `(*, trigger=…, last_visible_at=…)` | Cadence (240 min): scan for gentagelser → twins://-signaler (observe/surface only). Self-safe. | [src](../../../core/services/central_twins.py#L219) |
-
-## `core/services/central_valence.py`
-_core/services/central_valence.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_valence.py#L18) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_valence.py#L27) |
-| function | `_read_valence_trajectory` | `()` | — | [src](../../../core/services/central_valence.py#L35) |
-| function | `_read_somatic` | `()` | — | [src](../../../core/services/central_valence.py#L49) |
-| function | `_read_stance` | `()` | — | [src](../../../core/services/central_valence.py#L60) |
-| function | `_tone_label` | `(score)` | Ét felt-ord for tilstanden ud fra den FRISKE (present-moment) score. Bevidst få, tydelige toner. | [src](../../../core/services/central_valence.py#L72) |
-| function | `integrate_valence` | `()` | Integrér de fire organer til ÉN følt tilstand {tone, score, intensitet}. Valens-trajektorien er | [src](../../../core/services/central_valence.py#L92) |
-| function | `get_valence_state` | `()` | Centralens durable følte tilstand (senest integrerede). Self-safe. | [src](../../../core/services/central_valence.py#L120) |
-| function | `run_valence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: integrér følelses-organerne → gem durabelt + egress-fri observe (kun skalarer/tone-label, | [src](../../../core/services/central_valence.py#L126) |
-| function | `register_valence_producer` | `()` | Registrér følt-tilstands-integrationen som cadence-producer (~hvert 15 min). Egress-frit. | [src](../../../core/services/central_valence.py#L142) |
-| function | `build_valence_surface` | `()` | Mission Control — read-only: Centralens ene følte tilstand. | [src](../../../core/services/central_valence.py#L154) |
 

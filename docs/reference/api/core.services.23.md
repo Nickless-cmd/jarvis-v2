@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_model_history.py`
+_Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/self_model_history.py#L46) |
+| function | `content_hash` | `(felter)` | Deterministisk hash over INDHOLDET alene. | [src](../../../core/services/self_model_history.py#L73) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/self_model_history.py#L79) |
+| function | `record_self_model_snapshot` | `(*, identity_focus, preferred_work_mode, recurring_tension, growth_direction, confidence, source=…, source_run_id=…, model_epoch_id=…, producer_trigger=…, created_at=…)` | Skriv ét billede og kaed det til det forrige. | [src](../../../core/services/self_model_history.py#L94) |
+| function | `list_self_model_snapshots` | `(*, limit=…, before=…, after=…)` | Nyeste foerst. `before`/`after` afgraenser paa tidsstempel. | [src](../../../core/services/self_model_history.py#L151) |
+| function | `compare_self_model_snapshots` | `(older_id, newer_id)` | Hvad aendrede sig mellem to billeder? | [src](../../../core/services/self_model_history.py#L169) |
+| function | `build_self_model_history_surface` | `(*, limit=…)` | Fladen: de seneste billeder, og hvad der skiftede mellem de to nyeste. | [src](../../../core/services/self_model_history.py#L202) |
+
 ## `core/services/self_model_predictive.py`
 _Predictive self-model — frequencies, not aspirations._
 
@@ -739,17 +752,4 @@ _Samtalens visningstilstand — Claude Desktops tre (cc-desktop-chatview.md §1)
 | function | `hent_visning` | `(session_id)` | Samtalens tilstand; `normal` for en ukendt samtale eller værdi. | [src](../../../core/services/session_view.py#L40) |
 | function | `saet_visning` | `(session_id, visning)` | — | [src](../../../core/services/session_view.py#L58) |
 | function | `vil_have_tanke_resume` | `(session_id)` | Skal kørslen lave tænke-resuméer for denne samtale? Kaster aldrig. | [src](../../../core/services/session_view.py#L75) |
-
-## `core/services/session_wakeup.py`
-_Eventbus → visible-prompt wake-up digest._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_notable` | `(kind)` | — | [src](../../../core/services/session_wakeup.py#L58) |
-| function | `_load_marks` | `()` | — | [src](../../../core/services/session_wakeup.py#L71) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/session_wakeup.py#L84) |
-| function | `last_seen_event_id` | `(session_id)` | — | [src](../../../core/services/session_wakeup.py#L88) |
-| function | `mark_seen` | `(session_id, event_id)` | — | [src](../../../core/services/session_wakeup.py#L92) |
-| function | `_format_event` | `(ev)` | — | [src](../../../core/services/session_wakeup.py#L100) |
-| function | `wakeup_digest` | `(session_id)` | Return a short digest of notable events since this session last saw, | [src](../../../core/services/session_wakeup.py#L116) |
 

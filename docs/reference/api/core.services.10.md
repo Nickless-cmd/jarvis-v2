@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_enforcement.py`
+_Decision enforcement — close the loop between commitment and behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `enforcement_section` | `()` | High-priority awareness: lists active decisions as obligations + asks | [src](../../../core/services/decision_enforcement.py#L39) |
+| function | `_raekkefoelge_blok` | `(blocks)` | Rækkefølgen som prompt-tekst — inkl. markøren når svaret blev skubbet. | [src](../../../core/services/decision_enforcement.py#L114) |
+| function | `_seneste_bruger_besked` | `(limit=…, workspace=…)` | De seneste beskeder fra brugeren — præmissen dommen skal holdes op mod. | [src](../../../core/services/decision_enforcement.py#L139) |
+| function | `_build_breach_prompt` | `(assistant_text, decisions, blocks=…)` | — | [src](../../../core/services/decision_enforcement.py#L179) |
+| function | `_parse_breaches` | `(text)` | — | [src](../../../core/services/decision_enforcement.py#L212) |
+| function | `_blok_tekst` | `(b)` | Blokkens tekst, trimmet. Tom for alt der ikke er en tekstblok. | [src](../../../core/services/decision_enforcement.py#L262) |
+| function | `_blok_kald` | `(b)` | Navnet på det værktøj blokken kalder — tom streng hvis den ikke er et kald. | [src](../../../core/services/decision_enforcement.py#L269) |
+| function | `blok_rekkefoelge` | `(blocks)` | Turens blokke som en kort, ordnet liste — til dommerens prompt. | [src](../../../core/services/decision_enforcement.py#L276) |
+| function | `svar_blev_arbejde` | `(blocks)` | Blev turens svar skubbet ind i «arbejdet»? | [src](../../../core/services/decision_enforcement.py#L301) |
+| function | `detect_breach_in_output` | `(assistant_text, blocks=…)` | Return list of detected breaches. Empty if none. LLM-led. | [src](../../../core/services/decision_enforcement.py#L348) |
+| function | `_blokke_fra_payload` | `(payload, besked)` | Turens blokliste ud af `channel.chat_message_appended`. | [src](../../../core/services/decision_enforcement.py#L421) |
+| function | `_observer_svar_skubbet` | `(blokke)` | Mål mønsteret i Centralen — uafhængigt af dommeren og dens cooldown. | [src](../../../core/services/decision_enforcement.py#L469) |
+| function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L498) |
+| function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L551) |
+
 ## `core/services/decision_evidence.py`
 _Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
 
@@ -601,17 +621,4 @@ _SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a 
 | function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L87) |
 | function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
 | function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
-
-## `core/services/dream_action_executor.py`
-_Dream-to-Action: den ende der manglede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mode` | `()` | ``'off'`` | ``'shadow'`` | ``'live'``. Default **live** siden 2026-09-04. | [src](../../../core/services/dream_action_executor.py#L56) |
-| function | `_parse_family` | `(provenance)` | ``{"family": "X->Y"}`` → ``("X", "Y")``. None hvis formen ikke er som forventet. | [src](../../../core/services/dream_action_executor.py#L74) |
-| function | `adjudicate` | `(from_fam, to_fam)` | Mål om regimet holdt. Ren læsning af sekvens-modellen; ændrer ingenting. | [src](../../../core/services/dream_action_executor.py#L84) |
-| function | `_observe_incident` | `(hyp_id, ver, *, applied)` | Klient-synlig, så indgreb er muligt uden at læse en database. | [src](../../../core/services/dream_action_executor.py#L114) |
-| function | `_bump_errors` | `()` | Gentagne fejl → `off`. Den genstarter ikke sig selv. | [src](../../../core/services/dream_action_executor.py#L129) |
-| function | `run_once` | `(*, limit=…)` | Ét gennemløb: find modne prediction_error-hypoteser, mål regimet, registrér. | [src](../../../core/services/dream_action_executor.py#L142) |
-| function | `build_executor_surface` | `()` | Overflade til Centralen: tilstand + hvad den ville/har gjort. Self-safe. | [src](../../../core/services/dream_action_executor.py#L200) |
 

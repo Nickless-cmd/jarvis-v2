@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_relay.py`
+_Agent relay — direct A→B messaging between sub-agents._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `relay_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | Send a message from agent A to agent B. | [src](../../../core/services/agent_relay.py#L25) |
+| function | `relay_to_role` | `(*, from_agent_id, council_id, role, content, kind=…)` | Send to whoever in this council holds the given role. | [src](../../../core/services/agent_relay.py#L82) |
+| function | `_exec_relay_message` | `(args)` | — | [src](../../../core/services/agent_relay.py#L107) |
+| function | `_exec_relay_to_role` | `(args)` | — | [src](../../../core/services/agent_relay.py#L116) |
+
 ## `core/services/agent_result_inbox.py`
 _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 
@@ -39,8 +49,8 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L397) |
 | function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L491) |
 | function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L540) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L668) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L672) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L679) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L683) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -617,18 +627,4 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 | function | `dispatch_pending_approval_notifications` | `(*, limit=…, deliver=…)` | — | [src](../../../core/services/approval_outbox.py#L106) |
 | function | `_worker` | `()` | — | [src](../../../core/services/approval_outbox.py#L155) |
 | function | `start_approval_outbox_dispatcher` | `()` | — | [src](../../../core/services/approval_outbox.py#L164) |
-
-## `core/services/approval_runtime.py`
-_Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `new_id` | `()` | — | [src](../../../core/services/approval_runtime.py#L41) |
-| function | `build_request` | `(*, tool_name, arguments, result, run, created_at=…)` | Byg et gyldigt godkendelses-kort. Det ENE sted formen bor. | [src](../../../core/services/approval_runtime.py#L45) |
-| function | `pending_for_session` | `(session_id)` | Det ventende godkendelses-kort for ÉN samtale — eller ``None``. | [src](../../../core/services/approval_runtime.py#L71) |
-| function | `pending_for_owner` | `(user_id)` | Det ventende kort for en EJER — uanset hvilken samtale det hører til. | [src](../../../core/services/approval_runtime.py#L104) |
-| function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L137) |
-| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L172) |
-| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L186) |
-| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L208) |
 

@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-NEW = ("dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work")
+NEW = ("dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
+       "convene_agent_council", "review_agent_work")
 ALL7 = ("dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
-        "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work")      # (spec'ens syv + integration)
+        "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
+        "convene_agent_council", "review_agent_work")      # (spec'ens syv + integration + raad/review)
 
 
 @pytest.fixture

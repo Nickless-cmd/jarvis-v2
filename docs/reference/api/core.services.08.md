@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_provider_breaker_adapters.py`
+_Per-provider circuit-breaker adaptere for OllamaFreeAPI og Arko._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ofa_circuit_open` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L24) |
+| function | `_ofa_circuit_record_failure` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L31) |
+| function | `_ofa_circuit_record_success` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L38) |
+| function | `_arko_circuit_open` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L49) |
+| function | `_arko_circuit_record_failure` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L56) |
+| function | `_arko_circuit_record_success` | `()` | — | [src](../../../core/services/cheap_provider_breaker_adapters.py#L63) |
+
 ## `core/services/cheap_provider_catalogue.py`
 _Kataloget over cheap-lane-udbydere — hvem findes, hvad koster de, hvad virker._
 
@@ -735,15 +747,4 @@ _Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.
 | function | `_load` | `()` | — | [src](../../../core/services/computer_use_policy.py#L30) |
 | function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
 | function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
-
-## `core/services/computer_use_samtykke.py`
-_Samtykke til at røre Bjørns mus og tastatur — én gang pr. samtale._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `kraever_samtykke` | `(vaerktoej)` | Er dette et værktøj der rører hans maskine? | [src](../../../core/services/computer_use_samtykke.py#L56) |
-| function | `har_samtykke` | `(session_id)` | — | [src](../../../core/services/computer_use_samtykke.py#L61) |
-| function | `giv_samtykke` | `(session_id)` | Kaldes når han har sagt ja. Gælder resten af samtalen i denne proces. | [src](../../../core/services/computer_use_samtykke.py#L66) |
-| function | `traek_tilbage` | `(session_id=…)` | Stop-knappen. Tom session_id trækker ALT tilbage — nødbremsen. | [src](../../../core/services/computer_use_samtykke.py#L75) |
-| function | `aktive_samtaler` | `()` | Hvilke samtaler har adgang lige nu? Desk viser mærket ud fra den her. | [src](../../../core/services/computer_use_samtykke.py#L85) |
 

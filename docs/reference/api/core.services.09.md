@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/computer_use_samtykke.py`
+_Samtykke til at røre Bjørns mus og tastatur — én gang pr. samtale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kraever_samtykke` | `(vaerktoej)` | Er dette et værktøj der rører hans maskine? | [src](../../../core/services/computer_use_samtykke.py#L56) |
+| function | `har_samtykke` | `(session_id)` | — | [src](../../../core/services/computer_use_samtykke.py#L61) |
+| function | `giv_samtykke` | `(session_id)` | Kaldes når han har sagt ja. Gælder resten af samtalen i denne proces. | [src](../../../core/services/computer_use_samtykke.py#L66) |
+| function | `traek_tilbage` | `(session_id=…)` | Stop-knappen. Tom session_id trækker ALT tilbage — nødbremsen. | [src](../../../core/services/computer_use_samtykke.py#L75) |
+| function | `aktive_samtaler` | `()` | Hvilke samtaler har adgang lige nu? Desk viser mærket ud fra den her. | [src](../../../core/services/computer_use_samtykke.py#L85) |
+
 ## `core/services/concept_baseline_tracker.py`
 _Concept baseline tracker — Layer 3 of emotion concepts integration._
 
@@ -620,15 +631,4 @@ _Cross-agent memory — shared observations queryable across agents._
 | function | `cross_agent_recall` | `(*, query, requesting_role=…, exclude_roles=…, days_back=…, limit=…, min_score=…)` | Find relevant observations from OTHER agents matching the query. | [src](../../../core/services/cross_agent_memory.py#L68) |
 | function | `cross_agent_recall_section` | `(role, query)` | Format cross-agent recall as text for sub-agent system_prompt injection. | [src](../../../core/services/cross_agent_memory.py#L130) |
 | function | `_exec_cross_agent_recall` | `(args)` | — | [src](../../../core/services/cross_agent_memory.py#L146) |
-
-## `core/services/cross_session_gate.py`
-_Kontekst fra ANDRE sessioner — Fase 10, kriterium 1._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `gaeldende_niveau` | `()` | `full` | `summary` | `none` | `ubestemt` for den kørsel vi er i nu. | [src](../../../core/services/cross_session_gate.py#L76) |
-| class | `Afgraenset` | `` | Det der slipper igennem — og hele regnskabet for det der ikke gjorde. | [src](../../../core/services/cross_session_gate.py#L118) |
-| method | `Afgraenset.herkomst` | `(self)` | Én linje modellen kan læse, med alt kriteriet kræver. | [src](../../../core/services/cross_session_gate.py#L136) |
-| function | `_digest` | `(poster)` | — | [src](../../../core/services/cross_session_gate.py#L159) |
-| function | `afgraens` | `(poster, *, kilde, maks_antal=…, maks_tegn=…, niveau=…, fundet_i_alt=…)` | Anvend niveau og budgetter, og før regnskab over alt der røg. | [src](../../../core/services/cross_session_gate.py#L167) |
 

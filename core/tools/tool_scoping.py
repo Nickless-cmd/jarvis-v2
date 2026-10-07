@@ -80,7 +80,7 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # agent-contract-v1: owner-only indtil flerbrugerpiloten (spec 12.4) - andre brugeres
     # agenter kraever den proevede ejer-/rutegraense foer deres modeller faar vaerktoejet.
     "dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
-    "integrate_agent_work",
+    "integrate_agent_work", "convene_agent_council", "review_agent_work",
     "cancel_recurring",
     "cancel_self_wakeup",
     "cancel_task",

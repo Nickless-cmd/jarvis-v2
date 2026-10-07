@@ -103,10 +103,12 @@ from core.tools.restart_self_tools import (
 from core.tools.agent_worktree_tools import _exec_wt_bash, _exec_wt_write_file  # C5b
 from core.tools.agent_contract_tools import (  # agent-contract-v1 (F2)
     _exec_close_agent,
+    _exec_convene_agent_council,
     _exec_dispatch_agent,
     _exec_followup_agent,
     _exec_integrate_agent_work,
     _exec_interrupt_agent,
+    _exec_review_agent_work,
     _exec_list_agents as _contract_exec_list_agents,
     _exec_send_message_to_agent as _contract_exec_send_message_to_agent,
     _exec_wait_agents,
@@ -1650,6 +1652,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "wait_agents": _exec_wait_agents,
     "interrupt_agent": _exec_interrupt_agent,
     "integrate_agent_work": _exec_integrate_agent_work,
+    "convene_agent_council": _exec_convene_agent_council,
+    "review_agent_work": _exec_review_agent_work,
     "close_agent": _exec_close_agent,
     "cancel_agent": _exec_cancel_agent,
     "daemon_status": _exec_daemon_status,

@@ -505,6 +505,11 @@ def supervise() -> list[dict[str, Any]]:
         run_pending()
     except Exception:
         logger.warning("godkendte integrationer kunne ikke udfoeres", exc_info=True)
+    try:
+        from core.services.agent_council import advance as advance_councils
+        advance_councils()
+    except Exception:
+        logger.warning("raad kunne ikke avanceres", exc_info=True)
     done = reconcile_expired_leases()
     for d in done:
         if d.get("action") == "retry":

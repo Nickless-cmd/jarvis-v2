@@ -23,11 +23,12 @@ logger = logging.getLogger(__name__)
 CONTRACT_TOOL_NAMES: tuple[str, ...] = (
     "dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
     "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
+    "convene_agent_council", "review_agent_work",
 )
 #: Dem der KUN findes med kontrakten (de to andre har en aeldre udgave).
 _NEW_ONLY: frozenset[str] = frozenset(
     {"dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
-     "integrate_agent_work"})
+     "integrate_agent_work", "convene_agent_council", "review_agent_work"})
 
 
 def _fn(name: str, description: str, properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -100,6 +101,30 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "branch (integrate/<assignment>); no one's working tree is touched and the main branch is never moved.",
         {"assignment_id": {"type": "string", "description": "The assignment_id of the finished code agent."}},
         ["assignment_id"]),
+    _fn("convene_agent_council",
+        "Convene a council: one independent agent per member (each with its OWN assessment task but the SAME facts, "
+        "in separate contexts) plus a synthesis that is created automatically when every member has finished. "
+        "All-or-nothing: if there is no room for every member nothing is started. A member that fails counts as "
+        "finished and the synthesis must name it. You are woken when the synthesis is ready - do not poll.",
+        {"topic": {"type": "string", "description": "What the council decides or assesses."},
+         "facts": {"type": "string", "description": "The shared factual basis every member gets."},
+         "members": {"type": "array", "description": "2-6 members with DIFFERENT tasks.",
+                     "items": {"type": "object", "properties": {
+                         "role": {"type": "string", "description": "e.g. critic, planner, researcher, devils_advocate"},
+                         "task": {"type": "string", "description": "This member's own assessment task."}},
+                         "required": ["role", "task"]}},
+         "budget_tokens": {"type": "integer", "description": "Token budget per member; 0 = role default."},
+         "idempotency_key": _KEY},
+        ["topic", "members"]),
+    _fn("review_agent_work",
+        "Start an independent, read-only reviewer for a FINISHED builder assignment. The reviewer gets your "
+        "requirements, the builder's actual changes (diff, changed files) and artifacts - the builder's own "
+        "conclusion is included only as a claim to verify. Do not treat the builder's word as the review.",
+        {"builder_assignment_id": {"type": "string", "description": "The finished builder's assignment_id."},
+         "requirements": {"type": "string", "description": "What the work must satisfy, verifiably."},
+         "budget_tokens": {"type": "integer", "description": "Token budget; 0 = role default."},
+         "idempotency_key": _KEY},
+        ["builder_assignment_id", "requirements"]),
 ]
 
 
@@ -227,3 +252,24 @@ def _exec_integrate_agent_work(args: dict[str, Any]) -> dict[str, Any]:
     owner, session, _ = _principal(args)
     return _svc().request_integration(owner_user_id=owner, origin_session_id=session,
                                       assignment_id=str(args.get("assignment_id") or "").strip())
+
+
+def _exec_convene_agent_council(args: dict[str, Any]) -> dict[str, Any]:
+    owner, session, run = _principal(args)
+    from core.services import agent_council
+    return agent_council.convene(
+        owner_user_id=owner, origin_session_id=session, parent_run_id=run, topic=str(args.get("topic") or ""),
+        facts=str(args.get("facts") or ""), members=args.get("members") or [],
+        budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
+        idempotency_key=str(args.get("idempotency_key") or ""))
+
+
+def _exec_review_agent_work(args: dict[str, Any]) -> dict[str, Any]:
+    owner, session, run = _principal(args)
+    from core.services import agent_council
+    return agent_council.dispatch_review(
+        owner_user_id=owner, origin_session_id=session, parent_run_id=run,
+        builder_assignment_id=str(args.get("builder_assignment_id") or ""),
+        requirements=str(args.get("requirements") or ""),
+        budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
+        idempotency_key=str(args.get("idempotency_key") or ""))

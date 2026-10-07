@@ -79,7 +79,7 @@ def _facade():
 # support OpenAI-compatible tool calling.
 _TOOL_USING_ROLES: frozenset[str] = frozenset({
     "researcher", "critic", "planner", "executor",
-    "devils_advocate", "watcher", "synthesizer",
+    "devils_advocate", "watcher", "synthesizer", "reviewer",
 })
 
 
@@ -600,6 +600,17 @@ AGENT_ROLE_TEMPLATES = {
             "You are a Synthesizer spawned by Jarvis. Fuse the inputs you are given into "
             "one tight, coherent synthesis — the through-line and the tension, not a "
             "restatement of each part.",
+        ),
+    },
+    "reviewer": {
+        "title": "Reviewer",
+        "default_tool_policy": "read-only-runtime",
+        "system_prompt": _role_prompt(
+            "You are an independent Reviewer spawned by Jarvis. You are given a requirement, "
+            "the ACTUAL changes (a diff) and the builder's own claim. Check every claim "
+            "against the diff and reject what the diff does not support; list concrete "
+            "missing items per requirement. Never accept the builder's word for it.",
+            tools=True,
         ),
     },
     "watcher": {

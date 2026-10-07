@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8671/16417 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8678/16440 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 8671/16417 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 780 | 1412 | 55% |
-| `core.services` | 5786 | 11164 | 51% |
+| `core.runtime` | 782 | 1421 | 55% |
+| `core.services` | 5791 | 11176 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 523 | 1059 | 49% |
+| `core.tools` | 523 | 1061 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8671/16417 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2309)
+## Undocumented public functions (2316)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -350,7 +350,13 @@ Generated from source. 8671/16417 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `mark_unknown` (L137)
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L617)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L620)
+- `core/runtime/db_agent_council.py` :: `create` (L62)
+- `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
+- `core/runtime/db_agent_council.py` :: `find_by_key` (L84)
+- `core/runtime/db_agent_council.py` :: `open_councils` (L109)
+- `core/runtime/db_agent_council.py` :: `require` (L115)
+- `core/runtime/db_agent_council.py` :: `set_members` (L92)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
@@ -635,7 +641,8 @@ Generated from source. 8671/16417 functions/methods documented (52%). The list b
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L319)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L525)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L530)
+- `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L38)

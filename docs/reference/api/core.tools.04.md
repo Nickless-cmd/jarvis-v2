@@ -2,6 +2,11 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_const.py`
+_Delte konstanter for workspace-capabilities._
+
+_(no top-level classes or functions)_
+
 ## `core/tools/workspace_capabilities_documents.py`
 _Workspace-dokument-parsing (TOOLS.md / SKILLS.md → capability-sektioner)._
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8547/16135 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8554/16143 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8547/16135 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 724 | 1304 | 55% |
-| `core.services` | 5701 | 10979 | 51% |
+| `core.services` | 5705 | 10984 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 512 | 1040 | 49% |
+| `core.tools` | 515 | 1043 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8547/16135 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2239)
+## Undocumented public functions (2240)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1257,6 +1257,7 @@ Generated from source. 8547/16135 functions/methods documented (52%). The list b
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)
 - `core/services/memory_write_policy.py` :: `list_pending_reviews` (L176)
 - `core/services/memory_write_policy.py` :: `reject_review` (L194)
+- `core/services/mermaid_render.py` :: `find_mermaid` (L85)
 - `core/services/message_feedback.py` :: `markér_gennemgået` (L122)
 - `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)

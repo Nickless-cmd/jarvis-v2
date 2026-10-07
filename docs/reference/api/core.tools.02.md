@@ -66,6 +66,15 @@ _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._
 | function | `_exec_read_memory_topic` | `(args)` | Læs en kurateret memory-topic-fil (pull, LLM-led). Scoped til aktuel bruger. | [src](../../../core/tools/memory_topic_tools.py#L12) |
 | function | `_exec_write_memory_topic` | `(args)` | Skriv/opdatér en kurateret memory-topic (streng bekraeftelse). Scoped til bruger. | [src](../../../core/tools/memory_topic_tools.py#L22) |
 
+## `core/tools/mermaid_tool.py`
+_`render_mermaid` — et diagram der også når telefonen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_generated_dir` | `()` | Samme mappe som `openrouter_image` skriver i — den er allerede synlig. | [src](../../../core/tools/mermaid_tool.py#L70) |
+| function | `_svg_til_png` | `(svg)` | SVG → PNG med rsvg-convert. Rejser RuntimeError med en brugbar årsag. | [src](../../../core/tools/mermaid_tool.py#L86) |
+| function | `_exec_render_mermaid` | `(args)` | Mermaid-kilde → PNG i tråden, så diagrammet også ses på mobilen. | [src](../../../core/tools/mermaid_tool.py#L148) |
+
 ## `core/tools/meta_learning_tools.py`
 _Meta-læring tools — Phase 1 (AGI track #3)._
 
@@ -508,12 +517,4 @@ _Semantic code search — natural language queries over the Jarvis codebase._
 | function | `_score_with_llm` | `(query, candidates, top_k)` | Use LLM to rank candidates by semantic relevance to query. | [src](../../../core/tools/semantic_search_tools.py#L62) |
 | function | `_read_context` | `(file, line, context=…)` | — | [src](../../../core/tools/semantic_search_tools.py#L92) |
 | function | `_exec_semantic_search_code` | `(args)` | — | [src](../../../core/tools/semantic_search_tools.py#L103) |
-
-## `core/tools/sensory_tools.py`
-_Sensory archive tools — record and recall sensory experiences._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_record_sensory_memory` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L18) |
-| function | `_exec_recall_sensory_memories` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L79) |
 

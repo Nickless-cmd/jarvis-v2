@@ -64,6 +64,10 @@ from core.tools.openrouter_image_tools import (
     _exec_openrouter_image,
     _exec_openrouter_image_edit,
 )
+from core.tools.mermaid_tool import (
+    MERMAID_TOOL_DEFINITIONS,
+    _exec_render_mermaid,
+)
 from core.tools.hf_inference_tools import (
     HF_INFERENCE_TOOL_DEFINITIONS,
     _exec_hf_text_to_video,
@@ -1676,6 +1680,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # OpenRouter paid image gen + edit (Gemini draws — sharp, vector-like)
     "openrouter_image": _exec_openrouter_image,
     "openrouter_image_edit": _exec_openrouter_image_edit,
+    # Mermaid → PNG server-side, så diagrammet også ses på mobilen
+    "render_mermaid": _exec_render_mermaid,
     # HuggingFace serverless inference
     "hf_text_to_video": _exec_hf_text_to_video,
     "hf_transcribe_audio": _exec_hf_transcribe_audio,

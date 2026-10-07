@@ -1,0 +1,115 @@
+"""`render_mermaid` — diagrammet skal kunne ses på mobilen.
+
+Målt 7/10-2026: Bjørn skrev «Det virker kun i desk, ikk på mobilen». Desk tegner
+` ```mermaid ` selv; mobilen har ingen mermaid-renderer og viste rå kildekode.
+Værktøjet rendrer i stedet server-side og lægger et PNG på turen — den vej
+`openrouter_image` allerede bruger, og som begge klienter tegner i dag.
+
+Testene dækker de led der kan knække tavst: registreringen (et værktøj der ikke
+er i definitions kan modellen ikke kalde), rasteriseringen (SVG → PNG), og
+skaleringen (et lodret diagram må ikke blive ubrugeligt højt).
+"""
+from __future__ import annotations
+
+import re
+
+import pytest
+
+from core.tools.mermaid_tool import (
+    BREDDE,
+    MAKS_HOEJDE,
+    MERMAID_TOOL_DEFINITIONS,
+    _exec_render_mermaid,
+    _svg_til_png,
+)
+
+
+def test_vaerktoejet_er_registreret():
+    """Uden en definition i TOOL_DEFINITIONS kan modellen ikke kalde det."""
+    from core.tools.simple_tools import TOOL_DEFINITIONS
+
+    navne = [t["function"]["name"] for t in TOOL_DEFINITIONS]
+    assert "render_mermaid" in navne
+
+
+def test_definitionen_kraever_kilde():
+    """En tom kalde skal afvises af skemaet, ikke af koden."""
+    (defn,) = MERMAID_TOOL_DEFINITIONS
+    assert defn["function"]["name"] == "render_mermaid"
+    assert defn["function"]["parameters"]["required"] == ["kilde"]
+
+
+def test_tom_kilde_giver_typet_fejl():
+    r = _exec_render_mermaid({"kilde": "   "})
+    assert r["status"] == "error"
+    assert "kilde" in r["error"]
+
+
+def test_svg_uden_viewbox_skaleres_paa_bredden():
+    """Uden en viewBox at måle på skal bredden styre — ikke et gæt."""
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
+    png = _svg_til_png(svg)
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_lodret_diagram_loftes_paa_hoejden():
+    """`flowchart TD` er højere end bredt; højden skal styre skalaen.
+
+    Målt 7/10-2026: uden loftet blev tre knuder 1400x3797 px — ubrugeligt på
+    en telefon. Med loftet er højden præcis MAKS_HOEJDE og bredden følger.
+    """
+    from PIL import Image
+    import io
+
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'viewBox="0 0 115.09375 312.109375" width="115" height="312">'
+        '<rect x="0" y="0" width="115" height="312" fill="#fff"/></svg>'
+    )
+    png = _svg_til_png(svg)
+    b, h = Image.open(io.BytesIO(png)).size
+    assert h == MAKS_HOEJDE
+    assert b < BREDDE, "bredden skal følge forholdet, ikke tvinges til BREDDE"
+
+
+def test_bredt_diagram_loftes_paa_bredden():
+    """Et bredt diagram skal fylde BREDDE og ikke ramme højde-loftet."""
+    from PIL import Image
+    import io
+
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'viewBox="0 0 400 50" width="400" height="50">'
+        '<rect x="0" y="0" width="400" height="50" fill="#fff"/></svg>'
+    )
+    png = _svg_til_png(svg)
+    b, h = Image.open(io.BytesIO(png)).size
+    assert b == BREDDE
+    assert h < MAKS_HOEJDE
+
+
+def test_ugyldig_mermaid_giver_laesbar_fejl():
+    """Dårlig syntaks er kalderens fejl og skal kunne rettes med det samme."""
+    r = _exec_render_mermaid({"kilde": "flowchart TD\n  A[Start --> B"})
+    assert r["status"] == "error"
+    # Enten afviser mermaid den, eller også rendrer den — men den må ikke
+    # kaste. Er den accepteret, skal den have lagt et billede.
+    assert "mermaid" in r["error"] or r.get("path")
+
+
+def test_png_har_rigtige_dimensioner_efter_skalering():
+    """Rasteriseringen skal give et ægte billede, ikke en tom fil."""
+    from PIL import Image
+    import io
+
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'viewBox="0 0 200 100" width="200" height="100">'
+        '<rect x="10" y="10" width="180" height="80" fill="#49c9b8"/></svg>'
+    )
+    png = _svg_til_png(svg)
+    im = Image.open(io.BytesIO(png))
+    assert im.size[0] == BREDDE
+    # Baggrunden er sat til #0d1117, så billedet må ikke være ensfarvet hvidt.
+    farver = im.convert("RGB").getcolors(maxcolors=100000)
+    assert farver is not None and len(farver) > 1

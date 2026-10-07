@@ -20,6 +20,7 @@ from core.tools.pollinations_tools import (POLLINATIONS_TOOL_DEFINITIONS)
 from core.tools.graf_tools import (GRAF_TOOL_DEFINITIONS)
 from core.tools.widget_tools import (WIDGET_TOOL_DEFINITIONS)
 from core.tools.openrouter_image_tools import (OPENROUTER_IMAGE_TOOL_DEFINITIONS)
+from core.tools.mermaid_tool import (MERMAID_TOOL_DEFINITIONS)
 from core.tools.hf_inference_tools import (HF_INFERENCE_TOOL_DEFINITIONS)
 from core.tools.mic_listen_tool import (MIC_LISTEN_TOOL_DEFINITIONS)
 from core.tools.screen_tool import (SCREEN_TOOL_DEFINITIONS)
@@ -3416,6 +3417,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GRAF_TOOL_DEFINITIONS,
     *WIDGET_TOOL_DEFINITIONS,
     *OPENROUTER_IMAGE_TOOL_DEFINITIONS,
+    *MERMAID_TOOL_DEFINITIONS,
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
     *SCREEN_TOOL_DEFINITIONS,

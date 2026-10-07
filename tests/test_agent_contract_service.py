@@ -71,16 +71,15 @@ def test_capability_read_failure_is_closed(sv, monkeypatch):
     assert sv.svc_.capability_enabled() is False
 
 
-def test_every_operation_is_refused_when_off_and_creates_nothing(sv):
+def test_new_work_is_refused_when_off_and_creates_nothing_while_control_ops_still_validate_scope(sv):
     svc = sv.svc_
     base = dict(owner_user_id=O, origin_session_id=S)
-    outs = [svc.dispatch_agent(goal="x", **base),
-            svc.followup_agent(agent_id="a", goal="x", **base),
-            svc.send_message(agent_id="a", content="x", **base),
-            svc.interrupt_agent(agent_id="a", **base),
-            svc.close_agent(agent_id="a", **base),
-            svc.wait_agents(assignment_ids=["a"], **base)]
-    assert [(o["status"], o["code"]) for o in outs] == [("error", "POLICY_DENIED")] * 6
+    new_work = [svc.dispatch_agent(goal="x", **base), svc.followup_agent(agent_id="a", goal="x", **base)]
+    assert [(o["status"], o["code"]) for o in new_work] == [("error", "POLICY_DENIED")] * 2
+    # styring af accepteret arbejde afvises ikke af kill switchen (spec 12.4) - her er agenten bare ukendt
+    control = [svc.send_message(agent_id="a", content="x", **base), svc.interrupt_agent(agent_id="a", **base),
+               svc.close_agent(agent_id="a", **base), svc.wait_agents(assignment_ids=["a"], **base)]
+    assert all(o["code"] != "POLICY_DENIED" for o in control)
     assert (sv.rows("agent_registry"), sv.rows("agent_assignments"), sv.started) == (0, 0, [])
 
 
@@ -326,3 +325,24 @@ def test_output_of_a_running_assignment_is_not_attached(sv):
     out = sv.svc_.wait_agents(owner_user_id=O, origin_session_id=S,
                               assignment_ids=[a["assignment_id"]], include_output=True)
     assert "output" not in out["assignments"][0]
+
+
+def test_the_kill_switch_blocks_new_work_but_never_the_control_of_accepted_work(sv):
+    sv.on()
+    out = sv.d()                                                      # accepteret, endnu ikke koert (aktivt arbejde)
+    sv.svc_.set_capability(False, role="owner")
+    for name, call in (
+        ("dispatch", lambda: sv.d()),
+        ("followup", lambda: sv.svc_.followup_agent(owner_user_id=O, origin_session_id=S, agent_id=out["agent_id"], goal="mere")),
+        ("integration", lambda: sv.svc_.request_integration(owner_user_id=O, origin_session_id=S,
+                                                           assignment_id=out["assignment_id"])),
+    ):
+        res = call()
+        assert (res["status"], res["code"]) == ("error", "POLICY_DENIED"), name
+    assert sv.svc_.wait_agents(owner_user_id=O, origin_session_id=S, assignment_ids=[out["assignment_id"]])["status"] != "error"
+    msg = sv.svc_.send_message(owner_user_id=O, origin_session_id=S, agent_id=out["agent_id"], content="hej")
+    assert msg.get("code") != "POLICY_DENIED" and msg["status"] != "error", msg
+    assert sv.svc_.interrupt_agent(owner_user_id=O, origin_session_id=S, agent_id=out["agent_id"])["status"] == "stop_requested"
+    assert sv.svc_.close_agent(owner_user_id=O, origin_session_id=S, agent_id=out["agent_id"])["status"] == "accepted"
+    ctl_missing = sv.svc_.interrupt_agent(owner_user_id=O, origin_session_id="", agent_id=out["agent_id"])
+    assert ctl_missing["code"] == "INVALID_SCOPE"                       # styring kraever stadig ejer og session

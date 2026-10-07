@@ -77,8 +77,10 @@ def _err(code: str, detail: str = "", phase: str = "admission") -> dict[str, Any
             "contract_version": CONTRACT_VERSION}
 
 
-def _guard(owner: str, session: str) -> dict[str, Any] | None:
-    if not capability_enabled():
+def _guard(owner: str, session: str, *, control: bool = False) -> dict[str, Any] | None:
+    """``control=True`` er styring af ALLEREDE accepteret arbejde (stop, luk, besked, vent): kill switchen blokerer
+    kun NYE dispatch/aktiveringer (spec 12.4), saa accepterede boern altid kan stoppes og laeses."""
+    if not control and not capability_enabled():
         return _err("POLICY_DENIED", "agent-kontrakten er slukket", "admission")
     if not (owner or "").strip() or not (session or "").strip():
         return _err("INVALID_SCOPE", "ejer og session mangler")
@@ -354,7 +356,7 @@ def send_message(
 ) -> dict[str, Any]:
     """Information/styring til barnets aktuelle opgave, eller - er barnet ledigt - en
     beskedudloest ny opgave. Returnerer et besked-id; levering er IKKE bevist (§6)."""
-    if (bad := _guard(owner_user_id, origin_session_id)):
+    if (bad := _guard(owner_user_id, origin_session_id, control=True)):
         return bad
     content = (content or "").strip()
     if not content:
@@ -385,7 +387,7 @@ def send_message(
 def interrupt_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str,
                     note: str = "") -> dict[str, Any]:
     """Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`."""
-    if (bad := _guard(owner_user_id, origin_session_id)):
+    if (bad := _guard(owner_user_id, origin_session_id, control=True)):
         return bad
     if _owned_agent(agent_id, owner_user_id) is None:
         return _err("INVALID_SCOPE", "ukendt agent")
@@ -402,7 +404,7 @@ def interrupt_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str
 def close_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str) -> dict[str, Any]:
     """Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og
     boern er terminale. Accepterede runs afbrydes ikke."""
-    if (bad := _guard(owner_user_id, origin_session_id)):
+    if (bad := _guard(owner_user_id, origin_session_id, control=True)):
         return bad
     if _owned_agent(agent_id, owner_user_id) is None:
         return _err("INVALID_SCOPE", "ukendt agent")
@@ -468,7 +470,7 @@ def wait_agents(
     """Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen
     stadig ikke opfyldt og `wake_if_run_ends` er sat, registreres en ventekontrakt (B2), saa et
     naeste run vaekkes naar den er opfyldt - uden at parenten skal polle."""
-    if (bad := _guard(owner_user_id, origin_session_id)):
+    if (bad := _guard(owner_user_id, origin_session_id, control=True)):
         return bad
     ids = sorted({str(a).strip() for a in (assignment_ids or []) if str(a).strip()})
     if not ids or condition not in ("first_terminal", "all_terminal"):

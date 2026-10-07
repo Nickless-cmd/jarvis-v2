@@ -221,6 +221,70 @@ def _with_thinking_block(
     return [block, *blocks]
 
 
+
+def _med_tabt_optakt(tekst: str, blokke: object) -> str:
+    """Giv `content` den optakt som blokkene har, men teksten mangler.
+
+    ## Maalt 7/10-2026
+
+    250 assistent-svar fra to doegn, flerblok-ture sammenlignet blok for blok:
+
+        content == alle tekstblokke          6
+        content == tekstblokke UDEN den 1.   179
+        hverken eller                        47
+
+    Altsaa: **77 % af svarene mangler deres aabning i `content`.** Og det er
+    ikke kosmetik — `recent_chat_session_messages` og
+    `chat_session_messages_since_last_compact` laeser begge `content`, saa den
+    historik Jarvis ser af sine EGNE svar mangler deres foerste afsnit. Det
+    tabte er substans, ikke stoej: «Tak — jeg er her. Og jeg kommer tilbage til
+    noget der ikke er afsluttet: genstarten fra …».
+
+    ## Hvorfor det sker
+
+    `content` er `visible_output_text`, som den agentiske loekke samler. Det
+    FOERSTE tekst-segment streames foer loekken begynder at samle, saa det
+    lander kun i akkumulatorens `text_segments` — og dermed kun i blokkene.
+
+    ## Hvorfor rettelsen sidder HER og kun PREPENDER
+
+    Den kunne bygges af blokkene i stedet, men saa ville den gaa uden om alt
+    det `normalized` allerede har vaeret igennem: leak-saneringen og
+    `normalize_markdown_structure`. Derfor roeres selve svaret ikke — der
+    saettes kun det foran som blokkene har og teksten mangler, og kun naar
+    blokkenes tekst ENDER paa svaret. Gaelder det ikke, er forskellen noget
+    andet end en tabt optakt, og saa lader vi den vaere.
+
+    Self-safe: en fejl her maa aldrig koste et gemt svar.
+    """
+    try:
+        if not isinstance(blokke, list) or not tekst.strip():
+            return tekst
+        dele = [str(b.get("text") or "") for b in blokke
+                if isinstance(b, dict) and b.get("type") == "text"]
+        dele = [d for d in dele if d.strip()]
+        if len(dele) < 2:
+            return tekst
+        hel = "\n\n".join(dele)
+        n_hel, n_tekst = _ws(hel), _ws(tekst)
+        if n_hel == n_tekst or not n_hel.endswith(n_tekst):
+            return tekst
+        # Find optakten i den UNORMALISEREDE streng, saa den bevares som skrevet.
+        for i in range(1, len(dele)):
+            if _ws("\n\n".join(dele[i:])) == n_tekst:
+                return "\n\n".join(dele[:i]) + "\n\n" + tekst
+        return tekst
+    except Exception as exc:
+        logger.warning("kunne ikke genskabe tabt optakt: %s", exc)
+        return tekst
+
+
+def _ws(s: str) -> str:
+    """Samme normalisering som klienternes `assistantNorm`."""
+    import re as _re
+    return _re.sub(r"\s+", " ", s or "").strip()
+
+
 def _persist_session_assistant_message(
     run: "_vr.VisibleRun",
     text: str,
@@ -433,6 +497,9 @@ def _persist_session_assistant_message(
     # array når kill-switchen er ON, så tool-kort overlever reload uden reconcile.
     # Flag OFF eller ingen blokke → content_json=None → uændret tekst-kun adfærd.
     content_json = None
+    # Bundet FOER try'en: `_med_tabt_optakt` nedenfor skal kunne se blokkene,
+    # og et `locals()`-opslag ville tie hvis navnet aldrig blev sat.
+    _blokke: list[dict] | None = None
     if blocks:
         try:
             from core.services.structured_content_flag import structured_content_v2_enabled
@@ -444,6 +511,8 @@ def _persist_session_assistant_message(
                 content_json = _json.dumps(_blokke, ensure_ascii=False)
         except Exception:
             content_json = None
+
+    normalized = _med_tabt_optakt(normalized, _blokke)
 
     message = _append_chat_message_with_retry(
         session_id=run.session_id,

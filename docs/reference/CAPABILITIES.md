@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-07 — 495 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-07 — 491 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -64,8 +64,6 @@
 | `context_pressure` | native | no |
 | `context_size_check` | native | no |
 | `control_daemon` | native | no |
-| `convene_council` | native | no |
-| `council_status` | native | no |
 | `counterfactual_summary` | native | no |
 | `create_event` | native | no |
 | `cross_agent_recall` | native | no |
@@ -287,7 +285,6 @@
 | `push_initiative` | native | no |
 | `query_why` | native | no |
 | `queue_followup` | native | no |
-| `quick_council_check` | native | no |
 | `read_archive` | native | no |
 | `read_attachment` | native | no |
 | `read_brain_entry` | native | no |
@@ -311,7 +308,6 @@
 | `recall` | native | no |
 | `recall_before_act` | native | no |
 | `recall_context_version` | native | no |
-| `recall_council_conclusions` | native | no |
 | `recall_memories` | native | no |
 | `recall_reasoning` | native | no |
 | `recall_sensory_memories` | native | no |

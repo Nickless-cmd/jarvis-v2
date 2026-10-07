@@ -161,7 +161,6 @@ DANSKE_UDTRYK: dict[str, str] = {
     # ── Sub-agenter ──────────────────────────────────────────────────────
     "scout_agent": "undersøg, find ud af, research, kig efter",
     "list_agents": "hvilke agenter kører, status på agenterne",
-    "convene_council": "spørg flere, hold et råd, saml perspektiver",
     "dispatch_code_mode_task": "sæt agenter på, kør en kodeopgave",
     # ── Discords og webhooks ─────────────────────────────────────────────
     "discord_status": "virker discord, discord status, er discord oppe",

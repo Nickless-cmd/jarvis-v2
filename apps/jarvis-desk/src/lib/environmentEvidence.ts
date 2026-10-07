@@ -35,7 +35,6 @@ const AGENT_RESULT_TOOLS = new Set([
   'scout_agent',
   'explore', // gammelt navn (omdøbt 17/9-2026) — gemte ture bruger det stadig
   'spawn_agent_task',
-  'quick_council_check',
   'dispatch_code_mode_task',
 ])
 
@@ -65,7 +64,7 @@ function goalFrom(input: Record<string, unknown>): string | undefined {
 /**
  * Pak runtimens indpakning af et tool-resultat ud.
  *
- * Et resultat fra explore/spawn_agent_task/quick_council_check når ALDRIG
+ * Et resultat fra explore/spawn_agent_task når ALDRIG
  * klienten som ren JSON. Fire lag kan ligge udenom, og de kan optræde sammen:
  *
  *   ⚠ <advarsel>\n\n        simple_tool_executor.py (soft_warn)

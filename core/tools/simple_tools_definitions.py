@@ -2695,94 +2695,6 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "convene_council",
-            "description": (
-                "Fan out several agents with DISTINCT perspectives on a question, then "
-                "synthesise their positions. This is not a separate 'council system' — "
-                "it is one shape of your own dispatch: you decide whether a question needs "
-                "WORK (one agent, spawn_agent_task) or PERSPECTIVES (this), and you "
-                "CONSTRUCT the roles that fit THIS specific question — e.g. a security "
-                "critic, the user's advocate, a refuter, a long-term-consequences lens. "
-                "Roles are born from the question and die with it; there is no fixed set. "
-                "Use when a decision genuinely benefits from being pulled at from several "
-                "angles: identity changes, ambiguous tradeoffs, lasting consequences."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "description": "The decision or question to deliberate. Be specific.",
-                    },
-                    "urgency": {
-                        "type": "string",
-                        "enum": ["low", "medium", "high"],
-                        "description": "low=full deliberation (5 roles), medium=4 roles, high=critic+planner only",
-                    },
-                    "roles": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": (
-                            "Construct the perspectives that fit THIS question — give each "
-                            "agent a distinct lens (e.g. 'security-critic', 'user-advocate', "
-                            "'refuter', 'first-principles'). Prefer constructing your own over "
-                            "the generic defaults; omit only when generic deliberation is fine."
-                        ),
-                    },
-                },
-                "required": ["topic"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "council_status",
-            "description": (
-                "Hent et raad du satte i gang med convene_council. Indkaldelsen "
-                "svarer med det samme og venter IKKE paa deliberationen — brug "
-                "dette naar du er klar til at laese resultatet. Er raadet ikke "
-                "faerdigt endnu, faar du dets nuvaerende tilstand og medlemmer. "
-                "Glemmer du at hente, skriver raadet alligevel sin konklusion "
-                "til hukommelsen; recall_council_conclusions finder den."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "council_id": {
-                        "type": "string",
-                        "description": "Raads-id'et fra convene_council.",
-                    },
-                },
-                "required": ["council_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "quick_council_check",
-            "description": (
-                "Run a single Devil's Advocate agent to stress-test a decision before acting. "
-                "Faster and cheaper than a full council. Use this for moderate-risk decisions "
-                "where you want a sanity check without full deliberation. "
-                "Returns the objection raised (if any) and whether escalation to full council is recommended."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "description": "The action or decision you are about to take.",
-                    },
-                },
-                "required": ["action"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "spawn_agent_task",
             "description": (
                 "Spawn a sub-agent to handle a focused task independently. "
@@ -3088,23 +3000,6 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["key", "value"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "recall_council_conclusions",
-            "description": "Retrieve past council deliberations relevant to a given topic. Returns full transcripts and conclusions.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "description": "Topic or question to match against past council deliberations",
-                    },
-                },
-                "required": ["topic"],
             },
         },
     },

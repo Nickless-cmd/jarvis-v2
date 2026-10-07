@@ -15,7 +15,6 @@ Escalation triggers (any of):
 When triggered, the section names a specific escalation path that
 already exists in Jarvis' tool registry:
 
-  - convene_council(topic) — full deliberation across roles
   - spawn_agent_task(role=critic, goal=...) — independent review
   - spawn_agent_task(role=researcher, goal=...) — verification at scale
 
@@ -75,15 +74,24 @@ def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str])
                 "påstandene uafhængigt før du fortsætter."
             ),
         }
-    # Deep tier + risk markers → full council
+    # Deep tier + risikomarkoerer → uafhaengig kritiker
+    #
+    # Vejen var `convene_council` indtil 7/10-2026. Vaerktoejet er fjernet med
+    # den blinde indkaldelse, og en eskalering der peger paa et vaerktoej der
+    # ikke findes er vaerre end ingen eskalering: modellen faar et raad den
+    # ikke kan foelge, netop foer et destruktivt skridt.
+    #
+    # `spawn_agent_task(role=critic)` er den naermeste bevarede vej — én
+    # uafhaengig vurdering i stedet for flere perspektiver. Mindre, men ægte.
     risk_markers = [s for s in signals if "destructive" in s or "production" in s or "secrets" in s or "migration" in s]
     if tier == "deep" and risk_markers:
         return {
-            "path": "convene_council",
+            "path": "spawn_agent_task",
+            "role": "critic",
             "topic_hint": "; ".join(risk_markers[:2]),
             "reason": (
-                "Deep tier med risikomarkører — convene_council for "
-                "deliberation før destruktive skridt."
+                "Deep tier med risikomarkører — bed en kritiker se efter "
+                "før destruktive skridt."
             ),
         }
     # Lots of unverified mutations → researcher to verify at scale
@@ -176,12 +184,13 @@ def escalation_section(message: str = "") -> str | None:
         return None
     triggers = result.get("triggers") or []
     trigger_text = "; ".join(triggers)
-    if path == "convene_council":
-        topic_hint = rec.get("topic_hint") or "(skitsér selv et kort topic)"
-        action = f"Brug `convene_council(topic=\"{topic_hint}\")`."
-    else:
-        role = rec.get("role", "critic")
-        action = f"Brug `spawn_agent_task(role=\"{role}\", goal=...)` med en konkret opgave."
+    # Grenen for `convene_council` er vaek 7/10-2026 med vaerktoejet. Alle veje
+    # er nu `spawn_agent_task`; `topic_hint` baeres med som konkret opgave, saa
+    # raadet om HVAD der skal ses efter ikke gaar tabt sammen med vaerktoejet.
+    role = rec.get("role", "critic")
+    hint = rec.get("topic_hint") or ""
+    maal = f' om "{hint}"' if hint else ""
+    action = f'Brug `spawn_agent_task(role="{role}", goal=...)`{maal}.'
     return (
         f"🚨 Reasoning-eskalation anbefalet ({trigger_text}).\n"
         f"{rec.get('reason', '')}\n"

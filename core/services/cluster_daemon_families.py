@@ -25,16 +25,13 @@ Family #6 — memory / maintenance
 
 The MEMORY-MAINTENANCE family. Eight daemons that keep Jarvis' memory stores
 healthy: decay/forgetting, pruning, MEMORY.md dedup, missed-save safeguard,
-selective consolidation, associative recall, the async write queue, plus the one
-LLM member (council_memory). Runs LIVE (prove-then-retire END STATE), replacing
-the 8 old daemons. TWO tiers (mirrors the cognition family #5):
+selective consolidation, associative recall and the async write queue. Runs LIVE
+(prove-then-retire END STATE), replacing the 8 old daemons.
 
-  * GATED / LLM member — ``council_memory`` — sits behind the family's ONE
-    ``should_generative_fire("cluster_memory", …)`` gate. It was a cooldown-timed
-    cheap-LLM similarity call; the family gives it the event-driven salience gate
-    it lacked. When the gate fires its ``live`` dispatches to the old tick (which
-    still self-throttles on its 10-min cooldown), so council.memory_injected keeps
-    filling the heartbeat's ``council_memory`` context section.
+Familien havde ÉT gatet LLM-medlem, ``council_memory``. Det er fjernet 7/10-2026
+sammen med den blinde indkaldelse; kun de ikke-LLM medlemmer er tilbage, og de
+har aldrig haft en gate. Se ``build_memory_family`` for hvad den tomme
+medlemsliste betyder for familiens egen rapport.
 
   * NON-LLM members — the other 7 — have NO generative gate; each is a
     rules/DB-driven maintenance tick with its OWN internal cadence, run
@@ -74,73 +71,60 @@ MEMORY_FAMILY = "cluster_memory"
 
 
 # ---------------------------------------------------------------------------
-# Shared snapshot (only the gated council_memory member needs gate signals)
+# Shared snapshot — tom, fordi familien ikke laengere har et gatet medlem
 # ---------------------------------------------------------------------------
 
 
 def _collect_memory_snapshot() -> dict[str, Any]:
-    """Gather the memory family's shared snapshot once per tick.
+    """Familiens faelles snapshot. Tom siden 7/10-2026.
 
-    Only the gated member (council_memory) needs a gate signal — its salience is
-    the volume of council-log conclusions available to inject — plus a best-effort
-    ``recent_context`` (recent chat) for the relevance LLM. The 7 non-LLM members
-    self-collect inside their own ticks and need nothing here. Self-safe: degrades
-    to neutral defaults on any error; the family still ticks.
+    Den hentede `council_entry_count` og `recent_context` UDELUKKENDE til det
+    gatede `council_memory`-medlem, som er fjernet med den blinde indkaldelse.
+    De syv ikke-LLM medlemmer selv-indsamler inde i deres egne tik og har
+    aldrig brugt noget herfra.
+
+    Funktionen bliver staaende frem for at forsvinde: primitivets
+    én-gate/Central-spor-kontrakt forventer et snapshot, og en familie uden
+    ét ville vaere den eneste der afviger. Samme form som `cluster_infra`.
+
+    Sidegevinst: den laeste `recent_chat_session_messages` ved hvert tik — en
+    historik-laesning der kun eksisterede for et medlem der ikke laengere findes.
     """
-    snap: dict[str, Any] = {"council_entry_count": 0, "recent_context": ""}
-    try:
-        from core.services.council_memory_service import read_all_entries
-        entries = read_all_entries() or []
-        snap["council_entry_count"] = len(entries)
-    except Exception:
-        pass
-    try:
-        from core.services.chat_sessions import recent_chat_session_messages
-        msgs = recent_chat_session_messages(limit=3) or []
-        snap["recent_context"] = " ".join(str(m.get("content") or "") for m in msgs)[:400]
-    except Exception:
-        pass
-    return snap
+    return {}
 
 
 # ---------------------------------------------------------------------------
-# GATED LLM member — council_memory
+# Familien (ingen gatede medlemmer siden 7/10-2026)
 # ---------------------------------------------------------------------------
-
-
-def _mem_council_signals(snap: dict) -> dict[str, float]:
-    """council_memory gate signal: how much council history there is to weigh."""
-    n = float(snap.get("council_entry_count", 0) or 0)
-    return {"entries": min(n / 3.0, 1.0)}
-
-
-def _mem_council_live(snap: dict) -> dict[str, Any]:
-    from core.services.council_memory_daemon import tick_council_memory_daemon
-    return tick_council_memory_daemon(recent_context=str(snap.get("recent_context", "")))
 
 
 def build_memory_family() -> ClusterDaemon:
     """Construct the memory/maintenance cluster-daemon (family #6), LIVE.
 
-    ONE gated LLM member (council_memory) behind the family gate. The seven
-    NON-LLM maintenance members are run UNCONDITIONALLY by
-    ``tick_cluster_memory``, not gated here.
+    ## INGEN gatede medlemmer mere (7/10-2026)
+
+    Familiens ENESTE gatede medlem var `council_memory`, og det er fjernet med
+    rådet. De syv NON-LLM vedligeholdelses-medlemmer køres fortsat
+    UBETINGET af ``tick_cluster_memory`` — de har aldrig ligget her.
+
+    **Rapporten er nu falsk, og det er med vilje ikke rettet her.**
+    ``ClusterDaemon._gate_fires`` har en fail-open: «if not agg: return True».
+    Uden medlemmer er der ingen signaler, så den fyrer UDEN at spørge gaten —
+    og melder `fired: True, gate_calls: 1` selv om gaten blev spurgt NUL gange.
+    Virkningen er harmløs (medlems-løkken er tom), men tallet lyver.
+
+    `cluster_daemon.py` er fælles for ALLE familier. At ændre fail-open'en her
+    ville ændre adfærd for ni andre familier i en commit der handler om rådet.
+    Sandheden er i stedet pinnet i
+    `tests/test_cluster_memory.py::test_familien_uden_medlemmer_melder_fired_uden_at_spoerge`
+    med samme begrundelse, så den der en dag retter fail-open'en kan se at
+    nogen har set den.
     """
     return ClusterDaemon(
         family_name=MEMORY_FAMILY,
         cluster="cognition",
         collect_snapshot=_collect_memory_snapshot,
-        members=[
-            ClusterMember(
-                name="council_memory",
-                signals=_mem_council_signals,
-                observe=_iv_surface_observe(
-                    ("core.services.council_memory_daemon", "build_council_memory_surface"),
-                    ("last_llm_call_at", "injected_count"),
-                ),
-                live=_mem_council_live,
-            ),
-        ],
+        members=[],
     )
 
 
@@ -253,10 +237,11 @@ def tick_cluster_memory(snapshot: dict | None = None, *, shadow: bool | None = N
     """Heartbeat entry-point for the memory/maintenance cluster-daemon family (#6).
 
     Runs LIVE by default (``shadow=False``) — the prove-then-retire end state
-    replacing the 8 old memory daemons. Two-tier: the gated LLM member
-    (council_memory) runs behind the ONE family gate via ``memory_family().tick()``;
-    the seven NON-LLM maintenance members run UNCONDITIONALLY every tick (each has
-    its own internal cadence). Self-safe: NEVER raises into the heartbeat.
+    replacing the 8 old memory daemons. Familiens ENESTE gatede medlem
+    (``council_memory``) er fjernet 7/10-2026; ``memory_family().tick()`` kaldes
+    fortsat for Central-sporet, men har ingen medlemmer at koere. De syv NON-LLM
+    vedligeholdelses-medlemmer koerer UBETINGET hvert tik (hver med sin egen
+    kadence). Self-safe: NEVER raises into the heartbeat.
     """
     try:
         snap = _collect_memory_snapshot() if snapshot is None else snapshot

@@ -521,28 +521,6 @@ _Automation DSL — declarative triggers → actions._
 | function | `build_automation_dsl_surface` | `()` | — | [src](../../../core/services/automation_dsl.py#L228) |
 | function | `_emit_automation_dsl_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/automation_dsl.py#L257) |
 
-## `core/services/autonomous_council_daemon.py`
-_Autonomous Council Daemon — spontaneous self-triggered deliberation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `compute_signal_score` | `(surfaces)` | Compute weighted composite score from signal surface readings. Returns 0.0–1.0. | [src](../../../core/services/autonomous_council_daemon.py#L48) |
-| function | `_cadence_gate_ok` | `()` | True if at least _CADENCE_MINUTES have passed since last council start. | [src](../../../core/services/autonomous_council_daemon.py#L88) |
-| function | `_cooldown_gate_ok` | `()` | True if at least _COOLDOWN_MINUTES have passed since last council conclusion. | [src](../../../core/services/autonomous_council_daemon.py#L95) |
-| function | `_daily_limit_ok` | `()` | True if the large council daily cap has not been reached. | [src](../../../core/services/autonomous_council_daemon.py#L102) |
-| function | `_increment_daily_count` | `()` | — | [src](../../../core/services/autonomous_council_daemon.py#L112) |
-| function | `_persist_durable_counters` | `()` | — | [src](../../../core/services/autonomous_council_daemon.py#L127) |
-| function | `_restore_durable_counters` | `()` | Reload cadence/daily counters from durable kv once per process start. | [src](../../../core/services/autonomous_council_daemon.py#L140) |
-| function | `_consult_convene_judge` | `(*, surfaces, top_signals, score, score_override)` | Consult the Central reason-judge (AKSE 4). Returns its verdict dict, or None | [src](../../../core/services/autonomous_council_daemon.py#L178) |
-| function | `_call_llm` | `(prompt)` | — | [src](../../../core/services/autonomous_council_daemon.py#L200) |
-| function | `derive_topic` | `(top_signals, *, topic_hint=…)` | Ask cheap LLM to generate a council topic from the top triggering signals. | [src](../../../core/services/autonomous_council_daemon.py#L206) |
-| function | `compose_members` | `(score, top_signals)` | Return list of role names for this council. | [src](../../../core/services/autonomous_council_daemon.py#L231) |
-| function | `tick_autonomous_council_daemon` | `(*, score_override=…)` | Evaluate signals and trigger council if warranted. | [src](../../../core/services/autonomous_council_daemon.py#L255) |
-| function | `_land_initiative` | `(*, initiative, council_id)` | Land a council initiative into the initiative queue (AKSE 2). | [src](../../../core/services/autonomous_council_daemon.py#L363) |
-| function | `_read_signal_surfaces` | `()` | Read all signal surfaces and return (surfaces_dict, top_2_signal_names). | [src](../../../core/services/autonomous_council_daemon.py#L385) |
-| function | `_run_autonomous_council` | `(*, topic, members)` | Create and run a council session. Returns dict with council_id and conclusion. | [src](../../../core/services/autonomous_council_daemon.py#L424) |
-| function | `build_autonomous_council_surface` | `()` | — | [src](../../../core/services/autonomous_council_daemon.py#L456) |
-
 ## `core/services/autonomous_goals.py`
 _Autonomous goals — persistent top-level goals with decomposition._
 
@@ -602,4 +580,15 @@ _Autonomous Outreach Daemon — Jarvis reaches out on his own initiative._
 | function | `recent_log` | `(*, limit=…)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L356) |
 | function | `build_autonomous_outreach_surface` | `()` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L360) |
 | function | `_surface_summary` | `(sent, skipped, last)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L378) |
+
+## `core/services/autonomous_run_digest.py`
+_Referat af en autonom koersel — kort, i hans egen samtale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slags_af` | `(session_id)` | — | [src](../../../core/services/autonomous_run_digest.py#L55) |
+| function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L63) |
+| function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L80) |
+| function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L84) |
+| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L121) |
 

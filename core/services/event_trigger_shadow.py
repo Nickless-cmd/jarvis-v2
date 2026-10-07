@@ -15,7 +15,7 @@ den til at handle — og UDEN at røre den gamle `autonomous_council_daemon`
 (den pensioneres senere).
 
 GOVERNANCE: samme flag som grund-dommeren, `central_convene_judge_mode`
-(off|shadow|on). Så længe mode != "on" er dette rent observerende: NUL LLM,
+(off|shadow; et gemt "on" læses som shadow). Dette er rent observerende: NUL LLM,
 NUL råd. Modulet importerer overhovedet ikke nogen LLM- eller council-sti.
 
 Self-safe: en fejl i signal-kilden → sikker skip (registrerer intet, kaster
@@ -166,7 +166,7 @@ def tick_event_trigger_shadow(
 ) -> dict[str, Any]:
     """Ét shadow-tick: saml signaler → evaluér den rene delta-trigger → konsultér
     værnene → registrér telemetri. FYRER ALDRIG en LLM, INDKALDER ALDRIG et råd
-    (mode != "on" ⇒ ren observation; dette modul kalder aldrig en LLM/council-sti
+    (altid ren observation; dette modul kalder aldrig en LLM/council-sti
     overhovedet).
 
     signals: injicér signaler direkte (test-sti); ellers læses de flydende
@@ -225,7 +225,7 @@ def tick_event_trigger_shadow(
         max_movement = 0.0
 
     meta: dict[str, Any] = {
-        "mode": "shadow" if mode != "on" else "on",
+        "mode": mode,
         "would_dispatch": bool(would_dispatch),
         "crossed": crossed,
         "movements": {str(k): round(float(v), 3) for k, v in movements.items()},

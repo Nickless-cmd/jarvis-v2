@@ -30,22 +30,55 @@ def captured(monkeypatch):
 
     calls = {"llm": 0, "council": 0}
 
-    # Tripwires on the real LLM + council seams the daemon would use. The shadow
-    # module must NEVER reach these.
-    import core.services.autonomous_council_daemon as acd
+    # Snublesnor paa den eneste raads-indgang der findes.
+    #
+    # Den laa foer paa `autonomous_council_daemon._run_autonomous_council` og
+    # `._call_llm`. Begge er vaek 7/10-2026, og `raising=False` betoed at
+    # fixturet ville vaere blevet GROENT uden at maale noget den dag modulet
+    # forsvandt — havde importen ikke selv braekket. Snoren er derfor flyttet
+    # til `agent_runtime_council.run_council_round`, som stadig er den vej et
+    # raad samles ad. `raising=False` er med vilje droppet: forsvinder ogsaa den
+    # funktion, skal denne test braekke og ikke tie.
+    import core.services.agent_runtime_council as arc
 
     def _boom_council(*a, **k):
         calls["council"] += 1
         raise AssertionError("council convened in shadow mode")
 
-    def _boom_llm(*a, **k):
-        calls["llm"] += 1
-        raise AssertionError("LLM fired in shadow mode")
-
-    monkeypatch.setattr(acd, "_run_autonomous_council", _boom_council, raising=False)
-    monkeypatch.setattr(acd, "_call_llm", _boom_llm, raising=False)
+    monkeypatch.setattr(arc, "run_council_round", _boom_council)
 
     return {"records": records, "calls": calls}
+
+
+def test_shadow_modulet_naevner_INGEN_llm_eller_raads_sti():
+    """Modulets egen paastand: «importerer overhovedet ikke nogen LLM- eller
+    council-sti». En snublesnor fanger kun den gren der koeres; kilde-vagten
+    her gaelder hele modulet.
+
+    Vagten laeser AST'ens import-knuder, ikke tekst: en kommentar eller en
+    docstring der FORKLARER hvorfor vejen er vaek, maa ikke faelde den.
+    """
+    import ast
+    import inspect
+
+    from core.services import event_trigger_shadow as mod
+
+    traed = ast.parse(inspect.getsource(mod))
+    moduler: list[str] = []
+    for knude in ast.walk(traed):
+        if isinstance(knude, ast.Import):
+            moduler += [a.name for a in knude.names]
+        elif isinstance(knude, ast.ImportFrom):
+            moduler.append(knude.module or "")
+
+    forbudt = ("council", "agent_runtime", "llm", "provider")
+    fundet = [m for m in moduler if any(ord in m.lower() for ord in forbudt)
+              # grund-dommeren er en REN beregning og er modulets styreflag
+              and not m.startswith("core.services.central_convene_judge")]
+    assert fundet == [], (
+        "event_trigger_shadow importerer %s — modulet er observerende og maa "
+        "aldrig kunne naa en LLM eller et raad" % ", ".join(fundet)
+    )
 
 
 @pytest.fixture()

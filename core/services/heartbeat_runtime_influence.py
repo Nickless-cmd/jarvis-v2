@@ -205,32 +205,17 @@ def _build_influence_trace(
                 f"last-council ({_conclusion['mode']}, topic={_conclusion['topic'][:60]!r}): "
                 f"{_conclusion['summary'][:200]}"
             )
-        _activation_path = _cfg_dir / "council_activation.json"
-        _activation: dict = {}
-        if _activation_path.exists():
-            try:
-                _activation = _json.loads(_activation_path.read_text())
-            except Exception:
-                pass
-        _sensitivity = str(_activation.get("sensitivity") or "balanced")
-        _auto_convene = bool(_activation.get("auto_convene", True))
-        if _auto_convene:
-            _guidance_map = {
-                "conservative": (
-                    "Use convene_council for any non-trivial decision. "
-                    "Use quick_council_check before most actions."
-                ),
-                "balanced": (
-                    "Use convene_council for significant decisions (identity, memory rewrites, multi-step plans). "
-                    "Use quick_council_check for uncertain moderate actions."
-                ),
-                "minimal": (
-                    "Use convene_council only for critical or irreversible decisions."
-                ),
-            }
-            _guidance = _guidance_map.get(_sensitivity, "")
-            if _guidance:
-                inputs_present.append(f"council-guidance ({_sensitivity}): {_guidance}")
+        # RAADS-VEJLEDNINGEN ER FJERNET 7/10-2026.
+        #
+        # Den laeste `council_activation.json` og lagde en linje i prompten der
+        # sagde «Use convene_council …» / «Use quick_council_check …». Begge
+        # vaerktoejer er vaek med den blinde indkaldelse, saa vejledningen bad
+        # ham om at kalde noget der ikke findes — netop foer de beslutninger
+        # den kaldte vigtigst.
+        #
+        # Laesningen af den SENESTE konklusion ovenfor staar: `council_runtime`
+        # er bevaret som laeseflade, og arkivet er sandt selv om det nu er
+        # frosset.
     except Exception:
         pass
 
@@ -1194,33 +1179,12 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    if _dm.is_enabled("autonomous_council"):
-        try:
-            from core.services.autonomous_council_daemon import tick_autonomous_council_daemon
-            _ac_result = _hb._daemon_tick_with_deadline(
-                "autonomous_council", tick_autonomous_council_daemon, deadline_seconds=30.0,
-            )
-            _dm.record_daemon_tick("autonomous_council", _ac_result or {})
-        except Exception:
-            pass
-
     # C5 — event-trigger SHADOW-meter FLYTTET 2026-07-14 til den ubetingede daemon-sektion
     # i heartbeat_runtime (% 6 ≈ 3 min). Var HER inde i _build_influence_trace, men den bygges
     # kun på den fulde (aktivitets-drevne) heartbeat-sti → tavs hele natten (kun 1 durable sample
     # på 24t). Nu tikker den uanset idle, så et fuldt 24t θ-vindue akkumulerer. Se daemon_manager
     # _REGISTRY["event_trigger_shadow"].
 
-    if _dm.is_enabled("council_memory"):
-        try:
-            from core.services.council_memory_daemon import tick_council_memory_daemon
-            _recent_ctx = " ".join(inputs_present[:5])
-            _cm_result = _hb._daemon_tick_with_deadline(
-                "council_memory", tick_council_memory_daemon,
-                recent_context=_recent_ctx, deadline_seconds=20.0,
-            )
-            _dm.record_daemon_tick("council_memory", _cm_result or {})
-        except Exception:
-            pass
 
 
 

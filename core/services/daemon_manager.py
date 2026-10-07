@@ -274,24 +274,6 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_affect] Emergent appetites with intensity-based lifecycle",
     },
-    "autonomous_council": {
-        "module": "core.services.autonomous_council_daemon",
-        "reset_var": "_last_council_at",
-        "reset_value": None,
-        "default_cadence_minutes": 30,
-        "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret. GENINDSAT i cognition-familien 5/9, TAGET UD IGEN 15/9 (cluster_daemon._COGNITION_UNCONDITIONAL) — den blinde trigger er vaek, motoren intakt.
-        "retired": "2026-07-13",
-        "description": "[PENSIONERET] Blind, automatisk raadsindkaldelse via signal-scoring — ingen familie kalder den laengere (taget ud 15/9-2026). Motoren (convene_council + council_deliberation_controller + council-tabellerne) er intakt: raadet samles kun on-demand.",
-    },
-    "council_memory": {
-        "module": "core.services.council_memory_daemon",
-        "reset_var": "_last_llm_call_at",
-        "reset_value": None,
-        "default_cadence_minutes": 10,
-        "default_enabled": False,  # PENSIONERET 2026-07-15 — cluster_memory overtager (GATED LLM member bag familiens ÉNE should_generative_fire — cooldown-timer LLM → salience-gatet; self-throttler stadig 10min cooldown). council.memory_injected + heartbeat council_memory-context BEVARET.
-        "retired": "2026-07-15",
-        "description": "[PENSIONERET → cluster_memory] Injects relevant past council conclusions into heartbeat context",
-    },
     "signal_decay": {
         "module": "core.services.signal_decay_daemon",
         "reset_var": "_last_tick_at",
@@ -674,9 +656,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # memory_write_queue + council_memory foldet ind i ÉN Central-styret familie
         # (i cluster_daemon_families.py — cluster_daemon.py har ramt 1500-linjers
         # kodegrænsen). Kører LIVE (prove-then-retire END STATE) — de 8 gamle daemons
-        # er PENSIONERET (default_enabled=False, retired 2026-07-15). To tiers: DET ENE
-        # LLM-medlem (council_memory, tidl. cooldown-timer LLM) bag familiens ÉNE
-        # should_generative_fire event-gate → salience-gatet; de 7 non-LLM
+        # er PENSIONERET (default_enabled=False, retired 2026-07-15).
+        #
+        # 7/10-2026: familiens ENESTE LLM-medlem var `council_memory`, som
+        # injicerede tidligere raadskonklusioner i heartbeat-konteksten. Det
+        # medlem er fjernet med den blinde indkaldelse — familien har nu
+        # INGEN LLM-medlemmer, og `should_generative_fire`-gaten har derfor
+        # intet at gate. De 7 non-LLM
         # vedligeholdelses-medlemmer kører UBETINGET hver tick med hver deres interne
         # cadence (write_queue 120s, decay 24t, pruning 6t, maintenance 12t,
         # consolidation 24t, associative ~2min, safeguard hver tick). memory_write_queue
@@ -685,7 +671,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         # fungerende live tick. default_cadence_minutes=2 markerer den hyppigste rytme
         # (write_queue-drain); heartbeaten gater på is_enabled, medlemmerne
         # self-throttler. Self-safe: ét fejlende medlem blokerer aldrig de andre.
-        "description": "cluster-daemon FAMILIE #6 (memory/maintenance) LIVE: council_memory (gated LLM, ÉN event-gate) + memory_write_queue+memory_decay+memory_pruning+memory_maintenance+memory_safeguard+selective_consolidation+associative_recall (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 8 pensionerede daemons; bevarer alle outputs (write-queue-drain, rediscovery, recall-persistens, council-injektion).",
+        "description": "cluster-daemon FAMILIE #6 (memory/maintenance) LIVE: memory_write_queue+memory_decay+memory_pruning+memory_maintenance+memory_safeguard+selective_consolidation+associative_recall (non-LLM, ubetinget) foldet i ÉN familie; erstatter de 8 pensionerede daemons; bevarer write-queue-drain, rediscovery og recall-persistens. Raads-injektionen (council_memory, familiens eneste LLM-medlem) er fjernet 7/10-2026 — familien har nu nul LLM-medlemmer.",
     },
     "cluster_aesthetic": {
         "module": "core.services.cluster_daemon_families",

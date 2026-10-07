@@ -1393,8 +1393,8 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # ── Native tools udskilt til simple_tools_native.py (Boy Scout, 2026-07) ──
 # initiativer/mood/memory/proposals/tasks/chronicles/notify/discord/home-assistant/
 # council/agenter/daemon/settings/project/central + load_more_tools + google/notes/hf.
-# Modulet ejer egen state (_DISCORD_*/_convene_council_*/_SENSITIVE_*). Re-importeret
-# her (dispatch-dict + tests). _convene_council_daily_* (muterbar) ejes af undermodulet.
+# Modulet ejer egen state (_DISCORD_*/_SENSITIVE_*). Re-importeret her
+# (dispatch-dict + tests).
 from core.tools.recall_tool import _exec_recall  # noqa: E402
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
@@ -1433,9 +1433,6 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_discord_channel,
     _exec_search_chat_history,
     _exec_home_assistant,
-    _exec_convene_council,
-    _exec_council_status,
-    _exec_quick_council_check,
     _exec_spawn_agent_task,
     _exec_explore,
     _exec_send_message_to_agent,
@@ -1449,7 +1446,6 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_eventbus_recent,
     _is_sensitive_setting,
     _exec_update_setting,
-    _exec_recall_council_conclusions,
     _exec_internal_api,
     _exec_my_project_status,
     _exec_my_project_journal_write,
@@ -1489,7 +1485,6 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _DISCORD_CHANNEL_FETCH_RATE,
     _DISCORD_SEND_MIN_INTERVAL,
     _DISCORD_FETCH_MAX_PER_MINUTE,
-    _CONVENE_COUNCIL_DAILY_MAX,
     _SENSITIVE_SETTING_PATTERNS,
 )
 
@@ -1628,9 +1623,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "discord_status": _exec_discord_status,
     "discord_channel": _exec_discord_channel,
     "home_assistant": _exec_home_assistant,
-    "convene_council": _exec_convene_council,
-    "council_status": _exec_council_status,
-    "quick_council_check": _exec_quick_council_check,
     "spawn_agent_task": _exec_spawn_agent_task,
     "scout_agent": _exec_explore,
     # Gammelt navn (omdøbt 17/9-2026, Bjørn). Beholdt som skjult alias: Jarvis'
@@ -1647,7 +1639,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_signal_surface": _exec_read_signal_surface,
     "eventbus_recent": _exec_eventbus_recent,
     "update_setting": _exec_update_setting,
-    "recall_council_conclusions": _exec_recall_council_conclusions,
     "analyze_image": _exec_analyze_image,
     "read_archive": _exec_read_archive,
     "internal_api": _exec_internal_api,

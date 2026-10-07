@@ -6,8 +6,10 @@ Manages the deliberation loop with:
 - Deadlock detection: bag-of-words cosine similarity across rounds
 - Graduated deadlock response: devil's advocate first, then forced conclusion
 
-Used by agent_runtime._run_collective_round (council mode) and
-autonomous_council_daemon._run_autonomous_council.
+Used by agent_runtime._run_collective_round (council mode). Den anden kalder
+var `autonomous_council_daemon._run_autonomous_council` — den blinde
+indkaldelse, fjernet 7/10-2026. Controlleren er bevaret som motor; se
+`cluster_daemon` for maalingen bag parkeringen.
 """
 from __future__ import annotations
 

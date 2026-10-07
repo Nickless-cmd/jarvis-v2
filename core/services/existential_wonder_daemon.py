@@ -116,12 +116,15 @@ def tick_existential_wonder_daemon(
 
     _store_wonder(wonder, now)
 
-    # AKSE 5 — a wonder that carries real weight should be able to actually move him:
-    # propose a council convening THROUGH the reason-judge (which weighs it against the
-    # flowing state), instead of only writing to private_brain + an event no one reads.
-    # When the judge finds real weight, the council takes exactly this wonder and its
-    # conclusion lands via the initiative queue (akse 2). Self-safe, additive, and the
-    # private_brain write above is unchanged (backward compatible).
+    # AKSE 5 — foreslaa en raads-indkaldelse GENNEM grund-dommeren, som vejer
+    # undren mod den floedende tilstand.
+    #
+    # Sidste saetning i den oprindelige kommentar her sagde: «naar dommeren
+    # finder reel vaegt, tager raadet praecis denne undren». Det holdt op med at
+    # vaere sandt 15/9-2026, da `autonomous_council_daemon` gik ud af den
+    # ubetingede liste — og dommerens afgoerelse har siden kun vaeret en maaling.
+    # Dommeren er bevaret som maaling; forslaget her er altsaa et SIGNAL, ikke en
+    # vej til en handling. Skrivningen til private_brain ovenfor er uaendret.
     convene = _maybe_propose_convening(wonder)
     return {"generated": True, "wonder": wonder, "convene_proposed": convene}
 
@@ -129,10 +132,11 @@ def tick_existential_wonder_daemon(
 def _maybe_propose_convening(wonder: str) -> bool:
     """Offer this wonder to the Central reason-judge as a reason to convene the council.
 
-    The daemon does NOT decide to convene — it only proposes; the judge weighs the
-    wonder against the flowing state and (in on-mode) the council daemon acts. In
-    off/shadow mode this is observed but changes nothing. Self-safe: any failure
-    returns False and never raises."""
+    Daemonen beslutter ikke selv — den foreslaar. Dommeren vejer undren mod den
+    floedende tilstand og OBSERVERER; der er ingen aktoer i den anden ende
+    laengere (se `central_convene_judge.current_mode`). Returvaerdien er derfor
+    «dommeren saa vaegt i den», ikke «et raad blev indkaldt». Self-safe: enhver
+    fejl giver False og kaster aldrig."""
     try:
         from core.services import central_convene_judge as judge
         if judge.current_mode() == "off":

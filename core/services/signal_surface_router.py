@@ -151,8 +151,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.development_narrative_daemon import build_development_narrative_surface
     from core.services.creative_drift_daemon import build_creative_drift_surface
     from core.services.existential_wonder_daemon import build_existential_wonder_surface
-    from core.services.autonomous_council_daemon import build_autonomous_council_surface
-    from core.services.council_memory_daemon import build_council_memory_surface
     from core.services.dream_insight_daemon import build_dream_insight_surface
     from core.services.code_aesthetic_daemon import build_code_aesthetic_surface
     from core.services.memory_decay_daemon import build_memory_decay_surface
@@ -246,8 +244,6 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "daemon_memory_safeguard": build_memory_safeguard_surface,
         "emotion_repair_bridge": build_emotion_repair_bridge_surface,
         "narrative_summary": build_narrative_summary_surface,
-        "autonomous_council": build_autonomous_council_surface,
-        "council_memory": build_council_memory_surface,
         # Runtime context
         "embodied_state": build_embodied_state_surface,
         "affective_meta_state": build_affective_meta_state_surface,

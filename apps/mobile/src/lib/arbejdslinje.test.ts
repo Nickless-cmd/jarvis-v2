@@ -41,9 +41,11 @@ describe('arbejdslinjeTekst', () => {
   })
 
   it('hele sætninger uden genstand bruges som de er', () => {
-    // MUT: flyt convene_council til MED_GENSTAND → «Indkalder rådet rådet» → fanger.
-    expect(arbejdslinjeTekst('Indkalder råd: noget', 'convene_council'))
-      .toBe('Indkalder rådet')
+    // Forlægget var `convene_council` — fjernet 7/10-2026. Reglen er den samme:
+    // et værktøj i UDEN_GENSTAND må ikke få detailens genstand klistret bagpå.
+    // MUT: flyt read_dreams til MED_GENSTAND → «Læser drømmene drømmene» → fanger.
+    expect(arbejdslinjeTekst('Læser drømme: noget', 'read_dreams'))
+      .toBe('Læser drømmene')
   })
 
   it('tom eller manglende workingStep tegner intet', () => {

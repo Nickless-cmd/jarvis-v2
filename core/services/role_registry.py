@@ -163,7 +163,7 @@ ROLE_REGISTRY_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "Define a new custom agent role. Persisted to "
                 "~/.jarvis-v2/config/custom_roles.json. Custom roles can "
                 "extend a built-in role (extends='critic') or stand alone. "
-                "Tools that spawn agents (spawn_agent_task, convene_council) "
+                "Tools that spawn agents (spawn_agent_task) "
                 "will then accept the new role."
             ),
             "parameters": {

@@ -45,7 +45,6 @@ _TOOL_LABELS: dict[str, str] = {
     "adjust_mood": "Justerer stemning",
     "read_self_docs": "Læser selvdokumentation",
     "read_tool_result": "Læser tool-resultat",
-    "recall_council_conclusions": "Henter rådskonklusioner",
     # Sanser
     "analyze_image": "Analyserer billede",
     "look_around": "Kigger rundt",
@@ -86,8 +85,6 @@ _TOOL_LABELS: dict[str, str] = {
     "send_discord_dm": "Sender Discord DM",
     "discord_channel": "Tilgår Discord-kanal",
     # Råd og agenter
-    "convene_council": "Indkalder råd",
-    "quick_council_check": "Hurtig rådscheck",
     "spawn_agent_task": "Spawner agent",
     "send_message_to_agent": "Sender besked til agent",
     "list_agents": "Lister agenter",

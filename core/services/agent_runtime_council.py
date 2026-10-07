@@ -484,8 +484,10 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
     # ventetiden falder.
     #
     # MAALT 10/9-2026: 763 raads-runs, 17,4 sekunder i snit, 3,7 medlemmer pr.
-    # raad. En runde frøs derfor Jarvis' tur i omkring et minut, fordi
-    # `convene_council` koerer synkront.
+    # raad. En runde frøs dengang Jarvis' tur i omkring et minut, fordi
+    # `convene_council` koerte synkront i hans tur. Vaerktoejet er vaek 7/10-2026,
+    # saa den synkrone pris rammer ikke laengere en samtale — men parallelt
+    # er stadig rigtigt for den kalder der er tilbage (run-round-ruten).
     if len(workers) > 1:
         with ThreadPoolExecutor(max_workers=min(len(workers), MAX_SWARM_WORKERS)) as pool:
             futures = [pool.submit(_run_one_worker, m) for m in workers]

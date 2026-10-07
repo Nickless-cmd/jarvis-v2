@@ -2,8 +2,7 @@ import {
   Wrench, Terminal, FileText, FilePen, FilePlus, FolderTree, Search, Globe,
   Database, MessageSquare, Cpu, PanelRight, Image, Brain, Bell, Calendar,
   Activity, Bot, ListChecks, AlarmClock, GitBranch, RotateCw, Monitor, Inbox,
-  CloudSun, Home, Plug, FileCheck, Users,
-  type LucideIcon,
+  CloudSun, Home, Plug, FileCheck, type LucideIcon,
 } from 'lucide-react'
 
 export interface ToolMeta {
@@ -138,7 +137,6 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   spawn_agent_task: { label: 'Send agent', Icon: Bot, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   list_agents: { label: 'Agenter', Icon: Bot, summarize: () => '' },
   scout_agent: { label: 'Spejder', Icon: Bot, summarize: (a) => firstStr(a, ['query', 'question', 'task']) },
-  convene_council: { label: 'Råd', Icon: Users, summarize: (a) => firstStr(a, ['question', 'topic']) },
   todo_set: { label: 'Opgaveliste', Icon: ListChecks, summarize: () => '' },
   todo_update_status: { label: 'Opdater opgave', Icon: ListChecks, summarize: (a) => firstStr(a, ['todo_id', 'status']) },
   schedule_self_wakeup: { label: 'Planlæg vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['prompt', 'reason']) },

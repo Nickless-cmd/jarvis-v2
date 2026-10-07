@@ -18,13 +18,14 @@ Denne dommer læser de FLYDENDE værdier — de eksisterende signal-surfaces PLU
   2. udleder et EMNE-HINT af de mest aktive signaler + valens,
   3. udleder ROLLER DYNAMISK af hvad der bevæger sig (ikke det statiske map).
 
-GOVERNANCE: flag `central_convene_judge_mode` (runtime-state kv): off|shadow|on.
-DEFAULT off.
-  off    → uændret. Dommeren returnerer sit mode men styrer intet; den gamle
-           tærskel-gate afgør indkaldelse (nul adfærdsændring).
+GOVERNANCE: flag `central_convene_judge_mode` (runtime-state kv): off|shadow.
+DEFAULT off. Et gemt `on` læses som `shadow` — se `current_mode()` for målingen:
+`on` betød «dommeren afgør indkaldelse», og den der skulle HANDLE på afgørelsen
+er væk. Den tærskel-gate der nævnes nedenfor som «den gamle» findes heller ikke
+længere; dette modul er nu udelukkende en måling.
+  off    → dommeren returnerer sit mode men beregner intet.
   shadow → dommeren beregner + observerer hvad den VILLE beslutte (til
-           central_timeseries cognition/convene_judge), men den gamle gate styrer stadig.
-  on     → dommeren afgør indkaldelse + roller + emne-hint.
+           central_timeseries cognition/convene_judge). Ingen handler på det.
 
 Self-safe: enhver tvivl/fejl → convene=False i shadow-observationen; i on-mode falder
 kalderen tilbage på den gamle gate hvis dommeren fejler (kalder-siden fanger None).
@@ -58,8 +59,24 @@ def _kv_get(key: str, default: Any) -> Any:
 
 
 def current_mode() -> str:
+    """off | shadow — `on` er ikke laengere en tilstand der findes.
+
+    Maalt 7/10-2026: flaget stod paa `"on"` i produktion, men `on` betoed
+    «dommeren afgoer indkaldelse» — og den der SKULLE handle paa afgoerelsen
+    var `autonomous_council_daemon`. Den gik ud af den ubetingede daemon-liste
+    15/9-2026, og `autonomous_council_counters` viser netop den dag som sidste
+    raad. Dommeren har altsaa afgjort ind i ingenting i 22 doegn foer den blinde
+    indkaldelse blev fjernet helt.
+
+    Derfor oversaettes et gemt `"on"` til `shadow`: maalingen er bevaret, og
+    tilstanden er ikke laengere en paastand om en aktoer der ikke findes.
+    Skal indkaldelsen vaekkes igen, skal den have en aktoer FOERST — og saa kan
+    `on` genindfoeres sammen med den, ikke foer.
+    """
     m = str(_kv_get(_MODE_KEY, "off") or "off").strip().lower()
-    return m if m in ("off", "shadow", "on") else "off"
+    if m == "on":
+        return "shadow"
+    return m if m in ("off", "shadow") else "off"
 
 
 # ---------------------------------------------------------------------------

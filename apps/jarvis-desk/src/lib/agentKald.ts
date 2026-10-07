@@ -35,7 +35,6 @@ const UNDERAGENT_VAERKTOEJER = new Set([
   'scout_agent',
   'spawn_agent_task',
   'dispatch_code_mode_task',
-  'convene_council',
 ])
 
 export function erUnderagent(navn: string): boolean {

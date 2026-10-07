@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8520/16102 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8501/16070 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 722 | 1301 | 55% |
-| `core.services` | 5705 | 10984 | 51% |
+| `core.services` | 5687 | 10956 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 516 | 1043 | 49% |
+| `core.tools` | 515 | 1039 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2241)
+## Undocumented public functions (2238)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -681,7 +681,6 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/automation_dsl.py` :: `build_automation_dsl_surface` (L228)
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)
 - `core/services/automation_dsl.py` :: `list_automations` (L190)
-- `core/services/autonomous_council_daemon.py` :: `build_autonomous_council_surface` (L456)
 - `core/services/autonomous_goals.py` :: `update_goal_status` (L108)
 - `core/services/autonomous_outreach_daemon.py` :: `build_autonomous_outreach_surface` (L360)
 - `core/services/autonomous_outreach_daemon.py` :: `recent_log` (L356)
@@ -757,7 +756,6 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/central_catalog.py` :: `clusters` (L517)
 - `core/services/central_catalog.py` :: `nerve_cluster` (L488)
 - `core/services/central_catalog.py` :: `security_clusters` (L532)
-- `core/services/central_convene_judge.py` :: `current_mode` (L60)
 - `core/services/central_core.py` :: `Central.register` (L271)
 - `core/services/central_core.py` :: `central` (L281)
 - `core/services/central_dissent.py` :: `record_dissent` (L87)
@@ -870,11 +868,11 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/cluster_daemon.py` :: `innervoice_family` (L899)
 - `core/services/cluster_daemon.py` :: `narrative_family` (L1388)
 - `core/services/cluster_daemon.py` :: `somatic_family` (L498)
-- `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L442)
-- `core/services/cluster_daemon_families.py` :: `infra_family` (L1161)
-- `core/services/cluster_daemon_families.py` :: `memory_family` (L152)
-- `core/services/cluster_daemon_families.py` :: `projects_family` (L879)
-- `core/services/cluster_daemon_families.py` :: `relation_family` (L678)
+- `core/services/cluster_daemon_families.py` :: `aesthetic_family` (L427)
+- `core/services/cluster_daemon_families.py` :: `infra_family` (L1146)
+- `core/services/cluster_daemon_families.py` :: `memory_family` (L136)
+- `core/services/cluster_daemon_families.py` :: `projects_family` (L864)
+- `core/services/cluster_daemon_families.py` :: `relation_family` (L663)
 - `core/services/cluster_family_scheduler.py` :: `stop` (L226)
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
@@ -914,7 +912,6 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/conversation_rhythm.py` :: `build_conversation_rhythm_surface` (L74)
 - `core/services/conversation_topics.py` :: `list_conversation_topics` (L43)
 - `core/services/conversation_topics.py` :: `record_conversation_topic` (L14)
-- `core/services/council_memory_daemon.py` :: `build_council_memory_surface` (L65)
 - `core/services/council_runtime.py` :: `build_council_runtime_from_sources` (L27)
 - `core/services/council_runtime.py` :: `build_council_runtime_prompt_section` (L107)
 - `core/services/council_runtime.py` :: `build_council_runtime_surface` (L10)
@@ -963,8 +960,8 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_surface` (L100)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L16)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L807)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L854)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L793)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L840)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
@@ -1070,8 +1067,8 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L66)
 - `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L62)
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
-- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L163)
-- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L159)
+- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L167)
+- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L163)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
@@ -1476,7 +1473,7 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/push_dispatcher.py` :: `on_reminder` (L140)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
-- `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)
+- `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L232)
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L161)
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
@@ -1780,8 +1777,8 @@ Generated from source. 8520/16102 functions/methods documented (52%). The list b
 - `core/services/signal_noise_guard.py` :: `normalize_signal_text` (L110)
 - `core/services/signal_noise_guard.py` :: `stable_signal_slug` (L172)
 - `core/services/signal_noise_guard.py` :: `strip_signal_wrappers` (L114)
-- `core/services/signal_surface_router.py` :: `get_surface_names` (L272)
-- `core/services/signal_surface_router.py` :: `resolve_surface` (L276)
+- `core/services/signal_surface_router.py` :: `get_surface_names` (L268)
+- `core/services/signal_surface_router.py` :: `resolve_surface` (L272)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L152)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L155)
 - `core/services/silence_detector.py` :: `build_silence_surface` (L62)

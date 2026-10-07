@@ -1607,16 +1607,25 @@ def _cog_dream_insight_live(_snap: dict) -> dict[str, Any]:
 #     bruge, fordi de ikke kan tool-calls
 #   · emner som "The API key used for this request has reached its budget"
 #     (en billig LLM gjorde en fejlstreng til et spoergsmaal)
-#   · og konklusionerne blev ALDRIG laest: recall_council_conclusions findes
-#     som vaerktoej, men kaldes ikke fra én eneste produktionslinje
+#   · og konklusionerne blev ALDRIG laest: recall_council_conclusions fandtes
+#     som vaerktoej, men kaldtes ikke fra én eneste produktionslinje
 #
 # Bjoern 15/9: "council er spildt tokens ... hvilken effekt har det uden du
 # aktivt skal lede efter det". Det har ingen. Derfor er den blinde trigger vaek.
 #
-# MOTOREN ER INTAKT. convene_council (on-demand vaerktoej), council_deliberation_
-# controller og council-tabellerne er den DELTE motor og er urort — den bruges
-# ogsaa af Mission Control. Det er KUN den automatiske indkaldelse der er fjernet:
-# raadet samles naar nogen beder om det, ikke fordi en timer siger det.
+# MOTOREN ER INTAKT: `council_deliberation_controller`, `agent_runtime_council`
+# og council-tabellerne er urort, og `council_runtime` leverer stadig
+# laesefladen til prompten og selvmodellen.
+#
+# OPDATERET 7/10-2026: de FIRE vaerktoejer er ogsaa vaek — `convene_council`,
+# `council_status`, `quick_council_check`, `recall_council_conclusions`. Linjen
+# ovenfor sagde «raadet samles naar nogen beder om det», og det var sandt da den
+# blev skrevet: vaerktoejet var hans vej ind. Nu er der ingen MODEL-vej ind.
+# Motoren naas kun ved et direkte POST til
+# `/runtime/council/{id}/run-round` (mission_control_agents) — og ingen klient,
+# hverken desk eller mobil, kalder den rute. Det er en bevidst parkering, ikke
+# en sletning: skal raadet tilbage, skal det bygges som en komposition oven paa
+# agent-runtimen (spawn N med forskellige briefs -> synthesizer).
 #
 # Claude og OpenAI har begge fravalgt council som tjeneste til fordel for
 # orchestrator-worker (fan-out + syntese), og Anthropic fraraader eksplicit

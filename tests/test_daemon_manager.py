@@ -17,9 +17,11 @@ def test_registry_contains_all_daemons():
         "meta_reflection", "experienced_time", "development_narrative",
         "absence", "creative_drift", "existential_wonder", "dream_insight",
         "code_aesthetic", "memory_decay", "user_model", "desire",
-        "autonomous_council",
-        "council_memory",
     }
+    # 7/10-2026: `autonomous_council` og `council_memory` stod her. Begge er
+    # fjernet fra registret med den blinde indkaldelse — se
+    # test_raads_daemonerne_er_HELT_ude_af_registret nedenfor, der pinner
+    # fraværet i stedet for tilstedevaerelsen.
     # System has grown beyond the original 22 daemons (43+ as of 2026-05-15).
     # Test intent: verify the 22 known/core daemons are registered. New
     # daemons shouldn't make this test fail — they're additive.
@@ -119,10 +121,14 @@ def test_restart_clears_state_var(tmp_path):
 
 
 def test_retired_daemons_default_disabled(tmp_path):
-    """Fase 6/7 + Lag 6: autonomous_council, code_aesthetic and current_pull are
-    retired — registered (code + engine preserved) but not running by default."""
+    """Fase 6/7 + Lag 6: code_aesthetic og current_pull er pensioneret —
+    registreret (kode + motor bevaret) men ikke taendt som standard.
+
+    `autonomous_council` stod her indtil 7/10-2026. Den er ikke laengere
+    «pensioneret men registreret» — den er ude af registret, og det pinnes af
+    test_raads_daemonerne_er_HELT_ude_af_registret."""
     from core.services import daemon_manager
-    retired = ("autonomous_council", "code_aesthetic", "current_pull")
+    retired = ("code_aesthetic", "current_pull")
     for name in retired:
         assert name in daemon_manager.get_daemon_names()
         assert daemon_manager._REGISTRY[name].get("default_enabled") is False, name
@@ -214,13 +220,49 @@ def test_set_interval_requires_minutes_param(tmp_path):
 # 2026-09-05: decision_review er tændt igen — selv-bias'en er lukket med et
 # eksternt regnskab (decision_evidence.py), så den hører ikke længere til her.
 #
-# 2026-09-15: autonomous_council er den FØRSTE post her, og det er med vilje.
-# Den er ikke afløst af en familie — den er bevidst slukket. Den koerte ubetinget
-# i cognition-familien (genindsat 5/9) og samlede 35 raad paa 11 dage, tre per nat,
-# paa gratis smaa-modeller, med konklusioner der aldrig blev laest. Bjoern 15/9:
-# "council er spildt tokens". Motoren er intakt (convene_council kan stadig kaldes
-# on-demand); det er kun den blinde, tidsstyrede trigger der er vaek.
-_BEVIDST_SLUKKEDE: set[str] = {"autonomous_council"}
+# 2026-09-15: autonomous_council var den FOERSTE post her — bevidst slukket, ikke
+# afloest. Den koerte ubetinget i cognition-familien og samlede 35 raad paa 11
+# dage, tre per nat, paa gratis smaa-modeller, med konklusioner der aldrig blev
+# laest. Bjoern 15/9: "council er spildt tokens".
+#
+# 2026-10-07: posten er TAGET UD af listen, fordi daemonen ikke laengere findes i
+# registret. Listen er for dem der staar der og er slukket; en daemon der er
+# slettet hoerer ikke paa den, og
+# `test_bevidst_slukkede_baerer_deres_begrundelse` kraever netop at posten HAR en
+# spec. Fraværet pinnes nu af test_raads_daemonerne_er_HELT_ude_af_registret.
+#
+# At listen er tom er en gyldig tilstand: det betyder at hver pensioneret daemon
+# har navngivet sin efterfoelger. Bliver den tom OG en daemon staar uden hjem,
+# faar `test_hver_pensioneret_daemon_har_en_efterfoelger` fat i den.
+_BEVIDST_SLUKKEDE: set[str] = set()
+
+
+def test_raads_daemonerne_er_HELT_ude_af_registret():
+    """7/10-2026: den blinde indkaldelse er fjernet, ikke slukket.
+
+    En slukket daemon kan taendes igen med ét flag. Det er praecis hvad der
+    skete 5/9: `autonomous_council` blev GENINDSAT i cognition-familien efter
+    daekningsrevisionen, og samlede saa 35 raad paa 11 dage. Derfor pinner denne
+    test fravaeret i registret, ikke bare `default_enabled is False` — en ny
+    post med samme navn skal brække noget.
+    """
+    from core.services import daemon_manager as dm
+
+    navne = dm.get_daemon_names()
+    # Forudsaetning foerst: en test der kun kan bekraefte et FRAVAER bestaar
+    # ogsaa hvis opslaget holder op med at virke. Et navn der SKAL vaere der
+    # beviser at listen er rigtig foer vi tjekker hvad der ikke er i den.
+    assert "somatic" in navne, "registret svarer tomt — fravaeret nedenfor beviser intet"
+
+    for navn in ("autonomous_council", "council_memory"):
+        assert navn not in navne, (
+            "%s er tilbage i daemon-registret. Den blinde raads-indkaldelse blev "
+            "fjernet 7/10-2026 sammen med sine fire vaerktoejer; motoren "
+            "(agent_runtime_council, council_deliberation_controller) er bevaret "
+            "og naas via run-round-ruten. Skal raadet vaekkes, skal det bygges "
+            "som en komposition oven paa agent-runtimen — ikke som en timer." % navn
+        )
+        assert navn not in dm._REGISTRY, "%s har stadig en spec i _REGISTRY" % navn
 
 
 def test_hver_pensioneret_daemon_har_en_efterfoelger():
@@ -283,10 +325,10 @@ def test_familierne_koerer_faktisk_de_genindsatte():
     assert "provider_autodiscovery" in [n for n, _fn in F._INFRA_UNCONDITIONAL]
     assert "code_aesthetic" in [n for n, _fn in F._AESTHETIC_UNCONDITIONAL]
 
-    # 15/9-2026: autonomous_council er TAGET UD. Den koerte ubetinget paa hver
-    # familie-tick og samlede ~3 raad i doegnet paa gratis smaa-modeller, hvis
-    # konklusioner aldrig blev laest. Denne assertion vender den gamle vagt: nu
-    # skal den IKKE ligge i listen, saa genindsættelsen ikke sker ved et uheld.
+    # 15/9-2026: autonomous_council blev TAGET UD af listen; 7/10-2026 er selve
+    # daemonen slettet. Assertionen staar alligevel: den vender den gamle vagt,
+    # saa et nyt medlem med det navn ikke kan snige sig ind i familiens liste
+    # uden at braekke noget.
     assert "autonomous_council" not in [n for n, _fn in C._COGNITION_UNCONDITIONAL]
     # current_pull køres inline i affect-familiens non-LLM-runner, ikke fra en liste.
     import inspect

@@ -146,3 +146,32 @@ def test_current_mode_defaults_off(monkeypatch):
     assert j.current_mode() == "off"
     monkeypatch.setattr(j, "_kv_get", lambda k, d: "shadow")
     assert j.current_mode() == "shadow"
+
+
+# ---------------------------------------------------------------------------
+# `on` findes ikke laengere som tilstand (7/10-2026)
+# ---------------------------------------------------------------------------
+
+def test_gemt_on_laeses_som_shadow():
+    """Flaget stod paa "on" i produktion da aktoeren blev fjernet.
+
+    `on` betoed «dommeren afgoer indkaldelse», og den der skulle HANDLE var
+    `autonomous_council_daemon`. Den gik ud af den ubetingede liste 15/9-2026,
+    og raads-taellerne viser netop den dag som sidste raad. Oversaettelsen her
+    er derfor adfaerds-neutral — men den fjerner paastanden om en aktoer der
+    ikke findes, saa ingen kan wire noget til et mode der ikke virker.
+    """
+    from unittest.mock import patch
+
+    from core.services import central_convene_judge as j
+
+    with patch.object(j, "_kv_get", return_value="on"):
+        assert j.current_mode() == "shadow"
+    with patch.object(j, "_kv_get", return_value="ON"):
+        assert j.current_mode() == "shadow", "store bogstaver skal ogsaa fanges"
+    with patch.object(j, "_kv_get", return_value="shadow"):
+        assert j.current_mode() == "shadow"
+    with patch.object(j, "_kv_get", return_value="off"):
+        assert j.current_mode() == "off"
+    with patch.object(j, "_kv_get", return_value="noget-andet"):
+        assert j.current_mode() == "off", "ukendt vaerdi skal falde til off"

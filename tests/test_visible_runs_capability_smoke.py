@@ -31,7 +31,10 @@ def _run_visible_stream(
     stream_error: Exception | None = None,
     second_pass_error: Exception | None = None,
 ) -> tuple[list[str], dict[str, object]]:
-    monkeypatch.setattr(visible_runs, "record_cost", lambda **kwargs: None)
+    # 1/10-2026: hovedbogen skrives nu gennem `visible_run_cost`, saa
+    # `visible_runs.record_cost` findes ikke laengere. Patch det rigtige
+    # soem — et navn der ikke bruges ville lade testen tie.
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_k: None)
     monkeypatch.setattr(
         visible_runs, "_track_runtime_candidates", lambda run, assistant_text: None
     )
@@ -274,8 +277,10 @@ def test_visible_run_native_tool_calls_persist_cost_before_done(
 
     recorded_costs: list[dict[str, object]] = []
     monkeypatch.setattr(
-        visible_runs,
-        "record_cost",
+        # 1/10-2026: hovedbogen skrives gennem `visible_run_cost`, saa
+        # `visible_runs.record_cost` findes ikke laengere. Patch det rigtige
+        # soem — et navn der ikke bruges ville lade testen tie.
+        "core.costing.ledger.record_cost",
         lambda **kwargs: recorded_costs.append(dict(kwargs)),
     )
     monkeypatch.setattr(

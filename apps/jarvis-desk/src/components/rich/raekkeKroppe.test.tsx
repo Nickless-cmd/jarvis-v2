@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { kropFor, postFor, udDel, exitKode } from './raekkeKroppe'
+import { kropFor, postFor, udDel, exitKode, Terminal, LangKrop, MAX_LINJER, Minde } from './raekkeKroppe'
 import type { ApiConfig } from '../../lib/api'
 
 function vis(
@@ -634,5 +634,155 @@ describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
     await waitFor(() => expect(container.textContent).toContain('Et skrivebord'))
     expect(container.querySelector('.billed-knap')).not.toBeInTheDocument()
     expect(container.textContent).toContain('jarvisx-window-3.png')
+  })
+})
+
+/* ── Udeladelse og spill i terminal-kortet (spec punkt 5, 30/9-2026) ────────
+ *
+ * Reglerne er målt i `lib/udeladelse.test.ts`. Det her måler at KORTET bruger
+ * dem — og at knappen faktisk kalder den locator der har ligget ubrugt i
+ * `lib/api.ts`.
+ */
+const LANGT = Array.from({ length: 200 }, (_, i) => `linje ${i}`).join('\n')
+
+describe('Terminal — udeladelse', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('et kort resultat vises HELT og får ingen klausul', () => {
+    const { container } = render(<Terminal cmd="ls" ud={'a\nb\nc'} exit={0} vaerktoej="bash" />)
+    // Ansi-visningen deler teksten i spans, saa et tekst-match paa hele blokken
+    // finder ingenting — der maales paa den samlede tekst.
+    expect(container.textContent).toContain('a\nb\nc')
+    expect(document.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('et langt shell-resultat beholder hoved OG hale', () => {
+    const { container } = render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    const t = container.textContent ?? ''
+    expect(t).toContain('linje 0')      // hovedet
+    expect(t).toContain('linje 199')    // halen — exit-koden bor her
+    expect(t).not.toContain('linje 100')
+  })
+
+  it('klausulen siger hvor meget der mangler og hvad man gør', () => {
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    const k = document.querySelector('.rv-udeladt')?.textContent ?? ''
+    expect(k).toContain('168')
+    expect(k).toContain('tail')
+  })
+
+  it('en FIL-læsning får ingen hale — man læser forfra', () => {
+    const { container } = render(<Terminal cmd="read" ud={LANGT} exit={0} vaerktoej="read_file" />)
+    const t = container.textContent ?? ''
+    expect(t).toContain('linje 0')
+    expect(t).not.toContain('linje 199')
+    expect(document.querySelector('.rv-udeladt')?.textContent).toContain('til sidst')
+  })
+
+  it('UDEN id\'er vises ingen knap — der er ingen vej til resten', () => {
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash" />)
+    expect(screen.queryByRole('button', { name: 'Vis hele' })).toBeNull()
+  })
+
+  it('MED id\'er henter knappen resten gennem den eksisterende locator', async () => {
+    const api = await import('../../lib/api')
+    const spion = vi.spyOn(api, 'hentVaerktoejsResultat').mockResolvedValue('HELE TEKSTEN')
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash"
+      config={{ apiBaseUrl: 'http://x', authToken: null }} beskedId="m1" toolUseId="t1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis hele' }))
+    await waitFor(() => expect(spion).toHaveBeenCalledWith(
+      { apiBaseUrl: 'http://x', authToken: null }, 'm1', 't1'))
+    await screen.findByText('HELE TEKSTEN')
+    // Hentet = vist uafkortet. Klausulen giver ikke mening mere.
+    expect(document.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('en fejlet hentning SIGES — et dødt klik er værre end ingen knap', async () => {
+    const api = await import('../../lib/api')
+    vi.spyOn(api, 'hentVaerktoejsResultat').mockRejectedValue(new Error('404 ikke fundet'))
+    render(<Terminal cmd="ls" ud={LANGT} exit={0} vaerktoej="bash"
+      config={{ apiBaseUrl: 'http://x', authToken: null }} beskedId="m1" toolUseId="t1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis hele' }))
+    expect(await screen.findByText('404 ikke fundet')).toBeInTheDocument()
+  })
+})
+
+
+describe('Terminal — markoer-sekvenser og vognretur (spec punkt 6)', () => {
+  const ESC = String.fromCharCode(27)
+  const CR = String.fromCharCode(13)
+
+  it('viser ikke «[2K» som tekst', () => {
+    // `ansiStykker` oversaetter kun SGR. Alt andet stod som skrald paa skaermen.
+    const { container } = render(
+      <Terminal cmd="x" ud={`foer${ESC}[2Kefter`} exit={0} vaerktoej="bash" />)
+    expect(container.textContent).toContain('foerefter')
+    expect(container.textContent).not.toContain('[2K')
+  })
+
+  it('en progressbar viser sin sidste tilstand', () => {
+    const { container } = render(
+      <Terminal cmd="x" ud={`10%${CR}50%${CR}100%`} exit={0} vaerktoej="bash" />)
+    expect(container.textContent).toContain('100%')
+    expect(container.textContent).not.toContain(CR)
+  })
+
+  it('farven overlever rydningen', () => {
+    // Fjernede rydningen ogsaa SGR, ville farven forsvinde — og farven ER
+    // information; den er hele grunden til at vaerktoejet skrev den.
+    const { container } = render(
+      <Terminal cmd="x" ud={`${ESC}[32mgroen${ESC}[0m`} exit={0} vaerktoej="bash" />)
+    expect(container.querySelector('.rv-ansi-2')).toBeInTheDocument()
+    expect(container.textContent).toContain('groen')
+  })
+})
+
+
+describe('LangKrop — den delte geometri (spec punkt 6)', () => {
+  const langt = (n: number) => Array.from({ length: n }, (_, i) => `l${i}`).join('\n')
+
+  it('en kort krop staar HELT og faar ingen knap', () => {
+    const { container } = render(<LangKrop tekst={langt(MAX_LINJER)} />)
+    expect(container.textContent).toContain('l15')
+    expect(container.querySelector('.rv-udeladt')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Vis alle' })).toBeNull()
+  })
+
+  it('én linje over graensen klippes — med hoved OG hale', () => {
+    const { container } = render(<LangKrop tekst={langt(MAX_LINJER + 1)} />)
+    expect(container.textContent).toContain('l0')
+    expect(container.textContent).toContain('l16')   // halen
+    expect(container.querySelector('.rv-udeladt')).toBeInTheDocument()
+  })
+
+  it('midten er VAEK og tallet passer', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    expect(container.textContent).not.toContain('l50')
+    expect(container.querySelector('.rv-udeladt')?.textContent).toContain('84')
+  })
+
+  it('«Vis alle» folder ud LOKALT — teksten er der allerede', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis alle' }))
+    expect(container.textContent).toContain('l50')
+    expect(container.querySelector('.rv-udeladt')).toBeNull()
+  })
+
+  it('og kan foldes sammen igen', () => {
+    const { container } = render(<LangKrop tekst={langt(100)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis alle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vis færre' }))
+    expect(container.textContent).not.toContain('l50')
+  })
+
+  it('en enkelt meget lang linje klippes ogsaa her', () => {
+    const { container } = render(<LangKrop tekst={'x'.repeat(5000)} />)
+    expect((container.textContent ?? '').length).toBeLessThan(5000)
+  })
+
+  it('Minde bruger den — kortet straekkes ikke af en lang note', () => {
+    const { container } = render(<Minde titel="Note" meta="" tekst={langt(100)} />)
+    expect(container.querySelector('.rv-udeladt')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('l50')
   })
 })

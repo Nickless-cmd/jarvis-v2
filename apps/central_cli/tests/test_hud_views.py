@@ -34,21 +34,40 @@ async def test_all_read_tabs_render_without_crash():
 
 @pytest.mark.asyncio
 async def test_panel_widget_exists_and_toggles():
-    """Overview/Diagnostics use a dedicated panel widget; tabular tabs hide it."""
+    """Overview/Diagnostics bruger panel-widgeten; tabel-faner skjuler den.
+
+    Var RØD fordi den målte ét niveau forkert. Koden skifter
+    `#hud-panelbox` — containeren — mens testen læste `#hud-panel`, Static'en
+    INDE i den. At skjule en forælder gør ikke barnets eget `display` falsk, så
+    `panel.display` er True på BEGGE faner og assertionen kunne aldrig passere.
+    Målt 6/10-2026: box.display True på overview, False på nerves — altså
+    korrekt adfærd hele tiden.
+
+    Testen måler nu to ting: det koden styrer (boksen) OG det brugeren ser
+    (hele forælder-kæden). Den sidste overlever at boksen bliver omdøbt, men
+    fanger hvis panelet bliver flyttet ud i en synlig forælder.
+    """
     from textual.widgets import Static
 
     app = CentralHud(client=FakeClient(), live=False)
     async with app.run_test() as pilot:
         panel = app.query_one("#hud-panel", Static)
+        box = app.query_one("#hud-panelbox")
         assert panel is not None
-        # panel visible on non-tabular tabs
+
+        def synlig_for_brugeren(w) -> bool:
+            return all(a.display for a in w.ancestors_with_self)
+
         app.show_tab("overview")
-        assert panel.display is True
-        # tabular tab hides panel, shows the table
+        assert box.display is True
+        assert synlig_for_brugeren(panel) is True
+
         app.show_tab("nerves")
-        assert panel.display is False
+        assert box.display is False
+        assert synlig_for_brugeren(panel) is False
         table = app.query_one("#nerve-table")
         assert table.display is True
+        assert synlig_for_brugeren(table) is True
 
 
 @pytest.mark.asyncio

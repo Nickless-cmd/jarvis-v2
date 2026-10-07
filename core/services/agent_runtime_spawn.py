@@ -28,6 +28,7 @@ from core.services.agent_runtime_base import (
     _now_iso,
     _role_needs_tools,
     _run_agent_tool_loop,
+    _TOOL_USING_ROLES,
     agent_tools_enabled,
     cheap_lane_status_surface,
     create_agent_message,
@@ -170,7 +171,20 @@ def spawn_agent_task(
             f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
         )
     allowed_tools = allowed_tools or []
-    template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
+    # Fri tekst er TILLADT (rollen er en label, ikke en enum — se skemaet for
+    # spawn_agent_task). Men foer 2/10-2026 skete faldet TAVST: maalt i
+    # agent_registry stod 13 koersler med et rollenavn der ikke findes i
+    # templaten — fire af dem med opgaveteksten klaebet paa («navn — spoergsmaal»).
+    # Ingen kunne se at de alle sammen koerte researcher-templaten. Faldet
+    # bevares; kun tavsheden fjernes.
+    template = AGENT_ROLE_TEMPLATES.get(role)
+    if template is None:
+        logger.warning(
+            "ukendt agent-rolle %r — bruger researcher-templaten som bund "
+            "(fri tekst er tilladt; send system_prompt for en egen persona)",
+            role,
+        )
+        template = AGENT_ROLE_TEMPLATES["researcher"]
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
     # Expand tool_policy → concrete tools when the caller gave no explicit allowlist
@@ -196,6 +210,17 @@ def spawn_agent_task(
             allowed_tools = [t for t in allowed_tools if t in set(parent_allowed)]
     context = context or {}
     context["spawn_depth"] = spawn_depth
+    if _scout_maa_betale(role, tool_policy) and not context.get("user_id"):
+        # Capture the principal before a background scout loses its request
+        # context. Never infer an owner later while delivering its result.
+        try:
+            from core.identity.workspace_context import current_user_id
+            user_id = str(current_user_id() or "").strip()
+            if user_id:
+                context["user_id"] = user_id
+        except Exception:
+            logger.warning("kunne ikke knytte scout til bruger ved oprettelse",
+                           exc_info=True)
     result_contract = result_contract or {
         "summary": True,
         "findings": True,
@@ -250,7 +275,12 @@ def spawn_agent_task(
     # resolved BELOW the capability floor, upgrade it via the capability-ranked agent
     # router (deepseek/70B/qwen3-32b/nemotron-120B). Reflection roles (filosof/etiker)
     # and already-capable configs are untouched. Se central_route._model_capability.
-    _TOOL_ROLES = {"researcher", "critic", "planner", "executor", "watcher", "devils_advocate"}
+    #
+    # Arver fra `_TOOL_USING_ROLES` (2/10-2026). Her stod en LOKAL kopi af listen,
+    # og den var drevet fra kilden: `synthesizer` stod i base men manglede her,
+    # saa en synthesizer ikke fik opgraderet en model under capability-gulvet.
+    # To kopier af samme beslutning er dobbelt sandhed — nu er der én.
+    _TOOL_ROLES = _TOOL_USING_ROLES
     # Scouten må bruge de BETALTE modeller (Bjørn 26/9-2026: «de skal i hans
     # scout pulje»). Se `_scout_maa_betale` nedenfor for hvorfor det kræver
     # et flag der aldrig har været brugt.
@@ -523,8 +553,15 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     """
     from core.services.child_authority import uden_foraeldrens_godkendelse
     with uden_foraeldrens_godkendelse():
-        return _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
-                                        execution_mode=execution_mode)
+        surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
+                                           execution_mode=execution_mode)
+    try:
+        from core.services.scout_inbox_delivery import record_scout_completion
+        record_scout_completion(surface)
+    except Exception:
+        logger.warning("kunne ikke levere scout-resultat til indbakken (%s)",
+                       agent_id, exc_info=True)
+    return surface
 
 
 def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
@@ -693,6 +730,32 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             surface["status"] = "failed"
             surface["error"] = _udbyder_fejl
             return surface
+
+        _uden_resultat = str(result.get("status") or "completed")
+        if _uden_resultat in {"blocked", "failed", "needs_context"}:
+            # Nerven FOER raisen. `11f8d77cd` (5/10-2026, Actor: codex) indfoerte
+            # raisen her, og den ligger foer `note_agent_blocked` nedenfor — saa
+            # den typede blocked-nerve fra `6b8e6e646` (13/7) blev uopnaaelig
+            # for praecis den status den blev bygget til. Raisen er rigtig: en
+            # agent der ikke leverede noget brugbart skal fejle hoejt. Men
+            # HVORFOR den ikke leverede er hele nervens formaal, og «blocked»
+            # er ikke det samme som «failed» for den der ser paa Centralen.
+            if _uden_resultat in ("blocked", "needs_context"):
+                try:
+                    from core.services.agents import note_agent_blocked
+                    note_agent_blocked(
+                        agent_id, _uden_resultat,
+                        reason=str(result.get("text") or result.get("result") or "")[:160],
+                        role=str(agent.get("role") or ""),
+                    )
+                except Exception as exc:  # nerven maa aldrig staa i vejen for raisen nedenfor
+                    logger.warning(
+                        "agent_runtime_spawn: blocked-nerven fejlede for %s: %s",
+                        agent_id, exc)
+            raise RuntimeError(
+                "Agent afsluttede uden et brugbart resultat: "
+                + str(result.get("result") or text or result.get("status"))[:350]
+            )
 
         # Detect and execute spawn_agent requests embedded in response (can-spawn policy)
         tool_policy = str(agent.get("tool_policy") or "")

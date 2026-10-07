@@ -1,4 +1,10 @@
-"""Tests for the three concrete trigger callers: aesthetic, self-review, and queue_followup tool."""
+"""Tests for de tre tidligere trigger-kaldere: aesthetic, self-review og
+queue_followup-vaerktoejet.
+
+3/10-2026: alle tre skrev til `HEARTBEAT_TRIGGERS.json`, som er skrive-only —
+1.726 poster, intet fjernet i 160 dage. Ingen af dem skriver til koeen mere;
+de gaar gennem `notification_bridge`. Filen laaser begge sider af den flytning:
+koeen skal staa TOM, og beskeden skal faktisk afsted."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,64 +34,136 @@ def test_default_workspace_wrapper_resolves_and_sets(fake_workspace: Path) -> No
     assert heartbeat_triggers.peek_trigger(fake_workspace)["reason"] == "test"
 
 
-def test_aesthetic_insight_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
+def test_aesthetic_insight_koeer_ikke_paa_trigger_koeen(fake_workspace: Path, monkeypatch) -> None:
+    """3/10-2026: daemonen skrev til heartbeat-trigger-koeen, som aldrig
+    toemmes — 1.721 af 1.726 poster var dens, og ingen laeste dem. Indsigten
+    har sin egen kanal (`private_brain_records`), saa koeen skal staa tom."""
     # Stub the DB write and event bus so _store_insight runs cleanly in isolation
     import core.services.aesthetic_taste_daemon as daemon
 
-    monkeypatch.setattr(daemon, "insert_private_brain_record", lambda **kw: None)
+    gemt: list = []
+    monkeypatch.setattr(daemon, "insert_private_brain_record", lambda **kw: gemt.append(kw))
     monkeypatch.setattr(daemon.event_bus, "publish", lambda *a, **kw: None)
 
     daemon._store_insight("Jeg trækkes mod klarhed og ro.")
 
-    queued = heartbeat_triggers.peek_trigger(fake_workspace)
-    assert queued is not None
-    assert queued["reason"] == "aesthetic-insight"
-    assert queued["source"] == "aesthetic_taste_daemon"
-    assert "klarhed" in queued["text"]
+    assert heartbeat_triggers.peek_trigger(fake_workspace) is None
+    assert gemt, "indsigten skal stadig skrives til private_brain"
 
 
-def test_self_review_high_confidence_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
+@pytest.fixture
+def self_review_stubs(monkeypatch) -> list:
+    """Stubber DB-laget i self_review_run_tracking, saa
+    `_persist_self_review_runs` kan kaldes uden en database.
+
+    Returnerer listen af beskeder der blev sendt — saa testen ser hvad der
+    FAKTISK gik ud, ikke bare hvad der ikke blev lagt i koeen.
+    """
     import core.services.self_review_run_tracking as sr
+    from core.services import notification_bridge
 
-    # Simulate was_created + confidence=high without touching the DB
-    fake_item = {
-        "was_created": True,
-        "run_id": "sr-1",
+    sendt: list = []
+    monkeypatch.setattr(sr.event_bus, "publish", lambda *a, **kw: None)
+    monkeypatch.setattr(sr, "list_runtime_self_review_runs", lambda limit=40: [])
+    monkeypatch.setattr(
+        sr, "supersede_runtime_self_review_runs_for_domain", lambda **kw: 0
+    )
+
+    def _upsert(**kw):
+        return {
+            "run_id": kw.get("run_id"),
+            "canonical_key": kw.get("canonical_key"),
+            "summary": kw.get("summary"),
+            "confidence": kw.get("confidence"),
+            "was_created": True,
+            "was_updated": False,
+        }
+
+    monkeypatch.setattr(sr, "upsert_runtime_self_review_run", _upsert)
+
+    def _send(content, *, source="", push=True, **_kw):
+        sendt.append({"source": source, "text": content, "push": push})
+        return {"status": "ok"}
+
+    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
+    return sendt
+
+
+def _self_review_run(*, confidence: str) -> dict:
+    return {
+        "canonical_key": "self-review-run:drift:tool-execution",
+        "domain_key": "tool-execution",
         "run_type": "self-review-run",
         "status": "fresh",
+        "title": "Self-review snapshot: Tool execution",
         "summary": "Critical drift detected in tool execution",
-        "confidence": "high",
+        "confidence": confidence,
     }
 
-    # Call the trigger path directly via the logic used in _persist_self_review_runs
-    if fake_item["was_created"] and fake_item["confidence"].lower() == "high":
-        heartbeat_triggers.set_trigger_for_default_workspace(
-            reason="self-review-incident",
-            source="self_review_run_tracking",
-            text=fake_item["summary"],
-        )
 
-    queued = heartbeat_triggers.peek_trigger(fake_workspace)
-    assert queued is not None
-    assert queued["reason"] == "self-review-incident"
-    assert "drift" in queued["text"]
+def test_self_review_hoej_confidence_gaar_til_notification_bridge(
+    fake_workspace: Path, self_review_stubs: list
+) -> None:
+    """3/10-2026: samme fejlklasse som aesthetic-daemonen og vagtposterne.
+
+    Ved `confidence == "high"` skrev tracking til heartbeat-trigger-koeen, som
+    aldrig toemmes — de fire `self-review-incident`-poster der laa i koeen var
+    fra maj og naaede aldrig frem. Udgangen er nu `notification_bridge`.
+    """
+    import core.services.self_review_run_tracking as sr
+
+    sr._persist_self_review_runs(
+        runs=[_self_review_run(confidence="high")],
+        session_id="s-1",
+        run_id="run-1",
+    )
+
+    assert heartbeat_triggers.peek_trigger(fake_workspace) is None, (
+        "tracking maa ikke laegge i trigger-koeen — den toemmes aldrig"
+    )
+    assert len(self_review_stubs) == 1
+    assert self_review_stubs[0]["source"] == "self-review-run-tracking"
+    assert "drift" in self_review_stubs[0]["text"]
+    assert self_review_stubs[0]["push"] is False
 
 
-def test_self_review_low_confidence_does_not_queue(fake_workspace: Path) -> None:
-    # Nothing queued initially
+def test_self_review_lav_confidence_sender_intet(
+    fake_workspace: Path, self_review_stubs: list
+) -> None:
+    """Kun high-confidence skal ud. Med den nye udgang betyder det: ingen
+    besked overhovedet — ikke bare «ikke i koeen»."""
+    import core.services.self_review_run_tracking as sr
+
+    sr._persist_self_review_runs(
+        runs=[_self_review_run(confidence="low")],
+        session_id="s-1",
+        run_id="run-1",
+    )
+
+    assert self_review_stubs == []
     assert heartbeat_triggers.peek_trigger(fake_workspace) is None
 
-    fake_item = {"was_created": True, "confidence": "low", "summary": "noisy signal"}
-    # Gate condition: only high-confidence triggers; this should be skipped
-    if fake_item["was_created"] and str(fake_item.get("confidence") or "").lower() == "high":
-        heartbeat_triggers.set_trigger_for_default_workspace(
-            reason="self-review-incident", source="test", text=fake_item["summary"]
-        )
-    assert heartbeat_triggers.peek_trigger(fake_workspace) is None
 
+def test_queue_followup_gaar_gennem_notification_bridge(
+    fake_workspace: Path, monkeypatch
+) -> None:
+    """3/10-2026: vaerktoejet skrev til trigger-koeen, som aldrig toemmes — det
+    lovede «kom tilbage ved naeste tick» og leverede ingenting. Maalt samme
+    dag stod en besked lagt her nummer 1.725 af 1.726 poster.
 
-def test_queue_followup_tool_queues_trigger(fake_workspace: Path) -> None:
+    Det gaar nu gennem `notification_bridge`, den vej der faktisk leverer (og
+    som har daemon-vagt: koeer ved aktiv session, flusher efter turen).
+    """
+    from core.services import notification_bridge
     from core.tools import simple_tools
+
+    sendt: list = []
+
+    def _send(content, *, source="", push=True, **_kw):
+        sendt.append({"source": source, "text": content})
+        return {"status": "ok", "message": {"id": "msg-test"}}
+
+    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
 
     result = simple_tools._exec_queue_followup({
         "reason": "follow-up",
@@ -93,11 +171,13 @@ def test_queue_followup_tool_queues_trigger(fake_workspace: Path) -> None:
     })
     assert result["status"] == "queued"
     assert result["reason"] == "follow-up"
+    assert len(sendt) == 1
+    assert sendt[0]["source"] == "jarvis-self-followup"
+    assert "X i morgen" in sendt[0]["text"]
 
-    queued = heartbeat_triggers.peek_trigger(fake_workspace)
-    assert queued is not None
-    assert queued["source"] == "jarvis-self-followup"
-    assert "X i morgen" in queued["text"]
+    assert heartbeat_triggers.peek_trigger(fake_workspace) is None, (
+        "vaerktoejet maa ikke laegge i trigger-koeen — den toemmes aldrig"
+    )
 
 
 def test_queue_followup_tool_rejects_empty(fake_workspace: Path) -> None:

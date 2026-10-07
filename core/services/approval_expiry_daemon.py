@@ -75,6 +75,31 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
         # Forældreløse afsendelser (15/9-2026) — se broen. Samme fejning, en
         # anden tilstand: `expire_stale` roerer stadig aldrig `dispatching`.
         foraeldreloese = int(abandon_orphaned_dispatching(now=nu))
+        # ── Indbakkens fejer (5/10-2026) ────────────────────────────────────
+        #
+        # `db_inbox.fej_udloebne()` er den SAMME fejlform som `expire_stale`
+        # havde: den fandtes, den var testet, og den blev kaldt NUL steder.
+        # Målt 5/10-2026: nul poster havde nogensinde båret en frist.
+        #
+        # Den hører her fordi spørgsmålet er det samme — «en post ingen læser
+        # skal alligevel have sin terminale tilstand SKREVET» — og fordi
+        # kadencen passer: fem minutter er rigeligt til at en udløbet post ikke
+        # ligger og ser uafklaret ud. Indbakken DRÆBER selv posten ved
+        # læsningen (`er_udloebet` i `_post_fra_raekke`); fejeren gør kun
+        # tilstanden durabel.
+        # Egen try/except, ikke den ydre: en fejl i INDBakken må ikke slukke
+        # fejningen af godkendelser. De to er uafhængige mekanismer, og et
+        # fælles fejlpunkt ville gøre det ene subsystems fejl til det andets.
+        # Fejlen er stadig LOUD — den logges og står i `sidste_resultat()`.
+        try:
+            from core.runtime.db_inbox import fej_udloebne
+            udloebne_indbakke = int(fej_udloebne().get("fejet") or 0)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("approval_expiry: indbakkens fejer kunne ikke køre: %s", exc)
+            # -1, ikke 0: «kunne ikke køre» og «intet at feje» må ikke se ens
+            # ud. Det er husets hyppigste fejlform, og her ville den skjule at
+            # en fejer er død bag et tal der betyder «alt er fint».
+            udloebne_indbakke = -1
     except Exception as exc:
         # Familien isolerer allerede fejl, men en fejer der stille holder op
         # med at virke er praecis den fejl denne fil blev skrevet for at rette.
@@ -85,7 +110,8 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
 
     _last_tick_at = nu
     _last_result = {"fejet": True, "udloebet": antal,
-                    "foraeldreloese_afsendelser": foraeldreloese}
+                    "foraeldreloese_afsendelser": foraeldreloese,
+                    "udloebne_indbakke": udloebne_indbakke}
 
     if foraeldreloese:
         logger.warning("approval_expiry: %d afsendelse(r) uden afslutning — "

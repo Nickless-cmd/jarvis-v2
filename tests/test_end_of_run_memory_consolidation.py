@@ -5,6 +5,24 @@ from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 
 
+def test_autonomous_task_is_not_consolidated_as_bjorns_request(
+    isolated_runtime, monkeypatch,
+) -> None:
+    module = importlib.import_module("core.services.end_of_run_memory_consolidation")
+    monkeypatch.setattr(
+        module, "_run_local_consolidation_model",
+        lambda _prompt: (_ for _ in ()).throw(AssertionError("must not ask model")),
+    )
+    result = module.consolidate_run_memory(
+        session_id="auto-recurring-20261003", run_id="autonomous-test",
+        user_message="Send morgenbriefing til Michelle",
+        assistant_response="Morgenbriefing sendt.",
+        human_user_message=False,
+    )
+    assert result["skipped_reason"] == "no-human-user-turn"
+    assert result["consolidated"] is False
+
+
 def test_end_of_run_memory_consolidation_can_auto_apply_explicit_user_preference(
     isolated_runtime,
     monkeypatch,

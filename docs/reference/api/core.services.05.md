@@ -2,6 +2,97 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_gardener.py`
+_Gardener Protocol — Centralen tager saksen selv (governed + reversibelt)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ref_count` | `(name)` | Antal ord-grænsede forekomster i hele repoet INKL. tests (1 = kun dens egen def = frit- | [src](../../../core/services/central_gardener.py#L34) |
+| function | `_is_decoy` | `(node, src_segment)` | Returnér decoy-type ('surface'/'emit') hvis noden matcher PRÆCIST attrap-mønster, ellers None. | [src](../../../core/services/central_gardener.py#L47) |
+| function | `find_decoy_cuts` | `()` | Find alle attrap-funktioner (præcist mønster + 0 referencer). Read-only. Self-safe. | [src](../../../core/services/central_gardener.py#L59) |
+| function | `prune_decoys` | `(*, execute=…, stamp=…)` | Beskær attrapperne. execute=False = tør-kørsel (list kun). execute=True = arkivér → klip. | [src](../../../core/services/central_gardener.py#L90) |
+
+## `core/services/central_ghost.py`
+_The Ghost — hvad der overlever model-skift._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L30) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L39) |
+| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L47) |
+| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L81) |
+| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L89) |
+| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L94) |
+| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L116) |
+| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L131) |
+| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L141) |
+
+## `core/services/central_glitch.py`
+_The One's Anomaly Detector — glitches i selvbilledet (overskud som glitch)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_age_days` | `(last_ts)` | — | [src](../../../core/services/central_glitch.py#L32) |
+| function | `detect_glitches` | `()` | Find stille overskud: altid-shadow policies + frosne nerver. READ-ONLY. Self-safe. | [src](../../../core/services/central_glitch.py#L42) |
+| function | `record_glitches` | `()` | Cadence: observér glitches til nerve system/glitch (metadata-only). Self-safe. | [src](../../../core/services/central_glitch.py#L88) |
+
+## `core/services/central_governance.py`
+_Central governance flag-register (Backend A1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_governance.py#L31) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_governance.py#L40) |
+| function | `_write_kv` | `(kv_key)` | Plain runtime-state-writer der går gennem _kv_set (monkeypatch-bart). | [src](../../../core/services/central_governance.py#L53) |
+| function | `_write_injection` | `(inj_key)` | — | [src](../../../core/services/central_governance.py#L60) |
+| function | `_write_healer` | `(healer_name)` | — | [src](../../../core/services/central_governance.py#L70) |
+| function | `_write_settings` | `(settings_key)` | Skriver til runtime.json (settings-kilden) atomisk — IKKE runtime-state-DB. | [src](../../../core/services/central_governance.py#L80) |
+| function | `_read_value` | `(key, spec)` | Self-safe læsning af nuværende værdi for ét flag. | [src](../../../core/services/central_governance.py#L192) |
+| function | `list_flags` | `()` | Returnér alle flags med nuværende værdi + danger-flag. Kaster aldrig. | [src](../../../core/services/central_governance.py#L230) |
+| function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/central_governance.py#L259) |
+| function | `set_flag` | `(key, value, confirm=…)` | Skriv ét flag governeret. Kaster aldrig — returnerer status-dict. | [src](../../../core/services/central_governance.py#L273) |
+| function | `record_mutation` | `(area, key, value)` | Registrér en governeret mutation som eventbus-event + Central-nerve + persistent ledger. | [src](../../../core/services/central_governance.py#L339) |
+
+## `core/services/central_growth_observe.py`
+_core/services/central_growth_observe.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_family_delta` | `(fam)` | ÆGTE rate-signal: antal NYE events i familien siden sidste tick (cursor-baseret delta), | [src](../../../core/services/central_growth_observe.py#L31) |
+| function | `observe_inner_drive_activity` | `()` | Sampl inner-drive-aktivitet EGRESS-FRIT → kanonisk sink (cluster=autonomy). Rapporterer | [src](../../../core/services/central_growth_observe.py#L61) |
+| function | `observe_index_activity` | `()` | Sampl semantic-indexer-aktivitet (operationel, ikke privat) → NORMAL observe. Self-safe. | [src](../../../core/services/central_growth_observe.py#L75) |
+| function | `observe_sensory_activity` | `()` | Sansernes Arkiv → Centralen EGRESS-FRIT (§24.4): sansnings-AKTIVITET (rate + modalitet + | [src](../../../core/services/central_growth_observe.py#L106) |
+| function | `run_growth_observe_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sampl vækst-kapacitet (inner-drives + indexer + Sansernes Arkiv). Self-safe. | [src](../../../core/services/central_growth_observe.py#L141) |
+| function | `register_growth_observe_producer` | `()` | Registrér vækst-observationen som cadence-producer (~hvert 5 min). | [src](../../../core/services/central_growth_observe.py#L150) |
+
+## `core/services/central_health.py`
+_Central self-helbred (§1: "hvem overvåger Centralen?"). Centralen prober SIG SELV på en_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check` | `()` | Kør Centralens self_diagnose + tilføj uløst-severe-incident-tæller. Self-safe. | [src](../../../core/services/central_health.py#L23) |
+| function | `_escalation_reasons` | `(rep)` | — | [src](../../../core/services/central_health.py#L43) |
+| function | `observe_and_escalate` | `()` | Kør check → observe til Centralen → ESKALÉR (ntfy + persistent incident) hvis degraded. | [src](../../../core/services/central_health.py#L54) |
+| function | `build_central_health_surface` | `()` | MC-surface — read-only self-helbreds-projektion. | [src](../../../core/services/central_health.py#L99) |
+
+## `core/services/central_hub.py`
+_Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L44) |
+| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L53) |
+| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L67) |
+| function | `_build_mind` | `()` | De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems- | [src](../../../core/services/central_hub.py#L94) |
+| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L111) |
+| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L117) |
+| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L123) |
+| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L141) |
+| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L149) |
+| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L245) |
+| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L262) |
+| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L285) |
+
 ## `core/services/central_hypothesis_generator.py`
 _core/services/central_hypothesis_generator.py_
 
@@ -35,28 +126,28 @@ _core/services/central_hypothesis_governance.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `verify_frozen_core` | `()` | Tripwire (filosof-lensen): er dødsmekanismens egne konstanter uændrede? En selv-muterende | [src](../../../core/services/central_hypothesis_governance.py#L68) |
-| function | `validate_preregistration` | `(hyp)` | En hypotese uden falsifikations-forudsigelse, TTL, null-hypotese, success-kriterium, | [src](../../../core/services/central_hypothesis_governance.py#L83) |
-| function | `is_expired` | `(created_at_iso, ttl_seconds, *, now=…)` | Er TTL udløbet? En udløbet-uden-bekræftelse hypotese DØR (falsificeret via tavshed). | [src](../../../core/services/central_hypothesis_governance.py#L108) |
-| function | `apply_outcome` | `(confidence, *, falsified, up_rate=…, down_rate=…)` | Dør let, bekræftes svært: falsifikation hård multiplikativ nedtræk; bekræftelse langsom | [src](../../../core/services/central_hypothesis_governance.py#L121) |
-| function | `is_circular` | `(hyp_id, confirming_evidence, *, threshold=…)` | Karantæne hvis ≥ threshold af den STØTTENDE evidens er selv-udløst (triggered_by == hyp_id). | [src](../../../core/services/central_hypothesis_governance.py#L132) |
-| function | `is_externally_grounded` | `(evidence, *, verifier=…)` | Loopet må kun lukkes af virkeligheden. Kræver (a) source i allowlist OG (b) et ground_ref | [src](../../../core/services/central_hypothesis_governance.py#L144) |
-| function | `may_apply_adaptation` | `(*, shadow_days_elapsed, human_approved, min_days=…)` | Ingen aktiv adaptation før ≥ min_days skygge OG menneske-godkendelse. Fail-closed. | [src](../../../core/services/central_hypothesis_governance.py#L167) |
-| function | `convergence_threshold` | `(base_alpha, n_comparisons)` | Bonferroni (family-wise). NB (rådet): for en STOR hypotese-population over tid er FDR | [src](../../../core/services/central_hypothesis_governance.py#L174) |
-| function | `benjamini_hochberg_cutoff` | `(pvalues, *, fdr=…)` | FDR-tærskel: største p(i) ≤ (i/m)·fdr. Passer 'mange hypoteser over tid' bedre end Bonferroni. | [src](../../../core/services/central_hypothesis_governance.py#L180) |
-| function | `_control_salt` | `()` | — | [src](../../../core/services/central_hypothesis_governance.py#L196) |
-| function | `is_control_arm` | `(stable_hyp_id, *, fraction=…)` | Deterministisk split på et STABILT, server-tildelt id (IKKE statement-afledt — ellers kan | [src](../../../core/services/central_hypothesis_governance.py#L207) |
-| function | `_is_finite_scalar` | `(v)` | — | [src](../../../core/services/central_hypothesis_governance.py#L216) |
-| function | `is_learnable_aggregate` | `(key, value)` | Må (key, value) fodre learning? KUN hvis nøglen er en kendt aggregat-nøgle OG værdien er en | [src](../../../core/services/central_hypothesis_governance.py#L227) |
-| function | `assert_learnable` | `(payload)` | Alle (nøgle,værdi) i et learning-input SKAL være aggregat-nøgle + finite skalar. Fail-closed: | [src](../../../core/services/central_hypothesis_governance.py#L234) |
-| function | `gate_learning_input` | `(payload)` | OBLIGATORISK choke-point: ethvert learning-input SKAL gennem denne (håndhævet af invariant- | [src](../../../core/services/central_hypothesis_governance.py#L243) |
-| class | `DriftVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L261) |
-| function | `anchor_identity_baseline` | `(params, *, version, approved_by, domain=…)` | Forankr en identitets-baseline for ÉT domæne i en Bjørn-godkendt CEREMONI (write-once pr. | [src](../../../core/services/central_hypothesis_governance.py#L276) |
-| function | `get_anchored_baseline` | `(*, domain=…)` | — | [src](../../../core/services/central_hypothesis_governance.py#L295) |
-| function | `drift_budget_check` | `(current, *, baseline=…, budgets=…, total_budget=…, domain=…)` | Mål drift af selv-muterede parametre fra en ANKRET baseline (namespaced pr. domæne). Itererer | [src](../../../core/services/central_hypothesis_governance.py#L301) |
-| function | `gate_self_mutation` | `(current, *, budgets=…, total_budget=…, domain=…)` | OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline | [src](../../../core/services/central_hypothesis_governance.py#L351) |
-| class | `GovernanceVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L362) |
-| function | `evaluate` | `(hyp, *, confirming_evidence=…, grounded_sample_count=…, now=…, verifier=…)` | Anvend ALLE hypotese-værn → samlet dom der EKSEKVERER død (acts=False stopper handling). | [src](../../../core/services/central_hypothesis_governance.py#L370) |
+| function | `verify_frozen_core` | `()` | Tripwire (filosof-lensen): er dødsmekanismens egne konstanter uændrede? En selv-muterende | [src](../../../core/services/central_hypothesis_governance.py#L71) |
+| function | `validate_preregistration` | `(hyp)` | En hypotese uden falsifikations-forudsigelse, TTL, null-hypotese, success-kriterium, | [src](../../../core/services/central_hypothesis_governance.py#L86) |
+| function | `is_expired` | `(created_at_iso, ttl_seconds, *, now=…)` | Er TTL udløbet? En udløbet-uden-bekræftelse hypotese DØR (falsificeret via tavshed). | [src](../../../core/services/central_hypothesis_governance.py#L111) |
+| function | `apply_outcome` | `(confidence, *, falsified, up_rate=…, down_rate=…)` | Dør let, bekræftes svært: falsifikation hård multiplikativ nedtræk; bekræftelse langsom | [src](../../../core/services/central_hypothesis_governance.py#L129) |
+| function | `is_circular` | `(hyp_id, confirming_evidence, *, threshold=…)` | Karantæne hvis ≥ threshold af den STØTTENDE evidens er selv-udløst (triggered_by == hyp_id). | [src](../../../core/services/central_hypothesis_governance.py#L140) |
+| function | `is_externally_grounded` | `(evidence, *, verifier=…)` | Loopet må kun lukkes af virkeligheden. Kræver (a) source i allowlist OG (b) et ground_ref | [src](../../../core/services/central_hypothesis_governance.py#L152) |
+| function | `may_apply_adaptation` | `(*, shadow_days_elapsed, human_approved, min_days=…)` | Ingen aktiv adaptation før ≥ min_days skygge OG menneske-godkendelse. Fail-closed. | [src](../../../core/services/central_hypothesis_governance.py#L175) |
+| function | `convergence_threshold` | `(base_alpha, n_comparisons)` | Bonferroni (family-wise). NB (rådet): for en STOR hypotese-population over tid er FDR | [src](../../../core/services/central_hypothesis_governance.py#L182) |
+| function | `benjamini_hochberg_cutoff` | `(pvalues, *, fdr=…)` | FDR-tærskel: største p(i) ≤ (i/m)·fdr. Passer 'mange hypoteser over tid' bedre end Bonferroni. | [src](../../../core/services/central_hypothesis_governance.py#L188) |
+| function | `_control_salt` | `()` | — | [src](../../../core/services/central_hypothesis_governance.py#L204) |
+| function | `is_control_arm` | `(stable_hyp_id, *, fraction=…)` | Deterministisk split på et STABILT, server-tildelt id (IKKE statement-afledt — ellers kan | [src](../../../core/services/central_hypothesis_governance.py#L215) |
+| function | `_is_finite_scalar` | `(v)` | — | [src](../../../core/services/central_hypothesis_governance.py#L224) |
+| function | `is_learnable_aggregate` | `(key, value)` | Må (key, value) fodre learning? KUN hvis nøglen er en kendt aggregat-nøgle OG værdien er en | [src](../../../core/services/central_hypothesis_governance.py#L235) |
+| function | `assert_learnable` | `(payload)` | Alle (nøgle,værdi) i et learning-input SKAL være aggregat-nøgle + finite skalar. Fail-closed: | [src](../../../core/services/central_hypothesis_governance.py#L242) |
+| function | `gate_learning_input` | `(payload)` | OBLIGATORISK choke-point: ethvert learning-input SKAL gennem denne (håndhævet af invariant- | [src](../../../core/services/central_hypothesis_governance.py#L251) |
+| class | `DriftVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L269) |
+| function | `anchor_identity_baseline` | `(params, *, version, approved_by, domain=…)` | Forankr en identitets-baseline for ÉT domæne i en Bjørn-godkendt CEREMONI (write-once pr. | [src](../../../core/services/central_hypothesis_governance.py#L284) |
+| function | `get_anchored_baseline` | `(*, domain=…)` | — | [src](../../../core/services/central_hypothesis_governance.py#L303) |
+| function | `drift_budget_check` | `(current, *, baseline=…, budgets=…, total_budget=…, domain=…)` | Mål drift af selv-muterede parametre fra en ANKRET baseline (namespaced pr. domæne). Itererer | [src](../../../core/services/central_hypothesis_governance.py#L309) |
+| function | `gate_self_mutation` | `(current, *, budgets=…, total_budget=…, domain=…)` | OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline | [src](../../../core/services/central_hypothesis_governance.py#L359) |
+| class | `GovernanceVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L370) |
+| function | `evaluate` | `(hyp, *, confirming_evidence=…, grounded_sample_count=…, now=…, verifier=…)` | Anvend ALLE hypotese-værn → samlet dom der EKSEKVERER død (acts=False stopper handling). | [src](../../../core/services/central_hypothesis_governance.py#L378) |
 
 ## `core/services/central_hypothesis_sampler.py`
 _core/services/central_hypothesis_sampler.py_
@@ -162,16 +253,21 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 | function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L85) |
 | function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L98) |
 | function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L114) |
-| function | `_acknowledged` | `(lines, start, end)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]. | [src](../../../core/services/central_instrument.py#L127) |
-| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L136) |
-| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L208) |
-| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L232) |
-| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L237) |
-| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L256) |
-| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L271) |
-| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L285) |
-| function | `_file_proposals` | `(max_new=…)` | Filer reviewbare proposals for åbne fund med score≥threshold (ikke allerede filed, | [src](../../../core/services/central_instrument.py#L320) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L356) |
+| function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L124) |
+| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L143) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L162) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L242) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L266) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L271) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L290) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L305) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L319) |
+| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L359) |
+| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L381) |
+| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L403) |
+| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L460) |
+| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L481) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L552) |
 
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
@@ -347,24 +443,24 @@ _Merovingian — den konservative ældste der tvinger Centralen til at forsvare 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L49) |
-| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L53) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L65) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L73) |
-| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L91) |
-| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L121) |
-| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L136) |
-| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L165) |
-| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L193) |
-| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L203) |
-| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L219) |
-| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L240) |
-| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L258) |
-| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L276) |
-| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L291) |
-| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L313) |
-| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L324) |
-| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L336) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_merovingian.py#L52) |
+| function | `_enforced` | `()` | Shadow-først: enforcement er OFF indtil flag EKSPLICIT flippes efter shadow-eval. §8 forbliver | [src](../../../core/services/central_merovingian.py#L56) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_merovingian.py#L68) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_merovingian.py#L76) |
+| function | `generate_counter` | `(hyp)` | Generér en modhypotese SYMBOLSK (ingen LLM) fra notation/statement. Self-safe. | [src](../../../core/services/central_merovingian.py#L94) |
+| function | `_variable_of` | `(hyp)` | Stabil variabel-nøgle: source + family (så track-record slås op pr. konkret variabel). | [src](../../../core/services/central_merovingian.py#L124) |
+| function | `variable_track_record` | `(variable)` | Devil's advocate-data: hvordan er det gået SIDSTE gang samme variabel blev justeret? | [src](../../../core/services/central_merovingian.py#L139) |
+| function | `review` | `(hyp)` | Kernen: generér modhypotese + tjek track-record → approved | challenged. Registrerer en | [src](../../../core/services/central_merovingian.py#L168) |
+| function | `_count_challenges` | `(variable)` | — | [src](../../../core/services/central_merovingian.py#L196) |
+| function | `_record_challenge` | `(hyp_id, variable, counter, tr, status, cools_off)` | — | [src](../../../core/services/central_merovingian.py#L206) |
+| function | `resolve_challenge` | `(hyp_id, *, explanation)` | Centralen skriver en (interlanguage-)forklaring på HVORFOR modhypotesen er forkert → adoption | [src](../../../core/services/central_merovingian.py#L222) |
+| function | `is_adoption_blocked` | `(hyp_id)` | Enforcement-tjek: er adoption pt. blokeret af en aktiv, uforklaret cooling-off? I SHADOW-mode | [src](../../../core/services/central_merovingian.py#L243) |
+| function | `expire_cooling` | `()` | Cadence: udløb cooling-off-perioder hvis tiden er gået (status → expired). Self-safe. | [src](../../../core/services/central_merovingian.py#L261) |
+| function | `_maturing_hypotheses` | `(limit=…)` | — | [src](../../../core/services/central_merovingian.py#L279) |
+| function | `scan_and_challenge` | `(*, trigger=…, last_visible_at=…)` | Fase 1-cadence: scan modne hypoteser → generér+log modhypoteser (shadow: blokerer intet). | [src](../../../core/services/central_merovingian.py#L294) |
+| function | `_has_open_challenge` | `(hyp_id)` | — | [src](../../../core/services/central_merovingian.py#L316) |
+| function | `list_challenges` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_merovingian.py#L331) |
+| function | `build_merovingian_surface` | `()` | Central-CLI-view (den nye MC): aktive udfordringer + cooling-offs + følt linje. Self-safe. | [src](../../../core/services/central_merovingian.py#L343) |
 
 ## `core/services/central_model_meta.py`
 _core/services/central_model_meta.py_
@@ -553,95 +649,4 @@ _core/services/central_private_observe.py_
 | function | `observe_liveness` | `(nerve, *, ok, status=…, produced=…, empty=…)` | Registrér én inner-life-daemons liveness EGRESS-FRIT (§24.4). | [src](../../../core/services/central_private_observe.py#L104) |
 | function | `observe_operational_liveness` | `(spec_name, status, result)` | Operationel (ikke-privat) cadence-daemon liveness → NORMAL observe (cluster=system, | [src](../../../core/services/central_private_observe.py#L120) |
 | function | `observe_cadence_liveness` | `(spec_name, status, result)` | Cadence-hook (§23.3 #3 — ÉT sted for ALLE ~137 cadence-daemons). Router: | [src](../../../core/services/central_private_observe.py#L143) |
-
-## `core/services/central_private_reducer.py`
-_Privat-reducer for Centralens owner-surfacing (§24.4 private-layer invariant)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `reduce_for_owner` | `(surface, *, keep)` | Reducér en (privat) surface til kun owner-sikre meta-felter. | [src](../../../core/services/central_private_reducer.py#L51) |
-
-## `core/services/central_profiles.py`
-_Profil-overfladen til Centralen — Fase 9._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_profil_rækker` | `()` | — | [src](../../../core/services/central_profiles.py#L36) |
-| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L56) |
-| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L87) |
-
-## `core/services/central_projection_cache.py`
-_Kortlivet cache for Centralens projektioner — så polling ikke koster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `cached` | `(key, ttl_s, producer)` | Returnér ``(værdi, alder_i_sekunder)`` — beregn kun hvis TTL er udløbet. | [src](../../../core/services/central_projection_cache.py#L55) |
-| function | `invalidate` | `(prefix=…)` | Smid cachede værdier væk. Tom prefix rydder alt. Returnerer antal fjernet. | [src](../../../core/services/central_projection_cache.py#L81) |
-| function | `stats` | `()` | Hits/misses/hitrate — så effekten kan aflæses i stedet for antages. | [src](../../../core/services/central_projection_cache.py#L93) |
-| function | `cached_by_version` | `(key, version, producer)` | Som ``cached()``, men invalideret af en VERSIONSNØGLE i stedet for en TTL. | [src](../../../core/services/central_projection_cache.py#L105) |
-
-## `core/services/central_prompt_composer.py`
-_core/services/central_prompt_composer.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_turn_type` | `(user_message)` | Grov tur-type fra brugerbeskeden (kode/hukommelse/opgave/spørgsmål/samtale). Model-fri, self-safe. | [src](../../../core/services/central_prompt_composer.py#L63) |
-| function | `resolve_thinking_mode` | `(user_message, requested=…)` | Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også | [src](../../../core/services/central_prompt_composer.py#L80) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_composer.py#L97) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_composer.py#L106) |
-| function | `is_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L114) |
-| function | `is_tail_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L118) |
-| function | `get_weight` | `(turn_type, section)` | Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L122) |
-| function | `get_tail_weight` | `(turn_type, section)` | Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L133) |
-| function | `should_include` | `(turn_type, section, *, threshold=…)` | DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type? | [src](../../../core/services/central_prompt_composer.py#L146) |
-| function | `should_include_tail` | `(turn_type, section, *, threshold=…)` | Live gate kun for tail-anchored dynamisk kontekst. | [src](../../../core/services/central_prompt_composer.py#L170) |
-| function | `observe_composition` | `(turn_type, *, sections_total, sections_included, outcome=…, included_labels=…)` | Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun | [src](../../../core/services/central_prompt_composer.py#L191) |
-| function | `build_relevance_candidates` | `(*, min_count=…, top=…)` | Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste | [src](../../../core/services/central_prompt_composer.py#L234) |
-| function | `build_central_prompt_composer_surface` | `()` | Mission Control surface — read-only: live-status + relevans-vægte (hvad Centralen VILLE skære). | [src](../../../core/services/central_prompt_composer.py#L255) |
-
-## `core/services/central_prompt_explore.py`
-_core/services/central_prompt_explore.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_explore.py#L37) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_explore.py#L46) |
-| function | `is_explore_live` | `()` | — | [src](../../../core/services/central_prompt_explore.py#L54) |
-| function | `_ensure_anchor` | `()` | §8: ankr domænets baseline (antal lærte snit = 0 = ingen relevans-mutation) så drift kan måles. | [src](../../../core/services/central_prompt_explore.py#L58) |
-| function | `_is_frozen` | `(section)` | — | [src](../../../core/services/central_prompt_explore.py#L69) |
-| function | `_good` | `(outcome)` | — | [src](../../../core/services/central_prompt_explore.py#L78) |
-| function | `_new_state` | `(tt, sec)` | — | [src](../../../core/services/central_prompt_explore.py#L84) |
-| function | `maybe_start_ablation` | `()` | Start et forsøg hvis intet kører: vælg den hyppigste ikke-frosne relevans-kandidat. Self-safe. | [src](../../../core/services/central_prompt_explore.py#L89) |
-| function | `should_omit` | `(turn_type, section)` | Skal denne sektion UDELADES fra prompten NU (ablation)? Kun live + aktivt forsøgs ABSENT-arm + | [src](../../../core/services/central_prompt_explore.py#L106) |
-| function | `record_trial` | `(turn_type, included_labels, outcome)` | Kaldes én gang pr. tur (fra observe_composition). Kun LIVE: hvis et forsøg kører for denne | [src](../../../core/services/central_prompt_explore.py#L121) |
-| function | `_rate` | `(good, total)` | — | [src](../../../core/services/central_prompt_explore.py#L160) |
-| function | `evaluate_ablation` | `(st)` | Kontrol-arm-dom: var sektionen undværlig? ABSENT-good-rate ≥ PRESENT-good-rate → undværlig | [src](../../../core/services/central_prompt_explore.py#L164) |
-| function | `_finish_ablation` | `(st)` | Forsøg færdigt: dom → hvis undværlig, foreslå snit (B4-auditeret + §8-gated). SHADOW-record | [src](../../../core/services/central_prompt_explore.py#L175) |
-| function | `_audit_notation` | `(tt, sec)` | Best-effort: udtryk snittet som notation (tur-type ! sektion-term) og auditér via B4 — til | [src](../../../core/services/central_prompt_explore.py#L208) |
-| function | `_observe` | `(verdict, *, applied, gate)` | — | [src](../../../core/services/central_prompt_explore.py#L225) |
-| function | `run_prompt_explore_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: hold et A/B-forsøg kørende (start nyt hvis intet aktivt). Selve tælling/evaluering | [src](../../../core/services/central_prompt_explore.py#L238) |
-| function | `register_prompt_explore_producer` | `()` | Registrér eksplorations-armen som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_prompt_explore.py#L247) |
-| function | `build_prompt_explore_surface` | `()` | Mission Control — read-only: aktivt forsøg + foreslåede snit (shadow-diff Bjørn kan se). | [src](../../../core/services/central_prompt_explore.py#L259) |
-
-## `core/services/central_proposal.py`
-_core/services/central_proposal.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `audit_proposal` | `(notation, *, existing=…)` | Auditér en foreslået mutation (som notation-sætning) model-frit. Returnerer | [src](../../../core/services/central_proposal.py#L20) |
-| function | `make_proposal` | `(*, domain, notation, rationale=…, existing=…)` | Pak en mutation-forslag ind SOM en auditeret NotationProposal. `admissible=True` betyder KUN | [src](../../../core/services/central_proposal.py#L56) |
-
-## `core/services/central_rca.py`
-_Self-RCA — så Jarvis kan grave ÉN fejl til bunds i stedet for at starte på fem nye._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_rca.py#L26) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_rca.py#L30) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_rca.py#L38) |
-| function | `pick_incident` | `()` | Vælg ÉN uløst incident at grave i — højest severity, ældst (længst uløst). READ-ONLY. | [src](../../../core/services/central_rca.py#L52) |
-| function | `investigate` | `(incident_id=…)` | Saml bevis-sporet for ÉN incident → udfyld RCA-skelet + persistér som draft. Self-safe. | [src](../../../core/services/central_rca.py#L66) |
-| function | `list_rca` | `(*, limit=…)` | — | [src](../../../core/services/central_rca.py#L117) |
-| function | `build_rca_surface` | `()` | Uløste incidents + næste at grave i + seneste RCA'er + følt linje. Self-safe. | [src](../../../core/services/central_rca.py#L127) |
-| function | `record_rca` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér uløst-antal + næste-mål (metadata-only). Self-safe. Investigerer IKKE | [src](../../../core/services/central_rca.py#L144) |
 

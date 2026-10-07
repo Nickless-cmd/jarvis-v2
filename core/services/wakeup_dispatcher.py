@@ -295,7 +295,24 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                             "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "
                             "Hvis den siger 'læs filen X', så BRUG read_file. "
                             "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
-                            f"\"{wid}\" og rapportér resultatet kort til Bjørn."
+                            f"\"{wid}\".\n"
+                            # 5/10-2026: her stod «og rapportér resultatet kort
+                            # til Bjørn» — ubetinget, paa HVER vaekning. Det var
+                            # aarsagen til at han fik 3-5 beskeder pr. svar:
+                            # mellem hans «Check ci» kl. 11:32 og hans klage
+                            # kl. 14:35 kom fem beskeder, hvoraf én var svar.
+                            # Instruktionen skabte adfaerden; den er fjernet
+                            # frem for at blive modarbejdet.
+                            "RAPPORTÉR KUN hvis der er noget NYT Bjørn skal vide: et resultat "
+                            "han venter på, noget der er gået i stykker, eller en beslutning "
+                            "han skal tage. Brug da notify_user til at levere den konkrete "
+                            "besked. Nudget i trin A er intern telemetri, ikke en besked til ham. "
+                            "Fandt kontrollen intet nyt — alt grønt, allerede håndteret, "
+                            "uændret, allerede forbrugt — så afslut med præcis "
+                            "[wakeup:no-update] og intet andet. Det er en intern markør; "
+                            "den gemmes ikke som svar i hans chat. Luk UDEN at skrive til ham.\n"
+                            "Og book ikke en ny kontrol når denne fandt noget uændret. Det er "
+                            "sådan en kæde opstår, og hvert led skriver i hans chat."
                         )
                         context_token = set_context(
                             workspace_name=str(record.get("workspace_name") or "bjorn"),

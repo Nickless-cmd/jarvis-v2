@@ -30,6 +30,7 @@ from core.runtime.db_self_repair import (
     list_self_repair_patterns,
     list_recent_self_repair_attempts,
 )
+from core.runtime.settings import load_settings
 from core.services import sensory_archive  # Sansernes Arkiv — senses bridge
 
 logger = logging.getLogger(__name__)
@@ -183,6 +184,7 @@ def tick_emotion_repair_bridge() -> dict[str, Any]:
       - patterns_matched: int
       - repairs_triggered: int
       - senses_bridged: int
+      - senses_suppressed: int — reparationer der IKKE blev en sansning
       - error: str | None — hvis noget gik galt på top-level
     """
     try:
@@ -194,6 +196,7 @@ def tick_emotion_repair_bridge() -> dict[str, Any]:
             "patterns_matched": 0,
             "repairs_triggered": 0,
             "senses_bridged": 0,
+            "senses_suppressed": 0,
             "error": f"Fatal: {exc}",
         }
 
@@ -221,7 +224,7 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
 
     if not active_signals:
         _last_tick_at = now
-        return {"checked": True, "patterns_matched": 0, "repairs_triggered": 0, "senses_bridged": 0}
+        return {"checked": True, "patterns_matched": 0, "repairs_triggered": 0, "senses_bridged": 0, "senses_suppressed": 0}
 
     # Group by concept
     concept_intensities: dict[str, float] = {}
@@ -264,6 +267,7 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
     # ── Phase 3: Execute repairs (with cooldown/rate-limit check) ─────────
     repairs_triggered = 0
     senses_bridged = 0
+    senses_suppressed = 0
     window_start = (now - timedelta(hours=1)).isoformat()
 
     for entry in matched:
@@ -306,6 +310,18 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
 
         elapsed_ms = (time.time_ns() // 1_000_000) - start_ms
 
+        # Er dette første gang dette (mønster, udfald) sker? En gentagelse er
+        # ikke en ny sansning. Spørg FØR vi logger forsøget, ellers tæller
+        # forsøget sig selv med.
+        first_of_its_kind = (
+            count_recent_attempts(
+                pattern_id=pattern_id,
+                since_iso=_EPOCH_ISO,
+                outcome=outcome,
+            )
+            == 0
+        )
+
         # Log attempt
         insert_self_repair_attempt(
             pattern_id=pattern_id,
@@ -317,15 +333,22 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
         )
         repairs_triggered += 1
 
-        # ── Phase 4: Selvreparation → Sanser bridge (altid, begge udfald) ─
-        _bridge_repair_to_senses(
-            action_type=action_type,
-            pattern_id=pattern_id,
-            outcome=outcome,
-            concept=min_concept,
-            error_summary=error_summary,
-        )
-        senses_bridged += 1
+        # ── Phase 4: Selvreparation → Sanser bridge ────────────────────
+        # Hanen her stod åben: hver reparation blev skrevet som en sansning,
+        # begge udfald, i det uendelige. Et sanseindtryk skal markere at noget
+        # ÆNDREDE sig i det indre miljø — den 175. gentagelse af den samme
+        # linje er en tæller, ikke en oplevelse. Forsøget er logget ovenfor.
+        if _skal_broes(_senses_bridge_mode(), first_of_its_kind):
+            _bridge_repair_to_senses(
+                action_type=action_type,
+                pattern_id=pattern_id,
+                outcome=outcome,
+                concept=min_concept,
+                error_summary=error_summary,
+            )
+            senses_bridged += 1
+        else:
+            senses_suppressed += 1
 
         # Also capture emotional anchor on success
         if outcome == "success":
@@ -368,10 +391,46 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
         "patterns_matched": len(matched),
         "repairs_triggered": repairs_triggered,
         "senses_bridged": senses_bridged,
+        "senses_suppressed": senses_suppressed,
     }
 
 
 # ── Senses bridge ───────────────────────────────────────────────────────
+
+# Tæl forsøgs-historikken fra tiden før tiden. Bruges til at svare på
+# «har dette (mønster, udfald) nogensinde sket før?».
+_EPOCH_ISO = "1970-01-01T00:00:00+00:00"
+
+_SENSES_BRIDGE_MODES = ("off", "first", "always")
+
+
+def _senses_bridge_mode() -> str:
+    """Hvornår en selvreparation er en sansning: off | first | always.
+
+    Ukendt eller ulæselig værdi falder tilbage til «first» — det sikre valg.
+    """
+    try:
+        raa = str(load_settings().emotion_repair_senses_bridge_mode or "")
+    except Exception as exc:  # indstillingerne kan ikke læses → sikkert standardvalg
+        logger.debug("senses-bridge: kunne ikke læse indstilling: %s", exc)
+        return "first"
+    mode = raa.strip().lower()
+    return mode if mode in _SENSES_BRIDGE_MODES else "first"
+
+
+def _skal_broes(mode: str, first_of_its_kind: bool) -> bool:
+    """Skal denne reparation skrives til Sansernes Arkiv?
+
+    Hele pointen: et sanseindtryk markerer at noget ÆNDREDE sig. «first»
+    skriver kun når (mønster, udfald) ikke er set før — den 175. gentagelse
+    af den samme linje er en tæller, ikke en oplevelse. «always» er den
+    gamle adfærd, «off» skriver aldrig.
+    """
+    if mode == "off":
+        return False
+    if mode == "always":
+        return True
+    return first_of_its_kind
 
 
 def _bridge_repair_to_senses(

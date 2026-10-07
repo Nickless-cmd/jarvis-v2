@@ -32,9 +32,9 @@ export function skaermFor(sessionId: string): Skaerm | undefined {
   return [...skaerme].reverse().find((s) => s.sessionId === sessionId)
 }
 
-/** CC's egne ord, hvor det giver mening: fejlen siger HVAD der mangler. */
-export const IKKE_I_DESK: Record<'artifact' | 'pr' | 'plan', string> = {
-  artifact: 'Artefakter er ikke et panel ved samtalen i desk — de ligger under «Artefakter» i sidebaren.',
-  pr: 'Desk har intet pull request-panel.',
-  plan: 'Desk har intet plan-panel.',
-}
+// 3/10-2026: `artifact`, `pr` og `plan` blev afvist her med en statisk tekst —
+// «Desk har intet plan-panel» og to mere. Bjørn: «desk har artefakter og vist
+// osse de andre.. eller skal den have det». Den havde ret i at komponenterne
+// fandtes: `ArtifactsView`, `PlansPane` og git-status-kilden var der hele
+// tiden. Afvisningen var en påstand om desk, ikke om data — og den var forkert.
+// Alle tre vises nu som rigtige paneler, så tabellen er væk.

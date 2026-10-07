@@ -1,4 +1,20 @@
 .privacy-dialog {
+  /* MIDT PÅ SKÆRMEN. (Bjørn 4/10-2026: «bliver feltet vist oppe i venstre
+     hjørne istedet for midt på skærmen».)
+
+     Årsagen er ikke dialogen men `tokens.css` linje 179: `* { margin: 0 }`.
+     Den regel står i AUTHOR-origin, og origin vinder over specificitet — så
+     den slår UA'ens `dialog { margin: auto }`, selv om den UA-regel har en
+     type-selektor og reset'en har `*`. Uden `margin: auto` arver `dialog:modal`
+     sin `inset: 0` og lægger sig i øverste venstre hjørne.
+
+     `inset: 0` + `margin: auto` + fast bredde centrerer begge akser. Samme
+     vaern står i `bug-rapport.css`, og `privacy-dialog.test.ts` vogter dem
+     sammen — fjernes reset'en en dag, er vaernet harmløst men testen siger
+     hvorfor det stod der. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
   width: min(680px, calc(100vw - 32px));
   max-height: min(760px, calc(100vh - 32px));
   padding: 0;

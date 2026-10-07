@@ -83,6 +83,89 @@ class TestOprindelse:
         assert vro._origin_of_session(sid) == ventet
 
 
+def test_persisted_answer_records_action_outcome(gemte, monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        "core.services.decision_action_gate.record_outcomes",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    run = _Run()
+    run.user_message = "Hvad aftalte vi sidst?"
+    vro._persist_session_assistant_message(
+        run, "Vi aftalte A.", blocks=[{"type": "tool_use", "name": "recall"}],
+    )
+    assert len(gemte) == 1
+    assert recorded == [
+        (("visible-test", "Hvad aftalte vi sidst?", "Vi aftalte A."), {"tool_names": ["recall"]})
+    ]
+
+
+def test_autonomous_answer_does_not_create_owner_action_metric(gemte, monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        "core.services.decision_action_gate.record_outcomes",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    run = _Run()
+    run.autonomous = True
+    run.user_message = "Hvad aftalte vi sidst?"
+    vro._persist_session_assistant_message(run, "Et internt svar")
+    assert len(gemte) == 1
+    assert recorded == []
+
+
+def test_successful_autonomous_notify_does_not_append_delivery_receipt(gemte):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Morgenbriefen er leveret.", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "done",
+         "content": "Delivered to: webchat:chat-1", "is_error": False},
+    ])
+    assert gemte == []
+
+
+def test_failed_autonomous_notify_keeps_visible_result(gemte):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Jeg kunne ikke levere briefen.", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "error",
+         "content": "webchat:failed(network)", "is_error": True},
+    ])
+    assert len(gemte) == 1
+
+
+@pytest.mark.parametrize("destination,expected_messages", [
+    ("webchat:queued:chat-1", 0),
+    ("webchat:chat-1, discord:error(disconnected)", 0),
+    ("webchat:failed(network)", 1),
+    ("webchat:error(network)", 1),
+    ("discord:not-connected", 1),
+])
+def test_autonomous_notify_only_suppresses_receipt_after_real_delivery(
+    gemte, destination, expected_messages,
+):
+    run = _Run(session_id="auto-recurring-20261006")
+    run.autonomous = True
+    vro._persist_session_assistant_message(run, "Leveringsstatus", blocks=[
+        {"type": "tool_use", "id": "call-1", "name": "notify_user"},
+        {"type": "tool_result", "tool_use_id": "call-1", "status": "done",
+         "content": f"Delivered to: {destination}", "is_error": False},
+    ])
+    assert len(gemte) == expected_messages
+
+
+def test_wakeup_without_new_information_stays_out_of_user_chat(gemte):
+    run = _Run(session_id="chat-1")
+    run.autonomous = True
+    run.user_message = "[SELF-WAKEUP FIRED — wakeup_id=w1]\nTjek CI"
+    vro._persist_session_assistant_message(run, "[wakeup:no-update]")
+    assert gemte == []
+    vro._persist_session_assistant_message(run, "CI er rød; jeg fandt en ny fejl.")
+    assert len(gemte) == 1
+
+
 def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch):
     class _Connection:
         def __enter__(self):
@@ -116,6 +199,43 @@ def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch)
     assert captured["session_id"] == "chat-session-real"
 
 
+def test_autonomous_outcome_does_not_pass_task_as_user_message(monkeypatch):
+    class _Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, *_args, **_kwargs):
+            return self
+
+        def commit(self):
+            return None
+
+    captured: dict[str, object] = {}
+    run = _Run(session_id="auto-recurring-test")
+    run.autonomous = True
+    run.lane = "visible"
+    monkeypatch.setattr(vro, "connect", lambda: _Connection())
+    monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **_kwargs: None)
+    monkeypatch.setattr(vro._vr, "get_visible_run_controller", lambda _run_id: None)
+    monkeypatch.setattr(
+        vro._vr, "_get_visible_run_control",
+        lambda _run_id: {"current_user_message_preview": "Send morgenbriefing"},
+    )
+    monkeypatch.setattr(vro._vr, "_update_cognitive_systems_async", lambda **values: captured.update(values))
+
+    vro._persist_visible_run_outcome(
+        run,
+        status="completed",
+        finished_at="2026-09-10T10:00:00+00:00",
+        text_preview="Briefing sendt.",
+    )
+
+    assert captured["user_message"] == ""
+
+
 def test_tekstbloggene_normaliseres_ogsaa():
     """Klienterne tegner en gemt tur ud fra content_json — ikke content."""
     from core.services.visible_runs_outcomes import _normaliser_tekstblokke
@@ -125,3 +245,120 @@ def test_tekstbloggene_normaliseres_ogsaa():
     ])
     assert "\n| a | b |\n| c | d |" in ud[0]["text"]
     assert ud[1] == {"type": "tool_use", "id": "t1", "name": "bash", "input": {}}
+
+
+# ── Race-vinduet ved afslutning (3/10-2026) ─────────────────────────────────
+# `set_last_visible_run_outcome` laegger DB-projektionen i en daemon-traad.
+# Men `run_er_terminal` — som nedluknings-sweepen spoerger — laeser netop
+# `visible_runs`-raekken. Stod den stadig `running` med tom `finished_at` da
+# sweepen spoergte, blev et run der HAVDE svaret stemplet `interrupted`.
+# Maalt 3/10-2026: fire af dagens syv interrupted-stempler sad paa ture der
+# havde svaret, og svaret kom paa SAMME sekund som stemplet.
+#
+# Fixet er ét synkront UPDATE foer traaden starter. Testene her laaser begge
+# sider: raekken SKAL staa afsluttet naar funktionen vender tilbage — ogsaa
+# naar traaden aldrig naar at koere — og et rigtigt udfald maa aldrig
+# overskrives.
+
+
+def _indsæt_koerende(run_id: str, *, status: str = "running",
+                     finished_at: str = "") -> None:
+    from core.runtime.db import connect
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO visible_runs (run_id, lane, provider, model, status,"
+            " finished_at) VALUES (?,?,?,?,?,?)",
+            (run_id, "visible", "deepseek", "deepseek-v4-flash", status, finished_at))
+        conn.commit()
+
+
+def _laes_raekke(run_id: str):
+    from core.runtime.db import connect
+    with connect() as conn:
+        return conn.execute(
+            "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
+            (run_id,)).fetchone()
+
+
+def _vis_run(run_id: str):
+    import core.services.visible_runs as vr
+    return vr.VisibleRun(run_id=run_id, lane="visible", provider="deepseek",
+                         model="deepseek-v4-flash", user_message="hej",
+                         session_id="chat-race")
+
+
+@pytest.fixture
+def uden_traad(monkeypatch):
+    """Traaden naar ALDRIG at koere — den vaerste udgave af raceren."""
+    monkeypatch.setattr(
+        vro, "_persist_visible_run_outcome", lambda *a, **kw: None)
+    return None
+
+
+class TestAfslutningSkrivesSynkront:
+    def test_raekken_staar_afsluttet_selv_om_traaden_aldrig_koerer(
+            self, isolated_runtime, uden_traad) -> None:
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed",
+            text_preview="Svar sendt.")
+        status, finished = _laes_raekke("visible-race")
+        assert status == "completed"
+        assert finished, "finished_at staar stadig tom — race-vinduet er aabent"
+
+    def test_sweepen_ser_den_som_terminal(self, isolated_runtime, uden_traad) -> None:
+        """Det er DENNE egenskab sweepen spoerger om. Er den True, kalder
+        sweepen `mark_completed` og stempler aldrig turen som afbrudt."""
+        from core.services.visible_runs_outcomes import (
+            run_er_terminal, set_last_visible_run_outcome,
+        )
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        assert run_er_terminal("visible-race") is True
+
+    def test_interrupted_stemplet_kan_ikke_laengere_ramme_den(
+            self, isolated_runtime, uden_traad) -> None:
+        from core.services.visible_runs_outcomes import (
+            set_last_visible_run_outcome, stamp_visible_run_interrupted,
+        )
+        _indsæt_koerende("visible-race")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        assert stamp_visible_run_interrupted(
+            "visible-race", reason="api-nedlukning") is False
+        assert _laes_raekke("visible-race")[0] == "completed"
+
+    def test_et_afsluttet_run_overskrives_ikke(
+            self, isolated_runtime, uden_traad) -> None:
+        """En raekke der ALLEREDE har et udfald maa ikke roeres — heller ikke
+        af et senere, fejlagtigt kald."""
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        _indsæt_koerende("visible-race", status="failed",
+                         finished_at="2026-10-03T12:00:00+00:00")
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")
+        status, finished = _laes_raekke("visible-race")
+        assert status == "failed"
+        assert finished == "2026-10-03T12:00:00+00:00"
+
+    def test_uden_raekke_kaster_det_ikke(self, isolated_runtime, uden_traad) -> None:
+        """Start-raekken skrives af `persist_visible_run_start`, men en tur kan
+        naa hertil uden den. Et UPDATE der rammer nul raekker er ikke en fejl."""
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+        set_last_visible_run_outcome(
+            _vis_run("visible-findes-ikke"), status="completed",
+            text_preview="Svar.")
+        assert _laes_raekke("visible-findes-ikke") is None
+
+    def test_db_fejl_draeber_ikke_svaret(
+            self, isolated_runtime, uden_traad, monkeypatch) -> None:
+        from core.services.visible_runs_outcomes import set_last_visible_run_outcome
+
+        def _braek():
+            raise RuntimeError("databasen svarer ikke")
+
+        monkeypatch.setattr(vro, "connect", _braek)
+        set_last_visible_run_outcome(
+            _vis_run("visible-race"), status="completed", text_preview="Svar.")

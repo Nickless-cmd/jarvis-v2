@@ -128,5 +128,88 @@ def test_vagten_er_faktisk_koblet_paa_kørslen():
     assert kilde.index("import visible_text_scrub") < kilde.index("_skrub = _vts.StroemSkrubber()")
     assert "_ren = _skrub.foed(_a_item.delta)" in kilde
     assert "_rest = _skrub.skyl()" in kilde, "halen ville stå tilbage over en værktøjskørsel"
-    assert kilde.count("_vts.fjern_interne_markoerer(") == 3
+    # RETTET 3/10-2026 (Opus). Tallet var 3 og er nu 1 i DENNE fil, fordi de to
+    # syntese-stroemmes skrubning er udskilt til
+    # `core/services/visible_synthesis_stream.py`. Boy Scout-reglen kraever en
+    # udskillelse naar man roerer en fil over 2.000 linjer, og `visible_runs.py`
+    # er 7.692.
+    #
+    # Kravet er UAENDRET: tre ikke-udskiftelige steder skal skrubbe. Vagten
+    # foelger nu delegeringen frem for at pinne hvor koden BOR — en vagt der
+    # maaler et sted braekker af en lovlig flytning, og saa bliver den loesnet
+    # i stedet for fulgt. Det er saadan en vagt doer.
+    #
+    # Tragten foer persist taelles her; de to stroemme maales af
+    # `test_de_STREAMEDE_synteser_bruger_stroem_skrubberen` nedenfor, som
+    # kraever at HVER loekke gaar gennem skrubningen.
+    assert kilde.count("_vts.fjern_interne_markoerer(") == 1, (
+        "tragten foer persist mangler sin skrubning")
+    _udskilt = pathlib.Path(
+        "core/services/visible_synthesis_stream.py").read_text()
+    assert "fjern_interne_markoerer(" in _udskilt, (
+        "den udskilte stroem-skrubning skrubber ikke sit facit")
+    assert "StroemSkrubber()" in _udskilt, (
+        "den udskilte enhed bruger ikke stroem-skrubberen")
     assert "followup_text = _vts.fjern_interne_markoerer(followup_text)" in kilde
+
+
+def test_de_STREAMEDE_synteser_bruger_stroem_skrubberen():
+    """Et ANTAL er ikke nok — tre kald kunne alle sidde på den gemte tekst.
+
+    Det er præcis hvad der skete 3/10-2026. De to blokerende syntese-kald blev
+    erstattet med streamede (`stream_final_synthesis`, så syntesen ikke længere
+    kommer som et blink), og begge `fjern_interne_markoerer` faldt ud i samme
+    greb. `test_vagten_er_faktisk_koblet_paa_koerslen` fangede det — men dens
+    tal kunne være bragt i orden ved at skrubbe den færdige tekst tre gange, og
+    så ville strømmen stadig lække.
+
+    Og en strøm KAN ikke skrubbes med funktionen på den færdige tekst: en
+    markør kan være delt over to deltaer. `StroemSkrubber` er bygget til det,
+    og hovedstrømmen bruger den allerede.
+
+    Målt da fejlen stod: det eneste tilbageværende skrub ramte `followup_text`
+    — altså det PERSISTEREDE. Interne markører nåede skærmen live og forsvandt
+    bagefter fra tråden. Den asymmetri er værre end en konsekvent lækage, for
+    den kan ikke genfindes i historikken.
+    """
+    import ast
+    import pathlib
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+    træ = ast.parse(kilde)
+
+    # Hver løkke over `stream_final_synthesis` skal have en skrubber i sin
+    # egen krop. AST, ikke grep: en kommentar der nævner navnet må ikke tælle,
+    # og denne fils egne docstrings nævner dem alle.
+    strømme = [n for n in ast.walk(træ)
+               if isinstance(n, ast.AsyncFor)
+               and "stream_final_synthesis" in ast.unparse(n.iter)]
+    assert len(strømme) >= 2, \
+        f"forventede mindst to streamede synteser, fandt {len(strømme)}"
+    for n in strømme:
+        krop = ast.unparse(n)
+        # Skrubningen sker ENTEN inline (`.foed(`) ELLER gennem den udskilte
+        # enhed `visible_synthesis_stream`. Begge opfylder kravet; det der ikke
+        # maa forekomme er en loekke der sender `_synth_event.text` direkte
+        # videre.
+        #
+        # Vagten foelger altsaa DELEGERINGEN frem for at pinne hvor koden bor.
+        # En vagt der maaler et sted braekker af en lovlig flytning — og saa
+        # bliver den loesnet i stedet for fulgt. Det er saadan en vagt doer.
+        assert ".foed(" in krop or "skrubbet_syntese(" in krop, \
+            "en streamet syntese sender RAA tekst ud — markoerer naar skaermen"
+
+    # Og den udskilte enhed SKAL skylle sin hale. Uden `skyl()` staar en
+    # markoer til sidst tilbageholdt for evigt, og det sidste stykke svar
+    # forsvinder — en tavs fejl: svaret ser bare kortere ud.
+    udskilt = pathlib.Path("core/services/visible_synthesis_stream.py").read_text()
+    assert ".skyl()" in udskilt, "den udskilte enhed skyller ikke sin hale"
+    # I et `finally`, ikke i kroppen: afbrydes stroemmen (cutoff, en
+    # udbyder-fejl), ville det tilbageholdte stykke ellers forsvinde med
+    # resten. `test_en_AFBRUDT_stroem_skyller_stadig_halen` maaler adfaerden;
+    # denne linje fanger flytningen.
+    u_traeet = ast.parse(udskilt)
+    _finallys = [x for x in ast.walk(u_traeet)
+                 if isinstance(x, ast.Try) and x.finalbody
+                 and ".skyl()" in ast.unparse(x.finalbody)]
+    assert _finallys, ("skylningen staar ikke i et `finally` — en afbrudt "
+                       "stroem ville tabe sin hale")

@@ -32,10 +32,32 @@ def test_bootstrap_skips_reseed_over_enc(_member_env) -> None:
     assert not (ws / "USER.md").exists()
 
 
-def test_bootstrap_creates_stub_when_absent(_member_env) -> None:
-    """Uden eksisterende fil (plaintext eller .enc) skabes stub som normalt."""
+def test_bootstrap_creates_stub_when_absent(_member_env, monkeypatch) -> None:
+    """Uden eksisterende fil (plaintext eller .enc) skabes stub som normalt.
+
+    2026-10-01: testen antog plaintext, men `JARVISX_ENCRYPT_WORKSPACES=1` er
+    sat i driftsmiljøet, så member-filer skrives som `.enc`. Den var derfor grøn
+    i CI (uden flaget) og rød i drift (med). Krypterings-tilstanden pinnes nu
+    eksplicit; .enc-vejen — den der faktisk kører — har sin egen test nedenfor.
+    """
+    monkeypatch.delenv("JARVISX_ENCRYPT_WORKSPACES", raising=False)
     from core.identity.workspace_bootstrap import bootstrap_user_workspace
     bootstrap_user_workspace("mikkel", display_name="Mikkel")
     ws = _member_env / "mikkel"
     assert (ws / "MEMORY.md").exists()
     assert (ws / "USER.md").exists()
+
+
+def test_bootstrap_skriver_krypteret_stub_naar_flaget_er_til(_member_env, monkeypatch) -> None:
+    """Med ENCRYPT_ON_WRITE til skal stubbene opstå som .enc, ikke plaintext.
+
+    Det er den vej der kører i drift, og som den gamle test fejlede på uden at
+    sige hvorfor: den ledte efter `MEMORY.md` mens filen lå som `MEMORY.md.enc`.
+    """
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    from core.identity.workspace_bootstrap import bootstrap_user_workspace
+    bootstrap_user_workspace("mikkel", display_name="Mikkel")
+    ws = _member_env / "mikkel"
+    assert (ws / "MEMORY.md.enc").exists()
+    assert (ws / "USER.md.enc").exists()
+    assert not (ws / "MEMORY.md").exists()

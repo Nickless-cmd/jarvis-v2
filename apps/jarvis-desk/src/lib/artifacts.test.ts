@@ -15,9 +15,9 @@ describe('detectArtifacts', () => {
     expect(detectArtifacts(blocks)).toEqual([])
   })
 
-  it('markerer langt markdown-dok (>=40 linjer, >=2 headers)', () => {
+  it('et langt svar bliver IKKE et «Dokument»-artifact (Bjørn 29/9-2026)', () => {
     const md = '# Titel\n' + code(40) + '\n## Sektion\nmere'
-    expect(detectArtifacts([{ type: 'text', text: md }])[0]).toMatchObject({ kind: 'markdown' })
+    expect(detectArtifacts([{ type: 'text', text: md }])).toEqual([])
   })
 
   it('ignorerer langt prosa uden headers', () => {

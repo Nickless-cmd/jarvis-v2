@@ -100,6 +100,7 @@ class TestNudgeForToolCalls:
             session_id="s", thinking_mode="think")
         assert "tjek config" in spion["message"]
         assert HOLLOW_PROMISE_NUDGE in spion["message"]
+        assert "RUNTIME — ikke en besked fra brugeren" in spion["message"]
 
     def test_ingen_kald_giver_tom_liste_ikke_en_fejl(self, monkeypatch):
         """Turen skal stå som den var — aldrig værre."""

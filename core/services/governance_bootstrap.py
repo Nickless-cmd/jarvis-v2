@@ -243,6 +243,26 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _shadow_review_reminder_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        # Paamindelsen om at vi glemmer skygge-vinduer blev selv glemt TO gange:
+        # foerst havde den nul kaldere (fundet 18/9), saa blev den haengt paa en
+        # modul-global taeller der nulstilles ved genstart (fundet 2/10). Her
+        # hviler den paa jobsystemets durable «last seen».
+        try:
+            from core.services.shadow_experiment_registry import (
+                tick_shadow_review_reminder,
+            )
+            return {"status": "ok", "kind": "shadow_review_reminder",
+                    "result": tick_shadow_review_reminder()}
+        except Exception as exc:
+            # Logges, ikke kun returneret. De 20 andre handlere i filen sluger
+            # tavst, og det er netop derfor denne mekanisme kunne ligge doed to
+            # gange uden at nogen saa det. En fejlende paamindelse maa ikke
+            # vaere stille — det er hele dens formaal at vaere det modsatte.
+            logger.warning("governance_bootstrap: shadow_review_reminder fejlede: %s",
+                           exc, exc_info=True)
+            return {"status": "error", "error": str(exc)}
+
     def _concept_baseline_evaluation_handler(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             from core.services.concept_baseline_tracker import evaluate_baseline_drift
@@ -272,6 +292,7 @@ def ensure_default_job_handlers() -> list[str]:
         "signal_surface_gc": _signal_surface_gc_handler,
         "decision_review": _decision_review_handler,
         "concept_baseline_evaluation": _concept_baseline_evaluation_handler,
+        "shadow_review_reminder": _shadow_review_reminder_handler,
     }
 
     for job_type, handler in handlers.items():

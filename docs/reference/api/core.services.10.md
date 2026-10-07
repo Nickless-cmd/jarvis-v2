@@ -2,6 +2,129 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_action_gate.py`
+_Current-turn opportunities for three low-adherence behavioral decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_turn_text` | `(user_message)` | Discard the transport's attachment instructions before classifying words. | [src](../../../core/services/decision_action_gate.py#L59) |
+| function | `_correction_excerpt` | `(user_message)` | Use the challenged claim, not a long paste's unrelated opening words. | [src](../../../core/services/decision_action_gate.py#L67) |
+| function | `opportunities` | `(user_message)` | Return only triggers with a concrete observable opportunity. | [src](../../../core/services/decision_action_gate.py#L77) |
+| function | `query_current_memory` | `(user_message, session_id)` | Read current-turn memory; the caller gives this a bounded future. | [src](../../../core/services/decision_action_gate.py#L98) |
+| function | `action_section` | `(user_message, *, recall_text)` | A short volatile prompt tail, immediately before the current answer. | [src](../../../core/services/decision_action_gate.py#L108) |
+| function | `evaluate_turn` | `(*, user_message, answer_text, memory_recalled, tool_names)` | Count proven actions; absence of proof stays unconfirmed. | [src](../../../core/services/decision_action_gate.py#L131) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/decision_action_gate.py#L154) |
+| function | `record_opportunities` | `(run_id, user_message, *, memory_recalled)` | Persist each actual trigger once, without storing conversation text. | [src](../../../core/services/decision_action_gate.py#L171) |
+| function | `record_outcomes` | `(run_id, user_message, answer_text, *, tool_names)` | Finalize observations at the persisted assistant message boundary. | [src](../../../core/services/decision_action_gate.py#L196) |
+| function | `opportunity_summary` | `(*, days=…)` | Observed kept / all triggered opportunities, with uncertainty explicit. | [src](../../../core/services/decision_action_gate.py#L225) |
+
+## `core/services/decision_adherence_gate.py`
+_Gate 1: Decision-adherence gate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L32) |
+| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L190) |
+
+## `core/services/decision_enforcement.py`
+_Decision enforcement — close the loop between commitment and behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `enforcement_section` | `()` | High-priority awareness: lists active decisions as obligations + asks | [src](../../../core/services/decision_enforcement.py#L39) |
+| function | `_raekkefoelge_blok` | `(blocks)` | Rækkefølgen som prompt-tekst — inkl. markøren når svaret blev skubbet. | [src](../../../core/services/decision_enforcement.py#L114) |
+| function | `_seneste_bruger_besked` | `(limit=…, workspace=…)` | De seneste beskeder fra brugeren — præmissen dommen skal holdes op mod. | [src](../../../core/services/decision_enforcement.py#L139) |
+| function | `_build_breach_prompt` | `(assistant_text, decisions, blocks=…)` | — | [src](../../../core/services/decision_enforcement.py#L179) |
+| function | `_parse_breaches` | `(text)` | — | [src](../../../core/services/decision_enforcement.py#L212) |
+| function | `_blok_tekst` | `(b)` | Blokkens tekst, trimmet. Tom for alt der ikke er en tekstblok. | [src](../../../core/services/decision_enforcement.py#L262) |
+| function | `_blok_kald` | `(b)` | Navnet på det værktøj blokken kalder — tom streng hvis den ikke er et kald. | [src](../../../core/services/decision_enforcement.py#L269) |
+| function | `blok_rekkefoelge` | `(blocks)` | Turens blokke som en kort, ordnet liste — til dommerens prompt. | [src](../../../core/services/decision_enforcement.py#L276) |
+| function | `svar_blev_arbejde` | `(blocks)` | Blev turens svar skubbet ind i «arbejdet»? | [src](../../../core/services/decision_enforcement.py#L301) |
+| function | `detect_breach_in_output` | `(assistant_text, blocks=…)` | Return list of detected breaches. Empty if none. LLM-led. | [src](../../../core/services/decision_enforcement.py#L348) |
+| function | `_blokke_fra_payload` | `(payload, besked)` | Turens blokliste ud af `channel.chat_message_appended`. | [src](../../../core/services/decision_enforcement.py#L421) |
+| function | `_observer_svar_skubbet` | `(blokke)` | Mål mønsteret i Centralen — uafhængigt af dommeren og dens cooldown. | [src](../../../core/services/decision_enforcement.py#L469) |
+| function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L498) |
+| function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L551) |
+
+## `core/services/decision_evidence.py`
+_Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_afgraens_workspace` | `(eksplicit=…)` | Den workspace regnskabet må læse fra. Tom streng = læs intet. | [src](../../../core/services/decision_evidence.py#L115) |
+| function | `_repo_root` | `()` | Repoets rod, fundet ud fra dette moduls egen placering. | [src](../../../core/services/decision_evidence.py#L143) |
+| function | `_tool_names_since` | `(since, until)` | Hvilke værktøjer blev udført i vinduet, og hvor mange gange. | [src](../../../core/services/decision_evidence.py#L148) |
+| function | `_commits_since` | `(since, until)` | Commits i vinduet, som korte emnelinjer. | [src](../../../core/services/decision_evidence.py#L185) |
+| function | `_foelelses_uddrag` | `(tekst, *, foer=…, efter=…)` | Vinduet OMKRING markøren — ikke begyndelsen af svaret. | [src](../../../core/services/decision_evidence.py#L208) |
+| function | `_foelelses_traef` | `(uddrag)` | De uddrag der nævner en indre tilstand. Se ``_FOLELSE_MARKOER``. | [src](../../../core/services/decision_evidence.py#L225) |
+| function | `_normalisér_ord` | `(tekst)` | Tekst → ordrække, lowercase, uden tegnsætning. Ren funktion. | [src](../../../core/services/decision_evidence.py#L240) |
+| function | `_citat_traef` | `(bjoern_tekster, mine_tekster)` | Hvilke af Bjørns beskeder har et genkendeligt uddrag i mine svar? | [src](../../../core/services/decision_evidence.py#L245) |
+| function | `_messages_since` | `(since, until, workspace=…)` | Indgående beskeder i vinduet — tvillingen til ``_own_words_since``. | [src](../../../core/services/decision_evidence.py#L272) |
+| function | `_own_words_since` | `(since, until, workspace=…)` | Mine egne synlige svar i vinduet — kanalen hvor «sig det højt» står. | [src](../../../core/services/decision_evidence.py#L338) |
+| function | `_signals_since` | `(since, until)` | Beslutnings-triggere der fyrede i vinduet — instrumentets puls. | [src](../../../core/services/decision_evidence.py#L387) |
+| function | `_inner_state_since` | `(since, until)` | Den indre tilstand, som runtime selv skrev den ned i vinduet. | [src](../../../core/services/decision_evidence.py#L425) |
+| function | `gather_evidence` | `(*, since, until=…, workspace=…)` | Saml regnskabet for vinduet. Returnerer også en kompakt tekst. | [src](../../../core/services/decision_evidence.py#L455) |
+| function | `channel_has_data` | `(evidence, channel)` | Har den kanal dommen hviler på faktisk data i vinduet? | [src](../../../core/services/decision_evidence.py#L584) |
+| function | `evidence_permits_verdict` | `(verdict, evidence, *, channel=…)` | Nedgradér en dom der ikke har dækning i regnskabet. | [src](../../../core/services/decision_evidence.py#L599) |
+
+## `core/services/decision_gate.py`
+_Decision gate — pre-execution decision conflict detection._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L27) |
+| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L125) |
+| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L141) |
+| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L214) |
+| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L247) |
+| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L252) |
+
+## `core/services/decision_ghosts.py`
+_Decision Ghosts — de veje der blev fravalgt, og dem der holdt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/decision_ghosts.py#L58) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/decision_ghosts.py#L70) |
+| function | `_vaelg` | `(poster, felt)` | Den mest saliente — eller den nyeste hvis ingen har et maalt tal. | [src](../../../core/services/decision_ghosts.py#L77) |
+| function | `record_rejected_path` | `(decision, reason, alternative, regret_potential=…)` | Gem en vej der blev fravalgt eller brudt. | [src](../../../core/services/decision_ghosts.py#L91) |
+| function | `record_confirmed_path` | `(decision, outcome, key_factor=…, success_echo=…)` | Gem en beslutning der holdt. `success_echo` er `adherence_score`. | [src](../../../core/services/decision_ghosts.py#L113) |
+| function | `record_reaffirmed_decision` | `(decision_id, title, verdict, adherence_score=…)` | Kaldes fra `behavioral_decisions.review_decision`. | [src](../../../core/services/decision_ghosts.py#L128) |
+| function | `record_broken_decision` | `(decision_id, title, adherence_score=…, note=…)` | En brudt beslutning er den rigtige kilde til en fortrydelse. | [src](../../../core/services/decision_ghosts.py#L145) |
+| function | `describe_ghost_decision` | `()` | — | [src](../../../core/services/decision_ghosts.py#L163) |
+| function | `describe_success_echo` | `()` | — | [src](../../../core/services/decision_ghosts.py#L171) |
+| function | `format_decision_ghost_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L179) |
+| function | `format_decision_echo_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L184) |
+| function | `reset_decision_ghosts` | `()` | — | [src](../../../core/services/decision_ghosts.py#L189) |
+| function | `build_decision_ghosts_surface` | `()` | — | [src](../../../core/services/decision_ghosts.py#L193) |
+
+## `core/services/decision_log.py`
+_Decision Log — records high-stakes decisions with context, options, and rationale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_decision` | `(*, title, context=…, options=…, decision=…, why=…, refs=…)` | Record a decision in the log. | [src](../../../core/services/decision_log.py#L20) |
+| function | `build_decision_log_surface` | `()` | — | [src](../../../core/services/decision_log.py#L50) |
+
+## `core/services/decision_review_daemon.py`
+_Decision review daemon — closes the adherence loop automatically._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_record_own_state` | `(result)` | Skriv tick'ets eget spor til DAEMON_STATE — uafhængigt af returvejen. | [src](../../../core/services/decision_review_daemon.py#L34) |
+| function | `tick_decision_review_daemon` | `()` | Daemon tick: review overdue behavioral decisions. | [src](../../../core/services/decision_review_daemon.py#L55) |
+
+## `core/services/decision_review_prompter.py`
+_Decision review prompter — closes the adherence loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L44) |
+| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L53) |
+| function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L92) |
+| function | `_parse_review` | `(text)` | Læs dommen. Returnerer (verdict, channel, reasoning) — eller None. | [src](../../../core/services/decision_review_prompter.py#L125) |
+| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L169) |
+
 ## `core/services/decision_signal_staging.py`
 _Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
 
@@ -112,6 +235,14 @@ _Deep Reflection Slot — real think-time, not tick-to-tick alert._
 | function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L384) |
 | function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L393) |
 
+## `core/services/deepseek_modelnavne.py`
+_Hvad DeepSeeks modeller HEDDER — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_flash` | `(model)` | Serveres denne model af `deepseek-flash`? | [src](../../../core/services/deepseek_modelnavne.py#L60) |
+| function | `er_thinking_model` | `(model, *, provider=…)` | Kræver modellen `reasoning_content` på tidligere assistant-ture? | [src](../../../core/services/deepseek_modelnavne.py#L65) |
+
 ## `core/services/delegation_advisor.py`
 _Delegation advisor — inline vs which subagent role._
 
@@ -127,6 +258,18 @@ _Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
 |---|---|---|---|---|
 | function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
 | function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
+
+## `core/services/delta_trace.py`
+_Delta-sporet: hvor i kæden bliver streamen klumpet? (3/10-2026)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taendt` | `()` | Er sporet slået til? Enhver tvivl → nej, så det aldrig koster noget. | [src](../../../core/services/delta_trace.py#L79) |
+| function | `noter` | `(punkt, run_id, tegn)` | Registrér én delta. No-op når sporet er slukket. | [src](../../../core/services/delta_trace.py#L88) |
+| function | `_fordeling` | `(huller)` | (median, p95, max, indeks-for-max) i millisekunder. | [src](../../../core/services/delta_trace.py#L118) |
+| function | `afslut` | `(noegle, *, run_id=…)` | Skriv opsummeringen og ryd den. No-op når slukket. | [src](../../../core/services/delta_trace.py#L129) |
+| function | `noter_laesning` | `(noegle, *, blokeret_s, behandlet_s)` | Registrér ÉN læsning fra udbyderens stream — og hvor tiden gik. | [src](../../../core/services/delta_trace.py#L180) |
+| function | `afslut_laesning` | `(noegle, *, run_id=…)` | Skriv læse-opsummeringen og ryd den. No-op når slukket. | [src](../../../core/services/delta_trace.py#L232) |
 
 ## `core/services/desire_daemon.py`
 _Desire daemon — emergent appetites based on Jarvis' actual experiences._
@@ -415,6 +558,22 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1727) |
 | function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1771) |
 
+## `core/services/discord_gateway_supervisor.py`
+_Vagthund der genrejser Discord-gatewayen naar dens klienttraad er doed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gateway_er_ejet` | `()` | Ejer DENNE proces gatewayen? Fejl regnes som «ja», saa en laesefejl | [src](../../../core/services/discord_gateway_supervisor.py#L89) |
+| function | `_discord_er_slaaet_til` | `()` | Er Discord konfigureret OG aktiveret? Ellers skal vi ikke rejse noget. | [src](../../../core/services/discord_gateway_supervisor.py#L103) |
+| function | `_skriv_tilstand` | `(**felter)` | Spejl supervisorens tilstand saa Centralen kan se den. | [src](../../../core/services/discord_gateway_supervisor.py#L114) |
+| function | `_vent_paa_at_traadene_doer` | `()` | Vent indtil klient- og subscriber-traaden er vaek. True hvis de doede. | [src](../../../core/services/discord_gateway_supervisor.py#L127) |
+| function | `_reparer` | `()` | Stop resterne og start gatewayen forfra. True hvis ejerskab blev vundet. | [src](../../../core/services/discord_gateway_supervisor.py#L157) |
+| function | `_loop` | `()` | Tjek med faste mellemrum; bak eksponentielt ud naar reparation fejler. | [src](../../../core/services/discord_gateway_supervisor.py#L212) |
+| function | `_sov` | `(sekunder)` | Sov i smaa bidder, saa et stop ikke skal vente et helt interval. | [src](../../../core/services/discord_gateway_supervisor.py#L235) |
+| function | `start_discord_gateway_supervisor` | `()` | Start vagthunden. Sikker at kalde ubetinget. | [src](../../../core/services/discord_gateway_supervisor.py#L243) |
+| function | `stop_discord_gateway_supervisor` | `()` | Stop vagthunden. SKAL kaldes FOER `stop_discord_gateway()` ved nedlukning, | [src](../../../core/services/discord_gateway_supervisor.py#L261) |
+| function | `supervisor_status` | `()` | Til Centralen: koerer vagthunden, og hvor mange gange har den maattet | [src](../../../core/services/discord_gateway_supervisor.py#L268) |
+
 ## `core/services/dispatch_envelope.py`
 _Robustness envelope builder + plausibility guard for the dispatch-redesign._
 
@@ -461,216 +620,4 @@ _Typed dispatch-status enum for the dispatch-redesign._
 | method | `DispatchStatus.all` | `(cls)` | Return the set of all six known statuses. | [src](../../../core/services/dispatch_status.py#L24) |
 | function | `is_failure` | `(status)` | True for failed/timeout/blocked. Unknown status -> False. | [src](../../../core/services/dispatch_status.py#L46) |
 | function | `is_terminal` | `(status)` | True for any of the six known statuses. Unknown status -> False. | [src](../../../core/services/dispatch_status.py#L51) |
-
-## `core/services/doc_repair_agent.py`
-_Doc repair agent (spec 2026-07-10 Del 2)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_allowed_doc_path` | `(rel_or_abs)` | True KUN hvis stien oploeser til noget UNDER <repo>/docs/. Afviser traversal, | [src](../../../core/services/doc_repair_agent.py#L23) |
-| function | `find_stale_docs` | `()` | Konsumér docs_drift_watchdog-signalet → liste af {path, generator} for docs | [src](../../../core/services/doc_repair_agent.py#L41) |
-| function | `_run_generator` | `(name)` | Kør en kendt deterministisk doc-generator og returnér det nye indhold. | [src](../../../core/services/doc_repair_agent.py#L58) |
-| function | `repair_doc` | `(target, *, live)` | Repair én doc. Skriver KUN under docs/ (invariant), KUN naar live=True og | [src](../../../core/services/doc_repair_agent.py#L69) |
-| function | `run_doc_repair_tick` | `()` | Cadence-indgang, kørt gennem central().decide (Centralen er aktoeren). | [src](../../../core/services/doc_repair_agent.py#L104) |
-| function | `build_doc_repair_surface` | `()` | Read-surface til jc raw /central/doc-repair. Side-effect-fri. | [src](../../../core/services/doc_repair_agent.py#L138) |
-
-## `core/services/docs_drift_watchdog.py`
-_SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a docs:drift nerve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `read_report` | `(report_path=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L19) |
-| function | `_report_stale` | `(report_path=…, repo=…)` | True if the drift audit itself is old — the report is missing, or its own | [src](../../../core/services/docs_drift_watchdog.py#L29) |
-| function | `check_docs_drift` | `(report_path=…, repo=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L49) |
-| function | `observe_docs_drift` | `()` | Emit the docs:drift signal to Central (timeseries + observe trace). Self-safe. | [src](../../../core/services/docs_drift_watchdog.py#L69) |
-| function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L87) |
-| function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
-| function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
-
-## `core/services/dream_action_executor.py`
-_Dream-to-Action: den ende der manglede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mode` | `()` | ``'off'`` | ``'shadow'`` | ``'live'``. Default **live** siden 2026-09-04. | [src](../../../core/services/dream_action_executor.py#L56) |
-| function | `_parse_family` | `(provenance)` | ``{"family": "X->Y"}`` → ``("X", "Y")``. None hvis formen ikke er som forventet. | [src](../../../core/services/dream_action_executor.py#L74) |
-| function | `adjudicate` | `(from_fam, to_fam)` | Mål om regimet holdt. Ren læsning af sekvens-modellen; ændrer ingenting. | [src](../../../core/services/dream_action_executor.py#L84) |
-| function | `_observe_incident` | `(hyp_id, ver, *, applied)` | Klient-synlig, så indgreb er muligt uden at læse en database. | [src](../../../core/services/dream_action_executor.py#L114) |
-| function | `_bump_errors` | `()` | Gentagne fejl → `off`. Den genstarter ikke sig selv. | [src](../../../core/services/dream_action_executor.py#L129) |
-| function | `run_once` | `(*, limit=…)` | Ét gennemløb: find modne prediction_error-hypoteser, mål regimet, registrér. | [src](../../../core/services/dream_action_executor.py#L142) |
-| function | `build_executor_surface` | `()` | Overflade til Centralen: tilstand + hvad den ville/har gjort. Self-safe. | [src](../../../core/services/dream_action_executor.py#L200) |
-
-## `core/services/dream_adoption_candidate_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_dream_adoption_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L32) |
-| function | `refresh_runtime_dream_adoption_candidate_statuses` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L54) |
-| function | `build_runtime_dream_adoption_candidate_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L85) |
-| function | `_extract_dream_adoption_candidates` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L114) |
-| function | `_persist_dream_adoption_candidates` | `(*, candidates, session_id, run_id)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L186) |
-| function | `_build_adoption_snapshots` | `()` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L260) |
-| function | `_with_runtime_view` | `(item, candidate)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L308) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L319) |
-| function | `_build_candidate_type` | `(*, item, snapshot)` | Hvor staerk en adoptions-kandidat er denne droemme-linje — hvis nogen. | [src](../../../core/services/dream_adoption_candidate_tracking.py#L345) |
-| function | `_build_candidate_status` | `(*, candidate_type, hypothesis_status, cadence_state)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L384) |
-| function | `_build_adoption_confidence` | `(*, candidate_type, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L392) |
-| function | `_build_adoption_reason` | `(*, candidate_type, hypothesis_type, adoption_confidence)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L400) |
-| function | `_build_adoption_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L408) |
-| function | `_build_status_reason` | `(*, candidate_type)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L425) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L433) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L442) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L447) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L452) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L457) |
-| function | `_hypothesis_type_from_candidate_key` | `(canonical_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L462) |
-| function | `_adoption_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L467) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L476) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L481) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_adoption_candidate_tracking.py#L491) |
-
-## `core/services/dream_articulation.py`
-_Bounded dream articulation light._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_dream_articulation` | `(*, trigger=…, last_visible_at=…)` | Run one bounded dream-articulation pass. | [src](../../../core/services/dream_articulation.py#L23) |
-| function | `build_dream_articulation_from_inputs` | `(*, idle_consolidation, inner_voice_state, emergent_surface, witness_surface, loop_runtime, embodied_state, goal_surface=…, relation_surface=…, autonomy_surface=…, now=…)` | — | [src](../../../core/services/dream_articulation.py#L165) |
-| function | `build_dream_articulation_surface` | `()` | — | [src](../../../core/services/dream_articulation.py#L332) |
-| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/dream_articulation.py#L364) |
-| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/dream_articulation.py#L397) |
-| function | `_latest_dream_articulation_signal` | `()` | Return the latest dream hypothesis signal. | [src](../../../core/services/dream_articulation.py#L423) |
-| function | `_classify_candidate_state` | `(*, idle_consolidation, emergent_surface, witness_surface, loop_runtime)` | — | [src](../../../core/services/dream_articulation.py#L444) |
-| function | `_build_anchor` | `(*, idle_consolidation, witness_summary, emergent_summary, loop_summary)` | — | [src](../../../core/services/dream_articulation.py#L461) |
-| function | `_build_signal_type` | `(*, candidate_state, loop_summary)` | — | [src](../../../core/services/dream_articulation.py#L480) |
-| function | `_title_suffix` | `(anchor)` | — | [src](../../../core/services/dream_articulation.py#L485) |
-| function | `_build_summary` | `(*, candidate_state, source_inputs, body)` | — | [src](../../../core/services/dream_articulation.py#L489) |
-| function | `_build_rationale` | `(*, consolidation, voice_result, witness_summary, emergent_summary)` | — | [src](../../../core/services/dream_articulation.py#L502) |
-| function | `_build_support_summary` | `(*, source_inputs, candidate_state)` | — | [src](../../../core/services/dream_articulation.py#L522) |
-| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/dream_articulation.py#L534) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/dream_articulation.py#L561) |
-
-## `core/services/dream_bias_engine.py`
-_Dream bias engine — Lag 2 distillation + bias state._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/dream_bias_engine.py#L58) |
-| function | `_now` | `()` | — | [src](../../../core/services/dream_bias_engine.py#L65) |
-| function | `_validate_dream_output` | `(raw)` | Sanitize LLM output — drop unknown keys, clamp values, force guards. | [src](../../../core/services/dream_bias_engine.py#L71) |
-| function | `accumulate_bias` | `(prior, new, intensity)` | Add new bias values to prior, multiplied by intensity, clamped ±1.0. | [src](../../../core/services/dream_bias_engine.py#L120) |
-| function | `get_active_dream_bias` | `(*, workspace_id=…)` | Read active bias, honoring kill-switch + TTL. | [src](../../../core/services/dream_bias_engine.py#L141) |
-| function | `format_dream_bias_for_heartbeat` | `(*, workspace_id=…)` | Render bias as a structured awareness-section block. | [src](../../../core/services/dream_bias_engine.py#L173) |
-| function | `run_dream_bias_distillation` | `(*, workspace_id=…)` | Full pipeline. Called by dream_distillation_daemon each cycle. | [src](../../../core/services/dream_bias_engine.py#L229) |
-| function | `_has_minimum_dream_content` | `(*, workspace_id, settings)` | ≥2 new events (regret + aspiration) since the active bias's source_event_ids. | [src](../../../core/services/dream_bias_engine.py#L311) |
-| function | `_fetch_regret_corpus` | `(*, since_iso, limit=…)` | Pull events from the 6 regret-heavy sources via the events table. | [src](../../../core/services/dream_bias_engine.py#L350) |
-| function | `_summarize_payload` | `(payload, kind)` | Best-effort short-summary line for an event payload. | [src](../../../core/services/dream_bias_engine.py#L409) |
-| function | `_fetch_aspiration_corpus` | `(*, since_iso, limit=…)` | Pull positive/aspiration events — kept decisions, goal progress, etc. | [src](../../../core/services/dream_bias_engine.py#L418) |
-| function | `_call_llm_for_bias` | `(*, events, max_tokens)` | Call quality-lane LLM with both regret and aspiration events. | [src](../../../core/services/dream_bias_engine.py#L501) |
-| function | `_upsert_dream_bias` | `(*, workspace_id, validated, source_events, ttl_hours)` | INSERT new or accumulate into existing row. | [src](../../../core/services/dream_bias_engine.py#L567) |
-
-## `core/services/dream_carry_over.py`
-_Dream Carry-Over — hypotheses that survive across sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_persist_file` | `()` | — | [src](../../../core/services/dream_carry_over.py#L26) |
-| function | `_ensure_loaded` | `()` | — | [src](../../../core/services/dream_carry_over.py#L40) |
-| function | `_load` | `()` | — | [src](../../../core/services/dream_carry_over.py#L51) |
-| function | `_save` | `()` | — | [src](../../../core/services/dream_carry_over.py#L63) |
-| function | `adopt_dream` | `(*, dream_id, content, confidence=…, source_memories=…)` | Adopt a dream hypothesis for carry-over to next session. | [src](../../../core/services/dream_carry_over.py#L79) |
-| function | `get_presentable_dream` | `()` | Get the highest-confidence un-presented dream for prompt injection. | [src](../../../core/services/dream_carry_over.py#L126) |
-| function | `mark_dream_presented` | `(dream_id)` | Mark a dream as presented in the current session; track carry depth. | [src](../../../core/services/dream_carry_over.py#L139) |
-| function | `confirm_dream` | `(dream_id)` | Confirm a dream hypothesis — boost confidence, track confirmed sessions. | [src](../../../core/services/dream_carry_over.py#L151) |
-| function | `reject_dream` | `(dream_id)` | Reject a dream hypothesis — archive with 'was_wrong'. | [src](../../../core/services/dream_carry_over.py#L182) |
-| function | `promote_confirmed_dream_to_identity` | `(dream_id)` | Promote a high-confidence confirmed dream to identity evolution proposal. | [src](../../../core/services/dream_carry_over.py#L198) |
-| function | `format_dream_for_prompt` | `(dream)` | Format a dream for injection into the visible prompt. | [src](../../../core/services/dream_carry_over.py#L218) |
-| function | `build_dream_carry_over_surface` | `()` | — | [src](../../../core/services/dream_carry_over.py#L232) |
-| function | `maybe_auto_promote_dreams` | `()` | Promote high-confidence confirmed dreams to identity proposals. Returns promoted IDs. | [src](../../../core/services/dream_carry_over.py#L257) |
-| function | `_maybe_fade_old_dreams` | `()` | Archive unconfirmed dreams that have been presented too many times. | [src](../../../core/services/dream_carry_over.py#L278) |
-
-## `core/services/dream_consolidation_daemon.py`
-_Dream Consolidation — semantic + LLM-driven consolidation during low-activity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sessions_since` | `(last_iso)` | Antal distinkte chat-sessioner med aktivitet siden ``last_iso``. Fail-OPEN: | [src](../../../core/services/dream_consolidation_daemon.py#L52) |
-| function | `_acquire_consolidation_lock` | `()` | True hvis vi fik lockken (ingen anden dream kører). Best-effort, self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L70) |
-| function | `_release_consolidation_lock` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L82) |
-| function | `_storage_path` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L116) |
-| function | `_dreams_dir` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L120) |
-| function | `_load` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L124) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L140) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L152) |
-| function | `_fragment_tokens` | `(text)` | Tokens fra ét fragment, uden et evt. afhugget sidste ord. | [src](../../../core/services/dream_consolidation_daemon.py#L157) |
-| function | `_is_idle_enough` | `()` | True hvis systemet er i ro nok til at konsolidere drømme. | [src](../../../core/services/dream_consolidation_daemon.py#L172) |
-| function | `_gather_fragments` | `()` | Collect recent text fragments from multiple sources. | [src](../../../core/services/dream_consolidation_daemon.py#L211) |
-| function | `drop_boilerplate_tokens` | `(token_counter, *, fragment_count, max_doc_frequency=…)` | Fjern ord der staar i for stor en andel af fragmenterne. Ren funktion. | [src](../../../core/services/dream_consolidation_daemon.py#L294) |
-| function | `_find_themes` | `(fragments)` | Cluster fragments by shared keywords into themes. | [src](../../../core/services/dream_consolidation_daemon.py#L311) |
-| function | `_query_fragmented_memories` | `(theme_tokens, theme_texts)` | Find contradictory, low-confidence, or overlapping memories for a theme. | [src](../../../core/services/dream_consolidation_daemon.py#L362) |
-| function | `_write_dream_note` | `(consolidation_id, themes, idle_minutes)` | Write an abstract dream note to dreams/ dir. | [src](../../../core/services/dream_consolidation_daemon.py#L444) |
-| function | `extract_json_object` | `(raw)` | Træk det første JSON-objekt ud af et LLM-svar. Ren funktion, kaster aldrig. | [src](../../../core/services/dream_consolidation_daemon.py#L492) |
-| function | `_llm_synthesize_dream` | `(themes, fragments, consolidation_id)` | Run a quality LLM synthesis pass over theme clusters + fragments. | [src](../../../core/services/dream_consolidation_daemon.py#L529) |
-| function | `_produce_dream_artifacts` | `(synthesis, consolidation_id, themes)` | Pipe LLM synthesis output into dream notes + hypothesis signals + chronicle. | [src](../../../core/services/dream_consolidation_daemon.py#L616) |
-| function | `consolidate_now` | `()` | Run one consolidation pass unconditionally (ignores cooldown). | [src](../../../core/services/dream_consolidation_daemon.py#L756) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — consolidate when idle + cooldown allows. | [src](../../../core/services/dream_consolidation_daemon.py#L823) |
-| function | `list_recent_dreams` | `(*, limit=…)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L854) |
-| function | `build_dream_consolidation_surface` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L858) |
-| function | `_surface_summary` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L879) |
-| function | `build_dream_consolidation_prompt_section` | `()` | Announce recent dream if fresh (last 6h). | [src](../../../core/services/dream_consolidation_daemon.py#L888) |
-| function | `consolidation_loop` | `(stop_event)` | Kald tick() på egen kadence og LOG udfaldet. | [src](../../../core/services/dream_consolidation_daemon.py#L934) |
-| function | `start_dream_consolidation_daemon` | `()` | Start konsoliderings-tråden. Idempotent. | [src](../../../core/services/dream_consolidation_daemon.py#L955) |
-| function | `stop_dream_consolidation_daemon` | `()` | Stop tråden. Self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L971) |
-
-## `core/services/dream_continuum.py`
-_Dream Continuum — dreams that mature and "think" between ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DreamThought` | `` | A thought a dream has between ticks. | [src](../../../core/services/dream_continuum.py#L26) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_continuum.py#L40) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/dream_continuum.py#L44) |
-| function | `evolve_dreams` | `(duration)` | Evolve dreams based on elapsed duration since last tick. | [src](../../../core/services/dream_continuum.py#L53) |
-| function | `_generate_dream_thought` | `(dream, maturity)` | Generate a thought a dream has during idle. | [src](../../../core/services/dream_continuum.py#L89) |
-| function | `get_dream_thoughts` | `(dream_id)` | Get all thoughts for a specific dream. | [src](../../../core/services/dream_continuum.py#L111) |
-| function | `get_top_dream_thought` | `()` | Get the most relevant dream thought for prompt injection. | [src](../../../core/services/dream_continuum.py#L125) |
-| function | `format_dreams_for_prompt` | `()` | Format dreams and thoughts for prompt injection. | [src](../../../core/services/dream_continuum.py#L139) |
-| function | `get_dream_maturity` | `(dream_id)` | Get maturity level of a specific dream. | [src](../../../core/services/dream_continuum.py#L151) |
-| function | `reset_dream_continuum` | `()` | Reset dream continuum state (for testing). | [src](../../../core/services/dream_continuum.py#L156) |
-| function | `build_dream_continuum_surface` | `()` | Build MC surface for dream continuum. | [src](../../../core/services/dream_continuum.py#L164) |
-
-## `core/services/dream_distillation_daemon.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_run_bias_pipeline_safe` | `()` | Run the dream-bias distillation pipeline and never raise. | [src](../../../core/services/dream_distillation_daemon.py#L27) |
-| function | `run_dream_distillation_daemon` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/dream_distillation_daemon.py#L41) |
-| function | `get_dream_residue_for_prompt` | `(*, max_chars=…)` | — | [src](../../../core/services/dream_distillation_daemon.py#L150) |
-| function | `build_dream_distillation_surface` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L167) |
-| function | `clear_expired_dream_residue` | `(*, now=…)` | — | [src](../../../core/services/dream_distillation_daemon.py#L187) |
-| function | `_log_dream_landing` | `(*, residue, expired_at)` | Log expired dream residue as observation. Anti-goal: stored for reflection, never fed back. | [src](../../../core/services/dream_distillation_daemon.py#L208) |
-| function | `_load_dismissed_inner_voice` | `()` | Load recent inner-voice signals that were suppressed or not surfaced. | [src](../../../core/services/dream_distillation_daemon.py#L235) |
-| function | `_load_lost_council_positions` | `()` | Load recent minority council positions that didn't become consensus. | [src](../../../core/services/dream_distillation_daemon.py#L254) |
-| function | `_load_deprioritized_initiatives` | `()` | Load recently rejected or expired initiative queue items. | [src](../../../core/services/dream_distillation_daemon.py#L269) |
-| function | `_build_dream_residue` | `(*, chronicle_entries, approval_entries, dismissed_inner=…, lost_council=…, deprioritized_initiatives=…)` | — | [src](../../../core/services/dream_distillation_daemon.py#L285) |
-| function | `_build_residue_prompt` | `(*, chronicle_entries, approval_entries, dismissed_inner=…, lost_council=…, deprioritized_initiatives=…)` | — | [src](../../../core/services/dream_distillation_daemon.py#L309) |
-| function | `_sanitize_residue` | `(raw)` | — | [src](../../../core/services/dream_distillation_daemon.py#L357) |
-| function | `_dream_residue_enabled` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L369) |
-| function | `_state` | `()` | — | [src](../../../core/services/dream_distillation_daemon.py#L374) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/dream_distillation_daemon.py#L379) |
-
-## `core/services/dream_domains.py`
-_Det faelles emne-ordforraad for droemme-kaeden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `domaene_for_tur` | `(tekst, *, timeout_sekunder=…)` | Hvilket staaende domaene roerer turen — eller None. | [src](../../../core/services/dream_domains.py#L90) |
-| function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L119) |
-
-## `core/services/dream_hypothesis_forced.py`
-_Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L30) |
 

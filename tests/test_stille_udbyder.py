@@ -129,6 +129,26 @@ def test_indhold_FOER_taersklen_slaar_vagten_fra(monkeypatch):
     assert any(e.get("kind") == "delta" for e in ud), ud
 
 
+def test_kun_reasoning_content_afvaebner_ogsaa_vagten(monkeypatch):
+    """1/10-2026: DeepSeek flash har thinking TIL som standard og sender sin
+    foerste tekst i `reasoning_content`, ikke `content`. Vagten maaler om der
+    kom en `data:`-linje — ikke om den bar et `content`-felt — saa et svar der
+    taenker i over et minut maa ALDRIG draebes som tavst.
+
+    Uden denne test ville en stramning til «kraev content» passere alle andre
+    tests og foerst vise sig som draebte svar hos en thinking-model. Fjern
+    `reasoning_content`-linjen nedenfor, og testen fejler med STALL_KODE."""
+    linjer = [
+        'data: {"choices":[{"delta":{"reasoning_content":"Lad mig taenke"}}]}',
+        ": keep-alive", ": keep-alive", ": keep-alive",
+        'data: {"choices":[{"delta":{"content":"Tre"}}]}',
+        "data: [DONE]",
+    ]
+    # Uret gaar FORBI de 60 s mens kun keepalive loeber — praecis det vindue
+    # der draebte kaldene 14/9, men her med en datalinje foran.
+    ud = _kald(monkeypatch, linjer, [0.0, 0.0, 1.0, 900.0, 900.0, 900.0, 900.0, 900.0])
+    assert any(e.get("kind") == "delta" for e in ud), ud
+
 # ───────────────────────────────────────────── og KALDER adapteren genforsoeget?
 
 def test_adapteren_proever_igen_paa_stall_koden():

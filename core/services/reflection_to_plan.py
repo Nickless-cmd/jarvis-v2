@@ -148,6 +148,17 @@ def create_reflective_plan(
     source_kind examples: inner_voice, self_review, dream_hypothesis,
     blind_spot, decision, regret, paradox.
     """
+    # Hagen: ingen forbruger læser planerne (accept_reflective_plan og
+    # build_reflection_to_plan_surface kaldes ikke uden for denne fil). Målt
+    # 29/9-2026: 603 planer, alle 'proposed'. Skriv-siden lukkes her — ét
+    # choke point dækker alle tre daemon-hooks.
+    try:
+        from core.runtime.settings import load_settings
+        enabled = bool(load_settings().reflection_to_plan_enabled)
+    except Exception:  # self-safe: kan settings ikke læses, skriv ingen planer
+        enabled = False
+    if not enabled:
+        return {"outcome": "skipped", "reason": "disabled"}
     _ensure_tables()
     text = str(reflection_text or "").strip()
     if len(text) < min_length:
@@ -283,7 +294,7 @@ def complete_reflective_plan(*, plan_id: str, outcome_note: str = "") -> dict[st
             event_bus.publish("cognitive_reflective_plan.completed", {
                 "plan_id": plan_id, "outcome_note": outcome_note[:200],
             })
-        except Exception:
+        except Exception:  # self-safe: en event-fejl må ikke vælte plan-lukningen
             pass
         return _row_to_plan(row)
     return None

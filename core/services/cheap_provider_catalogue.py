@@ -58,6 +58,48 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # i rigtige penge kunne ikke fastslås — topup-kursen er admin-only. Så
     # rækkevidden er kendt i ✦ og ukendt i kroner: ~30 kald til de dyre
     # (65 ✦) eller ~150 til de billige (13 ✦).
+    # ── gonkarouter (6/10-2026, Bjørns egen konto). Probet FØR den blev koblet
+    # på, og kun ÉN af tre modeller kom igennem.
+    #
+    # NØGLEN: `gonkarouter_api_key` i runtime.json på CT105. Kontoen skulle have
+    # ~$20; det kunne IKKE verificeres — der findes intet saldo-endpoint.
+    # `/credits`, `/balance`, `/key`, `/user/balance`,
+    # `/dashboard/billing/credit_grants`, `/usage`, `/me`, `/account` giver alle
+    # 404. Rækkevidden må læses i deres eget dashboard.
+    #
+    # CLOUDFLARE: svarer **403 error 1010** på Pythons standard-UA
+    # («blocked based on your browser's signature»). `jarvis-v2/cheap-lane`
+    # slipper igennem (målt 200), så adapteren behøvede ingen ændring — men
+    # falder den UA nogensinde væk, dør udbyderen med 403 og ikke med en
+    # auth-fejl, og det ser ud som en nøgle-sag.
+    #
+    # KUN GLM. Målt på to prompts pr. model:
+    #   zai-org/GLM-5.3-Flash          «København. 🇩🇰» · «KLAR»        REN
+    #   deepseek-ai/DeepSeek-V4-...    <think>-læk · «KLAR.KLAR.KLAR.»  UEGNET
+    #   MiniMaxAI/MiniMax-M2.7         <think>-læk på BEGGE             UEGNET
+    # De to sidste dumper modellens rå tænke-blok i `content` i stedet for i
+    # `reasoning`, og DeepSeek-ruten gentager sig selv. Føj dem IKKE til uden at
+    # måle om det er rettet — listen er ikke en forglemmelse.
+    #
+    # BOGFØRINGEN ER USTABIL. `usage.prompt_tokens` for næsten identiske kald:
+    # 40, 84, 81, 63, 9. Og at TILFØJE en system-besked sænkede tallet fra 84
+    # til 9, hvilket er umuligt i ærlig bogføring. Differencen svarer til ~75
+    # tokens, så routeren indsætter formentlig sin egen systemprompt når man
+    # ikke selv giver én. Indholdet kunne ikke fås ud af modellen.
+    # Derfor: `cost_class: "paid"` men regn ikke med tallene, og send ALTID en
+    # egen system-besked så en ukendt prompt ikke står foran Jarvis'.
+    "gonkarouter": {
+        "label": "gonkarouter (gateway — kun GLM, se noten)",
+        "priority": 66,
+        "base_url": "https://api.gonkarouter.io/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 100,
+        "cost_class": "paid",
+        "static_models": ["zai-org/GLM-5.3-Flash"],
+    },
     "fujcloud": {
         "label": "fujcloud (gateway, VN)",
         "priority": 67,

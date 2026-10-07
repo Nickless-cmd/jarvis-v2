@@ -17,14 +17,28 @@ const opg = (id: string, title: string, extra: Record<string, unknown> = {}) => 
 })
 type Mock = ReturnType<typeof vi.fn>
 const h = (): SideOpgaveHandlinger & { startLokalt: Mock; baggrund: Mock; loesHer: Mock; worktree: Mock } => ({
-  startLokalt: vi.fn().mockResolvedValue(undefined),
-  baggrund: vi.fn().mockResolvedValue(undefined),
-  loesHer: vi.fn(),
+  // Handlerne returnerer id'et paa den samtale der LOESER opgaven (3/10-2026).
+  startLokalt: vi.fn().mockResolvedValue('chat-ny'),
+  baggrund: vi.fn().mockResolvedValue('chat-bg'),
+  loesHer: vi.fn().mockReturnValue('chat-her'),
   worktree: vi.fn().mockResolvedValue(undefined),
 })
 
 describe('SideOpgaveKort (CC «Suggested task»)', () => {
   beforeEach(() => { getSideTasks.mockReset(); setSideTaskStatus.mockReset().mockResolvedValue(undefined) })
+
+  it.each([
+    [1, false, false],
+    [2, true, false],
+    [3, true, true],
+  ])('%i sideopgaver giver det rigtige antal kort i stakken', async (antal, stablet, treLag) => {
+    getSideTasks.mockResolvedValue(Array.from({ length: antal }, (_, nr) => opg(`id-${nr}`, `Opgave ${nr + 1}`)))
+    render(<SideOpgaveKort config={cfg} handlinger={h()} />)
+    const kort = await screen.findByTestId('side-tasks')
+    expect(kort.parentElement).toHaveClass('sok-dok')
+    expect(kort.parentElement?.classList.contains('sok-dok-stak')).toBe(stablet)
+    expect(kort.parentElement?.classList.contains('sok-dok-stak-tre')).toBe(treLag)
+  })
 
   it('et kort ad gangen, stablet, med «1 af 3» og bladring', async () => {
     getSideTasks.mockResolvedValue([opg('a', 'Første'), opg('b', 'Anden'), opg('c', 'Tredje')])
@@ -45,7 +59,7 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     expect(await screen.findByRole('button', { name: 'Start i worktree' })).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Flere valg'))
     const punkter = screen.getAllByRole('menuitem').map((b) => b.textContent)
-    expect(punkter).toEqual(['Start i worktreeStandard', 'Start i ny samtale', 'Send til baggrunden', 'Løs i denne samtale', 'Markér som færdig'])
+    expect(punkter).toEqual(['Start i worktreeStandard', 'Start i ny samtale', 'Send til baggrunden', 'Løs i denne samtale', 'Sæt i kø', 'Markér som færdig'])
   })
 
   it('uden worktree (chat) er «Start i ny samtale» standard', async () => {
@@ -73,7 +87,12 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${navn}`) }))
     await waitFor(() => expect(hh[handling as 'startLokalt']).toHaveBeenCalledWith(expect.objectContaining({ side_task_id: 'a' })))
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated'))
+    // Arbejds-sessionen skal FOELGE MED. Uden den kan serveren ikke knytte
+    // turen til opgaven, og saa er der ingen der kan lukke den — det var
+    // praecis fejlen Bjoern saa 3/10 («maatte jeg minde ham om at markere
+    // den flaggede opgave faerdig»).
+    const forventet = { startLokalt: 'chat-ny', baggrund: 'chat-bg', loesHer: 'chat-her' }[handling as 'startLokalt']
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated', forventet))
     expect(await screen.findByText('i gang')).toBeInTheDocument()
   })
 
@@ -87,6 +106,21 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Markér som færdig' }))
     await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'b', 'completed'))
+  })
+
+  it('sæt i kø ændrer status uden at starte en samtale', async () => {
+    const server = [opg('a', 'Første')]
+    getSideTasks.mockImplementation(async () => server.map((x) => ({ ...x })))
+    setSideTaskStatus.mockImplementation(async (_c, id, st) => { const x = server.find((y) => y.side_task_id === id); if (x) x.status = st })
+    const hh = h()
+    render(<SideOpgaveKort config={cfg} handlinger={hh} />)
+    await screen.findByText('Første')
+    fireEvent.click(screen.getByLabelText('Flere valg'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sæt i kø' }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'queued'))
+    expect(hh.startLokalt).not.toHaveBeenCalled()
+    expect(hh.baggrund).not.toHaveBeenCalled()
+    expect(await screen.findByText('i kø')).toBeInTheDocument()
   })
 
   it('en start der fejler viser fejlen og saetter IKKE opgaven i gang', async () => {

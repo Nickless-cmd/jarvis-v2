@@ -299,10 +299,23 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
         from core.services.central_core import central as _central_review
         from core.services.gate_review import review_gate as _review_gate
         from core.services.gate_kernel import Decision as _RDec
-        _rv = _central_review().decide(
-            "self_review", {"review": review, "run_id": str(review_id)},
-            _review_gate, cluster="review",
-        )
+        _review_ctx = {"review": review, "run_id": str(review_id)}
+        # Decentralisering (Keymaker), 6/10-2026: med en gyldig noegle resolverer
+        # et GROENT selv-review lokalt i stedet for gennem Centralens chokepoint.
+        #
+        # Vaer aerlig om gevinsten her: 8.722 af `self_review`s verdikter kommer
+        # fra `gate_shadow`s post-output-sweep (én pr. tur), ikke fra DETTE
+        # kaldested, som koerer paa 24t-kadence. Decentralisering her sparer
+        # derfor ~ét round-trip i doegnet. Shadow-stien er bevidst IKKE
+        # decentraliseret: dens eneste formaal ER at optage verdiktet, saa en
+        # lokal genvej dér ville fjerne det den findes for.
+        from core.services.central_decentralization import lokal_groen as _lokal_groen
+        _rv = _lokal_groen("self_review", "review", _review_gate, _review_ctx)
+        if _rv is None:
+            _rv = _central_review().decide(
+                "self_review", _review_ctx,
+                _review_gate, cluster="review",
+            )
         if _rv.decision is _RDec.RED:
             from core.runtime.db_central_incidents import record_central_incident
             record_central_incident(

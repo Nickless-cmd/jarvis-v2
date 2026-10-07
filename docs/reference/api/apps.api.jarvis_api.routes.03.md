@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/notifikations_valg.py`
+_Push-valg per slags. Scoper til den auth'ede bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
+| function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
+| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
+
+## `apps/api/jarvis_api/routes/oauth.py`
+_OAuth connect-flow til plugin-connectors (16. jun 2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_close_page` | `(ok, msg)` | — | [src](../../../apps/api/jarvis_api/routes/oauth.py#L17) |
+| function | `oauth_start` | `(provider)` | Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L32) |
+| function | `oauth_callback` | `(provider, code=…, state=…, error=…)` | Browser-callback. Verificér state → byt code → gem token krypteret pr. bruger. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L53) |
+
 ## `apps/api/jarvis_api/routes/openai_auth.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -33,6 +52,13 @@ _Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
 | function | `save_paste_endpoint` | `(request)` | Gem en paste og returnér id + kompakt reference-streng. | [src](../../../apps/api/jarvis_api/routes/paste.py#L27) |
 | function | `get_paste_endpoint` | `(paste_id)` | Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id. | [src](../../../apps/api/jarvis_api/routes/paste.py#L43) |
 
+## `apps/api/jarvis_api/routes/peak.py`
+_Myldretids-tilstand til desk-headerens badge (30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `peak_state_endpoint` | `()` | Myldretids-tilstanden lige nu — grundlaget for desk-badgen. | [src](../../../apps/api/jarvis_api/routes/peak.py#L25) |
+
 ## `apps/api/jarvis_api/routes/plugins.py`
 _Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
 
@@ -51,16 +77,16 @@ _Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `PingBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L14) |
-| class | `AckBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L30) |
-| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L34) |
-| function | `presence_ping` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L40) |
-| function | `notifications_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L65) |
-| function | `notifications_ack` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L73) |
-| function | `notification_preferences_get` | `()` | Notif-routing §6: app-UI læser brugerens kanal-præferencer. | [src](../../../apps/api/jarvis_api/routes/presence.py#L80) |
-| function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L90) |
-| function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L106) |
-| function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L136) |
+| class | `PingBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L18) |
+| class | `AckBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L47) |
+| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L51) |
+| function | `presence_ping` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L57) |
+| function | `notifications_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L97) |
+| function | `notifications_ack` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L105) |
+| function | `notification_preferences_get` | `()` | Notif-routing §6: app-UI læser brugerens kanal-præferencer. | [src](../../../apps/api/jarvis_api/routes/presence.py#L112) |
+| function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L122) |
+| function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L138) |
+| function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L168) |
 
 ## `apps/api/jarvis_api/routes/provider_registry.py`
 _Registret over udbydere og modeller — laesning OG skrivning. Owner-only._
@@ -105,11 +131,12 @@ _Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
 | function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L59) |
 | function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L67) |
 | function | `review_changes` | `(test_koert=…, diff=…, kilde=…, rod=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L109) |
-| function | `_saml` | `(rod_til_laesning, gren, numstat, porcelain, diff_tekst, test_koert, med_diff, laes_fil)` | Fælles opsamling for begge træer — så de to veje ikke kan svare i | [src](../../../apps/api/jarvis_api/routes/review.py#L136) |
-| function | `_aendringer_paa_serveren` | `(test_koert, med_diff)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L177) |
-| function | `_aendringer_paa_maskinen` | `(rod, test_koert, med_diff)` | Bjørns eget træ, læst over broen med ÉN compound-kommando. | [src](../../../apps/api/jarvis_api/routes/review.py#L201) |
-| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L233) |
-| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L257) |
+| function | `_seneste_commit` | `(rod, med_diff)` | Den seneste commit — så panelet ikke bliver tomt i det øjeblik man committer. | [src](../../../apps/api/jarvis_api/routes/review.py#L136) |
+| function | `_saml` | `(rod_til_laesning, gren, numstat, porcelain, diff_tekst, test_koert, med_diff, laes_fil)` | Fælles opsamling for begge træer — så de to veje ikke kan svare i | [src](../../../apps/api/jarvis_api/routes/review.py#L170) |
+| function | `_aendringer_paa_serveren` | `(test_koert, med_diff)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L211) |
+| function | `_aendringer_paa_maskinen` | `(rod, test_koert, med_diff)` | Bjørns eget træ, læst over broen med ÉN compound-kommando. | [src](../../../apps/api/jarvis_api/routes/review.py#L240) |
+| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L272) |
+| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L296) |
 
 ## `apps/api/jarvis_api/routes/review_traeer.py`
 _Hvilket arbejdstræ kigger vi i — serverens eller Bjørns egen maskine?_

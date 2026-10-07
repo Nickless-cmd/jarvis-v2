@@ -50,6 +50,24 @@ def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> 
 def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     if not run.session_id:
         return
+    # Backstop for an explicit admission that a changed behavior has no test.
+    # The preferred path is the structured flag_side_task call while the run
+    # is live. This conservative scan only acts on one named source file and
+    # never converts an unrelated red suite into a task.
+    try:
+        from core.services.inbox_state import _ejer_id
+        from core.services.run_finding_accounting import audit_final_response
+        owner = _ejer_id()
+        run_user = str(getattr(run, "user_id", "") or "")
+        if owner and (not run_user or run_user == owner):
+            audit_final_response(
+                run_id=run.run_id, session_id=run.session_id,
+                text=assistant_text,
+            )
+    except Exception:
+        import logging as _lg_findings
+        _lg_findings.getLogger(__name__).warning(
+            "run finding audit failed", exc_info=True)
     distillation_result: dict[str, object] | None = None
     consolidation_result: dict[str, object] | None = None
     errors: list[str] = []
@@ -85,6 +103,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             user_message=run.user_message,
             assistant_response=assistant_text,
             internal_context=_vr._recent_internal_tool_context(run.session_id),
+            human_user_message=not run.autonomous,
         )
     except Exception as exc:
         errors.append(f"end_of_run_consolidation:{type(exc).__name__}:{exc}")
@@ -109,6 +128,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             run_id=run.run_id,
             user_message=run.user_message,
             assistant_response=assistant_text,
+            human_user_message=not run.autonomous,
         ) or ""
     except Exception as exc:
         errors.append(f"session_summary:{type(exc).__name__}:{exc}")
@@ -158,14 +178,27 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             pass
 
         # Gather attention from active goals
+        #
+        # 4/10-2026: her stod der «Focus: t» i CONTINUITY-blokken. Kaldet
+        # hentede UDEN statusfilter, saa det nyeste signal vandt — og det
+        # nyeste var en test-raekke fra 8. juli (goal_type='test', title='t').
+        # Maalt i basen: 1744 signaler, ALLE 'archived', nul aktive. Et
+        # fokus-felt der baerer eet bogstav er vaerre end et tomt felt.
+        #
+        # To værn: status="active" holder arkiverede ude, og længde-vagten
+        # holder et signal med en titel som «t» ude selv hvis det er aktivt.
+        # Er der intet brugbart signal, staar feltet tomt — det er aerligt.
         attention = {}
         try:
+            from core.services.continuity import MIN_FOCUS_CHARS
             from core.services.goal_signal_tracking import list_runtime_goal_signals
-            signals = list_runtime_goal_signals(limit=3)
-            if signals:
-                top = signals[0]
-                attention["active_goal_title"] = str(top.get("goal_title", top.get("title", "")))[:80]
-                attention["current_focus"] = str(top.get("title", top.get("goal_title", "")))[:80]
+
+            for s in list_runtime_goal_signals(status="active", limit=3):
+                titel = str(s.get("title") or s.get("goal_title") or "").strip()
+                if len(titel) >= MIN_FOCUS_CHARS:
+                    attention["active_goal_title"] = titel[:80]
+                    attention["current_focus"] = titel[:80]
+                    break
         except Exception:
             pass
 
@@ -194,7 +227,33 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             session_id=run.session_id,
         )
     except Exception:
-        pass
+        # 4/10-2026: her stod der et bart «pass». Da jeg maalte om capsulen
+        # blev skrevet efter hver tur, kunne journalen ikke skelne «blev ikke
+        # kaldt» fra «fejlede tavst» — den var tom i BEGGE tilfaelde, og jeg
+        # konkluderede forkert paa det. Skrive-vejen viste sig at virke.
+        # Hullet var ikke desto mindre aegte: fejler forberedelsen (mood-sync,
+        # attention, seneste aktivitet), forsvandt sporet helt. Samme moenster
+        # som side-opgave-fejningen nedenfor bruger.
+        import logging as _lg_cont
+
+        _lg_cont.getLogger(__name__).warning(
+            "continuity live_update-forberedelse fejlede efter run", exc_info=True)
+
+    # En inaktiv arbejds-session flyttes tilbage til ventende. Tavshed er ikke
+    # bevis for at opgaven er udført, så fejeren markerer den aldrig færdig.
+    try:
+        import logging as _lg_side
+        from core.services.side_tasks import fej_faerdige
+        _side = fej_faerdige()
+        if _side.get("tilbage_til_venter"):
+            # Modulet har ingen modul-logger; hentes lokalt frem for at
+            # indfoere en global i en fil der klarer sig uden.
+            _lg_side.getLogger(__name__).info(
+                "side-opgaver tilbage til ventende efter run: %s", _side)
+    except Exception:
+        import logging as _lg_side2
+        _lg_side2.getLogger(__name__).warning(
+            "side-opgave-fejning fejlede efter run", exc_info=True)
 
     event_bus.publish(
         "memory.visible_run_postprocess_completed",

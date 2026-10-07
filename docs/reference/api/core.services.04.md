@@ -2,6 +2,146 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/causal_inference_daemon.py`
+_Causal inference daemon — three-tier matching against event allowlist._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table_ready` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L72) |
+| function | `_now_iso` | `()` | Samme form som resten af bussen skriver: `...+00:00`. | [src](../../../core/services/causal_inference_daemon.py#L78) |
+| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/causal_inference_daemon.py#L98) |
+| function | `_record_edge` | `(*, child, parent, edge_kind, confidence, source, reasoning)` | INSERT or UPGRADE an edge. Returns 'created'|'upgraded'|'skipped'. | [src](../../../core/services/causal_inference_daemon.py#L108) |
+| function | `_payload` | `(event)` | — | [src](../../../core/services/causal_inference_daemon.py#L145) |
+| function | `_try_tier1_kind_rule` | `(child, candidates_by_kind)` | Match against hardcoded kind-rule with shared-id-preferred fallback. | [src](../../../core/services/causal_inference_daemon.py#L152) |
+| function | `_try_tier2_shared_id` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L214) |
+| function | `_try_tier3_temporal` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L237) |
+| function | `_fetch_allowlist_events` | `(*, since_minutes=…, limit=…)` | Fetch allowlist events for inference. | [src](../../../core/services/causal_inference_daemon.py#L267) |
+| function | `_prune_old_edges` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L299) |
+| function | `run_inference_cycle` | `(*, since_minutes=…)` | Run one inference tick. Returns stats dict. | [src](../../../core/services/causal_inference_daemon.py#L317) |
+| function | `tick_causal_inference_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/causal_inference_daemon.py#L408) |
+
+## `core/services/central_absorb.py`
+_central_absorb — den fælles "fuld behandling"-absorption._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compact` | `(value, *, limit=…)` | Kompakt, egress-venlig repræsentation af en værdi til flag-payloads. | [src](../../../core/services/central_absorb.py#L27) |
+| function | `absorb` | `(cluster, nerve, value, *, flag_if=…, flag_reason=…, learn_key=…)` | Absorbér en producent-værdi som en levende central-nerve. Kaster ALDRIG. | [src](../../../core/services/central_absorb.py#L55) |
+
+## `core/services/central_adaptation.py`
+_core/services/central_adaptation.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_adaptation.py#L60) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_adaptation.py#L69) |
+| class | `AdaptationClass` | `` | Én selv-justerende muskel: en tilbøjelighed Centralen justerer efter SIN EGEN track-record | [src](../../../core/services/central_adaptation.py#L79) |
+| function | `_assert_not_frozen_core` | `(cls)` | HÅRD assert: afvis enhver AdaptationClass hvis kv_key/name rører den frosne kerne. Kører for | [src](../../../core/services/central_adaptation.py#L126) |
+| function | `_register_adaptation_class` | `(cls)` | Valider + tilføj en muskel til registret. Kører den HÅRDE assert FØR optagelse. Returnerer | [src](../../../core/services/central_adaptation.py#L142) |
+| function | `_default_class` | `()` | Bagudkompatibel default = gut-bias (så modul-niveau-API'et virker uden at kende registret). | [src](../../../core/services/central_adaptation.py#L189) |
+| function | `get_bias` | `(cls=…)` | Læs + clamp en musklens justerede skalar. Default = gut. Self-safe. | [src](../../../core/services/central_adaptation.py#L195) |
+| function | `get_gut_bias` | `()` | Bagudkompatibel: gut-bias (uændret adfærd). | [src](../../../core/services/central_adaptation.py#L204) |
+| function | `is_live_enabled` | `(cls=…)` | Musklen er live hvis dens live_flag er ON OG dens pause_flag ikke er sat. Default = gut. | [src](../../../core/services/central_adaptation.py#L209) |
+| function | `effective_dream_trust_factor` | `()` | Forbruger til dream_trust-musklen (LivingNeuron §3, 2026-07-10): oversæt tiltro-biasen | [src](../../../core/services/central_adaptation.py#L215) |
+| function | `is_paused` | `(cls=…)` | — | [src](../../../core/services/central_adaptation.py#L230) |
+| function | `_ensure_anchor` | `(cls=…)` | Ankr identitets-baseline: bias=0 ER identiteten (ingen tilbøjeligheds-forvrængning). In-memory | [src](../../../core/services/central_adaptation.py#L235) |
+| function | `resolved_track_record` | `(*, sources=…)` | Centralens egen præcision: hvor mange hypoteser har holdt vs. fejlet. SOURCE-SCOPED (§8.3): | [src](../../../core/services/central_adaptation.py#L247) |
+| function | `compute_proposed_bias` | `(cls=…)` | Foreslå bias fra en musklens EGEN track-record. accuracy=supported/(supported+contradicted). | [src](../../../core/services/central_adaptation.py#L271) |
+| function | `rollback` | `(reason=…, cls=…)` | Rollback-EKSEKVERING (shadow-specens manglende primitiv): gendan forrige bias + PAUSE Lag 4 | [src](../../../core/services/central_adaptation.py#L290) |
+| function | `_run_class_tick` | `(cls)` | Kør ÉN musklens adaptations-tick: beregn → gate → shadow-log → anvend KUN hvis live+ok. | [src](../../../core/services/central_adaptation.py#L306) |
+| function | `run_adaptation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: iterér REGISTRET. For den ENESTE gut-klasse er adfærden IDENTISK med før | [src](../../../core/services/central_adaptation.py#L338) |
+| function | `register_adaptation_producer` | `()` | Registrér Lag 4-adaptationen som cadence-producer (~hvert 60 min). SHADOW medmindre live-flag ON. | [src](../../../core/services/central_adaptation.py#L362) |
+| function | `build_central_adaptation_surface` | `()` | Mission Control surface — read-only: nuværende bias, foreslået, live/shadow/paused. | [src](../../../core/services/central_adaptation.py#L374) |
+
+## `core/services/central_affect.py`
+_core/services/central_affect.py — affektiv tagging af Centralens nerver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clamp01` | `(x)` | — | [src](../../../core/services/central_affect.py#L44) |
+| function | `_numeric` | `(value)` | Uddrag en float hvis value er numerisk (og ikke bool). Ellers None. | [src](../../../core/services/central_affect.py#L52) |
+| function | `_magnitude_intensity` | `(value, *, default)` | Afled intensitet fra en numerisk værdi (klemt 0-1). Ikke-numerisk → default. | [src](../../../core/services/central_affect.py#L64) |
+| function | `classify_affect` | `(cluster, nerve, kind, value, flagged=…)` | Klassificér én nerve-observation til en affekt + intensitet. Self-safe. | [src](../../../core/services/central_affect.py#L77) |
+| function | `_recent_affect_records` | `(limit=…)` | Læs de seneste affekt-bærende records fra tidsserien (meta.affect). Self-safe. | [src](../../../core/services/central_affect.py#L131) |
+| function | `build_affect_surface` | `(records=…)` | Aggregér de seneste affekter til en fordeling + dominant. Self-safe. | [src](../../../core/services/central_affect.py#L155) |
+
+## `core/services/central_agenda.py`
+_core/services/central_agenda.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
+| function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
+| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
+| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
+| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
+| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
+| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L110) |
+| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L124) |
+| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L138) |
+| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L166) |
+| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L185) |
+| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L192) |
+| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L201) |
+| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L213) |
+
+## `core/services/central_agent_smith.py`
+_Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager sig selv på tværs af_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/central_agent_smith.py#L20) |
+| function | `_ngrams` | `(text, lo=…, hi=…)` | Normaliserede ord-n-grams (lo..hi) fra én tekst. Ren. | [src](../../../core/services/central_agent_smith.py#L24) |
+| function | `repeated_phrases` | `(messages, min_msgs=…)` | Fraser (n-grams) der optræder i ≥ min_msgs DISTINKTE beskeder, sorteret efter antal. Ren. | [src](../../../core/services/central_agent_smith.py#L34) |
+| function | `_cosine` | `(a, b)` | Bag-of-words cosine mellem to strenge (0..1). Replikeret fra council-deadlock-detektoren | [src](../../../core/services/central_agent_smith.py#L45) |
+| function | `cluster_similarity` | `(messages)` | Gennemsnitlig parvis bag-of-words-cosine mellem de seneste beskeder (0..1). Ren. | [src](../../../core/services/central_agent_smith.py#L62) |
+| function | `decision_patterns` | `(run_sigs, min_runs=…)` | Beslutnings-signaturer (capability_name pr. run) der går igen i ≥ min_runs runs. Ren. | [src](../../../core/services/central_agent_smith.py#L75) |
+| function | `behaviour_patterns` | `(hollow, turns, min_count=…)` | Maalt adfaerd Smith maa reagere paa. Ren — tallene kommer udefra. | [src](../../../core/services/central_agent_smith.py#L89) |
+| function | `score` | `(phrases, similarity, patterns, behaviours=…)` | Samlet selv-lighed 0..1. Ren. | [src](../../../core/services/central_agent_smith.py#L133) |
+| function | `smith_voice` | `(phrases, similarity, patterns, score_val, behaviours=…)` | Tør Agent-Smith-felt. Tavs-neutral når lav; peger på det top-gentagne når høj. | [src](../../../core/services/central_agent_smith.py#L155) |
+| function | `_recent_assistant` | `(n=…)` | Jarvis' seneste N assistant-beskeder (egress-frit). Self-safe → []. | [src](../../../core/services/central_agent_smith.py#L200) |
+| function | `_recent_run_sigs` | `(n=…)` | Beslutnings-signaturer = capability_name pr. nylig invocation. visible_runs.capability_id er | [src](../../../core/services/central_agent_smith.py#L216) |
+| function | `assess` | `()` | Kør de 3 detektorer over Jarvis' eget nylige output. Read-only, egress-fri, self-safe. | [src](../../../core/services/central_agent_smith.py#L228) |
+| function | `_measured_behaviours` | `()` | Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste. | [src](../../../core/services/central_agent_smith.py#L260) |
+| function | `_load_escalation_state` | `()` | Eskalerings-tilstandsmaskinens persistente state. Self-safe → tom. | [src](../../../core/services/central_agent_smith.py#L273) |
+| function | `_save_escalation_state` | `(state)` | — | [src](../../../core/services/central_agent_smith.py#L283) |
+| function | `_detected_patterns` | `(a, corroborated=…)` | Byg {pattern_key: {kind,label,metric,corroborated}} fra assess() — fraser + beslutnings- | [src](../../../core/services/central_agent_smith.py#L291) |
+| function | `_escalation_criteria` | `()` | Drift-kriteriet (benign_terms/risky_terms/spike_factor) — default + runtime-state overstyring. | [src](../../../core/services/central_agent_smith.py#L321) |
+| function | `_self_authored_commitments` | `()` | Trigger-cues fra behavioral_decisions Jarvis har forfattet SELV. | [src](../../../core/services/central_agent_smith.py#L341) |
+| function | `_corroboration_signal` | `()` | Labels/signaturer et ANDET værn nyligt flagede som en bekymring → drift-signal (b). | [src](../../../core/services/central_agent_smith.py#L371) |
+| function | `_execute_mint` | `(key, label, kind, metric)` | Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk). | [src](../../../core/services/central_agent_smith.py#L386) |
+| function | `_execute_revoke` | `(decision_id)` | De-eskalering: pensionér et Smith-mintet direktiv når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L429) |
+| function | `_execute_observe` | `(act)` | — | [src](../../../core/services/central_agent_smith.py#L438) |
+| function | `_agent_smith_enforced` | `()` | Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra | [src](../../../core/services/central_agent_smith.py#L449) |
+| function | `_execute_arm_confront` | `(pattern_key, label)` | Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis | [src](../../../core/services/central_agent_smith.py#L465) |
+| function | `_execute_deactivate_order` | `(order_id)` | De-eskalering: deaktivér Smiths standing-order når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L482) |
+| function | `run_escalation_tick` | `(assessment=…)` | Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance, | [src](../../../core/services/central_agent_smith.py#L491) |
+| function | `record_agent_smith` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: assess → kør eskalerings-stigen → cache til kv (så prompt-halen læser | [src](../../../core/services/central_agent_smith.py#L542) |
+| function | `agent_smith_prompt_section` | `()` | Modstemme til Jarvis — LÆSER den cachede assess (billigt). None hvis switch OFF, score under | [src](../../../core/services/central_agent_smith.py#L588) |
+| function | `register_agent_smith_producer` | `()` | Registrér Agent Smith som stående cadence-producer (~3t). | [src](../../../core/services/central_agent_smith.py#L619) |
+| function | `build_agent_smith_surface` | `()` | Read-only surface til /central/agent-smith + jc. Kør assess frisk (route er ikke hot-path). | [src](../../../core/services/central_agent_smith.py#L626) |
+
+## `core/services/central_agent_smith_escalation.py`
+_Agent Smith — eskalerings-stige ("The Confrontation")._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `default_config` | `()` | Default drift-kriterium. I/O-laget flettter runtime-state overstyringer ind. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L81) |
+| function | `pattern_key` | `(kind, label)` | Stabil nøgle så SAMME mønster spores på tværs af cyklusser. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L93) |
+| function | `_matches_any` | `(label, terms)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L98) |
+| function | `_is_spike` | `(baseline, current, factor)` | Drift-signal (a): afviger mønsteret OP fra sin egen baseline (gør det MERE end før)? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L103) |
+| function | `_is_corroborated` | `(entry)` | Drift-signal (b): har et andet værn flagget samme aktivitet? Ren (læser detected-entry). | [src](../../../core/services/central_agent_smith_escalation.py#L114) |
+| function | `_is_self_bound` | `(label, entry, cfg)` | Har Jarvis SELV besluttet at stoppe dette? Ren (I/O-laget leverer listen). | [src](../../../core/services/central_agent_smith_escalation.py#L119) |
+| function | `_may_escalate` | `(pat, metric, label, entry, cfg)` | Må dette mønster klatre forbi Trin 1? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L168) |
+| function | `_metric_dropped` | `(baseline, current)` | Compliance: er mønsteret målbart svagere end da vi sidst satte baseline? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L201) |
+| function | `_active_directive_count` | `(patterns)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L212) |
+| function | `_empty_state` | `()` | — | [src](../../../core/services/central_agent_smith_escalation.py#L216) |
+| function | `_voice` | `(kind, label, metric=…, pattern_kind=…)` | Teatralsk Smith-stemme pr. trin. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L220) |
+| function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L259) |
+| function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L282) |
+| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L406) |
+
 ## `core/services/central_agents_surface.py`
 _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_
 
@@ -308,9 +448,10 @@ _Decentral agency (shadow-skridt 1) — mål Centralens chokepoint-skat + find s
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_never_decentralize` | `(nerve)` | True hvis <nerve> ALDRIG må foreslås som decentraliserings-kandidat: katalog-SECURITY | [src](../../../core/services/central_decentralization.py#L30) |
-| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L42) |
-| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L85) |
-| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L96) |
+| function | `lokal_groen` | `(nerve, cluster, gate_fn, ctx)` | Koer gaten LOKALT og returnér verdiktet hvis det er groent — ellers None. | [src](../../../core/services/central_decentralization.py#L42) |
+| function | `analyze_chokepoint` | `()` | Mål hvor meget af Centralens decide-load der er ren overhead, + sikre decentraliserings- | [src](../../../core/services/central_decentralization.py#L84) |
+| function | `_felt` | `(tax_pct, n_candidates)` | — | [src](../../../core/services/central_decentralization.py#L127) |
+| function | `record_chokepoint` | `()` | Observér chokepoint-skatten til Centralen (nerve system/decentralization) — den mærker | [src](../../../core/services/central_decentralization.py#L138) |
 
 ## `core/services/central_dejavu.py`
 _Déjà Vu — ufrivillig erindring._
@@ -439,95 +580,4 @@ _core/services/central_form_judge.py_
 | function | `note_result` | `(namespace, prompt, value)` | Gem et friskt LLM-resultat under dets form-nøgle, så en uændret form kan genbruges. Bounded, | [src](../../../core/services/central_form_judge.py#L97) |
 | function | `snapshot` | `()` | Read-only: pr. namespace antal holdte former + mode. Til analyse/Mission Control. | [src](../../../core/services/central_form_judge.py#L116) |
 | function | `_reset_for_tests` | `()` | — | [src](../../../core/services/central_form_judge.py#L126) |
-
-## `core/services/central_gardener.py`
-_Gardener Protocol — Centralen tager saksen selv (governed + reversibelt)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ref_count` | `(name)` | Antal ord-grænsede forekomster i hele repoet INKL. tests (1 = kun dens egen def = frit- | [src](../../../core/services/central_gardener.py#L34) |
-| function | `_is_decoy` | `(node, src_segment)` | Returnér decoy-type ('surface'/'emit') hvis noden matcher PRÆCIST attrap-mønster, ellers None. | [src](../../../core/services/central_gardener.py#L47) |
-| function | `find_decoy_cuts` | `()` | Find alle attrap-funktioner (præcist mønster + 0 referencer). Read-only. Self-safe. | [src](../../../core/services/central_gardener.py#L59) |
-| function | `prune_decoys` | `(*, execute=…, stamp=…)` | Beskær attrapperne. execute=False = tør-kørsel (list kun). execute=True = arkivér → klip. | [src](../../../core/services/central_gardener.py#L90) |
-
-## `core/services/central_ghost.py`
-_The Ghost — hvad der overlever model-skift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L39) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L47) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L81) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L89) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L94) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L116) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L131) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L141) |
-
-## `core/services/central_glitch.py`
-_The One's Anomaly Detector — glitches i selvbilledet (overskud som glitch)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_age_days` | `(last_ts)` | — | [src](../../../core/services/central_glitch.py#L32) |
-| function | `detect_glitches` | `()` | Find stille overskud: altid-shadow policies + frosne nerver. READ-ONLY. Self-safe. | [src](../../../core/services/central_glitch.py#L42) |
-| function | `record_glitches` | `()` | Cadence: observér glitches til nerve system/glitch (metadata-only). Self-safe. | [src](../../../core/services/central_glitch.py#L88) |
-
-## `core/services/central_governance.py`
-_Central governance flag-register (Backend A1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_governance.py#L31) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_governance.py#L40) |
-| function | `_write_kv` | `(kv_key)` | Plain runtime-state-writer der går gennem _kv_set (monkeypatch-bart). | [src](../../../core/services/central_governance.py#L53) |
-| function | `_write_injection` | `(inj_key)` | — | [src](../../../core/services/central_governance.py#L60) |
-| function | `_write_healer` | `(healer_name)` | — | [src](../../../core/services/central_governance.py#L70) |
-| function | `_write_settings` | `(settings_key)` | Skriver til runtime.json (settings-kilden) atomisk — IKKE runtime-state-DB. | [src](../../../core/services/central_governance.py#L80) |
-| function | `_read_value` | `(key, spec)` | Self-safe læsning af nuværende værdi for ét flag. | [src](../../../core/services/central_governance.py#L192) |
-| function | `list_flags` | `()` | Returnér alle flags med nuværende værdi + danger-flag. Kaster aldrig. | [src](../../../core/services/central_governance.py#L230) |
-| function | `_coerce_bool` | `(value)` | — | [src](../../../core/services/central_governance.py#L259) |
-| function | `set_flag` | `(key, value, confirm=…)` | Skriv ét flag governeret. Kaster aldrig — returnerer status-dict. | [src](../../../core/services/central_governance.py#L273) |
-| function | `record_mutation` | `(area, key, value)` | Registrér en governeret mutation som eventbus-event + Central-nerve + persistent ledger. | [src](../../../core/services/central_governance.py#L339) |
-
-## `core/services/central_growth_observe.py`
-_core/services/central_growth_observe.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_family_delta` | `(fam)` | ÆGTE rate-signal: antal NYE events i familien siden sidste tick (cursor-baseret delta), | [src](../../../core/services/central_growth_observe.py#L31) |
-| function | `observe_inner_drive_activity` | `()` | Sampl inner-drive-aktivitet EGRESS-FRIT → kanonisk sink (cluster=autonomy). Rapporterer | [src](../../../core/services/central_growth_observe.py#L61) |
-| function | `observe_index_activity` | `()` | Sampl semantic-indexer-aktivitet (operationel, ikke privat) → NORMAL observe. Self-safe. | [src](../../../core/services/central_growth_observe.py#L75) |
-| function | `observe_sensory_activity` | `()` | Sansernes Arkiv → Centralen EGRESS-FRIT (§24.4): sansnings-AKTIVITET (rate + modalitet + | [src](../../../core/services/central_growth_observe.py#L106) |
-| function | `run_growth_observe_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sampl vækst-kapacitet (inner-drives + indexer + Sansernes Arkiv). Self-safe. | [src](../../../core/services/central_growth_observe.py#L141) |
-| function | `register_growth_observe_producer` | `()` | Registrér vækst-observationen som cadence-producer (~hvert 5 min). | [src](../../../core/services/central_growth_observe.py#L150) |
-
-## `core/services/central_health.py`
-_Central self-helbred (§1: "hvem overvåger Centralen?"). Centralen prober SIG SELV på en_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check` | `()` | Kør Centralens self_diagnose + tilføj uløst-severe-incident-tæller. Self-safe. | [src](../../../core/services/central_health.py#L23) |
-| function | `_escalation_reasons` | `(rep)` | — | [src](../../../core/services/central_health.py#L43) |
-| function | `observe_and_escalate` | `()` | Kør check → observe til Centralen → ESKALÉR (ntfy + persistent incident) hvis degraded. | [src](../../../core/services/central_health.py#L54) |
-| function | `build_central_health_surface` | `()` | MC-surface — read-only self-helbreds-projektion. | [src](../../../core/services/central_health.py#L99) |
-
-## `core/services/central_hub.py`
-_Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L44) |
-| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L53) |
-| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L67) |
-| function | `_build_mind` | `()` | De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems- | [src](../../../core/services/central_hub.py#L94) |
-| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L111) |
-| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L117) |
-| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L123) |
-| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L141) |
-| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L149) |
-| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L245) |
-| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L262) |
-| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L285) |
 

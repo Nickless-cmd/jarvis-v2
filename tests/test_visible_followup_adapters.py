@@ -866,8 +866,27 @@ def test_continuation_feeds_partial_and_returns_continuation(
     msgs = list(seen["base_messages"])        # type: ignore[arg-type]
     assert msgs[-2]["role"] == "assistant"
     assert msgs[-2]["content"] == "Svaret blev afkortet her"
-    assert msgs[-1]["role"] == "user"
+    assert msgs[-1]["role"] == "system"
+    assert "ikke en besked fra brugeren" in msgs[-1]["content"]
     assert "Fortsæt PRÆCIS der hvor" in msgs[-1]["content"]
+
+
+def test_final_synthesis_instruction_is_system_not_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = {}
+
+    def _fake_stream(**kwargs):
+        seen.update(kwargs)
+        yield vf.FollowupDone(text="færdigt", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    assert vf.synthesize_final_answer(
+        provider="ollama", model="glm-5.2:cloud",
+        base_messages=[{"role": "user", "content": "ægte besked"}], exchanges=[],
+    ) == "færdigt"
+    assert seen["base_messages"][-1]["role"] == "system"
+    assert "ikke en besked fra brugeren" in seen["base_messages"][-1]["content"]
 
 
 def test_continuation_swaps_reasoner_to_flash(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1133,6 +1152,24 @@ def test_deepseek_followup_sends_thinking_mode_params_like_first_pass(monkeypatc
         assert body[k] == v
     if mode == "fast":
         assert "reasoning_effort" not in body
+
+
+def test_deepseek_damped_reasoning_still_sends_followup_request(monkeypatch) -> None:
+    """The damped A/B arm must not fail before the paid follow-up request."""
+    from core.services import raesonnering_eksperiment
+
+    _stub_deepseek_compat(monkeypatch)
+    monkeypatch.setattr(raesonnering_eksperiment, "_procent", lambda: 100)
+    bodies = _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"done"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash", run_id="visible-damped",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[]))
+
+    assert len(bodies) == 1
+    assert any(isinstance(event, vf.FollowupDone) for event in events)
 
 
 def test_deepseek_v4_pro_followup_sends_no_thinking_params(monkeypatch) -> None:

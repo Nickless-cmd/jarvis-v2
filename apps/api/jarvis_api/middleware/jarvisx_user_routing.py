@@ -200,6 +200,64 @@ def _is_public_path(path: str) -> bool:
     return False
 
 
+def _er_signeret_filhentning(request: Request) -> bool:
+    """Er dette en GET af én fil med en gyldig, levende signatur?
+
+    Fritagelsen bor HER og ikke i ruten, fordi beslutningen om at slippe en
+    request forbi auth skal ligge på det ene sted hvor auth afgøres. Lå den i
+    ruten, ville der være to steder der kunne være uenige om hvad der er
+    autentificeret — og den slags uenighed lækker altid i den forkerte
+    retning (målt tre gange i indbakke-sporet samme døgn).
+
+    Samme form som OAuth-callbacken ovenfor: beviset rejser med i adressen,
+    signeret, så det ikke kan forfalskes.
+
+    Fire led, og alle fire er nødvendige:
+
+    * **GET.** En signatur er ret til at LÆSE én fil. Slap en POST igennem,
+      var linket en skrivenøgle.
+    * **Præcis én sti-del** efter `/files/`. `/files/` selv lister mappen —
+      158 filer målt 4/10 — og en listning er ikke den fil der blev signeret.
+
+      Dette led er REDUNDANT, og det står her fordi en mutation viste det:
+      fjernes tjekket, bliver alle tests stadig grønne, fordi
+      `file_links._rent_navn` afviser `a/b.pdf` og den tomme streng i forvejen.
+      Det er altså dybde-forsvar hvor det indre lag allerede holder, ikke den
+      betingelse der stopper noget. Det bliver, fordi en eksplicit afvisning
+      på auth-grænsen er lettere at læse end en der følger af en anden fils
+      navne-rensning — men ingen må tro at det er dét der beskytter.
+    * `file_links.verificer` på **workspace** + filnavn + udløb + signatur.
+      Workspacet kom til 4/10-2026 sammen med afgrænsningen: filer bor nu i
+      `files/u/<workspace>/`, så `rapport.pdf` kan findes hos to brugere, og
+      uden workspacet i signaturen ville den enes link passe på den andens
+      fil. `ws` er derfor ikke en fri parameter — den er en del af det der
+      signeres, og ruten læser den KUN når der intet token er.
+    * **Fail-closed ved enhver undtagelse.** Kan vi ikke afgøre det, er det
+      ikke autentificeret.
+    """
+    try:
+        if request.method != "GET":
+            return False
+        sti = request.url.path
+        if not sti.startswith("/files/"):
+            return False
+        rest = sti[len("/files/"):]
+        if not rest or "/" in rest:
+            return False
+        from urllib.parse import unquote
+
+        from core.services.file_links import verificer
+        return verificer(unquote(rest),
+                         request.query_params.get("udloeb"),
+                         request.query_params.get("sig"),
+                         workspace=request.query_params.get("ws") or "")
+    except Exception as exc:  # noqa: BLE001
+        # Fail-closed, og den SKAL ses: sker det hver gang, virker ingen
+        # signerede links, og uden linjen stod det ingen steder.
+        logger.warning("fil-signatur kunne ikke afgoeres — afvist: %s", exc)
+        return False
+
+
 async def jarvisx_user_routing_middleware(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
@@ -232,6 +290,7 @@ async def jarvisx_user_routing_middleware(
     # block it before any context binding happens.
     _sti = request.url.path
     if (not token_claims and not _is_public_path(_sti)
+            and not _er_signeret_filhentning(request)
             and not (_er_ui_skal(_sti) and _er_lokal_afsender(request))):
         try:
             from core.runtime.jarvisx_auth import auth_required

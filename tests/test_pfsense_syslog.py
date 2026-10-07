@@ -96,7 +96,13 @@ def test_is_internal_src():
     assert ps._is_internal_src("10.0.0.39") is True        # Jarvis-container
     assert ps._is_internal_src("172.16.5.5") is True
     assert ps._is_internal_src("127.0.0.1") is True
-    assert ps._is_internal_src("185.107.14.241") is False  # ekstern scanner
+    # 2026-10-01: her stod 185.107.14.241 med kommentaren «ekstern scanner».
+    # Det er husets EGEN WAN-adresse, og den er siden konfigureret i
+    # `pfsense_self_ips` — så koden svarede korrekt True, og testen hang på et
+    # IP-nummer der flyttede sig. Brug en dokumentations-adresse (RFC 5737,
+    # TEST-NET-3): den kan pr. definition ikke være vores, uanset hvad
+    # runtime.json indeholder. At self-IP'en ER intern pinnes længere nede.
+    assert ps._is_internal_src("203.0.113.7") is False
     assert ps._is_internal_src("8.8.8.8") is False
 
 

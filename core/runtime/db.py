@@ -728,6 +728,7 @@ from core.runtime.db_runtime_executive_signals import (  # noqa: E402,F401
     supersede_runtime_open_loop_closure_proposals_for_domain,
     upsert_runtime_contract_candidate,
     list_runtime_contract_candidates,
+    runtime_contract_candidate_status_for_key,
     get_runtime_contract_candidate,
     runtime_contract_candidate_counts,
     update_runtime_contract_candidate_status,

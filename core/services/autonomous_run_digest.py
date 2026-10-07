@@ -152,10 +152,25 @@ def post_referat(
         if not sid:
             return ""     # ingen frisk samtale → referatet ville ligge i en silo igen
 
-        from core.services.chat_sessions import append_chat_message
-        append_chat_message(session_id=sid, role="assistant", content=tekst,
-                            workspace_name="default")
-        logger.info("autonomous_run_digest: referat for %s → %s", run_id[:12], sid)
+        # 2/10-2026: gennem daemon-vagten, saa et referat ikke lander midt i
+        # en saetning. Sessionen er stadig den sidst aktive samtale (valgt
+        # ovenfor); kun timingen aendrer sig. `push=False`: ingen push foer.
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
+        svar = send_session_notification(
+            tekst,
+            source="autonomous-run-digest",
+            session_id=sid,
+            workspace_name="default",
+            push=False,
+        )
+        if not delivery_succeeded(svar):
+            logger.warning("autonomous_run_digest: levering afvist: %s", svar)
+            return ""
+        logger.info("autonomous_run_digest: referat for %s → %s (%s)",
+                    run_id[:12], sid, svar.get("status"))
         return sid
     except Exception:
         logger.debug("autonomous_run_digest: kunne ikke poste referat", exc_info=True)

@@ -13,6 +13,12 @@ from core.services.prompt_sections import tool_discovery_nudge as T
 
 BESKED = "kan du lægge et møde ind i min kalender på fredag"
 
+#: Den AEGTE `_kernens_navne`, fanget foer fixturen stubber den. De to tests
+#: der maaler funktionen SELV skal ikke ramme stubben — foerste udgave gjorde,
+#: og rapporterede «kernen blev hentet 0 gange» om en funktion der aldrig blev
+#: kaldt. Nul er sjaeldent et resultat.
+_AEGTE_KERNENS_NAVNE = T._kernens_navne
+
 
 @pytest.fixture(autouse=True)
 def _grundtilstand(monkeypatch):
@@ -28,6 +34,9 @@ def _grundtilstand(monkeypatch):
                  "read_file": "Læs en fil", "write_file": "Skriv en fil",
                  "bash": "Kør en kommando"},
     )
+    # Kernen er tom som udgangspunkt, saa de oevrige tests bliver ved at maale
+    # DET de handler om. Kerne-filteret har sine egne tests nedenfor.
+    monkeypatch.setattr(T, "_kernens_navne", lambda: frozenset())
     monkeypatch.setattr(T, "_undertrykt", lambda sid, navn: False)
     monkeypatch.setattr(T, "_husk_nudge", lambda sid, navn: None)
     monkeypatch.setattr(T, "_log_nudge", lambda navn, sid, score, gate=None: None)
@@ -664,3 +673,163 @@ def test_en_fejlende_gate_vaelter_ikke_sektionen(monkeypatch):
 
     monkeypatch.setattr("core.services.local_intent_gate.er_bestilt", eksploder)
     assert T._intent_gate("en besked", "phone_photo") is False
+
+
+# ── Kernen skal ikke nudges om (29/9-2026) ──────────────────────────────────
+#
+# Maalt paa CT105 over syv doegn: **100 af 194 nudges (52 %) var om vaerktoejer
+# der allerede laa i always_core og blev sendt til modellen hver tur.**
+# `jarvis_browser_screenshot` blev nudget 54 gange og staar i kernen;
+# `send_discord_dm` 31 gange, ogsaa i kernen.
+#
+# `_staar_i_katalog` var det eneste filter, og det er rigtigt for sin egen
+# definition — men et vaerktoej kan vaere SENDT uden at staa i katalogets
+# klartekst. Kernen vaelges af routeren, ikke af katalog-teksten.
+#
+# Modulets egen note siger hvad stoejen koster: «laerer han at kanalen er
+# stoej, holder han op med at laese den, og saa er den doed for altid.»
+
+
+def test_et_vaerktoej_i_KERNEN_nudges_ikke(monkeypatch):
+    """Det er hele rettelsen: han har det allerede."""
+    monkeypatch.setattr(T, "_kernens_navne", lambda: frozenset({"calendar_create_event"}))
+    _stub(monkeypatch, [("calendar_create_event", 0.9)])
+    assert T.tool_discovery_nudge_section(BESKED) == ""
+
+
+def test_et_vaerktoej_UDEN_FOR_kernen_nudges_stadig(monkeypatch):
+    """Rettelsen maa ikke lukke kanalen — kun stoejen."""
+    monkeypatch.setattr(T, "_kernens_navne", lambda: frozenset({"noget_andet"}))
+    _stub(monkeypatch, [("calendar_create_event", 0.9)])
+    assert "calendar_create_event" in T.tool_discovery_nudge_section(BESKED)
+
+
+def test_kernen_filtrerer_FOER_opslaget_ikke_efter(monkeypatch):
+    """Kasserede vi bagefter, ville kerne-vaerktoejer aede topplaceringen fra
+    de usynlige — praecis den fejl katalog-filteret allerede har rettet én
+    gang (den aad topplaceringen i 38 % af turene)."""
+    from core.services.tool_lexical_match import Traef
+    set_kandidater: list = []
+
+    def fake(besked, kandidater=None):
+        set_kandidater.append(list(kandidater or []))
+        return Traef(navn="calendar_create_event", score=0.9, naest=0.0, ord=("kalender",))
+
+    monkeypatch.setattr(T, "_matches", fake)
+    monkeypatch.setattr(T, "_kernens_navne", lambda: frozenset({"bash", "read_file"}))
+    T.tool_discovery_nudge_section(BESKED)
+    assert set_kandidater, "opslaget blev aldrig kaldt"
+    for n in ("bash", "read_file"):
+        assert n not in set_kandidater[0], f"{n} naaede opslaget"
+
+
+def test_en_TOM_kerne_filtrerer_ingenting(monkeypatch):
+    """Kan kernen ikke laeses, er ét nudge for meget bedre end en tom kanal."""
+    monkeypatch.setattr(T, "_kernens_navne", lambda: frozenset())
+    _stub(monkeypatch, [("calendar_create_event", 0.9)])
+    assert "calendar_create_event" in T.tool_discovery_nudge_section(BESKED)
+
+
+def test_kernen_laeses_fra_routerens_SENESTE_beslutning(monkeypatch):
+    """Ikke genberegnet: det er det saet der faktisk blev sendt, og det er ét
+    raekke-opslag i stedet for en GROUP BY over syv doegn paa den hotte sti."""
+    import json as _json
+
+    class _Con:
+        def execute(self, *a, **k):
+            class _C:
+                def fetchone(_self):
+                    return (_json.dumps(["bash", "read_file"]),)
+            return _C()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    # Sat paa MODULET, ikke via streng-sti: conftest skaermer DB-adgangen, og
+    # en streng-monkeypatch bed ikke — testen var groen af den forkerte grund.
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", lambda: _Con())
+    T._KERNE_CACHE["hentet"] = 0.0
+    assert _AEGTE_KERNENS_NAVNE() == frozenset({"bash", "read_file"})
+
+
+def test_en_DB_der_fejler_giver_en_TOM_kerne_ikke_en_undtagelse(monkeypatch):
+    """Sektionens kontrakt er at den aldrig vaelter prompt-bygningen."""
+    def _boom():
+        raise RuntimeError("db nede")
+
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", _boom)
+    T._KERNE_CACHE["hentet"] = 0.0
+    assert _AEGTE_KERNENS_NAVNE() == frozenset()
+
+
+def test_kernen_hentes_ikke_paa_HVER_tur(monkeypatch):
+    """Et DB-opslag pr. tur paa den hotte prompt-sti for noget der er det
+    samme minutter i traek."""
+    import json as _json
+    n = [0]
+
+    class _Con:
+        def execute(self, *a, **k):
+            n[0] += 1
+
+            class _C:
+                def fetchone(_self):
+                    return (_json.dumps(["bash"]),)
+            return _C()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", lambda: _Con())
+    T._KERNE_CACHE["hentet"] = 0.0
+    _AEGTE_KERNENS_NAVNE()
+    _AEGTE_KERNENS_NAVNE()
+    _AEGTE_KERNENS_NAVNE()
+    assert n[0] == 1, f"kernen blev hentet {n[0]} gange"
+
+
+# ---------------------------------------------------------------------------
+# Peg kun naar det BEDSTE svar er usynligt (2/10-2026)
+# ---------------------------------------------------------------------------
+
+
+def _to_godkend(monkeypatch):
+    """`approve_proposal` staar i kataloget (synligt), `approve_plan` er usynlig."""
+    monkeypatch.setattr(
+        T, "_registrerede_navne",
+        lambda: {"approve_proposal": "Godkend et forslag",
+                 "approve_plan": "Godkend en plan"},
+    )
+    monkeypatch.setattr(T, "_katalog_tekst", lambda: "approve_proposal")
+
+
+def test_peger_IKKE_naar_det_bedste_svar_er_synligt(monkeypatch):
+    """Maalt 2/10-2026 paa 600 aegte beskeder: 6 af 100 nudges pegede paa det
+    forkerte vaerktoej. Alle 6 var samme sag — «godkend prop-0b5e…» gav
+    `approve_plan` (1,64), fordi «godkend» var det eneste faelles ord, mens det
+    rigtige svar `approve_proposal` (3,42) allerede stod synligt og derfor var
+    filtreret ud af kandidaterne. En svag usynlig maa ikke vinde pr. automatik
+    naar den staerke er synlig — saa peger sektionen paa det forkerte."""
+    _to_godkend(monkeypatch)
+    _stub(monkeypatch, [("approve_proposal", 3.42), ("approve_plan", 1.64)])
+    assert T.tool_discovery_nudge_section("godkend prop-abc123", "s1") == ""
+
+
+def test_peger_STADIG_naar_det_bedste_svar_er_usynligt(monkeypatch):
+    """Modstykket: er den usynlige selv det bedste, skal den stadig frem.
+    Ellers ville reglen ovenfor kunne sluge hele sektionen."""
+    _to_godkend(monkeypatch)
+    _stub(monkeypatch, [("approve_plan", 1.64)])
+    # Beskeden skal over _MIN_MESSAGE_CHARS (15) — «godkend planen» er 14 og
+    # blev sprunget over foer opslaget, saa testen maalte laengden og ikke reglen.
+    ud = T.tool_discovery_nudge_section("kan du godkende planen", "s1")
+    assert "approve_plan" in ud

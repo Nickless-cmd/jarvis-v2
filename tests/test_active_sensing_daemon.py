@@ -118,11 +118,11 @@ def test_mixed_arkiverer_ikke_to_fejlkoder_som_indtryk(isolated_runtime, monkeyp
     )
     monkeypatch.setattr(
         asd, "_sense_visual",
-        lambda state, now: {"ok": False, "preview": "capture_error", "reason": "kamera nede"},
+        lambda state, now, **kw: {"ok": False, "preview": "capture_error", "reason": "kamera nede"},
     )
     monkeypatch.setattr(
         asd, "_sense_audio",
-        lambda state, now: {"ok": False, "preview": "audio_error", "reason": "ingen enhed"},
+        lambda state, now, **kw: {"ok": False, "preview": "audio_error", "reason": "ingen enhed"},
     )
 
     svar = asd._sense_mixed({}, datetime.now(UTC))
@@ -130,6 +130,81 @@ def test_mixed_arkiverer_ikke_to_fejlkoder_som_indtryk(isolated_runtime, monkeyp
     assert svar["ok"] is False
     assert skrevet == []
     assert "kamera nede" in svar["reason"]
+
+
+def test_atmosphere_skriver_EEN_post_ikke_to(isolated_runtime, monkeypatch) -> None:
+    """Atmosphere-sansningen ejer sin egen modalitet.
+
+    Målt 6/10-2026: grenen kaldte `look_around_now`, som arkiverede sit eget svar
+    som `visual` — og skrev derefter SAMME tekst igen som `atmosphere`. Hver
+    atmosphere-sansning blev to rækker i samme sekund.
+    """
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+    import core.services.visual_memory as vm
+
+    kald: list[dict] = []
+    skrevet: list[str] = []
+
+    def falsk_look(**kw):
+        kald.append(kw)
+        return {"status": "captured", "description": "Rummet føles tungt."}
+
+    monkeypatch.setattr(vm, "look_around_now", falsk_look)
+    monkeypatch.setattr(
+        arkiv, "record_atmosphere",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+
+    svar = asd._sense_atmosphere({}, datetime.now(UTC))
+
+    assert svar["ok"] is True
+    assert skrevet == ["Rummet føles tungt."], "atmosphere-posten mangler"
+    assert kald and kald[0].get("arkiver") is False, (
+        "grenen bad ikke om at eje arkiveringen — så skriver look_around_now "
+        "en ekstra visual-række med samme tekst"
+    )
+
+
+def test_mixed_skriver_EEN_post_ikke_tre(isolated_runtime, monkeypatch) -> None:
+    """Mixed-posten er den fulde sansning; halvdelene må ikke arkivere selv.
+
+    Målt 6/10-2026: én mixed-sansning skrev TRE rækker — `visual`, `audio` og
+    `mixed` — hvoraf de to første var halvdele af den tredje.
+    """
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+
+    flag: list[object] = []
+    skrevet: list[str] = []
+
+    monkeypatch.setattr(
+        asd, "_sense_visual",
+        lambda state, now, **kw: (
+            flag.append(kw.get("arkiver"))
+            or {"ok": True, "description": "En stol.", "preview": "En stol.",
+                "reason": "visual_captured"}
+        ),
+    )
+    monkeypatch.setattr(
+        asd, "_sense_audio",
+        lambda state, now, **kw: (
+            flag.append(kw.get("arkiver"))
+            or {"ok": True, "preview": "music", "reason": "audio_music"}
+        ),
+    )
+    monkeypatch.setattr(
+        arkiv, "record_mixed",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+
+    svar = asd._sense_mixed({}, datetime.now(UTC))
+
+    assert svar["ok"] is True
+    assert len(skrevet) == 1, "mixed skal give præcis én post"
+    assert flag == [False, False], (
+        "mixed kaldte en del der arkiverede selv — så skrev den en ekstra række"
+    )
 
 
 def test_fladen_viser_fejlene_ved_siden_af_taellingen(isolated_runtime, monkeypatch) -> None:
@@ -148,3 +223,43 @@ def test_fladen_viser_fejlene_ved_siden_af_taellingen(isolated_runtime, monkeypa
     assert flade["total_sensing_events"] == 799
     assert flade["total_failed_sensings"] == 41
     assert flade["last_fail_reason"] == "vision_failed"
+
+
+def test_silence_lyt_taeller_ikke_som_arkiveret(isolated_runtime, monkeypatch) -> None:
+    """Et lyt der endte i `silence` er ikke et indtryk.
+
+    Målt 28/9-2026: 24 sådanne poster, nyeste 26/9 — og hanen skrev videre.
+    Turen må ikke melde «arkiveret» når arkivet afviste den.
+    """
+    from datetime import UTC, datetime
+
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("silence", 0.0, 0.0, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert svar["ok"] is False, "intet indtryk blev arkiveret"
+    assert svar["reason"] == "audio_silence_not_an_impression"
+
+
+def test_rigtig_lyd_arkiveres_som_foer(isolated_runtime, monkeypatch) -> None:
+    """Kun `silence` er en kvittering — musik er en sansning."""
+    from datetime import UTC, datetime
+
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("music", 0.0312, 0.0081, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert svar["ok"] is True
+    assert svar["reason"] == "audio_music"

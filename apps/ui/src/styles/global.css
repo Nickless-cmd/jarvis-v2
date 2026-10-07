@@ -311,8 +311,15 @@ button { cursor: pointer; }
 /* hide old meta bar */
 .message-meta { display:none; }
 /* Markdown content inside chat bubbles */
-.message-content { line-height:1.58; font-size:14px; color:#e4e6ed; }
-.message-content p { margin:0 0 0.5em 0; }
+/* 3/10-2026: 1,58 → 1,375 — samme forhold som mobilens fix (fd7f04d3f: 16/22)
+ * og desk'ens .jarvis-body (8da6df159). Målt 3/10 på to skærmbilleder:
+ * linjepitch 24 px mod Claudes 20-21 px ved samme tekststørrelse. 1,58 blev
+ * kopieret herfra ind i desk uden at nogen målte den mod en reference.
+ * 14 × 1,375 = 19,25 px. */
+.message-content { line-height:1.375; font-size:14px; color:#e4e6ed; }
+/* 0,625em = 8,75 px ved 14 px — mobilens 10 px ved 16 px, samme forhold.
+ * Modvægt til den strammere linjehøjde, så afsnittene ikke smelter sammen. */
+.message-content p { margin:0 0 0.625em 0; }
 .message-content p:last-child { margin-bottom:0; }
 .message-content ul, .message-content ol { margin:0.3em 0 0.5em 1.4em; padding:0; }
 .message-content li { margin-bottom:0.15em; }

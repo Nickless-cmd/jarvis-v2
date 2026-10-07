@@ -165,8 +165,10 @@ describe('værdierne i app.css er Claude Desktops', () => {
     expect(css).toMatch(/@media \(hover: none\) \{\s*\.toolgroup:not\(\.er-koerende\) \.toolgroup-chevron \{ opacity: 1; \}/)
   })
 
-  it('glitteret kører på kildens 2,25 s', () => {
-    expect(css).toMatch(/shimmer-sweep 2\.25s linear infinite/)
+  it('glitteret kører DSH-rytmen: 1 s sweep og 500 ms hvile', () => {
+    // Bjørns valg 30/9-2026. Vores egen var ét kontinuert sweep på 2,25 s;
+    // forskellen er ikke farten, men at DSH's HAR en pause.
+    expect(css).toMatch(/shimmer-sweep 1\.5s linear infinite 300ms/)
   })
 
   it('og linjen «ånder» ikke længere — det gør Claude Desktop ikke', () => {

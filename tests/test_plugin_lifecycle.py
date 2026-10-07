@@ -394,17 +394,24 @@ def _nedluknings_blok() -> str:
     return "\n".join(t[s:e + 1])
 
 
-def test_alle_29_nedluknings_trin_er_stadig_med():
+def test_alle_30_nedluknings_trin_er_stadig_med():
     """Vagt mod at et trin falder ud under en oprydning.
 
     Blokken havde 29 kald foer omskrivningen (15 uden vaern, 14 i
     `except: pass`). Forsvinder et, stopper noget aldrig — og det ville ingen
     opdage, fordi nedlukningen alligevel ser stille ud.
+
+    2/10-2026: 29 -> 30. `stop_discord_gateway_supervisor` kom til, og den SKAL
+    staa foer `stop_discord_gateway` — ellers ser vagthunden et manglende
+    ejerskab og rejser gatewayen igen midt i en afslutning. Selve raekkefoelgen
+    er pinnet i test_discord_gateway_supervisor.py; her taelles kun at trinnet
+    ikke forsvinder igen. Tallet skal KUN haeves sammen med et nyt trin man
+    bevidst har tilfoejet.
     """
     import re
     navne = re.findall(r'\("(stop_\w+|write_inheritance_seed)"', _nedluknings_blok())
-    assert len(navne) == 29, f"nedlukningen har {len(navne)} trin, forventede 29"
-    assert len(set(navne)) == 29, "et trin staar to gange"
+    assert len(navne) == 30, f"nedlukningen har {len(navne)} trin, forventede 30"
+    assert len(set(navne)) == 30, "et trin staar to gange"
 
 
 def test_ingen_UBESKYTTEDE_stop_kald_er_kommet_tilbage():

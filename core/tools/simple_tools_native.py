@@ -601,7 +601,10 @@ def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
 
     lines = [f"Pending proposals ({len(pending)}):"]
     for p in pending:
-        pid = str(p.get("proposal_id") or "")[:18]
+        # Fuld id (2/10-2026). Her stod [:18], som klippede «prop-» + 13 hex og
+        # gjorde den viste noegle UBrugelig som opslagsnoegle: approve_proposal
+        # svarede «not-found» paa praecis den streng brugeren kunne kopiere.
+        pid = str(p.get("proposal_id") or "")
         kind = str(p.get("kind") or "")
         title = str(p.get("title") or "")
         lines.append(f"  [{pid}] {kind}: {title}")
@@ -1173,19 +1176,31 @@ def _exec_query_why(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
+    """Send en besked til Bjørn gennem routeren.
+
+    Hed `send_ntfy` og gik direkte til `ntfy_gateway` indtil 7/10-2026. Det
+    betød at beskeden sprang device-awareness, eskalering, kvittering og
+    Bjørns eget kanalvalg over — og landede på en offentlig topic selv når han
+    sad ved desktoppen. Navnet er beholdt (modellen kender værktøjet); vejen
+    er skiftet til den samme som alle andre proaktive beskeder.
+    """
     message = str(args.get("message") or "").strip()
     if not message:
         return {"status": "error", "text": "No message provided."}
     title = str(args.get("title") or "Jarvis").strip()
     priority = str(args.get("priority") or "default").strip()
     try:
-        from core.services.ntfy_gateway import send_notification
-        result = send_notification(message, title=title, priority=priority)
-        if result["status"] == "sent":
-            return {"status": "ok", "text": f"ntfy notification sent to topic '{result.get('topic')}'"}
-        return {"status": "error", "text": f"ntfy failed: {result.get('reason')}"}
+        from core.services.alarm_ud import send_alert
+        ok = send_alert(
+            titel=title, tekst=message, slags="infra_security",
+            importance="high" if priority in ("high", "urgent") else "normal",
+        )
+        if ok:
+            return {"status": "ok", "text": "Beskeden er leveret til din enhed."}
+        return {"status": "error",
+                "text": "Beskeden kunne ikke leveres (kanal utilgængelig eller sat i kø)."}
     except Exception as exc:
-        return {"status": "error", "text": f"ntfy error: {exc}"}
+        return {"status": "error", "text": f"notify error: {exc}"}
 
 
 def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
@@ -2570,89 +2585,20 @@ def _exec_interlanguage_protocol(args: dict[str, Any]) -> dict[str, Any]:
                 "error": f"interlanguage_protocol unavailable: {type(exc).__name__}: {exc}"}
 
 
-def _json_safe_cell(v: Any) -> Any:
-    """Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8
-    text if decodable, else a short base64 placeholder. str/int/float/None are
-    already JSON-safe and pass through untouched. Uden dette forgifter en
-    BLOB-kolonne downstream json.dumps → 'Object of type bytes is not JSON
-    serializable' → hele det synlige run crasher (set 2026-07-10)."""
-    if isinstance(v, (bytes, bytearray)):
-        b = bytes(v)
-        try:
-            return b.decode("utf-8")
-        except (UnicodeDecodeError, ValueError):
-            import base64
-            preview = base64.b64encode(b).decode("ascii")
-            if len(preview) > 88:
-                preview = preview[:88] + "…"
-            return f"<{len(b)} bytes base64:{preview}>"
-    return v
-
-
-def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
-    """Run a read-only SELECT query against Jarvis' database."""
-    sql = str(args.get("sql") or "").strip()
-    params_raw = str(args.get("params") or "").strip()
-
-    if not sql:
-        return {"error": "sql is required", "status": "error"}
-
-    # Security: only SELECT allowed — reject any write or schema-modifying statements
-    sql_upper = sql.upper().lstrip()
-    _FORBIDDEN = (
-        "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
-        "TRUNCATE", "REPLACE", "ATTACH", "DETACH", "PRAGMA",
-        "VACUUM", "REINDEX", "SAVEPOINT", "RELEASE", "ROLLBACK", "COMMIT", "BEGIN",
-    )
-    for keyword in _FORBIDDEN:
-        if re.match(rf"\b{keyword}\b", sql_upper, re.IGNORECASE):
-            return {
-                "error": f"Only SELECT statements are allowed. '{keyword}' is not permitted.",
-                "status": "error",
-            }
-    if not sql_upper.startswith("SELECT") and not sql_upper.startswith("WITH"):
-        return {"error": "Only SELECT (or WITH ... SELECT) statements are allowed.", "status": "error"}
-
-    params: list[Any] = []
-    if params_raw:
-        try:
-            parsed = json.loads(params_raw)
-            if not isinstance(parsed, list):
-                return {"error": "params must be a JSON array, e.g. [\"value\", 42]", "status": "error"}
-            params = parsed
-        except Exception:
-            return {"error": f"params is not valid JSON: {params_raw[:100]}", "status": "error"}
-
-    try:
-        from core.runtime.db import connect
-        with connect() as conn:
-            # `connect()` returns a POOLED thread-local connection (2026-07-12) — mutating
-            # its row_factory poisons EVERY later query on this thread (e.g. decision_gate's
-            # dict(sqlite3.Row) → ValueError "update sequence element has length N"; Central
-            # RED 2026-07-13). zip(cols, row) works identically on a sqlite3.Row (iterable) as
-            # on a raw tuple, so we don't even need row_factory=None — but if set, RESTORE it.
-            _prev_factory = conn.row_factory
-            try:
-                cur = conn.execute(sql, params)
-                cols = [d[0] for d in cur.description] if cur.description else []
-                rows = cur.fetchmany(200)  # cap at 200 rows
-                result_rows = [
-                    {k: _json_safe_cell(v) for k, v in zip(cols, row)} for row in rows
-                ]
-            finally:
-                conn.row_factory = _prev_factory  # never leave the shared conn poisoned
-        from core.tools.tool_text_render import render_rows
-        _capped = len(result_rows) == 200
-        return {
-            "columns": cols,
-            "rows": result_rows,
-            "row_count": len(result_rows),
-            "capped": _capped,
-            "status": "ok",
-            "text": render_rows(cols, result_rows, capped=_capped),
-        }
-    except Exception as exc:
-        return {"error": str(exc), "status": "error"}
+# Boy Scout 5/10-2026: `db_query` er flyttet til sin egen fil. Udskillelsen
+# var en forudsaetning for at roere den (denne fil var 3.110 linjer), og
+# enheden er naturlig: ét vaerktoej, ét ansvar. Den nye fil baerer ogsaa
+# skemaet i fejlen — maalt fejlede 185 af 777 db_query-kald, naesten alle paa
+# et gaettet tabel- eller kolonnenavn.
+#
+# Re-eksporteret her saa eksisterende imports ikke braekker
+# (`simple_tools.py` og `tests/test_simple_tools_native.py` henter dem herfra).
+# Ryd op naar alle kaldsteder er flyttet naturligt.
+from core.tools.db_query_tool import (  # noqa: E402
+    _exec_db_query,
+    _json_safe_cell,
+    skema_hint,
+)
 
 
 def _exec_compact_context_session(session_id: str | None) -> Any:
@@ -2711,154 +2657,48 @@ def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "text is required"}
     if len(text) > 2000:
         return {"status": "error", "error": "text exceeds 2000 character limit"}
+    # 3/10-2026: udgangen flyttet fra heartbeat-trigger-koeen til
+    # notification_bridge.
+    #
+    # Koeen er skrive-only: `consume_trigger` kaldes kun to steder i hele
+    # koden (heartbeat_delivery.py:78 og :350), begge bag
+    # `if ping_channel != "webchat"`, og begge tager kun HEAD. Maalt samme
+    # dag: en followup lagt her stod nummer 1.725 i 1.726 poster — den
+    # naaede aldrig frem. Vaerktoejet lovede «kom tilbage ved naeste tick»
+    # og leverede ingenting.
+    #
+    # `send_session_notification` har daemon-vagt: er sessionen aktiv,
+    # koees beskeden i session_inbox og flushes efter Bjoerns tur — praecis
+    # den «kom tilbage naar det passer» som dette vaerktoej lover.
+    # `push=False`: denne vej sendte ikke mobil-push foer.
     try:
-        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
     except Exception as exc:
-        return {"status": "error", "error": f"trigger module unavailable: {exc}"}
-    entry = set_trigger_for_default_workspace(
-        reason=reason, source="jarvis-self-followup", text=text
+        return {"status": "error", "error": f"notification bridge unavailable: {exc}"}
+    levering = send_session_notification(
+        text, source="jarvis-self-followup", push=False
     )
-    if entry is None:
-        return {"status": "error", "error": "failed to queue trigger"}
-    return {"status": "queued", "reason": reason, "created_at": entry.get("created_at", "")}
-
-
-def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
-    """Copy or create a file in ~/.jarvis-v2/files/ and return a download URL."""
-    import mimetypes
-    import shutil
-    from core.runtime.config import JARVIS_HOME
-
-    source_path = str(args.get("source_path") or "").strip()
-    filename = str(args.get("filename") or "").strip()
-    content = args.get("content")
-
-    if not filename:
-        return {"status": "error", "error": "filename is required"}
-    # Prevent path traversal
-    safe_name = Path(filename).name
-    if not safe_name:
-        return {"status": "error", "error": "invalid filename"}
-
-    files_dir = JARVIS_HOME / "files"
-    files_dir.mkdir(parents=True, exist_ok=True)
-    dest = files_dir / safe_name
-
-    try:
-        if content is not None:
-            # Write inline content (text or bytes)
-            mode = "wb" if isinstance(content, bytes) else "w"
-            dest.open(mode).write(content)
-        elif source_path:
-            src = Path(source_path)
-            if not src.exists():
-                return {"status": "error", "error": f"source_path not found: {source_path}"}
-            shutil.copy2(src, dest)
-        else:
-            return {"status": "error", "error": "provide source_path or content"}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-
-    # ADRESSEN SKAL VIRKE DÉR HVOR BRUGEREN ER. Indtil 12/9-2026 stod her
-    # `http://localhost:8080/...`. Filen blev udgivet helt korrekt — og
-    # brugeren fik en adresse der kun virker på den maskine Jarvis selv kører
-    # på. Paa en telefon er `localhost` telefonen. Derfor kunne Bjoern ikke se
-    # en HTML Jarvis lige havde lavet, naar han ikke sad ved computeren.
-    #
-    # Vaerre: hallucinations-vagten nedenfor hentede netop den localhost-URL
-    # FRA SERVEREN, hvor den svarer 200. Vagten var sand om sin form og tavs
-    # om at adressen kun virkede ét sted.
-    _lokal = "http://localhost:8080"
-    try:
-        from core.runtime.secrets import read_runtime_key
-        _base = str(read_runtime_key("public_base_url", "JARVIS_PUBLIC_BASE_URL") or "").strip()
-    except Exception:
-        _base = ""
-    _base = (_base or _lokal).rstrip("/")
-    url = f"{_base}/files/{safe_name}"
-
-    # Hallucination guard: virker ruten?
-    #
-    # 401 OG 403 ER SUCCES HER. Ruten kraever godkendelse — maalt 12/9-2026
-    # giver baade localhost og den udadvendte adresse 401 uden token. Vagten
-    # hentede uden Authorization, fik 401, satte url_verified=False og skrev
-    # «Praesenter IKKE URL'en for brugeren — den virker ikke».
-    #
-    # Resultatet: hver eneste gang en fil blev udgivet, fik Jarvis besked paa
-    # at LADE VAERE med at vise linket. Funktionen virkede; vagten maalte et
-    # ubeskyttet kald mod en beskyttet rute og kaldte det et nedbrud.
-    #
-    # Det vagten skal kunne skelne er «ruten findes og serverer» fra «filen er
-    # ikke der» (404) eller «serveren er nede» (forbindelsesfejl). En 401 svarer
-    # praecis paa det foerste: noget lytter, og det beskytter filen.
-    url_verified = False
-    url_error = ""
-    try:
-        req = urllib_request.Request(url, method="GET")
-        with urllib_request.urlopen(req, timeout=5) as resp:
-            url_verified = 200 <= resp.status < 300
-            if not url_verified:
-                url_error = f"HTTP {resp.status}"
-    except urllib_error.HTTPError as exc:
-        if exc.code in (401, 403):
-            url_verified = True          # ruten lever og beskytter filen
-            url_error = ""
-        else:
-            url_verified = False
-            url_error = f"HTTP {exc.code}"
-    except Exception as exc:
-        url_verified = False
-        url_error = str(exc)
-
-    result: dict[str, Any] = {
-        "status": "ok",
-        "filename": safe_name,
-        "url": url,
-        "markdown_link": f"[{safe_name}]({url})",
-        "size_bytes": dest.stat().st_size,
-        "url_verified": url_verified,
+    if not delivery_succeeded(levering):
+        return {
+            "status": "error",
+            "error": f"delivery-{levering.get('status') or 'error'}",
+        }
+    return {
+        "status": "queued",
+        "reason": reason,
+        "message_id": str((levering.get("message") or {}).get("id") or ""),
     }
-    if url_error:
-        result["url_verify_error"] = url_error
-    if not url_verified:
-        result["warning"] = (
-            f"URL'en {url} returnerede ikke 200 ({url_error or 'unknown'}). "
-            "Præsenter IKKE URL'en for brugeren — den virker ikke."
-        )
-    # HAEFT DEN PAA TUREN. Uden dette bar svaret ikke filen: maalt 12/9-2026
-    # havde NUL assistent-beskeder en image/file-blok, saa klienten - der
-    # renderer efter blokke - kunne ikke vise den. Samme hul som taenkningen
-    # havde, og samme loesning: laeg fra dig her, tag imod ved persistering.
-    try:
-        from core.services.published_files import note as _note_udgivet
-        # NØGLENAVNET ER `_runtime_turn_id` — ikke `_runtime_run_id`. Executoren
-        # (simple_tool_executor._prepare_call) stamper `_runtime_turn_id`, så den
-        # gamle læsning gav ALTID tom run_id og `note()` returnerede straks.
-        # Målt 13/9-2026: `published_files` havde derfor aldrig haeftet noget —
-        # nul assistent-beskeder bar en image/file-blok. Fallback'et beholdes saa
-        # en fremtidig kilde med det andet navn ikke tavst falder ud igen.
-        _note_udgivet(
-            str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
-            filename=safe_name,
-            url=url,
-            mime_type=str(mimetypes.guess_type(safe_name)[0] or ""),
-            size_bytes=int(result.get("size_bytes") or 0),
-        )
-    except Exception:
-        pass  # en visning maa aldrig braekke selve udgivelsen
 
-    if _base == _lokal:
-        # SIG DET. En localhost-adresse er ikke en fejl her paa maskinen, men
-        # den kan ikke deles. Uden denne linje ville svaret se fuldt gyldigt ud
-        # og vaere ubrugeligt for enhver anden end serveren selv.
-        result["kun_lokal"] = True
-        result["warning"] = (
-            f"{result.get('warning', '')} Adressen er en LOKAL adresse "
-            "({_lokal}) og virker ikke fra telefon eller anden maskine. "
-            "Saet `public_base_url` i runtime.json til den adresse klienterne "
-            "bruger, hvis filen skal kunne deles."
-        ).strip().replace("{_lokal}", _lokal)
-    return result
+
+# `_exec_publish_file` er UDSKILT til `publish_file_tool.py` (4/10-2026).
+# Boy Scout: denne fil staar paa 3.240 linjer, og vaerktoejet skulle have
+# aendret LOGIK (filer per bruger), ikke bare faa en tilfoejelse. Den
+# naermeste sammenhaengende enhed er vaerktoejet selv. Navnet re-eksporteres,
+# saa ingen import braekker; ryddes op naar kaldestederne flytter naturligt.
+from core.tools.publish_file_tool import _exec_publish_file  # noqa: E402,F401
 
 
 def _exec_github_list_issues(args: dict[str, Any]) -> dict[str, Any]:
@@ -3136,7 +2976,11 @@ def _exec_operator_channel(args: dict[str, Any]) -> dict[str, Any]:
     """Aabn/luk/vis operator-kanalen. Owner-only for open/close."""
     from core.services import operator_channel as oc
     handling = str(args.get("action") or "status").strip().lower()
-    sid = oc.current_session_id()
+    # Samme noegle som bash bruger: det id executoren gav dette kald. Foer slog
+    # aabning og brug op i hver sin doede kilde, og noeglen blev `_default` for
+    # alle sessioner (maalt 5/10-2026).
+    sid = (str(args.get("_runtime_session_id") or "").strip()
+           or oc.current_session_id())
     if handling == "status":
         return oc.status(sid)
     ejer = oc.current_is_owner()

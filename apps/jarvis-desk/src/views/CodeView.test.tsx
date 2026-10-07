@@ -11,6 +11,7 @@ import { PanelProvider } from '../contexts/PanelContext'
 import { PermissionProvider } from '../contexts/PermissionContext'
 import * as api from '../lib/api'
 import { usePanel } from '../hooks/usePanel'
+import { PIN_INTERVAL_MS } from '../lib/useChatScroll'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -70,6 +71,14 @@ function wrap(ui: ReactNode) {
   )
 }
 
+/** jsdom har ingen layout: vi styrer selv målene, som browseren ville gøre. */
+const maal = (t: HTMLElement, scrollHeight: number, clientHeight: number, scrollTop: number) => {
+  Object.defineProperty(t, 'scrollHeight', { value: scrollHeight, configurable: true })
+  Object.defineProperty(t, 'clientHeight', { value: clientHeight, configurable: true })
+  t.scrollTop = scrollTop
+  act(() => { t.dispatchEvent(new Event('scroll')) })
+}
+
 describe('CodeView', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -79,9 +88,20 @@ describe('CodeView', () => {
     })
   })
 
-  it('viser kørselstal under composer i code mode', () => {
+  it('viser INGEN kørselstal-linje — den er fjernet, og det er tredje gang', () => {
+    // Bjørn 6/10-2026: «fjerne denne linje mellem compose og disclamer: 93
+    // turns 1625 steps / TTFT 25335ms · 22 tok/s / 124K tokens».
+    //
+    // Det er TREDJE afvisning af usage-tal i chatfladen. De to foerste gjaldt
+    // «1,284 tokens · Ran for 41.2s» under hvert svar. Linjen her var samme
+    // slags tal et andet sted, og nu er den vaek — baade visningen, prop'en,
+    // udregningen og CSS'en, saa der ikke staar doed kode der ser levende ud.
+    //
+    // Testen er vendt om frem for slettet: en slettet test siger ingenting til
+    // den naeste der faar den gode idé at vise koerselstal i composeren.
+    // Tallene bor i sessionslinjen.
     const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
-    expect(container.querySelector('.composer-tal')).toHaveTextContent('0 turns 0 steps')
+    expect(container.querySelector('.composer-tal')).toBeNull()
   })
 
   it('viser aktivitet fra en anden enhed som ikon ved Central i headeren', async () => {
@@ -93,7 +113,11 @@ describe('CodeView', () => {
       const badge = await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
       const headerRight = badge.closest('.chatview-head-right')
       expect(headerRight).toBeInTheDocument()
-      expect(headerRight?.querySelector('[data-testid="central-badge"]')).toBeInTheDocument()
+      // Ankeret var `central-badge`, men CentralBadge blev slået fra i headeren
+      // 30/9-2026 (DESK_CHROME.centralBadge) og bor nu kun på Systemstatus-siden.
+      // Testens ærinde er at mærket hører i header-right — så det er mærket selv
+      // der er ankeret, ikke en nabo der kan slukkes uden at testen ved det.
+      expect(headerRight?.contains(badge)).toBe(true)
       expect(container.querySelector('.takeover-banner')).not.toBeInTheDocument()
     } finally {
       vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
@@ -217,5 +241,36 @@ describe('CodeView', () => {
     // Aabner vi baggrundsjob nu, SKAL den kunne ses.
     await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
     expect(await screen.findByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
+  })
+
+  /**
+   * 17/9-nettet i code-mode (spec'ens punkt 1c, 29/9-2026).
+   *
+   * Før havde dette view KUN pin-ved-start. Interval-nettet og ResizeObserveren
+   * fandtes ikke her, så et svar der landede ad en vej hvor hverken
+   * stream-blokke, follow-blokke eller besked-antallet ændrede sig havde INTET
+   * net i code-mode — samme bug Bjørn mærkede i chat 17/9-2026.
+   *
+   * Testen driver den ægte sti: et run fra en ANDEN enhed gør `aktiv` sand, og
+   * indholdet vokser derefter UDEN en React-opdatering. Kun interval-nettet kan
+   * redde den — ingen effekt i viewet ser højdeændringen.
+   */
+  it('holder bunden naar indholdet vokser uden en React-opdatering (17/9-nettet)', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([
+      { session_id: 's1', run_id: 'remote-run', status: 'working' },
+    ])
+    const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
+
+    const t = container.querySelector('.transcript') as HTMLElement
+    expect(t).toBeInTheDocument()
+    maal(t, 1000, 300, 700) // 1000 indhold, 300 synligt → staar i bunden
+    expect(t.className).toContain('is-at-bottom')
+
+    // Svaret lander ad en anden vej: indholdet vokser, intet re-render sker.
+    Object.defineProperty(t, 'scrollHeight', { value: 1800, configurable: true })
+    await act(async () => { await new Promise((r) => setTimeout(r, PIN_INTERVAL_MS + 80)) })
+
+    expect(t.scrollTop).toBe(1800)
   })
 })

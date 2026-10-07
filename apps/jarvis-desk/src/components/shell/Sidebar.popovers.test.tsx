@@ -8,7 +8,13 @@ vi.mock('../../hooks/useSessions', () => ({
 vi.mock('../../hooks/useSettings', () => ({
   useSettings: () => ({ settings: { apiBaseUrl: 'http://x', authToken: 't' }, auth: { role: 'owner' } }),
 }))
-vi.mock('../../hooks/useStream', () => ({ useStream: () => ({ workingSessionId: null }) }))
+vi.mock('../../hooks/useStream', () => ({
+  useStream: () => ({ workingSessionId: null }),
+  // Udsnits-abonnementet gaar gennem SAMME tilstand (4/10-2026):
+  // Sidebar laeser nu ÉT felt, saa den ikke rendrer hele listen om
+  // ved hver stream-chunk.
+  useStreamUdsnit: (vaelg: (v: any) => unknown) => vaelg(({ workingSessionId: null })),
+}))
 vi.mock('./Klokke', () => ({ Klokke: ({ onAaben }: { onAaben: () => void }) => <button onClick={onAaben}>Klokke</button> }))
 vi.mock('./NotifikationsFeed', () => ({ NotifikationsFeed: ({ onAabnSession }: { onAabnSession: (id: string) => void }) => <div role="dialog" aria-label="Notifikationer"><button onClick={() => onAabnSession('other')}>Anden session</button></div> }))
 vi.mock('./NotifikationSessionPanel', () => ({ NotifikationSessionPanel: ({ sessionId, isOwner }: { sessionId: string; isOwner: boolean }) => <div role="dialog" aria-label="Samtale fra notifikation" data-session={sessionId} data-owner={String(isOwner)} /> }))

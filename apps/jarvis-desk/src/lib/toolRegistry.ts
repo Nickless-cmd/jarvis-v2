@@ -1,7 +1,7 @@
 import {
   Wrench, Terminal, FileText, FilePen, FilePlus, FolderTree, Search, Globe,
   Database, MessageSquare, Cpu, PanelRight, Image, Brain, Bell, Calendar,
-  Activity, Bot, ListChecks, AlarmClock, GitBranch, RotateCw, Monitor,
+  Activity, Bot, ListChecks, AlarmClock, GitBranch, RotateCw, Monitor, Inbox,
   CloudSun, Home, Plug, FileCheck, Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -143,6 +143,12 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   todo_update_status: { label: 'Opdater opgave', Icon: ListChecks, summarize: (a) => firstStr(a, ['todo_id', 'status']) },
   schedule_self_wakeup: { label: 'Planlæg vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['prompt', 'reason']) },
   list_self_wakeups: { label: 'Vækninger', Icon: AlarmClock, summarize: () => '' },
+  // Indbakken (Opgave 5, 3/10-2026). Begge klienter i SAMME commit — tool-
+  // linjens tekst findes i desk OG mobil, og mobilen stod to dage bagud
+  // sidst de blev rørt hver for sig.
+  inbox: { label: 'Indbakke', Icon: Inbox, summarize: () => '' },
+  inbox_done: { label: 'Kvittér post', Icon: Inbox, summarize: (a) => firstStr(a, ['id']) },
+  inbox_drop: { label: 'Afvis post', Icon: Inbox, summarize: (a) => firstStr(a, ['id', 'reason']) },
   mark_wakeup_consumed: { label: 'Kvittér vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['wakeup_id']) },
   // Operator-kanal
   operator_channel: { label: 'Operatør-kanal', Icon: Monitor, summarize: (a) => String(a.action ?? '') },

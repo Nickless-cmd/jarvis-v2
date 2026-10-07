@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { GenoptagelsesVarselHost } from './GenoptagelsesVarselHost'
 import { GenoptagelsesVarsel } from './GenoptagelsesVarsel'
 import { SettingsProvider } from '../../contexts/SettingsContext'
@@ -87,6 +87,23 @@ describe('GenoptagelsesVarselHost', () => {
     const { container } = vis('s2')
     await new Promise((r) => setTimeout(r, 50))
     expect(container.querySelector('.recovery-notice')).toBeNull()
+  })
+
+  /**
+   * Bjoern 30/9-2026: «saa forsvinder den badge ikk igen fra desk og der er
+   * ikk noget hvor jeg kan trykke den vaek». Banneret havde INGEN knap, og dets
+   * eneste ryddevej var et `message_delta` med stop_reason end_turn/completed
+   * — som en tvungen slutrunde per definition ikke har. Varslet kunne altsaa
+   * rejses, men ikke fjernes af nogen.
+   */
+  it('han kan trykke varslet vaek igen', async () => {
+    vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue(varsel)
+    const { container } = vis('s3')
+    expect(await screen.findByText(/opgivet efter aftale/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'luk' }))
+    await waitFor(() => {
+      expect(container.querySelector('.recovery-notice')).toBeNull()
+    })
   })
 
   it('en fejl i hentningen vaelter ikke fladen', async () => {

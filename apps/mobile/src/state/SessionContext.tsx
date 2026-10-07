@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createSession, getSession, listSessions } from '../lib/apiClient'
+import { parseBlocks } from '../lib/persistedBlocks'
 import type { ApiConfig, ChatMessage, ChatSession } from '../lib/types'
 
 // G1 (spec §10) — porteret fra desk's bevist-virkende mergeServer-bro
@@ -97,7 +98,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // i live indtil serveren har persisteret svaret.
         const clientStatus: ClientStatus =
           message.role === 'assistant' ? 'server_missing_keep_stream' : 'optimistic_user'
-        setMessages((current) => [...current, { ...message, clientStatus }])
+        setMessages((current) => {
+          if (message.role === 'assistant') {
+            const final = assistantFinalText(message)
+            // Efter en baggrunds-genforbindelse kan et afsluttet run afspilles
+            // igen fra relay-bufferen. Serverens svar kan allerede staa her,
+            // men have en anden samling mellemtekster end live-snapshottet.
+            // Det sidste tekststykke er det samme endelige svar i begge.
+            for (let i = current.length - 1; i >= 0 && current[i]?.role !== 'user'; i--) {
+              if (current[i]?.role === 'assistant' && final && assistantFinalText(current[i]!) === final) {
+                return current
+              }
+            }
+          }
+          // Et 304 betyder kun at SERVEREN er uaendret. En ny lokal bro skal
+          // stadig flettes ved naeste select(), ellers kan den blive staaende
+          // ved siden af serverens kopi i det uendelige.
+          sidstFlettet.current = null
+          return [...current, { ...message, clientStatus }]
+        })
       },
       replaceMessages: (nextMessages) => {
         sidstFlettet.current = null
@@ -144,6 +163,12 @@ function assistantNorm(message: ChatMessage): string {
   return raw.replace(/\s+/g, ' ').trim()
 }
 
+function assistantFinalText(message: ChatMessage): string {
+  const blocks = parseBlocks(message)
+  const last = blocks && [...blocks].reverse().find((block) => block.type === 'text' && block.text?.trim())
+  return (last?.text ?? assistantNorm(message)).replace(/\s+/g, ' ').trim()
+}
+
 /**
  * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
  * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
@@ -179,6 +204,50 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   const serverAsstTexts = new Set(
     server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean)
   )
+  // DELVIS MATCH (målt 6/10-2026, Bjørn: «mobil klienten viser 2 beskeder i
+  // chatview når du svarer»). Broen bærer HELE turen — `blocksToAssistantText`
+  // joiner alle text-blokke fra den levende stream. Serveren persisterer derimod
+  // alle text-blokke UNDTAGEN den første (målt: `content == join(blok 1..slut)`
+  // på message-48f9616a og message-e46058df). Teksterne er derfor ALDRIG ens,
+  // den eksakte match ovenfor fejler, og da transcriptet samtidig slutter på en
+  // tool-række (81.750 tool-rækker i DB'en) er serverCaughtUp=false → broen blev
+  // holdt VED SIDEN AF serverens kopi, og slutteksten stod to gange på skærmen.
+  //
+  // Reglen her: broens ENDELIGE svar (sidste text-blok) skal kunne findes inde i
+  // serverens samlede assistant-tekst. Minimum-længden forhindrer at en kort,
+  // generisk linje giver falsk match — og et endnu ikke persisteret svar bevares.
+  const serverAsstTekst = [...serverAsstTexts].join(' \n ')
+  // Præcis sluttekst-match: serverens SIDSTE text-blok mod broens. Det er den
+  // rene sammenligning — «er det endelige svar persisteret?» — og den kræver
+  // hverken længde-grænse eller delvis match. `assistantFinalText` falder
+  // tilbage til hele content-strengen når en besked ikke har blokke.
+  const serverAsstSlut = new Set(
+    server.filter((m) => m.role === 'assistant').map(assistantFinalText).filter(Boolean)
+  )
+  const MIN_SLUTTEKST = 24
+  // RUN-ID: DEN PRÆCISE NØGLE (6/10-2026). De tre tekst-regler ovenfor er
+  // heuristikker på en prosa serveren selv omskriver — og hver ny false-positive
+  // har krævet en ny regel (eksakt match → sluttekst → delvis match med
+  // længde-grænse). Serveren sender nu `run_id` med på de beskeder den VED hvem
+  // der skrev, og broens eget id er `a-<run_id>`. Den match kan ikke brækkes af
+  // en omskrivning, og den er heller ikke følsom over for at serveren dropper
+  // den første text-blok (se DELVIS MATCH ovenfor).
+  //
+  // Heuristikkerne BEVARES som fallback: kortet i `besked_run_kobling` er tomt
+  // efter en server-genstart, og uden dem ville dubletten blive permanent i
+  // netop det tilfælde.
+  const serverAsstRuns = new Set(
+    server.filter((m) => m.role === 'assistant')
+      .map((m) => String(m.run_id ?? '')).filter(Boolean)
+  )
+  // MOBILENS EGET ID-FORMAT. Desk bygger `a-<run_id>`; mobilen bygger
+  // `local-assistant-<run_id>-<timestamp>` (StreamContext). Første udgave her
+  // var en kopi af desks `startsWith('a-')` — altså død kode på mobilen, og en
+  // test der pinnede mit eget opdigtede format ville have bekræftet den.
+  // Run-id'et kan selv indeholde bindestreger (`visible-bd1727a4…`), så halen
+  // ankres på tidsstemplets cifre og `(.+)` får resten.
+  const BRO_ID = /^local-assistant-(.+)-\d+$/
+  const broRun = (m: LocalMessage): string => BRO_ID.exec(m.id)?.[1] ?? ''
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
@@ -186,7 +255,13 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
       if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
-      const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      const sluttekst = assistantFinalText(lm)
+      const broensRun = broRun(lm)
+      const persisted = (!!broensRun && serverAsstRuns.has(broensRun))
+        || serverCaughtUp
+        || serverAsstTexts.has(assistantNorm(lm))
+        || serverAsstSlut.has(sluttekst)
+        || (sluttekst.length >= MIN_SLUTTEKST && serverAsstTekst.includes(sluttekst))
       if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
     // persisteret → drop placeholder; serverens rensede besked vises i stedet

@@ -10,6 +10,7 @@ import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
 import { usePanel } from '../hooks/usePanel'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
@@ -27,13 +28,17 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
+import { PlansPanel } from '../components/panel/PlansPanel'
+import { PrPanel } from '../components/panel/PrPanel'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
-import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
+import { registrerSkaerm } from '../lib/skaermRegister'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
@@ -43,7 +48,7 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, type CompactionStats } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
@@ -54,7 +59,7 @@ import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
 import { useVisning, VisningContext } from '../lib/visning'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
-import { usePinVedStart } from '../hooks/usePinVedStart'
+import { useChatScroll } from '../lib/useChatScroll'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { HeaderMere } from '../components/shell/HeaderMere'
@@ -77,7 +82,7 @@ const ROOT_LABELS: Record<string, string> = {
 }
 
 type WsKind = 'container' | 'workstation'
-type Role = 'owner' | 'member' | 'guest'
+type Role = 'owner' | 'partner' | 'member' | 'guest'
 
 /** Native mappe-vælger (Electron). Returnerer valgt sti eller null udenfor app'en. */
 async function pickFolder(): Promise<string | null> {
@@ -112,7 +117,9 @@ export function CodeView({
   const [kind, setKind] = useState<WsKind>(savedWs.kind === 'workstation' ? 'workstation' : 'container')
   const [root, setRoot] = useState<string>(savedWs.root && serverRoots.includes(savedWs.root as never) ? savedWs.root : serverRoots[0])
   const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
-  const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
+  // Panel-tilstand huskes i localStorage (Bjørn 4/10-2026: «appen husker ikk om
+  // de var åbne … alle paneler nulstiller ved app genstart»).
+  const [filesOpen, setFilesOpen] = usePersistedState('jarvis-desk:panel:files', false) // fil-træ
   const [highlightPath, setHighlightPath] = useState<string>('') // Jarvis-styret highlight
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
@@ -132,7 +139,7 @@ export function CodeView({
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
   // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
-  const [envManual, setEnvManual] = useState<boolean | null>(null)
+  const [envManual, setEnvManual] = usePersistedState<boolean | null>('jarvis-desk:panel:env', null)
   const [winW, setWinW] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1920)
   useEffect(() => {
     const onResize = () => setWinW(window.innerWidth)
@@ -316,16 +323,26 @@ export function CodeView({
   const codePanelW = useResizableWidth({
     initial: 560, min: 300, max: 1000, side: 'left', storageKey: 'jarvis-desk:code-panel-w2',
   })
-  const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // MessageRow er memoiseret, men et nyt config-objekt ved hver elapsed-tick
+  // tvang ALLE gemte beskeder i lange code-samtaler til at rendere igen.
+  const config = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // Baggrundsjob: panelet henter selv naar det er aabent. HER hentes kun
   // TAELLEREN, saa ikonet kan sige om noget koerer uden at man skal aabne det.
-  const [jobsOpen, setJobsOpen] = useState(false)
+  const [jobsOpen, setJobsOpen] = usePersistedState('jarvis-desk:panel:jobs', false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
-  const [changesOpen, setChangesOpen] = useState(false)
+  const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   // Jarvis' browser. Den kom med i chat-fladen 21/9 og blev glemt her —
   // samme hoejre-stak, samme plads i raekken, saa de to flader ikke skilles ad.
-  const [browserOpen, setBrowserOpen] = useState(false)
+  const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
+  // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
+  // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
+  const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
+  const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
+  const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
@@ -337,10 +354,10 @@ export function CodeView({
 
   // Jarvis' desk-værktøjer (Claude Desktops ccd_view, 19/9-2026) — som
   // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
-  const [codeFane, setCodeFane] = useState<PanelTab>('files')
+  const [codeFane, setCodeFane] = usePersistedState<PanelTab>('jarvis-desk:panel:codeFane', 'files')
   const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
-  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen })
-  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen }
+  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen })
+  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -352,6 +369,7 @@ export function CodeView({
           t.changesOpen && 'diff', t.jobsOpen && 'tasks',
           t.filesOpen && (t.codeFane === 'terminal' ? 'terminal' : 'file'),
           t.browserOpen && 'browser',
+          t.artifactsOpen && 'artifact', t.plansOpen && 'plan', t.prOpen && 'pr',
         ].filter(Boolean) as string[]
       },
       vis: (p, a) => {
@@ -366,7 +384,10 @@ export function CodeView({
         }
         if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') { setFilesOpen(true); setAabenFane({ fane: 'terminal', n: Date.now() }); return null }
-        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+        if (p === 'artifact') { setArtifactsOpen(true); return null }
+        if (p === 'plan') { setPlansOpen(true); return null }
+        if (p === 'pr') { setPrOpen(true); return null }
+        return `Ukendt panel: ${p}`
       },
       // Lukker Jarvis en rude gennem kanalen, skal dens FULDE visning også
       // slippe. Uden det blev `fuldRude` stående på en rude der var væk, og
@@ -380,6 +401,9 @@ export function CodeView({
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file' || p === 'terminal') setFilesOpen(false)
         else if (p === 'browser') setBrowserOpen(false)
+        else if (p === 'artifact') setArtifactsOpen(false)
+        else if (p === 'plan') setPlansOpen(false)
+        else if (p === 'pr') setPrOpen(false)
         return null
       },
     })
@@ -453,7 +477,17 @@ export function CodeView({
   const tilbage = useTilbagespol({ config: config, sessionId, genindlaes: () => sessions.refresh() })
   useEffect(() => { tilbage.glem() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
+  const koe = useSendeKoe({
+    arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o),
+    // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
+    // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
+    steer: async (text) => {
+      const runId = stream.activeRunId
+      if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
+    },
+    kanSteer: !!stream.activeRunId,
+  })
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
@@ -514,9 +548,6 @@ export function CodeView({
 
   // Autoscroll + scroll-til-bund-pil (som chat).
   const transcriptRef = useRef<HTMLDivElement>(null)
-  const [atBottom, setAtBottom] = useState(true)
-  const [unread, setUnread] = useState(0)
-  const NEAR_BOTTOM_PX = 120
 
   // ── Cross-device live (porteret 1:1 fra ChatView) ──────────────────────────
   // Code mode skal lyse op PRÆCIS som Chat mode når mobilen tager over: header-
@@ -593,21 +624,19 @@ export function CodeView({
     return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
   }, [bgActive, sessionId, settings])
 
-  const scrollToBottom = () => {
-    const el = transcriptRef.current
-    if (el) el.scrollTop = el.scrollHeight
-    setUnread(0)
-  }
-  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
-  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
-
-  const onScroll = () => {
-    const el = transcriptRef.current
-    if (!el) return
-    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
-    setAtBottom(near)
-    if (near) setUnread(0)
-  }
+  // Én scroll-koordinator — samme som ChatView (spec'ens punkt 1a+1c, 29/9-2026).
+  // Før havde dette view KUN pin-ved-start: interval-nettet fra 17/9 og
+  // ResizeObserveren fandtes slet ikke her. Konsekvensen var konkret: et svar der
+  // landede ad en vej hvor hverken stream-blokke, follow-blokke eller
+  // besked-antallet ændrede sig — og hvor ResizeObserveren heller ikke så det,
+  // fordi den kigger på containeren og ikke indholdet — havde INTET net i
+  // code-mode. Det er den bug Bjørn mærkede i chat 17/9-2026, og den stod stadig
+  // åben her. Koordinatoren bærer nettet for begge views.
+  const scroll = useChatScroll(transcriptRef, {
+    arbejder: stream.status === 'working',
+    aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+  })
+  const { melder } = scroll
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -807,31 +836,36 @@ export function CodeView({
   const sideWs = { workspaceKind: kind, workspaceRoot: effRoot }
   const sideHandlinger: SideOpgaveHandlinger = {
     startLokalt: async (t) => {
-      if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      if (!sideCfg) return undefined
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs, arvFra: sessionId })
       await sessions.refresh()
       sessions.select(sid)
+      return sid
     },
     baggrund: async (t) => {
-      if (!sideCfg) return
-      await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      if (!sideCfg) return undefined
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs, arvFra: sessionId })
       void sessions.refresh()
+      return sid
     },
+    // «Løs her» kører i den AKTUELLE samtale — den er arbejdet.
     loesHer: (t) => {
       const prefs = readModelPrefs()
-      return doSend(t.prompt, {
+      void doSend(t.prompt, {
         planMode: false, permission, attachments: [],
         model: prefs.model, providerChoice: prefs.providerChoice, thinkingMode: readThinkingMode(),
       })
+      return sessionId ?? undefined
     },
     ...(kind === 'workstation' && effRoot ? {
       worktree: async (t) => {
-        if (!sideCfg) return
+        if (!sideCfg) return undefined
         const sti = await worktreeTilOpgave(sideCfg, effRoot, t)
         setWsPath(sti)
-        const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti })
+        const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti, arvFra: sessionId })
         await sessions.refresh()
         sessions.select(sid)
+        return sid
       },
     } : {}),
   }
@@ -843,18 +877,6 @@ export function CodeView({
     </div>
   )
 
-  const koerselsTal = (() => {
-    const assistantMessages = sessions.messages.filter((m) => m.role === 'assistant')
-    const trin = assistantMessages.reduce((total, m) => total +
-      (Array.isArray(m.content) ? m.content.filter((b) => b?.type === 'tool_use').length : 0), 0)
-    const laest = stream.usage.cacheHit + stream.usage.cacheMiss
-    return {
-      ture: assistantMessages.length,
-      trin,
-      ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
-      ...(envTotalTokens > 0 ? { tokens: envTotalTokens } : {}),
-    }
-  })()
 
   const composer = (
     <Composer
@@ -877,7 +899,7 @@ export function CodeView({
       isOwner={isOwner}
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
-      koerselsTal={koerselsTal}
+      draftKey="code"
     />
   )
 
@@ -893,7 +915,7 @@ export function CodeView({
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
-  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
   // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
   // Før hentede Code slet ikke kapitler og viste én streg pr. besked.
   // Samme kobling som i Chat: en pin bliver et anker paa skinnen.
@@ -929,13 +951,12 @@ export function CodeView({
   const pendingPauseAsk =
     fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
-  // Autoscroll: ved nye beskeder/stream-tokens, hold bunden hvis vi er nær den.
+  // Nye beskeder: HVAD der skete meldes her — om der må flyttes på rullen afgør
+  // koordinatoren. Code-mode husker sin session og skifter den sjældent, så der
+  // er ingen ny-session-gren her; den findes i ChatView.
   useEffect(() => {
-    const el = transcriptRef.current
-    if (el && atBottom) el.scrollTop = el.scrollHeight
-    else if (!atBottom) setUnread((u) => u + 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleMessages.length, sessionId])
+    melder('ny-besked')
+  }, [visibleMessages.length, sessionId, melder])
   // Alt der vokser mens man står i bund — stream-blokke, skiftet fra den
   // levende række til den gemte besked når svaret stopper, kilder og knapper
   // der dukker op bagefter — holdes i bund af browserens scroll-anker
@@ -952,7 +973,8 @@ export function CodeView({
       {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
       <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
-      <CentralBadge config={config} isOwner={isOwner} />
+      {DESK_CHROME.centralBadge && <CentralBadge config={config} isOwner={isOwner} />}
+      {DESK_CHROME.peakBadge && config && <PeakBadge config={config} />}
       {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
@@ -1034,15 +1056,52 @@ export function CodeView({
     </div>
   )
 
-  const skinneAaben = jobsOpen || changesOpen || browserOpen
+  const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen
+  // Miljø-feltet og ruderne deler ÉN højre-stak: feltet øverst, ruden under.
+  // Før skjulte hver rude feltet, så de to aldrig stod sammen — Bjørn
+  // 3/10-2026: «så skal de 3 paneler kunne vises under miljøfeltet». Filer og
+  // preview er andre flader og skjuler det stadig, og i den tomme samtale er
+  // der ingen stak at stakke under.
+  const miljoeVises = envOpen && !filesOpen && !panel.open && !isEmpty && !fuldRude
+  const stackAaben = miljoeVises || skinneAaben
   // Skinnen lå før INDE i den aktive samtales JSX. Det betød at de tre
   // knapper i headeren var levende at se på og fuldstændig døde at trykke på,
   // så længe samtalen var tom — chat-fladen har altid tegnet sin skinne begge
   // steder. Nu gør code det samme (Bjørn 21/9-2026).
-  const skinne = config && skinneAaben ? (
+  const skinne = config && stackAaben ? (
       <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
         {/* Traekgrebet — se ChatView for hvorfor det ikke er med i fuld rude. */}
         {!fuldRude && <SkinneGreb />}
+        {miljoeVises && (
+          <EnvironmentPanel
+            config={config}
+            kind={kind}
+            root={effRoot}
+            onVaelgMappe={pickFolder}
+            onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
+            refreshKey={gitRefresh}
+            working={stream.status === 'working' || bgWorking}
+            kontekstTokens={gauge.tokens}
+            totalTokens={envTotalTokens}
+            evidence={environmentEvidence}
+            onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
+            onOpenSource={(source) => {
+              const tool = source.toolUseId
+                ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)
+                : undefined
+              panel.openTarget({ type: 'source', source, tool })
+            }}
+            onOpenTool={(tool) => panel.openTarget({ type: 'tool', tool })}
+            sessionId={sessionId}
+            hasHistory={visibleMessages.length > 0}
+            isOwner={isOwner}
+            onChanged={() => setGitRefresh((n) => n + 1)}
+            gitMissing={gitMissing}
+            installingTool={installingTool}
+            onInstallTool={onInstallTool}
+            komprimerVed={gauge.denominator}
+          />
+        )}
         {changesOpen && (!fuldRude || fuldRude === 'changes') && (
           <ChangesPanel
             config={config}
@@ -1077,6 +1136,9 @@ export function CodeView({
             onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
           />
         )}
+        {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
+        {plansOpen && <PlansPanel config={config} onClose={() => setPlansOpen(false)} />}
+        {prOpen && <PrPanel config={config} onClose={() => setPrOpen(false)} />}
       </div>
   ) : null
 
@@ -1113,38 +1175,6 @@ export function CodeView({
         {headerActive}
         {sideKort}
         {skinne}
-        {config && envOpen && !jobsOpen && !changesOpen && !browserOpen && !filesOpen && !panel.open && (
-          <div className="code-right-stack">
-            <EnvironmentPanel
-              config={config}
-              kind={kind}
-              root={effRoot}
-              onVaelgMappe={pickFolder}
-              onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
-              refreshKey={gitRefresh}
-              working={stream.status === 'working' || bgWorking}
-              kontekstTokens={gauge.tokens}
-              totalTokens={envTotalTokens}
-              evidence={environmentEvidence}
-              onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
-              onOpenSource={(source) => {
-                const tool = source.toolUseId
-                  ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)
-                  : undefined
-                panel.openTarget({ type: 'source', source, tool })
-              }}
-              onOpenTool={(tool) => panel.openTarget({ type: 'tool', tool })}
-              sessionId={sessionId}
-              hasHistory={visibleMessages.length > 0}
-              isOwner={isOwner}
-              onChanged={() => setGitRefresh((n) => n + 1)}
-              gitMissing={gitMissing}
-              installingTool={installingTool}
-              onInstallTool={onInstallTool}
-              komprimerVed={gauge.denominator}
-            />
-          </div>
-        )}
         {trustBanner}
         <div className="transcript-wrap">
         <MessageRail
@@ -1152,7 +1182,7 @@ export function CodeView({
           anchors={railAnchors}
         />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
-        <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
+        <div className={`transcript${scroll.atBottom ? ' is-at-bottom' : ''}`} ref={scroll.containerRef} onScroll={scroll.onScroll}>
           {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
               <CompactionNotice stats={compactionById.get(m.id)} />
@@ -1181,13 +1211,13 @@ export function CodeView({
             </div>
             </Fragment>
           ))}
-          {stream.status === 'working' && stream.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+          {stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText) && (
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
-          {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+          {!(stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText)) && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && (
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
           )}
           {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
               styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
@@ -1213,21 +1243,61 @@ export function CodeView({
             workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
             compacting={compacting}
-            blocks={stream.blocks}
           />
           <div className="composer-notices">
-            <GodkendelsesKort />
+            <GodkendelsesKort sessionId={sessionId} />
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
             )}
-            {stream.status === 'error' && stream.error && (
-              <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
+            {/* Bjørn 4/10-2026: «network error og kryds til at trykke — network
+                error kan være meget, den er nødt til at vise en fejl.»
+
+                Her stod den RÅ `stream.error` — et `Error`-objekt hvis tekst
+                kommer fra browseren («Failed to fetch») eller fra
+                `api.ts:256`s `Netværksfejl: ${e.message}`. Ingen alvorlighed,
+                intet fix-hint, intet «Prøv igen» — og krydset var bogstaveligt
+                talt en tom funktion med en kommentar.
+
+                Den strukturerede `streamError` har eksisteret hele tiden og
+                bruges allerede i ChatView: ærlig dansk besked pr. kategori
+                (afbrudt / session udløbet / for mange forespørgsler), et
+                fix-hint og `retryable`. Samme no-op-kryds blev rettet i
+                ChatView 23/6-2026 og aldrig her — anden gang samme fejl, andet
+                sted. */}
+            {stream.status === 'error' && (stream.streamError || stream.error) && (
+              <ErrorBanner
+                message={stream.streamError?.message
+                  // Fald tilbage på den rå tekst frem for at skjule den: en
+                  // ukendt fejl er stadig en fejl, og en tom banner ville
+                  // efterlade ham uden noget at handle på.
+                  ?? stream.error?.message ?? 'Der opstod en fejl.'}
+                severity={stream.streamError?.severity}
+                fixHint={stream.streamError?.fixHint}
+                onDismiss={() => stream.clearError()}
+                onRetry={stream.streamError?.retryable ? () => {
+                  const sidste = [...sessions.messages].reverse()
+                    .find((m) => m.role === 'user')
+                  const tekst = Array.isArray(sidste?.content)
+                    ? sidste!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+                    : ''
+                  stream.clearError()
+                  // `resend`, ikke `handleSend`: den er rolle-bevidst og
+                  // arver de VALGTE praeferencer (model, udbyder, taenke-mode),
+                  // praecis som auto-continue. `handleSend` ville kraeve at
+                  // jeg opfandt et saet indstillinger her, og saa ville
+                  // «Proev igen» sende noget andet end det der fejlede.
+                  if (tekst.trim()) resend(tekst)
+                } : undefined}
+              />
             )}
           </div>
-          <JumpToLatest synlig={!atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+          <JumpToLatest synlig={!scroll.atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
           <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
-          <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
+          <KoeChip
+            items={koe.items} busy={stream.status === 'working'} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+            onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
+          />
           {composer}
         </div>
       </div>

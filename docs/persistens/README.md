@@ -34,3 +34,23 @@ De kommer fra ejer-modulets egen docstring. En «UDFYLD»-plads bliver aldrig
 udfyldt, mens modulets egen tekst allerede er skrevet af nogen der vidste
 hvad filen var til. Tre moduler har ingen docstring; de står som efterslæb og
 blokerer ikke.
+
+## SQLite-skemaet på CT105
+
+`sqlite-schema.json` er et snapshot fra CT105's levende database, læst i
+read-only-tilstand. Det registrerer kolonner og indeks med et SHA-256-digest
+pr. tabel (kolonadskilte hex-bytes). Snapshottet har 304 applikationstabeller;
+SQLite's interne `sqlite_sequence` er udeladt. `source_host` dokumenterer hvor
+snapshottet blev taget.
+
+`scripts/verify_sqlite_schema.py` sammenligner mod snapshottet. Pre-commit
+kører den kun på CT105 (`Jarvis`), fordi udviklermaskinens DB har andre
+tabeller. Brug `--require-db` ved en eksplicit audit. Undersøg en migration,
+før `--write-snapshot` køres på CT105; en snapshot-opdatering er en anmeldelse
+af ændringen, ikke selve migrationen.
+
+`created_at_formats` bygger på de første og sidste tre ikke-tomme værdier i
+hver tabel. Den prøvesamling fanger almindelig fremadrettet drift, men beviser
+ikke at alle historiske rækker har samme format. `unobserved` betyder ingen
+værdi endnu; `unknown` kræver manuel undersøgelse. Kode der sammenligner datoer
+på tværs af tabeller skal normalisere tidsstemplerne.

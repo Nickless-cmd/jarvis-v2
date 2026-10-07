@@ -2,6 +2,39 @@ import { describe, it, expect } from 'vitest'
 import { delIBlokke } from './markdownBlokke'
 
 describe('delIBlokke', () => {
+  it('arbejdet ved dobbelt så mange blokke vokser omtrent lineært', () => {
+    // 29/9-2026: en kopi af resten af linjerne for hver tom linje gav
+    // superlineær vækst. Mange små afsluttede blokke svarer til et langt stream.
+    const dokument = (antal: number) => Array.from({ length: antal }, (_, i) =>
+      `## Del ${i}\n${Array.from({ length: 15 }, (_, j) => `linje ${i}-${j}`).join('\n')}\n\n`,
+    ).join('') + 'slut'
+    // Mål over 4× input. Ved 2× var de enkelte kørsler så korte, at
+    // scheduler/GC gav 3-4× på uændret kode i både CI og lokalt. 4× skelner
+    // stadig tydeligt mellem lineær vækst (~4×) og hale-kopiering (~16×).
+    const kort = dokument(300)
+    const langt = dokument(1200)
+    const maal = (tekst: string) => {
+      const tider: number[] = []
+      for (let i = 0; i < 12; i++) {
+        const start = performance.now()
+        delIBlokke(tekst)
+        tider.push(performance.now() - start)
+      }
+      tider.sort((a, b) => a - b)
+      // 4/10-2026: medianen (tider[6]) fejlede på CI — målt 9.45 mod grænsen 8
+      // (run 37210937492, job desk) — fordi scheduler/GC-jitter løfter
+      // midterværdien på en delt runner. MINIMUM er det robuste estimat: den
+      // mindst forstyrrede kørsel viser den faktiske algoritmiske pris, og
+      // ratioen mellem to minimums-målinger er stabil på tværs af runner-
+      // hastighed. Grænsen 8 står uændret: lineær vækst giver ~4×,
+      // hale-kopiering ~16× — regressionsværnet er intakt.
+      return tider[0]!
+    }
+    maal(kort)
+    maal(langt)
+    expect(maal(langt) / maal(kort)).toBeLessThan(8)
+  })
+
   it('deler ved tomme linjer mellem afsnit, overskrifter og tabeller', () => {
     const md = '# Titel\n\nFørste afsnit.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nSidste.'
     expect(delIBlokke(md)).toEqual(['# Titel\n', 'Første afsnit.\n', '| a | b |\n|---|---|\n| 1 | 2 |\n', 'Sidste.'])
@@ -12,9 +45,19 @@ describe('delIBlokke', () => {
     expect(delIBlokke(md)).toEqual(['Før.\n', '```ts\nconst a = 1\n\nconst b = 2\n```\n', 'Efter.'])
   })
 
+  it('en kortere fence inde i fire backticks kan ikke åbne for blokdeling', () => {
+    const kode = '````md\n```\n\n**Vigtig overskrift**\n````'
+    expect(delIBlokke(`${kode}\n\nEfter.`)).toEqual([`${kode}\n`, 'Efter.'])
+  })
+
   it('en løs liste (tomme linjer mellem punkter) forbliver ÉN blok', () => {
     const md = '- et\n\n- to\n\n- tre\n\nAfsnit bagefter.'
     expect(delIBlokke(md)).toEqual(['- et\n\n- to\n\n- tre\n', 'Afsnit bagefter.'])
+  })
+
+  it('holder Jarvis’ 1 · punkter sammen under streaming', () => {
+    const src = '**1 · Første.**\nDetalje.\n\n**2 · Andet.** Resten.\n\nEfter listen.'
+    expect(delIBlokke(src)).toEqual(['**1 · Første.**\nDetalje.\n\n**2 · Andet.** Resten.\n', 'Efter listen.'])
   })
 
   it('en indrykket fortsættelse hører til blokken over', () => {

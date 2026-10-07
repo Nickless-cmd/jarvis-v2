@@ -23,6 +23,12 @@ ALL = [
 
 class TestChatScope:
 
+    def test_owner_can_account_for_side_tasks_in_chat_and_code(self):
+        names = ["flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks"]
+        for scope in ("chat", "code"):
+            assert set(names) <= allowed_tool_names(role="owner", scope=scope, all_names=names)
+            assert not allowed_tool_names(role="member", scope=scope, all_names=names)
+
     def test_owner_chat_gets_base_plus_file_reads(self):
         allow = allowed_tool_names(role="owner", scope="chat", all_names=ALL)
         assert "web_search" in allow

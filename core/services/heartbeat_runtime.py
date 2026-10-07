@@ -2133,6 +2133,19 @@ def _run_heartbeat_tick_locked(
             _dm.record_daemon_tick("provider_self_heal", _psh_result or {})
         except Exception:
             pass
+    # Peak-varsel (30/9-2026): 15 min før DeepSeeks myldretid åbner (man-fre,
+    # dagvinduet) → notifikations-feed + mobil push. Nul LLM-tokens; dedup'er
+    # selv pr. vindue. Se core/services/peak_varsel_daemon.py.
+    if _dm.is_enabled("peak_varsel"):
+        try:
+            from core.services.peak_varsel_daemon import tick_peak_varsel_daemon
+            _pv_result = _daemon_tick_with_deadline(
+                "peak_varsel", tick_peak_varsel_daemon,
+                deadline_seconds=15.0,
+            )
+            _dm.record_daemon_tick("peak_varsel", _pv_result or {})
+        except Exception:
+            pass
     # memory_safeguard — PENSIONERET 2026-07-15 → cluster_memory (kalder run() som
     # non-LLM member). Denne gamle bare tick-site importerede en IKKE-EKSISTERENDE
     # tick_memory_safeguard_daemon (ImportError → swallowed) og var reelt DØD; nu
@@ -4372,381 +4385,16 @@ def _validate_heartbeat_decision(
     }
 
 
-def _deliver_heartbeat_proposal(
-    *,
-    policy: dict[str, object],
-    tick_id: str,
-    summary: str,
-    proposed_action: str,
-) -> dict[str, str]:
-    message_text = proposed_action.strip() or summary.strip()
-    if not message_text:
-        return {
-            "status": "blocked",
-            "summary": "Heartbeat propose decision had no user-facing text to deliver.",
-            "action_type": "",
-            "artifact": "",
-            "blocked_reason": "missing-proposal-text",
-        }
-
-    ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
-    trigger_entry: dict | None = None
-    if ping_channel != "webchat":
-        workspace_str = str(policy.get("workspace") or "").strip()
-        if workspace_str:
-            from core.runtime import heartbeat_triggers as _triggers
-
-            trigger_entry = _triggers.consume_trigger(Path(workspace_str))
-        if trigger_entry is None:
-            return {
-                "status": "recorded",
-                "summary": message_text,
-                "action_type": "",
-                "artifact": "",
-                "blocked_reason": "",
-            }
-
-    # Same banned-patterns as _deliver_heartbeat_ping_directly —
-    # internal system summaries must never reach the user as webchat messages.
-    _proposal_banned_patterns = (
-        "bounded liveness pressure",
-        "open-loop continuity is still live",
-        "heartbeat appears to have",
-        "liveness pressure because",
-        "open-loop continuity is still",
-        "relation continuity is still",
-        "witness continuity is still",
-        "bounded autonomy pressure",
-        "should i review",
-        "should i look at",
-        "is there anything specific you would like",
-        "vil du have jeg dykker ned",
-        "vil du have jeg kigger",
-        "skal jeg kigge",
-        "skal jeg dykke ned",
-        "er der noget specifikt",
-        "er der noget bestemt du vil",
-    )
-    lowered_proposal = message_text.lower()
-    if any(p in lowered_proposal for p in _proposal_banned_patterns):
-        return {
-            "status": "blocked",
-            "summary": message_text,
-            "action_type": "webchat-heartbeat-proposal",
-            "artifact": "",
-            "blocked_reason": "system-internal-text-rejected",
-        }
-
-    from core.services.chat_sessions import (
-        append_chat_message,
-        get_chat_session,
-        list_chat_sessions,
-    )
-    from core.services.notification_bridge import get_pinned_session_id
-
-    # Prefer the pinned session (the one the user is actively viewing),
-    # fall back to most recent session.
-    session_id = get_pinned_session_id()
-    if not session_id or get_chat_session(session_id) is None:
-        sessions = list_chat_sessions()
-        session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
-    if not session_id or get_chat_session(session_id) is None:
-        event_bus.publish(
-            "heartbeat.propose_blocked",
-            {
-                "tick_id": tick_id,
-                "blocked_reason": "missing-webchat-session",
-            },
-        )
-        return {
-            "status": "blocked",
-            "summary": "No webchat session is available for bounded propose delivery.",
-            "action_type": "webchat-heartbeat-proposal",
-            "artifact": "",
-            "blocked_reason": "missing-webchat-session",
-        }
-
-    # Recent-user-activity guard: don't deliver if the user wrote something
-    # in the last 5 minutes — prevents heartbeat messages appearing as
-    # "double responses" right after the user's turn.
-    try:
-        session_data = get_chat_session(session_id)
-        messages = (session_data or {}).get("messages") or []
-        user_msgs = [m for m in messages if m.get("role") == "user"]
-        if user_msgs:
-            last_user_ts = str(user_msgs[-1].get("created_at") or "")
-            if last_user_ts:
-                from datetime import UTC, datetime
-                last_dt = datetime.fromisoformat(last_user_ts.replace("Z", "+00:00"))
-                age_minutes = (datetime.now(UTC) - last_dt).total_seconds() / 60
-                if age_minutes < 5:
-                    return {
-                        "status": "blocked",
-                        "summary": message_text,
-                        "action_type": "webchat-heartbeat-proposal",
-                        "artifact": "",
-                        "blocked_reason": "recent-user-activity",
-                    }
-    except Exception:
-        pass
-
-    message = append_chat_message(
-        session_id=session_id,
-        role="assistant",
-        content=message_text,
-    )
-    event_bus.publish(
-        "channel.chat_message_appended",
-        {
-            "session_id": session_id,
-            "message": message,
-            "source": "heartbeat-propose-bridge",
-        },
-    )
-    event_bus.publish(
-        "heartbeat.propose_delivered",
-        {
-            "tick_id": tick_id,
-            "session_id": session_id,
-            "message_id": str(message.get("id") or ""),
-            "summary": summary,
-        },
-    )
-    return {
-        "status": "sent",
-        "summary": "Heartbeat delivered one bounded proposal to webchat.",
-        "action_type": "webchat-heartbeat-proposal",
-        "artifact": json.dumps(
-            {
-                "session_id": session_id,
-                "message_id": str(message.get("id") or ""),
-                "delivery_channel": "webchat",
-            },
-            ensure_ascii=False,
-            default=str,
-        ),
-        "blocked_reason": "",
-    }
+# Boy Scout 2/10-2026: de to leverings-funktioner er udskilt til
+# `heartbeat_delivery.py` (de skulle gennem notifikations-vagten, og filen var
+# paa 7.432 linjer). Re-eksporteret her, saa egne kaldesteder og
+# tests/test_heartbeat_bridge_triggers.py virker uaendret.
+from core.services.heartbeat_delivery import (  # noqa: E402
+    _deliver_heartbeat_ping_directly,
+    _deliver_heartbeat_proposal,
+)
 
 
-def _deliver_heartbeat_ping_directly(
-    *,
-    policy: dict[str, object],
-    tick_id: str,
-    ping_text: str,
-    summary: str,
-) -> dict[str, str]:
-    """Deliver an LLM-authored ping straight to webchat.
-
-    Bypasses the strict 3-gate execution pilot. Used when the heartbeat LLM
-    actually wrote a ping_text — Jarvis must always be able to deliver an
-    asked question whether it came from a thought, curiosity, or boredom.
-    """
-    message_text = ping_text.strip() or summary.strip()
-    if not message_text:
-        return {
-            "status": "blocked",
-            "summary": "Heartbeat ping decision had no user-facing text to deliver.",
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "missing-ping-text",
-        }
-
-    # Anti-spam guard: reject generic templated pings even when the LLM
-    # ignored the prompt instruction. These are the patterns Jarvis was
-    # caught spamming ("Should I review the recent...", etc.). If we
-    # detect any of them, we block delivery and let the next tick try
-    # again with fresh context.
-    banned_patterns = (
-        "should i review",
-        "should i look at",
-        "is there anything specific you would like",
-        "is there anything you would like me to review",
-        "vil du have jeg dykker ned",
-        "vil du have jeg kigger",
-        "skal jeg kigge",
-        "skal jeg dykke ned",
-        "er der noget specifikt",
-        "er der noget bestemt du vil",
-        # Runtime leak patterns — liveness summaries must never reach the user
-        "bounded liveness pressure",
-        "open-loop continuity is still live",
-        "heartbeat appears to have",
-        "liveness pressure because",
-        "open-loop continuity is still",
-        "relation continuity is still",
-        "witness continuity is still",
-        "bounded autonomy pressure",
-    )
-    lowered_message = message_text.lower()
-    if any(pattern in lowered_message for pattern in banned_patterns):
-        return {
-            "status": "blocked",
-            "summary": message_text,
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "generic-templated-ping-rejected",
-        }
-
-    # Repetition guard: reject if this exact text (or a near-duplicate)
-    # is already in recent assistant history. We compare against the
-    # last 8 assistant messages.
-    try:
-        recent = _recent_ping_history(limit=8)
-        normalized_message = " ".join(lowered_message.split())
-        for prior in recent:
-            normalized_prior = " ".join(prior.lower().split())
-            if not normalized_prior:
-                continue
-            if normalized_message == normalized_prior:
-                return {
-                    "status": "blocked",
-                    "summary": message_text,
-                    "action_type": "webchat-heartbeat-ping",
-                    "artifact": "",
-                    "blocked_reason": "duplicate-of-recent-message",
-                }
-    except Exception:
-        pass
-
-    if not bool(policy.get("allow_ping")):
-        return {
-            "status": "blocked",
-            "summary": "Heartbeat policy blocks ping delivery.",
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "ping-not-allowed",
-        }
-
-    kill_switch_state = str(policy.get("kill_switch") or "enabled")
-    if kill_switch_state != "enabled":
-        return {
-            "status": "blocked",
-            "summary": "Heartbeat kill switch blocks proactive webchat delivery.",
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "kill-switch-disabled",
-        }
-
-    ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
-    trigger_entry: dict | None = None
-    if ping_channel != "webchat":
-        workspace_str = str(policy.get("workspace") or "").strip()
-        if workspace_str:
-            from core.runtime import heartbeat_triggers as _triggers
-
-            trigger_entry = _triggers.consume_trigger(Path(workspace_str))
-        if trigger_entry is None:
-            return {
-                "status": "recorded",
-                "summary": message_text,
-                "action_type": "webchat-heartbeat-ping",
-                "artifact": "",
-                "blocked_reason": "",
-            }
-
-    from core.services.chat_sessions import (
-        append_chat_message,
-        get_chat_session,
-        list_chat_sessions,
-    )
-
-    sessions = list_chat_sessions()
-    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
-    if not session_id or get_chat_session(session_id) is None:
-        event_bus.publish(
-            "heartbeat.ping_blocked",
-            {
-                "tick_id": tick_id,
-                "blocked_reason": "missing-webchat-session",
-            },
-        )
-        return {
-            "status": "blocked",
-            "summary": "No webchat session is available for bounded ping delivery.",
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "missing-webchat-session",
-        }
-
-    # Route through nudge ledger instead of direct send to webchat
-    # (2026-05-13). Same spejlsal-fix as Discord path: Jarvis sees the
-    # pending nudge in awareness and decides whether to surface, with
-    # full context. Killswitch falls back to direct send.
-    try:
-        from core.services.outbound_nudges import push_nudge
-        from core.runtime.settings import load_settings as _ls
-        if _ls().nudge_system_enabled:
-            push_result = push_nudge(
-                source="heartbeat",
-                kind="heartbeat_ping",
-                message=message_text,
-                importance="normal",
-                parent_session_id=session_id,
-            )
-            event_bus.publish("heartbeat.ping_delivered", {
-                "tick_id": tick_id,
-                "session_id": session_id,
-                "channel": "webchat-nudge",
-                "nudge_id": push_result.get("nudge_id"),
-                "ping_text": message_text[:200],
-            })
-            return {
-                "status": "queued",
-                "summary": "Heartbeat ping queued as nudge for Jarvis review.",
-                "action_type": "webchat-heartbeat-ping-nudge",
-                "artifact": json.dumps({
-                    "session_id": session_id,
-                    "nudge_id": push_result.get("nudge_id"),
-                    "delivery_channel": "nudge-ledger",
-                    "ping_text": message_text[:200],
-                }, ensure_ascii=False, default=str),
-                "blocked_reason": "",
-            }
-    except Exception as _nudge_exc:
-        logger.debug("heartbeat webchat: nudge push failed, fallback to direct: %s", _nudge_exc)
-
-    # Fallback: direct send (killswitch off or nudge failed)
-    message = append_chat_message(
-        session_id=session_id,
-        role="assistant",
-        content=message_text,
-    )
-    event_bus.publish(
-        "channel.chat_message_appended",
-        {
-            "session_id": session_id,
-            "message": message,
-            "source": "heartbeat-ping-bridge",
-        },
-    )
-    event_bus.publish(
-        "heartbeat.ping_delivered",
-        {
-            "tick_id": tick_id,
-            "session_id": session_id,
-            "message_id": str(message.get("id") or ""),
-            "channel": "webchat-direct",
-            "summary": summary,
-            "ping_text": message_text[:200],
-        },
-    )
-    return {
-        "status": "sent",
-        "summary": "Heartbeat delivered one bounded ping to webchat (direct, nudge bypassed).",
-        "action_type": "webchat-heartbeat-ping",
-        "artifact": json.dumps(
-            {
-                "session_id": session_id,
-                "message_id": str(message.get("id") or ""),
-                "delivery_channel": "webchat",
-                "ping_text": message_text[:200],
-            },
-            ensure_ascii=False,
-            default=str,
-        ),
-        "blocked_reason": "",
-    }
 
 
 def _dispatch_runtime_hook_events_safely(
@@ -5205,10 +4853,18 @@ def _execute_heartbeat_internal_action(
         }
     if action_type == "inspect_repo_context":
         invocations = [
+            # 3/10-2026: `tool:list-project-files` fandtes ikke i nogen TOOLS.md —
+            # hverken skabelonen eller en bruger-workspace. Kaldet svarede
+            # `not-found`, og fordi summeringen kraever mindst ét udfoert kald,
+            # blokerede det HELE handlingen (45 blokerede ticks siden 10/9).
+            # `find` er i NON_DESTRUCTIVE_EXEC_ALLOWLIST, saa en bounded listning
+            # kan udtrykkes som kommando i stedet for et capability-id der ikke
+            # eksisterer nogen steder.
             invoke_workspace_capability(
-                "tool:list-project-files",
+                "tool:run-non-destructive-command",
                 run_id=tick_id,
                 name="default",
+                command_text=f"find {PROJECT_ROOT} -maxdepth 1 -mindepth 1 | head -60",
             ),
             invoke_workspace_capability(
                 "tool:read-repository-readme",

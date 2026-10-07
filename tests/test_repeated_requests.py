@@ -51,6 +51,36 @@ def test_short_requests_are_ignored(db):
     assert RR.note_request(text="ok", session_id="s1")["status"] == "skipped"
 
 
+def test_scheduled_task_execution_is_not_counted_as_a_new_user_request(db):
+    result = RR.note_request(
+        text="Send morgenbriefing til Michelle",
+        session_id="auto-recurring-20261003",
+    )
+    assert result == {"status": "skipped", "reason": "non-human-session"}
+    assert RR.counts() == {}
+
+
+def test_human_request_starts_fresh_after_invalid_automatic_history(db):
+    first = RR.note_request(text="Send morgenbriefing til Michelle", session_id="chat-old")
+    with RR.connect() as conn:
+        conn.execute(
+            "UPDATE repeated_requests SET status=?, mention_count=5, session_ids=? "
+            "WHERE request_id=?",
+            (RR.STATUS_INVALID_SOURCE, "auto-recurring-a|auto-recurring-b", first["request_id"]),
+        )
+        conn.commit()
+
+    fresh = RR.note_request(text="Send morgenbriefing til Michelle", session_id="chat-new")
+    assert fresh["status"] == "new"
+    assert fresh["mention_count"] == 1
+    with RR.connect() as conn:
+        row = conn.execute(
+            "SELECT status, session_ids FROM repeated_requests WHERE request_id=?",
+            (first["request_id"],),
+        ).fetchone()
+    assert tuple(row) == (RR.STATUS_OPEN, "chat-new")
+
+
 def test_question_carries_the_number_that_triggered_it(db):
     q = RR.build_question(text="husk at committe", mention_count=3, session_count=2, kind="request")
     assert "3 gange" in q and "2 samtaler" in q and "husk at committe" in q
@@ -70,6 +100,24 @@ def test_it_is_only_asked_once(db, monkeypatch):
     # Fjerde gang: allerede spurgt → intet nyt spørgsmål.
     again = RR.note_and_surface(text="husk commit arbejdet nu", session_id="s3")
     assert again.get("surfaced") is not True and len(added) == 1
+
+
+def test_sessionen_foelger_med_til_koeen(db, monkeypatch):
+    """Regel-forslaget skal baere sin SESSION med videre.
+
+    Maalt 6/10-2026: `surface_matured` tabte `session_id`, og denne vej kaldes
+    fra `end_of_run_memory_consolidation` — altsaa ved RUN-SLUT, hvor
+    `current_user_id()` er tom for owner. Uden sessionen blev forslaget maerket
+    «internt» i den proaktive koe og aldrig vist til nogen.
+    """
+    added: list[dict] = []
+    monkeypatch.setattr("core.services.proactive_candidates.add_candidate",
+                        lambda **kw: (added.append(kw), {"status": "added"})[1])
+    RR.note_and_surface(text="husk at committe arbejdet", session_id="s1")
+    RR.note_and_surface(text="commit arbejdet husk", session_id="s1")
+    RR.note_and_surface(text="husk commit af arbejdet", session_id="s2")
+    assert len(added) == 1
+    assert added[0].get("session_id") == "s2", "sessionen blev tabt undervejs"
 
 
 def test_yes_writes_a_kerne_line_with_its_reason(db, tmp_path, monkeypatch):

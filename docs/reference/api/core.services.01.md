@@ -88,20 +88,20 @@ _Action Router — close the loop: signal → handling._
 | function | `_proactive_messages_today` | `()` | — | [src](../../../core/services/action_router.py#L231) |
 | function | `_last_proactive_ts` | `()` | — | [src](../../../core/services/action_router.py#L240) |
 | function | `_within_cooldown` | `()` | — | [src](../../../core/services/action_router.py#L251) |
-| function | `_send_ntfy` | `(message, *, title=…, priority=…)` | — | [src](../../../core/services/action_router.py#L258) |
-| function | `_reach_out` | `(*, message, channel=…, importance=…, source=…, bypass_nudge=…)` | Send a proactive message. Routes through nudge-broend for Jarvis gatekeeping. | [src](../../../core/services/action_router.py#L268) |
-| function | `_append_proactive` | `(entry)` | — | [src](../../../core/services/action_router.py#L367) |
-| function | `_route_warning` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L377) |
-| function | `_route_mood` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L411) |
-| function | `_route_creative` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L419) |
-| function | `route` | `(event_kind, payload=…)` | Evaluate + execute. Returns decision record. | [src](../../../core/services/action_router.py#L439) |
-| function | `_drain_eventbus` | `(limit=…)` | Pull events from eventbus without blocking; route routable ones. | [src](../../../core/services/action_router.py#L492) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — drain eventbus + route + run generative autonomy chain. | [src](../../../core/services/action_router.py#L525) |
-| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L609) |
-| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L613) |
-| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L617) |
-| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L649) |
-| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L669) |
+| function | `_send_ntfy` | `(message, *, title=…, priority=…)` | Driftsbesked gennem routeren — device-aware, med ntfy som sidste udvej. | [src](../../../core/services/action_router.py#L258) |
+| function | `_reach_out` | `(*, message, channel=…, importance=…, source=…, bypass_nudge=…)` | Send a proactive message. Routes through nudge-broend for Jarvis gatekeeping. | [src](../../../core/services/action_router.py#L279) |
+| function | `_append_proactive` | `(entry)` | — | [src](../../../core/services/action_router.py#L378) |
+| function | `_route_warning` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L388) |
+| function | `_route_mood` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L422) |
+| function | `_route_creative` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L430) |
+| function | `route` | `(event_kind, payload=…)` | Evaluate + execute. Returns decision record. | [src](../../../core/services/action_router.py#L450) |
+| function | `_drain_eventbus` | `(limit=…)` | Pull events from eventbus without blocking; route routable ones. | [src](../../../core/services/action_router.py#L503) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — drain eventbus + route + run generative autonomy chain. | [src](../../../core/services/action_router.py#L536) |
+| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L620) |
+| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L624) |
+| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L628) |
+| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L660) |
+| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L680) |
 
 ## `core/services/active_file_store.py`
 _Live "aktiv fil" — den sti Jarvis senest læste/skrev (file-tree-control-spec)._
@@ -132,14 +132,14 @@ _Aktiv Sansning — Sansernes Arkiv får autonom sansetrang._
 | function | `_compute_desire` | `(state, now)` | Beregn sansetrang (0.0-1.0) baseret på tid og kontekst. | [src](../../../core/services/active_sensing_daemon.py#L167) |
 | function | `_choose_modality` | `(state, now)` | Vælg hvilken sansemodalitet der tilfredsstilles nu. | [src](../../../core/services/active_sensing_daemon.py#L212) |
 | function | `_perform_sensing` | `(modality, state, now)` | Udfør sansningen og skriv til Sansernes Arkiv. | [src](../../../core/services/active_sensing_daemon.py#L255) |
-| function | `_sense_visual` | `(state, now)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L275) |
-| function | `_sense_audio` | `(state, now)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L304) |
-| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L356) |
-| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L408) |
-| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L460) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L481) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L489) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L494) |
+| function | `_sense_visual` | `(state, now, *, arkiver=…)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L275) |
+| function | `_sense_audio` | `(state, now, *, arkiver=…)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L311) |
+| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L384) |
+| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L439) |
+| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L496) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L517) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L525) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L530) |
 
 ## `core/services/adaptive_learning_runtime.py`
 
@@ -379,10 +379,10 @@ _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._
 | function | `_completion_besked` | `(agent_id, resultat, vurdering=…)` | Den tekst der leveres naar baggrundsbarnet lander. | [src](../../../core/services/agent_message_receipt.py#L46) |
 | function | `_foraelder_session` | `(agent_id)` | Den samtale der startede barnet, fra barnets egen kontekst — eller "". | [src](../../../core/services/agent_message_receipt.py#L65) |
 | function | `_book_completion_wakeup` | `(agent_id, resultat, vurdering=…)` | LEVER baggrundsbarnets sene svar med det samme — uden 60-sekunders-gulvet. | [src](../../../core/services/agent_message_receipt.py#L80) |
-| function | `send_med_kvittering` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, taalmodighed_s=…)` | Send beskeden, vent kort, og giv enten svaret eller en kvittering. | [src](../../../core/services/agent_message_receipt.py#L139) |
-| function | `_koer_med_taalmodighed` | `(agent_id, udfoer, taalmodighed_s, efterbehandling=…)` | Kør barnet i en tråd med forælderens kontekst; svar eller kvittér. | [src](../../../core/services/agent_message_receipt.py#L163) |
-| function | `kvittering` | `(agent_id, *, taalmodighed_s=…)` | Hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/agent_message_receipt.py#L238) |
-| function | `spawn_med_kvittering` | `(*, taalmodighed_s=…, efterbehandling=…, **spawn_kwargs)` | Spawn en agent, vent kort, returner enten resultat eller kvittering. | [src](../../../core/services/agent_message_receipt.py#L257) |
+| function | `send_med_kvittering` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, taalmodighed_s=…)` | Send beskeden, vent kort, og giv enten svaret eller en kvittering. | [src](../../../core/services/agent_message_receipt.py#L151) |
+| function | `_koer_med_taalmodighed` | `(agent_id, udfoer, taalmodighed_s, efterbehandling=…)` | Kør barnet i en tråd med forælderens kontekst; svar eller kvittér. | [src](../../../core/services/agent_message_receipt.py#L175) |
+| function | `kvittering` | `(agent_id, *, taalmodighed_s=…)` | Hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/agent_message_receipt.py#L250) |
+| function | `spawn_med_kvittering` | `(*, taalmodighed_s=…, efterbehandling=…, **spawn_kwargs)` | Spawn en agent, vent kort, returner enten resultat eller kvittering. | [src](../../../core/services/agent_message_receipt.py#L269) |
 
 ## `core/services/agent_model_fitness.py`
 _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
@@ -472,10 +472,10 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
 | function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L184) |
 | function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L229) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L470) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L514) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L642) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L646) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L493) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L539) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L667) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L671) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -505,34 +505,34 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L53) |
-| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L78) |
-| function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L111) |
-| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L136) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L400) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L409) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L422) |
-| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L429) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L490) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L514) |
-| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L530) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L941) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L969) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L997) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1001) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1039) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1244) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1288) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1297) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1336) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1366) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1381) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1400) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1417) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1436) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1458) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1498) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1515) |
+| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L54) |
+| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L79) |
+| function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L112) |
+| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L137) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L430) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L439) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L452) |
+| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L459) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L520) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L544) |
+| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L567) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1004) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1032) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1060) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1064) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1102) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1307) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1351) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1360) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1399) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1429) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1444) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1463) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1480) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1499) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1521) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1561) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1578) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -561,13 +561,13 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 | function | `detect_stale_goals` | `(*, stale_days=…)` | Find active goals with no recent progress signal. | [src](../../../core/services/agent_self_evaluation.py#L282) |
 | function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L305) |
 | function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L318) |
-| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L393) |
-| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L397) |
-| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L427) |
-| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L455) |
-| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L532) |
-| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L536) |
-| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L541) |
+| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L407) |
+| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L411) |
+| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L441) |
+| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L469) |
+| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L546) |
+| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L550) |
+| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L555) |
 
 ## `core/services/agent_skill_distiller.py`
 _Agent skill distillation — turns observed outcomes into principles._
@@ -677,6 +677,7 @@ _Small durable cache for read-only agentic tool results._
 | function | `_save` | `(records)` | — | [src](../../../core/services/agentic_tool_cache.py#L38) |
 | function | `_file_fingerprint` | `(arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L45) |
 | function | `_signature` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L57) |
-| function | `get_cached_result` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L66) |
-| function | `store_result` | `(*, tool_name, arguments, result_text, status)` | — | [src](../../../core/services/agentic_tool_cache.py#L78) |
+| function | `_is_stale` | `(rec)` | True hvis posten er ældre end _MAX_AGE_SECONDS — eller uden brugbart tidsstempel. | [src](../../../core/services/agentic_tool_cache.py#L78) |
+| function | `get_cached_result` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L92) |
+| function | `store_result` | `(*, tool_name, arguments, result_text, status)` | — | [src](../../../core/services/agentic_tool_cache.py#L106) |
 

@@ -24,6 +24,24 @@ _AGING_COMPRESS_ROUND = 12
 _AGING_COMPRESS_MIN_CHARS = 2000
 _CLEAR_PREFIX = "[tool-resultat ryddet"
 
+#: Komprimerede resultater skal OGSAA baere et maerke.
+#
+# Uden det saa naeste runde et komprimeret resultat som ualdret og
+# komprimerede det IGEN — med en LLM, saa teksten blev ny hver gang.
+# Historikken blev dermed skrevet om midt i prompten hver runde, og DeepSeeks
+# praefiks-cache froes praecis dér.
+#
+# Maalt 28/9-2026 over et doegn: 10,45 mio. af 36,5 mio. miss-tokens (29 %) laa
+# i «frosne» straekninger hvor hit ikke voksede. De startede naesten altid ved
+# runde 12 — som er `_AGING_COMPRESS_ROUND` — og varede fem runder, indtil
+# teksten var skrumpet under `_AGING_COMPRESS_MIN_CHARS` og faldt til `clear`,
+# der ER maerket. Ét run: hit frossen paa 85.504 i fem runder mens input voksede
+# fra 157k til 164k, altsaa ~375.000 miss-tokens der skulle have vaeret ~1.000.
+#
+# Maerket staar FORREST og er kort, saa det koster naesten ingen tokens og kan
+# laeses af baade vagten og Jarvis.
+_COMPRESS_PREFIX = "[tool-resultat forkortet"
+
 _MODE_ENV = "JARVIS_TOOL_RESULT_AGING_MODE"
 _VALID_MODES = ("off", "shadow", "active")
 
@@ -68,7 +86,13 @@ def _clear_placeholder(n: int) -> str:
 
 
 def _is_already_aged(content: str) -> bool:
-    return content.startswith(_CLEAR_PREFIX)
+    """Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller.
+
+    Kun `_CLEAR_PREFIX` blev genkendt foer. Et komprimeret resultat gled derfor
+    igennem hver runde og blev komprimeret paa ny — se noten ved
+    `_COMPRESS_PREFIX`.
+    """
+    return content.startswith((_CLEAR_PREFIX, _COMPRESS_PREFIX))
 
 
 def age_tool_results(
@@ -140,6 +164,9 @@ def age_tool_results(
                     except Exception:
                         replacement = ""
                     if replacement:
+                        # Maerk den, saa naeste runde lader den vaere. Uden
+                        # maerket komprimeres den igen med et nyt resultat.
+                        replacement = f"{_COMPRESS_PREFIX} fra {len(content)} tegn]\n{replacement}"
                         compressed += 1
                     else:
                         replacement = _clear_placeholder(len(content))

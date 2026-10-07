@@ -12,13 +12,20 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from core.runtime import db_approval_bridge as B
+from core.runtime import db_inbox
 from core.runtime.db import connect
 from core.services import approval_expiry_daemon as D
 
 
 @pytest.fixture(autouse=True)
-def _ren(isolated_runtime):
+def _ren(isolated_runtime, monkeypatch):
     D._nulstil_for_tests()
+    # `db_inbox._skema_klar` er en MODUL-konstant, og `isolated_runtime`
+    # reloader ikke `db_inbox`. Uden nulstillingen tror `_ensure_skema` at
+    # tabellen findes i den FORRIGE tests database, springer `CREATE TABLE`
+    # over og rammer «no such table: inbox_items» i den isolerede fil. Det er
+    # samme fælde `tests/test_inbox_state.py` allerede nulstiller for.
+    monkeypatch.setattr(db_inbox, "_skema_klar", False)
     yield
     D._nulstil_for_tests()
 
@@ -48,6 +55,37 @@ def test_familiens_medlem_kalder_faktisk_igennem(monkeypatch):
     from core.services.cluster_daemon_families import _infra_approval_expiry_live
     _infra_approval_expiry_live({})
     assert kaldt == [True]
+
+
+# ── Indbakkens fejer (5/10-2026) ─────────────────────────────────────────
+#
+# Samme fejlform som filen selv blev skrevet for, én etage nede.
+# `db_inbox.fej_udloebne()` fandtes og var grundigt testet — og blev kaldt NUL
+# steder. Målt 5/10-2026 i drift: nul poster havde nogensinde båret en frist.
+# Derfor måles KALDET her, ikke fejningen: en mekanisme uden kalder er ingen
+# mekanisme, og det var præcis hvad `expire_stale` lærte dette hus.
+
+def test_indbakkens_fejer_bliver_FAKTISK_kaldt(monkeypatch):
+    kaldt: list[bool] = []
+
+    def _falsk(*, maks: int = 500):
+        kaldt.append(True)
+        return {"status": "ok", "fejet": 0}
+
+    # Patch på MODULET: daemonen importerer navnet inde i kaldet, så det er
+    # modul-attributten der slås op — ikke en kopi bundet ved import.
+    monkeypatch.setattr("core.runtime.db_inbox.fej_udloebne", _falsk)
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert kaldt == [True], "indbakkens fejer blev ikke kaldt"
+
+
+def test_indbakkens_fejning_staar_i_resultatet(monkeypatch):
+    """En fejer hvis udbytte ikke kan læses, ser ud som en fejer der ikke
+    kørte. Tallet skal stå i `sidste_resultat()`, ligesom godkendelsernes."""
+    monkeypatch.setattr("core.runtime.db_inbox.fej_udloebne",
+                        lambda *, maks=500: {"status": "ok", "fejet": 3})
+    r = D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert r["udloebne_indbakke"] == 3
 
 
 # ── hvad den fejer, og hvad den aldrig roerer ────────────────────────────

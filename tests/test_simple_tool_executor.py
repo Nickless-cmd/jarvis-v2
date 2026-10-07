@@ -116,3 +116,57 @@ def test_parallel_propagates_contextvars_to_workers(monkeypatch):
         _SCOPE.reset(token)
     observed = {scope for (_n, _i, scope) in record}
     assert observed == {"OWNER_SCOPE"}, f"worker context not propagated: {observed}"
+
+
+# ── Indbakke-gaten i mutationspunktet (Opgave 4, 3/10-2026) ─────────────────
+
+def test_indbakkens_trin_1_varsel_NAAR_tool_resultatet():
+    """Det led der mangler oftest: koden er korrekt, ingen leverer den.
+
+    Tælleren i `inbox_items` tæller «leverede påmindelser». Blev varslet
+    beregnet i gaten og smidt væk her, ville trin 2 fyre på påmindelser der
+    aldrig nåede modellen — en gate der straffer for noget der ikke blev sagt.
+    Derfor måles DENNE grænse, ikke gatens interne svar.
+    """
+    from core.services import simple_tool_executor as ste
+    token = {"name": "edit_file", "arguments": {"path": "x"},
+             "signature": "sig-1", "soft_warn": "", "run_id": "visible-1",
+             "inbox_varsel": "[SYSTEM NOTIFICATION - NOT USER INPUT]\n"
+                             "1 post(er) venter i indbakken: wake-abc → kald `inbox`"}
+    ud = ste._finalize_call(token, {"status": "ok"}, controller=None,
+                            exec_fmt=lambda n, r: "FILEN BLEV SKREVET")
+    tekst = str(ud.get("result_text") or "")
+    assert "wake-abc" in tekst, "trin 1's paamindelse naaede ikke resultatet"
+    assert "[SYSTEM NOTIFICATION - NOT USER INPUT]" in tekst
+    # FORAN resultatet: en linje efter 112 kB jobs-output bliver aldrig laest.
+    assert tekst.index("wake-abc") < tekst.index("FILEN BLEV SKREVET")
+
+
+def test_uden_et_varsel_roeres_resultatet_IKKE():
+    """Modprøven. Uden den kunne implementeringen tilføje en tom linje foran
+    hvert eneste tool-resultat — og det ville ændre hver cache-nøgle."""
+    from core.services import simple_tool_executor as ste
+    token = {"name": "read_file", "arguments": {}, "signature": "s", 
+             "soft_warn": "", "run_id": "", "inbox_varsel": ""}
+    ud = ste._finalize_call(token, {"status": "ok"}, controller=None,
+                            exec_fmt=lambda n, r: "INDHOLD")
+    assert str(ud.get("result_text") or "") == "INDHOLD"
+
+
+def test_en_blokeret_mutation_returneres_som_gate_blocked_med_post_id():
+    """En blokering uden en adresse er en blokering man ikke kan rette."""
+    from unittest.mock import patch
+    from core.services import simple_tool_executor as ste
+    with patch("core.services.inbox_gate.evaluer_inbox_mutation",
+               return_value={"blokeret": True, "poster": ["wake-xyz"],
+                             "varsel": "naegtet: wake-xyz"}):
+        art, ud = ste._prepare_call(
+            {"function": {"name": "edit_file",
+                          "arguments": {"path": "x", "new_text": "y"}}},
+            force=True, run_id="visible-1", session_id="s1",
+            user_message="", controller=None, round_seen=set())
+    assert art == "result"
+    assert ud["status"] == "gate_blocked"
+    assert ud["result"]["gate_type"] == "inbox_gate"
+    assert ud["result"]["poster"] == ["wake-xyz"]
+    assert "wake-xyz" in ud["result_text"]

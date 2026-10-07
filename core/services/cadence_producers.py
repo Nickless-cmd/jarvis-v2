@@ -483,11 +483,28 @@ def produce_signals_from_run(
             logger.debug("release marker failed: %s", exc)
 
     # 13d. Chronicle consolidation brief (periodic)
+    #
+    # 1/10-2026: noeglen bar RUN-ID'et (`chronicle-brief:{run_id}`), saa hver
+    # eneste tur skrev en ny raekke. Maalt: 22.103 briefs med 15.468 unikke
+    # noegler — og kaeden brief → proposal → chronicle_draft-kandidat arvede
+    # run-id'et hele vejen, saa kandidaterne fik 524 unikke noegler paa 524
+    # raekker. `_upsert_signal` matcher netop paa `canonical_key`, saa dedup'en
+    # kunne pr. konstruktion aldrig fange noget.
+    #
+    # Noeglen er nu DAG + SESSION: gentagne ture samme dag i samme session
+    # merger, mens en ny dag giver en ny raekke. Det binder tilvaeksten til
+    # ~1/dag/session i stedet for ~1/tur.
+    #
+    # VIGTIGT: dette virker KUN sammen med at `briefed` foeres til
+    # `lookup_statuses` i `upsert_runtime_chronicle_consolidation_brief`
+    # (db_runtime_chronicle.py). Uden den halvdel matcher opslaget aldrig, og
+    # noegle-aendringen alene goer ingen forskel — maalt: 2 upserts med samme
+    # noegle gav 2 raekker ved status='briefed'.
     try:
         upsert_runtime_chronicle_consolidation_brief(
             brief_id=f"brief-{uuid4().hex[:10]}",
             brief_type="post_run_brief",
-            canonical_key=f"chronicle-brief:{run_id}",
+            canonical_key=f"chronicle-brief:{_now()[:10]}:{session_id or 'no-session'}",
             status="briefed",
             title=f"Brief: {user_message[:60]}",
             summary=f"Run brief: {outcome_status}, mood={user_mood}",

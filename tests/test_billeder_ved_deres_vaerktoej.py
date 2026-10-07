@@ -135,3 +135,42 @@ def test_KALDEREN_bruger_den_nye_placering():
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
     assert "_indsaet_ved_deres_vaerktoej" in kaldt, \
         "filerne haenges stadig bagpaa hele turen"
+
+
+# ── Video foelger med af sig selv (28/9-2026) ───────────────────────────────
+#
+# Opgaven hævdede at `_med_udgivne_filer` tager den nye `video`-type med
+# automatisk. Det er sandt — men en paastand er ikke en maaling, saa her er
+# den: placeringen skal vaere blok-type-blind, ellers ville video lande bagest
+# igen praecis som billederne gjorde foer 13/9.
+
+
+def _video(navn: str, tid: str = "") -> dict:
+    b = {"type": "video", "filename": navn}
+    if tid:
+        b["tool_use_id"] = tid
+    return b
+
+
+def test_video_lander_ved_SIT_vaerktoej_ikke_bagest():
+    blokke = [_prog("kald-1", "pollinations_video"), {"type": "text", "text": "faerdig"}]
+    ud = indsæt(blokke, [_video("klip.mp4", "kald-1")])
+    plads = [b.get("type") for b in ud]
+    assert plads.index("video") < plads.index("text"), (
+        "videoen stod efter prosaen — samme fejl billederne havde")
+
+
+def test_placeringen_behandler_video_og_billede_ENS():
+    """Hvis de to typer blev haandteret forskelligt, ville en ny medietype
+    skulle huskes hvert sted. Testen pinner at den IKKE skal."""
+    blokke = [_prog("kald-1", "et_vaerktoej"), {"type": "text", "text": "faerdig"}]
+    som_billede = indsæt(blokke, [_bil("f.png", "kald-1")])
+    som_video = indsæt(blokke, [_video("f.mp4", "kald-1")])
+    assert [b.get("type") for b in som_billede].index("image") == \
+           [b.get("type") for b in som_video].index("video")
+
+
+def test_en_video_UDEN_kald_id_taber_ikke_sin_plads_helt():
+    """Uden ankeret er bagest det bedste vi kan — men den maa ikke forsvinde."""
+    ud = indsæt([{"type": "text", "text": "hej"}], [_video("k.mp4")])
+    assert any(b.get("type") == "video" for b in ud)

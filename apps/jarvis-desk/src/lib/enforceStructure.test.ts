@@ -1,10 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import { enforceStructure } from './enforceStructure'
+import contract from '../../../../tests/fixtures/markdown_normalization_contract.json'
+
+describe('fælles normaliseringskontrakt med server og mobil', () => {
+  it.each(contract)('$name', ({ input, expected }) => {
+    expect(enforceStructure(input)).toBe(expected)
+    expect(enforceStructure(expected)).toBe(expected)
+  })
+})
 
 // Spejler core/services/markdown_structure.py — Jarvis emitterer ~50% af svar
-// UDEN newlines (alt inline med ` - `/`**X:**`). enforceStructure skal rekonstruere
+// UDEN newlines (bl.a. ` - `-lister). enforceStructure skal rekonstruere
 // blokstruktur så live-visningen også bliver renderbar.
 describe('enforceStructure — inline-markør-rekonstruktion', () => {
+  it('gør Jarvis’ fedmarkerede 1 · punkter til en Markdown-liste uden at ændre teksten', () => {
+    const src = '## Åbent\n\n**1 · Skill-testen.**\nDen er stadig rød.\n\n**2 · Doc-drift.** To kommentarer er forældede.'
+    expect(enforceStructure(src)).toBe('## Åbent\n\n1. **Skill-testen.**\nDen er stadig rød.\n\n2. **Doc-drift.** To kommentarer er forældede.')
+  })
+
+  it('lader samme tegn i kode og almindelig prosa være urørt', () => {
+    const src = 'Han skrev **1 · Skill-testen** i sin note.\n\n```md\n**2 · kode**\n```'
+    expect(enforceStructure(src)).toBe(src)
+  })
   it('inline bullets bliver en liste på egne linjer', () => {
     const out = enforceStructure('Her er punkterne: - et - to - tre')
     const lines = out.split('\n')
@@ -18,12 +35,33 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
     expect(enforceStructure(src)).toBe(src)
   })
 
-  it('inline **Header:** bliver egen blok (promoveret til ## header)', () => {
-    const out = enforceStructure('Intro tekst. **Hvad det er:** noget indhold bagefter')
-    // Kolon-header på egen linje promoveres til en rigtig markdown-header.
-    expect(out).toContain('## Hvad det er')
-    const lines = out.split('\n')
-    expect(lines.some((l) => l.trim() === '## Hvad det er')).toBe(true)
+  it('bevarer inline **Header:** på samme linje som værdien', () => {
+    const src = 'Intro tekst. **Hvad det er:** noget indhold bagefter'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('fed etiket i en liste forbliver en liste', () => {
+    const src = '- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('fed etiket i en nummereret liste forbliver i listen', () => {
+    const src = '1. **Status:** rettet'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it.each([
+    '- [x] **Status:** rettet',
+    '- arbejde **Status:** rettet',
+    '> **Bemærk:** vigtigt',
+    '| Felt | Værdi |\n|---|---|\n| **Status:** | ok |',
+    '## **Status:** rettet',
+    '- noget **Dette er vigtigt.** videre',
+    '> tekst - a - b - c',
+    '- Valg: a - b - c',
+    '| A | B |\n|---|---|\n| x - y - z | ok |',
+  ])('bevarer gyldig markdownblok: %s', (src) => {
+    expect(enforceStructure(src)).toBe(src)
   })
 
   it('flerords **sætning.** bliver eget afsnit', () => {
@@ -39,6 +77,36 @@ describe('enforceStructure — inline-markør-rekonstruktion', () => {
   it('kode-fence er beskyttet', () => {
     const out = enforceStructure('Kør:\n```\nfor x - y - z\n```\nog - a - b - c')
     expect(out).toContain('for x - y - z')
+  })
+  it('tilde-, lange og åbne fences beskytter koden mod strukturændring', () => {
+    const tekst = '**Vigtig overskrift**\nalfa — beta — gamma — delta'
+    for (const marker of ['~~~', '````', '```']) {
+      const lukket = `${marker}md\n${tekst}\n${marker}`
+      const aaben = `${marker}md\n${tekst}`
+      expect(enforceStructure(lukket)).toBe(lukket)
+      expect(enforceStructure(aaben)).toBe(aaben)
+    }
+  })
+
+
+  it('inline-kode med bindestreger bevares', () => {
+    const src = 'Forklaring med `a - b - c` i kode.'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('åben kode-fence bevares under streaming', () => {
+    const src = 'Tekst før\n```ts\nconst x = a - b - c'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('tilde-fence bevares', () => {
+    const src = 'Før\n~~~ts\nconst x = a - b - c\n~~~\nEfter'
+    expect(enforceStructure(src)).toBe(src)
+  })
+
+  it('lang backtick-fence kan indeholde tre backticks', () => {
+    const src = 'Før\n````md\n```\na - b - c\n```\n````\nEfter'
+    expect(enforceStructure(src)).toBe(src)
   })
 })
 

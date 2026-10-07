@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.app import app
 import apps.api.jarvis_api.routes.agent_loop as al
+from core.services.cheap_provider_runtime_adapters import _OPENAI_COMPATIBLE_PROVIDERS
 
 client = TestClient(app)
 
@@ -99,9 +100,16 @@ def test_reasoning_absent_when_flag_off(monkeypatch):
 def test_reasoning_stripped_for_non_deepseek_replay(monkeypatch):
     # Note (deviation): the route force-swaps any provider NOT in
     # _OPENAI_COMPATIBLE_PROVIDERS to deepseek before this point, so "ollama"
-    # itself is unreachable here. "opencode" (IS openai-compatible, IS NOT
-    # deepseek) stands in for the "ollama/copilot-compat style" class the plan
-    # describes — the normalization rule is binary: retain for deepseek only.
+    # itself is unreachable here.
+    #
+    # 30/9-2026: this test used to send "opencode" as the stand-in for
+    # "openai-compatible, but NOT deepseek". That premise went stale in
+    # 66a84bc4f (27/9): opencode fell out of the catalogue's
+    # _OPENAI_COMPATIBLE_PROVIDERS, so the route swapped it to deepseek — where
+    # stripping is a deliberate no-op — and the first assertion could never
+    # pass. "groq" IS in the catalogue set and IS NOT deepseek, so the
+    # normalization rule (retain for deepseek only) is actually exercised.
+    assert "groq" in _OPENAI_COMPATIBLE_PROVIDERS and "groq" != "deepseek"
     monkeypatch.setattr(al, "_settings",
                         lambda: _fake_settings(agent_step_reasoning_replay_enabled=True))
     captured = {}
@@ -125,7 +133,7 @@ def test_reasoning_stripped_for_non_deepseek_replay(monkeypatch):
     # Owner honorerer klient-sendt provider/model (rolle-aware resolution) — så en
     # non-deepseek provider tvinges nu via body, ikke via _resolve_target-monkeypatch.
     client.post("/v1/agent/step", json={"messages": payload_messages, "stream": False,
-                                        "provider": "opencode", "model": "some-model"})
+                                        "provider": "groq", "model": "some-model"})
     assistant_msg = [m for m in captured["messages"] if m.get("role") == "assistant"][-1]
     assert "reasoning_content" not in assistant_msg
     assert assistant_msg.get("tool_calls")  # tool_calls pairing preserved

@@ -40,6 +40,11 @@ export interface ChatMessage {
   content: string
   created_at: string
   parent_id?: string | null
+  /** Run'et der skrev beskeden. Serveren sender det KUN når den ved det, så
+   *  `undefined` betyder «uvist» — aldrig «et andet run». Den præcise nøgle til
+   *  at droppe bro-kopien, i stedet for de tre tekst-heuristikker nedenfor; se
+   *  `mergeServer` og `core/services/besked_run_kobling.py`. */
+  run_id?: string
   /**
    * Serverens strukturerede blokke for turen, i ÆGTE rækkefølge:
    * text → tool_use → tool_result → text → …

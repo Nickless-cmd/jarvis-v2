@@ -41,10 +41,36 @@ _VIDEO_REL = "memory/generated/video"
 _DEFAULT_MODEL = "flux"  # Options: flux, turbo, variation, anime
 _ALLOWED_MODELS = ("flux", "turbo", "variation", "anime")
 _DEFAULT_VIDEO_MODEL = "wan-fast"
+#: Maalt mod `gen.pollinations.ai/video/models` 28/9-2026. To navne i den
+#: gamle liste fandtes ikke laengere: `seedance` og `ltx-2`. Vaelger man et
+#: ukendt navn, falder koden TAVST tilbage til standardmodellen — saa hvis
+#: Jarvis bad om `ltx-2`, fik han `wan-fast` uden at nogen sagde noget, og
+#: resultatet var bare «en anden video end forventet».
+#:
+#: Fallbacken bliver staaende: et ukendt navn maa ikke vaelte en tur. Men saa
+#: skal listen til gengaeld vaere sand. Maal den igen naar du bruger den:
+#:     curl -s https://gen.pollinations.ai/video/models | jq -r '.[].aliases[]?'
 _ALLOWED_VIDEO_MODELS = (
-    "veo", "seedance", "seedance-pro", "wan", "wan-fast",
-    "grok-video-pro", "ltx-2", "p-video", "nova-reel",
+    # de syv fra den gamle liste der stadig svarer
+    "veo", "seedance-pro", "wan", "wan-fast",
+    "grok-video-pro", "p-video", "nova-reel",
+    # nyere modeller kataloget har faaet siden
+    "wan-2.7", "wan-3.0", "seedance-2.0", "seedance-2.5",
+    "minimax-h3", "grok-imagine-video-1.5", "happyhorse",
 )
+#: De modeller der FAKTISK kan tage en video ind. Maalt mod
+#: `gen.pollinations.ai/video/models` 28/9-2026: af nitten video-modeller
+#: oplyser fem `reference_videos` i deres `video_capabilities`. De oevrige
+#: fjorten kan kun start-/slutbillede. Vaelger man en af dem, ville
+#: `reference_videos` blive ignoreret TAVST, og man ville faa en helt ny video
+#: der intet havde med originalen at goere.
+_VIDEO_EDIT_MODELS = (
+    "wan-2.7", "wan-3.0", "seedance-2.0", "seedance-2.5", "minimax/minimax-h3-max",
+)
+#: `wan-2.7` er valgt som standard fordi den er den eneste af de fem med et
+#: 1080p-alias og det bredeste sæt aliaser i kataloget.
+_DEFAULT_VIDEO_EDIT_MODEL = "wan-2.7"
+
 _DEFAULT_WIDTH = 1024
 _DEFAULT_HEIGHT = 1024
 _MAX_WIDTH = 2048
@@ -280,6 +306,13 @@ def _exec_pollinations_image(args: dict[str, Any]) -> dict[str, Any]:
                 mime_type=str(result.get("content_type") or "image/jpeg"),
                 size_bytes=int(result.get("bytes") or 0),
                 attachment_id=attachment_id,
+                # Ankeret der bestemmer HVOR i traaden billedet lander.
+                # `_indsaet_ved_deres_vaerktoej` matcher det mod progress-
+                # blokkens id. Uden det havnede pollinations-billeder BAGEST,
+                # efter prosaen — praecis den fejl openrouter_image fik rettet
+                # 13/9-2026, og som blev glemt her. Fundet 28/9 mens video fik
+                # samme behandling.
+                tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
             )
         except Exception:
             pass
@@ -334,6 +367,17 @@ def generate_video(
     qs = urllib.parse.urlencode(params)
     url = f"{_VIDEO_ENDPOINT}/{encoded}?{qs}"
 
+    return _hent_video(url=url, model=model, prompt=prompt, save_dir=save_dir)
+
+
+def _hent_video(*, url: str, model: str, prompt: str,
+                save_dir: Path | None = None) -> dict[str, Any]:
+    """Hent, gem og beskriv en video. Faelles for generering og redigering.
+
+    Udskilt 28/9-2026 da `edit_video` kom til: de to bygger hver sin URL og
+    goer PRAECIS det samme derefter. En kopi ville have vaeret to steder at
+    rette naeste gang et felt skifter navn.
+    """
     gen_id = f"vid-{uuid4().hex[:12]}"
     target_dir = save_dir or _video_dir()
     try:
@@ -411,6 +455,143 @@ def generate_video(
     }
 
 
+def _registrer_video(result: dict[str, Any], args: dict[str, Any], *,
+                     hvad: str = "Video generated") -> dict[str, Any]:
+    """Goer videoen synlig: registrér den, og laeg den paa turen.
+
+    Faelles for generering og redigering — begge skal ende i traaden, og
+    ingen af dem maa gaa tabt fordi et opslag fejlede. Ved op til ti
+    minutters arbejde er det ikke en teoretisk bekymring.
+    """
+    attachment_id = ""
+    try:
+        from core.services.attachment_service import register_generated_media
+        attachment_id = register_generated_media(
+            local_path=str(result.get("path") or ""),
+            mime_type=str(result.get("content_type") or "video/mp4"),
+            source_url=str(result.get("url") or ""),
+        )
+    except Exception:  # registreringen maa ALDRIG koste en generering der tog
+        # op til ti minutter. Tomt id er aerligt: klienten faar stien.
+        attachment_id = ""
+    try:
+        from core.services.published_files import note as _note
+        _sti = str(result.get("path") or "")
+        _note(
+            str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
+            filename=_sti.replace("\\", "/").rsplit("/", 1)[-1] or "video",
+            mime_type=str(result.get("content_type") or "video/mp4"),
+            size_bytes=int(result.get("bytes") or 0),
+            attachment_id=attachment_id,
+            # Ankeret der bestemmer HVOR i traaden den lander.
+            # `_indsaet_ved_deres_vaerktoej` matcher det mod progress-blokkens
+            # id; uden det ryger videoen bagest, efter prosaen — praecis den
+            # fejl billederne havde indtil 13/9-2026.
+            tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
+        )
+    except Exception:  # samme grund: posten er hvordan videoen naar traaden,
+        # men filen findes uanset om posten kunne skrives.
+        pass
+    return {
+        "status": "ok",
+        "text": (
+            f"{hvad} ({result['bytes']} bytes, {result['content_type']}, "
+            f"model={result['model']}) saved to {result['path']}"
+        ),
+        **result,
+        "attachment_id": attachment_id,
+    }
+
+
+def edit_video(
+    *,
+    prompt: str,
+    video_url: str,
+    model: str = _DEFAULT_VIDEO_EDIT_MODEL,
+    duration: int | None = None,
+    aspect_ratio: str | None = None,
+    audio: bool = False,
+) -> dict[str, Any]:
+    """Lav en NY video ud fra en eksisterende + en instruktion.
+
+    ## Hvad der faktisk er muligt (maalt 28/9-2026)
+
+    Pollinations' video-endpoint tager `reference_videos`: «public HTTP(S)
+    video URLs for motion or style guidance». Fem af nitten video-modeller
+    oplyser den evne i deres `video_capabilities`; de oevrige fjorten kan kun
+    start- og slutbillede.
+
+    ## Den graense der betyder noget
+
+    Ordet er **public**. Udbyderen henter selv videoen over nettet. Jarvis'
+    egne videoer ligger bag `/attachments/` og `/files/`, og begge svarede
+    401 uden token da det blev maalt paa CT105 samme dag — der er ingen
+    offentlig base-URL konfigureret. Derfor kan dette vaerktoej i dag redigere
+    en video fra nettet, men IKKE en Jarvis lige selv har lavet.
+
+    Det loeses ikke her: at give en genereret fil en offentlig adresse er en
+    sikkerhedsbeslutning, ikke en teknisk detalje. Vaerktoejet siger det derfor
+    tydeligt frem for at sende en adresse udbyderen faar 401 paa — den ville
+    ellers svare med en helt ny video der intet havde med originalen at goere,
+    og det ligner et resultat.
+    """
+    if not _api_key():
+        return {
+            "status": "error",
+            "text": "pollinations_api_key missing from runtime.json — video requires auth",
+        }
+    kilde = str(video_url or "").strip()
+    if not kilde:
+        return {"status": "error", "text": "video_url required"}
+    if not kilde.lower().startswith(("http://", "https://")):
+        return {
+            "status": "error",
+            "text": (
+                "video_url skal vaere en OFFENTLIG http(s)-adresse. Udbyderen henter "
+                "selv videoen, saa en lokal sti eller en /attachments/-adresse virker "
+                "ikke — de kraever token. En video du selv lige har genereret kan "
+                "derfor ikke redigeres endnu."
+            ),
+        }
+    if model not in _VIDEO_EDIT_MODELS:
+        model = _DEFAULT_VIDEO_EDIT_MODEL
+
+    params: dict[str, str] = {"model": model, "reference_videos": kilde}
+    if duration is not None:
+        params["duration"] = str(duration)
+    if aspect_ratio:
+        params["aspectRatio"] = str(aspect_ratio)
+    if audio:
+        params["audio"] = "true"
+    encoded = urllib.parse.quote(prompt.strip(), safe="")
+    url = f"{_VIDEO_ENDPOINT}/{encoded}?{urllib.parse.urlencode(params)}"
+    return _hent_video(url=url, model=model, prompt=prompt)
+
+
+def _exec_pollinations_video_edit(args: dict[str, Any]) -> dict[str, Any]:
+    prompt = str(args.get("prompt") or "").strip()
+    if not prompt:
+        return {"status": "error", "text": "prompt required"}
+    duration = args.get("duration")
+    if duration is not None:
+        try:
+            duration = int(duration)
+        except Exception:  # en ulaeselig varighed er ikke vaerd at afvise paa —
+            # udbyderen har sin egen standard pr. model.
+            duration = None
+    result = edit_video(
+        prompt=prompt,
+        video_url=str(args.get("video_url") or args.get("video") or ""),
+        model=str(args.get("model") or _DEFAULT_VIDEO_EDIT_MODEL).lower().strip(),
+        duration=duration,
+        aspect_ratio=str(args.get("aspect_ratio") or args.get("aspectRatio") or "") or None,
+        audio=bool(args.get("audio", False)),
+    )
+    if result.get("status") == "ok":
+        return _registrer_video(result, args, hvad="Video edited")
+    return result
+
+
 def _exec_pollinations_video(args: dict[str, Any]) -> dict[str, Any]:
     prompt = str(args.get("prompt") or "").strip()
     if not prompt:
@@ -435,14 +616,11 @@ def _exec_pollinations_video(args: dict[str, Any]) -> dict[str, Any]:
         image_url=str(image_url) if image_url else None,
     )
     if result.get("status") == "ok":
-        return {
-            "status": "ok",
-            "text": (
-                f"Video generated ({result['bytes']} bytes, {result['content_type']}, "
-                f"model={result['model']}) saved to {result['path']}"
-            ),
-            **result,
-        }
+        # SAMME BEHANDLING SOM BILLEDER. Indtil 28/9-2026 gjorde denne gren
+        # ingen af de to ting billed-grenen goer: filen blev hverken
+        # registreret eller lagt paa turen. En video Jarvis lavede kunne
+        # derfor aldrig naa traaden.
+        return _registrer_video(result, args)
     return result
 
 
@@ -500,8 +678,9 @@ POLLINATIONS_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Generate a text-to-video via pollinations.ai (requires API key in "
                 "runtime.json). Returns saved MP4 path. Models: wan-fast (default, "
-                "fast), wan (higher quality), seedance/seedance-pro (ByteDance), "
-                "veo (Google), ltx-2, grok-video-pro, p-video, nova-reel. "
+                "fast), wan, wan-2.7, wan-3.0, seedance-pro, seedance-2.0, "
+                "seedance-2.5, veo (Google), minimax-h3, grok-video-pro, "
+                "grok-imagine-video-1.5, p-video, nova-reel, happyhorse. "
                 "Optionally pass image_url to seed image-to-video."
             ),
             "parameters": {
@@ -514,8 +693,10 @@ POLLINATIONS_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "model": {
                         "type": "string",
                         "description": (
-                            "wan-fast (default) | wan | seedance | seedance-pro | "
-                            "veo | ltx-2 | grok-video-pro | p-video | nova-reel"
+                            "wan-fast (default) | wan | wan-2.7 | wan-3.0 | "
+                            "seedance-pro | seedance-2.0 | seedance-2.5 | veo | "
+                            "minimax-h3 | grok-video-pro | grok-imagine-video-1.5 | "
+                            "p-video | nova-reel | happyhorse"
                         ),
                     },
                     "duration": {
@@ -536,6 +717,48 @@ POLLINATIONS_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "pollinations_video_edit",
+            "description": (
+                "Edit an EXISTING video with an instruction (video-to-video). "
+                "IMPORTANT: video_url must be a PUBLIC http(s) URL — the provider "
+                "fetches it itself. A video you just generated is stored behind "
+                "authentication and CANNOT be used yet; say so instead of guessing. "
+                "Models that support this: wan-2.7 (default), wan-3.0, seedance-2.0, "
+                "seedance-2.5, minimax/minimax-h3-max. Other video models silently "
+                "ignore the reference and return an unrelated video."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "What to change about the video.",
+                    },
+                    "video_url": {
+                        "type": "string",
+                        "description": "PUBLIC http(s) URL of the video to edit.",
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": (
+                            "wan-2.7 (default) | wan-3.0 | seedance-2.0 | "
+                            "seedance-2.5 | minimax/minimax-h3-max"
+                        ),
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "description": "Length in seconds (model-dependent).",
+                    },
+                    "aspect_ratio": {"type": "string", "description": "e.g. '16:9'."},
+                    "audio": {"type": "boolean", "description": "Generated soundtrack."},
+                },
+                "required": ["prompt", "video_url"],
             },
         },
     },

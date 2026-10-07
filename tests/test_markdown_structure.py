@@ -1,7 +1,7 @@
 """Tests for markdown_structure.normalize_markdown_structure.
 
 Baggrund: Jarvis (deepseek) emitterer inkonsistent newlines — ca. halvdelen af
-hans svar skriver alt inline med ` - `-bullets og `**X:**`-headers men UDEN
+hans svar skriver alt inline med ` - `-bullets men UDEN
 newlines, så CommonMark merger det til én lang linje ("kastet ind"). Denne
 normalizer rekonstruerer blok-struktur fra de inline-markører, server-side, før
 beskeden gemmes + sendes til alle kanaler. Idempotent på allerede-struktureret
@@ -10,6 +10,15 @@ tekst.
 from __future__ import annotations
 
 from core.services.markdown_structure import normalize_markdown_structure
+import json
+from pathlib import Path
+
+
+def test_faelles_normaliseringskontrakt():
+    fixture = Path(__file__).parent / 'fixtures' / 'markdown_normalization_contract.json'
+    for case in json.loads(fixture.read_text(encoding='utf-8')):
+        assert normalize_markdown_structure(case['input']) == case['expected'], case['name']
+        assert normalize_markdown_structure(case['expected']) == case['expected'], case['name']
 
 
 def test_inline_bullets_become_list():
@@ -27,10 +36,36 @@ def test_single_inline_dash_not_touched():
     assert normalize_markdown_structure(src) == src
 
 
-def test_inline_colon_header_becomes_block():
+def test_inline_colon_label_stays_inline():
     src = 'Intro tekst. **Hvad det er:** noget indhold her bagefter'
     out = normalize_markdown_structure(src)
-    assert "\n\n**Hvad det er:**\n\n" in out
+    assert out == src
+
+
+def test_bold_labels_inside_list_items_are_not_split_into_headers():
+    src = "- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_numbered_list_bold_label_is_not_split():
+    src = "1. **Status:** rettet"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_valid_markdown_blocks_are_not_rewritten():
+    cases = [
+        "- [x] **Status:** rettet",
+        "- arbejde **Status:** rettet",
+        "> **Bemærk:** vigtigt",
+        "| Felt | Værdi |\n|---|---|\n| **Status:** | ok |",
+        "## **Status:** rettet",
+        "- noget **Dette er vigtigt.** videre",
+        "> tekst - a - b - c",
+        "- Valg: a - b - c",
+        "| A | B |\n|---|---|\n| x - y - z | ok |",
+    ]
+    for src in cases:
+        assert normalize_markdown_structure(src) == src, src
 
 
 def test_blank_line_before_list():
@@ -59,6 +94,26 @@ def test_code_fence_protected():
     assert "- a" in out.split("```")[-1]
 
 
+def test_inline_code_is_not_rewritten_as_a_list():
+    src = "Forklaring med `a - b - c` i kode."
+    assert normalize_markdown_structure(src) == src
+
+
+def test_open_code_fence_is_not_rewritten_while_streaming():
+    src = "Tekst før\n```ts\nconst x = a - b - c"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_tilde_fence_is_not_rewritten():
+    src = "Før\n~~~ts\nconst x = a - b - c\n~~~\nEfter"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_long_backtick_fence_can_contain_triple_backticks():
+    src = "Før\n````md\n```\na - b - c\n```\n````\nEfter"
+    assert normalize_markdown_structure(src) == src
+
+
 def test_real_cowork_message_gets_list():
     # Den faktiske besked-id 63546 fra databasen (forkortet) — én lang linje.
     src = (
@@ -70,7 +125,8 @@ def test_real_cowork_message_gets_list():
     out = normalize_markdown_structure(src)
     bullets = [ln for ln in out.split("\n") if ln.startswith("- ")]
     assert len(bullets) >= 3
-    assert "\n\n**Hvad det er:**\n\n" in out
+    assert "**Hvad det er:**" in out
+    assert "\n\n**Hvad det er:**\n\n" not in out
 
 
 def test_multiword_bold_statement_becomes_paragraph():
@@ -140,3 +196,43 @@ def test_tabel_med_hele_raekker_uden_linjeskift():
     ud = normalize_markdown_structure(t)
     assert "| Værktøj | Udfald |\n| --- | --- |\n| `bash` | skrev filen |\n" in ud
     assert "| `get_weather` | Taastrup |\n| `search` | fundet |" in ud
+
+
+# ── Prosa-splitningen er en killswitch, ikke en lov ────────────────────────
+
+_LANG = (
+    "Vi maalte cache-hit paa alle ture i dag og fandt en median paa 110,8 tokens "
+    "i sekundet. Det er markant hurtigere end den kalibrering der laa til grund. "
+    "Derfor blev hver maling til tre-fire ord ad gangen i stedet for flydende tekst."
+)
+
+
+def test_lang_prosalinje_staar_som_den_kom_naar_splitten_er_slukket(monkeypatch):
+    """Standard FRA. Jarvis byggede splitten 1/10-2026 mod 227 flade blokke,
+    men den koerer KUN i udfalds-stien — saa teksten du saa flyde som ét afsnit
+    blev til tre da turen sluttede. Det er ikke ny tekst; det er den du allerede
+    havde laest der flytter sig."""
+    from core.services import markdown_structure as ms
+    monkeypatch.setattr(ms, "_split_slaaet_til", lambda: False)
+    assert len(_LANG) > 200
+    assert "\n\n" not in ms.normalize_markdown_structure(_LANG)
+
+
+def test_splitten_virker_stadig_naar_den_taendes(monkeypatch):
+    """Koden slettes ikke. Jarvis' maaling er ikke forkert — den er bare ikke
+    det Bjoern vil have som standard, og én vaerdi i runtime.json taender den."""
+    from core.services import markdown_structure as ms
+    monkeypatch.setattr(ms, "_split_slaaet_til", lambda: True)
+    ud = ms.normalize_markdown_structure(_LANG)
+    assert ud.count("\n\n") >= 2
+
+
+def test_porten_siger_nej_naar_den_ikke_kan_laeses(monkeypatch):
+    """At lade teksten staa er den uskadelige retning; at omskrive den uden at
+    vide om vi maatte er det ikke."""
+    from core.services import markdown_structure as ms
+
+    def sprang():
+        raise OSError("runtime.json kunne ikke laeses")
+    monkeypatch.setattr("core.runtime.settings.load_settings", sprang)
+    assert ms._split_slaaet_til() is False

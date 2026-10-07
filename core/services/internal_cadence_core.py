@@ -166,3 +166,29 @@ def register_core_producers(register_producer: Callable[[ProducerSpec], None]) -
         run_fn=_run_keymaker,
         priority=4,
     ))
+
+    # Baggrundsjob-vagten (Bjoern 6/10-2026: «han boer ikk skulle saette et
+    # wakeup ved baggrundsopgaver»). Et faerdigt job melder sig selv — i
+    # inboxen hvis han arbejder, ellers med en vaekning. Se
+    # `baggrundsjob_vagt` for hvorfor den ikke har sin egen «er han
+    # aktiv»-logik.
+    #
+    # `cooldown_minutes=2`: et build man venter paa maa ikke ligge og vente paa
+    # en kadence. Pollet er ÉT bro-kald med én shell-kommando, saa prisen er
+    # lav — men den koster hans maskine noget, saa den er ikke lavere end to
+    # minutter.
+    #
+    # `visible_grace_minutes=0` MED VILJE: det er praecis under en synlig tur at
+    # inbox-vejen er den rigtige, og en grace ville udskyde meldingen til efter
+    # han var gaaet.
+    def _run_baggrundsjob_vagt(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.baggrundsjob_vagt import tick_baggrundsjob_vagt
+        return tick_baggrundsjob_vagt(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="baggrundsjob_vagt",
+        cooldown_minutes=2,
+        visible_grace_minutes=0,
+        run_fn=_run_baggrundsjob_vagt,
+        priority=7,
+    ))

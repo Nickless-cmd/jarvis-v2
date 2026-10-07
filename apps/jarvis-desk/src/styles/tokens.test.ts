@@ -167,16 +167,18 @@ describe('design-tokens', () => {
     const miljø = læs('environment-inspector.css')
     const regel = miljø.match(/^\.env-panel \{([\s\S]*?)\}/m)?.[1] ?? ''
     expect(regel, '.env-panel findes ikke i environment-inspector.css').toBeTruthy()
-    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin
-  // mellem dem (#1A1A19 → #252524) — det er sådan jobs-kortene træder frem.
+  // mellem dem (#20201F → #252524) — det er sådan jobs-kortene træder frem.
+  // 3/10-2026: panelet flyttede fra --bg-2 til --overlay-bg (Bjørn: sticky-
+  // notens grå skal hele stakken have), så det øverste trin er nu #20201F.
   it('kort ligger over deres panel, ikke i det', () => {
     const kort = app.match(/^\.jobs-kort \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     const panel = app.match(/^\.jobs-panel \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     expect(kort.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-3')
-    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--overlay-bg')
   })
 
   it('holder tekst og accent læsbare i mørkt tema', () => {
@@ -324,15 +326,24 @@ describe('vinduets egen titelbjælke', () => {
     expect(vindueRegel).not.toMatch(/--sidebar-bredde:/)
   })
 
-  it('HELE fladen gør plads til skinnen — ikke kun headeren', () => {
-    // Første udgave paddede kun headeren, og skinnen lå oven på samtalen:
-    // «Redigerede 2 filer»-kortet blev klippet midt over af jobs-ruden.
+  it('samtalen gør plads til skinnen — headeren står stille', () => {
+    // Bjørn 3/10-2026: «når de åbner flytter de ikonerne i header til venstre,
+    // det skal de ikk.. det skal være som når miljø panelet er åben». Headeren
+    // er en titellinje over stakken og skal ikke rykke sig. Fladerne nedenfor
+    // skal STADIG gøre plads — uden dem lå skinnen oven på samtalen
+    // («Redigerede 2 filer»-kortet blev klippet midt over af jobs-ruden).
     // Find den regel der FAKTISK gør plads — ikke en kommentar der nævner
     // klassen. Uden det matchede regexen kommentaren lige over reglen.
-    const regel = app.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
-    for (const flade of ['.chatview-head', '.transcript', '.composer-area']) {
+    // Kommentarerne fjernes FØRST: regexen kan ikke skelne en selektor fra en
+    // kommentar der nævner klassen — den fælde stod her selv, for kommentaren
+    // ovenfor nævner .chatview-head netop for at forklare hvorfor den IKKE er
+    // med i reglen.
+    const udenKommentar = app.replace(/\/\*[\s\S]*?\*\//g, '')
+    const regel = udenKommentar.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
+    for (const flade of ['.transcript', '.composer-area']) {
       expect(regel, `${flade} gør ikke plads`).toContain(flade)
     }
+    expect(regel, 'headeren skal IKKE gøre plads — så rykker ikonerne sig').not.toContain('.chatview-head')
   })
 
   it('headeren ER titellinjen — pladsen til knapperne regnes ÉT sted', () => {
@@ -358,9 +369,13 @@ describe('vinduets egen titelbjælke', () => {
     expect(knap).toContain('border-radius: 50%')
   })
 
-  it('med aaben skinne goer headeren plads til BAADE knapper og skinne', () => {
-    const r = app.match(/body\.egen-ramme \.har-skinne \.chatview-head \{([^}]*)\}/)?.[1] ?? ''
-    expect(r).toContain('max(var(--vk-plads), calc(var(--skinne-bredde) + 16px))')
+  it('headeren gør IKKE plads til skinnen — kun til vinduesknapperne', () => {
+    // 3/10-2026: undtagelsen der gav headeren skinnens bredde er fjernet, så
+    // ikonerne står stille når en rude åbner. Vinduesknapperne beholder deres
+    // plads gennem den almindelige egen-ramme-regel.
+    expect(app).not.toMatch(/body\.egen-ramme \.har-skinne \.chatview-head \{/)
+    const head = [...app.matchAll(/body\.egen-ramme \.chatview-head \{([^}]*)\}/g)].map((m) => m[1]).join(' ')
+    expect(head).toContain('padding-right: var(--vk-plads)')
   })
 
   it('en flade med header har ingen ekstra bjaelke og intet skub', () => {
@@ -514,11 +529,17 @@ describe('animationer under streaming maler ikke hele samtalen (19/9-2026)', () 
     expect(kf).toContain('opacity')
     expect(kf).not.toMatch(/box-shadow|background|width|height|filter/)
   })
-  it('shimmer har sit eget lag, og sweepet er uændret (2.25s)', () => {
+  it('shimmer har sit eget lag, og kører DSH-rytmen', () => {
+    // 2,25 s var Claude Desktops tal, målt 1:1. Bjørn valgte DSH's rytme
+    // 30/9-2026 — «jeg vil gerne have der shimmer» — så pinnen flytter med
+    // vilje, ikke ved drift: 300 ms opstart, 1 s sweep, 500 ms hvile.
     const r = app.match(/^\.shimmer \{([^}]*)\}/m)?.[1] ?? ''
     expect(r).toContain('will-change: transform')
     expect(r).toContain('contain: paint')
-    expect(r).toContain('shimmer-sweep 2.25s linear infinite')
+    expect(r).toContain('shimmer-sweep 1.5s linear infinite 300ms')
+    // 15° fra lodret. Båndene står vinkelret på gradientens retning, så
+    // 90deg er lodret og 105deg er de 15°.
+    expect(r).toMatch(/linear-gradient\(105deg/)
   })
 })
 
@@ -530,5 +551,140 @@ describe('headerens menuer ligger over højre-ruderne (19/9-2026)', () => {
     const stak = Number(app.match(/\.code-right-stack \{[\s\S]*?z-index: (\d+);/)?.[1] ?? 999)
     expect(z).toBeGreaterThan(stak)
     expect(z).toBeGreaterThan(30)
+  })
+})
+
+/**
+ * Diff-tallene i runde-linjerne (3/10-2026).
+ *
+ * Bjørn: «diff +/- plus tal skal være større det er meget småt og så kraftigere
+ * grøn/rød farve altså i runde linjerne».
+ *
+ * To ting gjorde dem svage, og de skal måles hver for sig:
+ *   1. `opacity: .82` på `.rv-diffstat` vaskede farven ud uanset hvilken
+ *      grøn/rød der blev sat — den sad på FORÆLDREN.
+ *   2. Farven kom fra `--ok`/`--error-fg`, som er dæmpede.
+ *
+ * Testen låser at farven sættes på BØRNENE og ikke på forælderen. Sætter man
+ * `color` på `.rv-diffstat` selv, overskriver den ikke børnenes — og så ser
+ * reglen rigtig ud i en diff og gør ingenting på skærmen.
+ */
+describe('diff-tal i runde-linjerne er store og kraftigt farvede (3/10-2026)', () => {
+  const rv = læs('raekkevisning.css')
+  const regel = rv.match(/\.raekkevisning \.rv-diffstat \{([^}]*)\}/)?.[1] ?? ''
+
+  it('findes overhovedet', () => {
+    expect(regel, '.rv-diffstat-reglen blev ikke fundet').toBeTruthy()
+  })
+
+  it('tallene er større end de 12px de var', () => {
+    const px = Number(regel.match(/font-size:\s*([\d.]+)px/)?.[1] ?? 0)
+    expect(px, `font-size er ${px}px`).toBeGreaterThanOrEqual(13)
+  })
+
+  it('opaciteten vasker ikke farven ud', () => {
+    expect(regel).toMatch(/opacity:\s*1\b/)
+    expect(regel).not.toMatch(/opacity:\s*\.8/)
+  })
+
+  it('grøn og rød sættes på BØRNENE — ikke på forælderen', () => {
+    expect(rv).toMatch(/\.raekkevisning \.rv-diffstat \.git-add \{ color: var\(--rv-tilf\)/)
+    expect(rv).toMatch(/\.raekkevisning \.rv-diffstat \.git-del \{ color: var\(--rv-fjern\)/)
+    // En color på forælderen ville ikke slå børnenes, og så stod der to steder
+    // der bestemte. Den må ikke snige sig ind.
+    expect(regel).not.toMatch(/^\s*color:/m)
+  })
+
+  it('farverne bor ét sted og er defineret i BEGGE temaer (4/10-2026)', () => {
+    // 4/10: `--rv-tilf`/`--rv-fjern` blev ALIASER, så miljø-feltet og
+    // «Redigerede N filer» kan læse samme grønne/røde (Bjørn). Værdien skal
+    // derfor findes som hex i tokens.css — i begge temaer — og aliaset skal
+    // pege derhen. Stod hex'en tilbage her, kunne de to drive fra hinanden.
+    const moerk = rv.match(/\.raekkevisning \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    const lys = rv.match(/:root\[data-theme='light'\] \.raekkevisning,[\s\S]*?\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    for (const [navn, blok] of [['mørkt', moerk], ['lyst', lys]] as const) {
+      expect(blok, `${navn} tema-blok mangler`).toBeTruthy()
+      expect(blok, `--rv-tilf mangler i ${navn} tema`).toMatch(/--rv-tilf:\s*var\(--diff-add\)/)
+      expect(blok, `--rv-fjern mangler i ${navn} tema`).toMatch(/--rv-fjern:\s*var\(--diff-del\)/)
+    }
+    const tokens = læs('tokens.css')
+    for (const v of ['--diff-add', '--diff-del']) {
+      const antal = [...tokens.matchAll(new RegExp(`^\\s*${v}:\\s*#[0-9a-f]{6}`, 'gmi'))].length
+      expect(antal, `${v} skal være en hex-værdi i mindst to temaer`).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  // 3/10 blev overstyringen scopet, så miljø-panelet beholdt de dæmpede
+  // `--ok`/`--error-fg`. 4/10-2026 vendte Bjørn det: «diff visning i miljø
+  // feltet skal have samme rød og græn som i rundelinjerne». Nu skal BEGGE
+  // læse samme token — det er præcis det vagten holder fast, så de ikke
+  // glider fra hinanden igen ved en senere rettelse.
+  it('miljø-panelet og runde-linjerne deler farven (4/10-2026)', () => {
+    expect(rv).not.toMatch(/^\.git-add/m)
+    expect(læs('environment-inspector.css')).toMatch(/\.git-add \{ color: var\(--diff-add\)/)
+    expect(læs('environment-inspector.css')).toMatch(/\.git-del \{ color: var\(--diff-del\)/)
+  })
+
+  it('alle fire visninger læser den samme grønne og røde (4/10-2026)', () => {
+    // Bjørn pegede på tre steder (miljø-feltet, «Redigerede N filer», chatten)
+    // og DiffView er det fjerde der tegner en diff. Alle fire skal læse
+    // `--diff-add`/`--diff-del`: de ses aldrig side om side, så en der sakker
+    // bagud bliver først synlig når nogen kigger efter.
+    const cssApp = læs('app.css')
+    const miljø = læs('environment-inspector.css')
+    expect(cssApp, 'DiffView-tallet').toMatch(/\.diffview-add \{ color: var\(--diff-add\)/)
+    expect(cssApp, 'DiffView-tallet').toMatch(/\.diffview-del \{ color: var\(--diff-del\)/)
+    expect(cssApp, 'diff-linjens baggrund').toMatch(/\.diffline-add \{ background: color-mix\(in srgb, var\(--diff-add\)/)
+    expect(cssApp, 'diff-linjens baggrund').toMatch(/\.diffline-del \{ background: color-mix\(in srgb, var\(--diff-del\)/)
+    expect(miljø).toMatch(/\.git-add \{ color: var\(--diff-add\)/)
+    expect(miljø).toMatch(/\.git-del \{ color: var\(--diff-del\)/)
+    expect(rv).toMatch(/--rv-tilf:\s*var\(--diff-add\)/)
+    expect(rv).toMatch(/--rv-fjern:\s*var\(--diff-del\)/)
+  })
+})
+
+describe('railens streger — hvile, hover og den nederste (4/10-2026)', () => {
+  // VÆRNET ER VENDT, og det er med vilje.
+  //
+  // 3/10-2026 lød beslutningen: «den nederste pind er den der er igang — kan du
+  // lave den lidt længere end de andre over?» Dengang var den aktive markør en
+  // teal streg på 17px, og værnet målte at den nederste var mindst 8px bredere
+  // end DEN. Forskellen var pointen: i hvile skulle man kunne se hvor samtalen
+  // sluttede.
+  //
+  // 4/10-2026 sendte Bjørn fem skærmbilleder og sagde «1:1». Designet vendte:
+  // den aktive markør er ikke længere teal og ikke længere lang — den er hvid
+  // og 13px som de andre, og skiller sig ud ved LYS. Den nederste er 18px:
+  // længere end en almindelig (13), kortere end hover (26), så den ikke
+  // konkurrerer med den markering der følger musen. Målt mod den AKTIVE giver
+  // den gamle sætning ingen mening længere — den ville kræve at den nederste
+  // var bredere end noget der ikke er bredt.
+  //
+  // Værnet måler derfor de tre ting der stadig gælder: man skal kunne SE den i
+  // hvile, den må ikke forveksles med hover, og den må ikke kunne flytte sig.
+  const af = (re: RegExp) => Number(app.match(re)?.[1] ?? 0)
+  const sidste = af(/^\.msg-rail-row\.er-sidste \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const hover = af(/^\.msg-rail-row:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
+  const almindelig = af(/^\.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
+  const sidsteHover = af(/^\.msg-rail-row\.er-sidste:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
+
+  it('reglerne findes', () => {
+    expect(sidste, 'er-sidste-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(hover, 'hover-reglen mangler i app.css').toBeGreaterThan(0)
+    expect(almindelig, 'den almindelige streg mangler i app.css').toBeGreaterThan(0)
+  })
+
+  it('den nederste er længere end en almindelig streg — den skal ses i hvile', () => {
+    expect(sidste).toBeGreaterThan(almindelig)
+  })
+
+  it('men kortere end hover-markeringen — de to må ikke forveksles', () => {
+    expect(hover, 'hover-reglen skal være den længste').toBeGreaterThan(sidste)
+  })
+
+  it('og den nederste VOKSER ikke når musen er over den', () => {
+    // Bjørn 4/10-2026: «den nederste grønne streg skal ikke kunne flytte sig».
+    // Den stod på 26px = samme mål som hover, så man kunne ikke se forskel.
+    expect(sidsteHover, 'er-sidste:hover-override mangler').toBe(sidste)
   })
 })

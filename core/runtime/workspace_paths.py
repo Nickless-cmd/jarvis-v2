@@ -120,3 +120,86 @@ def _user_id_to_workspace_name(user_id: str) -> str:
         "Registrér brugeren (scripts/users_cli.py add eller register_user), eller "
         "pass et eksplicit user_id."
     )
+
+
+def rent_mappe_eller_filnavn(navn: str) -> str:
+    """Et BLOT navn — ingen sti, ingen `..`. Tom streng når det ikke er det.
+
+    `Path(x).name` alene er IKKE nok, og det er den fælde der gør funktionen
+    nødvendig. Målt 4/10-2026:
+
+        Path("..").name == ".."      → en navne-lighed slipper `..` igennem
+        Path(".").name  == ""        → men `.` falder
+
+    En rute der kun sammenlignede med `.name` lod altså `ws=..` passere og
+    slog op i `files/u/../<fil>` — altså den gamle fælles mappe. Min egen
+    isolations-test fandt det; tjekket havde set rigtigt ud.
+
+    Derfor ét sted. Ruten, signeringen, værktøjet og migreringen spurgte før
+    hver for sig, og fire kopier af en sikkerhedsregel driver fra hinanden.
+    """
+    rent = str(navn or "").strip()
+    if not rent or rent in (".", "..") or rent != Path(rent).name:
+        return ""
+    return rent
+
+
+def published_files_dir(user_id: str | None = None, *, opret: bool = False) -> Path:
+    """Hvor ÉN brugers udgivne filer bor. `~/.jarvis-v2/files/u/<workspace>/`.
+
+    ## Hvorfor den findes (Bjørn 4/10-2026: «filer skal være per bruger»)
+
+    Indtil nu lå alt i én flad `files/`-mappe: målt samme dag 151 filer, som
+    enhver autentificeret husstandsbruger kunne hente med sit eget token.
+    `GET /files/{navn}` slog op direkte i mappen uden at spørge hvem der
+    spurgte. De andres workspaces er krypterede netop for at folk ikke kan
+    læse hinandens ting; udgivne filer var et hul i den linje.
+
+    ## Hvorfor `files/u/` og ikke `files/<workspace>/`
+
+    `files/` har allerede syv undermapper fra eksperimenter — `phase5`,
+    `phase6`, `phase7`, `phase7b`, `icons`, `latency`, `tts-samples`. Et
+    workspace der en dag kom til at hedde det samme ville smelte sammen med
+    en af dem. `u/` gør navnerummet entydigt, og det koster én sti-del.
+
+    ## Hvorfor IKKE inde i selve workspacet
+
+    `workspaces/<navn>/` er det oplagte sted, og det er forkert her:
+    `workspace_crypto` krypterer workspace-filer når
+    `JARVISX_ENCRYPT_WORKSPACES=1` (målt 4/10: slået fra i dag). Blev den
+    slået til, ville en udgiven PDF blive krypteret på skrivning og serveret
+    som kryptotekst. Afgrænsningen her er en sti-regel, ikke en fil-form.
+
+    Rejser `NoUserContextError` når brugeren ikke kan afgøres — med vilje, og
+    af samme grund som `workspace_dir`: et tavst fald til en fælles mappe er
+    præcis den lækage denne funktion lukker.
+    """
+    navn = _user_id_to_workspace_name(user_id or "") if user_id else None
+    if navn is None:
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id()
+        if not uid:
+            raise NoUserContextError(
+                "published_files_dir() uden user_id og uden current_user_id(). "
+                "Kalderen skal enten sende user_id= eller koere inde i en "
+                "user_context()/set_context()-blok."
+            )
+        navn = _user_id_to_workspace_name(uid)
+    sti = _jarvis_home() / "files" / "u" / navn
+    if opret:
+        sti.mkdir(parents=True, exist_ok=True)
+    return sti
+
+
+def published_file_path(filnavn: str, user_id: str | None = None,
+                        *, opret_mappe: bool = False) -> Path:
+    """Den fulde sti til ÉN brugers fil. Rejser ValueError på en sti.
+
+    `Path(x).name` ÉT sted, så kalderen ikke kan have sin egen mening om hvad
+    der er et filnavn. Tre steder ville før have hver sin rensning — ruten,
+    værktøjet og signeringen — og den slags driver fra hinanden.
+    """
+    rent = rent_mappe_eller_filnavn(Path(str(filnavn or "").strip()).name)
+    if not rent:
+        raise ValueError(f"ugyldigt filnavn: {filnavn!r}")
+    return published_files_dir(user_id, opret=opret_mappe) / rent

@@ -127,9 +127,15 @@ export const MessageBubble = memo(function MessageBubble({
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const markdownStyles = useStyles(makemarkdownStyles)
+  const streaming = message.id.startsWith('stream-')
   // Blokke frem for én stor markdown: under streaming parses kun den sidste
   // blok igen (målt 19/9-2026: 6 parses og ~1.260 tegn pr. delta før).
-  const blokke = useMemo(() => delIBlokke(enforceStructure(message.content)), [message.content])
+  // Et færdigt svar skal parses som ét dokument, så referencelinks og andre
+  // konstruktioner på tværs af afsnit kan opløses (som i desk).
+  const blokke = useMemo(() => {
+    const md = enforceStructure(message.content)
+    return streaming ? delIBlokke(md) : [md]
+  }, [message.content, streaming])
   const { config } = useAuthOptional()
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
@@ -164,7 +170,6 @@ export const MessageBubble = memo(function MessageBubble({
   // rå tekst. Så virker træk hen over alt, indrykningen står som den er, og
   // Android giver selv Markér alt.
   const [markering, setMarkering] = useState(false)
-  const streaming = message.id.startsWith('stream-')
   // Kilderne kommer fra hvad han FAKTISK slog op — tool_use-inputs og
   // tool_result-indhold — ikke fra om han tilfældigvis citerede adressen i
   // svaret. Før dette forsvandt de i det sekund streamen stoppede, fordi den
@@ -173,11 +178,15 @@ export const MessageBubble = memo(function MessageBubble({
     ? []
     : kilderPrDomaene(kilderFraBlokke(kildeBlokke, message.content))
 
-  // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
-  const enter = useRef(new Animated.Value(0)).current
+  // Et færdigt svar afløser en live-boble med et nyt id. Hvis den får samme
+  // mount-animation, blinker hele teksten væk netop når streamen stopper.
+  const animateEntrance = streaming || isUser
+  const enter = useRef(new Animated.Value(animateEntrance ? 0 : 1)).current
   useEffect(() => {
-    Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
-  }, [enter])
+    if (animateEntrance) {
+      Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
+    }
+  }, [enter, animateEntrance])
   const enterScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] })
 
   // Kun assistentens EGNE filer. Dine uploads har deres egen række over boblen
@@ -543,8 +552,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
 // Fuld mørk-tema markdown-styling. Uden dette defaulter kode-blokke til lys
 // baggrund (= hvid boks med næsten-hvid tekst) og afsnit klistrer sammen.
 const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
-  body: { color: tokens.color.fg1, fontSize: 16.5, lineHeight: 26 },
-  paragraph: { marginTop: 0, marginBottom: tokens.spacing.sm },
+  // `body` bliver en View i react-native-markdown-display og kan ikke give
+  // linjehøjde videre til Text. Det er textgroup, der faktisk ombryder prosa.
+  body: {},
+  textgroup: { color: tokens.color.fg1, fontSize: 16, lineHeight: 22, includeFontPadding: false },
+  paragraph: { marginTop: 0, marginBottom: 10 },
   text: { color: tokens.color.fg1 },
   strong: { color: tokens.color.fg1, fontWeight: '700' },
   em: { fontStyle: 'italic' },

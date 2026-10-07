@@ -35,10 +35,117 @@ VISIBLE_MAX_TOOLS = 48
 # prompten og kataloget ellers peger paa. `explore` er det tydeligste tilfaelde:
 # scope tillod det, kataloget naevnte det, prompten anbefalede det — og pruneren
 # fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
+#: Vaerktoejer hvis FRAVAER er en adfaerdsregression, ikke en latens-optimering:
+#: tab af stemme, af godkendelsesvej, af hukommelse. Listen stod foer KUN i
+#: `scripts/regenerate_tier1.py` og blev unioneret ind i `TIER_1_ALWAYS_ON` ved
+#: regenerering — men Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+#: ankomstraekkefoelge, saa gulvet var et krav ingen haandhaevede.
+#:
+#: Maalt 30/9-2026: 7 af de 28 registrerede gulv-navne blev IKKE sendt, heriblandt
+#: `memory_upsert_section` med **157 kald** paa 30 dage. Byttet for at faestne
+#: gulvet koster syv pladser, hvoraf fem har NUL kald i samme periode:
+#:
+#:   ud:  list_scheduled_tasks 7x, read_model_config 6x, og fem med 0 kald
+#:   ind: memory_upsert_section 157x, git_log 22x, git_status 15x, git_diff 3x
+#:
+#: `propose_git_commit` stod i gulvet men findes ikke i kataloget — fjernet her
+#: frem for at baere et navn ingen kan kalde.
+SAFETY_FLOOR: tuple[str, ...] = (
+    # Brugervendt kommunikation — mist aldrig hans stemme
+    "notify_user", "send_webchat_message", "send_ntfy",
+    # Godkendelse og politik
+    "approve_proposal", "propose_source_edit", "list_proposals",
+    # Selvindsigt
+    "read_self_state", "read_mood", "read_self_docs", "read_chronicles",
+    # Hukommelse
+    "search_memory", "recall_memories", "memory_upsert_section",
+    "memory_check_duplicate", "recall_before_act",
+    # Filer
+    "read_file", "write_file", "edit_file", "search", "find_files", "bash",
+    # Web
+    "web_fetch", "web_search",
+    # Planlaegning
+    "schedule_task", "list_initiatives",
+    # Git
+    "git_status", "git_log", "git_diff",
+)
+
+
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
+    # Side-opgaver skal kunne registreres og afsluttes i samme run, også når
+    # den stabile synlige værktøjsliste rammer loftet.
+    "flag_side_task", "activate_side_task", "dismiss_side_task",
+    # ── De fire hyppigst HENTEDE (30/9-2026, maalt over 30 dage) ───────────
+    #
+    # Alle fire stod allerede i TIER_1_ALWAYS_ON — og blev alligevel hentet
+    # 76 gange, fordi Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+    # ankomstraekkefoelge: 77 af de 118 naaede aldrig arrayet. Medlemskab af
+    # Tier 1 er altsaa ingen garanti; denne liste er.
+    #
+    # Prisen for at hente dem er maalt tre gange: én ny definition i arrayet
+    # koster 8.704 tokens mod DeepSeeks API, fordi arrayet ligger foer hele
+    # samtalen i praefikset. 76 hentninger paa 30 dage er ~660.000 tokens.
+    #
+    #   send_discord_dm          28 hentninger
+    #   record_sensory_memory    18   (stod ikke engang i Tier 1)
+    #   send_webchat_message     15
+    #   recall_sensory_memories  15
+    "send_discord_dm",
+    "record_sensory_memory",
+    "send_webchat_message",
+    "recall_sensory_memories",
+    # Vejen til de hentede vaerktoejer (30/9-2026). Uden den i arrayet kan et
+    # hentet vaerktoej ikke kaldes — DeepSeek afviser et vaerktoej der ikke er
+    # deklareret — og saa er den eneste vej tilbage at flette definitionen ind
+    # i arrayet, hvilket koster hele samtalen. Se `kaldt_vaerktoej.py`.
+    "call_loaded_tool",
+    # ── FAST fra 3/10-2026: `skill_invoke` var BETINGET, og det kostede ──
+    #
+    # Pinnet 15/9 betinget af et skill-match, med den begrundelse at «en plads
+    # ud af 48 ikke er gratis»: uden match ville `skill_invoke` vaere et
+    # vaerktoej uden et navn at give det.
+    #
+    # Betingelsen gjorde arrayet BESKED-afhaengigt, og arrayet ligger foer hele
+    # samtalen i praefikset. Det var usynligt indtil 3/10, fordi taersklen stod
+    # paa 0,70 og matchede naesten alt — «hej hvordan går det?» matchede
+    # `ui-ux-pro-max`. Pinnet var altsaa i praksis fast, og
+    # `test_visible_tool_pool_is_cache_stable_across_user_messages` var groen
+    # af den FORKERTE grund.
+    #
+    # Da Jarvis 3/10 hævede gulvet til primaer-taersklen (`ef8f7b0d5` — og det
+    # var rigtigt; baandet var 88 % stoej), blev en naesten-konstant en aegte
+    # variabel: en hilsen pinner ikke, en kodebesked goer, og arrayet skifter
+    # mellem to ture. Vagten blev roed, og det var den foerste aegte maaling.
+    #
+    # Prisen er maalt tre gange og staar oeverst i denne liste: én aendring i
+    # arrayet koster alt fra aendringspunktet og frem — 92 % -> 26 % hit,
+    # +419 tegn -> 62.672 miss-tokens. Én plads ud af 48 er billigere end hele
+    # praefikset hver gang en besked krydser taersklen anderledes end den
+    # forrige. Derfor: fast.
+    "skill_invoke",
     "scout_agent",
-    "spawn_agent_task",
+    # `spawn_agent_task` FJERNET 30/9-2026 (Bjoern: «den hedder scout idag»).
+    #
+    # Den var det dyreste enkeltvaerktoej i arrayet — 2.510 tegn, ~581 tokens
+    # i HVER prompt — og den blev pinnet ind her fordi kataloget og prompten
+    # pegede paa den, samme grund som `explore`.
+    #
+    # 23/9-2026 blev den ogsaa sat i INVENTARET, netop fordi han greb
+    # `scout_agent` «fordi det var den han kunne SE». Det indgreb er nu maalt,
+    # en uge efter:
+    #
+    #     scout_agent        35 kald (15 af dem siden 23/9)
+    #     spawn_agent_task    0 kald — ingen taelling overhovedet i 30 dage
+    #
+    # Indgrebet virkede ikke. Han bruger scout, og scout BLIVER i inventaret
+    # (verificeret i det byggede katalog, og en vagt holder det fast). Den
+    # fjernede kan stadig naas: den staar i kataloget, hentes med
+    # `load_more_tools` og kaldes med `call_loaded_tool` — hvilket er praecis
+    # den vej de to mekanismer findes til.
+    #
+    # Samme spoergsmaal staar aabent for `dispatch_code_mode_task`, som ogsaa
+    # har nul kald. Den roeres ikke her: kode-flaaden er Bjoerns beslutning.
     # Fast i hans flade (Bjørn 17/9-2026): kode-flåden. Jarvis: «de er ikke i min
     # standard-værktøjsflade, så jeg griber dem ikke af mig selv».
     "dispatch_code_mode_task",
@@ -51,6 +158,35 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "mcp",
     # En fortrydelse man ikke kan naa er ingen fortrydelse.
     "checkpoint",
+    # ── Kontinuitetens to haandtag (4/10-2026, Bjoern: «de to vaerktoejer ──
+    #    hoerer til i det faste saet»)
+    #
+    # `start_session` og `write_handover` blev bygget 4/10 og laa i
+    # `_TOOL_HANDLERS`, men i INGEN af de to lister der afgoer hvad der
+    # faktisk sendes. Maalt i drift samme dag:
+    #
+    #     scope=None -> 491 defs -> 48 sendt | begge: IKKE sendt
+    #     scope=chat ->  65 defs -> 48 sendt | begge: IKKE sendt
+    #
+    # De var altsaa kaldbare og alligevel usynlige — samme moenster som
+    # `read_attachment` (6/9) og billedvaerktoejerne (13/9): bygget, korrekt,
+    # og naaet via `load_more_tools` hver eneste gang.
+    #
+    # Prisen er ikke bare en hentning. Session-laasen
+    # (`services/session_tool_pin`) fryser saettet ved sessionens FOERSTE tur,
+    # og `_med_garanterede` forener netop denne liste ind i laasen. Uden
+    # medlemskab her staar et nyt vaerktoej udenfor i HELE sessionens levetid
+    # — laasen nulstilles foerst ved compaction. Maalt 4/10: `auto-dream`
+    # (laast 03:30) og `auto-recurring` (laast 05:00) bar ingen af dem, fordi
+    # begge blev bygget senere samme dag.
+    #
+    # Begge hoerer her og ikke i `SAFETY_FLOOR`: gulvet er vaerktoejer hvis
+    # FRAVAER er en adfaerdsregression. Disse to er snarere et haandtag der
+    # skal kunne gripes i den tur hvor behovet opstaar — et run man vil saette
+    # i gang, en overdragelse man vil skrive — og et haandtag man foerst skal
+    # hente midt i turen er et haandtag man ikke griber.
+    "start_session",
+    "write_handover",
 )
 
 
@@ -68,6 +204,14 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
 #   python scripts/regenerate_tier1.py [--apply]
 #
 # Trimmed from 185 -> 103 tools on 2026-04-29 (saved ~7,500 tokens / call).
+# Fjernet 30/9-2026 efter maaling: `geolocation_lookup`, `geocode`,
+# `reverse_geocode` og `nearby_search` blev kaldt **0 gange** paa 30 dage ud af
+# 95.574 vaerktoejskald, men fyldte fire af de 48 pladser i HVER tur. De fire
+# pladser er givet til de fire hyppigst HENTEDE (se REQUIRED_LAZY_TOOL_NAMES).
+# Geo-vaerktoejerne er ikke vaek — de naas gennem `load_more_tools` naar de
+# faktisk skal bruges, og det er praecis den handel den mekanisme findes til.
+# I alt stod 21 af de 48 sendte vaerktoejer ubrugte i 30 dage; disse fire er de
+# foerste der gav plads, ikke de sidste der kan.
 TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "adjust_mood", "analyze_image", "approve_proposal", "bash",
     "bash_session_open", "bash_session_run", "browser_click", "browser_navigate",
@@ -77,13 +221,24 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "daemon_status", "db_query", "decision_create", "decision_list",
     "deep_analyze", "discord_channel", "discord_status", "edit_file",
     "edit_task", "eventbus_recent", "find_files", "get_news",
-    "get_weather", "geolocation_lookup", "geocode", "reverse_geocode",
-    "route_directions", "nearby_search",
+    "get_weather",
+    "route_directions",
     "git_diff", "git_log", "git_status",
     "goal_create", "goal_list", "heartbeat_status", "hf_vision_analyze",
     "home_assistant", "internal_api", "list_agents", "list_events",
     "list_initiatives", "list_plans", "list_proposals", "list_recurring",
     "list_scheduled_tasks", "list_self_wakeups", "list_signal_surfaces", "look_around",
+    # Indbakken (Opgave 5, 3/10-2026). Alle TRE skal sendes, og det er en
+    # bevidst pris paa tre skemaer i det cachebare prefix.
+    #
+    # Grunden: naegtelsen fra `inbox_gate` siger «kald inbox» og «luk med
+    # inbox_done/inbox_drop». Var de ikke sendt, skulle han hente dem midt
+    # i turen — og en hentning midt i turen kostede MAALT 92 % -> 26 %
+    # cache-hit, fordi tools staar FOER beskederne. En blokering man kun
+    # kan komme ud af ved at buste sin egen cache er en blokering man
+    # ikke kan komme ud af.
+    "inbox", "inbox_done", "inbox_drop",
+    "flag_side_task", "activate_side_task", "dismiss_side_task",
     "load_more_tools",  # escape-hatch til de ~316 ikke-sendte tools — SKAL altid være på
     # App-self-control: Jarvis styrer jarvis-desk indefra (skift mode, åbn paneler).
     # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.
@@ -351,7 +506,15 @@ def _faestn_kraevede(
 
     To kopier af den samme beslutning er dobbelt sandhed. Nu er der én.
     """
-    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + _betinget_kraevede(user_message)
+    # Sikkerhedsgulvet faestnes SAMMEN med de kraevede (30/9-2026). Det stod
+    # skrevet som «must always be available regardless of past usage» og var
+    # ikke haandhaevet nogen steder — se kommentaren over `SAFETY_FLOOR`.
+    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
+    # Intet pinnes BETINGET laengere (3/10-2026): et besked-afhaengigt array
+    # koster hele praefikset, og `skill_invoke` staar nu fast ovenfor. Kaldet
+    # her er KUN sporet matched -> surfaced -> tilgaengelig -> invoked; det
+    # returnerer altid (), se `spor_skill_match`.
+    spor_skill_match(user_message)
     for navn in kraevede:
         if navn in by_name and navn not in seen:
             selected_names.append(navn)
@@ -364,32 +527,38 @@ def _faestn_kraevede(
     return selected_names
 
 
-def _betinget_kraevede(user_message: str) -> tuple[str, ...]:
-    """Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem.
+def spor_skill_match(user_message: str) -> tuple[str, ...]:
+    """Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen.
 
-    ## Atomaritet (15/9-2026)
+    ## Hvad den gjorde indtil 3/10-2026
 
-    Runtimen maa aldrig bede modellen kalde noget der ikke ligger i kaldet.
-    Maalt samme dag: prompten skriver ordret ``skill_invoke("<navn>")``, og af
-    kataloget paa 471 vaerktoejer overlevede INGEN af de 24 skill-vaerktoejer
-    beskaeringen til 48 — heller ikke paa «brug pdf skill».
+    Hed `_betinget_kraevede` og returnerede `("skill_invoke",)` ved et match.
+    Begrundelsen stod i dens egen docstring: «en plads ud af 48 er ikke gratis;
+    uden et match ville `skill_invoke` være et værktøj uden et navn at give
+    det».
 
-    Jarvis gjorde derfor det rationelle: fandt filen med ``explore`` og laeste
-    SKILL.md i haanden. Det var ikke ulydighed; det var den eneste vej han
-    kunne se.
+    ## Hvorfor den ikke må fæstne noget
 
-    Tredje gang moensteret bider. Kommentaren over ``REQUIRED_LAZY_TOOL_NAMES``
-    beskriver praecis det samme for ``explore`` 6/9: «scope tillod det,
-    kataloget naevnte det, prompten anbefalede det — og pruneren fjernede det».
+    Et betinget pin gør værktøjs-arrayet besked-afhængigt, og arrayet ligger
+    FØR hele samtalen i præfikset. Prisen er målt tre gange: 92 % → 26 % hit,
+    og +419 tegn → 62.672 miss-tokens.
 
-    BETINGET og ikke fast: uden et match naevner prompten ingen skills, og saa
-    ville ``skill_invoke`` vaere et vaerktoej uden et navn at give det — en
-    spildt plads ud af 48. Betingelsen er praecis den samme som prompt-
-    sektionens, og den deler dens opslag, saa de to ikke kan komme til at sige
-    hver sit.
+    Det var usynligt fordi tærsklen stod på 0,70 og matchede næsten alt — «hej
+    hvordan går det?» matchede `ui-ux-pro-max`. Pinnet var i praksis fast, og
+    cache-vagten var grøn af den FORKERTE grund. Da gulvet 3/10 blev hævet til
+    primær-tærsklen, blev en næsten-konstant en ægte variabel, og vagten blev
+    rød. `skill_invoke` står nu fast i `REQUIRED_LAZY_TOOL_NAMES`.
 
-    Kaster aldrig: kan vi ikke afgoere det, faestner vi ingenting og er praecis
-    lige saa daarligt stillet som foer — aldrig vaerre.
+    ## Hvorfor funktionen så stadig findes
+
+    Logge-linjen er det eneste spor for kæden matched → surfaced → TILGÆNGELIG
+    → invoked. Det andet spor, `cognitive_state.skill_invoked`, bærer kun
+    `{"name": ...}` og hverken run- eller session-id, så man kan ikke engang
+    skelne en ægte invokering fra en test. Uden dette led kan man ikke svare på
+    «virkede rettelsen».
+
+    Returnerer derfor altid `()`. Kaster aldrig: et spor må ikke kunne vælte
+    en tur.
     """
     besked = str(user_message or "").strip()
     if not besked:
@@ -398,17 +567,18 @@ def _betinget_kraevede(user_message: str) -> tuple[str, ...]:
         from core.services.skill_relevance_surface import matchede_skills
         navne = matchede_skills(besked)
         if navne:
-            # Spor for kaeden matched → surfaced → TILGAENGELIG → invoked.
-            # Uden dette led kan man ikke svare paa «virkede rettelsen»: det
-            # eneste andet spor, cognitive_state.skill_invoked, baerer kun
-            # {"name": ...} og hverken run- eller session-id, saa man kan ikke
-            # engang skelne en aegte invokering fra en test.
-            logger.info("[skill-atomaritet] faestner skill_invoke — match: %s",
+            logger.info("[skill-atomaritet] match: %s — `skill_invoke` staar "
+                        "FAST i arrayet, intet pinnes betinget",
                         ", ".join(navne[:3]))
-            return ("skill_invoke",)
     except Exception:
         logger.debug("kunne ikke afgoere om skills blev naevnt", exc_info=True)
     return ()
+
+
+#: Bagudkompatibelt navn. De to kaldesteder (denne fil og `visible_runs`) kan
+#: opdateres naturligt; indtil da peger det gamle navn på sporet, så ingen
+#: import brækker. Boy Scout: ryd op når call-sites er fulgt med.
+_betinget_kraevede = spor_skill_match
 
 
 def _stable_idx(name: str) -> int:
@@ -437,7 +607,22 @@ def select_tools_for_visible(
       - 48 (2026-09-04) — CC-style small native pool. Rare tools are reached
         through load_more_tools, which is pinned into the cap.
     """
-    return select_tools_for_copilot(
-        tools, user_message=user_message, session_id=session_id, max_tools=max_tools,
+    # Dispatcheren laegges i INPUT, ikke oven paa resultatet: saa gaelder
+    # loftet, pin-logikken og `REQUIRED_LAZY_TOOL_NAMES` for den som for
+    # ethvert andet vaerktoej. Foerste forsoeg 30/9 lagde den ovenpaa og
+    # sproengte loftet (49 mod 48); andet forsoeg afkortede halen og smed et
+    # PINNED vaerktoej. Begge blev fanget af husets egne vagter.
+    from core.tools.kaldt_vaerktoej import DEFINITION as _KALD_DEF, KALD_NAVN as _KALD_NAVN
+    _ind = list(tools or [])
+    if not any((d.get("function") or d).get("name") == _KALD_NAVN for d in _ind):
+        _ind.append(_KALD_DEF)
+    valgt = select_tools_for_copilot(
+        _ind, user_message=user_message, session_id=session_id, max_tools=max_tools,
         stable_only=True,
     )
+    # `call_loaded_tool` staar ALTID med, og den er KONSTANT — det er hele
+    # pointen. Et hentet vaerktoej kaldes gennem den i stedet for at blive
+    # flettet ind i arrayet, saa praefikset kan genbruges paa tvaers af ture.
+    # Maalt: én ny definition i arrayet koster 8.704 tokens mod DeepSeeks API,
+    # og 419 tegn kostede 62.672 miss i produktion. Se `kaldt_vaerktoej.py`.
+    return valgt

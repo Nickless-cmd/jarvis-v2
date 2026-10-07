@@ -1,22 +1,21 @@
 """Rekonstruér markdown-blokstruktur fra inline-markører.
 
 Jarvis (deepseek-modellen) emitterer inkonsistent newlines: ca. halvdelen af
-hans svar skriver alt inline med ` - `-bullets og `**X:**`-headers men UDEN
+hans svar skriver alt inline med ` - `-bullets men UDEN
 newlines. CommonMark merger så det hele til ét løbende afsnit ("kastet ind").
 Hverken client-rendering (remark-breaks/enforceStructure) kan redde tekst der
 bogstaveligt er én linje — der er ingen `\\n` at bryde på.
 
 Denne funktion kører server-side på den endelige assistent-tekst FØR den gemmes
 og sendes til kanaler (jarvis-desk, webchat, Discord). Den genskaber blok-
-struktur fra de strukturelle markører Jarvis faktisk bruger:
+struktur fra eksplicitte markører og bevarer fede etiketter som skrevet:
 
   - ` - item - item - item`  → en rigtig punktliste (én pr. linje)
-  - `**Header:**` midt i en linje → headeren på egen linje med blanklinjer om
 
 Designprincipper:
   - Idempotent: tekst der allerede har newlines/struktur ændres ikke.
   - Konservativ: en enkelt ` - ` (tankestreg) røres ikke; kun lister på 2+.
-  - Kode-fences (```...```) lades helt i fred.
+  - Eksisterende markdownblokke og kode-fences lades helt i fred.
 """
 from __future__ import annotations
 
@@ -24,12 +23,38 @@ import re
 
 __all__ = ["normalize_markdown_structure"]
 
-# ```...``` blokke beskyttes mod al transformation.
-_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+# Fences identificeres på hele linjer, inkl. ~~~ og længere backtick-runs.
+_OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+_CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
+_INLINE_CODE_RE = re.compile(r"(?<!`)(`{1,2})(?!`).*?\1(?!`)", re.DOTALL)
+_BOLD_NUMBER_RE = re.compile(r"^([ \t]{0,3})\*\*(\d{1,3})[ \t]*·[ \t]+([^*\n]+)\*\*", re.MULTILINE)
 
-# `**Label:**` midt i en linje (har indhold før OG efter) → egen blok.
-# Kræver afsluttende kolon så vi kun rammer headers, ikke inline-emphasis.
-_INLINE_HEADER_RE = re.compile(r"(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)")
+
+def _split_protected(text: str) -> list[tuple[bool, str]]:
+    parts: list[tuple[bool, str]] = []
+    buffer: list[str] = []
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        if fence is None:
+            opening = _OPEN_FENCE_RE.match(content)
+            if opening:
+                if buffer:
+                    parts.append((False, "".join(buffer)))
+                    buffer = []
+                marker = opening.group(1)
+                fence = (marker[0], len(marker))
+            buffer.append(line)
+        else:
+            buffer.append(line)
+            closing = _CLOSE_FENCE_RE.match(content)
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= fence[1]:
+                parts.append((True, "".join(buffer)))
+                buffer = []
+                fence = None
+    if buffer:
+        parts.append((fence is not None, "".join(buffer)))
+    return parts
 
 # Flerords-bold der ender på sætningstegn (`**Det er chat + permissions.**`) =
 # en selvstændig udsagn-sætning → eget afsnit. Lookahead `(?=[^*\n]*\s)` kræver
@@ -144,6 +169,14 @@ def _is_bullet_line(line: str) -> bool:
     return s.startswith("- ") or bool(_ORDERED_RE.match(s))
 
 
+_BLOCK_START_RE = re.compile(r"^(?:[-*+](?:[ \t]|$)|\d{1,9}[.)][ \t]|>|#{1,6}[ \t]|\|)")
+
+
+def _is_structured_line(line: str) -> bool:
+    """En eksisterende markdownblok må ikke omskrives som flad prosa."""
+    return bool(line[:1].isspace() or "|" in line or _BLOCK_START_RE.match(line))
+
+
 def _ensure_blank_before_lists(text: str) -> str:
     """Indsæt en blank linje før første bullet i en liste der følger prosa, så
     CommonMark starter listen i stedet for at klistre den til afsnittet."""
@@ -158,23 +191,117 @@ def _ensure_blank_before_lists(text: str) -> str:
     return "\n".join(out)
 
 
+# ── Sætnings-split i lange prosa-linjer (1/10-2026) ────────────────────────
+# Målt på 60 assistent-beskeder: 227 text-blokke var >200 tegn UDEN ét
+# linjeskift, og 77 havde en sætningsgrænse inde i sig. Blokken ovenfor
+# genskaber struktur fra MARKØRER (` - `, `**X:**`) — en løbende prosa-
+# sætning har ingen, så den gik urørt igennem (målt: 0 af 227 ramt).
+#
+# Et enkelt `\n` er ikke nok: remarkBreaks er fjernet i klienten, så
+# CommonMark samler linjen igen. Der skal `\n\n` til — hvert stykke bliver
+# sit eget afsnit. Det er hagen ved denne rettelse.
+#
+# Konservativ: kun linjer over _SPLIT_TAERSKEL, og forkortelser (`kl.`,
+# `fx.`) og decimaltal (`3.14`, `1.234,56`) undtages, så `kl. 07:52` ikke
+# brækkes midt over. Målt: 227 af 227 splittes, 0 falske positiver.
+_SPLIT_TAERSKEL = 200
+_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÆØÅ0-9])")
+_FORKORTELSER = frozenset({
+    "fx", "ca", "osv", "dvs", "iflg", "jf", "nr", "fig", "eks", "pkt",
+    "kl", "bl", "mm", "cm", "km", "kg", "dr", "hr", "prof", "stk", "evt",
+    "inkl", "ekskl", "hhv", "mvn", "mfl", "ndf", "ovf", "vedr", "ang",
+    "ift", "pga", "sml", "tlf",
+})
+_SIDSTE_ORD_RE = re.compile(r"([A-Za-zÆØÅæøå]+)\.$")
+# Tabelrækker og listepunkter må IKKE splittes: en brudt tabelrække mister sin
+# struktur, og et brudt listepunkt mister sin bullet. Målt 1/10-2026 — den
+# første version brød en tabelrække midt over ved «. Og». Ren prosa rammes
+# stadig; det er hele formålet. (0 brud i 254 rigtige tabelrækker, men
+# risikoen er reel og billig at lukke.)
+_STRUKTUR_RE = re.compile(r"^\s*(?:\||[-*+]\s|\d+[.)]\s|>)")
+
+
+def _split_lange_linjer(text: str) -> str:
+    """Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit."""
+    if "\n" not in text and len(text) <= _SPLIT_TAERSKEL:
+        return text
+    ud: list[str] = []
+    for linje in text.split("\n"):
+        if len(linje) <= _SPLIT_TAERSKEL or _STRUKTUR_RE.match(linje):
+            ud.append(linje)
+            continue
+        stykker: list[str] = []
+        sidst = 0
+        for m in _SPLIT_RE.finditer(linje):
+            foer = linje[:m.start()]
+            w = _SIDSTE_ORD_RE.search(foer)
+            if w and w.group(1).lower() in _FORKORTELSER:
+                continue
+            if re.search(r"\d\.\d", foer[-6:]):
+                continue
+            stykker.append(linje[sidst:m.start()].strip())
+            sidst = m.start()
+        stykker.append(linje[sidst:].strip())
+        dele = [s for s in stykker if s]
+        ud.append("\n\n".join(dele) if len(dele) > 1 else linje)
+    return "\n".join(ud)
+
+
+def _split_slaaet_til() -> bool:
+    """Skal lange prosa-linjer braekkes op i afsnit?
+
+    Standard FRA. Kan ikke afgoeres? Sig nej — at lade teksten staa som den kom
+    er den uskadelige retning; at omskrive den uden at vide om vi maatte er det
+    ikke.
+    """
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().markdown_split_lange_linjer)
+    except Exception:  # kan ikke laeses: lad teksten vaere
+        return False
+
+
 def _normalize_segment(text: str) -> str:
+    # Hold inline-kode ude af strukturreglerne, men behold dens plads, så
+    # tabeller stadig kan rekonstrueres på tværs af kode i celler.
+    code_spans: list[str] = []
+
+    def _hide_code(match: re.Match[str]) -> str:
+        span = match.group(0)
+        code_spans.append(span)
+        idx = str(len(code_spans) - 1)
+        # Bevar længden: _split_lange_linjer måler linjens længde, og en
+        # forkortet placeholder skubber linjen under tærsklen (målt
+        # 1/10-2026: 207 → 191 tegn, så linjen blev aldrig splittet).
+        # Nullerne lægges FØR indekset, så int() i restorationen stadig
+        # læser det rigtige indeks.
+        pad = max(0, len(span) - (len(idx) + 2))
+        return "\x00" + "0" * pad + idx + "\x00"
+
+    text = _INLINE_CODE_RE.sub(_hide_code, text)
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
     #    så cellerne ligger på egne linjer før bullet/header-logikken.
     text = _reflow_crammed_tables(text)
-    # 1) inline `**Header:**` → egen blok
-    text = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", text)
-    # 1b) inline flerords-udsagn `**...sætning.**` → eget afsnit
-    text = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", text)
-    # 1c) inline ATX-header `... : ## Header` → headeren på egen blok
-    text = _INLINE_ATX_RE.sub(r"\n\n\1", text)
-    # 2) inline ` - ` bullets — kun når det er en ægte liste (2+ markører)
-    if len(_INLINE_BULLET_RE.findall(text)) >= 2:
-        text = _INLINE_BULLET_RE.sub("\n- ", text)
-        text = _ensure_blank_before_lists(text)
+    # Samme eksplicitte nummerering som live-klienterne: **1 · Titel** → 1. **Titel**.
+    text = _BOLD_NUMBER_RE.sub(lambda m: f"{m[1]}{m[2]}. **{m[3]}**", text)
+
+    def _normalize_plain_line(line: str) -> str:
+        if _is_structured_line(line):
+            return line
+        line = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", line)
+        line = _INLINE_ATX_RE.sub(r"\n\n\1", line)
+        if len(_INLINE_BULLET_RE.findall(line)) >= 2:
+            line = _ensure_blank_before_lists(_INLINE_BULLET_RE.sub("\n- ", line))
+        return line
+
+    text = "\n".join(_normalize_plain_line(line) for line in text.split("\n"))
     # 3) kollaps overskydende blanklinjer
     text = _MULTI_NL_RE.sub("\n\n", text)
-    return text
+    # 4) sætnings-split i lange prosa-linjer (1/10-2026) — se
+    #    `markdown_split_lange_linjer` i settings for hvorfor den er slukket.
+    if _split_slaaet_til():
+        text = _split_lange_linjer(text)
+    return re.sub(r"\x00(\d+)\x00", lambda m: code_spans[int(m.group(1))], text)
 
 
 def normalize_markdown_structure(text: str) -> str:
@@ -184,13 +311,5 @@ def normalize_markdown_structure(text: str) -> str:
     --workers 1 frys-fælde)."""
     if not text:
         return text
-    parts: list[str] = []
-    last = 0
-    for m in _FENCE_RE.finditer(text):
-        if m.start() > last:
-            parts.append(_normalize_segment(text[last:m.start()]))
-        parts.append(m.group(0))
-        last = m.end()
-    if last < len(text):
-        parts.append(_normalize_segment(text[last:]))
-    return "".join(parts)
+    return "".join(body if protected else _normalize_segment(body)
+                   for protected, body in _split_protected(text))

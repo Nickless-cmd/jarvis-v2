@@ -10,9 +10,17 @@ export interface StreamState {
   provider: string
   lane: string
   blocks: ContentBlock[]
+  provisionalText: string
+  provisionalBlockIndex: number | null
+  provisionalMissingBlockIndex: number | null
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
+  finalAnswerStarted: boolean // serveren har bekræftet slutsvar før første synlige delta
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
-  usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
+  usage: { input: number; output: number; cacheHit: number; cacheMiss: number
+           // Maalt paa SERVEREN (core/services/svar_tempo), ikke hentet hos
+           // udbyderen: saa betyder tallet det samme uanset om turen gik
+           // gennem DeepSeek eller Ollama Cloud. `null` = ikke maalt.
+           ttftMs: number | null; tokPerSek: number | null }
   /**
    * Runde-etiketter slået op på TOOL-ID — «Rettede fejl i login».
    *
@@ -32,7 +40,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -103,8 +111,28 @@ function medSkillFlade(state: StreamState, p: { matches?: unknown; primary?: unk
 }
 
 /** De blokke en LIVE besked tegnes af: skill-fladen først, så strømmen. */
-export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'>): ContentBlock[] {
-  return state.skillFlade ? [state.skillFlade, ...state.blocks] : state.blocks
+const liveBlokkeCache = new WeakMap<ContentBlock[], {
+  skillFlade: Extract<ContentBlock, { type: 'skill_surface' }>
+  result: ContentBlock[]
+}>()
+
+export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'> & Partial<Pick<StreamState, 'provisionalText' | 'provisionalBlockIndex'>>): ContentBlock[] {
+  if (state.provisionalText) {
+    const blocks = state.provisionalBlockIndex == null
+      ? state.blocks.filter((b): b is ContentBlock => !!b)
+      : state.blocks.filter((b, index): b is ContentBlock => !!b && index !== state.provisionalBlockIndex)
+    return [
+      ...(state.skillFlade ? [state.skillFlade] : []),
+      ...blocks,
+      { type: 'text', text: state.provisionalText },
+    ]
+  }
+  if (!state.skillFlade) return state.blocks
+  const cached = liveBlokkeCache.get(state.blocks)
+  if (cached?.skillFlade === state.skillFlade) return cached.result
+  const result = [state.skillFlade, ...state.blocks]
+  liveBlokkeCache.set(state.blocks, { skillFlade: state.skillFlade, result })
+  return result
 }
 
 /** Serverens udfald → linjens status. Alt der ikke kører mere, er færdigt:
@@ -143,16 +171,47 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // det er SAMME run (activeRunId uændret) — replay'ens content_block_start
       // SÆTTER hvert index på ny (linje ~65), så staten genopbygges rent uden
       // dobling. Kun et ÆGTE nyt run (nyt id) nulstiller.
-      const _sameRun = state.activeRunId === event.message.id
+      // ── BLINKET (Bjørn 1/10-2026) ────────────────────────────────────────
+      // «nogen gange starter den op igen 5-7 sekunder og lukker ned igen uden
+      // der sker noget, og så blinker chatview lige en gang og så lander hele
+      // hans besked.»
+      //
+      // `message_start` bærer kun et run_id hvis et tidligere legacy-event har
+      // båret det (visible_runs_sse_v2.py:705) — kommer den før, er id'et TOMT.
+      // `system_event(kind='run')` sætter derefter det rigtige. Ved et replay
+      // kom `message_start` igen med "" og ramte `_sameRun` mod det rigtige id:
+      // falsk → blocks ryddet → blinket → og replay'et fyldte hele svaret ind
+      // på én gang.
+      //
+      // Et tomt id bærer INGEN information. Det må hverken erklære et nyt run
+      // eller overskrive det id vi allerede kender. Et ÆGTE nyt id nulstiller
+      // stadig — det er hele pointen med vagten.
+      const _indkommende = event.message.id || ''
+      const _sameRun = !_indkommende || state.activeRunId === _indkommende
       return {
         ...state,
         status: 'working',
-        activeRunId: event.message.id,
+        activeRunId: _indkommende || state.activeRunId,
         model: event.message.model || state.model,
         provider: event.message.provider || state.provider,
         lane: event.message.lane || state.lane,
         blocks: _sameRun ? state.blocks : [],
+        provisionalText: _sameRun ? state.provisionalText : '',
+        provisionalBlockIndex: _sameRun ? state.provisionalBlockIndex : null,
+        provisionalMissingBlockIndex: _sameRun ? state.provisionalMissingBlockIndex : null,
         workingStep: _sameRun ? state.workingStep : null,
+        // Et NYT run rydder genoptagelses-varslet. Foer var `message_delta`
+        // med stop_reason end_turn/completed den eneste vej ud — og en tvungen
+        // slutrunde har per definition ikke det stop_reason: det er selve
+        // udloeseren. Betingelsen der rejste banneret udelukkede altsaa vejen
+        // der fjernede det, saa det blev staaende resten af sessionen (Bjoern
+        // 30/9-2026: «saa forsvinder den badge ikk igen fra desk»).
+        //
+        // Varslet siger «Jarvis fortsaetter automatisk fra sit checkpoint».
+        // Naar fortsaettelsen faktisk koerer, har det sagt sit — og fejler den
+        // ogsaa, kommer der et nyt.
+        recoveryNotice: _sameRun ? state.recoveryNotice : undefined,
+        finalAnswerStarted: _sameRun ? state.finalAnswerStarted : false,
         skillFlade: _sameRun ? state.skillFlade : undefined,
         usage: {
           ...state.usage,
@@ -191,6 +250,37 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         kilde: cb.kilde,
         tool_use_id: cb.tool_use_id,
       }
+      // UDGIVET fil eller video UNDER kørslen (7/10-2026).
+      //
+      // Renderen har hele tiden kunnet vise dem (`BlocksRenderer`,
+      // `foldToolResults`), men grenen fandtes ikke her — og udsenderen
+      // sendte dem heller ikke. En widget er `text/html` → typen `file`, så
+      // fladen faldt til jorden i den levende strøm og dukkede først op når
+      // tråden blev genindlæst fra `content_json`.
+      else if (cb.type === 'file') blocks[event.index] = {
+        // Tilstandstypen `file` bærer KUN referencen — `src`/`alt`/
+        // `tool_use_id` findes ikke på den (kun på `image` og `video`).
+        // Udsenderen sender dem heller ikke for en fil.
+        type: 'file',
+        filename: cb.filename,
+        url: cb.url,
+        attachment_id: cb.attachment_id,
+        mime_type: cb.mime_type,
+        size_bytes: cb.size_bytes,
+        kilde: cb.kilde,
+      }
+      else if (cb.type === 'video') blocks[event.index] = {
+        type: 'video',
+        src: cb.src,
+        alt: cb.alt,
+        attachment_id: cb.attachment_id,
+        url: cb.url,
+        filename: cb.filename,
+        mime_type: cb.mime_type,
+        size_bytes: cb.size_bytes,
+        kilde: cb.kilde,
+        tool_use_id: cb.tool_use_id,
+      }
       else if (cb.type === 'tool_result') {
         const idx = blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === cb.tool_use_id)
         if (idx >= 0) {
@@ -201,12 +291,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         }
         return { ...state, blocks }
       }
-      return { ...state, blocks }
+      return {
+        ...state, blocks,
+        provisionalBlockIndex: cb.type === 'text' && state.provisionalText
+          ? event.index : state.provisionalBlockIndex,
+      }
     }
 
     case 'content_block_delta': {
       const existing = state.blocks[event.index]
-      if (!existing) return state // delta uden forudgående start → ignorér (edge-case)
+      if (!existing) return event.delta.type === 'text_delta' && state.provisionalText
+        ? { ...state, provisionalMissingBlockIndex: event.index }
+        : state
       const blocks = state.blocks.slice()
       const d = event.delta
       if (d.type === 'text_delta' && existing.type === 'text') blocks[event.index] = { ...existing, text: existing.text + d.text }
@@ -221,6 +317,39 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      if (event.kind === 'provisional_text_delta') {
+        const runId = String(event.payload?.run_id ?? '')
+        if (!runId || (state.status === 'working' && state.activeRunId && runId !== state.activeRunId)
+          || (state.status === 'done' && state.activeRunId === runId)) return state
+        const delta = String(event.payload?.delta ?? '')
+        if (!delta) return state
+        // Ved sen tilkobling kan message_start være faldet ud af relay-bufferen.
+        // Deltaens run-id er nok til at starte en ny live-visning.
+        const nytRun = !!state.activeRunId && state.activeRunId !== runId
+        return {
+          ...state, status: 'working', activeRunId: runId,
+          blocks: nytRun ? [] : state.blocks,
+          provisionalText: (nytRun ? '' : state.provisionalText) + delta,
+          provisionalBlockIndex: nytRun ? null : state.provisionalBlockIndex,
+          provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
+          finalAnswerStarted: nytRun ? false : state.finalAnswerStarted,
+        }
+      }
+      if (event.kind === 'provisional_text_commit') {
+        if (String(event.payload?.run_id ?? '') !== state.activeRunId) return state
+        const blocks = state.blocks.slice()
+        if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+          blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+        }
+        return { ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
+          provisionalMissingBlockIndex: null }
+      }
+      if (event.kind === 'final_answer_start') {
+        const rid = String(event.payload?.run_id ?? '')
+        return rid && rid === state.activeRunId
+          ? { ...state, finalAnswerStarted: true }
+          : state
+      }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.
@@ -237,7 +366,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
       }
       if (event.kind === 'run_recovery') {
-        const p = event.payload as { reason?: string; message?: string; continuing?: boolean }
+        const p = event.payload as { reason?: string; message?: string; continuing?: boolean; ryddet?: boolean }
+        // Han trykkede det vaek. Banneret havde ingen knap overhovedet, saa et
+        // varsel der overlevede sin egen ryddevej kunne ikke fjernes af nogen.
+        if (p.ryddet) return { ...state, recoveryNotice: undefined }
         if (!p.message) return state
         return {
           ...state,
@@ -266,6 +398,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
       const p = event.payload as { tool_id?: string; status?: string; result?: string; detail?: string; action?: string }
+      // Thinking er allerede liveness-indikatorens egen tilstand. Livstegnet
+      // rydder samtidig en gammel værktøjsetiket efter et afsluttet kald.
+      if (p.action === 'thinking' && !p.tool_id) return { ...state, workingStep: null }
       // Surface seneste progress-tekst (også steps uden tool_id, fx "thinking").
       const step = p.detail ?? p.action ?? state.workingStep
       if (!p.tool_id) return { ...state, workingStep: step }
@@ -292,6 +427,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           output: event.usage.output_tokens,
           cacheHit: event.usage.cache_hit_tokens ?? state.usage.cacheHit,
           cacheMiss: event.usage.cache_miss_tokens ?? state.usage.cacheMiss,
+          // `??`, ikke `||`: en maalt 0 er et svar, og `||` ville kaste den
+          // vaek sammen med `null`. Serveren udelader feltet naar det ikke
+          // kunne maales, saa `undefined` betyder «behold hvad vi havde».
+          ttftMs: event.usage.ttft_ms ?? state.usage.ttftMs,
+          tokPerSek: event.usage.tok_per_sek ?? state.usage.tokPerSek,
         },
       }
 
@@ -300,7 +440,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // stod ellers og pulserede under et færdigt svar.
       const blocks = lukTanker(state.blocks, Date.now()).map((b) =>
         b && b.type === 'tool_use' && (b.status ?? 'running') === 'running' ? { ...b, status: 'done' as const } : b)
-      return { ...state, status: 'done', blocks }
+      if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
+        blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+      }
+      return { ...state, status: 'done', blocks, provisionalText: '',
+        provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 
     case 'tool_round_label':

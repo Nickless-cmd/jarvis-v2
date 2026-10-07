@@ -39,16 +39,23 @@ _Agreement-streak substrate trigger._
 | function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L61) |
 | function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L112) |
 
-## `core/services/ambient_presence.py`
-_Ambient presence — subtle signals that mark Jarvis' state in the physical space._
+## `core/services/alarm_ud.py`
+_Én vej ud for driftsalarmer — gennem routeren, ikke direkte til telefonen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L49) |
-| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L88) |
-| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L115) |
-| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L124) |
-| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L155) |
+| function | `send_alert` | `(*, titel, tekst, slags=…, importance=…, session_id=…)` | Send en driftsalarm gennem routeren. Returnerer True hvis den blev leveret. | [src](../../../core/services/alarm_ud.py#L42) |
+
+## `core/services/ambient_presence.py`
+_Ambient presence — Jarvis' egen tilstand, synlig for ham selv._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L63) |
+| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L95) |
+| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L114) |
+| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L123) |
+| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L154) |
 
 ## `core/services/ambient_sound_daemon.py`
 _Ambient Sound daemon — Layer 6½: background acoustic context._
@@ -195,7 +202,7 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 |---|---|---|---|---|
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
 | function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
-| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L113) |
+| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L139) |
 
 ## `core/services/approval_feedback_subscriber.py`
 
@@ -247,6 +254,15 @@ _Arc rule extractor — turns narrative arcs into actionable rules._
 | function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L161) |
 | function | `arc_rules_section` | `(*, max_lines=…)` | Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only | [src](../../../core/services/arc_rule_extractor.py#L180) |
 | function | `_legacy_arc_rules_section` | `(*, max_lines=…)` | Pre-2026-09-04 renderer, kept for reference/tests of the file format. | [src](../../../core/services/arc_rule_extractor.py#L188) |
+
+## `core/services/assembly_load_probe.py`
+_Hvad lavede maskinen MENS prompten blev samlet?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_proces_cpu_sek` | `()` | Processens samlede CPU-tid (alle tråde) i sekunder. | [src](../../../core/services/assembly_load_probe.py#L60) |
+| function | `start` | `()` | Åbn en måling. Returnerer en uigennemsigtig nøgle til `afslut`. | [src](../../../core/services/assembly_load_probe.py#L79) |
+| function | `afslut` | `(start_token)` | Luk målingen og returnér felterne som ÉN streng til log-linjen. | [src](../../../core/services/assembly_load_probe.py#L84) |
 
 ## `core/services/assembly_prewarm.py`
 _core/services/assembly_prewarm.py_
@@ -324,19 +340,20 @@ _attachment_service — download, store, and read channel attachments._
 | function | `_db_get` | `(attachment_id)` | — | [src](../../../core/services/attachment_service.py#L107) |
 | function | `_db_list` | `(session_id, limit)` | — | [src](../../../core/services/attachment_service.py#L118) |
 | function | `list_image_attachments` | `(*, user_id=…, limit=…, session_id=…)` | List billed-attachments til galleriet (#6). | [src](../../../core/services/attachment_service.py#L129) |
-| function | `_send_generated_to_channel` | `(session_id, local_path)` | Send et NYLIGT genereret billede til den kanal sessionen hører til. | [src](../../../core/services/attachment_service.py#L185) |
-| function | `register_generated_image` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Gør et billede Jarvis LAVEDE synligt — returnerer attachment_id, ellers "". | [src](../../../core/services/attachment_service.py#L229) |
-| function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L283) |
-| function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L299) |
-| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L323) |
-| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L347) |
-| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L369) |
-| function | `resolve_attachment_id` | `(vaerdi)` | Oversæt det brugeren SKREV til et rigtigt `attachment_id`. | [src](../../../core/services/attachment_service.py#L434) |
-| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L492) |
-| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L500) |
-| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L511) |
-| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L537) |
-| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L635) |
+| function | `_send_generated_to_channel` | `(session_id, local_path)` | Send et NYLIGT genereret billede til den kanal sessionen hører til. | [src](../../../core/services/attachment_service.py#L188) |
+| function | `register_generated_media` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Gør en fil Jarvis LAVEDE synlig — returnerer attachment_id, ellers "". | [src](../../../core/services/attachment_service.py#L232) |
+| function | `register_generated_image` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Bagudkompatibelt navn. Se :func:`register_generated_media`. | [src](../../../core/services/attachment_service.py#L299) |
+| function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L310) |
+| function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L326) |
+| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L350) |
+| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L374) |
+| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L396) |
+| function | `resolve_attachment_id` | `(vaerdi)` | Oversæt det brugeren SKREV til et rigtigt `attachment_id`. | [src](../../../core/services/attachment_service.py#L461) |
+| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L519) |
+| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L527) |
+| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L538) |
+| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L564) |
+| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L662) |
 
 ## `core/services/attachment_topology_signal_tracking.py`
 _Attachment-topology signal tracking — migrated onto signal_tracking_framework._
@@ -444,13 +461,12 @@ _Fortsæt automatisk når et synligt run-segment sluttede før opgaven._
 | class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L62) |
 | function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L70) |
 | function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…, *, reason=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L103) |
-| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L135) |
-| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L162) |
-| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L179) |
-| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L198) |
-| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L203) |
-| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L216) |
-| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L228) |
+| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L140) |
+| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L167) |
+| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L184) |
+| function | `kaede_nr` | `(session_id)` | Hvor mange gange er DENNE samtale allerede genoptaget? | [src](../../../core/services/auto_continuation.py#L203) |
+| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til at afgøre om han tog over MENS et run | [src](../../../core/services/auto_continuation.py#L231) |
+| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L246) |
 
 ## `core/services/auto_improvement_proposer.py`
 _Auto improvement proposer — close the self-improvement loop SAFELY._
@@ -586,33 +602,4 @@ _Autonomous Outreach Daemon — Jarvis reaches out on his own initiative._
 | function | `recent_log` | `(*, limit=…)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L356) |
 | function | `build_autonomous_outreach_surface` | `()` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L360) |
 | function | `_surface_summary` | `(sent, skipped, last)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L378) |
-
-## `core/services/autonomous_run_digest.py`
-_Referat af en autonom koersel — kort, i hans egen samtale._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_slags_af` | `(session_id)` | — | [src](../../../core/services/autonomous_run_digest.py#L55) |
-| function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L63) |
-| function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L80) |
-| function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L84) |
-| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L121) |
-
-## `core/services/autonomous_run_failures.py`
-_Fejlede autonome kørsler — set af Jarvis selv, ikke gemt i hans mund._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L45) |
-| function | `_kv_get` | `(default)` | — | [src](../../../core/services/autonomous_run_failures.py#L49) |
-| function | `_kv_set` | `(value)` | — | [src](../../../core/services/autonomous_run_failures.py#L58) |
-| function | `_load` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L66) |
-| function | `record_failure` | `(*, run_id, session_id=…, origin=…, provider=…, model=…, detail=…, kind=…)` | Journalisér at en autonom kørsel mislykkedes. Kaster aldrig. | [src](../../../core/services/autonomous_run_failures.py#L76) |
-| function | `recent_failures` | `(limit=…)` | Nyeste først. | [src](../../../core/services/autonomous_run_failures.py#L109) |
-| function | `_within_window` | `(post, hours)` | — | [src](../../../core/services/autonomous_run_failures.py#L114) |
-| function | `request_retry` | `(failure_id)` | Marker at HAN vil forsøge igen. Runtime gør det ikke af sig selv. | [src](../../../core/services/autonomous_run_failures.py#L124) |
-| function | `pending_retries` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L137) |
-| function | `mark_retried` | `(failure_id)` | — | [src](../../../core/services/autonomous_run_failures.py#L141) |
-| function | `clear` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L149) |
-| function | `prompt_section` | `()` | Blokken Jarvis ser. Tom streng når der intet er at vide. | [src](../../../core/services/autonomous_run_failures.py#L153) |
 

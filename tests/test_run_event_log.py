@@ -4,6 +4,10 @@ import core.services.run_event_log as rel
 
 def setup_function():
     rel._RUNS.clear()
+    # 3/10-2026: alias-tabellerne blev ikke ryddet — en alias-post fra en
+    # tidligere test kunne baere ind i den naeste.
+    rel._ALIASER.clear()
+    rel._ALIASER_OMVENDT.clear()
 
 
 def test_append_read_offset_and_done():
@@ -288,6 +292,26 @@ def test_runnets_eget_id_finder_loggen():
     assert frames == ["f1"] and done is False and idx == 2
     rel.mark_done("visible-eget")
     assert rel.read_from(log_id, 2)[1] is True
+
+
+def test_klient_run_id_giver_runnets_eget_id():
+    """Endpointet skal svare med det id KLIENTEN kender (3/10-2026).
+
+    /chat/active-runs svarede med LOG-id'et. Klientens guard sammenligner med
+    det id den fik i system_event(kind=run) — så de matchede aldrig, og
+    liveness-linjen tændte på klientens EGEN efterbehandling (5-20 s blink).
+    """
+    log_id, _ = rel.claim_or_create("s-klient-id")
+    rel.alias("visible-klientens-eget", log_id)
+    assert rel.klient_run_id(log_id) == "visible-klientens-eget"
+
+
+def test_klient_run_id_er_fail_open():
+    """Uden alias (endnu ikke sat) eller for et ukendt id: id'et selv, som før."""
+    log_id, _ = rel.claim_or_create("s-uden-alias")
+    assert rel.klient_run_id(log_id) == log_id
+    assert rel.klient_run_id("visible-findes-ikke") == "visible-findes-ikke"
+    assert rel.klient_run_id("") == ""
 
 
 def test_run_id_fra_den_aegte_run_ramme():

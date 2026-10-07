@@ -1,6 +1,7 @@
 import { AppState } from 'react-native'
 import NetInfo from '@react-native-community/netinfo'
 import messaging from '@react-native-firebase/messaging'
+import { hentOgRyd } from './streamTempo'
 import type { ApiConfig } from './types'
 import { getDeviceLocation, loadPrecision, type LocationPayload } from './location'
 import { shouldUseGps } from './location'
@@ -39,6 +40,8 @@ export interface MobilePingBody {
   active_session_id?: string
   battery_saver?: boolean
   location?: LocationPayload | Record<string, never>
+  /** Maaling af om deltaerne naar jaevnt frem. Se lib/streamTempo. */
+  stream_tempo?: Record<string, unknown>
 }
 
 /** Pure: byg presence-ping-payload. device_key = FCM-token. */
@@ -53,6 +56,12 @@ export function buildMobilePing(i: MobilePingInput): MobilePingBody {
     network: i.network,
     interaction: i.interaction,
   }
+  // Stream-tempoet rider med, naar der er nok til et tal. Se lib/streamTempo:
+  // maalingen af om RN's native netvaerkslag klumper deltaerne sammen.
+  try {
+    const tempo = hentOgRyd()
+    if (tempo) body.stream_tempo = tempo
+  } catch { /* en maaling maa aldrig kunne vaelte et presence-ping */ }
   if (i.activeSessionId) body.active_session_id = i.activeSessionId
   if (typeof i.batterySaver === 'boolean') body.battery_saver = i.batterySaver
   if (i.location !== undefined) body.location = i.location

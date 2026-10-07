@@ -340,6 +340,19 @@ async def list_images(limit: int = 200, session_id: str = "") -> dict:
     )}
 
 
+@router.get("/media/{attachment_id}")
+async def serve_media_from_db(attachment_id: str) -> FileResponse:
+    """Samme fil, medie-agnostisk navn — til video og alt andet Jarvis laver.
+
+    Ruten nedenfor hed `/image/` men var aldrig billed-specifik: den saetter
+    `media_type` fra raekkens egen mime, saa en video serveres allerede med
+    `video/mp4`. Navnet loej dog, og en klient der skulle afspille noget ville
+    hente fra en adresse der hed «image». Begge navne peger paa samme kode og
+    samme user-scope; `/image/` bevares fordi klienterne bruger den i dag.
+    """
+    return await serve_image_from_db(attachment_id)
+
+
 @router.get("/image/{attachment_id}")
 async def serve_image_from_db(attachment_id: str) -> FileResponse:
     """Serve et billede fra DB'ens local_path (virker for historiske billeder
@@ -366,11 +379,34 @@ async def serve_image_from_db(attachment_id: str) -> FileResponse:
 
 
 @router.get("/{attachment_id}")
-async def serve_attachment(attachment_id: str, session_id: str) -> FileResponse:
-    """Serve an uploaded file for browser display."""
+async def serve_attachment(attachment_id: str, session_id: str = "") -> FileResponse:
+    """Serve an uploaded file for browser display.
+
+    ## Hvorfor `session_id` ikke laengere er paakraevet (7/10-2026)
+
+    Den var PAAKRAEVET, og en klient der ikke sendte den fik et **422** — ikke
+    et 404, ikke et 403, men en valideringsfejl der ligner et klient-problem og
+    derfor ikke bliver undersoegt. Maalt i drift: mobilen hentede et
+    widget-dokument 101 gange paa et kvarter og fik 422 hver gang, mens desk
+    hentede den samme fil over `/media/` og fik 200. Ingen af de 101 fejl stod
+    noget sted hvor nogen laeste dem.
+
+    To ting er rettet her:
+
+    1. `session_id` er valgfri. Uden den gaar vi til DB'en.
+    2. Kender denne process' registry ikke id'et — fx et GENERERET dokument fra
+       en tidligere proces — falder vi ogsaa tilbage til DB'en frem for at
+       svare 404.
+
+    Fallback'en er `/media/`'s opslag: `channel_attachments` og
+    `attachment_visible_to_user`, altsaa samme user-scope. Ruten kan derfor
+    ikke bruges til at hente noget brugeren ikke selv maa se.
+    """
     meta = _registry.get(attachment_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail="Attachment not found")
+    if meta is None or not session_id:
+        # Ikke i denne process' registry (eller ingen session at scopes mod):
+        # DB'en er den durable sandhed, og den er allerede user-scopet.
+        return await serve_image_from_db(attachment_id)
     if meta.session_id != session_id:
         raise HTTPException(status_code=403, detail="Access denied")
     if not Path(meta.server_path).exists():

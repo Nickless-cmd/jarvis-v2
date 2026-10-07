@@ -42,7 +42,26 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "self_wakeups"
 _MIN_DELAY_SECONDS = 60
 _MAX_DELAY_SECONDS = 86400  # 24 hours
+#: Loft paa SAMTIDIGE ventende. Det fanger ikke en kaede, for en kaede har
+#: altid dybde 0 eller 1: Jarvis forbruger én og booker én. Maalt 5/10-2026 i
+#: `self_wakeups.json`: 140 poster, 116 consumed, 24 cancelled, NUL ventende —
+#: dette loft har aldrig vaeret i naerheden af at fyre.
 _MAX_PENDING = 20
+
+#: Loft paa KAEDEN, pr. samtale pr. rullende doegn. Det er det loft der mangler.
+#:
+#: Bjoern 5/10-2026: «Hvorfor for jeg 3 til 5 beskeder på et svar??» Hver
+#: kvitteret vaekning bookede en ny — hans egne ord i chatten: «Vaekningen
+#: kvitteret, ny kontrol booket om 30 minutter». Kaeden 30/9 koerte fjorten led
+#: paa fire timer, hvert kvarter, alle med samme indhold: «allerede haandteret».
+#: Oprettede vaekninger pr. dag: 2/10: 15 · 3/10: 69 · 4/10: 141.
+#:
+#: TALLET er maalt, ikke valgt. Fordelingen pr. samtale:
+#:   pr. TIME : p50 2, p90 4, maks 6   → timeniveauet er sundt, ikke her
+#:   pr. DOEGN: 44 · 28 · 12 · 11 · 11 · 7 · 5 · 4
+#: Normalen topper ved 12; 28 og 44 er loebet. 20 giver normalen rigelig luft
+#: og skaerer kun loebet. Et lavere tal ville ramme en legitim CI-vagt.
+_MAX_PR_SAMTALE_PR_DOEGN = 20
 
 
 def _load() -> list[dict[str, Any]]:
@@ -84,6 +103,19 @@ def schedule_self_wakeup(
         return {
             "status": "error",
             "error": f"max {_MAX_PENDING} pending wakeups; cancel one first",
+        }
+    sid = (session_id or "").strip()
+    i_doegnet = bookinger_seneste_doegn(records, sid)
+    if sid and i_doegnet >= _MAX_PR_SAMTALE_PR_DOEGN:
+        return {
+            "status": "error",
+            "error": (
+                f"{i_doegnet} wakeups already booked from this conversation in the "
+                f"last 24h (limit {_MAX_PR_SAMTALE_PR_DOEGN}). You are in a chain: "
+                "each handled wakeup booking another one is how this gets here. "
+                "Stop re-booking, or ask Bjoern whether the watch is still wanted."
+            ),
+            "bookinger_seneste_doegn": i_doegnet,
         }
 
     fire_at = datetime.now(UTC) + timedelta(seconds=delay)
@@ -127,7 +159,102 @@ def schedule_self_wakeup(
     except Exception:
         pass
 
-    return {"status": "ok", "wakeup": record}
+    # ── Indbakken (Opgave 1, 3/10-2026) ─────────────────────────────────────
+    #
+    # DETTE er oprettelsespunktet spec'en mener med «verificeret ejer bestemmes
+    # ved integrationens oprettelsespunkt». Her — og kun her — er alle tre dele
+    # til stede samtidig: et tool-kald, et levende run, og en autentificeret
+    # bruger. Et minut senere findes ingen af dem, og så kan proveniensen ikke
+    # bevises af nogen.
+    #
+    # Uden dette kald ville indbakken være korrekt og tom: `inbox_items` havde
+    # ingen skriver, og hele kæden — visning, gate, værktøjer — ville virke
+    # upåklageligt på nul rækker. Det er husets hyppigste fejl, og den er
+    # sværest at se netop når koden er rigtig.
+    try:
+        from core.services.inbox_state import registrer_kilde
+        from core.services.session_context_resolve import aktivt_run_id
+        from core.services.inbox_state import bruger_for_workspace
+        _ib = registrer_kilde(
+            # Vaekningen hoerer til den bruger den blev booket FOR. Er
+            # `user_id` tom (ejerens egen, ubundne vej), OVERSAETTES workspacet
+            # til et bruger-id — det skrives aldrig raat.
+            #
+            # RETTET 4/10-2026: her stod `record.get("workspace_name")`
+            # direkte i `bruger_id`, og det blandede to navnerum i én kolonne.
+            # Maalt samme dag stod der to indbakker til samme person, 36
+            # raekker under navnet «bjorn» og 70 under hans rigtige id
+            # 1246415163603816499 — og de 36 blev aldrig arbejdet i, fordi
+            # hans sessioner oploeste til id'et. 34 kilde_id'er stod ordret
+            # under BEGGE.
+            bruger_id=(str(record.get("user_id") or "").strip()
+                       or bruger_for_workspace(record.get("workspace_name") or "")),
+            kildetype="wakeup",
+            kilde_id=wakeup_id,
+            oprettende_run_id=aktivt_run_id(""),
+            beskrivelse=prompt[:200] or reason[:200],
+        )
+        if _ib.get("status") != "ok":
+            logger.warning("self_wakeup: %s blev IKKE registreret i indbakken: %s",
+                           wakeup_id, _ib.get("error"))
+    except Exception as exc:  # noqa: BLE001
+        # Vaekningen er GEMT. En fejl i indbakke-registreringen maa ikke
+        # rulle den tilbage — men den maa heller ikke vaere tavs, for saa
+        # staar en forpligtelse uden sin post, og det er usynligt.
+        logger.warning("self_wakeup: kunne ikke registrere %s i indbakken: %s",
+                       wakeup_id, exc)
+
+    # Tallet med i SVARET, ikke kun i afvisningen. Han ser det altsaa hver
+    # gang han booker — og det er der beslutningen om et led mere tages.
+    # `i_doegnet` blev talt FOER denne blev tilfoejet, derfor +1.
+    return {"status": "ok", "wakeup": record,
+            "bookinger_seneste_doegn": i_doegnet + 1,
+            "loft_pr_samtale_pr_doegn": _MAX_PR_SAMTALE_PR_DOEGN}
+
+
+def bookinger_seneste_doegn(
+    records: list[dict[str, Any]],
+    session_id: str,
+    *,
+    nu: datetime | None = None,
+) -> int:
+    """Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn.
+
+    Taelles paa `scheduled_at`, altsaa hvornaar den blev BOOKET — ikke hvornaar
+    den fyrer. En kaede bygges af bookinger, og en vaekning der er sat til at
+    fyre i morgen er stadig et led i kaeden i dag.
+
+    Status ignoreres med vilje: consumed, cancelled og pending taeller alle med.
+    Taltes kun de ventende, ville vi maale `_MAX_PENDING` om igen og ramme
+    samme blinde vinkel — en kaede forbruger hvert led foer den booker det
+    naeste, saa de forbrugte ER kaeden.
+
+    Oprydningen holder consumed og cancelled i 7 dage
+    (`cleanup_old_wakeups`), saa doegn-vinduet bliver ikke beskaaret under os.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return 0
+    # `nu` kan gives udefra, saa vinduet kan ankres et andet sted end dette
+    # oejeblik. Uden det kan vagten ikke afspilles mod historikken: hver
+    # historisk booking ligger uden for et vindue maalt fra i dag, saa
+    # afspilningen svarer «nul afvist» uanset hvor slemt loebet var. Den
+    # fejl gjorde jeg, og det tomme svar lignede en virkende vagt.
+    graense = (nu or datetime.now(UTC)) - timedelta(hours=24)
+    n = 0
+    for r in records:
+        if str(r.get("session_id") or "").strip() != sid:
+            continue
+        stamp = str(r.get("scheduled_at") or "")
+        if not stamp:
+            continue
+        try:
+            tid = datetime.fromisoformat(stamp)
+        except ValueError:  # skraldet tidsstempel: kan ikke placeres i vinduet, taeller ikke med
+            continue
+        if tid >= graense:
+            n += 1
+    return n
 
 
 def due_wakeups(*, include_fired_unconsumed: bool = True) -> list[dict[str, Any]]:
@@ -165,9 +292,27 @@ def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
     record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
     if record is None:
         return {"status": "error", "error": "wakeup not found"}
-    if record.get("status") not in ("pending", "fired"):
-        return {"status": "error", "error": f"wakeup status={record.get('status')}, can't consume"}
-    was_fired = str(record.get("status") or "") == "fired"
+    status = str(record.get("status") or "")
+    # Kilden kan være ALLEREDE terminal. At kvittere den igen er en no-op,
+    # ikke en fejl — og forskellen er hele sagen.
+    #
+    # `_luk_kilden` i `inbox_state` accepterer «already» som succes og lader
+    # den durable afgørelse lukke rækken. Et «error» gør det modsatte: rækken
+    # bliver stående `aaben` med `kraever_handling=1`, og så gater posten
+    # permanent — og vejen ud går gennem det værktøj gaten blokerer.
+    #
+    # Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` → «status=consumed,
+    # can't consume», mens rækken stod åben og gatede alt `bash`. Samme form
+    # efter `cancel_wakeup` på `wake-99ac19041a`: annulleringen lukkede
+    # vækningen, ikke dens durable række.
+    #
+    # `drop` rammes ikke — den kalder ikke kilden, den afgør rækken direkte.
+    # Det er derfor `inbox_drop` virkede hvor `inbox_done` nægtede.
+    if status in ("consumed", "cancelled"):
+        return {"status": "already", "wakeup_id": wakeup_id, "tilstand": status}
+    if status not in ("pending", "fired"):
+        return {"status": "error", "error": f"wakeup status={status}, can't consume"}
+    was_fired = status == "fired"
     record["status"] = "consumed"
     record["consumed_at"] = datetime.now(UTC).isoformat()
     # 12/9-2026: luk den sidste stille kant. Dispatcheren filtrerer på
@@ -345,6 +490,25 @@ def self_wakeup_section() -> str | None:
         "Når du har handlet på en af dem, brug `mark_wakeup_consumed(wakeup_id)` "
         "så den ikke gentager sig i din awareness."
     )
+    # Kaeden skal vaere synlig HER — det er her du beslutter om du booker en ny.
+    # Et loft der rammer uden varsel er ikke en hjaelp. Taelles kun op naar den
+    # er halvvejs, saa den ikke stoejer i det normale tilfaelde (p90 er 4/time,
+    # og normalen topper ved 12 pr. doegn).
+    # Ingen try her, med vilje. `current_session_id()` giver "" naar
+    # ContextVar'en er vaek, og `_load()` falder tilbage til [] paa en
+    # oedelagt fil — begge faldene er paa plads NEDENFOR. En except her kunne
+    # aldrig fyre af den grund jeg foerst skrev, og saa var fejlen blevet en
+    # vaerdi jeg ikke kunne skelne fra et lovligt svar.
+    from core.identity.workspace_context import current_session_id
+    _sid = str(current_session_id() or "")
+    _n = bookinger_seneste_doegn(_load(), _sid) if _sid else 0
+    if _n >= _MAX_PR_SAMTALE_PR_DOEGN // 2:
+        lines.append(
+            f"⚠️ Du har booket {_n} wakeups i DENNE samtale det seneste døgn "
+            f"(loft {_MAX_PR_SAMTALE_PR_DOEGN}). Hver kvitteret vækning der "
+            "booker en ny er en kæde, og hvert led skriver i Bjørns chat. "
+            "Fandt kontrollen intet nyt, så book ikke en ny — luk den."
+        )
     return "\n".join(lines)
 
 

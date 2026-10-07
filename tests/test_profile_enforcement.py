@@ -159,12 +159,21 @@ def test_haandhaevelse_aendrer_IKKE_profilens_hash():
 
 
 def test_maalingen_er_ikke_en_kilde_til_fejl_i_forklar(monkeypatch):
-    """Vælter måleren, skal profilen stadig kunne forklare sig."""
+    """Vælter måleren, skal profilen stadig kunne forklare sig — og SIGE at
+    sikkerheden er ukendt frem for at melde «alt i orden».
+
+    Assertionen på `afvigelser` blev strammet 4/10-2026. Den hed `== []` og
+    pinnede dermed den fejl den skulle fange: en tom liste betyder «målt, og
+    alt stemmer», så en væltet måler blev rapporteret som en ren
+    sikkerhedsrapport. Docstringens krav (forklar må ikke kaste) står uændret.
+    """
     def _sprang(*_a, **_k):
         raise RuntimeError("maaleren er nede")
     monkeypatch.setattr(pe, "maal", _sprang)
     f = byg("visible-owner").forklar()
-    assert f["haandhaevelse"] == {} and f["afvigelser"] == []
+    assert f["haandhaevelse"] == {}
+    assert f["afvigelser"] != [], "en vaeltet maaler blev meldt som «alt i orden»"
+    assert "kunne ikke maale" in f["afvigelser"][0]
 
 
 # ------------------------------------------------------------- kilde-sandheden

@@ -105,6 +105,12 @@ from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.visning import router as visning_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
+from apps.api.jarvis_api.routes.chat_workspace_trust import (
+    router as chat_workspace_trust_router,
+)
+from apps.api.jarvis_api.routes.chat_inbox import (
+    router as chat_inbox_router,
+)
 from apps.api.jarvis_api.routes.review import router as review_router
 from apps.api.jarvis_api.routes.mobile_memory import router as mobile_memory_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
@@ -116,6 +122,7 @@ from apps.api.jarvis_api.routes.transcribe import router as transcribe_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.jarvisx import router as jarvisx_router
 from apps.api.jarvis_api.routes.status import router as status_router
+from apps.api.jarvis_api.routes.peak import router as peak_router
 from apps.api.jarvis_api.routes.sensory import router as sensory_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.jarvisx_bridge import router as jarvisx_bridge_router
@@ -355,6 +362,13 @@ def create_app() -> FastAPI:
             start_auto_remember_subscriber()
             start_daily_journal_daemon()
             start_discord_gateway()
+            # Vagthund: gatewayens klienttraad doer paa en enkelt 503 fra
+            # Discord og blev aldrig rejst igen — 11 timer doed kanal
+            # 1-2/10-2026. Supervisoren tjekker ejerskabet og rejser den.
+            from core.services.discord_gateway_supervisor import (
+                start_discord_gateway_supervisor,
+            )
+            start_discord_gateway_supervisor()
             start_telegram_gateway()
             start_voice_daemon()
             try:
@@ -491,6 +505,15 @@ def create_app() -> FastAPI:
                     logger.info("udloebne intentioner lukket: %s", _int)
             except Exception as _exc:
                 logger.warning("intentions-fejning fejlede: %s", _exc)
+            try:
+                # Et stille arbejdsforløb flyttes tilbage til ventende. Kun
+                # eksplicit verificering må markere sideopgaven færdig.
+                from core.services.side_tasks import fej_faerdige as _fej_side
+                _side = _fej_side()
+                if _side.get("tilbage_til_venter"):
+                    logger.info("side-opgaver tilbage til ventende ved opstart: %s", _side)
+            except Exception as _exc:
+                logger.warning("side-opgave-fejning fejlede: %s", _exc)
             try:
                 # Fase 8: et raad hvis proces doede staar i «deliberating» for
                 # evigt — `run_council_round`s finally naar ikke at koere.
@@ -705,6 +728,9 @@ def create_app() -> FastAPI:
                 ("stop_heartbeat_scheduler", stop_heartbeat_scheduler),
                 ("stop_notification_bridge", stop_notification_bridge),
                 ("stop_scheduled_tasks_service", stop_scheduled_tasks_service),
+                ("stop_discord_gateway_supervisor",
+                 _senere("core.services.discord_gateway_supervisor",
+                         "stop_discord_gateway_supervisor")),
                 ("stop_discord_gateway", stop_discord_gateway),
                 ("stop_telegram_gateway", stop_telegram_gateway),
                 ("stop_auto_remember_subscriber", stop_auto_remember_subscriber),
@@ -894,6 +920,9 @@ def create_app() -> FastAPI:
     app.include_router(files_router)
     app.include_router(visning_router)
     app.include_router(chat_router)
+    # Boy-scout split 3/10-2026: samme /chat-praefiks, egne tillids-ruter.
+    app.include_router(chat_workspace_trust_router)
+    app.include_router(chat_inbox_router)
     app.include_router(review_router)
     app.include_router(mobile_memory_router)
     app.include_router(chat_stream_v2_router)
@@ -967,6 +996,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(jarvisx_router)
     app.include_router(status_router)
+    app.include_router(peak_router)
     app.include_router(sensory_router)
     app.include_router(mc_router)
     from apps.api.jarvis_api.routes.mission_control_dashboard import router as mc_dashboard_router

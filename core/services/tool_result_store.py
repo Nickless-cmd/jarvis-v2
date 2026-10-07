@@ -214,6 +214,42 @@ def parse_tool_result_reference(content: str) -> dict[str, str] | None:
     }
 
 
+#: Hvor stor en del af budgettet der gaar til BEGYNDELSEN. Resten er halen.
+#:
+#: 30/9-2026: afkortningen var hoved-KUN (`normalized[: max_chars - 1] + "…"`),
+#: og halen blev droppet. For et `bash`-resultat er halen oftest svaret —
+#: exit-status, den sidste linje, tallet man bad om — mens begyndelsen er
+#: kommandoen og opvarmningen. Maalt paa en faktisk request: `bash` var
+#: to tredjedele af alt vaerktoejs-output i prompten, saa det er netop dér
+#: formen betyder noget.
+#:
+#: Samme princip som desk fik samme dag (`udeladelse.ts`): hoved, hale, og en
+#: notits der siger hvor meget der mangler — saa modellen VED at der er mere,
+#: i stedet for at tro at outputtet stopper dér.
+#:
+#: 70/30 fordi konteksten staar forrest og svaret bagest. Deterministisk: samme
+#: input giver samme output, saa gengivelsen er stadig byte-identisk tur efter
+#: tur, og cachen holder (se kommentaren i `transcript_sections`).
+_HOVED_ANDEL = 0.70
+
+
+def _hoved_og_hale(tekst: str, budget: int) -> str:
+    """Behold begyndelsen OG slutningen, og sig hvor meget der er udeladt.
+
+    Resultatet overskrider aldrig ``budget``: notitsen regnes med i regnskabet.
+    Er budgettet for lille til en meningsfuld hale, falder den tilbage til
+    hoved-kun — en hale paa tre tegn oplyser ingen.
+    """
+    udeladt = len(tekst) - budget
+    notits = f" …[{udeladt} tegn udeladt]… "
+    plads = budget - len(notits)
+    if plads < 80:
+        return tekst[: budget - 1].rstrip() + "…"
+    hoved = int(plads * _HOVED_ANDEL)
+    hale = plads - hoved
+    return tekst[:hoved].rstrip() + notits + tekst[-hale:].lstrip()
+
+
 def render_tool_result_for_prompt(
     content: str,
     *,
@@ -246,7 +282,7 @@ def render_tool_result_for_prompt(
         normalized = " ".join(raw.split()).strip()
         if len(normalized) <= max_chars:
             return normalized
-        return normalized[: max_chars - 1].rstrip() + "…"
+        return _hoved_og_hale(normalized, max_chars)
 
     data = get_tool_result(ref["result_id"])
     if not data:

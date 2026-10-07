@@ -59,13 +59,99 @@ def _er_runtime_processen() -> bool:
 
 def _besked_fra(record: dict[str, object]) -> str:
     """Den oprindelige anmodning — det er DEN opgaven handler om."""
-    # `original_request` er journalens eget navn (mark_started); de øvrige er
-    # der for ældre poster og for en opgave der kun har et resumé.
-    for felt in ("original_request", "user_message", "original_message", "excerpt", "summary"):
+    # Et fejl-resumé er ikke en brugerbesked og må ikke bruges som opgave.
+    for felt in ("original_request", "user_message", "original_message", "excerpt"):
         value = str(record.get(felt) or "").strip()
         if value:
             return value
-    return "Fortsæt hvor du slap."
+    return ""
+
+
+def _luk_afloest_raekke(run_id: str, *, reason: str) -> None:
+    """Luk den afløste kørsels EGEN række i `visible_runs`.
+
+    Dispatcheren afregnede kun journal-posten (JSON), og det var hele hullet:
+    målt 6/10-2026 stod `visible-bd1727a4` som `running` uden ét eneste
+    `costs`-opslag mens dens fortsættelse `visible-3433cf05` kørte færdig.
+    Rækken blev først lukket af `_ryd_visible_drift` 30 minutter senere, og
+    indtil da blokerer den genstarts-vagten — altså hvert deploy.
+
+    `stamp_visible_run_superseded` og IKKE `stamp_visible_run_interrupted`:
+    den anden udsender `runtime.visible_run_interrupted`, og `living_executive`
+    planlægger en self-wakeup på netop det event («Resume from interrupted
+    visible run»). Herfra ville den altså bede om en genoptagelse af det der
+    LIGE blev genoptaget — dobbelt-run'et gjort værre, ikke bedre. Den tavse er
+    også den sande: rækken er afløst, ikke efterladt.
+
+    Er rækken allerede terminal, er stemplet en no-op (dens WHERE kræver
+    `recovering` eller `running`), så den må gerne kaldes igen.
+
+    Importen af `visible_runs` FØRST er ikke pynt: `visible_runs_outcomes` er
+    cirkulær, og uden den kaster den «cannot import name … from partially
+    initialized module» — men kun nogle gange, afhængigt af hvad der i forvejen
+    er importeret i processen. Samme fælde er dokumenteret i
+    `session_boot_reconciler`.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return
+    try:
+        import core.services.visible_runs  # noqa: F401
+        from core.services.visible_runs_outcomes import stamp_visible_run_superseded
+        stamp_visible_run_superseded(rid, reason=reason)
+    except Exception:
+        # IKKE tavs. Netop den cirkulære import kan fejle, og uden loggen ville
+        # rækken blive stående `running` uden at nogen kunne se hvornår
+        # oprydningen holdt op med at virke.
+        logger.warning(
+            "recovery-dispatcher: kunne ikke lukke afloest raekke %s", rid[:24],
+            exc_info=True)
+
+
+def _samtalen_gik_videre(session_id: str, efter: str) -> bool:
+    """Er brugeren gået videre, siden den her kørsel døde?
+
+    Målt 3/10-2026: `visible-6d1c15e7` døde 13:24:48 uden at svare. Den blev
+    genoptaget 13:43:31 — og en fortsættelse får HELE samtale-historikken med,
+    så den svarede på Bjørns NYESTE besked, som en levende kørsel havde
+    besvaret 26 sekunder før. Fra hans side: ét spørgsmål, to svar.
+
+    `recover_due_once` havde kun ét værn — «kører der noget LIGE NU». Det
+    spørgsmål er sandt i et kort vindue og falsk igen bagefter; det ser ikke at
+    samtalen er gået videre imens posten ventede.
+
+    Reglen: har brugeren skrevet noget NYT i denne samtale efter posten døde,
+    er opgaven forladt. Det er ikke et tab — skrev han noget, findes der et
+    nyere run der bærer hans spørgsmål, og det bliver genoptaget for sig selv
+    hvis det også dør. Vi dropper kun det gamle.
+
+    `datetime()` og ikke en rå streng-sammenligning: den læser både `+00:00` og
+    `Z`, og giver NULL på et tidsstempel den ikke forstår — altså nul rækker,
+    altså «nej, gå videre». Kan vi ikke læse basen, svarer vi også NEJ og
+    genoptager: et run må aldrig dø tavst, så tvivlen falder ud til fordel for
+    at prøve.
+    """
+    sid = str(session_id or "").strip()
+    if not sid or not str(efter or "").strip():
+        return False
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            raekke = conn.execute(
+                """
+                SELECT COUNT(*) FROM chat_messages
+                WHERE session_id = ?
+                  AND role = 'user'
+                  AND datetime(created_at) > datetime(?)
+                """,
+                (sid, str(efter)),
+            ).fetchone()
+    except Exception:
+        logger.warning(
+            "recovery-dispatcher: kunne ikke se om samtalen gik videre (%s) — genoptager",
+            sid[:28], exc_info=True)
+        return False
+    return bool(raekke and int(raekke[0]) > 0)
 
 
 def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
@@ -94,7 +180,57 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             retry_after_s=BACKOFF_SECONDS)
         return {"started": 0, "released": 1, "claimed": task_id, "error": "no-session"}
 
+    # ER SAMTALEN GÅET VIDERE? (3/10-2026)
+    #
+    # Kravet her er ikke «kører der noget nu» — det spørgsmål stilles nedenfor,
+    # og det er kun sandt i det korte vindue hvor en tur faktisk kører. Det her
+    # er historisk: skrev brugeren noget, EFTER posten døde?
+    #
+    # Uden det stod posten i kø i 19 minutter mens Bjørn og jeg talte sammen;
+    # da samtalen endelig var fri, blev den genoptaget og svarede på hans
+    # nyeste besked — som var besvaret for længst.
+    #
+    # `settle_terminal` og ikke `release_recovery_claim`: gav vi kravet tilbage,
+    # ville næste tick tage det igen og droppe det igen, i det uendelige.
+    # `cancelled` frem for `failed_terminal`, fordi `failed_terminal` sætter
+    # `notice_pending` — og en forældet opgave skal ikke give Bjørn et varsel.
+    # Første afbrydelse er grænsen for HELE opgaven. En senere retry kan dø
+    # igen efter at brugeren skrev videre; dens nye settled_at må ikke få den
+    # gamle opgave til at ligne noget, der stadig afventer et svar.
+    if _samtalen_gik_videre(session_id, str(
+        krav.get("first_interrupted_at") or krav.get("settled_at")
+        or krav.get("interrupted_at") or ""
+    )):
+        try:
+            in_flight_runs.settle_terminal(
+                task_id, status="cancelled",
+                reason="samtalen gik videre efter afbrydelsen",
+                expected_generation=generation, expected_owner=ejer)
+        except Exception:
+            # Kunne vi ikke lukke den, må kravet ikke blive hængende hos os.
+            logger.warning("recovery-dispatcher: kunne ikke lukke forældet opgave "
+                           "%s — giver kravet tilbage", task_id[:24], exc_info=True)
+            in_flight_runs.release_recovery_claim(
+                task_id, generation, owner=ejer, reason="kunne ikke lukke forældet opgave",
+                retry_after_s=BACKOFF_SECONDS)
+            return {"started": 0, "released": 1, "claimed": task_id,
+                    "error": "settle-fejlede"}
+        _luk_afloest_raekke(task_id, reason="samtalen gik videre efter afbrydelsen")
+        logger.info(
+            "recovery-dispatcher: %s droppet — brugeren skrev nyt i %s efter kørslen døde",
+            task_id[:24], session_id[:28])
+        return {"started": 0, "released": 1, "claimed": task_id,
+                "error": "samtalen-gik-videre"}
+
     besked = _besked_fra(krav)
+    if not besked:
+        in_flight_runs.settle_terminal(
+            task_id, status="cancelled", reason="recovery-original-request-missing",
+            expected_generation=generation, expected_owner=ejer,
+        )
+        _luk_afloest_raekke(task_id, reason="oprindelig anmodning mangler")
+        return {"started": 0, "released": 1, "claimed": task_id,
+                "error": "missing-original-request"}
     # SIDSTE SLUTRUNDE (opgave 3/4). Er genoptagelserne brugt op, beder
     # journalen om en AFSLUTNING — ikke om mere arbejde. Uden dette fik den
     # samme besked som en almindelig fortsættelse og kunne bruge sin sidste
@@ -172,6 +308,11 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
                        "tilbage", task_id, exc_info=True)
         return {"started": 0, "released": 1, "claimed": task_id, "error": str(exc)[:160]}
 
+    # Først NU, hvor fortsættelsen er i luften. Lukkede vi rækken før starten
+    # og starten fejlede, havde vi stemplet en opgave død som stadig skulle
+    # tages igen — og `release_recovery_claim` ovenfor ville ikke kunne rulle
+    # stemplet tilbage.
+    _luk_afloest_raekke(task_id, reason=f"afloest af {str(run_id)[:40]}")
     logger.info("recovery-dispatcher: genoptog %s som run %s (generation %d)",
                 task_id, run_id, generation)
     return {"started": 1, "released": 0, "claimed": task_id, "run_id": str(run_id),

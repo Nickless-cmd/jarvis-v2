@@ -41,7 +41,7 @@ from core.runtime.db import connect
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["GYLDIGE", "STANDARD", "hent_permission", "saet_permission"]
+__all__ = ["GYLDIGE", "STANDARD", "arv_permission", "hent_permission", "saet_permission"]
 
 GYLDIGE: Final[frozenset[str]] = frozenset({"ask", "trust"})
 #: `ask` er standarden overalt: her, i `visible_runs` og i mobilens
@@ -91,3 +91,53 @@ def saet_permission(session_id: str, mode: str) -> dict[str, object]:
         if cur.rowcount != 1:
             return {"status": "error", "error": f"ukendt samtale: {sid}"}
     return {"status": "ok", "id": sid, "approval_mode": m}
+
+
+def arv_permission(ny_session: str, fra_session: str) -> dict[str, object]:
+    """Giv en NY samtale samme niveau som den den blev startet fra.
+
+    ## Hvorfor
+
+    Bjørn 3/10-2026: «composer arver ikk permissions». Målt: en side-opgave
+    startes i en NY samtale (`startSideOpgave` → `createSession`), og den
+    samtale har ingen værdi i `chat_sessions.approval_mode`. `hent_permission`
+    svarer derfor `ask` — og desks `PermissionContext` læser netop serveren når
+    samtalen skifter, så den OVERSKRIVER brugerens lokale «fuld adgang» med
+    `ask`. Han havde givet adgang; den forsvandt i oprettelsen.
+
+    Det er ikke en fejl i klienten. Serveren ER kilden (se filens hoved), og
+    kilden havde intet at svare for en samtale der lige var født.
+
+    ## Hvad arven må og ikke må
+
+    Arven sker KUN ved oprettelse, og kun fra en samtale der findes. Et
+    senere skift i forælderen flytter ikke barnet — ellers kunne et
+    `trust`-klik i én samtale hæve privilegier i en anden, bagudvirkende.
+
+    `ask` arves ikke eksplicit: det ER standarden, så en skrivning ville kun
+    være støj. Arven løfter altså aldrig et niveau ned.
+
+    Returnerer det barnet ender på, og hvorfor — så kalderen kan logge det.
+    Kaster aldrig: en mislykket arv må ikke kunne forhindre at samtalen bliver
+    oprettet. Fail-retningen er `ask`, som er den sikre.
+    """
+    ny = str(ny_session or "").strip()
+    fra = str(fra_session or "").strip()
+    if not ny or not fra or ny == fra:
+        return {"approval_mode": STANDARD, "arvet": False, "grund": "ingen foraelder"}
+    try:
+        foraelder = hent_permission(fra)
+        if foraelder == STANDARD:
+            return {"approval_mode": STANDARD, "arvet": False,
+                    "grund": "foraelderen staar paa standarden"}
+        ud = saet_permission(ny, foraelder)
+        if ud.get("status") == "error":
+            logger.warning("permission-arv afvist for %s fra %s: %s",
+                           ny, fra, ud.get("error"))
+            return {"approval_mode": STANDARD, "arvet": False,
+                    "grund": str(ud.get("error") or "afvist")}
+        logger.info("permission arvet: %s -> %s (fra %s)", foraelder, ny, fra)
+        return {"approval_mode": foraelder, "arvet": True, "fra": fra}
+    except Exception:
+        logger.warning("permission-arv fejlede for %s fra %s", ny, fra, exc_info=True)
+        return {"approval_mode": STANDARD, "arvet": False, "grund": "fejl"}

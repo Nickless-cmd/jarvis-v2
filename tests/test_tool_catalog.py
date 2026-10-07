@@ -102,3 +102,62 @@ def test_spawn_agent_task_staar_i_inventaret():
     # Lige efter scout, saa forskellen kan ses paa stedet: scout LAESER,
     # spawn HANDLER.
     assert gruppe.index("spawn_agent_task") == gruppe.index("scout_agent") + 1
+
+
+# ── Kataloget skal sige «se efter i dine egne defs foerst» (30/9-2026) ───────
+#
+# Maalt over 30 dage: 541 hentede vaerktoejsnavne, ~80 (15 %) for vaerktoejer
+# der ALLEREDE laa i turens native function-defs — `notify_user` 20 gange,
+# `recall_memories` 19. Kataloget naevnte dem uden at skelne, og modellen
+# krydstjekkede ikke sit eget array.
+#
+# Det koster ingen cache (merge'n springer dem over), men en runde hver gang.
+
+def test_kataloget_beder_om_et_krydstjek_foerst():
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert "SE FØRST EFTER I DINE EGNE function-defs" in tekst, (
+        "katalogets krydstjek-linje er væk — saa hentes kerne-vaerktoejer igen")
+    # Kontrollen: pegepinden til load_more_tools skal BLIVE. Uden den kan de
+    # ~320 oevrige ikke findes overhovedet.
+    assert "load_more_tools" in tekst
+
+
+def test_kataloget_naevner_stadig_vaerktoejer():
+    """Uden den kunne testen ovenfor bestaa paa et katalog der kun er en
+    instruktion — og saa kan han ikke finde noget som helst."""
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert len(tekst) > 1000, len(tekst)
+    assert "KERNE-VÆRKTØJER" in tekst
+
+
+def test_kataloget_laerer_ham_BEGGE_trin():
+    """Hentning er to trin, og kataloget er det sted han slaar op FOER han
+    henter.
+
+    Hentningens eget resultat peger paa `call_loaded_tool`, og dispatcherens
+    beskrivelse siger det — men begge kommer foerst naar han ALLEREDE har
+    hentet. Kataloget naevnte kun `load_more_tools`, altsaa halvdelen af flowet.
+
+    Et hentet vaerktoej kan ikke kaldes direkte: det staar ikke i hans
+    function-def-liste, og DeepSeek afviser et vaerktoej der ikke er
+    deklareret (maalt mod deres API 30/9-2026).
+    """
+    from core.services.tool_catalog import build_catalog_text
+
+    tekst = build_catalog_text()
+    assert "load_more_tools" in tekst, "trin 1 mangler"
+    assert "call_loaded_tool" in tekst, "trin 2 mangler — han laerer kun halvdelen"
+
+
+def test_nudgen_naevner_ogsaa_andet_trin():
+    """Samme halve flow stod i nudge-teksterne der peger paa et hentet vaerktoej."""
+    from pathlib import Path
+
+    kilde = Path("core/services/tool_hunt_nudge.py").read_text(encoding="utf-8")
+    for stump in kilde.split("hent den med `load_more_tools`")[1:]:
+        assert "call_loaded_tool" in stump[:120], (
+            "en nudge siger «hent den» uden at sige hvordan den kaldes bagefter")

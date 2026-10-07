@@ -60,6 +60,11 @@ import time as _t_ollama
 _OLLAMA_TAGS_CACHE: dict = {"ts": 0.0, "tags": set()}
 _OLLAMA_TAGS_TTL_S = 120.0
 
+# Give-up efter ~24s tavshed på SSE-subscriberen. Tærsklen er en TÆLLING af tomme
+# polls og SKAL følge poll-intervallet i _subscribe (15ms): 1600 × 15ms ≈ 24s.
+# Før 29/9-2026 var den 300, kalibreret til dengang idle-stien sov 80ms.
+_IDLE_GIVEUP_POLLS = 1600
+
 
 def _ollama_model_tags() -> set:
     """Set of model names ollama currently serves. Cached 120s; fail-open (empty set)."""
@@ -489,12 +494,50 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             research_mode=bool(request.research_mode),
             surface=getattr(request, "surface", "") or "",
         )
+        if not _attached:
+            # TTFT-uret starter HER: i det oejeblik runnet begynder, foer noget
+            # er sendt mod udbyderen. Ved `_attached` er runnet allerede i gang
+            # — saa ville vi maale fra DETTE kald og faa en TTFT der ser ud som
+            # om modellen var hurtig, fordi den havde arbejdet i forvejen.
+            try:
+                from core.services import svar_tempo
+                svar_tempo.start(run_id)
+            except Exception as _tempo_exc:  # noqa: BLE001
+                logger.warning("chat/stream/v2: TTFT-uret kunne ikke starte: %s", _tempo_exc)
         if _attached:
             print(
                 f"[chat/stream/v2] single-flight: session={session_id[:20]} "
                 f"attached til live run {run_id[:24]} (ingen nyt run)",
                 flush=True,
             )
+
+        def _dt_ud(sid: str, ramme: str) -> None:
+
+            """Notér én udgaaende ramme i delta-sporet.
+
+
+            Taeller kun TEKST-rammer: ping og terminale rammer er ikke
+
+            indhold, og de ville faa fordelingen til at se jaevnere ud end
+
+            den er — praecis den slags udglatning maalingen findes for at
+
+            undgaa. Slaar kun op naar sporet er taendt."""
+
+            try:
+
+                from core.services import delta_trace as _dt
+
+                if not _dt.taendt() or 'text_delta' not in ramme:
+
+                    return
+
+                _dt.noter('ud', sid, len(ramme))
+
+            except Exception:  # et spor maa aldrig afbryde streamen mod desk
+
+                pass
+
 
         async def _subscribe():
             import asyncio as _a
@@ -520,6 +563,11 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     for f in frames:
                         if "message_stop" in f:
                             saw_stop = True
+                        # Delta-sporets punkt «ud»: hvad desk FAKTISK modtager.
+                        # Sammenholdt med punkt «ind» i adapteren afgoer det om
+                        # en klump er modellens, vores egen kaedes eller desks
+                        # visning. Slukket som standard; se `delta_trace`.
+                        _dt_ud(session_id, f)
                         yield f
                         _last_emit = _xt.monotonic()
                     if saw_stop:
@@ -550,7 +598,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         # Frames FLYDER → poll hurtigt (15ms) så tokens/tool-frames når
                         # klienten ét-for-ét i stedet for 80ms-klumper. Fluid streaming.
                         # Kun aktiv mens der reelt strømmer content (få sekunder pr. tur),
-                        # så CPU-omkostningen er forsvindende. Idle-stien bevarer 80ms.
+                        # så CPU-omkostningen er forsvindende.
                         empty = 0
                         await _a.sleep(0.015)
                         continue
@@ -559,7 +607,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
                         yield _Ping().to_sse_line()
                         _last_emit = _xt.monotonic()
-                    if empty > 300 and rel.is_open(run_id):
+                    if empty > _IDLE_GIVEUP_POLLS and rel.is_open(run_id):
                         # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
                         # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
                         # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk
@@ -567,18 +615,30 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         # overtog → ALT content (kom efter 24s) gik til mobil. Giv KUN op
                         # hvis runnet er ÆGTE dødt (ikke is_live); ellers bliv ved at vente.
                         empty = 0
-                    elif empty > 300:  # ~24s tavst OG run ikke længere live → giv op
+                    elif empty > _IDLE_GIVEUP_POLLS:  # ~24s tavst OG run ikke længere live → giv op
                         # H1/G6: aldrig bare break — emit syntetisk terminal-frame
                         # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
                         yield rel.synthetic_terminal_frame(
                             run_id, session_id, reason="relay_subscriber_idle"
                         )
                         break
-                    # Idle → langsom poll: sparer CPU + holder ping/timeout-kadencen
-                    # (empty>300 ≈ 24s uændret, da kun tomme polls tæller ved 80ms).
-                    await _a.sleep(0.08)
+                    # Idle-poll er OGSÅ 15ms (målt 29/9-2026). Før sov den 80ms, og
+                    # det KVANTISEREDE kildens huller op: en bølge der ankom 5ms efter
+                    # polleren gik i søvn ventede 75ms i utide. Målt direkte på
+                    # udgangen (curl -N, ms-tidsstempler): huller på 95/96/95ms =
+                    # 80 + 15. Nu følger kadencen kilden i stedet for at forstærke den.
+                    await _a.sleep(0.015)
             finally:
                 rel.subscriber_closed(run_id)
+                # Delta-sporets opsummering — ÉN linje per maalepunkt, naar
+                # turen er slut. En linje per delta ville drukne journalen og
+                # selv koste tid; se `delta_trace`s hoved.
+                try:
+                    from core.services import delta_trace as _dt_slut
+                    _dt_slut.afslut(session_id, run_id=run_id)
+                    _dt_slut.afslut_laesning(session_id, run_id=run_id)
+                except Exception:  # sporet maa ikke kunne forhindre oprydningen
+                    pass
 
         return StreamingResponse(
             _subscribe(),

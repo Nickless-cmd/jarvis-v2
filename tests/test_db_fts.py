@@ -79,3 +79,119 @@ def test_ensure_is_idempotent(conn):
     a = db_fts.ensure_fts_tables(conn)
     b = db_fts.ensure_fts_tables(conn)
     assert a == b
+
+
+# ── bruger-scope (privatlivs-lækagen, målt 6/10-2026) ────────────────────
+
+
+def _stempel(conn, sid: str, uid: str) -> None:
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES (?, ?, 'user', 'x', ?, '2026-09-03T10:00:00')",
+        (f"m-{sid}", sid, uid),
+    )
+
+
+def test_search_scopes_to_current_user(conn):
+    """Værn: en anden brugers private session må ikke kunne søges frem.
+
+    Målt 6/10-2026: søgningen havde intet bruger-scope, og `recall` (recall.py:180,
+    med `session_summary` i DEFAULT_SOURCES) eksponerede den direkte. Bevist aktiv:
+    et recall efter en opskrift returnerede Michelles private samtale som top-hit
+    (score 1,00) — for owner. `chat_crypto`'s nordstjerne forbyder det direkte:
+    «hverken Bjørn eller Jarvis må kunne læse andres private sessioner».
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, created_at) "
+        "VALUES ('s-owner', 'Emne: pfsense noegle flyttet til .env', '2026-09-03T10:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, created_at) "
+        "VALUES ('s-other', 'Emne: pfsense noegle i min opskrift', '2026-09-03T11:00:00')"
+    )
+    _stempel(conn, "s-owner", "owner-uid")
+    _stempel(conn, "s-other", "other-uid")
+    db_fts.ensure_fts_tables(conn)
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
+        assert "s-owner" in sids
+        assert "s-other" not in sids, "en anden brugers private session lækkede ind i søgningen"
+    finally:
+        reset_context(t)
+
+    t = set_context(workspace_name="michelle", user_id="other-uid")
+    try:
+        sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
+        assert "s-other" in sids, "ejeren skal kunne finde sin EGEN samtale"
+        assert "s-owner" not in sids
+    finally:
+        reset_context(t)
+
+
+def test_search_lets_unstamped_legacy_through(conn):
+    """Ustemplede (enbruger-æraen) sessioner må ikke forsvinde for nogen.
+
+    25.212 af 74.411 beskeder har ingen user_id. Scopede vi dem væk, ville folk
+    miste deres egen historik — så filteret må kun udelukke det der BEVISELIGT
+    tilhører en anden.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, created_at) "
+        "VALUES ('s-legacy', 'Emne: pfsense noegle uden stempel', '2026-09-03T10:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, created_at) "
+        "VALUES ('s-other', 'Emne: pfsense noegle anden bruger', '2026-09-03T11:00:00')"
+    )
+    _stempel(conn, "s-other", "other-uid")
+    db_fts.ensure_fts_tables(conn)
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
+        assert "s-legacy" in sids, "ustemplet historik må ikke blive usynlig for sin ejer"
+        assert "s-other" not in sids
+    finally:
+        reset_context(t)
+
+
+def test_chat_search_scopes_to_current_user(conn):
+    """Værn: `chat`-kilden i recall må ikke læse en anden brugers sessioner.
+
+    `chat` er opt-in (recall.py:194, `_source_chat`) og ikke i DEFAULT_SOURCES,
+    men uden scope kunne et recall med `sources=['chat']` hente en anden brugers
+    beskeder. Samme dør i samme væg som session_summary.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-owner', 's-owner', 'user', 'pfsense noeglen min', 'owner-uid', '2026-09-03T10:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-other', 's-other', 'user', 'pfsense noeglen anden', 'other-uid', '2026-09-03T11:00:00')"
+    )
+    db_fts.ensure_fts_tables(conn)
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        mids = [h["message_id"] for h in db_fts.search_chat_messages("pfsense noegle", limit=10)]
+        assert "m-owner" in mids
+        assert "m-other" not in mids, "en anden brugers chatbesked lækkede ind i chat-kilden"
+    finally:
+        reset_context(t)
+
+    t = set_context(workspace_name="michelle", user_id="other-uid")
+    try:
+        mids = [h["message_id"] for h in db_fts.search_chat_messages("pfsense noegle", limit=10)]
+        assert "m-other" in mids, "ejeren skal kunne søge sin EGEN chat"
+        assert "m-owner" not in mids
+    finally:
+        reset_context(t)

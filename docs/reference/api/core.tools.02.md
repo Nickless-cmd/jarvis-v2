@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/kaldt_vaerktoej.py`
+_`call_loaded_tool` — en transport, ikke en udfører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L76) |
+
+## `core/tools/kommando_beskrivelse.py`
+_Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L55) |
+| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L59) |
+
+## `core/tools/load_more_tools.py`
+_Lazy tool schema loader for visible-lane tool pruning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_name` | `(tool_def)` | — | [src](../../../core/tools/load_more_tools.py#L10) |
+| function | `_tool_load_more_tools` | `(arguments)` | Resolve tools to add to the next round and return their full schemas. | [src](../../../core/tools/load_more_tools.py#L15) |
+
+## `core/tools/mail_tools.py`
+_Mail tools for Jarvis — jarvis@srvlab.dk_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_mail_config` | `()` | — | [src](../../../core/tools/mail_tools.py#L24) |
+| function | `_exec_send_mail` | `(args)` | Send an email from jarvis@srvlab.dk. | [src](../../../core/tools/mail_tools.py#L27) |
+| function | `_exec_read_mail` | `(args)` | Read recent emails from jarvis@srvlab.dk inbox. | [src](../../../core/tools/mail_tools.py#L70) |
+
 ## `core/tools/math_tools.py`
 _Precise math and unit conversion tools using sympy._
 
@@ -33,6 +65,15 @@ _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._
 |---|---|---|---|---|
 | function | `_exec_read_memory_topic` | `(args)` | Læs en kurateret memory-topic-fil (pull, LLM-led). Scoped til aktuel bruger. | [src](../../../core/tools/memory_topic_tools.py#L12) |
 | function | `_exec_write_memory_topic` | `(args)` | Skriv/opdatér en kurateret memory-topic (streng bekraeftelse). Scoped til bruger. | [src](../../../core/tools/memory_topic_tools.py#L22) |
+
+## `core/tools/mermaid_tool.py`
+_`render_mermaid` — et diagram der også når telefonen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_generated_dir` | `()` | Samme mappe som `openrouter_image` skriver i — den er allerede synlig. | [src](../../../core/tools/mermaid_tool.py#L68) |
+| function | `_svg_til_png` | `(svg)` | SVG → PNG. Rejser RuntimeError med en brugbar årsag. | [src](../../../core/tools/mermaid_tool.py#L84) |
+| function | `_exec_render_mermaid` | `(args)` | Mermaid-kilde → PNG i tråden, så diagrammet også ses på mobilen. | [src](../../../core/tools/mermaid_tool.py#L114) |
 
 ## `core/tools/meta_learning_tools.py`
 _Meta-læring tools — Phase 1 (AGI track #3)._
@@ -155,9 +196,9 @@ _Baggrunds-shells paa operatoerens maskine — paritet med jarvis-code._
 |---|---|---|---|---|
 | function | `_new_id` | `()` | — | [src](../../../core/tools/operator_background.py#L35) |
 | function | `_valid` | `(shell_id)` | Kun vores egne id'er. Uden det kunne et id smugle sti-fragmenter ind i | [src](../../../core/tools/operator_background.py#L39) |
-| function | `start_async` | `(*, command, user_id, cwd=…, timeout_s=…)` | Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}. | [src](../../../core/tools/operator_background.py#L45) |
-| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L73) |
-| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L113) |
+| function | `start_async` | `(*, command, user_id, cwd=…, titel=…, timeout_s=…)` | Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}. | [src](../../../core/tools/operator_background.py#L45) |
+| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L103) |
+| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L143) |
 
 ## `core/tools/operator_bash_session.py`
 _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens maskine._
@@ -169,10 +210,10 @@ _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens mask
 | function | `_reap` | `()` | — | [src](../../../core/tools/operator_bash_session.py#L34) |
 | function | `_extract_cwd` | `(out)` | Pluk cwd-markøren ud af stdout og fjern den fra det Jarvis ser. | [src](../../../core/tools/operator_bash_session.py#L41) |
 | function | `_exec_operator_bash_session_open` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L52) |
-| function | `_exec_operator_bash_session_run` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L65) |
-| function | `_render_text` | `(inner)` | Læsbart output som en `text`-nøgle — og dét er ikke kosmetik. | [src](../../../core/tools/operator_bash_session.py#L122) |
-| function | `_exec_operator_bash_session_close` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L161) |
-| function | `_exec_operator_bash_session_list` | `(_args)` | — | [src](../../../core/tools/operator_bash_session.py#L177) |
+| function | `_exec_operator_bash_session_run` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L66) |
+| function | `_render_text` | `(inner)` | Læsbart output som en `text`-nøgle — og dét er ikke kosmetik. | [src](../../../core/tools/operator_bash_session.py#L123) |
+| function | `_exec_operator_bash_session_close` | `(args)` | — | [src](../../../core/tools/operator_bash_session.py#L162) |
+| function | `_exec_operator_bash_session_list` | `(_args)` | — | [src](../../../core/tools/operator_bash_session.py#L178) |
 
 ## `core/tools/operator_tools.py`
 _Operator-side tools — execute on operator's desktop via JarvisX bridge._
@@ -324,17 +365,21 @@ _Pollinations.ai tools — free, no-auth image + video generation._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_api_key` | `()` | Read pollinations API key from runtime.json (never hardcoded). | [src](../../../core/tools/pollinations_tools.py#L57) |
-| function | `_auth_headers` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L69) |
-| function | `_generated_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L77) |
-| function | `_video_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L82) |
-| function | `_clamp` | `(value, lo, hi)` | — | [src](../../../core/tools/pollinations_tools.py#L87) |
-| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/pollinations_tools.py#L91) |
-| function | `_write_sidecar` | `(image_path, metadata)` | — | [src](../../../core/tools/pollinations_tools.py#L100) |
-| function | `generate_image` | `(*, prompt, model=…, width=…, height=…, seed=…, nologo=…, enhance=…, save_dir=…)` | Fetch an image from Pollinations and save to disk. Returns result dict. | [src](../../../core/tools/pollinations_tools.py#L109) |
-| function | `_exec_pollinations_image` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L222) |
-| function | `generate_video` | `(*, prompt, model=…, duration=…, aspect_ratio=…, audio=…, image_url=…, save_dir=…)` | Generate a video via pollinations.ai. Requires pollinations_api_key | [src](../../../core/tools/pollinations_tools.py#L298) |
-| function | `_exec_pollinations_video` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L414) |
+| function | `_api_key` | `()` | Read pollinations API key from runtime.json (never hardcoded). | [src](../../../core/tools/pollinations_tools.py#L83) |
+| function | `_auth_headers` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L95) |
+| function | `_generated_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L103) |
+| function | `_video_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L108) |
+| function | `_clamp` | `(value, lo, hi)` | — | [src](../../../core/tools/pollinations_tools.py#L113) |
+| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/pollinations_tools.py#L117) |
+| function | `_write_sidecar` | `(image_path, metadata)` | — | [src](../../../core/tools/pollinations_tools.py#L126) |
+| function | `generate_image` | `(*, prompt, model=…, width=…, height=…, seed=…, nologo=…, enhance=…, save_dir=…)` | Fetch an image from Pollinations and save to disk. Returns result dict. | [src](../../../core/tools/pollinations_tools.py#L135) |
+| function | `_exec_pollinations_image` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L248) |
+| function | `generate_video` | `(*, prompt, model=…, duration=…, aspect_ratio=…, audio=…, image_url=…, save_dir=…)` | Generate a video via pollinations.ai. Requires pollinations_api_key | [src](../../../core/tools/pollinations_tools.py#L331) |
+| function | `_hent_video` | `(*, url, model, prompt, save_dir=…)` | Hent, gem og beskriv en video. Faelles for generering og redigering. | [src](../../../core/tools/pollinations_tools.py#L373) |
+| function | `_registrer_video` | `(result, args, *, hvad=…)` | Goer videoen synlig: registrér den, og laeg den paa turen. | [src](../../../core/tools/pollinations_tools.py#L458) |
+| function | `edit_video` | `(*, prompt, video_url, model=…, duration=…, aspect_ratio=…, audio=…)` | Lav en NY video ud fra en eksisterende + en instruktion. | [src](../../../core/tools/pollinations_tools.py#L506) |
+| function | `_exec_pollinations_video_edit` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L571) |
+| function | `_exec_pollinations_video` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L595) |
 
 ## `core/tools/process_supervisor_tools.py`
 _Tool wrappers for the process supervisor._
@@ -378,6 +423,13 @@ _Tools for project-scoped persistent notes._
 | function | `_resolve_notes_path` | `()` | — | [src](../../../core/tools/project_notes_tools.py#L21) |
 | function | `_exec_read_project_notes` | `(_args)` | — | [src](../../../core/tools/project_notes_tools.py#L31) |
 | function | `_exec_update_project_notes` | `(args)` | — | [src](../../../core/tools/project_notes_tools.py#L58) |
+
+## `core/tools/publish_file_tool.py`
+_`publish_file` — udskilt enhed, og nu per bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_publish_file` | `(args)` | Copy or create a file in ~/.jarvis-v2/files/ and return a download URL. | [src](../../../core/tools/publish_file_tool.py#L36) |
 
 ## `core/tools/py_source_guard.py`
 _py_source_guard — vaern mod en tilbagevendende LLM-skrive-artefakt._
@@ -426,22 +478,22 @@ _restart_self tool — fire-and-forget service restart that survives process dea
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler er i gang lige nu — og kan plausibelt leve? | [src](../../../core/tools/restart_self_tools.py#L90) |
-| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L117) |
-| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L194) |
-| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L220) |
-| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L241) |
-| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L277) |
-| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L308) |
+| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L92) |
+| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L145) |
+| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L265) |
+| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L291) |
+| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L312) |
+| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L343) |
+| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L374) |
 
 ## `core/tools/screen_tool.py`
-_Screen control tool — Jarvis can turn monitors on/off/standby._
+_Screen control — turn Bjørn's monitors on/off/standby, or read their state._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_xset_dpms` | `(action)` | Run an xset dpms command and return structured result. | [src](../../../core/tools/screen_tool.py#L35) |
-| function | `_xset_dpms_status` | `()` | Query DPMS status and return structured result. | [src](../../../core/tools/screen_tool.py#L82) |
-| function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L119) |
+| function | `_dpms_command` | `(action)` | Shell command that sets (or reads) DPMS on every connected DP output. | [src](../../../core/tools/screen_tool.py#L78) |
+| function | `_run_on_operator` | `(command, args)` | Run `command` on the operator's desktop via the bridge. | [src](../../../core/tools/screen_tool.py#L85) |
+| function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L117) |
 
 ## `core/tools/security_predicates.py`
 _Nummererede security-predikater (spec E, 2026-07-10)._
@@ -465,85 +517,4 @@ _Semantic code search — natural language queries over the Jarvis codebase._
 | function | `_score_with_llm` | `(query, candidates, top_k)` | Use LLM to rank candidates by semantic relevance to query. | [src](../../../core/tools/semantic_search_tools.py#L62) |
 | function | `_read_context` | `(file, line, context=…)` | — | [src](../../../core/tools/semantic_search_tools.py#L92) |
 | function | `_exec_semantic_search_code` | `(args)` | — | [src](../../../core/tools/semantic_search_tools.py#L103) |
-
-## `core/tools/sensory_tools.py`
-_Sensory archive tools — record and recall sensory experiences._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_record_sensory_memory` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L18) |
-| function | `_exec_recall_sensory_memories` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L79) |
-
-## `core/tools/session_search.py`
-_search_sessions tool — cross-channel session search with keyword and semantic modes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_channel_title_filter` | `(channel)` | — | [src](../../../core/tools/session_search.py#L60) |
-| function | `_row_to_result` | `(row, *, match_type)` | — | [src](../../../core/tools/session_search.py#L69) |
-| function | `_user_scope_clause` | `(user_id)` | Privatlivs-guard (multi-user northstar): begræns søgningen til sessions der | [src](../../../core/tools/session_search.py#L86) |
-| function | `_keyword_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L103) |
-| function | `_embed_query` | `(text)` | Embed text via Ollama. Returns None if unavailable. | [src](../../../core/tools/session_search.py#L144) |
-| function | `_cosine_similarity` | `(a, b)` | — | [src](../../../core/tools/session_search.py#L171) |
-| function | `_semantic_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L181) |
-| function | `_merge_results` | `(keyword_results, semantic_results, limit)` | — | [src](../../../core/tools/session_search.py#L238) |
-| function | `exec_search_sessions` | `(args)` | — | [src](../../../core/tools/session_search.py#L262) |
-
-## `core/tools/simple_tools.py`
-_Simple, general-purpose tools for Jarvis visible lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L661) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L690) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L786) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L800) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L889) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L911) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L947) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1108) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1141) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1231) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L1927) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2013) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2072) |
-| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2131) |
-| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2147) |
-
-## `core/tools/simple_tools_definitions.py`
-_Tool definitions catalog for Jarvis' visible-lane tools._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3641) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3658) |
-
-## `core/tools/simple_tools_enforcement.py`
-_Commit-enforcement (repo-state attachment) for Jarvis' tool results._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_repo_state_session_key` | `(session_id)` | — | [src](../../../core/tools/simple_tools_enforcement.py#L21) |
-| function | `_repo_state_get_counter` | `(session_id)` | — | [src](../../../core/tools/simple_tools_enforcement.py#L25) |
-| function | `_repo_state_bump_counter` | `(session_id, delta=…)` | — | [src](../../../core/tools/simple_tools_enforcement.py#L36) |
-| function | `_repo_state_reset_counter` | `(session_id)` | — | [src](../../../core/tools/simple_tools_enforcement.py#L50) |
-| function | `_detect_git_commit_in_bash` | `(command, stdout)` | True when raw Git or the attributed wrapper completed a commit. | [src](../../../core/tools/simple_tools_enforcement.py#L58) |
-| function | `_attach_repo_state` | `(result, *, session_id, bumped=…, bash_command=…)` | Augmenter tool-result med _repo_state-blok. Idempotent ved fejl. | [src](../../../core/tools/simple_tools_enforcement.py#L72) |
-| function | `_enforce_wrapper` | `(tool_name, fn)` | Returner en wrapper der attacher _repo_state efter fn er kørt. | [src](../../../core/tools/simple_tools_enforcement.py#L143) |
-| function | `_commit_enforcement_session_id` | `(args)` | — | [src](../../../core/tools/simple_tools_enforcement.py#L163) |
-
-## `core/tools/simple_tools_explore.py`
-_Read-only research-agent tool with runtime/Desk execution routing._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L25) |
-| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L30) |
-| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…, taalmodighed_s=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L62) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L105) |
-| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L119) |
-| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L223) |
-| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L241) |
-| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L306) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L323) |
 

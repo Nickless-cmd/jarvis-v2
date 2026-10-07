@@ -143,10 +143,16 @@ def test_publish_file_laeser_den_run_id_executoren_stamper():
     `note()` fik derfor ALTID tom run_id og returnerede straks — udgivne filer
     blev aldrig hæftet, selvom hele mekanismen var bygget til det. Fejlen var
     usynlig fordi begge sider af koblingen så korrekte ud hver for sig.
+
+    4/10-2026: `_exec_publish_file` blev UDSKILT til `publish_file_tool.py`
+    (Boy Scout, da filer blev per bruger). Vagten pegede på den fil
+    funktionen tilfældigvis lå i, ikke på funktionen — og en vagt der følger
+    en fil frem for sin kode bliver grøn på det forkerte sted. Nu læses
+    funktionens EGEN kilde.
     """
     import inspect
-    from core.tools import simple_tools_native as N
-    kilde = inspect.getsource(N)
+    from core.tools.publish_file_tool import _exec_publish_file
+    kilde = inspect.getsource(_exec_publish_file)
     assert 'args.get("_runtime_turn_id")' in kilde, (
         "publish_file læser ikke den nøgle executoren stammer "
         "(_runtime_turn_id) — udgivne filer bliver aldrig hæftet"
@@ -209,3 +215,51 @@ def test_billedvaerktoejet_uden_tur_haefter_intet(monkeypatch):
     })
     OI._exec_openrouter_image({"prompt": "en kat"})
     assert P.take("") == []
+
+
+# ── Video er ikke en fil man henter, men noget man ser (28/9-2026) ───────────
+#
+# `as_blocks` delte verden i to: `image` eller `file`. En genereret video endte
+# derfor som et download-kort. Billeder fik deres egen type 12/9 af praecis
+# samme grund — en fil ingen kan SE er ikke leveret.
+
+
+def test_video_faar_sin_egen_bloktype():
+    blok = P.as_blocks([{"filename": "klip.mp4", "mime_type": "video/mp4",
+                         "attachment_id": "aid-1"}])[0]
+    assert blok["type"] == "video"
+
+
+def test_video_baerer_SAMME_reference_felter_som_et_billede():
+    """Klienten skal kunne hente den uden en ny vej op."""
+    p = {"filename": "k.mp4", "mime_type": "video/mp4", "attachment_id": "aid-1"}
+    video = P.as_blocks([p])[0]
+    billede = P.as_blocks([{**p, "filename": "b.png", "mime_type": "image/png"}])[0]
+    assert video.keys() == billede.keys()
+    assert video["attachment_id"] == "aid-1" and video["kilde"] == "generated"
+
+
+def test_en_UDGIVET_video_baerer_url_ikke_attachment():
+    blok = P.as_blocks([{"filename": "k.mp4", "mime_type": "video/mp4",
+                         "url": "/files/k.mp4"}])[0]
+    assert blok["type"] == "video" and blok["kilde"] == "published"
+    assert blok["url"] == "/files/k.mp4"
+
+
+def test_alle_video_mimes_taeller_ikke_kun_mp4():
+    """quicktime og webm er lige saa meget video. Et praefiks, ikke en liste."""
+    for mime in ("video/mp4", "video/quicktime", "video/webm", "video/x-matroska"):
+        assert P.as_blocks([{"filename": "k", "mime_type": mime}])[0]["type"] == "video", mime
+
+
+def test_billeder_og_filer_er_UROERTE():
+    """Rettelsen maa ikke flytte noget der virkede."""
+    assert P.as_blocks([{"filename": "b", "mime_type": "image/png"}])[0]["type"] == "image"
+    for mime in ("application/zip", "text/plain", "application/pdf", ""):
+        assert P.as_blocks([{"filename": "f", "mime_type": mime}])[0]["type"] == "file", mime
+
+
+def test_et_mime_der_blot_INDEHOLDER_video_er_ikke_en_video():
+    """`application/video-manifest` er ikke noget man afspiller. Praefiks, ikke
+    delstreng — ellers ville en klient tegne en afspiller om ingenting."""
+    assert P.as_blocks([{"filename": "m", "mime_type": "application/video-manifest"}])[0]["type"] == "file"

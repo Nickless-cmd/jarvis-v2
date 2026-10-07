@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { ActivityIndicator, StatusBar, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context'
 import { MessageList } from '../components/MessageList'
+import { visibleStreamBlocks } from '../lib/streamReducer'
 import { Composer } from '../components/Composer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { AuthProvider, useAuth } from '../state/AuthContext'
@@ -34,7 +35,7 @@ function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) 
         {title || 'Jarvis'}
       </Text>
       <View style={styles.list}>
-        <MessageList messages={sessions.messages} blocks={stream.state.blocks} working={stream.state.status === 'working'} skillFlade={stream.state.skillFlade} />
+        <MessageList messages={sessions.messages} blocks={visibleStreamBlocks(stream.state)} working={stream.state.status === 'working'} skillFlade={stream.state.skillFlade} />
       </View>
       <Composer
       config={config}

@@ -38,6 +38,43 @@ def _default_title() -> str:
         return "Jarvis"
 
 
+def _header_safe(value: str) -> str:
+    """Goer en tekst sikker som HTTP-header (urllib koder headere som latin-1).
+
+    Maalt 4/10-2026: 26 mislykkede push paa én dag, alle med
+    ``'latin-1' codec can't encode character '\\u2014'``. Titlen blev bygget som
+    ``f"Jarvis — {label}"`` (ambient_presence.py:64) — em-dash'en kan ikke
+    kodes, og urllib kaster FOER requesten forlader maskinen.
+
+    Konsekvensen er vaerre end den ser ud: kalderne er brand-and-forget, saa
+    notifikationen forsvandt LYDLOST. Ingen fejl naaede Bjoern — han fik bare
+    ingen besked, og intet sted stod der hvorfor.
+
+    Kroppen er UTF-8 og rammes ikke; kun headeren. Vi translittererer de
+    typografiske tegn til ASCII og erstatter resten, saa en titel altid kan
+    sendes frem for at tabe beskeden.
+    """
+    if not value:
+        return ""
+    try:
+        value.encode("latin-1")
+        return value
+    except UnicodeEncodeError:
+        # Bevidst tavs: dette er en TEST, ikke en fejl. Kan vaerdien kodes,
+        # er der intet at goere og vi vender tilbage ovenfor. Kan den ikke,
+        # er det praecis det vi skal haandtere nedenfor — der er ingen fejl
+        # at logge, for vi forventede den.
+        pass
+    _trans = str.maketrans({
+        "\u2014": "-", "\u2013": "-",   # em-/en-dash
+        "\u2018": "'", "\u2019": "'",   # typografiske apostroffer
+        "\u201c": '"', "\u201d": '"',   # typografiske citationstegn
+        "\u2026": "...",                # ellipsis
+        "\u00a0": " ",                  # haardt mellemrum
+    })
+    return value.translate(_trans).encode("latin-1", errors="replace").decode("latin-1")
+
+
 def send_notification(
     message: str,
     title: str | None = None,
@@ -51,8 +88,8 @@ def send_notification(
 
     ## Testmiljøet må ALDRIG nå hans telefon
 
-    Bjørn fik 12/9-2026 kl. 23:31 og 23:40 fire ALVORLIG-alarmer i
-    `jarvis-heartbeat`: «Central greb ALVORLIG fejl: skill/skill_scan —
+    Bjørn fik 12/9-2026 kl. 23:31 og 23:40 fire ALVORLIG-alarmer på sin
+    telefon: «Central greb ALVORLIG fejl: skill/skill_scan —
     RuntimeError: scanner exploded», «auth/tool_access — RuntimeError: boom»,
     «privacy/cross_user_share — RuntimeError: boom».
 
@@ -95,12 +132,12 @@ def send_notification(
     url = f"{cfg['server']}/{cfg['topic']}"
     resolved_title = title if title is not None else _default_title()
     headers = {
-        "Title": resolved_title,
+        "Title": _header_safe(resolved_title),
         "Priority": priority,
         "Content-Type": "text/plain; charset=utf-8",
     }
     if tags:
-        headers["Tags"] = ",".join(tags)
+        headers["Tags"] = _header_safe(",".join(tags))
 
     body = message.encode("utf-8")
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")

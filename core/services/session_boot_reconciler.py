@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Final
 
 from core.services import in_flight_runs
 
@@ -60,6 +60,28 @@ def _container_start(nu: datetime | None = None) -> datetime | None:
         return (nu or datetime.now(UTC)) - timedelta(seconds=sekunder)
     except Exception:
         return None
+
+
+#: Hvor gammel en `running`-raekke skal vaere, naar beviset ogsaa er at den
+#: ALDRIG har kostet noget.
+#:
+#: Maalt paa CT105 3/10-2026, og maalt i BEGGE baner — den synlige maaling alene
+#: ville ikke daekke de autonome raekker grenen ogsaa rammer:
+#:   * 64 af 64 gennemfoerte SYNLIGE runs (seks timer) havde en `costs`-raekke.
+#:   * 20 af 20 gennemfoerte AUTONOME runs (et doegn) havde en. Den eneste
+#:     autonome uden var `failed` — den kom aldrig til sit foerste kald.
+#:
+#: Tallet der saetter graensen er dog ikke de 100 %, men VENTETIDEN paa den
+#: foerste omkostning: median 45 s, og det laengste maalte 291 s. Tredive
+#: minutter er altsaa seks gange det vaerste observerede — margin nok til at en
+#: langsom opstart ikke forveksles med en raekke der aldrig kom i gang.
+_UDEN_OMKOSTNING_MINUTTER: Final[float] = 30.0
+
+
+def _uden_omkostning_graense(nu: datetime | None = None) -> datetime:
+    """Graensen for den tredje gren — se `_UDEN_OMKOSTNING_MINUTTER`."""
+    n = nu or datetime.now(UTC)
+    return n - timedelta(minutes=_UDEN_OMKOSTNING_MINUTTER)
 
 
 def _drift_graense(nu: datetime | None = None) -> datetime:
@@ -253,8 +275,26 @@ def _ryd_visible_drift(enforced: bool) -> int:
                 " OR ((status = 'running' OR status = 'recovering')"
                 "     AND (finished_at IS NULL OR finished_at = '')"
                 "     AND started_at < ?)"
+                # TREDJE GREN (3/10-2026): et run der ALDRIG har kostet noget.
+                #
+                # De seks timer ovenfor er sat fordi fravaer fra `in_flight_runs`
+                # er et svagt bevis. Men en raekke uden ÉN eneste `costs`-post
+                # baerer sit eget, uafhaengige bevis: den har aldrig lavet et
+                # model-kald. Maalt samme dag: 64 af 64 gennemfoerte runs havde
+                # omkostninger; zombien `visible-5c75993a` havde nul, og stod
+                # `running` i 61 minutter mens samtalen fortsatte.
+                #
+                # To uafhaengige fravaer er staerkere end ét, og derfor maa
+                # alderen vaere kortere. Det betyder noget i praksis: en saadan
+                # raekke blokerer genstarts-vagten fra foerste minut, saa seks
+                # timer er seks timer uden deploy.
+                " OR ((status = 'running' OR status = 'recovering')"
+                "     AND (finished_at IS NULL OR finished_at = '')"
+                "     AND started_at < ?"
+                "     AND NOT EXISTS ("
+                "         SELECT 1 FROM costs c WHERE c.run_id = visible_runs.run_id))"
                 ") LIMIT 200",
-                (graense,),
+                (graense, _uden_omkostning_graense().isoformat()),
             ).fetchall()
     except Exception as exc:
         logger.warning("session_boot_reconciler: visible-drift-opslag fejlede: %s", exc)
@@ -350,4 +390,29 @@ def ryd_visible_drift_periodisk() -> dict[str, Any]:
         logger.warning("session_boot_reconciler: periodisk drift-rydning fejlede: %s", exc)
         return {"status": "error", "error": str(exc), "enforced": enforced}
 
+    # SIG AT DEN KØRTE (6/10-2026). Indtil nu loggede denne vej INTET ved
+    # succes, og familiens ledger-resumé klippede `members_ran` væk efter tre
+    # nøgler. Da `visible-bd1727a4` stod fejeberettiget i 18 minutter uden at
+    # blive taget, fandtes der derfor ingen måde at afgøre om fejeren var kørt
+    # og havde fundet nul, eller slet ikke var blevet kaldt. De to er ikke det
+    # samme fejl, og tavshed kan ikke skelne dem.
+    #
+    # Kun INFO, og kun når der blev ryddet. Nul-tilfældet hører i LEDGEREN, ikke
+    # i loggen — af to grunde:
+    #
+    #  * Målt samme dag: `jarvis-runtime` havde 0 DEBUG-linjer i journalen over
+    #    25 minutter, mens `jarvis-api` havde 36. Fejeren kører i RUNTIME, så en
+    #    `logger.debug` her ville skrive ud i ingenting og foregive et spor der
+    #    ikke findes. INFO fra samme modul-logger når derimod frem.
+    #  * Medlemmet kører hvert 2. minut efter at dets throttle er fjernet. En
+    #    INFO-linje per nul-resultat ville være 720 linjer om dagen i en journal
+    #    der allerede er på 3,9 GB.
+    #
+    # `record_daemon_tick` bærer nu `members_ran` ind i `last_result_summary`
+    # (se `daemon_manager._tick_resume`), så «kørte medlemmet?» kan slås op
+    # durabelt uden en log-linje per tick.
+    if antal:
+        logger.info(
+            "session_boot_reconciler: periodisk drift-rydning lukkede %d raekke(r) "
+            "(enforced=%s)", antal, enforced)
     return {"status": "ok", "ryddet": antal, "enforced": enforced}

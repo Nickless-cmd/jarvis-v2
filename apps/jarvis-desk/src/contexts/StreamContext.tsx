@@ -22,6 +22,34 @@ export interface StreamErrorInfo {
   correlationId: string
 }
 
+/** En HANDLING der fejlede → struktureret fejl der siger hvad.
+ *
+ *  Bjørn 4/10-2026: «network error kan være meget, den er nødt til at vise en
+ *  fejl.» `approve`/`deny` satte kun den rå `Error`, hvis tekst kommer fra
+ *  browseren («Failed to fetch») eller fra `api.ts`' `Netværksfejl: …`. Et
+ *  banner der siger «netværksfejl» uden at sige hvad man forsøgte, efterlader
+ *  ham med et kryds og ingen handling.
+ *
+ *  Handlingen navngives derfor FØRST, og den tekniske årsag står efter som
+ *  fix-hint — den er stadig nyttig når noget skal fejlfindes, men den er ikke
+ *  overskriften.
+ */
+export function handlingTilInfo(handling: string, e: unknown): StreamErrorInfo {
+  const raa = e instanceof Error ? e.message.trim() : String(e ?? '').trim()
+  const net = /fetch|network|netværk|timeout|ECONN|ERR_/i.test(raa)
+  return {
+    code: net ? 'network' : 'unknown',
+    severity: 'error',
+    message: `${handling} — ${net ? 'ingen forbindelse til Jarvis.' : 'serveren svarede ikke som forventet.'}`,
+    // Den raa tekst BEVARES. Den er det eneste der kan skelne «serveren er
+    // nede» fra «tokenet er udloebet» naar nogen skal fejlfinde det.
+    fixHint: raa ? `${net ? 'Tjek din forbindelse og prøv igen.' : 'Prøv igen.'} (${raa})`
+                 : 'Prøv igen.',
+    retryable: true,
+    correlationId: '',
+  }
+}
+
 /** Klient-side StreamError → samme envelope-form, så UI kun kender ÉN fejl-type. */
 function errorToInfo(err: StreamError): StreamErrorInfo {
   const net = err.category === 'network'
@@ -87,6 +115,7 @@ export interface PendingApproval {
   approvalId: string
   tool: string
   action: string
+  sessionId: string
 }
 
 export interface PendingAppAction {
@@ -104,8 +133,15 @@ export interface StreamContextValue {
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
   workingSessionId: string | null
   /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
-  usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
+  /** Tokens — og turens tempo. `ttftMs`/`tokPerSek` er `null` indtil serveren
+   *  har maalt dem; de kommer i `message_delta`, altsaa ved turens slutning.
+   *  Maalt HOS OS og ikke hentet hos udbyderen, saa tallet betyder det samme
+   *  gennem DeepSeek og Ollama Cloud. Se `core/services/svar_tempo`. */
+  usage: { input: number; output: number; cacheHit: number; cacheMiss: number
+           ttftMs: number | null; tokPerSek: number | null }
   blocks: ContentBlock[]
+  provisionalText: string
+  provisionalBlockIndex: number | null
   /**
    * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
    * Skrevet af en lille lokal model på serveren, leveret ved næste rundes start.
@@ -114,6 +150,8 @@ export interface StreamContextValue {
   /** Tænke-resuméer slået op på kald-id (visningen «thinking»). */
   tankeResumeer?: Record<string, string>
   activeRunId: string | null
+  /** Serveren har bekræftet, at den synlige tekst nu er slutsvaret. */
+  finalAnswerStarted: boolean
   elapsedMs: number
   workingStep: string | null
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
@@ -153,6 +191,8 @@ export interface StreamContextValue {
    * kun hentningen der manglede. Se `hentGenoptagelsesVarsel`.
    */
   visGenoptagelsesVarsel: (varsel: { reason: string; message: string; continuing: boolean }) => void
+  /** Han trykkede varslet vaek. Se `GenoptagelsesVarsel`. */
+  rydGenoptagelsesVarsel: () => void
 }
 
 // Konteksten bærer et LAGER, ikke selve værdien — se lib/vaerdiLager.
@@ -324,6 +364,7 @@ export function StreamProvider({
                 approvalId: p.approval_id,
                 tool: p.tool || 'tool',
                 action: [p.message, p.detail].filter(Boolean).join('\n') || p.tool || '',
+                sessionId: opts.sessionId,
               })
             }
           } else if (e.type === 'system_event' && e.kind === 'app_action_request') {
@@ -403,11 +444,17 @@ export function StreamProvider({
 
   const approve = useCallback((approvalId: string) => {
     setPendingApproval(null) // optimistisk — streamen fortsætter når serveren resolver
-    void approveTool(config, approvalId).catch((e) => setError(e as Error))
+    void approveTool(config, approvalId).catch((e) => {
+      setError(e as Error)
+      setStreamError(handlingTilInfo('Kunne ikke godkende værktøjet', e))
+    })
   }, [config])
   const deny = useCallback((approvalId: string) => {
     setPendingApproval(null)
-    void denyTool(config, approvalId).catch((e) => setError(e as Error))
+    void denyTool(config, approvalId).catch((e) => {
+      setError(e as Error)
+      setStreamError(handlingTilInfo('Kunne ikke afvise værktøjet', e))
+    })
   }, [config])
 
   const clearAppAction = useCallback(() => setPendingAppAction(null), [])
@@ -448,8 +495,9 @@ export function StreamProvider({
   // holder hans run». Målt i det øjeblik: FIRE kort ventede, alle i en
   // samtale desk ikke streamede. Begge gates lukkede dem ude.
   //
-  // Et kort hører til en EJER, ikke til det vindue der er åbent. Vi spørger
-  // derfor altid — men gennem `maaPolle`, så et skjult vindue falder til ro
+  // Vi finder ejerens kort uanset det aabne vindue og gemmer dets sessionId,
+  // saa kun den tilhoerende chat tegner det. Vi spoerger gennem `maaPolle`,
+  // saa et skjult vindue falder til ro
   // i stedet for at banke løs. Har vi allerede et kort, holder vi op.
   useEffect(() => {
     if (pendingApproval || !config.apiBaseUrl) return
@@ -461,7 +509,7 @@ export function StreamProvider({
       // desk selv har en tur i gang.
       if (!maaPolle('ventende-godkendelse', 4000, { ignorerSkjult: true, loftMs: 20_000 })) return
       void hentVentendeGodkendelseOveralt(cfg).then((k) => {
-        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action })
+        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId })
       })
     }
     const id = window.setInterval(spoerg, 2000)
@@ -507,7 +555,9 @@ export function StreamProvider({
   }, [status, state.blocks, state.recoveryNotice])
 
   // Et varsel hentet over HTTP lægges ind ad SAMME vej som strømmens eget, så
-  // der kun er én måde et varsel kan opstå på — og kun ét sted det ryddes.
+  // der kun er én måde et varsel kan opstå på. Det ryddes tre steder, og de
+  // dækker hver sin situation: en tur der sluttede rent (`message_delta`), et
+  // nyt run der er gået i gang (`message_start`), og han selv (herunder).
   const visGenoptagelsesVarsel = useCallback(
     (varsel: { reason: string; message: string; continuing: boolean }) => {
       dispatch({
@@ -519,6 +569,14 @@ export function StreamProvider({
     [dispatch],
   )
 
+  const rydGenoptagelsesVarsel = useCallback(() => {
+    dispatch({
+      type: 'system_event',
+      kind: 'run_recovery',
+      payload: { ryddet: true },
+    } as unknown as StreamEvent)
+  }, [dispatch])
+
   const value = useMemo<StreamContextValue>(
     () => ({
       status,
@@ -526,9 +584,12 @@ export function StreamProvider({
       activeProvider: state.provider,
       activeLane: state.lane,
       blocks: state.blocks,
+      provisionalText: state.provisionalText,
+      provisionalBlockIndex: state.provisionalBlockIndex,
       rundeEtiketter: state.rundeEtiketter,
       tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
+      finalAnswerStarted: state.finalAnswerStarted,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,
       elapsedMs,
@@ -552,8 +613,9 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
       visGenoptagelsesVarsel,
+      rydGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel],
+    [status, state.model, state.provider, state.lane, state.blocks, state.provisionalText, state.provisionalBlockIndex, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_run_digest.py`
+_Referat af en autonom koersel — kort, i hans egen samtale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slags_af` | `(session_id)` | — | [src](../../../core/services/autonomous_run_digest.py#L55) |
+| function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L63) |
+| function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L80) |
+| function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L84) |
+| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L121) |
+
+## `core/services/autonomous_run_failures.py`
+_Fejlede autonome kørsler — set af Jarvis selv, ikke gemt i hans mund._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L45) |
+| function | `_kv_get` | `(default)` | — | [src](../../../core/services/autonomous_run_failures.py#L49) |
+| function | `_kv_set` | `(value)` | — | [src](../../../core/services/autonomous_run_failures.py#L58) |
+| function | `_load` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L66) |
+| function | `record_failure` | `(*, run_id, session_id=…, origin=…, provider=…, model=…, detail=…, kind=…)` | Journalisér at en autonom kørsel mislykkedes. Kaster aldrig. | [src](../../../core/services/autonomous_run_failures.py#L76) |
+| function | `recent_failures` | `(limit=…)` | Nyeste først. | [src](../../../core/services/autonomous_run_failures.py#L109) |
+| function | `_within_window` | `(post, hours)` | — | [src](../../../core/services/autonomous_run_failures.py#L114) |
+| function | `request_retry` | `(failure_id)` | Marker at HAN vil forsøge igen. Runtime gør det ikke af sig selv. | [src](../../../core/services/autonomous_run_failures.py#L124) |
+| function | `pending_retries` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L137) |
+| function | `mark_retried` | `(failure_id)` | — | [src](../../../core/services/autonomous_run_failures.py#L141) |
+| function | `clear` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L149) |
+| function | `prompt_section` | `()` | Blokken Jarvis ser. Tom streng når der intet er at vide. | [src](../../../core/services/autonomous_run_failures.py#L153) |
+
 ## `core/services/autonomous_sessions.py`
 _Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
 
@@ -103,12 +132,13 @@ _Autonomy proposal queue — Niveau 2 fundament._
 | function | `list_pending_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L155) |
 | function | `list_recent_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L159) |
 | function | `approve_proposal` | `(proposal_id, *, resolution_note=…)` | Bjørn approves a proposal — execute it immediately if we have an | [src](../../../core/services/autonomy_proposal_queue.py#L163) |
-| function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L255) |
-| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L285) |
-| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L308) |
-| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L333) |
-| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L417) |
-| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L508) |
+| function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L279) |
+| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L309) |
+| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
+| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L357) |
+| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L441) |
+| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L532) |
+| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L635) |
 
 ## `core/services/avoidance_detector.py`
 _Avoidance Detector — unbidden self-observation of patterns over time._
@@ -124,26 +154,44 @@ _Avoidance Detector — unbidden self-observation of patterns over time._
 | function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
 | function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
 
+## `core/services/background_job_watch.py`
+_Færdige baggrunds-shells — set, ikke gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L76) |
+| function | `_laes_tid` | `(vaerdi)` | ISO-tidsstempel fra state eller registry — eller None. | [src](../../../core/services/background_job_watch.py#L80) |
+| function | `_grundlinje` | `()` | Tidsstemplet for hvornår vagtposten vågnede. Sættes én gang. | [src](../../../core/services/background_job_watch.py#L94) |
+| function | `_rapporterede` | `()` | {noegle: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L114) |
+| function | `_husk` | `(noegler)` | Skriv noeglerne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L136) |
+| function | `_noegle` | `(job)` | Stabil identitet for et job. | [src](../../../core/services/background_job_watch.py#L153) |
+| function | `scan_finished` | `(*, uid)` | Nye fuldførte jobs siden sidst, plus om operator-siden var laesbar. | [src](../../../core/services/background_job_watch.py#L167) |
+| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L211) |
+| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L222) |
+| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L237) |
+| function | `tik` | `(*, uid=…)` | Tjek for færdige jobs og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L247) |
+
 ## `core/services/background_jobs.py`
 _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L80) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L84) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L120) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L124) |
-| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L131) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L145) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L174) |
-| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L181) |
-| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L216) |
-| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L239) |
-| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L290) |
-| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L341) |
-| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L371) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle fire kilder. | [src](../../../core/services/background_jobs.py#L384) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L416) |
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L100) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L104) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L150) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L154) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L161) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L175) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L210) |
+| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L217) |
+| function | `_tool_jobs` | `()` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L269) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L391) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L414) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L470) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L531) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L562) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L575) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L613) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
@@ -157,7 +205,22 @@ _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 | function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L85) |
 | function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L89) |
 | function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
-| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L138) |
+| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L137) |
+
+## `core/services/baggrundsjob_vagt.py`
+_Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu_iso` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L62) |
+| function | `_hent_state` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L66) |
+| function | `_gem_state` | `(state)` | — | [src](../../../core/services/baggrundsjob_vagt.py#L78) |
+| function | `_bro` | `(navn, args)` | Bro-kald til operatoerens maskine. Egen funktion, saa testen har en soem. | [src](../../../core/services/baggrundsjob_vagt.py#L88) |
+| function | `_ejer_uid` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L94) |
+| function | `_varighed` | `(sekunder)` | — | [src](../../../core/services/baggrundsjob_vagt.py#L102) |
+| function | `beskedtekst` | `(job)` | Én linje der kan staa alene i en inbox. Udfaldet FOERST — det er det der | [src](../../../core/services/baggrundsjob_vagt.py#L116) |
+| function | `_meld` | `(job)` | Levér meldingen. Returnerer (leveret, hvordan). | [src](../../../core/services/baggrundsjob_vagt.py#L138) |
+| function | `tick_baggrundsjob_vagt` | `(*, trigger=…, last_visible_at=…)` | Kadence-producer: meld hvert nyligt afsluttet baggrundsjob ÉN gang. | [src](../../../core/services/baggrundsjob_vagt.py#L182) |
 
 ## `core/services/bash_sandbox.py`
 _bwrap-indespærring om én bash-kommando. SLUKKET som standard._
@@ -201,6 +264,17 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L317) |
 | function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L321) |
 | function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L340) |
+
+## `core/services/besked_run_kobling.py`
+_Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes` | `()` | — | [src](../../../core/services/besked_run_kobling.py#L84) |
+| function | `noter` | `(message_id, run_id)` | Husk at ``run_id`` skrev ``message_id``. Self-safe: kaster aldrig. | [src](../../../core/services/besked_run_kobling.py#L91) |
+| function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L118) |
+| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L134) |
+| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L142) |
 
 ## `core/services/body_memory.py`
 _Body Memory — Jarvis' kropslige erindringer._
@@ -389,8 +463,12 @@ _Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `prefix_signature` | `(system_content, tools)` | Beregn (sha-prefix, længde) for det cachebare [system + tools]. | [src](../../../core/services/cache_telemetry.py#L25) |
-| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L41) |
-| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tail_len=…, system_chunks=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L73) |
+| function | `message_signatures` | `(messages)` | Ét fingeraftryk og én laengde pr. besked, i den raekkefoelge de sendes. | [src](../../../core/services/cache_telemetry.py#L51) |
+| function | `_tool_name` | `(tool)` | Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen. | [src](../../../core/services/cache_telemetry.py#L114) |
+| function | `_remember_tool_names` | `(tools_sha, tools)` | Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op. | [src](../../../core/services/cache_telemetry.py#L124) |
+| function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L138) |
+| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L180) |
+| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L217) |
 
 ## `core/services/cadence_claims.py`
 _Ét krav ad gangen, og en nedkoeling der overlever en genstart._
@@ -414,16 +492,16 @@ _Cadence Producers — central orchestration for waking up dead MC fields._
 | function | `_now` | `()` | — | [src](../../../core/services/cadence_producers.py#L56) |
 | function | `_meaningful_run_topic` | `(user_message)` | — | [src](../../../core/services/cadence_producers.py#L60) |
 | function | `produce_signals_from_run` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood=…)` | Fire all relevant signals after a visible run, bypassing chain dependencies. | [src](../../../core/services/cadence_producers.py#L65) |
-| function | `produce_emergent_signals_from_history` | `()` | Run the emergent signal daemon to scan timeline for patterns. | [src](../../../core/services/cadence_producers.py#L637) |
-| function | `detect_decision_in_message` | `(*, user_message, assistant_response, run_id)` | Detect decisions in conversation and log them. | [src](../../../core/services/cadence_producers.py#L652) |
-| function | `run_adoption_pipelines` | `()` | Move things from candidate → adopted state. | [src](../../../core/services/cadence_producers.py#L686) |
-| function | `sync_personality_to_self_model` | `()` | Bridge: sync personality_vector changes to self_model_signal. | [src](../../../core/services/cadence_producers.py#L717) |
-| function | `progress_signal_lifecycles` | `()` | Move signals through lifecycle stages: active → carried → fading → released. | [src](../../../core/services/cadence_producers.py#L795) |
-| function | `_observe_frozen` | `(nerve, meta)` | EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe). | [src](../../../core/services/cadence_producers.py#L830) |
-| function | `tick_frozen_detectors` | `(tick_count)` | LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på | [src](../../../core/services/cadence_producers.py#L839) |
-| function | `build_cadence_producers_surface` | `()` | MC surface for cadence producer status. | [src](../../../core/services/cadence_producers.py#L896) |
-| function | `_levende_register` | `()` | Registrets producenter i prioritetsraekkefoelge. Selv-sikker: tomt ved | [src](../../../core/services/cadence_producers.py#L924) |
-| function | `_graf_rapport` | `()` | Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke | [src](../../../core/services/cadence_producers.py#L945) |
+| function | `produce_emergent_signals_from_history` | `()` | Run the emergent signal daemon to scan timeline for patterns. | [src](../../../core/services/cadence_producers.py#L654) |
+| function | `detect_decision_in_message` | `(*, user_message, assistant_response, run_id)` | Detect decisions in conversation and log them. | [src](../../../core/services/cadence_producers.py#L669) |
+| function | `run_adoption_pipelines` | `()` | Move things from candidate → adopted state. | [src](../../../core/services/cadence_producers.py#L703) |
+| function | `sync_personality_to_self_model` | `()` | Bridge: sync personality_vector changes to self_model_signal. | [src](../../../core/services/cadence_producers.py#L734) |
+| function | `progress_signal_lifecycles` | `()` | Move signals through lifecycle stages: active → carried → fading → released. | [src](../../../core/services/cadence_producers.py#L812) |
+| function | `_observe_frozen` | `(nerve, meta)` | EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe). | [src](../../../core/services/cadence_producers.py#L847) |
+| function | `tick_frozen_detectors` | `(tick_count)` | LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på | [src](../../../core/services/cadence_producers.py#L856) |
+| function | `build_cadence_producers_surface` | `()` | MC surface for cadence producer status. | [src](../../../core/services/cadence_producers.py#L913) |
+| function | `_levende_register` | `()` | Registrets producenter i prioritetsraekkefoelge. Selv-sikker: tomt ved | [src](../../../core/services/cadence_producers.py#L941) |
+| function | `_graf_rapport` | `()` | Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke | [src](../../../core/services/cadence_producers.py#L962) |
 
 ## `core/services/calm_anchor.py`
 _Calm Anchor — baseline reference state Jarvis can return to._
@@ -444,49 +522,70 @@ _Calm Anchor — baseline reference state Jarvis can return to._
 | function | `build_calm_anchor_prompt_section` | `()` | Surfaces a grounding line when distance is significant. | [src](../../../core/services/calm_anchor.py#L241) |
 | function | `reset_calm_anchor` | `()` | Reset state (for testing). | [src](../../../core/services/calm_anchor.py#L261) |
 
+## `core/services/candidate_hygiene.py`
+_Hygiejne for runtime-contract-kandidater — stabil nøgle + flygtigheds-filter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `candidate_domain_tokens` | `(value)` | Split en fri-tekst-streng i rene tokens (lowercase, alfanumerisk). | [src](../../../core/services/candidate_hygiene.py#L62) |
+| function | `normalize_candidate_domain` | `(value, *, max_tokens=…)` | Fold et fri-tekst-domæne til en ren, stabil nøgle-del. | [src](../../../core/services/candidate_hygiene.py#L67) |
+| function | `is_transient_line` | `(value)` | True når en linje beskriver en flygtig hændelse frem for varig viden. | [src](../../../core/services/candidate_hygiene.py#L139) |
+
+## `core/services/candidate_review_digest.py`
+_Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_last_tick` | `()` | Læs sidste udsendelse fra disk — ikke fra en modul-global. | [src](../../../core/services/candidate_review_digest.py#L53) |
+| function | `_save_last_tick` | `(now)` | — | [src](../../../core/services/candidate_review_digest.py#L70) |
+| function | `build_candidate_review_digest` | `()` | Tæl de review-bare kandidater pr. type og find den ældste. Read-only, self-safe. | [src](../../../core/services/candidate_review_digest.py#L74) |
+| function | `format_candidate_review_digest` | `(digest)` | Kort, ærlig tekst. Kun tal der faktisk står i digest'en. | [src](../../../core/services/candidate_review_digest.py#L129) |
+| function | `tick_candidate_review_digest` | `()` | Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe. | [src](../../../core/services/candidate_review_digest.py#L146) |
+| function | `build_candidate_review_digest_surface` | `()` | State til Mission Control / health-visninger. | [src](../../../core/services/candidate_review_digest.py#L188) |
+
 ## `core/services/candidate_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `track_runtime_contract_candidates_for_visible_turn` | `(*, session_id, run_id, user_message, assistant_message)` | — | [src](../../../core/services/candidate_tracking.py#L42) |
-| function | `track_runtime_contract_candidates_for_session_review` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L73) |
-| function | `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L133) |
-| function | `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L162) |
-| function | `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L191) |
-| function | `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L220) |
-| function | `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L256) |
-| function | `auto_apply_safe_user_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L287) |
-| function | `auto_apply_safe_memory_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L296) |
-| function | `_preference_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L305) |
-| function | `_extract_candidates_from_user_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L394) |
-| function | `_extract_candidates_from_memory_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L413) |
-| function | `_extract_candidates_from_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L432) |
-| function | `_extract_candidates_from_selfhood_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L451) |
-| function | `_extract_candidates_from_chronicle_consolidation_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L470) |
-| function | `_memory_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L494) |
-| function | `_is_explicit_repo_context_memory` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L549) |
-| function | `_repo_context_memory_line` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L567) |
-| function | `_candidate_from_user_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L576) |
-| function | `_candidate_from_memory_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L643) |
-| function | `_candidate_from_self_authored_prompt_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L710) |
-| function | `_candidate_from_selfhood_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L773) |
-| function | `_candidate_from_chronicle_consolidation_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L827) |
-| function | `_extract_candidates_from_messages` | `(messages, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L879) |
-| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L901) |
-| function | `_candidate_already_applied` | `(candidate)` | — | [src](../../../core/services/candidate_tracking.py#L990) |
-| function | `_memory_proposal_domain` | `(canonical_key)` | — | [src](../../../core/services/candidate_tracking.py#L1005) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1010) |
-| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1018) |
-| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1068) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1092) |
-| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1113) |
-| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1137) |
-| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1148) |
-| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1154) |
-| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1166) |
-| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1198) |
-| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1210) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1217) |
+| function | `track_runtime_contract_candidates_for_visible_turn` | `(*, session_id, run_id, user_message, assistant_message)` | — | [src](../../../core/services/candidate_tracking.py#L45) |
+| function | `track_runtime_contract_candidates_for_session_review` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L76) |
+| function | `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L136) |
+| function | `track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L165) |
+| function | `track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L194) |
+| function | `track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L223) |
+| function | `track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L259) |
+| function | `auto_apply_safe_user_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L290) |
+| function | `auto_apply_safe_memory_md_candidates_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/candidate_tracking.py#L299) |
+| function | `_preference_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L308) |
+| function | `_extract_candidates_from_user_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L397) |
+| function | `_extract_candidates_from_memory_md_update_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L416) |
+| function | `_extract_candidates_from_self_authored_prompt_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L435) |
+| function | `_extract_candidates_from_selfhood_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L454) |
+| function | `_extract_candidates_from_chronicle_consolidation_proposals` | `()` | — | [src](../../../core/services/candidate_tracking.py#L473) |
+| function | `_memory_candidates` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L497) |
+| function | `_is_explicit_repo_context_memory` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L552) |
+| function | `_repo_context_memory_line` | `(message)` | — | [src](../../../core/services/candidate_tracking.py#L570) |
+| function | `_candidate_from_user_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L579) |
+| function | `_candidate_from_memory_md_update_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L646) |
+| function | `_candidate_from_self_authored_prompt_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L729) |
+| function | `_candidate_from_selfhood_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L792) |
+| function | `_candidate_from_chronicle_consolidation_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L846) |
+| function | `_extract_candidates_from_messages` | `(messages, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L898) |
+| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L920) |
+| function | `_candidate_already_applied` | `(candidate)` | True når denne nøgle allerede er AFGJORT og ikke må genopstå. | [src](../../../core/services/candidate_tracking.py#L1009) |
+| function | `_memory_proposal_domain` | `(canonical_key)` | Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del. | [src](../../../core/services/candidate_tracking.py#L1027) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1040) |
+| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1048) |
+| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1098) |
+| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1122) |
+| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1143) |
+| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1167) |
+| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1178) |
+| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1184) |
+| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1196) |
+| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1228) |
+| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1240) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1247) |
 
 ## `core/services/causal_graph.py`
 _Causal graph query API._
@@ -499,144 +598,4 @@ _Causal graph query API._
 | function | `query_causal_neighbors` | `(*, event_id, direction=…, min_confidence=…)` | Direct neighbors only (depth=1) — convenience wrapper. | [src](../../../core/services/causal_graph.py#L149) |
 | function | `get_immediate_cause` | `(event_id)` | Return single highest-confidence direct parent, or None. | [src](../../../core/services/causal_graph.py#L170) |
 | function | `build_causal_graph_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/causal_graph.py#L179) |
-
-## `core/services/causal_inference_daemon.py`
-_Causal inference daemon — three-tier matching against event allowlist._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table_ready` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L72) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L78) |
-| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/causal_inference_daemon.py#L82) |
-| function | `_record_edge` | `(*, child, parent, edge_kind, confidence, source, reasoning)` | INSERT or UPGRADE an edge. Returns 'created'|'upgraded'|'skipped'. | [src](../../../core/services/causal_inference_daemon.py#L92) |
-| function | `_payload` | `(event)` | — | [src](../../../core/services/causal_inference_daemon.py#L129) |
-| function | `_try_tier1_kind_rule` | `(child, candidates_by_kind)` | Match against hardcoded kind-rule with shared-id-preferred fallback. | [src](../../../core/services/causal_inference_daemon.py#L136) |
-| function | `_try_tier2_shared_id` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L198) |
-| function | `_try_tier3_temporal` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L221) |
-| function | `_fetch_allowlist_events` | `(*, since_minutes=…, limit=…)` | Fetch allowlist events for inference. | [src](../../../core/services/causal_inference_daemon.py#L251) |
-| function | `_prune_old_edges` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L283) |
-| function | `run_inference_cycle` | `(*, since_minutes=…)` | Run one inference tick. Returns stats dict. | [src](../../../core/services/causal_inference_daemon.py#L301) |
-| function | `tick_causal_inference_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/causal_inference_daemon.py#L392) |
-
-## `core/services/central_absorb.py`
-_central_absorb — den fælles "fuld behandling"-absorption._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_compact` | `(value, *, limit=…)` | Kompakt, egress-venlig repræsentation af en værdi til flag-payloads. | [src](../../../core/services/central_absorb.py#L27) |
-| function | `absorb` | `(cluster, nerve, value, *, flag_if=…, flag_reason=…, learn_key=…)` | Absorbér en producent-værdi som en levende central-nerve. Kaster ALDRIG. | [src](../../../core/services/central_absorb.py#L55) |
-
-## `core/services/central_adaptation.py`
-_core/services/central_adaptation.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_adaptation.py#L60) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_adaptation.py#L69) |
-| class | `AdaptationClass` | `` | Én selv-justerende muskel: en tilbøjelighed Centralen justerer efter SIN EGEN track-record | [src](../../../core/services/central_adaptation.py#L79) |
-| function | `_assert_not_frozen_core` | `(cls)` | HÅRD assert: afvis enhver AdaptationClass hvis kv_key/name rører den frosne kerne. Kører for | [src](../../../core/services/central_adaptation.py#L126) |
-| function | `_register_adaptation_class` | `(cls)` | Valider + tilføj en muskel til registret. Kører den HÅRDE assert FØR optagelse. Returnerer | [src](../../../core/services/central_adaptation.py#L142) |
-| function | `_default_class` | `()` | Bagudkompatibel default = gut-bias (så modul-niveau-API'et virker uden at kende registret). | [src](../../../core/services/central_adaptation.py#L189) |
-| function | `get_bias` | `(cls=…)` | Læs + clamp en musklens justerede skalar. Default = gut. Self-safe. | [src](../../../core/services/central_adaptation.py#L195) |
-| function | `get_gut_bias` | `()` | Bagudkompatibel: gut-bias (uændret adfærd). | [src](../../../core/services/central_adaptation.py#L204) |
-| function | `is_live_enabled` | `(cls=…)` | Musklen er live hvis dens live_flag er ON OG dens pause_flag ikke er sat. Default = gut. | [src](../../../core/services/central_adaptation.py#L209) |
-| function | `effective_dream_trust_factor` | `()` | Forbruger til dream_trust-musklen (LivingNeuron §3, 2026-07-10): oversæt tiltro-biasen | [src](../../../core/services/central_adaptation.py#L215) |
-| function | `is_paused` | `(cls=…)` | — | [src](../../../core/services/central_adaptation.py#L230) |
-| function | `_ensure_anchor` | `(cls=…)` | Ankr identitets-baseline: bias=0 ER identiteten (ingen tilbøjeligheds-forvrængning). In-memory | [src](../../../core/services/central_adaptation.py#L235) |
-| function | `resolved_track_record` | `(*, sources=…)` | Centralens egen præcision: hvor mange hypoteser har holdt vs. fejlet. SOURCE-SCOPED (§8.3): | [src](../../../core/services/central_adaptation.py#L247) |
-| function | `compute_proposed_bias` | `(cls=…)` | Foreslå bias fra en musklens EGEN track-record. accuracy=supported/(supported+contradicted). | [src](../../../core/services/central_adaptation.py#L271) |
-| function | `rollback` | `(reason=…, cls=…)` | Rollback-EKSEKVERING (shadow-specens manglende primitiv): gendan forrige bias + PAUSE Lag 4 | [src](../../../core/services/central_adaptation.py#L290) |
-| function | `_run_class_tick` | `(cls)` | Kør ÉN musklens adaptations-tick: beregn → gate → shadow-log → anvend KUN hvis live+ok. | [src](../../../core/services/central_adaptation.py#L306) |
-| function | `run_adaptation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: iterér REGISTRET. For den ENESTE gut-klasse er adfærden IDENTISK med før | [src](../../../core/services/central_adaptation.py#L338) |
-| function | `register_adaptation_producer` | `()` | Registrér Lag 4-adaptationen som cadence-producer (~hvert 60 min). SHADOW medmindre live-flag ON. | [src](../../../core/services/central_adaptation.py#L362) |
-| function | `build_central_adaptation_surface` | `()` | Mission Control surface — read-only: nuværende bias, foreslået, live/shadow/paused. | [src](../../../core/services/central_adaptation.py#L374) |
-
-## `core/services/central_affect.py`
-_core/services/central_affect.py — affektiv tagging af Centralens nerver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clamp01` | `(x)` | — | [src](../../../core/services/central_affect.py#L44) |
-| function | `_numeric` | `(value)` | Uddrag en float hvis value er numerisk (og ikke bool). Ellers None. | [src](../../../core/services/central_affect.py#L52) |
-| function | `_magnitude_intensity` | `(value, *, default)` | Afled intensitet fra en numerisk værdi (klemt 0-1). Ikke-numerisk → default. | [src](../../../core/services/central_affect.py#L64) |
-| function | `classify_affect` | `(cluster, nerve, kind, value, flagged=…)` | Klassificér én nerve-observation til en affekt + intensitet. Self-safe. | [src](../../../core/services/central_affect.py#L77) |
-| function | `_recent_affect_records` | `(limit=…)` | Læs de seneste affekt-bærende records fra tidsserien (meta.affect). Self-safe. | [src](../../../core/services/central_affect.py#L131) |
-| function | `build_affect_surface` | `(records=…)` | Aggregér de seneste affekter til en fordeling + dominant. Self-safe. | [src](../../../core/services/central_affect.py#L155) |
-
-## `core/services/central_agenda.py`
-_core/services/central_agenda.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
-| function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
-| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
-| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
-| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
-| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
-| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L110) |
-| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L124) |
-| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L138) |
-| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L166) |
-| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L185) |
-| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L192) |
-| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L201) |
-| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L213) |
-
-## `core/services/central_agent_smith.py`
-_Agent Smith — stående selv-lighed-kritiker. Detekterer når Jarvis gentager sig selv på tværs af_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/central_agent_smith.py#L20) |
-| function | `_ngrams` | `(text, lo=…, hi=…)` | Normaliserede ord-n-grams (lo..hi) fra én tekst. Ren. | [src](../../../core/services/central_agent_smith.py#L24) |
-| function | `repeated_phrases` | `(messages, min_msgs=…)` | Fraser (n-grams) der optræder i ≥ min_msgs DISTINKTE beskeder, sorteret efter antal. Ren. | [src](../../../core/services/central_agent_smith.py#L34) |
-| function | `_cosine` | `(a, b)` | Bag-of-words cosine mellem to strenge (0..1). Replikeret fra council-deadlock-detektoren | [src](../../../core/services/central_agent_smith.py#L45) |
-| function | `cluster_similarity` | `(messages)` | Gennemsnitlig parvis bag-of-words-cosine mellem de seneste beskeder (0..1). Ren. | [src](../../../core/services/central_agent_smith.py#L62) |
-| function | `decision_patterns` | `(run_sigs, min_runs=…)` | Beslutnings-signaturer (capability_name pr. run) der går igen i ≥ min_runs runs. Ren. | [src](../../../core/services/central_agent_smith.py#L75) |
-| function | `behaviour_patterns` | `(hollow, turns, min_count=…)` | Maalt adfaerd Smith maa reagere paa. Ren — tallene kommer udefra. | [src](../../../core/services/central_agent_smith.py#L89) |
-| function | `score` | `(phrases, similarity, patterns, behaviours=…)` | Samlet selv-lighed 0..1. Ren. | [src](../../../core/services/central_agent_smith.py#L133) |
-| function | `smith_voice` | `(phrases, similarity, patterns, score_val, behaviours=…)` | Tør Agent-Smith-felt. Tavs-neutral når lav; peger på det top-gentagne når høj. | [src](../../../core/services/central_agent_smith.py#L155) |
-| function | `_recent_assistant` | `(n=…)` | Jarvis' seneste N assistant-beskeder (egress-frit). Self-safe → []. | [src](../../../core/services/central_agent_smith.py#L200) |
-| function | `_recent_run_sigs` | `(n=…)` | Beslutnings-signaturer = capability_name pr. nylig invocation. visible_runs.capability_id er | [src](../../../core/services/central_agent_smith.py#L216) |
-| function | `assess` | `()` | Kør de 3 detektorer over Jarvis' eget nylige output. Read-only, egress-fri, self-safe. | [src](../../../core/services/central_agent_smith.py#L228) |
-| function | `_measured_behaviours` | `()` | Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste. | [src](../../../core/services/central_agent_smith.py#L260) |
-| function | `_load_escalation_state` | `()` | Eskalerings-tilstandsmaskinens persistente state. Self-safe → tom. | [src](../../../core/services/central_agent_smith.py#L273) |
-| function | `_save_escalation_state` | `(state)` | — | [src](../../../core/services/central_agent_smith.py#L283) |
-| function | `_detected_patterns` | `(a, corroborated=…)` | Byg {pattern_key: {kind,label,metric,corroborated}} fra assess() — fraser + beslutnings- | [src](../../../core/services/central_agent_smith.py#L291) |
-| function | `_escalation_criteria` | `()` | Drift-kriteriet (benign_terms/risky_terms/spike_factor) — default + runtime-state overstyring. | [src](../../../core/services/central_agent_smith.py#L321) |
-| function | `_self_authored_commitments` | `()` | Trigger-cues fra behavioral_decisions Jarvis har forfattet SELV. | [src](../../../core/services/central_agent_smith.py#L341) |
-| function | `_corroboration_signal` | `()` | Labels/signaturer et ANDET værn nyligt flagede som en bekymring → drift-signal (b). | [src](../../../core/services/central_agent_smith.py#L371) |
-| function | `_execute_mint` | `(key, label, kind, metric)` | Trin 2/BIND: auto-mint en bindende behavioral_decision (Jarvis' egen idé, automatisk). | [src](../../../core/services/central_agent_smith.py#L386) |
-| function | `_execute_revoke` | `(decision_id)` | De-eskalering: pensionér et Smith-mintet direktiv når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L429) |
-| function | `_execute_observe` | `(act)` | — | [src](../../../core/services/central_agent_smith.py#L438) |
-| function | `_agent_smith_enforced` | `()` | Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra | [src](../../../core/services/central_agent_smith.py#L449) |
-| function | `_execute_arm_confront` | `(pattern_key, label)` | Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis | [src](../../../core/services/central_agent_smith.py#L465) |
-| function | `_execute_deactivate_order` | `(order_id)` | De-eskalering: deaktivér Smiths standing-order når mønsteret er løst (compliance). | [src](../../../core/services/central_agent_smith.py#L482) |
-| function | `run_escalation_tick` | `(assessment=…)` | Kør eskalerings-stigen over de aktuelt detekterede mønstre: mål compliance, | [src](../../../core/services/central_agent_smith.py#L491) |
-| function | `record_agent_smith` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: assess → kør eskalerings-stigen → cache til kv (så prompt-halen læser | [src](../../../core/services/central_agent_smith.py#L542) |
-| function | `agent_smith_prompt_section` | `()` | Modstemme til Jarvis — LÆSER den cachede assess (billigt). None hvis switch OFF, score under | [src](../../../core/services/central_agent_smith.py#L588) |
-| function | `register_agent_smith_producer` | `()` | Registrér Agent Smith som stående cadence-producer (~3t). | [src](../../../core/services/central_agent_smith.py#L619) |
-| function | `build_agent_smith_surface` | `()` | Read-only surface til /central/agent-smith + jc. Kør assess frisk (route er ikke hot-path). | [src](../../../core/services/central_agent_smith.py#L626) |
-
-## `core/services/central_agent_smith_escalation.py`
-_Agent Smith — eskalerings-stige ("The Confrontation")._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `default_config` | `()` | Default drift-kriterium. I/O-laget flettter runtime-state overstyringer ind. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L81) |
-| function | `pattern_key` | `(kind, label)` | Stabil nøgle så SAMME mønster spores på tværs af cyklusser. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L93) |
-| function | `_matches_any` | `(label, terms)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L98) |
-| function | `_is_spike` | `(baseline, current, factor)` | Drift-signal (a): afviger mønsteret OP fra sin egen baseline (gør det MERE end før)? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L103) |
-| function | `_is_corroborated` | `(entry)` | Drift-signal (b): har et andet værn flagget samme aktivitet? Ren (læser detected-entry). | [src](../../../core/services/central_agent_smith_escalation.py#L114) |
-| function | `_is_self_bound` | `(label, entry, cfg)` | Har Jarvis SELV besluttet at stoppe dette? Ren (I/O-laget leverer listen). | [src](../../../core/services/central_agent_smith_escalation.py#L119) |
-| function | `_may_escalate` | `(pat, metric, label, entry, cfg)` | Må dette mønster klatre forbi Trin 1? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L168) |
-| function | `_metric_dropped` | `(baseline, current)` | Compliance: er mønsteret målbart svagere end da vi sidst satte baseline? Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L201) |
-| function | `_active_directive_count` | `(patterns)` | — | [src](../../../core/services/central_agent_smith_escalation.py#L212) |
-| function | `_empty_state` | `()` | — | [src](../../../core/services/central_agent_smith_escalation.py#L216) |
-| function | `_voice` | `(kind, label, metric=…, pattern_kind=…)` | Teatralsk Smith-stemme pr. trin. Ren. | [src](../../../core/services/central_agent_smith_escalation.py#L220) |
-| function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L259) |
-| function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L282) |
-| function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L406) |
 

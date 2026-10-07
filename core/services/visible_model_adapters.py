@@ -256,6 +256,29 @@ def _stream_openai_compatible_model(
     deepseek-chat (non-thinking compat-alias). Andre openai-compat
     providere ignorerer (de har ikke thinking-mode).
     """
+    def _dt_noter(tekst: str) -> None:
+        """Notér én delta i delta-sporet.
+
+        NOEGLEN ER SESSIONEN, ikke run-id'et. Foerste udgave brugte
+        `aktivt_run_id()`, og den maalte INTET: maalt 3/10-2026 kom der nul
+        «ind»-linjer mod én «ud». Run-id'et hentes fra en ContextVar
+        (`run_autonomy_context`), og gatens globale fallback er — ifoelge dens
+        egen kommentar — «tom i jarvis-api, hvor de synlige ture koerer».
+        Adapteren koerer i en arbejdstraad, hvor ContextVar'en ikke foelger
+        med, saa nøglen var tom og hver maaling blev droppet.
+
+        `session_id` er derimod en parameter til denne funktion. Den findes
+        ogsaa i udgangen, saa de to punkter kan sammenlignes.
+        """
+        try:
+            from core.services import delta_trace as _dt
+            if not _dt.taendt():
+                return
+            _dt.noter("ind", str(session_id or ""), len(tekst))
+        except Exception:  # et spor maa aldrig vaelte en tur; den tavse vej er
+            # her den rigtige, fordi alternativet er at miste svaret.
+            pass
+
     from core.services.cheap_provider_runtime import (
         _iter_openai_compatible_chat_events,
         provider_runtime_defaults,
@@ -278,13 +301,11 @@ def _stream_openai_compatible_model(
     # requesten. Strip assistant-messages uden reasoning_content når vi
     # går til thinking-mode model. Pris: tab af gamle assistant-turns.
     # Værdi: API'et accepterer requesten.
-    _is_thinking_model = (
-        provider == "deepseek"
-        and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-    )
+    from core.services.deepseek_modelnavne import er_thinking_model
+    _is_thinking_model = er_thinking_model(model, provider=provider)
     # NB: filtreringen anvendes nedenfor på chat_messages efter de er bygget
     from core.tools.simple_tools import get_tool_definitions
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
 
     defaults = provider_runtime_defaults(provider)
     base_url = str(defaults.get("base_url") or "")
@@ -326,7 +347,7 @@ def _stream_openai_compatible_model(
             )
             for m in chat_messages
         ]
-    tools = select_tools_for_visible(
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 
@@ -342,25 +363,18 @@ def _stream_openai_compatible_model(
         workspace_id="default",
     )
 
-    # TEMP-DIAG: gated full-prompt dump (touch /tmp/jarvis-prompt-dump). Rotates
-    # latest.json → prev.json so two consecutive real turns can be diffed to find
-    # what MUTATES in the deepseek-cached prefix (cache dropped 98%→73%).
+    # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump): skriver HELE
+    # requesten — messages, tools og params — så den kan læses/diff'es.
+    # Se core/services/prompt_dump.py + scripts/prompt_dump_split.py.
     try:
-        import os as _os_pd
-        if _os_pd.path.exists("/tmp/jarvis-prompt-dump"):
-            import json as _json_pd
-            _dd = "/tmp/jarvis-prompt-dumps"
-            _os_pd.makedirs(_dd, exist_ok=True)
-            if _os_pd.path.exists(_dd + "/latest.json"):
-                try:
-                    _os_pd.replace(_dd + "/latest.json", _dd + "/prev.json")
-                except Exception:
-                    pass
-            with open(_dd + "/latest.json", "w", encoding="utf-8") as _fh_pd:
-                _json_pd.dump({"provider": provider, "model": model,
-                               "messages": chat_messages}, _fh_pd,
-                              indent=2, ensure_ascii=False)
-    except Exception:
+        from core.services import prompt_dump as _pd
+        _pd.dump_payload(
+            provider=provider, model=model, messages=chat_messages,
+            tools=tools or None, lane="visible-stream",
+            params={"temperature": _mod_temp, "top_p": _mod_top_p,
+                    "extra_body": _thinking_body or None, "stream": True},
+        )
+    except Exception:  # self-safe: en dump maa ikke kaste ind i stream-stien
         pass
     try:
         from core.services import turn_trace as _tt
@@ -404,6 +418,11 @@ def _stream_openai_compatible_model(
                         if _tt_first_tok and _tt is not None:
                             _tt.mark("deepseek_first_token", f"{provider}/{model}")
                             _tt_first_tok = False
+                        # Delta-sporets punkt «ind»: hvad UDBYDEREN sender, foer
+                        # noget af vores egen kaede roerer det. Sammenholdt med
+                        # punkt «ud» i `chat_stream_v2` afgoer det om en klump
+                        # er modellens, vores eller desks. Slukket som standard.
+                        _dt_noter(delta)
                         yield VisibleModelDelta(delta=delta)
                 elif kind == "reasoning_delta":
                     # Thinking-modeller sender ræsonnering FØR svaret. Videresend den
@@ -613,8 +632,8 @@ def _run_openai_compatible_visible(
         model=model,
     )
     _assembly_ms = int((_time.monotonic() - _t_assembly) * 1000)
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
-    tools = select_tools_for_visible(
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
     _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
@@ -643,22 +662,16 @@ def _run_openai_compatible_visible(
         base_top_p=None,
         workspace_id="default",
     )
+    # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump): se prompt_dump.py.
     try:
-        import os as _os_pd
-        if _os_pd.path.exists("/tmp/jarvis-prompt-dump"):
-            import json as _json_pd
-            _dd = "/tmp/jarvis-prompt-dumps"
-            _os_pd.makedirs(_dd, exist_ok=True)
-            if _os_pd.path.exists(_dd + "/latest.json"):
-                try:
-                    _os_pd.replace(_dd + "/latest.json", _dd + "/prev.json")
-                except Exception:
-                    pass
-            with open(_dd + "/latest.json", "w", encoding="utf-8") as _fh_pd:
-                _json_pd.dump({"provider": provider, "model": model,
-                               "messages": chat_messages}, _fh_pd,
-                              indent=2, ensure_ascii=False)
-    except Exception:
+        from core.services import prompt_dump as _pd
+        _pd.dump_payload(
+            provider=provider, model=model, messages=chat_messages,
+            tools=tools or None, lane="visible-execute",
+            params={"temperature": _mod_temp, "top_p": _mod_top_p,
+                    "extra_body": extra_body},
+        )
+    except Exception:  # self-safe: en dump maa ikke kaste ind i stream-stien
         pass
     try:
         from core.services import turn_trace as _tt
@@ -923,7 +936,7 @@ def _stream_openai_codex_model(
     """
     from core.services.cheap_provider_runtime import _iter_openai_codex_chat_events
     from core.tools.simple_tools import get_tool_definitions
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
 
     provider_config = _provider_router_config(provider="openai-codex")
     profile = str(provider_config.get("auth_profile") or "").strip() or "codex"
@@ -931,7 +944,7 @@ def _stream_openai_codex_model(
     prompt = _vm()._build_openai_codex_visible_prompt(
         message=message, model=model, session_id=session_id,
     )
-    tools = select_tools_for_visible(
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 

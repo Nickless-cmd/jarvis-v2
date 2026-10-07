@@ -113,11 +113,23 @@ def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
                 session = ""
 
         if _active_turn_blocks(session):
-            # Midt i en tur: beskeden lander i sessionen nu. `urgent=True`
-            # bypasser inbox-koeen, som ellers ville vente til turen er omme.
-            from core.services.notification_bridge import send_session_notification
-            send_session_notification(besked, source="agent-completion", urgent=True)
-            logger.info("completion leveret i aktiv tur for %s", agent_id)
+            # Midt i en tur kan vi ikke starte et run, saa resultatet leveres
+            # ind i sessionen. 2/10-2026: urgent=True er fjernet, og det er
+            # IKKE en forsinkelse af resultatet — koeen flushes netop naar
+            # Jarvis' tur er faerdig (`source == "visible-run"`), altsaa i det
+            # oejeblik han er fri. Det er bedre timing end at skrive midt i
+            # saetningen, og intet kan blive liggende: der er ogsaa et
+            # fallback-flush for poster der bliver for gamle.
+            from core.services.notification_bridge import (
+                delivery_succeeded,
+                send_session_notification,
+            )
+            svar = send_session_notification(besked, source="agent-completion")
+            if not delivery_succeeded(svar):
+                logger.warning("completion-levering afvist for %s: %s", agent_id, svar)
+            else:
+                logger.info("completion leveret i aktiv tur for %s (%s)",
+                            agent_id, svar.get("status"))
         else:
             from core.services.autonomous_stream_run import start_autonomous_stream_run
             start_autonomous_stream_run(besked, session_id=session,

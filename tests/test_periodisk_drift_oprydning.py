@@ -206,18 +206,37 @@ def test_medlemmet_er_registreret_i_infra_familien():
     assert "visible_drift_cleanup" in navne
 
 
-def test_medlemmet_throttler_paa_30_minutter(monkeypatch):
+def test_medlemmet_throttler_IKKE_laengere(monkeypatch):
+    """Throttlen er fjernet 6/10-2026 — med vilje, og det er en ADFÆRDSÆNDRING.
+
+    Den gamle test pinnede ``("visible_drift_cleanup", 30)``. Begrundelsen var at
+    «en række bliver ikke mere sand af at blive talt oftere». Det er rigtigt om
+    sandheden og forkert om nytten: reglens tredje gren kræver SELV 30 minutters
+    alder, så to uafhængige 30-minutters-ure gav et vindue på 30 til 60 minutter.
+    Og fasen var tilfældig, fordi ``_INFRA_THROTTLE`` er en in-process dict som
+    hver genstart nulstiller.
+
+    Målt samme dag: ``visible-bd1727a4`` stod fejeberettiget fra 19:06 og var
+    stadig ``running`` 19:24, gennem omkring ni familie-tick. Hvert af de
+    minutter blokerede genstarts-vagten, altså et deploy.
+
+    Hvad der IKKE må ske er at rettelsen blev bredere end medlemmet — se
+    ``test_fejerens_synlighed.test_de_OEVRIGE_medlemmer_throttler_stadig``.
+    """
     from core.services import cluster_daemon_families as cdf
 
-    noegler: list[tuple[str, float]] = []
+    kaldt: list[tuple[str, float]] = []
     monkeypatch.setattr(
         cdf, "_infra_throttle_ready",
-        lambda key, minutes: (noegler.append((key, minutes)), False)[1])
+        lambda key, minutes: (kaldt.append((key, minutes)), False)[1])
+    monkeypatch.setattr(
+        "core.services.session_boot_reconciler.ryd_visible_drift_periodisk",
+        lambda: {"status": "ok", "ryddet": 0, "enforced": True})
 
     ud = cdf._infra_visible_drift_live({})
 
-    assert ud["status"] == "throttled"
-    assert noegler == [("visible_drift_cleanup", 30)]
+    assert ud["status"] == "ok"
+    assert kaldt == [], f"medlemmet spurgte stadig throttlen: {kaldt}"
 
 
 def test_medlemmet_KALDER_den_periodiske_rydning(monkeypatch):

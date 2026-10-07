@@ -95,13 +95,26 @@ def test_exhausted_recovery_chain_never_promises_another_continuation():
 
 
 def test_visible_run_routes_exit_through_terminal_recovery():
-    """Opgave 3 (17/9-2026): udgangen går nu gennem `settle_segment_exit`, som
-    skriver den durable post FØR den terminale SSE. Klassifikationen er den
-    samme — `resolve_agentic_exit` er stadig den rene funktion bag den."""
+    """Opgave 3 (17/9-2026): udgangen går gennem den durable afregning, som
+    skriver posten FØR den terminale SSE. Klassifikationen er den samme —
+    `resolve_agentic_exit` er stadig den rene funktion bag den.
+
+    30/9-2026: selve afgoerelsen er udskilt til `visible_run_segment_exit`, saa
+    soemmen ligger et led laengere ude. Vagten foelger den i stedet for at pege
+    paa et kald der er flyttet — og tjekker koblingen paa modulet, ikke kun i
+    teksten: en import der braekker ville ellers slippe igennem en
+    streng-soegning.
+    """
     import inspect
+    from core.services import visible_run_segment_exit as vrse
+    from core.services import visible_run_segment_settlement as vrss
     from core.services import visible_runs
     source = inspect.getsource(visible_runs)
-    assert "settle_segment_exit(" in source
+    assert "afgoer_segment_udfald(" in source
+    assert "settle_segment_exit(" not in source, (
+        "afgoerelsen hoerer i `visible_run_segment_exit`, ikke i loekken")
+    assert "settle_segment_exit(" in inspect.getsource(vrse)
+    assert vrse.settle_segment_exit is vrss.settle_segment_exit
     assert '_agentic_loop_exit_reason = "early-exit-empty-text"' in source
     assert '_agentic_loop_exit_reason = "early-exit-tool-only"' in source
     assert '_agentic_loop_exit_reason = "early-exit-loop-gate-skip"' in source

@@ -17,7 +17,10 @@ from core.tools.kommando_beskrivelse import BESKRIVELSE_PARAM
 from core.tools.browser_tools import (BROWSER_TOOL_DEFINITIONS)
 from core.tools.comfyui_tools import (COMFYUI_TOOL_DEFINITIONS)
 from core.tools.pollinations_tools import (POLLINATIONS_TOOL_DEFINITIONS)
+from core.tools.graf_tools import (GRAF_TOOL_DEFINITIONS)
+from core.tools.widget_tools import (WIDGET_TOOL_DEFINITIONS)
 from core.tools.openrouter_image_tools import (OPENROUTER_IMAGE_TOOL_DEFINITIONS)
+from core.tools.mermaid_tool import (MERMAID_TOOL_DEFINITIONS)
 from core.tools.hf_inference_tools import (HF_INFERENCE_TOOL_DEFINITIONS)
 from core.tools.mic_listen_tool import (MIC_LISTEN_TOOL_DEFINITIONS)
 from core.tools.screen_tool import (SCREEN_TOOL_DEFINITIONS)
@@ -52,6 +55,7 @@ from core.tools.worktree_tools import (WORKTREE_TOOL_DEFINITIONS)
 from core.tools.identity_pin_tools import (IDENTITY_PIN_TOOL_DEFINITIONS)
 from core.tools.ui_panel_tools import (UI_PANEL_TOOL_DEFINITIONS)
 from core.tools.state_flag_tools import (STATE_FLAG_TOOL_DEFINITIONS)
+from core.tools.think_language_tools import (THINK_LANGUAGE_TOOL_DEFINITIONS)
 from core.tools.composer_suggest_tools import (COMPOSER_SUGGEST_TOOL_DEFINITIONS)
 from core.tools.gate_override_tools import (GATE_OVERRIDE_TOOL_DEFINITIONS)
 from core.tools.app_control_tool import (APP_CONTROL_TOOL_DEFINITIONS)
@@ -99,6 +103,9 @@ from core.services.agent_skill_library import (AGENT_SKILL_TOOL_DEFINITIONS)
 from core.services.agent_observation_compressor import (AGENT_OBSERVATION_TOOL_DEFINITIONS)
 from core.services.cross_agent_memory import (CROSS_AGENT_TOOL_DEFINITIONS)
 from core.services.self_wakeup import (SELF_WAKEUP_TOOL_DEFINITIONS)
+from core.services.session_spawn import (SESSION_TOOL_DEFINITIONS)
+from core.services.handover_tools import (HANDOVER_TOOL_DEFINITIONS)
+from core.tools.inbox_tools import (INBOX_TOOL_DEFINITIONS)
 from core.services.wakeup_dispatcher import (WAKEUP_DISPATCHER_TOOL_DEFINITIONS)
 from core.services.crisis_marker_detector import (CRISIS_MARKER_TOOL_DEFINITIONS)
 from core.services.identity_drift_proposer import (IDENTITY_DRIFT_TOOL_DEFINITIONS)
@@ -312,13 +319,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "Start a long-running command on the OPERATOR'S DESKTOP without "
                 "blocking the turn. Returns {shell_id, pid}. Poll it with "
                 "operator_bash_output, stop it with operator_kill_shell. The "
-                "process is detached: it survives runtime restarts."
+                "process is detached: it survives runtime restarts. "
+                "Send `titel` med — det er den tekst brugeren ser i "
+                "baggrundsjob-panelet, og uden den staar der et shell-id."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {"type": "string", "description": "Shell command to run in the background"},
                     "cwd": {"type": "string", "description": "Working directory (optional)"},
+                    "titel": {"type": "string", "description": "Kort menneskelig titel paa opgaven, fx «Bygger klienten» eller «Soeger i repoet». Vises som raekkens titel i baggrundsjob-panelet i stedet for shell-id'et. Valgfri."},
                 },
                 "required": ["command"],
             },
@@ -2396,7 +2406,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_ntfy",
-            "description": "Send a push notification to Bjørn's phone via ntfy (jarvis-heartbeat topic). Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
+            "description": "Send a push notification to Bjørn's phone through the configured ntfy channel. Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -3404,7 +3414,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *BROWSER_TOOL_DEFINITIONS,
     *COMFYUI_TOOL_DEFINITIONS,
     *POLLINATIONS_TOOL_DEFINITIONS,
+    *GRAF_TOOL_DEFINITIONS,
+    *WIDGET_TOOL_DEFINITIONS,
     *OPENROUTER_IMAGE_TOOL_DEFINITIONS,
+    *MERMAID_TOOL_DEFINITIONS,
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
     *SCREEN_TOOL_DEFINITIONS,
@@ -3450,6 +3463,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # kendte scope. Modulet og dets handler bevares for bagudkompatibilitet.
     # *UI_PANEL_TOOL_DEFINITIONS,
     *STATE_FLAG_TOOL_DEFINITIONS,
+    *THINK_LANGUAGE_TOOL_DEFINITIONS,
     *COMPOSER_SUGGEST_TOOL_DEFINITIONS,
     *GATE_OVERRIDE_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
@@ -3499,6 +3513,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_OBSERVATION_TOOL_DEFINITIONS,
     *CROSS_AGENT_TOOL_DEFINITIONS,
     *SELF_WAKEUP_TOOL_DEFINITIONS,
+    *SESSION_TOOL_DEFINITIONS,
+    *HANDOVER_TOOL_DEFINITIONS,
+    *INBOX_TOOL_DEFINITIONS,
     *WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
     *CRISIS_MARKER_TOOL_DEFINITIONS,
     *IDENTITY_DRIFT_TOOL_DEFINITIONS,

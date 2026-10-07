@@ -29,26 +29,18 @@ WINDOW_DAYS = 30
 # Tools that must always be in Tier 1 regardless of past usage. These are
 # the ones whose absence would be a behavioural regression, not a latency
 # optimization (loss of voice, loss of approval path, loss of memory, etc.).
-SAFETY_FLOOR: frozenset[str] = frozenset({
-    # User-facing communication — never lose his voice
-    "notify_user", "send_webchat_message", "send_ntfy",
-    # Approval/policy infrastructure
-    "approve_proposal", "propose_git_commit", "propose_source_edit",
-    "list_proposals",
-    # Self-knowledge baseline
-    "read_self_state", "read_mood", "read_self_docs", "read_chronicles",
-    # Memory baseline
-    "search_memory", "recall_memories", "memory_upsert_section",
-    "memory_check_duplicate", "recall_before_act",
-    # File ops baseline
-    "read_file", "write_file", "edit_file", "search", "find_files", "bash",
-    # Web baseline
-    "web_fetch", "web_search",
-    # Schedule + initiative
-    "schedule_task", "list_initiatives",
-    # Git
-    "git_status", "git_log", "git_diff",
-})
+# Gulvet bor i RUNTIME (`core/tools/copilot_tool_pruning.SAFETY_FLOOR`), fordi
+# det er dér det haandhaeves. Stod det to steder, var det dobbelt sandhed — og
+# det var praecis derfor det kunne staa som et krav ingen opfyldte.
+# Scriptet koerer standalone (cron/CLI), saa repo-roden skal paa stien foer
+# `core` kan importeres — samme moenster som `scripts/primary_cache_warmer.py`.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from core.tools.copilot_tool_pruning import SAFETY_FLOOR as _RUNTIME_FLOOR
+
+SAFETY_FLOOR: frozenset[str] = frozenset(_RUNTIME_FLOOR)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PRUNING_FILE = REPO_ROOT / "core" / "tools" / "copilot_tool_pruning.py"

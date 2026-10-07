@@ -561,6 +561,20 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     # explicitly enabled this 2026-05-03 ("han har haft det hele tiden").
     # Side effects are Jarvis's responsibility; veto_gate doesn't gate it.
     "bash",
+    # ── Gatens EGEN svarkanal (30/9-2026) ──────────────────────────────────
+    # Disse tre er ikke handlinger — de er hvordan man SVARER gaten. Da de
+    # manglede her, gatede gaten sin egen udvej: målt 30/9 blokerede den
+    # `override_gate`, `pause_and_ask` OG spørgsmålet om at genstarte den,
+    # tre gange i samme tur på `risk marker: 'merge'`. Så var `bash` den
+    # eneste vej ud — og dermed blev bagdøren den eneste dør, mens
+    # ledger'en tabte grunden til at den blev brugt.
+    #
+    # At gate dem kan aldrig BESKYTTE noget: `override_gate` fyrer først
+    # efter at gaten har logget sin blokering (one-shoten forbruges i
+    # `check_veto`), og `pause_and_ask` er det modsatte af at handle — den
+    # spørger brugeren i stedet. En gate der blokerer «spørg først» presser
+    # mod handling, ikke væk fra den.
+    "override_gate", "gate_override_status", "pause_and_ask",
 })
 
 

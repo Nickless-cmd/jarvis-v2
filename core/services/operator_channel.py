@@ -37,6 +37,12 @@ _KEY = "operator_channel_by_session"
 # eftermiddag, så den udløber af sig selv.
 _TTL_S = 4 * 3600
 
+#: Hvor længe efter en TTL-udløb kanalen må genopstå af sig selv.
+#: Bjørn 5/10-2026: «medmindre du selv har lukket kanalen eller jeg har, så
+#: reconnecter den». Fristen er værn mod det absurde — en kanal fra sidste uge
+#: må ikke vågne fordi en tilfældig kommando rørte ved den.
+_GENOPRET_FRIST_S = 24 * 3600
+
 
 def _load() -> dict[str, Any]:
     try:
@@ -60,6 +66,19 @@ def _aktiv(post: dict[str, Any]) -> bool:
         return False
     aabnet = float(post.get("aabnet") or 0.0)
     return bool(aabnet) and (time.time() - aabnet) < _TTL_S
+
+
+def _udloebet(post: dict[str, Any]) -> bool:
+    """Posten siger stadig åben, men TTL er passeret — ingen lukkede den.
+
+    Forskellen fra «lukket» er hele genopretningen: en post med ``open=False``
+    blev lukket af et menneske og må ikke genåbnes; en post der blot er løbet
+    tør, faldt af sig selv midt i arbejdet.
+    """
+    if not post.get("open"):
+        return False
+    aabnet = float(post.get("aabnet") or 0.0)
+    return bool(aabnet) and (time.time() - aabnet) >= _TTL_S
 
 
 def status(session_id: str) -> dict[str, Any]:
@@ -96,16 +115,32 @@ def close_channel(session_id: str, *, is_owner: bool) -> dict[str, Any]:
         return {"status": "error", "error": "operator-kanalen er kun for owner"}
     sid = str(session_id or "").strip()
     st = _load()
-    if sid in st:
-        st.pop(sid, None)
-        _save(st)
+    # Posten BEVARES med open=False (5/10-2026). Før blev den fjernet, og så
+    # kunne «lukket af et menneske» ikke skelnes fra «aldrig åbnet» — og
+    # genopretningen nedenfor ville genåbne en kanal nogen havde lukket med
+    # vilje. Det er præcis den forskel Bjørn bad om at få respekteret.
+    st[sid] = {"open": False, "lukket": time.time()}
+    _save(st)
     return {"status": "ok", "open": False, "text": "Operator-kanalen er lukket."}
 
 
 def current_session_id() -> str:
-    """Samme opslags-raekkefoelge som staged_edits_tools — ét moenster, ikke to."""
+    """Kanalens nøgle — og den SKAL være den samme som bash'ens.
+
+    Målt 5/10-2026: denne funktion pegede på ``visible_run_context``, som ikke
+    findes — importen fejlede i det stille — og faldt derefter til
+    ``chat_sessions.current_session_id_ctx``, som heller ikke findes. Begge
+    kilder var døde, så nøglen blev ``_default`` for ALLE sessioner: Bjørns
+    chat, autonome runs og mine egne ture delte én kanal. Lukkede én af dem,
+    faldt en anden stille tilbage til containeren — midt i en tur.
+
+    Rækkefølgen er derfor vendt: den autoritative kontekst først. Og kalderne
+    sender nu ``_runtime_session_id`` eksplicit med (se ``_exec_bash`` og
+    ``_exec_operator_channel``), så åbning og brug ikke kan pege på hvert sit
+    id. Denne funktion er reserve-vejen.
+    """
     for modul, navn in (
-        ("core.services.visible_run_context", "current_session_id"),
+        ("core.identity.workspace_context", "current_session_id"),
         ("core.services.chat_sessions", "current_session_id_ctx"),
     ):
         try:
@@ -153,16 +188,8 @@ def looks_like_workstation_path(command: str, cwd: str | None = None) -> bool:
     return any(k.startswith(t) for k in kandidater for t in _WORKSTATION_TEGN)
 
 
-def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
-                       session_id: str) -> dict[str, Any] | None:
-    """Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None.
-
-    None betyder «ikke min sag» — så kører bash normalt på containeren.
-    """
-    if not is_owner or not command.strip():
-        return None
-    if not is_open(session_id):
-        return None
+def _koer_over_broen(command: str, cwd: str | None) -> dict[str, Any]:
+    """Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det."""
     try:
         from core.tools.simple_tools import execute_tool
         args: dict[str, Any] = {"command": command}
@@ -176,6 +203,58 @@ def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
     if isinstance(r, dict):
         r = dict(r)
         r["via"] = "operator-kanal"
+    return r
+
+
+def _naaede_frem(r: Any) -> bool:
+    """Kom svaret fra hans maskine — eller var det broen der svigtede?
+
+    Afgør om en udløbet kanal må fornyes: en kommando der fejler på hans
+    maskine (exit_code 1) er BEVIS på at broen virker; ``bridge_not_connected``
+    er det modsatte. Uden den skelnen ville en kanal hvis bro er nede blive
+    fornyet i det uendelige af fejlende kald.
+    """
+    if not isinstance(r, dict):
+        return False
+    if "bridge" in str(r.get("error") or "").lower():
+        return False
+    return r.get("status") != "error"
+
+
+def _forny(session_id: str) -> None:
+    """Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede."""
+    st = _load()
+    st[str(session_id)] = {"open": True, "aabnet": time.time(), "genaabnet": True}
+    _save(st)
+
+
+def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
+                       session_id: str) -> dict[str, Any] | None:
+    """Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None.
+
+    None betyder «ikke min sag» — så kører bash normalt på containeren.
+
+    Er kanalen FALDET AF SIG SELV (TTL løbet tør, ingen har lukket den),
+    forsøger den at genopstå: kommandoen køres over broen, og svarede broen,
+    fornyes kanalen. Svigtede broen, fornyes intet — en kanal der ikke kan nå
+    sin maskine skal ikke stå åben. Se `_GENOPRET_FRIST_S`.
+    """
+    if not is_owner or not command.strip():
+        return None
+    sid = str(session_id or "").strip()
+    if is_open(sid):
+        return _koer_over_broen(command, cwd)
+    post = (_load().get(sid) or {})
+    if not _udloebet(post):
+        return None
+    alder = time.time() - float(post["aabnet"]) - _TTL_S
+    if alder > _GENOPRET_FRIST_S:
+        return None
+    r = _koer_over_broen(command, cwd)
+    if _naaede_frem(r):
+        _forny(sid)
+        r["kanal"] = {"genaabnet": True, "udloebet_for_s": int(alder)}
+        logger.info("operator_channel: genåbnede en udløbet kanal (%ss)", int(alder))
     return r
 
 
@@ -194,3 +273,28 @@ def closed_channel_hint(command: str, cwd: str | None, *, is_owner: bool,
             "containeren hvor denne bash kørte. Åbn kanalen med "
             "operator_channel(action='open'), så går bash derover af sig selv "
             "— eller brug operator_bash til det enkelte kald.")
+
+
+def kanal_note(session_id: str) -> str:
+    """Én linje når kanalen faldt af sig selv — til bash-svaret.
+
+    Bjørn 5/10-2026: «fiks kanalen så du får besked med det samme den ryger».
+    Uden den kørte kommandoen på containeren i det stille, og et svar der
+    ligner «filen findes ikke» kunne i virkeligheden betyde «du målte det
+    forkerte sted». Det er den fejlform hele 5/10 handlede om.
+
+    Fyrer KUN når kanalen faldt af sig selv og var for gammel til at genopstå.
+    Er den bevidst lukket, er der intet at sige — Bjørn lukkede den selv. Er
+    den genoprettet i samme kald, er noten støj; genopretningen melder sig selv
+    via `kanal.genaabnet` på svaret.
+    """
+    post = (_load().get(str(session_id or "").strip()) or {})
+    if not _udloebet(post):
+        return ""
+    alder = time.time() - float(post["aabnet"]) - _TTL_S
+    if alder <= _GENOPRET_FRIST_S:
+        return ""
+    timer = max(1, int(alder // 3600))
+    return (f"[operator-kanal] kanalen udløb for {timer} t siden og blev IKKE "
+            "genåbnet — denne kommando kørte på serveren, ikke på Bjørns "
+            "maskine. Åbn igen med operator_channel(action='open').")

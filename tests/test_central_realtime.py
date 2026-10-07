@@ -74,3 +74,49 @@ def test_balanced_feed_single_process_unaffected():
     assert len(out) == 5 and all(f["process"] == "api" for f in out)
     # nyeste først
     assert out[0]["ts"] >= out[-1]["ts"]
+
+
+# ── Sande incident-tal (målt 4/10-2026) ──────────────────────────────────────
+#
+# Kalderen henter incidents med `limit=40`, og visnings-listen klippes yderligere
+# til 12. Blev farven og tallene regnet på DEN liste, kunne Centralen stå grøn med
+# en uløst error i DB'en — og «12» stod der, uanset om der var 12 eller 240 åbne.
+
+def test_status_ser_fejl_uden_for_de_nyeste_40(isolated_runtime):
+    """Farven må ikke afhænge af hvilke rækker der er INDEN FOR vinduet.
+
+    Ligger den eneste ægte fejl uden for de nyeste 40, ser listen ren ud. Den gamle
+    beregning svarede derfor GRØN — mens DB'en havde en uløst error."""
+    from core.runtime.db_central_incidents import (
+        record_central_incident, count_open_incidents,
+    )
+    # fejlen skrives FØRST → lavest id → falder uden for de nyeste 40
+    record_central_incident(cluster="runtime", nerve="silent_cutoff",
+                            kind="turn_without_reply", severity="error", message="cut")
+    for i in range(45):
+        record_central_incident(cluster="proactivity", nerve="verification",
+                                kind="gate_enforce", severity="info", message=f"g{i}")
+    vindue = [{"severity": "info"} for _ in range(40)]  # hvad kalderen FAKTISK ser
+    # modprøve: uden de sande tal er fejlen usynlig → grøn
+    assert cr._status_from({"degraded": False}, vindue, [], {}, []) == "green"
+    # med DB-tallene er den synlig → gul
+    c = count_open_incidents()
+    assert c["errors"] == 1 and c["unresolved"] == 46
+    assert cr._status_from({"degraded": False}, vindue, [], {}, [],
+                           incident_counts=c) == "yellow"
+
+
+def test_snapshot_baerer_sande_incident_tal(isolated_runtime):
+    """Snapshottet skal eksponere DB-tallene — ikke `len()` af visnings-listen."""
+    from core.runtime.db_central_incidents import record_central_incident
+    for i in range(20):
+        record_central_incident(cluster="proactivity", nerve="verification",
+                                kind="gate_enforce", severity="info", message=f"g{i}")
+    s = cr.realtime_snapshot(trace_limit=1)
+    c = s.get("incident_counts") or {}
+    assert c.get("unresolved") == 20
+    assert c.get("governance") == 20
+    # visnings-listen er stadig klippet — det er meningen ...
+    assert len(s["incidents"]) <= 12
+    # ... men tallet lyver ikke længere
+    assert c["unresolved"] != len(s["incidents"])

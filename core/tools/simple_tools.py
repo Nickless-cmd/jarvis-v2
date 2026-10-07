@@ -23,6 +23,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
+from core.tools.tool_call_telemetry import byg_completed_payload, udgiv_tool_invoked
 from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
@@ -50,15 +51,22 @@ from core.tools.comfyui_tools import (
     _exec_comfyui_history,
     _exec_comfyui_objects,
 )
+from core.tools.graf_tools import _exec_vis_graf
+from core.tools.widget_tools import _exec_vis_widget
 from core.tools.pollinations_tools import (
     POLLINATIONS_TOOL_DEFINITIONS,
     _exec_pollinations_image,
     _exec_pollinations_video,
+    _exec_pollinations_video_edit,
 )
 from core.tools.openrouter_image_tools import (
     OPENROUTER_IMAGE_TOOL_DEFINITIONS,
     _exec_openrouter_image,
     _exec_openrouter_image_edit,
+)
+from core.tools.mermaid_tool import (
+    MERMAID_TOOL_DEFINITIONS,
+    _exec_render_mermaid,
 )
 from core.tools.hf_inference_tools import (
     HF_INFERENCE_TOOL_DEFINITIONS,
@@ -202,6 +210,10 @@ from core.tools.ui_panel_tools import (
 from core.tools.state_flag_tools import (
     STATE_FLAG_TOOL_DEFINITIONS,
     STATE_FLAG_TOOL_HANDLERS,
+)
+from core.tools.think_language_tools import (
+    THINK_LANGUAGE_TOOL_DEFINITIONS,
+    THINK_LANGUAGE_TOOL_HANDLERS,
 )
 from core.tools.composer_suggest_tools import (
     COMPOSER_SUGGEST_TOOL_DEFINITIONS,
@@ -435,6 +447,12 @@ from core.services.cross_agent_memory import (
     CROSS_AGENT_TOOL_DEFINITIONS,
     _exec_cross_agent_recall,
 )
+from core.tools.inbox_tools import (
+    INBOX_TOOL_DEFINITIONS,
+    _exec_inbox,
+    _exec_inbox_done,
+    _exec_inbox_drop,
+)
 from core.services.self_wakeup import (
     SELF_WAKEUP_TOOL_DEFINITIONS,
     _exec_schedule_self_wakeup,
@@ -442,6 +460,14 @@ from core.services.self_wakeup import (
     _exec_cancel_self_wakeup,
     _exec_mark_wakeup_consumed,
     _exec_add_wakeup_extra,
+)
+from core.services.session_spawn import (
+    SESSION_TOOL_DEFINITIONS,
+    _exec_start_session,
+)
+from core.services.handover_tools import (
+    HANDOVER_TOOL_DEFINITIONS,
+    _exec_write_handover,
 )
 from core.services.wakeup_dispatcher import (
     WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
@@ -1037,10 +1063,12 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _record_tool_outcome_memory(name, arguments, result, mode="tool")
         return result
 
-    event_bus.publish("tool.invoked", {
-        "tool": name,
-        "arguments": {k: str(v)[:100] for k, v in arguments.items()},
-    })
+    # Identiteten staar nu i payloadens ROD, ikke kun inde i argumenterne
+    # (29/9-2026). Uden det kunne kerne-rangeringen ikke skelne brugere, og et
+    # `json_extract(..., '$._runtime_user_id')` gav None for alle 59.778 kald.
+    # Udskilt til `tool_call_telemetry` foer aendringen — Boy Scout, filen er
+    # over 2.000 linjer.
+    udgiv_tool_invoked(name, arguments)
 
     try:
         result = handler(arguments)
@@ -1053,7 +1081,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = {"tool": name, "status": status}
+    _completed_payload = byg_completed_payload(name, status, arguments)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):
@@ -1198,7 +1226,7 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = {"tool": name, "status": status}
+    _completed_payload = byg_completed_payload(name, status, arguments)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):
@@ -1644,11 +1672,16 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "comfyui_history": _exec_comfyui_history,
     "comfyui_objects": _exec_comfyui_objects,
     # Pollinations.ai free image gen (no RAM, no auth)
+    "vis_graf": _exec_vis_graf,
+    "vis_widget": _exec_vis_widget,
     "pollinations_image": _exec_pollinations_image,
     "pollinations_video": _exec_pollinations_video,
+    "pollinations_video_edit": _exec_pollinations_video_edit,
     # OpenRouter paid image gen + edit (Gemini draws — sharp, vector-like)
     "openrouter_image": _exec_openrouter_image,
     "openrouter_image_edit": _exec_openrouter_image_edit,
+    # Mermaid → PNG server-side, så diagrammet også ses på mobilen
+    "render_mermaid": _exec_render_mermaid,
     # HuggingFace serverless inference
     "hf_text_to_video": _exec_hf_text_to_video,
     "hf_transcribe_audio": _exec_hf_transcribe_audio,
@@ -1716,6 +1749,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **IDENTITY_PIN_TOOL_HANDLERS,
     **UI_PANEL_TOOL_HANDLERS,
     **STATE_FLAG_TOOL_HANDLERS,
+    **THINK_LANGUAGE_TOOL_HANDLERS,
     **COMPOSER_SUGGEST_TOOL_HANDLERS,
     **GATE_OVERRIDE_TOOL_HANDLERS,
     **APP_CONTROL_TOOL_HANDLERS,
@@ -1824,6 +1858,20 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "cross_agent_recall": _exec_cross_agent_recall,
     "schedule_self_wakeup": _exec_schedule_self_wakeup,
     "list_self_wakeups": _exec_list_self_wakeups,
+    # Selv-startede sessioner (4/10-2026). Motoren er visible_runs'
+    # start_autonomous_run; dette er knappen. Sessionen stempler Bjørns id
+    # og lander i hans liste i desk — se core/services/session_spawn.py.
+    "start_session": _exec_start_session,
+    # Min egen overdragelse til naeste session (4/10-2026). Capsulens oevrige
+    # felter skrives af systemet; dette skriver jeg selv — og det arves
+    # fremad, saa det ikke vaskes vaek af naeste maskin-genererede tur.
+    "write_handover": _exec_write_handover,
+    # Indbakken (Opgave 5). Navnet bor FEM steder — skema, eksekutor,
+    # dispatch, desk og mobil — og 2/10 ramte jeg tre af de fem i
+    # foerste forsoeg. De tre nye staar samlet, saa de kan taelles.
+    "inbox": _exec_inbox,
+    "inbox_done": _exec_inbox_done,
+    "inbox_drop": _exec_inbox_drop,
     "cancel_self_wakeup": _exec_cancel_self_wakeup,
     "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
     "add_wakeup_extra": _exec_add_wakeup_extra,
@@ -2144,6 +2192,42 @@ def _json_safe_default(o: Any) -> str:
     return str(o)
 
 
+def _signal_linjer(result: dict[str, Any]) -> str:
+    """Korte linjer for signaler der ellers forsvinder naar ``text`` findes.
+
+    MAALT 5/10-2026: ``_exec_bash`` laegger baade ``kanal.note`` (operator-
+    kanalen faldt af sig selv og blev IKKE genoprettet) og ``confinement``
+    (koerte kommandoen indespærret?) paa svaret. Formateringen returnerer
+    ``text`` naar den findes og kaster ALLE andre noegler vaek — saa begge
+    beskeder naaede aldrig modellen. Beskeden VAR der; den blev kastet vaek et
+    lag laengere fremme. Det er praecis den fejlform Bjørn bad om at faa lukket
+    («fiks kanalen saa du faar besked med det samme den ryger»): uden den koerer
+    kommandoen paa serveren i det stille, og «filen findes ikke» kan i
+    virkeligheden betyde «du maalte det forkerte sted».
+
+    Rammer KUN tekst-grenen: dumps resultatet som JSON, er noeglerne i
+    forvejen synlige og linjerne ville vaere gentagelser.
+    """
+    linjer: list[str] = []
+    kanal = result.get("kanal")
+    if isinstance(kanal, dict):
+        note = str(kanal.get("note") or "").strip()
+        if note:
+            linjer.append(note)
+        elif kanal.get("genaabnet"):
+            linjer.append("[operator-kanal] kanalen var udloebet og blev "
+                          "genaabnet af dette kald.")
+    # Kun naar indespærring var ØNSKET men IKKE håndhævet. Er den håndhævet,
+    # er der intet at sige — og en linje paa hvert eneste bash-kald ville
+    # begrave de signaler der faktisk betyder noget.
+    conf = result.get("confinement")
+    if isinstance(conf, dict) and conf.get("requested") and not conf.get("honored", True):
+        aarsag = str(conf.get("reason") or "").strip()
+        linjer.append("[indespaerring] ønsket, men IKKE håndhævet"
+                      + (f": {aarsag}" if aarsag else ""))
+    return ("\n" + "\n".join(linjer)) if linjer else ""
+
+
 def format_tool_result_for_model(
     name: str, result: dict[str, Any], *, clip: bool = True,
 ) -> str:
@@ -2185,6 +2269,10 @@ def format_tool_result_for_model(
     # daekkede kun vaerktoejer der returnerer hele teksten og lader
     # formateringen klippe.
     text = ""
+    # Sandt naar `text` blev dannet ved at dumpe HELE resultatet som JSON.
+    # Saa er sidestraenge som `kanal` og `confinement` i forvejen synlige, og
+    # `_signal_linjer` nedenfor skal ikke gentage dem.
+    _fra_json = False
     if not clip:
         text = str(result.get("text_full") or "")
     if not text:
@@ -2199,6 +2287,7 @@ def format_tool_result_for_model(
             n = result.get("replacements", 0)
             text = f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
         else:
+            _fra_json = True
             # Defense-in-depth: cap the raw JSON fallback so a tool returning a
             # fat payload can't spill thousands of tokens into visible context.
             # Raised from 1500 → 8000 so most tool results show in full.
@@ -2219,6 +2308,10 @@ def format_tool_result_for_model(
                     _clip_head_tail(_dumped, limit=_MAX_FALLBACK_CHARS)
                     + f"\n[keys: {_keys}. Tilføj en 'text'-nøgle i toolets exec for et rent resumé.]"
                 )
+
+    # Signaler der bor i sidestraenge (5/10-2026). Se `_signal_linjer`.
+    if text and not _fra_json:
+        text += _signal_linjer(result)
 
     # Phase 2 of verification-gate honesty (2026-05-14): attach a brief
     # verify hint to mutation results so it lands in the SAME breath as

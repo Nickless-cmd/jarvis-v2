@@ -641,6 +641,27 @@ def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) ->
     return {"ok": True, "kind": art, "root": rod}
 
 
+@router.delete("/sessions/{session_id}/workspace")
+def chat_release_session_workspace(session_id: str) -> dict:
+    """Løsn samtalen fra sit workspace — «Fjern projekt».
+
+    Servicen kunne hele tiden skrive NULL: `set_session_workspace` tager
+    `None` på BEGGE felter. Det var kun POST-ruten ovenfor der afviste tom
+    root med 400 — så der fandtes en vej IND i et projekt og ingen vej UD
+    igen. Valgte man en forkert mappe, sad man fast i den (Bjørn 29/9-2026).
+
+    Projektet ER `workspace_root`; der er ingen tabel at slette en række i.
+    At løsne samtalen er derfor præcis det samme som at fjerne den fra
+    projektet, og panelets «Fjern projekt» kalder denne rute for hver samtale
+    i gruppen.
+    """
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
+    from core.services.chat_sessions import set_session_workspace
+    set_session_workspace(session_id, kind=None, root=None)
+    return {"ok": True, "kind": None, "root": None}
+
+
 @router.get("/sessions/{session_id}/permission")
 def chat_get_session_permission(session_id: str) -> dict:
     """Samtalens tilladelses-niveau — den ene sandhed begge klienter læser.
@@ -858,28 +879,6 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     return svar
 
 
-@router.get("/workspace-trust")
-def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
-    """Er det aktuelle workspace betroet for den indloggede bruger?"""
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import is_trusted
-    uid = current_user_id() or None
-    return {"kind": kind, "root": root, "trusted": is_trusted(uid, kind, root)}
-
-
-@router.get("/workspace-trust/list")
-def list_workspace_trust(kind: str = "") -> dict:
-    """De mapper brugeren har betroet — grundlaget for workstation-vaelgeren.
-
-    Uden den her kunne desk kun spoerge «er DENNE mappe betroet?», og en
-    vaelger skal kende kandidaterne foer den kan vise dem.
-    """
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import list_trusted
-    uid = current_user_id() or None
-    return {"folders": list_trusted(uid, kind or None)}
-
-
 @router.get("/git/branches")
 async def chat_git_branches(kind: str = "container", root: str = "") -> dict:
     """Alle branches i workspacet. Blokerende git offloades til en traad."""
@@ -932,24 +931,6 @@ async def chat_git_worktree(request: GitWorktreeRequest) -> dict:
         create_worktree, kind=request.kind, root=request.root,
         navn=request.name, sti=request.path, uid=uid,
     )
-
-
-class WorkspaceTrustRequest(BaseModel):
-    kind: str = "container"
-    root: str = ""
-    trusted: bool = True
-
-
-@router.post("/workspace-trust")
-def set_workspace_trust(request: WorkspaceTrustRequest) -> dict:
-    """Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode)."""
-    from core.identity.workspace_context import current_user_id
-    from core.services.workspace_trust import set_trusted
-    if not request.root.strip():
-        raise HTTPException(status_code=400, detail="root må ikke være tom")
-    uid = current_user_id() or None
-    trusted = set_trusted(uid, request.kind, request.root, request.trusted)
-    return {"kind": request.kind, "root": request.root, "trusted": trusted}
 
 
 class ChatStreamRequest(BaseModel):
@@ -1244,6 +1225,9 @@ class ChatSessionCreateRequest(BaseModel):
     # `workspace_kind` ovenfor. To felter med næsten samme navn, to helt
     # forskellige spørgsmål.
     kind: str = "chat"
+    # Hvilken samtale den nye arver tilladelses-niveau fra (3/10-2026).
+    # Tom = ingen arv, altsaa `ask` som foer. Se `session_permission.arv_permission`.
+    inherit_from: str = ""
 
 
 class ChatSessionRenameRequest(BaseModel):
@@ -1251,7 +1235,7 @@ class ChatSessionRenameRequest(BaseModel):
 
 
 @router.get("/sessions")
-def chat_sessions(kind: str = "") -> dict:
+def chat_sessions(kind: str = "", inkluder_arkiverede: bool = False) -> dict:
     """List chat sessions.
 
     When the request carries an X-JarvisX-User header (set by the
@@ -1263,10 +1247,16 @@ def chat_sessions(kind: str = "") -> dict:
 
     `kind=chat|code` skiller de to flader. UDELADT betyder ALT — ikke «chat».
     Enhver klient der fandtes før kolonnen, får præcis det den altid har fået.
+
+    `inkluder_arkiverede` (29/9-2026): arkiverede falder ud af listen som
+    standard. Desk tilbød «Arkivér» uden nogen vej tilbage — samtalen blev
+    usynlig, ikke arkiveret. UDELADT betyder «skjul dem», som før; kun den
+    klient der beder om dem, får dem.
     """
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or None
-    return {"items": list_chat_sessions(user_id=uid, kind=(kind or None))}
+    return {"items": list_chat_sessions(
+        user_id=uid, kind=(kind or None), inkluder_arkiverede=inkluder_arkiverede)}
 
 
 # Bemærk: defineres FØR /sessions/{session_id} så "search" ikke fanges som id.
@@ -1302,29 +1292,47 @@ def chat_session_recovery(session_id: str, response: Response) -> dict:
     return snapshot
 
 
+# 3/10-2026: loft for hvor laenge et AABENT run maa holde indikatoren taendt.
+# Endpointets egen kommentar naevnte 10 minutter — det er vaernet mod en zombie
+# der aldrig blev markeret faerdig.
+_AKTIVE_RUNS_ALDER_LOFT_S = 600.0
+
+
 @router.get("/active-runs")
 def chat_active_runs() -> dict:
     """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).
 
     Bruges af Sidebar til at vise en arbejds-indikator på en session der ikke er
-    fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
-    state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
-    ikke cancelled."""
+    fremme. Højst ét aktivt visible-run ad gangen. Alders-guard mod phantom-
+    state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt."""
     # Autoritativ liveness via run_follow-bufferen (SAMME proces som de afkoblede
     # runs + dette endpoint) — paalideligt for detached A3-runs og rydder
     # OEJEBLIKKELIGT op naar et run afsluttes (end_follow). Erstatter det DELTE
     # active-run-heartbeat, der halter cross-proces for detached runs og fik
     # desktop-aktivitetsprikkerne til at haenge (Bjoern 2026-06-18).
+    #
+    # 3/10-2026: kilden er skiftet fra `live_run_ids` (FRISKHEDS-baseret: et run
+    # falder ud naar der ikke er kommet en frame i 45 s) til `aabne_run_ids`
+    # (TILSTANDS-baseret: et run er i gang til det er FAERDIGT). Under et langt
+    # blokerende vaerktoejskald kommer der ingen frames — og indikatoren blinkede
+    # (Bjoern: «stopper ... starter op igen og koere x sekunder og saa stopper»).
+    # Det er samme defekt `aabne_run_ids` blev bygget til 19/9 for den indre
+    # opmaerksomhed; klienten fik den bare aldrig.
     from core.runtime.settings import load_settings
     if load_settings().server_authoritative_runs:
         import core.services.run_event_log as rel
         sids: list[str] = []
         sessions: list[dict] = []
-        for rid in rel.live_run_ids():
+        for rid in rel.aabne_run_ids(max_alder_s=_AKTIVE_RUNS_ALDER_LOFT_S):
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)
-                item = {"session_id": sid, "run_id": rid, "status": "working"}
+                # 3/10-2026: klientens EGET id, ikke log-id'et. Guarden i
+                # ChatView/CodeView sammenligner med det id klienten fik i
+                # system_event(kind=run); svarede vi med log-id'et, matchede de
+                # aldrig, og indikatoren taendte paa klientens EGEN efterbehandling
+                # (maalt: 5-20 s blink efter hvert svar).
+                item = {"session_id": sid, "run_id": rel.klient_run_id(rid), "status": "working"}
                 try:
                     from core.services.research_store import active_for_session
                     research = active_for_session(sid)
@@ -1339,9 +1347,22 @@ def chat_active_runs() -> dict:
                 sessions.append(item)
         return {"session_ids": sids, "sessions": sessions}
     # FLAG OFF -> run_follow.live_sessions (uaendret)
-    from core.services.run_follow import live_sessions
+    #
+    # 3/10-2026: grenen laeste friskhed fra in-memory follow-buffere
+    # (`last_frame_at`, 20 s). Under et langt vaerktoejskald publiceres ingen
+    # frames — saa et run der LEVEDE faldt ud af listen og kom tilbage
+    # bagefter. Det er praecis den defekt `aabne_run_ids` blev skrevet for at
+    # fjerne (se dens docstring, maalt 19/9-2026: Jarvis-figurens taleboble
+    # forsvandt midt i et svar). Grenen spoerger nu den SAMME autoritative
+    # kilde som flag-ON; kun klient-id-berigelsen mangler, saa flaget kan
+    # slaas fra uden at genindfoere defekten.
+    import core.services.run_event_log as rel
     try:
-        sids = live_sessions()
+        sids: list[str] = []
+        for rid in rel.aabne_run_ids(max_alder_s=_AKTIVE_RUNS_ALDER_LOFT_S):
+            sid = rel.session_for_run(rid)
+            if sid and sid not in sids:
+                sids.append(sid)
         return {"session_ids": sids, "sessions": [{"session_id": sid, "run_id": "", "status": "working"} for sid in sids]}
     except Exception:
         return {"session_ids": []}
@@ -1586,12 +1607,30 @@ def chat_model_context(provider: str = "", model: str = "") -> dict:
 def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     """Opret en ny chat-session (valgfrit bundet til et code-mode workspace).
     Returnerer {session: ...}."""
-    return {"session": create_chat_session(
+    ny = create_chat_session(
         title=request.title,
         workspace_kind=request.workspace_kind or None,
         workspace_root=request.workspace_root or None,
         kind=request.kind or "chat",
-    )}
+    )
+    # Tilladelses-arven (3/10-2026). Bjoern: «composer arver ikk permissions».
+    # En ny samtale havde ingen vaerdi i `approval_mode`, saa serveren svarede
+    # `ask` — og desks PermissionContext laeser netop serveren naar samtalen
+    # skifter, saa den overskrev hans «fuld adgang». Arven sker KUN her, ved
+    # oprettelsen, og kun fra en samtale der findes.
+    #
+    # `_kraev_adgang` paa foraelderen: man maa ikke arve et niveau fra en
+    # samtale man ikke selv har adgang til.
+    _arv = str(getattr(request, "inherit_from", "") or "").strip()
+    if _arv:
+        _kraev_adgang(_arv)
+        from core.services.session_permission import arv_permission
+        _sid = str((ny or {}).get("id") or (ny or {}).get("session_id") or "")
+        _res = arv_permission(_sid, _arv)
+        if _res.get("arvet"):
+            ny = dict(ny)
+            ny["approval_mode"] = _res.get("approval_mode")
+    return {"session": ny}
 
 
 @router.get("/sessions/{session_id}")
@@ -1977,3 +2016,15 @@ def chat_client_tool_result(run_id: str, body: dict) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="No pending client tool for call_id")
     return {"ok": True, "run_id": run_id, "call_id": call_id, "resolved": True}
+
+
+# ── Boy-scout split 3/10-2026: workspace-tillid flyttet ────────────────────
+# De tre `/chat/workspace-trust`-ruter bor nu i `chat_workspace_trust.py`
+# (samme URL, samme adfaerd). Navnene re-eksporteres her, saa eksisterende
+# imports fra `routes.chat` ikke braekker. Ryd op naar call-sites er fulgt med.
+from apps.api.jarvis_api.routes.chat_workspace_trust import (  # noqa: E402,F401
+    WorkspaceTrustRequest,
+    get_workspace_trust,
+    list_workspace_trust,
+    set_workspace_trust,
+)

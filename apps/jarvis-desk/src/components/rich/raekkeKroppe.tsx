@@ -19,6 +19,8 @@
  * registrets label for alt vi ikke har navngivet.
  */
 import { useEffect, useState, type ReactNode } from 'react'
+import { ryd } from '../../lib/ansiTekst'
+import { behold, klausul, politikFor, klipLangeLinjer } from '../../lib/udeladelse'
 import { codeToHtml } from 'shiki'
 import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { safeImageSrc } from '../../lib/sanitize'
@@ -300,8 +302,12 @@ function ansiStykker(tekst: string): { t: string; s: AnsiTilstand }[] {
 }
 
 function Ansi({ tekst }: { tekst: string }) {
-  if (!tekst.includes('\x1b')) return <>{tekst}</>
-  return <>{ansiStykker(tekst).map((d, i) => {
+  // Ryd markoer-sekvenser og lad vognreturen faa sin virkning FOER farverne
+  // laegges paa (spec punkt 6, 30/9-2026). `ansiStykker` oversaetter kun SGR;
+  // alt andet stod som skrald — `\x1b[2K` blev til «[2K» paa skaermen.
+  const ren = ryd(tekst)
+  if (!ren.includes('\x1b')) return <>{ren}</>
+  return <>{ansiStykker(ren).map((d, i) => {
     const ren = d.s.fg === undefined && !d.s.rgb && !d.s.bold && !d.s.dim
     if (ren) return d.t
     return <span
@@ -356,10 +362,27 @@ export function udDel(result: string | undefined): string {
 
 /* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
-export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: string; exit: number; pending?: boolean }) {
+export function Terminal({
+  cmd, ud, exit, pending = false, vaerktoej = 'bash', config, beskedId, toolUseId,
+}: {
+  cmd: string; ud: string; exit: number; pending?: boolean
+  /** Afgoer om der beholdes en HALE — shell gemmer exit-koden til sidst. */
+  vaerktoej?: string
+  /** Til spill-laget: uden dem er der ingen vej til resten, og knappen vises ikke. */
+  config?: ApiConfig; beskedId?: string; toolUseId?: string
+}) {
   const [visHele, setVisHele] = useState(false)
   const kort = cmd.length > 60 ? (kommandoEmne(cmd) || `${cmd.slice(0, 40)}…`) : cmd
   const afkortet = kort !== cmd
+  const spill = useSpill(config, beskedId, toolUseId)
+
+  // Udeladelses-laget (spec punkt 5). Er resten hentet, vises den raat — den
+  // der bad om alt skal faa alt.
+  const p = politikFor(vaerktoej)
+  const raa = spill.fuld ?? ud
+  const u = behold(klipLangeLinjer(raa), spill.fuld ? { ...p, hoved: Number.MAX_SAFE_INTEGER, hale: 0 } : p)
+  const note = klausul(u, p)
+
   return (
     <div className="rv-kort rv-term" data-exit={pending ? undefined : exit}>
       <div className="rv-kh">
@@ -373,9 +396,52 @@ export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: 
         {!pending && <span className="rv-exit">exit code {exit}</span>}
       </div>
       {visHele && <pre className="rv-kommando-fuld">{cmd}</pre>}
-      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud ? <Ansi tekst={ud} /> : (pending ? 'Kører…' : '')}</pre>
+      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>
+        {raa ? <Ansi tekst={u.hoved} /> : (pending ? 'Kører…' : '')}
+      </pre>
+      {note && <div className="rv-udeladt">{note}</div>}
+      {u.hale && <pre><Ansi tekst={u.hale} /></pre>}
+      {u.klippet && spill.kan && (
+        <div className="rv-spill">
+          <button type="button" className="rv-spill-knap" disabled={spill.henter}
+            onClick={(e) => { e.stopPropagation(); void spill.hent() }}>
+            {spill.henter ? 'Henter…' : 'Vis hele'}
+          </button>
+          <span className="rv-spill-maal">{u.ialt.toLocaleString('da-DK')} linjer</span>
+          {spill.fejl && <span className="rv-spill-fejl">{spill.fejl}</span>}
+        </div>
+      )}
     </div>
   )
+}
+
+/**
+ * Spill-laget: resten af et klippet resultat, hentet naar nogen beder om det.
+ *
+ * Locatoren fandtes i forvejen — `hentVaerktoejsResultat` har ligget i
+ * `lib/api.ts` UDEN en eneste kalder. Det er det hyppigste moenster i denne
+ * kodebase: korrekt kode som intet kalder. (spec punkt 5, 30/9-2026)
+ */
+function useSpill(config?: ApiConfig, beskedId?: string, toolUseId?: string) {
+  const [fuld, setFuld] = useState<string | null>(null)
+  const [henter, setHenter] = useState(false)
+  const [fejl, setFejl] = useState('')
+  const kan = Boolean(config && beskedId && toolUseId)
+  const hent = async () => {
+    if (!config || !beskedId || !toolUseId || henter) return
+    setHenter(true); setFejl('')
+    try {
+      const { hentVaerktoejsResultat } = await import('../../lib/api')
+      setFuld(await hentVaerktoejsResultat(config, beskedId, toolUseId))
+    } catch (e) {
+      // Fejlen skal SES. Et klik der ikke gjorde noget er vaerre end en knap
+      // der ikke var der.
+      setFejl(e instanceof Error ? e.message : 'kunne ikke hentes')
+    } finally {
+      setHenter(false)
+    }
+  }
+  return { fuld, henter, fejl, kan, hent }
 }
 
 export type DiffLinje = { k: 'add' | 'del' | 'ctx'; t: string }
@@ -464,9 +530,55 @@ export function Minde({ titel, meta, tekst }: { titel: string; meta: string; tek
         <span>{titel}</span>
         {meta && <span className="rv-mindeM">{meta}</span>}
       </div>
-      {tekst && <div className="rv-mindeT">{tekst}</div>}
+      {tekst && <LangKrop tekst={tekst} className="rv-mindeT" />}
     </div>
   )
+}
+
+/**
+ * Den DELTE geometri for en lang krop (spec punkt 6, 30/9-2026).
+ *
+ * Foer havde hvert kort sin egen: `Terminal` kunne folde kommandoen ud, `Fil`
+ * og `Minde` kunne ingenting, og en 2.000-linjers krop straakte kortet ud i
+ * det uendelige. DSH's model er ét snit ved `maxLines` med hoved OG hale, saa
+ * man ser baade hvad der begyndte og hvad der endte.
+ *
+ * 16 er DSH's tal og er beholdt. Halen er 6 af de 16: nok til en fejl med
+ * kontekst, lidt nok til at hovedet stadig baerer kortet.
+ *
+ * Udfoldningen er LOKAL — teksten er der allerede. Det er forskellen fra
+ * terminal-kortets spill-knap, som henter noget serveren har.
+ */
+export const MAX_LINJER = 16
+const HALE_LINJER = 6
+
+export function LangKrop({ tekst, className }: { tekst: string; className?: string }) {
+  const [alt, setAlt] = useState(false)
+  const p = { hoved: MAX_LINJER - HALE_LINJER, hale: HALE_LINJER, vejledning: 'fold ud for resten' }
+  // Den lange ENKELTLINJE klippes uanset om linjeANTALLET goer det. Foerste
+  // udgave viste `tekst` raat i den uklippede gren, saa et 5.000-tegns blob
+  // paa én linje slap forbi — linje-taellingen ser den som én. Testen fandt det.
+  const sikker = klipLangeLinjer(tekst)
+  const u = behold(sikker, p)
+  if (!u.klippet || alt) {
+    return <>
+      <div className={className}>{sikker}</div>
+      {alt && <div className="rv-spill">
+        <button type="button" className="rv-spill-knap"
+          onClick={(e) => { e.stopPropagation(); setAlt(false) }}>Vis færre</button>
+      </div>}
+    </>
+  }
+  return <>
+    <div className={className}>{u.hoved}</div>
+    <div className="rv-udeladt">{u.udeladt.toLocaleString('da-DK')} linjer udeladt i midten</div>
+    <div className={className}>{u.hale}</div>
+    <div className="rv-spill">
+      <button type="button" className="rv-spill-knap"
+        onClick={(e) => { e.stopPropagation(); setAlt(true) }}>Vis alle</button>
+      <span className="rv-spill-maal">{u.ialt.toLocaleString('da-DK')} linjer</span>
+    </div>
+  </>
 }
 
 function Raadata({ ind, ud }: { ind: string; ud: string }) {
@@ -929,7 +1041,9 @@ export function kropFor(
 
   if (familie === 'terminal') {
     const cmd = streng(input.command) || streng(input.cmd) || kommandoFraStroem(live?.partialJson) || 'Klargør kommando…'
-    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running} />
+    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running}
+      vaerktoej={navn} config={config}
+      beskedId={billedKontekst?.beskedId} toolUseId={billedKontekst?.toolUseId} />
   }
   if (familie === 'diff') {
     const preview = objekt(værdi) ? streng(værdi.diff_preview) : ''

@@ -20,6 +20,13 @@ _KEY = "ui_panel_requests"
 
 VALID_PANELS = {"preview", "right", "files", "file_tree", "settings"}
 VALID_SCOPES = {"repo", "workstation"}
+#: 3/10-2026: `close` er en RIGTIG forespørgsel, ikke et tool-niveau-signal.
+#: Desk's `UiPanelWatcher` har hele tiden læst `req.action === 'close'` og kaldt
+#: `panel.close()` — men serveren lagde aldrig en sådan post, så `open_ui_panel
+#: (action='close')` svarede «ok» uden at sende noget som helst. Bjørn målte det
+#: 3/10: «din lukning af panelerne virkede ikke». Et svar der lyver om en
+#: handling er værre end en ærlig fejl.
+VALID_ACTIONS = {"open", "close"}
 
 
 def request_panel(
@@ -28,19 +35,23 @@ def request_panel(
     detail: str = "",
     scope: str = "repo",
     session_id: str = "",
+    action: str = "open",
 ) -> dict[str, Any]:
     """Tilføj en pending panel-forespørgsel.
 
     Returns dict med request-detaljer (inkl. id). Kaster ValueError ved ugyldig
-    panel/scope.
+    panel/scope/action.
     """
     panel = panel.strip().lower()
     scope = scope.strip().lower()
+    action = action.strip().lower()
 
     if panel not in VALID_PANELS:
         raise ValueError(f"ukendt panel '{panel}' (gyldige: {', '.join(sorted(VALID_PANELS))})")
     if scope not in VALID_SCOPES:
         raise ValueError(f"ukendt scope '{scope}' (gyldige: {', '.join(sorted(VALID_SCOPES))})")
+    if action not in VALID_ACTIONS:
+        raise ValueError(f"ukendt action '{action}' (gyldige: {', '.join(sorted(VALID_ACTIONS))})")
 
     req: dict[str, Any] = {
         "id": f"panel-{uuid4().hex[:12]}",
@@ -48,6 +59,7 @@ def request_panel(
         "scope": scope,
         "detail": detail,
         "session_id": session_id,
+        "action": action,
         "status": "pending",
         "created_at": datetime.now(UTC).isoformat(),
     }

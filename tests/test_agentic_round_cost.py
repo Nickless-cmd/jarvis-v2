@@ -53,7 +53,8 @@ _USAGE = (
     b'data: {"choices":[{"delta":{"content":"ok"}}]}\n', b"\n",
     b'data: {"choices":[{"delta":{},"finish_reason":"stop"}],'
     b'"usage":{"prompt_tokens":120000,"completion_tokens":900,'
-    b'"prompt_cache_hit_tokens":100000,"prompt_cache_miss_tokens":20000}}\n', b"\n",
+    b'"prompt_cache_hit_tokens":100000,"prompt_cache_miss_tokens":20000,'
+    b'"completion_tokens_details":{"reasoning_tokens":600}}}\n', b"\n",
     b"data: [DONE]\n", b"\n",
 )
 
@@ -72,7 +73,30 @@ def test_a_followup_round_is_written_to_the_ledger(monkeypatch):
     assert row["lane"] == "agentic_round" and row["run_id"] == "visible-abc"
     assert row["input_tokens"] == 120000 and row["output_tokens"] == 900
     assert row["cache_hit_tokens"] == 100000 and row["cache_miss_tokens"] == 20000
+    assert row["reasoning_tokens"] == 600, "taenke-tokens skal med i hovedbogen"
     assert row["cost_usd"] > 0, "prisen skal beregnes, ikke sendes som 0"
+
+
+def test_reasoning_tokens_do_not_change_the_price():
+    """Taenke-tokens er en DELMAENGDE af completion_tokens — de er allerede
+    betalt som output. Kolonnen maa ikke flytte prisen, ellers dobbelt-taeller
+    vi DeepSeeks taenkning. Den er ren instrumentation."""
+    from core.services.llm_pricing import compute_cost_usd
+    uden = compute_cost_usd("deepseek", "deepseek-v4-flash",
+                            cache_hit_tokens=100000, cache_miss_tokens=20000,
+                            output_tokens=900)
+    med = compute_cost_usd("deepseek", "deepseek-v4-flash",
+                           cache_hit_tokens=100000, cache_miss_tokens=20000,
+                           output_tokens=900, input_tokens=120000)
+    assert uden == med
+
+
+def test_reasoning_tokens_default_to_zero_without_the_detail():
+    """Udbydere der ikke sender completion_tokens_details maa give 0 — ikke et
+    gaet. 0 betyder «ikke maalt», ikke «ingen taenkning»."""
+    _u = {"prompt_tokens": 100, "completion_tokens": 50}
+    _reas = int((_u.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0)
+    assert _reas == 0
 
 
 def test_the_price_reflects_the_cache_split(monkeypatch):

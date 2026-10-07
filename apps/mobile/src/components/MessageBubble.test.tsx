@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageBubble } from './MessageBubble'
 import type { ChatMessage } from '../lib/types'
+import { Animated } from 'react-native'
 
 // Boblen kan nu bære Jarvis' EGNE filer, og `MessageAttachments` henter sin
 // konfiguration gennem `useAuth` — som kaster uden for en AuthProvider. Samme
@@ -18,11 +19,98 @@ jest.mock('../state/AuthContext', () => {
 const base = { id: 'm1', created_at: new Date().toISOString() }
 
 describe('MessageBubble', () => {
+  it('giver ombrudt assistenttekst læsbar linjehøjde på selve Text-elementet', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base, role: 'assistant',
+      content: 'Den gjorde det tre. Så enten overlever tælleren ikke mellem runderne, eller også starter hver af mine tekstblokke en ny tur.'
+    } as ChatMessage} />)
+    const text = screen.getByText(/Den gjorde det tre/)
+    const textgroup = text.parent!
+    expect(textgroup.type).toBe('Text')
+    expect(textgroup.props.style).toEqual(expect.objectContaining({
+      fontSize: 16,
+      lineHeight: 22,
+      includeFontPadding: false,
+    }))
+  })
+
+  it('stream og gemt svar bruger samme tydelige afsnitsafstand', async () => {
+    const content = 'Første sætning.\n\nAnden sætning.\n\nTredje sætning.'
+    const a = await render(<MessageBubble message={{ ...base, id: 'stream-1', role: 'assistant', content } as ChatMessage} />)
+    const b = await render(<MessageBubble message={{ ...base, id: 'm1', role: 'assistant', content } as ChatMessage} />)
+    const margins = (root: any) => {
+      const out: number[] = []
+      const walk = (node: any) => {
+        if (!node || typeof node !== 'object') return
+        if (node.props?.style?.width === '100%' && node.props.style.marginBottom !== undefined) {
+          out.push(node.props.style.marginBottom)
+        }
+        for (const child of node.children ?? []) walk(child)
+      }
+      walk(root)
+      return out
+    }
+    expect(margins(a.toJSON())).toEqual(margins(b.toJSON()))
+    expect(margins(b.toJSON())).toHaveLength(3)
+    expect(margins(b.toJSON())).toEqual([10, 10, 10])
+  })
+
+  it('starter ikke indgangsanimationen igen når streamen bliver gemt', async () => {
+    const spring = jest.spyOn(Animated, 'spring')
+    try {
+      await render(<MessageBubble message={{
+        ...base, id: 'saved-assistant', role: 'assistant', content: 'Færdigt svar.',
+      } as ChatMessage} />)
+      expect(spring).not.toHaveBeenCalled()
+      await render(<MessageBubble message={{
+        ...base, id: 'stream-assistant', role: 'assistant', content: 'Live svar.',
+      } as ChatMessage} />)
+      expect(spring).toHaveBeenCalled()
+    } finally {
+      spring.mockRestore()
+    }
+  })
   it('rendrer bruger + assistent uden crash', async () => {
     const user = { ...base, role: 'user', content: 'hej' } as ChatMessage
     const asst = { ...base, role: 'assistant', content: '**hej** verden' } as ChatMessage
     expect((await render(<MessageBubble message={user} />)).toJSON()).toBeTruthy()
     expect((await render(<MessageBubble message={asst} />)).toJSON()).toBeTruthy()
+  })
+
+  it('viser Jarvis’ 1 · punkter som én nummereret liste', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base,
+      role: 'assistant',
+      content: '**1 · Skill-testen.**\nDen er stadig rød.\n\n**2 · Doc-drift.** To kommentarer er forældede.'
+    } as ChatMessage} />)
+    expect(screen.getByText('1.')).toBeTruthy()
+    expect(screen.getByText('2.')).toBeTruthy()
+  })
+
+  it('færdige svar opløser referencelinks på tværs af afsnit', async () => {
+    const screen = await render(<MessageBubble message={{
+      ...base, role: 'assistant',
+      content: 'Se [dokumentet][ref].\n\nEt andet afsnit.\n\n[ref]: https://example.com/docs',
+    } as ChatMessage} />)
+    expect(screen.getByText('dokumentet').parent?.props.onPress).toBeDefined()
+  })
+
+  it.each(['stream-1', 'm1'])('bevarer fede listeetiketter i svar %s', async (id) => {
+    const content = '- **Fil:** src/lib/x.ts\n- **Linje:** 42\n- **Status:** rettet'
+    const screen = await render(<MessageBubble message={{
+      ...base, id, role: 'assistant', content,
+    } as ChatMessage} />)
+    expect(screen.getByText('Fil:')).toBeTruthy()
+    expect(screen.getByText('Linje:')).toBeTruthy()
+    expect(screen.getByText('Status:')).toBeTruthy()
+  })
+
+  it.each(['stream-1', 'm1'])('bevarer en fed etiket i prosa %s', async (id) => {
+    const screen = await render(<MessageBubble message={{
+      ...base, id, role: 'assistant', content: 'Intro. **Hvad det er:** noget indhold her',
+    } as ChatMessage} />)
+    expect(screen.getByText('Hvad det er:')).toBeTruthy()
+    expect(screen.getByText('noget indhold her')).toBeTruthy()
   })
 })
 

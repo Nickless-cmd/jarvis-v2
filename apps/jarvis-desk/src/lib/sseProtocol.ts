@@ -45,6 +45,39 @@ export interface ContentBlockStartEvent {
         kilde?: string
         tool_use_id?: string
       }
+    // UDGIVET fil eller video UNDER kørslen (7/10-2026). Samme konvolut og
+    // samme reference-felter som `image` — kun typen er forskellig.
+    //
+    // Uden dem her kunne reduceren ikke engang sammenligne på typen: en widget
+    // er `text/html` → `file`, og den faldt til jorden i den levende strøm.
+    // Den dukkede først op når tråden blev genindlæst fra `content_json`.
+    | {
+        type: 'file'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        // PÅKRÆVET, ikke valgfri: `as_blocks` springer poster uden filnavn over,
+        // og tilstandstypen `ContentBlock` kræver den. Gjorde jeg den valgfri
+        // her, kunne reduceren ikke tildele blokken til tilstanden.
+        filename: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
+    | {
+        type: 'video'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
 }
 
 export interface ContentBlockDeltaEvent {
@@ -69,6 +102,12 @@ export interface MessageDeltaEvent {
     output_tokens: number
     cache_hit_tokens: number
     cache_miss_tokens: number
+    /** TTFT i millisekunder, maalt paa SERVEREN (`core/services/svar_tempo`).
+     *  Udelades naar den ikke kunne maales — derfor valgfri, ikke 0. */
+    ttft_ms?: number
+    /** Output-tokens per sekund, maalt fra FOERSTE token til sidste — ikke
+     *  over hele turen, saa en lang TTFT ikke straffer skrivehastigheden. */
+    tok_per_sek?: number
   }
 }
 
@@ -191,6 +230,25 @@ export type ContentBlock =
       url?: string
       filename?: string
       mime_type?: string
+      kilde?: string
+      tool_use_id?: string
+    }
+  | {
+      // Video. SAMME reference-felter som `image`, med vilje: en video hentes
+      // ad samme vej og skal overleve reload af samme grund. Blokken kom til
+      // 28/9-2026 — indtil da lavede `as_blocks` en `file` ud af enhver video,
+      // så en genereret video blev et download-kort man ikke kunne se.
+      //
+      // Uden typen HER ville den falde ud af `foldToolResults` efter reload —
+      // præcis den fejl billederne havde indtil 15/9.
+      type: 'video'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+      size_bytes?: number
       kilde?: string
       tool_use_id?: string
     }

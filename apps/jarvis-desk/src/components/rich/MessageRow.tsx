@@ -16,7 +16,7 @@ import { AttachmentBlock } from './AttachmentBlock'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { useRaekkevisning } from '../../lib/visningsPref'
 import { EditedFilesCard } from './EditedFilesCard'
-import { maalteRedigeringer, redigeredeFiler } from '../../lib/redigeredeFiler'
+import { maalteRedigeringer, redigeredeDiffPar, redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
@@ -30,6 +30,7 @@ function MessageRowImpl({
   blocks: rawBlocks,
   density,
   streaming,
+  finalAnswerStarted = false,
   rundeEtiketter,
   tankeResumeer,
   createdAt,
@@ -46,6 +47,8 @@ function MessageRowImpl({
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /** Bekræftet slutsvar fra serveren; folder arbejdet mens teksten stadig kommer. */
+  finalAnswerStarted?: boolean
   /**
    * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
    * Udeladt = ingen overskrifter; tråden ser ud som før.
@@ -147,7 +150,7 @@ function MessageRowImpl({
                 skiftes — fejlhegn, artefakter, kilder og handlinger er de samme,
                 og composer/liveness/save-rail roeres ikke. */}
             {raekker
-              ? <RaekkeTranskript blocks={blocks} streaming={streaming} beskedId={beskedId}
+              ? <RaekkeTranskript blocks={blocks} streaming={streaming} finalAnswerStarted={finalAnswerStarted} beskedId={beskedId}
                   config={config} rundeEtiketter={rundeEtiketter} />
               : <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
@@ -156,7 +159,8 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
-      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)} onAabn={visAendring}
+      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)}
+        diffs={redigeredeDiffPar(blocks)} onAabn={visAendring}
         onFortryd={canUndo && config && sessionId && beskedId
           ? () => apiFetch<{ status: string; files?: number; error?: string }>(config,
               `/workbench/messages/${encodeURIComponent(beskedId)}/undo`,

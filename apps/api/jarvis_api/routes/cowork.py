@@ -94,18 +94,28 @@ async def cowork_opmaerksomhed_set(session_id: str) -> dict:
 
 
 @router.get("/side-tasks")
-async def cowork_side_tasks() -> dict:
-    """Jarvis' flaggede sideopgaver der stadig er åbne (pending + activated).
+async def cowork_side_tasks(scope: str = "open") -> dict:
+    """Jarvis' flaggede sideopgaver. `scope=open` (standard) er de åbne;
+    `scope=all` er ALLE, også de lukkede.
+
+    `all` kom 3/10-2026. Bjørn: «desk har ikk noget panel der viser opgaver
+    der er flagged selv om jeg har trykket dem væk». Ruten svarede kun med de
+    åbne, så en lukket opgave forsvandt sporløst — og man kunne ikke se
+    forskel på «lukket» og «blev den nogensinde gemt?». Standarden er stadig
+    `open`, så kortet i chatten er uændret.
 
     Kun ejeren: en opgaves prompt er selvstændige instruktioner og kan rumme
     privat kontekst fra den samtale den blev flagget i."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan se sideopgaverne")
-    from core.services.side_tasks import list_open
+    from core.services.side_tasks import list_alle, list_open
+    if str(scope or "").strip().lower() == "all":
+        items = await asyncio.to_thread(list_alle)
+        return {"side_tasks": items, "count": len(items), "scope": "all"}
     items = await asyncio.to_thread(list_open)
     items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
-    return {"side_tasks": items, "count": len(items)}
+    return {"side_tasks": items, "count": len(items), "scope": "open"}
 
 
 @router.post("/side-tasks/{side_task_id}/status")
@@ -117,10 +127,20 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
     status = str((payload or {}).get("status") or "").strip().lower()
-    if status not in ("activated", "completed", "dismissed"):
-        raise HTTPException(status_code=400, detail="status skal være 'activated', 'completed' eller 'dismissed'")
+    if status not in ("queued", "activated", "completed", "dismissed"):
+        raise HTTPException(status_code=400, detail="ukendt sideopgave-status")
+    # `session` (3/10-2026): den samtale der LOESER opgaven. Uden den kan
+    # hverken runtimen eller Jarvis selv vide at en given tur er arbejdet paa
+    # opgaven — og saa stod den som «i gang» til et menneske greb ind.
+    arbejds_session = str((payload or {}).get("session") or "").strip() or None
+    arbejds_run_id = str((payload or {}).get("run_id") or "").strip() or None
     from core.services.side_tasks import resolve
-    return await asyncio.to_thread(resolve, side_task_id, decision=status)
+    return await asyncio.to_thread(
+        resolve, side_task_id, decision=status,
+        arbejds_session=arbejds_session,
+        arbejds_run_id=arbejds_run_id,
+        lukket_af="desk" if status in ("completed", "dismissed") else "",
+    )
 
 
 @router.get("/plans")

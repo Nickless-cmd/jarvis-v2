@@ -283,3 +283,61 @@ def test_explicit_discord_channel_still_allowed():
         is_external=_ext,
     )
     assert target == "disc-5"
+
+
+# ── Selv-direktivets rapporterings-regel (5/10-2026) ────────────────────────
+#
+# Her stod «og rapportér resultatet kort til Bjørn» — ubetinget, paa HVER
+# vaekning. Det var aarsagen til at han fik 3-5 beskeder pr. svar: mellem hans
+# «Check ci» kl. 11:32 og hans klage kl. 14:35 kom fem beskeder, hvoraf én var
+# svar paa spoergsmaalet. Instruktionen skabte adfaerden.
+
+def _fang_direktivet() -> str:
+    fired = [{"wakeup_id": "w1", "prompt": "tjek ci", "reason": "efterkontrol"}]
+    state = [{"wakeup_id": "w1", "prompt": "tjek ci", "reason": "efterkontrol",
+              "status": "fired", "channel": "app", "session_id": "chat-origin"}]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake:
+        dispatch_due_wakeups()
+    return str(fake.call_args.args[0])
+
+
+def test_direktivet_beder_IKKE_ubetinget_om_en_rapport():
+    """Den ubetingede ordre er vaek — det er hele rettelsen."""
+    d = _fang_direktivet()
+    assert "rapportér resultatet kort til Bjørn" not in d
+
+
+def test_direktivet_goer_rapporten_BETINGET():
+    d = _fang_direktivet()
+    assert "RAPPORTÉR KUN" in d
+    assert "noget NYT" in d
+    assert "UDEN at skrive" in d, "der skal staa hvad han goer naar der intet er"
+
+
+def test_direktivet_beder_om_intern_tavs_afslutning_naar_intet_er_nyt():
+    """Nudget routes som telemetri og er ikke en leveret chatbesked."""
+    d = _fang_direktivet()
+    assert "allerede fået besked" not in d
+    assert "[wakeup:no-update]" in d
+    assert "notify_user" in d
+
+
+def test_direktivet_forbyder_at_booke_en_ny_naar_intet_aendrede_sig():
+    """Kaedens braendstof. Loftet i self_wakeup er bagstopperen; dette er
+    instruktionen der goer at den ikke skal bruges."""
+    d = _fang_direktivet()
+    assert "book ikke en ny kontrol" in d
+    assert "kæde" in d
+
+
+def test_direktivet_beder_stadig_om_mark_wakeup_consumed():
+    """Reglen maa ikke fjerne afslutningen — en vaekning der aldrig forbruges
+    bliver staaende i awareness og gentager sig."""
+    d = _fang_direktivet()
+    assert "mark_wakeup_consumed" in d
+    assert "w1" in d

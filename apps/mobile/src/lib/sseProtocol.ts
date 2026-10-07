@@ -30,7 +30,36 @@ export interface ContentBlockStartEvent {
         kilde?: string
         tool_use_id?: string
       }
-    // Backenden streamer nu OGSÅ en tool_result-content-blok (Claude-Code-modellen).
+    // UDGIVET fil eller video UNDER kørslen (7/10-2026). Samme konvolut og
+    // samme reference-felter som `image` — kun typen er forskellig.
+    //
+    // Uden disse to varianter her kunne reduceren ikke engang sammenligne på
+    // typen, og en widget (`text/html` → `file`) faldt til jorden i den
+    // levende strøm. Den dukkede først op når tråden blev genindlæst.
+    | {
+        type: 'file'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
+    | {
+        type: 'video'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
     // Den bærer et tool_use_id og foldes ind på sin matchende tool_use-blok
     // (status/result) i reduceren — den fylder ALDRIG sit eget index (undgår hul).
     | {
@@ -182,6 +211,35 @@ export type ContentBlock =
       url?: string
       filename?: string
       mime_type?: string
+      kilde?: string
+      tool_use_id?: string
+    }
+  // UDGIVET fil eller video (7/10-2026). Samme reference-felter som `image`.
+  //
+  // Uden dem her kunne reduceren ikke tildele blokken til tilstanden: en
+  // widget er `text/html` → `file`, og den faldt til jorden i den levende
+  // strøm. Den dukkede først op når tråden blev genindlæst fra serveren.
+  | {
+      type: 'file'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+      size_bytes?: number
+      kilde?: string
+      tool_use_id?: string
+    }
+  | {
+      type: 'video'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+      size_bytes?: number
       kilde?: string
       tool_use_id?: string
     }

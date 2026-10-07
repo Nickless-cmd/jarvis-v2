@@ -30,7 +30,10 @@ Headeren accepteres ogsaa, for klienter der ikke er en browser.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping
+
+logger = logging.getLogger(__name__)
 
 SUBPROTOKOL = "jarvis-bearer"
 
@@ -92,15 +95,23 @@ def kraeves_auth() -> bool:
     """Er auth slaaet til i denne runtime?
 
     Samme udvej som bro-socketen bruger: en enkeltbruger-localhost uden auth
-    skal stadig kunne koere. Fejlretning: kan vi ikke laese indstillingen, siger
-    vi NEJ — ellers ville en fejl i opslaget laase alle klienter ude.
+    skal stadig kunne koere.
+
+    Kan indstillingen ikke laeses, svarer vi JA. Se begrundelsen ved `except`.
     """
     try:
         from core.runtime.jarvisx_auth import auth_required
 
         return bool(auth_required())
     except Exception:
-        return False
+        # Kan indstillingen ikke laeses, svarer vi JA — ikke nej. Retningen blev vendt
+        # 4/10-2026: den gamle begrundelse var «en fejl i opslaget maa ikke laase alle
+        # klienter ude», men prisen var den modsatte. Kalderen (live.py) afviser KUN
+        # naar denne svarer ja, saa et fejlende opslag gav en ANONYM klient hele den
+        # private event-stroem. «Kan ikke afgoere» maa ikke vaere identisk med «auth er
+        # slaaet fra» — samme fejlform som `auth_required()` selv fik lukket i morges.
+        logger.warning("kraeves_auth: kunne ikke laese auth-indstillingen — kraever auth (fail-closed)")
+        return True
 
 
 # ── Hvad en ikke-ejer må se (19/9-2026) ─────────────────────────────────────

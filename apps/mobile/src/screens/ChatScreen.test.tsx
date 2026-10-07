@@ -39,6 +39,33 @@ type MockStream = {
   forladSession?: (sid: string | null) => void
 }
 
+/**
+ * Strømmens token-tal. Den ÆGTE tilstand bærer det ALTID
+ * (`initialStreamState`), så mocken skal også — ellers måler testene en
+ * tilstand der ikke findes.
+ */
+const mockBrug = { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
+
+let mockSidst: MockStream | null = null
+let mockBeriget: MockStream | null = null
+
+/**
+ * Mocken udfylder det den ægte tilstand altid bærer.
+ *
+ * Testene bygger deres `state` i hånden — 16 steder med kun `status` og
+ * `blocks` — så uden dette ville hver ny læsning af et felt vælte hele
+ * suiten (som `usage` gjorde 30/9-2026). Objektet huskes pr. `mockStream`, så
+ * identiteten er stabil mellem renders: en frisk reference hver gang ville
+ * kunne sætte en effekt med `stream.state` i afhængighederne i ring.
+ */
+const mockMedBrug = (): MockStream => {
+  if (mockSidst !== mockStream) {
+    mockSidst = mockStream
+    mockBeriget = { ...mockStream, state: { usage: mockBrug, ...mockStream.state } } as MockStream
+  }
+  return mockBeriget as MockStream
+}
+
 let mockSessions = {
   activeId: 'session-1',
   messages: [
@@ -79,7 +106,7 @@ jest.mock('../state/SessionContext', () => ({
 }))
 
 jest.mock('../state/StreamContext', () => ({
-  useStream: () => mockStream
+  useStream: () => mockMedBrug()
 }))
 
 jest.mock('../components/Composer', () => ({

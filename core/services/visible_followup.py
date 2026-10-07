@@ -32,13 +32,15 @@ working for every symbol):
 
 from __future__ import annotations
 
+from core.services.run_trailing import runtime_instruction_message
+
 import json  # noqa: F401 — re-exported for backward-compat (pre-split facade symbol)
 import logging
 import os
 import threading
 import time  # noqa: F401 — re-exported for backward-compat (pre-split facade symbol)
 from dataclasses import dataclass  # noqa: F401 — re-exported (pre-split facade symbol)
-from typing import Iterator, Protocol, runtime_checkable  # noqa: F401 — Protocol/runtime_checkable re-exported
+from typing import Callable, Iterator, Protocol, runtime_checkable  # noqa: F401 — Protocol/runtime_checkable re-exported
 
 # Re-export shared failure taxonomy (some callers import these from here).
 from core.services.stream_failure_kind import (  # noqa: F401
@@ -139,7 +141,9 @@ def stream_visible_followup(
     top_p: float | None = None,
     tool_choice: str | None = None,
     run_id: str = "",
+    session_id: str = "",
     autonomous: bool = False,
+    trailing_messages: list[dict] | None = None,
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -147,6 +151,11 @@ def stream_visible_followup(
     user/assistant prose). ``exchanges`` is the chronological list of tool
     rounds (assistant_tool_calls + results) that should be replayed to the
     model in the provider-native shape.
+
+    ``trailing_messages`` er beskeder der kun gaelder DENNE runde — varsler,
+    vink, den tvungne afslutning. De haenges bagest, efter historikken. Laa de
+    i ``base_messages``, sad de foran alle exchanges, og en besked der kommer
+    og gaar dér forskyder hele resten og braekker praefiks-cachen.
 
     For unsupported providers a single :class:`FollowupFailed` is yielded so
     the caller can record a trace event and fall back cleanly.
@@ -178,6 +187,10 @@ def stream_visible_followup(
         exchanges=exchanges,
         tool_definitions=tool_definitions,
         round_index=round_index,
+        # Per-runde-beskeder. ALLE tre adaptere tager imod og haefter dem paa
+        # efter historikken — en hale der kun naaede én adapter ville betyde at
+        # den samme runde saa forskellig ud alt efter udbyder.
+        trailing_messages=list(trailing_messages or []),
     )
     if isinstance(adapter, (OllamaFollowupAdapter, OpenAICompatFollowupAdapter)):
         _kwargs["thinking_mode"] = thinking_mode
@@ -196,6 +209,7 @@ def stream_visible_followup(
     # Cache-telemetri-kontekst (kun openai-compat-adapteren bruger det i dag).
     if isinstance(adapter, OpenAICompatFollowupAdapter):
         _kwargs["run_id"] = run_id
+        _kwargs["session_id"] = session_id
         _kwargs["autonomous"] = autonomous
     yield from adapter.stream_followup(**_kwargs)
 
@@ -233,7 +247,8 @@ def synthesize_nonthinking_rescue(
         # deepseek-chat selv) har ikke bug'en → ingen rescue (undgå dobbelt-svar).
         if _pid != "deepseek":
             return ""
-        if model not in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+        from core.services.deepseek_modelnavne import er_thinking_model
+        if not er_thinking_model(model, provider=_pid):
             return ""
         # Siden alias-pensioneringen 24/7 findes intet chat-alias at swappe til:
         # non-thinking er et REQUEST-param som adapteren sætter ud fra
@@ -289,6 +304,7 @@ def synthesize_final_answer(
     model: str,
     base_messages: list[dict],
     exchanges: list["ToolExchange"],
+    on_delta: Callable[[str], None] | None = None,
 ) -> str:
     """HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT
     syntese-kald der TVINGER prosa fra HVILKEN SOM HELST model/lane, når den
@@ -331,13 +347,10 @@ def synthesize_final_answer(
         except Exception:
             pass
         # Eksplicit finalize-instruktion (append-only → cache-prefix urørt).
-        _finalize_msgs = list(base_messages) + [{
-            "role": "user",
-            "content": (
-                "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
-                "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
-                "hvad du fandt og svar direkte."),
-        }]
+        _finalize_msgs = list(base_messages) + [runtime_instruction_message(
+            "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
+            "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
+            "hvad du fandt og svar direkte.")]
         _delta_parts: list[str] = []
         _done_text = ""
         for _ev in stream_visible_followup(
@@ -353,6 +366,8 @@ def synthesize_final_answer(
         ):
             if isinstance(_ev, FollowupDelta):
                 _delta_parts.append(_ev.delta)
+                if on_delta and _ev.delta:
+                    on_delta(_ev.delta)
             elif isinstance(_ev, FollowupDone):
                 _done_text = str(_ev.text or "")
             elif isinstance(_ev, FollowupFailed):
@@ -417,7 +432,7 @@ def synthesize_continuation(
         )
         _cont_msgs = list(base_messages) + [
             {"role": "assistant", "content": partial_text},
-            {"role": "user", "content": _instruction},
+            runtime_instruction_message(_instruction),
         ]
         _delta_parts: list[str] = []
         _done_text = ""

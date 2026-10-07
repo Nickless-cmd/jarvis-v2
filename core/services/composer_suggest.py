@@ -3,7 +3,7 @@
 ## Hvem der foreslår (ændret 28/9-2026)
 
 Forslaget kommer udelukkende fra Jarvis selv, gennem værktøjet
-`suggest_next_message`. Den lokale model (qwen3:4b) skrev tidligere et bud når
+`suggest_next_task`. Den lokale model (qwen3:4b) skrev tidligere et bud når
 han ikke selv lagde et ned; den blev droppet efter Bjørns måling og dom: «drop
 den anden models forslag og kun bruge dine... den anden model viser lorte
 forslag». Af 428 viste forslag kom 411 fra modellen, og de blev valgt 2,9 % af
@@ -106,12 +106,35 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     # Jarvis' EGET forslag (24/9-2026). Bjørn: «det burde endelig osse være
     # dig der kommer med forslag i composer». Skriver han selv linjen, er den
     # bedre end en 4b-model der kun læser én besked — han ved hvad han lige
-    # har lavet, og hvad næste skridt er. Forslaget forbruges ved læsning:
-    # det hører til ÉN tur, og et forældet bud er værre end ingen. Findes det
-    # ikke, står pladsholderen tom — den lokale model blev droppet 28/9-2026.
+    # har lavet, og hvad næste skridt er. Findes det ikke, står pladsholderen
+    # tom — den lokale model blev droppet 28/9-2026.
+    #
+    # Hentningen FORBRUGER IKKE laengere (Bjoern 6/10-2026: forslaget skal
+    # overleve en app-genstart). Foer slettede `tag_forslag` raekken, saa
+    # klienten der hentede holdt den eneste kopi — en genstart tabte baade
+    # hukommelsen og raekken, og forslaget var vaek uden at nogen havde set det.
+    #
+    # Foraeldelsen afgoeres nu paa TID. Forslaget skrives MENS turen koerer,
+    # altsaa foer svaret persisteres, saa antallet af assistent-beskeder EFTER
+    # `skrevet_at` siger alt: 0 = turen er ikke landet endnu, 1 = forslaget
+    # hoerer til svaret nederst, 2+ = samtalen er koert videre og buddet er
+    # foraeldet. Se modul-docstringen i `db_composer_jarvis`.
     try:
-        from core.runtime.db_composer_jarvis import tag_forslag
-        eget = tag_forslag(session_id=sid)
+        from core.runtime.db_composer_jarvis import kig_forslag, ryd_forslag
+        eget = kig_forslag(session_id=sid)
+        if eget:
+            skrevet = str(eget.get("skrevet_at") or "")
+            if skrevet:
+                efter = [
+                    b for b in beskeder
+                    if str(b.get("role") or "") == "assistant"
+                    and str(b.get("created_at") or "") > skrevet
+                ]
+                if len(efter) >= 2:
+                    # Foraeldet. Ryd raekken, saa den ikke bliver maalt igen og
+                    # ikke ligger og fylder.
+                    ryd_forslag(session_id=sid)
+                    eget = None
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
         eget = None

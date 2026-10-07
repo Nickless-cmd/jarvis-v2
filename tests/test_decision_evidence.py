@@ -47,6 +47,12 @@ def test_broken_med_en_kanal_staar_ved_magt():
     ) == "broken"
 
 
+def test_broken_on_named_empty_channel_is_unknown():
+    evidence = {"has_any_channel": True, "channels": {"tools": True, "words": False}}
+    assert DE.evidence_permits_verdict("broken", evidence, channel="words") == "unknown"
+    assert DE.evidence_permits_verdict("broken", evidence, channel="tools") == "broken"
+
+
 def test_ukendt_dom_falder_tilbage_til_unknown():
     assert DE.evidence_permits_verdict("", {"has_evidence": True}) == "unknown"
     assert DE.evidence_permits_verdict("vrøvl", {"has_evidence": True}) == "vrøvl"

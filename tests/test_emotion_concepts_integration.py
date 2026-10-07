@@ -49,6 +49,16 @@ def test_emotion_concept_tone_section_returns_none_when_no_active(
 def test_active_warmth_appears_in_sensory_record_note(
     isolated_runtime, monkeypatch,
 ) -> None:
+    """Noten skal med — men i METADATA, ikke i indholdet.
+
+    MÅLT 5/10-2026: noten blev skrevet ind i `content`, og 841 af 2.744 poster
+    (31%) bar den. Median 28% af en posts indhold var prompt-instruktion, ikke
+    et sanseindtryk. Denne test låste den adfærd fast.
+
+    Noten er en INSTRUKTION til hvad der skal lægges mærke til — den hører i
+    prompten, ikke i arkivet over hvad der BLEV sanset. Testen beviser derfor
+    begge sider: noten findes stadig (i metadata), og indholdet er rent.
+    """
     from core.services import emotion_concepts as ec
     from core.services.sensory_archive import record_visual
     from core.runtime.db_sensory import list_sensory_memories
@@ -62,8 +72,15 @@ def test_active_warmth_appears_in_sensory_record_note(
     record_visual("rolige toner i rummet", mood_tone="rolig")
     rows = list_sensory_memories(modality="visual", limit=5)
     assert len(rows) >= 1
-    assert "concept-focus" in rows[0]["content"]
-    assert "menneskelig" in rows[0]["content"]
+
+    # Noten er bevaret — men på metadata, hvor den ikke læses som et indtryk.
+    assert "concept_focus" in rows[0]["metadata"]
+    assert "menneskelig" in rows[0]["metadata"]["concept_focus"]
+
+    # Og indholdet er RENT: hverken noten eller dens markør står i teksten.
+    assert "concept-focus" not in rows[0]["content"]
+    assert "Bemærk særligt" not in rows[0]["content"]
+    assert rows[0]["content"] == "rolige toner i rummet"
 
 
 def test_episode_completion_records_to_baseline_tracker(

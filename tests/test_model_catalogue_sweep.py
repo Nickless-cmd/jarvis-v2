@@ -206,12 +206,20 @@ def test_en_katalogmodel_kan_slaas_FRA_selvom_den_ikke_stod_i_registret(monkeypa
         tilføjet.append(kw["model"])
 
     monkeypatch.setattr("core.runtime.provider_router.configure_provider_router_entry", falsk_reg)
-    # gemma-4-31b STÅR i cerebras' static_models
-    ændret = sw._skriv_registret(provider="cerebras", model="gemma-4-31b", aktiv=False,
+    # Modellen hentes FRA kataloget, ikke skrevet i haanden.
+    #
+    # 1/10-2026: her stod `gemma-4-31b`, som blev fjernet fra cerebras'
+    # static_models 27/9 («model-not-found og væk fra /models»). Et navn der
+    # ikke findes i kataloget kan ikke slås fra, så testen målte ingenting og
+    # gik rød — den var ikke i stykker, den var efterladt. Bindes den til
+    # listen, følger den kataloget næste gang det skifter.
+    from core.services.cheap_provider_catalogue import CHEAP_PROVIDER_DEFAULTS as _KAT
+    model = _KAT["cerebras"]["static_models"][0]
+    ændret = sw._skriv_registret(provider="cerebras", model=model, aktiv=False,
                                  grund="Payment required", score=0,
                                  detalje={"follows": False}, profil="default")
     d = json.loads(f.read_text())
-    post = [m for m in d["models"] if m["model"] == "gemma-4-31b"]
+    post = [m for m in d["models"] if m["model"] == model]
     assert post and post[0]["enabled"] is False
     assert "Payment required" in post[0]["disabled_reason"]
 

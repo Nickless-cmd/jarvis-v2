@@ -3,7 +3,7 @@
 Bjørn 12/9-2026: «et sted hvor brugeren kan se de aktive opgaver der kører,
 uanset om det er bash commander eller andre ting».
 
-Der er TO kilder, og det er ikke en designfejl — de to slags arbejde er
+Kilderne er forskellige, og det er ikke en designfejl — de slags arbejde er
 virkelig forskellige:
 
 ``supervisor``
@@ -40,6 +40,14 @@ virkelig forskellige:
     kort kan sige hvad der kører og hvor længe. Operator-siden kan det ikke:
     dens `run` er ét bro-hop uden noget der holder tilstanden imens.
 
+``tool``
+    Værktøjskald fra et model-run, læst ud af de `tool.invoked`/`tool.completed`
+    events runtime allerede udgiver. Tilføjet 3/10-2026 — Bjørn: «alle hans
+    opgaver/bash commandoer bliver vist i baggrunds panelet... det sker ikk på
+    vores?». De øvrige kilder er BEHOLDERE; et bash-kald er en kommando inde i
+    en shell, og den blev aldrig til en række. Se `_tool_jobs` for hvorfor kun
+    kald med et `run_id` kommer med.
+
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
 
@@ -54,6 +62,7 @@ med i samme svar frem for at skulle gættes.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -71,8 +80,19 @@ _LISTE_CMD = (
     f'rc=""; [ -f "{_ROD}/$id.rc" ] && rc=$(cat "{_ROD}/$id.rc" 2>/dev/null); '
     'st="dead"; if kill -0 "$pid" 2>/dev/null; then st=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1); fi; '
     'start=$(stat -c %Y "$f" 2>/dev/null); '
-    'cmd=$(tr "\\n" " " < "$f".cmd 2>/dev/null | cut -c1-120); '
-    'echo "$id|$pid|$st|$rc|$start|$cmd"; '
+    # `$id`, IKKE `"$f"`. `$f` ER pid-filen, saa `"$f".cmd` pegede paa
+    # `<id>.pid.cmd` — en fil der ikke findes. `operator_background` skriver
+    # `<id>.cmd` og `<id>.title`. Maalt 6/10-2026 paa ni aegte jobs: begge
+    # felter var TOMME, saa hvert operator-job stod som «(baggrunds-shell)» —
+    # ogsaa efter at titlen blev bygget 3/10 praecis for at raade bod paa at
+    # «Jarvis' kommandoer var usynlige». Stien var det sidste led.
+    #
+    # Titlen staar nu FOER kommandoen og faar sine egne `|` fjernet, og
+    # kommandoen samles igen fra resten: en pipe i kommandoen delte foer linjen
+    # midt over, saa titel-feltet fik halen af kommandoen i stedet for titlen.
+    f'titel=$(tr "\\n|" "  " < "{_ROD}/$id.title" 2>/dev/null | cut -c1-120); '
+    f'cmd=$(tr "\\n" " " < "{_ROD}/$id.cmd" 2>/dev/null | cut -c1-200); '
+    'echo "$id|$pid|$st|$rc|$start|$titel|$cmd"; '
     'done'
 )
 
@@ -99,13 +119,23 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
         if len(dele) < 5 or not dele[0]:
             continue
         jid, pid, st, rc, start = dele[0], dele[1], dele[2], dele[3], dele[4]
-        kommando = dele[5] if len(dele) > 5 else ""
+        titel = dele[5].strip() if len(dele) > 5 else ""
+        kommando = "|".join(dele[6:]).strip() if len(dele) > 6 else ""
         levende = st not in ("dead", "", "Z")
         jobs.append({
             "id": jid,
             "kilde": "operator",
-            "navn": jid,
-            "kommando": kommando or "(baggrunds-shell)",
+            # B (Bjørn 29/9-2026): linje 1 er hvad opgaven LAVER, ikke hvad
+            # den hedder. Titlen skrives ved start (`<id>.title`); mangler
+            # den — fx et job startet foer 29/9 — er kommandoens foerste
+            # linje den aerlige faldback. Id'et baeres separat og staar kun
+            # i tooltip + aria-label.
+            "navn": titel or kommando or "(baggrunds-shell)",
+            "kommando": kommando,
+            # Titlen baeres ogsaa raa videre: `navn` falder tilbage paa
+            # kommandoen, og en forbruger skal kunne se forskel paa «Jarvis
+            # gav den et navn» og «vi viser kommandoen i mangel af bedre».
+            "titel": titel,
             # T = standset af et signal. Den kommer GRATIS med i `ps -o stat=`
             # og skulle ellers gaettes.
             "status": "paused" if st == "T" else ("running" if levende else "exited"),
@@ -157,6 +187,12 @@ def _supervisor_jobs() -> list[dict[str, Any]]:
             "pid": p.get("pid"),
             "sekunder": int(sek) if isinstance(sek, (int, float)) else None,
             "exit_code": p.get("exit_code"),
+            # 3/10-2026: `stopped_at` med, fordi registret er et ARKIV uden
+            # oprydning — processer fra maj ligger side om side med dem der
+            # døde i dag. Uden et tidspunkt kan en læser ikke skelne dem, og
+            # en vagtpost ville melde en proces der døde for fire måneder
+            # siden som om den lige var færdig.
+            "stopped_at": p.get("stopped_at"),
             "can_pause": bool(p.get("can_pause")),
         })
     return jobs
@@ -196,12 +232,15 @@ def _scout_jobs() -> list[dict[str, Any]]:
             continue
         maal = str(a.get("goal") or "").strip().splitlines()
         emne = maal[0] if maal else ""
+        # B (Bjørn 29/9-2026): spoergsmaalet ER titlen — «Scout-agent» siger
+        # hvad den ER, ikke hvad den laver. Rollen flytter i tooltip.
+        rolle = "Scout-agent" + (
+            " · din maskine" if a.get("tool_policy") == "read-only-workstation" else "")
         jobs.append({
             "id": str(a.get("agent_id") or ""),
             "kilde": "agent",
-            "navn": "Scout-agent" + (
-                " · din maskine" if a.get("tool_policy") == "read-only-workstation" else ""),
-            "kommando": emne[:120] or "(scout)",
+            "navn": emne[:120] or "(scout)",
+            "kommando": rolle,
             "status": "running" if aktiv else "exited",
             "pid": None,
             "sekunder": int(((nu if aktiv else slut) or nu) - start) if start else None,
@@ -209,6 +248,142 @@ def _scout_jobs() -> list[dict[str, Any]]:
             # (_skal_vises); en annulleret eller udløbet scout er ikke gået galt.
             "exit_code": None if aktiv else (1 if status == "failed" else 0),
             "can_pause": False,
+        })
+    return jobs
+
+
+#: Hvor mange events kilden læser bagud. Målt 3/10-2026: 2.000 rækker koster
+#: ~7 ms inkl. JSON-parse, og panelet henter hvert 5. sekund — så det er
+#: gratis. Vinduet skal kunne rumme et LANGT kald: kører der en bygning eller
+#: en fuld testsuite i femten minutter mens hundredevis af andre kald passerer,
+#: skal dens `tool.invoked` stadig være inden for rækkevidden.
+_TOOL_VINDUE = 2000
+
+#: Hvor længe et kald uden parret `tool.completed` må stå som «kører».
+#: Et kald der aldrig fik sit svar — fx fordi processen blev genstartet midt i
+#: det — ville ellers stå som kørende for evigt. Det er en TIDSGRÆNSE, ikke en
+#: påstand om at kaldet lever.
+_TOOL_SPOEGER_VINDUE_S = 1800
+
+
+def _tool_jobs() -> list[dict[str, Any]]:
+    """Værktøjskald fra et model-run — dem der kører lige nu.
+
+    Panelet kendte indtil 3/10-2026 kun BEHOLDERE: supervisor-processer, åbne
+    shells og scout-agenter. Et `bash`-kald er en kommando INDE i en shell —
+    den kører, svarer og forsvinder, og der blev aldrig skrevet en række.
+    Claude Desktop viser hvert kald med titel og ur; her var de usynlige.
+    (Bjørn 3/10-2026: «alle hans opgaver/bash commandoer bliver vist i
+    baggrunds panelet... det sker ikk på vores?»)
+
+    Kilden læser de to events runtime ALLEREDE udgiver ved hvert kald og
+    parrer dem på `tool_use_id`. Uparret = kører stadig. Der er intet nyt at
+    føre bog over: begge events har ligget i `events` hele tiden.
+
+    ## Hvorfor kun kald med et `run_id`
+
+    Et kald fra et model-run bærer `run_id` (sat af `simple_tool_executor`).
+    UI'ets EGNE bro-kald gør ikke: panelets eget poll af `/api/jobs` kalder
+    `operator_bash` gennem `execute_tool` uden om executoren, og hverken run
+    eller session følger med. Målt 3/10-2026: **151 af 152** `operator_bash`-
+    kald i et kvarters events var netop dét poll — ét hvert femte sekund.
+
+    Uden reglen ville panelet vise sig selv. Med den viser det Jarvis' arbejde
+    og ikke sin egen puls. Det er også derfor kilden ikke kræver at nogen
+    markerer deres kald: skellet findes allerede i data.
+
+    ## Hvad den ikke viser
+
+    Et kald der er FÆRDIGT forsvinder — også når det gik galt. Det er med
+    vilje: fejlen står i samtalen, hvor man kan læse hvad der skete, og et
+    panel der samlede fejl op ville vokse uden grænse. Det panel viser er
+    «hvad kører NU», og det er dét man åbner det for.
+    """
+    from core.runtime.db import connect
+    from core.tools.tool_call_telemetry import UKENDT
+
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, kind, payload_json, created_at
+                FROM events
+                WHERE kind IN ('tool.invoked', 'tool.completed')
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (_TOOL_VINDUE,),
+            ).fetchall()
+    except Exception:
+        logger.warning("background_jobs: kunne ikke laese tool-events", exc_info=True)
+        return []
+
+    # Nyeste foerst fra SQL; parringen skal gaa kronologisk.
+    rows.reverse()
+
+    aabne: dict[str, dict[str, Any]] = {}
+    for event_id, kind, payload, created in rows:
+        try:
+            d = json.loads(payload)
+        except Exception:
+            continue  # en enkelt ulaesbar raekke maa ikke tage hele listen
+        if kind == "tool.invoked":
+            run_id = str(d.get("run_id") or "")
+            if not run_id or run_id == UKENDT:
+                continue  # UI-plumbing, ikke et model-run
+            args = d.get("arguments") or {}
+            noegle = str(args.get("_runtime_tool_use_id") or "")
+            if not noegle:
+                # Uden kald-id kan to kald ikke skelnes. Raekkefoelgen er den
+                # eneste rest — den bruges, og raekkens eget id goer noeglen unik.
+                noegle = f"{d.get('tool')}#{event_id}"
+            aabne[noegle] = {
+                "tool": str(d.get("tool") or ""),
+                "args": args,
+                "start": _iso_ts(created),
+            }
+            continue
+        # tool.completed — luk det kald den hoerer til.
+        kald_id = str(d.get("tool_use_id") or "")
+        if kald_id and kald_id in aabne:
+            aabne.pop(kald_id, None)
+            continue
+        # Ældre completed-events (foer 3/10-2026) bar intet id. De parres paa
+        # værktøjsnavn i rækkefølge — upræcist naar to kald af samme værktøj
+        # kører samtidig, men bedre end at lade dem stå som kørende for evigt.
+        for k, v in list(aabne.items()):
+            if v["tool"] == d.get("tool"):
+                aabne.pop(k, None)
+                break
+
+    nu = _nu()
+    jobs: list[dict[str, Any]] = []
+    for v in aabne.values():
+        start = v["start"]
+        if start is None or nu - start > _TOOL_SPOEGER_VINDUE_S:
+            continue
+        tool = v["tool"]
+        args = v["args"]
+        # Titel er hvad kaldet LAVER — den beskrivelse Jarvis selv skriver til
+        # det. Uden den er kommandoen den aerlige faldback, og værktøjets navn
+        # den sidste.
+        titel = str(args.get("description") or args.get("titel") or "").strip()
+        kommando = str(args.get("command") or "").strip()
+        jobs.append({
+            "id": f"{tool}#{int(start)}",
+            "kilde": "tool_operator" if tool.startswith("operator_") else "tool",
+            "navn": titel or kommando[:120] or tool,
+            # Samme form som shell-kortet: værktøj og kommando i tooltip.
+            "kommando": f"{tool} · {kommando[:200]}" if kommando else tool,
+            "status": "running",
+            "pid": None,
+            "sekunder": max(0, int(nu - start)),
+            "exit_code": None,
+            # Et kald inde i et run kan hverken pauses eller stoppes udefra —
+            # det ville rive turen i stykker. Panelet skal ikke tilbyde en knap
+            # der ikke kan holde hvad den lover.
+            "can_pause": False,
+            "can_stop": False,
         })
     return jobs
 
@@ -237,7 +412,8 @@ def _default_bash_sid() -> str:
 
 
 def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
-                arbejds_shell: bool = False, koerer: str = "") -> dict[str, Any]:
+                arbejds_shell: bool = False, koerer: str = "",
+                titel: str = "") -> dict[str, Any]:
     """Ét kort for en åben shell — samme form som de øvrige kilder.
 
     Teksten siger hvad tallet ER, og de to kilder er ikke ens:
@@ -260,19 +436,23 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
     """
     hvor = f" i {cwd}" if cwd and cwd != "~" else ""
     siden = "sidste kommando sluttede" if egen_maskine else "sidste kommando startede"
-    hvad = "Jarvis' arbejds-shell (bash)" if arbejds_shell else "åben shell"
+    hvad = "Jarvis' arbejds-shell" if arbejds_shell else "åben shell"
     # Kører der noget, ER tallet kommandoens køretid (`last_used` sættes ved
     # dens start), og så siger linjen hvad der kører — som i panelets øvrige
     # rækker. Det kunne den ikke før 26/9-2026: `list` svarede det samme
     # uanset, så kortet påstod «intet kører» uden at kunne vide det.
     linje = f"kører: {koerer}" if koerer else f"{hvad}{hvor} · tiden er siden {siden}"
+    # B (Bjørn 29/9-2026): linje 1 er TITLEN — hvad shellen laver lige nu,
+    # eller hvad den ER naar den venter. Id'et er ude af raekken og staar kun
+    # i tooltip + aria-label. Den fulde linje (hvor + hvad tallet betyder)
+    # ligger i `kommando`, som panelet viser i `title`.
+    # Titlen skrives naar sessionen AABNES (`bash_session_open`), ligesom
+    # baggrunds-jobbenes. Mangler den, er «kører: …» den aerlige faldback —
+    # og «aaben shell» naar der ikke koerer noget.
+    navn = titel or (f"kører: {koerer}" if koerer else hvad)
     return {
         "id": sid,
-        # Id'et ER navnet, som operator-shellene ovenfor. Daemonen tillader
-        # otte samtidige sessioner, og «Shell-session» otte gange ville give
-        # otte ens raekker OG otte ens `aria-label`s paa stop-knapperne.
-        # Hvad det er, staar paa linje tre.
-        "navn": sid,
+        "navn": navn,
         # To kilder, ikke én med maskinen gemt i navnet: i den eksisterende
         # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
         # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.
@@ -327,10 +507,20 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
         sid = str(s.get("session_id") or "")
         if not sid:
             continue
+        # Jarvis' arbejds-shell vises IKKE. Daemonen maerker den ved
+        # fødselen (`arbejde=True`), saa det gaelder ogsaa de shells
+        # tidligere procesgenerationer efterlod — foer blev de sammenlignet
+        # med en PROCES-GLOBAL, og hver genstart slap en ny raekke «aaben
+        # shell» igennem (maalt 29/9-2026: fire). Sammenligningen med
+        # globalen staar tilbage som faldback for en daemon der er aeldre
+        # end maerkningen.
+        if s.get("arbejde") or sid == arbejds:
+            continue
         ud.append(_shell_kort(
             sid, egen_maskine=False,
             idle=_sekunder(s.get("idle_seconds")),
-            arbejds_shell=sid == arbejds,
+            arbejds_shell=False,
+            titel=str(s.get("titel") or ""),
             # Mangler feltet, er daemonen ældre end 26/9-2026 og kan ikke
             # svare på spørgsmålet. Så siger kortet det ikke.
             koerer=str(s.get("command") or "") if s.get("busy") else "",
@@ -364,6 +554,7 @@ def _operator_shell_sessioner() -> list[dict[str, Any]]:
         ud.append(_shell_kort(
             sid, egen_maskine=True, idle=_sekunder(s.get("idle_s")),
             cwd=str(s.get("cwd") or ""),
+            titel=str(s.get("titel") or ""),
         ))
     return ud
 
@@ -382,7 +573,7 @@ def _shell_sessioner() -> list[dict[str, Any]]:
 
 
 def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, Any]:
-    """Alle jobs fra alle fire kilder.
+    """Alle jobs fra alle kilder.
 
     `kun_aktive` fjerner det der er FÆRDIGT — Bjørn: «de skal automatisk
     forsvinde når opgave er fuldført». Et job der fejlede bliver derimod
@@ -398,6 +589,12 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
         # Registret er en tilføjelse til panelet, ikke dets fundament: fejler det,
         # skal supervisor- og operator-jobbene stadig vises.
         logger.warning("background_jobs: kunne ikke læse scout-agenter", exc_info=True)
+    try:
+        jobs += _tool_jobs()
+    except Exception:
+        # Samme afvejning som scout-registret: de øvrige kilder skal stå, selv
+        # om værktøjssporet ikke kan læses.
+        logger.warning("background_jobs: kunne ikke laese tool-kald", exc_info=True)
     bro_ok = True
     if exec_fn is not None:
         try:

@@ -1,4 +1,5 @@
 import EventSource from 'react-native-sse'
+import { noterEvent } from './streamTempo'
 
 import type { ApiConfig } from './types'
 import type { StreamEvent } from './sseProtocol'
@@ -121,6 +122,10 @@ type StreamEventName = (typeof eventNames)[number]
 type SsePayloadEvent = { data?: string | null; message?: string | null }
 
 const MAX_RECONNECTS = 5
+// Serveren sender ping cirka hvert 5. sekund, også mens et værktøj kører.
+// En socket kan blive tavs uden at react-native-sse fyrer `error` (Android/
+// proxy). Fire til fem mistede pings er nok til at gen-abonnere fra offset.
+const SILENCE_TIMEOUT_MS = 25_000
 
 export function startStream(request: StreamRequest, handlers: StreamHandlers): StreamControl {
   let activeRunId: string | null = null
@@ -129,6 +134,12 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
   let attempt = 0 // fortløbende reconnects UDEN fremgang
   let closed = false
   let current: EventSource<StreamEventName> | null = null
+  let silenceTimer: ReturnType<typeof setTimeout> | null = null
+
+  const clearSilenceTimer = () => {
+    if (silenceTimer) clearTimeout(silenceTimer)
+    silenceTimer = null
+  }
 
   const authHeaders = (json: boolean): Record<string, string> => {
     const h: Record<string, string> = { Accept: 'text/event-stream' }
@@ -137,7 +148,52 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     return h
   }
 
+  const disconnect = (source: EventSource<StreamEventName>, event?: unknown) => {
+    if (source !== current || gotStop || closed) return
+    // Fence gamle callbacks STRAKS, også mens den nye forbindelse venter på
+    // backoff. Ellers kan en sen frame flytte offset forbi uset indhold.
+    current = null
+    clearSilenceTimer()
+    try { source.close() } catch { /* lukning er best effort */ }
+
+    const status = (event as { xhrStatus?: number } | undefined)?.xhrStatus
+    if (activeRunId && status === 404) {
+      gotStop = true
+      closed = true
+      handlers.onEvent({ type: 'message_stop' } as StreamEvent)
+      handlers.onComplete?.()
+      return
+    }
+    if (activeRunId && attempt < MAX_RECONNECTS) {
+      attempt += 1
+      handlers.onReconnecting?.(attempt)
+      const delay = 500 * 2 ** (attempt - 1)
+      setTimeout(() => {
+        if (closed) return
+        const url = new URL(
+          `/chat/runs/${encodeURIComponent(activeRunId as string)}/subscribe?from_idx=${offset}`,
+          request.config.apiBaseUrl
+        ).toString()
+        current = new EventSource<StreamEventName>(url, {
+          method: 'GET', pollingInterval: 0, headers: authHeaders(false)
+        })
+        attach(current)
+      }, delay)
+      return
+    }
+    closed = true
+    handlers.onInterrupted?.()
+    const message = event ? errorDetail(event) : 'Streamen blev tavs uden fejlmelding'
+    handlers.onError?.(new Error(message))
+  }
+
+  const armSilenceTimer = (source: EventSource<StreamEventName>) => {
+    clearSilenceTimer()
+    silenceTimer = setTimeout(() => disconnect(source), SILENCE_TIMEOUT_MS)
+  }
+
   const attach = (source: EventSource<StreamEventName>) => {
+    armSilenceTimer(source)
     for (const name of eventNames) {
       source.addEventListener(name, (event) => {
         // GENERATIONS-HEGN. Fase 10, kriterium 3: «fences late old-generation
@@ -168,9 +224,12 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
             error instanceof Error ? error : new Error('Malformed stream payload')
           )
           closed = true
+          clearSilenceTimer()
+          current = null
           source.close()
           return
         }
+        armSilenceTimer(source)
         offset = naesteOffset(offset, parsed)
         attempt = 0 // fremgang → nulstil reconnect-tæller (tillader mange reconnects på lange runs)
         if (parsed.type === 'message_start' && parsed.message.id) {
@@ -185,65 +244,23 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
           activeRunId = parsed.payload.run_id
           handlers.onRunId?.(parsed.payload.run_id)
         }
+        // Maal hvor jaevnt deltaerne NAAR frem (lib/streamTempo). Ren
+        // bogfoering, ingen I/O — og aldrig i vejen for streamen.
+        try { noterEvent(activeRunId || undefined) } catch { /* en maaling maa ikke vaelte en stream */ }
         handlers.onEvent(parsed)
         if (parsed.type === 'message_stop') {
           gotStop = true
           handlers.onComplete?.()
           closed = true
+          clearSilenceTimer()
+          current = null
           source.close()
         }
       })
     }
 
     source.addEventListener('error', (event) => {
-      // Samme hegn. En afloest kilde der fejler bagefter ville ellers
-      // planlaegge ENDNU en genforbindelse — to kilder paa samme run, som
-      // begge taeller `offset` op.
-      if (source !== current) return
-      if (gotStop || closed) return
-      try {
-        source.close()
-      } catch {
-        /* ignore */
-      }
-      // Run-subscribe 404: runnet blev FÆRDIGT + ryddet server-side mens vi var
-      // i baggrunden (Android kappede socket'en, svaret kom imens). Det er IKKE
-      // en fejl — afslut graccelt som et normalt message_stop, så "arbejder"/
-      // "genforbinder"-UI'en rydder. Klienten henter de færdige beskeder via
-      // session-select (notif-tap / foreground-resync). Kun når vi kender run_id.
-      const status = (event as { xhrStatus?: number }).xhrStatus
-      if (activeRunId && status === 404) {
-        gotStop = true
-        closed = true
-        handlers.onEvent({ type: 'message_stop' } as StreamEvent)
-        handlers.onComplete?.()
-        return
-      }
-      // Server-autoritativt run: forbindelsen kan dø (Android kapper socket'en
-      // ved baggrund), men runnet kører videre server-side. Gen-abonnér fra
-      // sidste offset i stedet for at fejle. Kun hvis vi kender run_id.
-      if (activeRunId && attempt < MAX_RECONNECTS) {
-        attempt += 1
-        handlers.onReconnecting?.(attempt)
-        const delay = 500 * 2 ** (attempt - 1)
-        setTimeout(() => {
-          if (closed) return
-          const url = new URL(
-            `/chat/runs/${encodeURIComponent(activeRunId as string)}/subscribe?from_idx=${offset}`,
-            request.config.apiBaseUrl
-          ).toString()
-          current = new EventSource<StreamEventName>(url, {
-            method: 'GET',
-            pollingInterval: 0,
-            headers: authHeaders(false)
-          })
-          attach(current)
-        }, delay)
-        return
-      }
-      // Ingen run_id endnu, eller reconnects opbrugt uden fremgang → ægte fejl.
-      handlers.onInterrupted?.()
-      handlers.onError?.(new Error(errorDetail(event)))
+      disconnect(source, event)
     })
   }
 
@@ -264,7 +281,7 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     })
     attach(current)
     return {
-      abort: () => { closed = true; current?.close() },
+      abort: () => { closed = true; clearSilenceTimer(); current?.close(); current = null },
       getRunId: () => activeRunId,
       getOffset: () => offset
     }
@@ -295,7 +312,9 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
   return {
     abort: () => {
       closed = true
+      clearSilenceTimer()
       current?.close()
+      current = null
     },
     getRunId: () => activeRunId,
     getOffset: () => offset
@@ -315,6 +334,12 @@ export function followSession(
   handlers: StreamHandlers,
   runId?: string
 ): StreamControl {
+  // ChatScreen kender normalt run-id fra /chat/active-runs. Brug samme
+  // offset-baserede genforbindelse som en egen send; den gamle passive follow
+  // lukkede bare ved `error` og spillede hele runnet fra 0 ved næste poll.
+  if (runId) {
+    return startStream({ config, sessionId, message: '', genoptag: { runId, fromIdx: 0 } }, handlers)
+  }
   let activeRunId: string | null = null
   const url = new URL(
     runId

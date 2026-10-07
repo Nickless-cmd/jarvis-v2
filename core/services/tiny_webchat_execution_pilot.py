@@ -7,7 +7,6 @@ from core.services.autonomy_pressure_signal_tracking import (
     build_runtime_autonomy_pressure_signal_surface,
 )
 from core.services.chat_sessions import (
-    append_chat_message,
     get_chat_session,
     list_chat_sessions,
 )
@@ -75,22 +74,34 @@ def maybe_run_tiny_webchat_execution_pilot(
         blocked_reason = "cooldown-active"
         status_reason = "Tiny execution pilot cooldown is still active for this bounded event window."
     else:
-        message = append_chat_message(
+        # 2/10-2026: gennem daemon-vagten i stedet for direkte skrivning. Er
+        # sessionen aktiv, koees spoergsmaalet og flushes efter Bjoerns tur —
+        # en «afgraenset afklarende forespoergsel» er netop den slags der ikke
+        # maa afbryde ham midt i en saetning. Sessionen er stadig den samme
+        # (valgt ovenfor); `push=False`: ingen mobil-push paa denne vej foer.
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
+        svar = send_session_notification(
+            str(candidate.get("message_text") or ""),
+            source="proactive-execution-pilot",
             session_id=target_session_id,
-            role="assistant",
-            content=str(candidate.get("message_text") or ""),
+            push=False,
         )
-        event_bus.publish(
-            "channel.chat_message_appended",
-            {
-                "session_id": target_session_id,
-                "message": message,
-                "source": "proactive-execution-pilot",
-            },
-        )
-        delivery_state = "sent"
-        delivery_message_id = str(message.get("id") or "")
-        status_reason = "One bounded proactive clarification question was delivered to webchat."
+        if delivery_succeeded(svar):
+            delivery_state = "sent"
+            # Tom ved koeet levering — beskeden findes foerst naar koeen flushes.
+            delivery_message_id = str((svar.get("message") or {}).get("id") or "")
+            status_reason = (
+                "One bounded proactive clarification question was queued for webchat "
+                "(active session — flushes after the next turn)."
+                if str(svar.get("status") or "") == "queued" else
+                "One bounded proactive clarification question was delivered to webchat."
+            )
+        else:
+            blocked_reason = f"notification-{svar.get('status') or 'error'}"
+            status_reason = "Notification bridge refused the bounded delivery."
 
     item = record_runtime_webchat_execution_pilot(
         pilot_id=f"execution-pilot-{uuid4().hex}",

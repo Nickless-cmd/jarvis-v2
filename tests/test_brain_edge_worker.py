@@ -15,30 +15,48 @@ Derfor: skriv posten, svar, og udled kanterne bagefter. Går tråden tabt, tager
 """
 from __future__ import annotations
 
+import threading
 import time
 
 from core.services import brain_edge_worker as w
 
+#: Hvor laenge en spaerret udledning hoejst haenger. Kun en OEVRE graense saa en
+#: regression fejler i stedet for at haenge i det uendelige — den haenger aldrig
+#: saa laenge naar koden er rask.
+_SPAERRE_LOFT_S = 10
+
 
 def test_koesaet_blokerer_ikke_paa_udledningen(monkeypatch):
-    """Selve pointen: værktøjet må ikke vente på 12 sekunders efterarbejde."""
-    startet = []
+    """Selve pointen: værktøjet må ikke vente på 12 sekunders efterarbejde.
 
-    def _langsom(entry_id, now=None):
+    Maalt paa RAEKKEFOELGE, ikke paa et stopur. Foer stod her
+    `assert time.monotonic() - t0 < 0.1` mens udledningen sov 0,4 s — altsaa
+    en 100 ms vaegur-graense paa en maskine der kan vaere optaget af hvad som
+    helst. Egenskaben er ikke «koesaet er hurtig», men «koesaet returnerer FOER
+    udledningen er faerdig», og det kan afgoeres uden at maale tid.
+    """
+    startet: list[str] = []
+    faerdig: list[str] = []
+    slip = threading.Event()
+
+    def _spaerret(entry_id, now=None):
         startet.append(entry_id)
-        time.sleep(0.4)
+        assert slip.wait(_SPAERRE_LOFT_S), "testen slap aldrig udledningen"
+        faerdig.append(entry_id)
         return 3
 
-    monkeypatch.setattr("core.services.jarvis_brain.infer_temporal_edges", _langsom)
-    t0 = time.monotonic()
+    monkeypatch.setattr("core.services.jarvis_brain.infer_temporal_edges", _spaerret)
     assert w.koesaet("brain-1") is True
-    assert time.monotonic() - t0 < 0.1, "koesaet ventede paa udledningen"
+    assert faerdig == [], "koesaet ventede paa udledningen"
+
     # Og arbejdet sker faktisk — en kø der taber alt ville vaere vaerre.
-    for _ in range(40):
-        if startet:
+    slip.set()
+    for _ in range(100):
+        if faerdig:
             break
-        time.sleep(0.05)
+        time.sleep(0.02)
     assert startet == ["brain-1"]
+    assert faerdig == ["brain-1"], "udledningen blev aldrig gjort faerdig"
 
 
 def test_en_fejlet_udledning_vaelter_ikke_arbejderen(monkeypatch):

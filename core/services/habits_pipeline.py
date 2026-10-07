@@ -27,8 +27,28 @@ from core.runtime.db import connect
 
 logger = logging.getLogger(__name__)
 
-_HABIT_SUGGEST_THRESHOLD = 2  # recurrence_count >= 2 → suggest
-_FRICTION_SUGGEST_THRESHOLD = 0.75  # inefficiency_score >= 0.75 → suggest
+# 2026-10-01: tærsklen stod på 2 — «anden gang en signatur ses» → forslag.
+# Det gav 6.773 forslag på 5½ måned, alle pending, ingen nogensinde læst
+# (accept_suggestion har nul kaldesteder). Bjørn siger «kør» to gange og får
+# et automations-forslag. Et forslag uden forbruger er ikke en indsigt, det er
+# støj i en tabel.
+#
+# Hævet til 8: højt nok til at tilfældig gentagelse ikke fyrer, lavt nok til
+# at et ægte mønster stadig når frem. Dette er den BILLIGE halvdel af rettelsen.
+# Den ægte rettelse er (a) at filtrere autonome kørsler fra — i dag registreres
+# drømme-daemonens eget prompt som Bjørns vane (838 forekomster, top-1) — og
+# (b) at tælle gentagelser på tværs af DAGE, ikke rå forekomster, så «5 gange
+# på en aften» ikke ligner «5 gange på en måned». Begge kræver et kaldested-
+# fix hhv. skema-ændring og ligger som separate forslag.
+_HABIT_SUGGEST_THRESHOLD = 8  # recurrence_count >= 8 → suggest
+# 2026-10-01 (fase 3): scoren klippes til max 1.0 i _upsert_friction, så
+# tærsklen KAN ikke hæves over 1.0 — den ville så aldrig fyre. Tærsklen står
+# derfor på loftet, og SKALAEN bestemmer hvornår loftet nås: repetition/8.0
+# rammer 1.0 ved 8. gentagelse — samme tærskel som habit-vejen. Begge veje
+# fodres af SAMME besked i record_habit_signal, så før gav ét mønster to
+# forslag (habit ved 8, friction ved 3).
+_FRICTION_SCALE = 8.0
+_FRICTION_SUGGEST_THRESHOLD = 1.0  # inefficiency_score >= 1.0 → suggest (= 8 gentagelser)
 
 
 def _now_iso() -> str:
@@ -146,7 +166,7 @@ def _upsert_friction(task_signature: str, now: str) -> tuple[str, int, float]:
         else:
             fid = str(row["friction_id"])
             repetition = int(row["repetition_count"] or 0) + 1
-        ineff = min(1.0, max(0.1, repetition / 3.0))
+        ineff = min(1.0, max(0.1, repetition / _FRICTION_SCALE))
         conn.execute(
             """
             INSERT INTO cognitive_friction_signals
@@ -318,6 +338,76 @@ def list_suggestions(*, status: str = "pending", limit: int = 50) -> list[dict[s
             (s, lim),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def format_pending_suggestions_for_heartbeat(*, max_items: int = 3) -> str:
+    """Kompakt linje af de øverste ventende automations-forslag til heartbeat.
+
+    Lærings-sløjfen, fase 2 (2026-10-01): forslagene blev skrevet i 5½ måned
+    (6.773 rækker) uden at nogen læste dem — ``accept_suggestion`` havde nul
+    kaldesteder i hele repoet. Her får de en læser: heartbeat-prompten.
+
+    Hvert forslag bærer sit ``id``, så det kan lukkes med
+    ``accept_suggestion``/``reject_suggestion``. Signaturen slås op i
+    pattern-/friction-tabellen — forslagets egen ``suggestion_text`` er en
+    konstant og siger intet om HVAD der gentages.
+    """
+    _ensure_tables()
+    lim = max(1, min(int(max_items or 3), 10))
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT s.id, s.source_type, s.confidence, "
+            "       p.pattern_key, p.recurrence_count, "
+            "       f.task_signature, f.repetition_count "
+            "FROM cognitive_automation_suggestions s "
+            "LEFT JOIN cognitive_habit_patterns p ON p.pattern_id = s.source_id "
+            "LEFT JOIN cognitive_friction_signals f ON f.friction_id = s.source_id "
+            "WHERE s.status = 'pending' "
+            "ORDER BY s.created_at DESC LIMIT ?",
+            (lim,),
+        ).fetchall()
+    if not rows:
+        return ""
+    parts: list[str] = []
+    for r in rows:
+        d = dict(r)
+        raw = str(d.get("pattern_key") or d.get("task_signature") or "").strip()
+        # "<normaliseret besked>:<hash>" → vis kun beskeden
+        sig = raw.rsplit(":", 1)[0].strip() if ":" in raw else raw
+        if not sig:
+            sig = "(ukendt signatur)"
+        count = d.get("recurrence_count") or d.get("repetition_count") or 0
+        parts.append(f"[{d['id']}] «{sig[:70]}» ×{count}")
+    return " | ".join(parts)
+
+
+def cleanup_polluted_suggestions(*, older_than_days: int = 0) -> dict[str, Any]:
+    """Luk alle ``pending`` forslag ældre end ``older_than_days`` dage.
+
+    Fase 4 (2026-10-01): 6.773 forslag blev skrevet fra 22. april til 1. okt
+    uden at nogen læste dem. De er forurenede — phase 1-gaten stoppede ny
+    forurening, men de gamle rækker er støj. Vi sletter dem ikke (audit-spor),
+    vi markerer dem ``rejected`` så de forsvinder fra den aktive kø.
+
+    Med ``older_than_days=0`` lukkes ALLE eksisterende pending — en kold
+    start hvor kun genuinely nye vaner (fra rigtige bruger-beskeder,
+    tærskel 8) genererer forslag fremover.
+    """
+    _ensure_tables()
+    from datetime import UTC, datetime, timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
+    cutoff_iso = cutoff.isoformat()
+    now = _now_iso()
+    with connect() as conn:
+        n = conn.execute(
+            "UPDATE cognitive_automation_suggestions "
+            "SET status = 'rejected', updated_at = ? "
+            "WHERE status = 'pending' AND created_at < ?",
+            (now, cutoff_iso),
+        ).rowcount
+        conn.commit()
+    return {"rejected": n, "cutoff": cutoff_iso}
 
 
 def accept_suggestion(*, suggestion_id: str) -> dict[str, Any] | None:

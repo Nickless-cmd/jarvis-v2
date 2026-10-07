@@ -1,24 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { LivenessIndicator } from './LivenessIndicator'
-import type { ContentBlock } from '../../lib/sseProtocol'
 
-/**
- * Liveness-linjen, fire ting Bjørn bad om 20/9-2026:
- *
- *  1. Sektionerne klippes, så et langt run ikke gør linjen tre linjer høj.
- *  2. Komprimering er en TILSTAND i linjen — ikke et banner ved siden af.
- *  3. I hvile med kørende baggrundsjob bærer linjen KUN job-tallet.
- *  4. Bølgen gennem hele linjen er CSS (app.css), ikke testbar her — men
- *     prikkernes farve er, og den er teal nu.
- */
-const tool = (name: string): ContentBlock => ({ type: 'tool_use', name, id: name } as ContentBlock)
-
-/** Otte familier — nok til at klippet bider. */
-const LANGT_RUN: ContentBlock[] = [
-  tool('read_file'), tool('read_file'), tool('edit_file'), tool('search'),
-  tool('find_files'), tool('web_search'), tool('bash'), tool('remember_this'),
-]
+/** 29/9-2026: liveness er nu en kort tilstandslinje. Arbejdet står i tur-headeren. */
 
 function vis(props: Partial<Parameters<typeof LivenessIndicator>[0]> = {}) {
   return render(
@@ -31,29 +15,22 @@ function vis(props: Partial<Parameters<typeof LivenessIndicator>[0]> = {}) {
   )
 }
 
-describe('LivenessIndicator · sektionerne klippes', () => {
-  it('viser «og N andre» i stedet for at lade linjen vokse', () => {
+describe('LivenessIndicator · kort status over composeren', () => {
+  it('gentager ikke tur-headerens fil- og værktøjsaktivitet', () => {
     cleanup()
-    vis({ status: 'working', elapsedMs: 754_000, tokens: 45_200, blocks: LANGT_RUN })
-    // 7 familier → 2 vises, 5 samles. (Ledene pakkes i spans med « · » foran,
-    // så vi matcher på delstreng — ikke på hele elementets tekst.)
-    expect(screen.getByText(/og 5 andre/)).toBeInTheDocument()
-    // Den første er med — rækkefølgen er CC's: mest fortællende først.
-    // Nutid mens runnet kører.
-    expect(screen.getByText(/Redigerer 1 fil/)).toBeInTheDocument()
-  })
-
-  it('klipper ikke når der er få sektioner', () => {
-    cleanup()
-    vis({ status: 'working', blocks: [tool('read_file'), tool('edit_file')] })
-    expect(screen.queryByText(/andre/)).toBeNull()
+    const { container } = vis({ status: 'working', elapsedMs: 754_000, tokens: 45_200, thoughtMs: 1000, thoughtAfsluttet: true })
+    expect(screen.getByLabelText('45.2k')).toBeInTheDocument()
+    expect(container.textContent).toContain('tokens')
+    expect(container.textContent).toContain('Thought for 1s')
+    expect(container.textContent).not.toMatch(/Redigerer|læser|andre/)
+    expect(container.querySelector('.liveness-arbjede')).toBeNull()
   })
 })
 
 describe('LivenessIndicator · komprimering er en tilstand', () => {
   it('viser komprimerings-teksten i selve linjen', () => {
     cleanup()
-    const { container } = vis({ status: 'working', compacting: true, blocks: LANGT_RUN })
+    const { container } = vis({ status: 'working', compacting: true })
     expect(screen.getByText(/Komprimerer kontekst/)).toBeInTheDocument()
     // ÉN linje — ikke to stablede .liveness-elementer.
     expect(container.querySelectorAll('.liveness')).toHaveLength(1)
@@ -62,9 +39,24 @@ describe('LivenessIndicator · komprimering er en tilstand', () => {
 })
 
 describe('LivenessIndicator · job-linjen i hvile', () => {
+  it('kun job-tallet åbner baggrundsjob, også mens runnet arbejder', () => {
+    cleanup()
+    const aabn = vi.fn()
+    vis({ status: 'working', runningJobs: 2, elapsedMs: 3000, onOpenJobs: aabn })
+    fireEvent.click(screen.getByRole('button', { name: '2 jobs kører' }))
+    expect(aabn).toHaveBeenCalledOnce()
+    expect(screen.getByRole('timer', { name: '3s' }).closest('button')).toBeNull()
+  })
+
+  it('viser ikke rundetal fra serverens interne tænke-livstegn', () => {
+    cleanup()
+    const { container } = vis({ status: 'working', workingStep: 'Tænker videre · runde 2' })
+    expect(container.textContent).not.toContain('runde 2')
+  })
+
   it('bærer KUN job-tallet når intet run kører men jobs gør', () => {
     cleanup()
-    const { container } = vis({ status: 'idle', runningJobs: 2, tokens: 45_200, blocks: LANGT_RUN })
+    const { container } = vis({ status: 'idle', runningJobs: 2, tokens: 45_200 })
     expect(screen.getByText('2 jobs kører')).toBeInTheDocument()
     // Runets rester er væk: ingen tokens, ingen verbum, ingen sektioner.
     expect(screen.queryByText(/tokens/)).toBeNull()

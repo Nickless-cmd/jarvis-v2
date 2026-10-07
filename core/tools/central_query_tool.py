@@ -28,6 +28,34 @@ _WRITE_ACTIONS = {"resolve_and_route", "depromote", "resolve_incident",
                   "nerve_observe", "note"}
 
 
+def _incident_counts(snap: dict) -> dict[str, int]:
+    """Sande incident-tal til status-svaret.
+
+    `snap["incidents"]` er KLIPPET til 12 for visning, så `len()` af den lyver —
+    målt 4/10-2026 stod `unresolved_incidents` derfor altid på 12, og
+    `unresolved_errors` blev talt i samme klippede vindue (en ægte fejl uden for
+    top-12 var usynlig, mens status-farven var gul).
+
+    `incident_counts` (talt i DB) er autoritativ. Mangler den — fx fra en ældre
+    kalder — falder vi tilbage til listen; tallet er så et GULV, ikke et loft.
+    Self-safe."""
+    c = snap.get("incident_counts") or {}
+    inc = snap.get("incidents") or []
+    if c:
+        return {
+            "unresolved_incidents": int(c.get("unresolved") or 0),
+            "unresolved_errors": int(c.get("errors") or 0),
+            "unresolved_governance_events": int(c.get("governance") or 0),
+        }
+    return {
+        "unresolved_incidents": len(inc),
+        "unresolved_errors": len([i for i in inc
+                                  if str(i.get("severity")) in ("error", "severe")]),
+        "unresolved_governance_events": len([i for i in inc
+                                             if str(i.get("kind")) == "gate_enforce"]),
+    }
+
+
 def _envelope(status: str, action: str, data: Any, error: str | None,
               source: str, t0: float, **meta_extra: Any) -> dict[str, Any]:
     meta = {"latency_ms": int((time.monotonic() - t0) * 1000), "source": source,
@@ -130,6 +158,7 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
     try:
         # ── status: kompakt snapshot ─────────────────────────────────────
         if action == "status":
+            from core.eventbus.bus import event_bus as _bus
             from core.services.central_realtime import realtime_snapshot
             s = realtime_snapshot(trace_limit=8)
             _anom = s.get("anomalies") or {}
@@ -140,16 +169,38 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                  "location": a.get("location"), "last_seen": a.get("last_seen")}
                 for a in (_anom.get("recent") or [])[:6]
             ]
+            # 6/10-2026: eventbus-writerens dead-letter — så «taber vi events?» er et
+            # tal og ikke en eftersøgning i journalen. `pending_bytes > 0` betyder at
+            # events ligger spillet til disk og venter på et roligt vindue: de er
+            # forsinkede, ikke tabte. `spilled_total` er kumulativt for denne proces.
+            _dead_letter: dict = {}
+            try:
+                _dead_letter = _bus.dead_letter_stats()
+            except Exception:  # en manglende tæller må ikke vælte hele status-svaret
+                pass
             data = {
                 "status": s.get("status"),
                 "coverage": s.get("coverage"),
                 "diagnose": {k: s.get("diagnose", {}).get(k)
                              for k in ("decide_ok", "observe_ok", "degraded")},
                 "open_breakers": len(s.get("open_breakers") or []),
-                "unresolved_incidents": len(s.get("incidents") or []),
+                # 3/10-2026: `unresolved_incidents` blandede to ting i ét tal.
+                # `gate_enforce` (severity=info) er gaten der melder at den
+                # HÅNDHÆVEDE en regel — en begivenhed, ikke en defekt. Målt:
+                # 51 uløste, hvoraf 42 var governance og 4 var errors. Tallet
+                # fik 51 til at se ud som 51 problemer. Nu staar begge dele
+                # særskilt, og summen er uændret for bagudkompatibilitet.
+                # 4/10-2026: tallene kom fra `len(s["incidents"])` — men den liste
+                # er KLIPPET til 12 for visning, så `unresolved_incidents` stod
+                # altid på 12, og `unresolved_errors` blev talt i samme klippede
+                # vindue. En ægte fejl uden for top-12 var derfor usynlig, mens
+                # status-farven (regnet på den fulde liste) var gul. Se
+                # `_incident_counts` — den tæller i DB.
+                **_incident_counts(s),
                 "anomalies": {"counts": _anom.get("counts", {}), "recent": _recent},
                 "known_signals": s.get("known_signals") or [],
                 "config_drift": bool(s.get("config_drift")),
+                "eventbus_dead_letter": _dead_letter,
                 "clusters": {c["cluster"]: c["status"] for c in (s.get("clusters") or [])},
             }
             return _envelope("ok", action, data, None, "central_realtime", t0)

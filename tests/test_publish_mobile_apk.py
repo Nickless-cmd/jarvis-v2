@@ -11,6 +11,7 @@ Testene holder på midtvejen: præcis ét skridt tilbage.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -73,3 +74,20 @@ def test_sorteres_paa_TAL_ikke_paa_tekst():
 
 def test_navnet_udledes_af_versionskoden():
     assert pma.apk_navn(129) == "jarvis-mobile-129.apk"
+
+
+def test_afviser_apk_med_anden_signatur_end_installeret_app(monkeypatch, tmp_path):
+    monkeypatch.setattr(pma, "find_apksigner", lambda: "apksigner")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(
+        a[0], 0, "Signer #1 certificate SHA-256 digest: 0e2d72234ab8381a64885debc46799ef0581c109b165ee34d69066c6fb8c9cef\n", ""
+    ))
+    with pytest.raises(SystemExit, match="signatur"):
+        pma.kontroller_apk_signatur(tmp_path / "ny.apk")
+
+
+def test_tillader_samme_signatur_som_installeret_app(monkeypatch, tmp_path):
+    monkeypatch.setattr(pma, "find_apksigner", lambda: "apksigner")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(
+        a[0], 0, f"Signer #1 certificate SHA-256 digest: {pma.MOBILE_INSTALL_SIGNER_SHA256}\n", ""
+    ))
+    pma.kontroller_apk_signatur(tmp_path / "ny.apk")

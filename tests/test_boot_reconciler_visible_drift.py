@@ -322,8 +322,13 @@ def test_opslaget_bruger_FAKTISK_graensen(_lager, monkeypatch):
     samme uanset hvad der spoerges om."""
     from datetime import UTC, datetime
     valgt = datetime(2026, 9, 16, 13, 39, tzinfo=UTC)
+    uden_omk = datetime(2026, 9, 16, 19, 39, tzinfo=UTC)
     monkeypatch.setattr(sbr, "_drift_graense", lambda *a, **kw: valgt)
+    # Tredje gren (3/10-2026) spoerger om SIN EGEN, kortere graense. Begge skal
+    # komme fra deres hjaelper — og de skal komme i den RAEKKEFOELGE som `?`erne
+    # staar i forespoergslen, ellers maaler de hver sin forkerte gren.
+    monkeypatch.setattr(sbr, "_uden_omkostning_graense", lambda *a, **kw: uden_omk)
     _lager["raekker"] = [("autonomous-zombie", "running")]
     _lager["kendte"] = {}
     sbr._ryd_visible_drift(True)
-    assert _lager["sidste_parametre"] == (valgt.isoformat(),)
+    assert _lager["sidste_parametre"] == (valgt.isoformat(), uden_omk.isoformat())

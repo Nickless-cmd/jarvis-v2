@@ -149,7 +149,17 @@ def _ollama_base_url() -> str:
 import threading as _threading
 _EMBED_CACHE: dict[str, "np.ndarray"] = {}
 _EMBED_CACHE_LOCK = _threading.Lock()
-_EMBED_CACHE_MAX = 256
+#: Loftet skal daekke ARBEJDSSAETTET, ikke bare gentagne soegetekster.
+#:
+#: Maalt 3/10-2026: MEMORY.md har 5.095 linjer, og `memory_recall._build`
+#: indlejrer dem ALLE naar filens mtime aendrer sig. Med loftet paa 256 blev
+#: halvdelen smidt ud for hver 256 linjer — cachen naaede aldrig at hjaelpe.
+#: Journalen over to timer: 522 traeffere mod 59.574 forbi, altsaa 0,9 %.
+#:
+#: 8.192 giver hovedrum over de 5.095. Prisen er hukommelse: 768 float32 pr.
+#: vektor = 3 kB, saa et fuldt loft er ~25 MB. Det er billigt mod 219 sekunder
+#: serielle HTTP-kald, som var hvad det kostede at undvaere.
+_EMBED_CACHE_MAX = 8192
 
 
 def _tt_embed(label: str, dur_ms: int) -> None:
@@ -275,43 +285,158 @@ def _embed_ollama(text: str) -> np.ndarray | None:
         return None
 
 
+def _cache_hent(tekster: list[str]) -> tuple[list, list[int]]:
+    """(resultater_med_huller, indeks_der_mangler) — slår hver tekst op i cachen.
+
+    Embedding er deterministisk (samme tekst → samme vektor), så et cache-hit
+    er altid korrekt. Se kommentaren over `_EMBED_CACHE`.
+    """
+    ud: list = [None] * len(tekster)
+    mangler: list[int] = []
+    with _EMBED_CACHE_LOCK:
+        for i, t in enumerate(tekster):
+            v = _EMBED_CACHE.get(t)
+            if v is not None:
+                ud[i] = v
+            else:
+                mangler.append(i)
+    return ud, mangler
+
+
+def _cache_gem(par: list[tuple[str, "np.ndarray"]]) -> None:
+    """Læg nye vektorer i cachen. FIFO-halvtøm ved loft, som i `_embed_ollama`."""
+    if not par:
+        return
+    with _EMBED_CACHE_LOCK:
+        for t, v in par:
+            if v is None:
+                continue
+            if len(_EMBED_CACHE) >= _EMBED_CACHE_MAX:
+                for _k in list(_EMBED_CACHE)[: _EMBED_CACHE_MAX // 2]:
+                    _EMBED_CACHE.pop(_k, None)
+            _EMBED_CACHE[t] = v
+
+
+#: Tekster pr. HTTP-kald mod embed-værten.
+#:
+#: Målt 3/10-2026: hele MEMORY.md er 5.376 linjer, og ét kald med dem alle timer
+#: ud efter 30 s (`ReadTimeout`). Den globale fallback kostede da 5.376 serielle
+#: kald — 219 sekunder, hvor hvert kald holder GIL'en under sin SSL-opsætning, så
+#: den synlige streams tråd blev sultet. 256 × ~27 ms ≈ 7 s pr. bid, altså god
+#: margin under timeouten selv når embed-værten er belastet.
+_EMBED_BID = 256
+
+
+def _embed_ollama_http(bid: list[str]) -> list["np.ndarray | None"] | None:
+    """ÉT HTTP-kald til ollamas batch-endpoint. `None` = fejlede → kalderen falder
+    tilbage til per-tekst for netop disse tekster."""
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{_ollama_base_url()}/api/embed",
+            json={"model": _EMBED_MODEL, "input": bid},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            embs = resp.json().get("embeddings")
+            if isinstance(embs, list) and len(embs) == len(bid):
+                return [np.array(e, dtype=np.float32) if e else None for e in embs]
+            logger.warning("semantic_memory: batch embed gav %s vektorer for %s "
+                           "tekster — falder til per-tekst",
+                           len(embs or []), len(bid))
+        else:
+            logger.warning("semantic_memory: batch embed HTTP %s — falder til "
+                           "per-tekst for %s tekster", resp.status_code, len(bid))
+    except Exception as exc:
+        # WARNING, ikke debug: det var tavsheden her der lod 59.574 serielle
+        # kald paa to timer passere uset. En fallback der er 100x langsommere
+        # skal kunne ses i journalen.
+        logger.warning("semantic_memory: batch embed fejlede for %s tekster "
+                       "(%s: %s) — falder til per-tekst, det er ~%.0fx dyrere",
+                       len(bid), type(exc).__name__, str(exc)[:80], 43 / 27)
+    return None
+
+
 def _embed_ollama_batch(texts: list[str]) -> list["np.ndarray | None"]:
-    """Batch-embed via ollamas /api/embed (ÉT round-trip for hele listen i stedet
-    for N). Semantisk identisk med N× _embed_ollama — samme model, samme vektorer.
-    Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). Falder tilbage
-    til per-tekst _embed_ollama hvis batch-endpointet mangler (ældre ollama) eller
-    fejler, så korrektheden aldrig afhænger af batch-supporten. Self-safe."""
+    """Batch-embed. Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst).
+
+    ## Hvorfor cachen slås op FØRST (3/10-2026)
+
+    Bjørn: «stortset alle mine beskeder kolder starter». Målt endte sporet her.
+
+    `memory_recall._build` indlejrer HVER linje i MEMORY.md når filens mtime
+    ændrer sig — 5.095 linjer, 763.000 tegn. Batch-kaldet med dem alle timer ud
+    efter 30,1 s (målt), og så faldt den tilbage til 5.095 serielle HTTP-kald á
+    43 ms = **219 sekunder**. Hvert kald holder GIL'en under sin SSL-opsætning,
+    så den synlige streams tråd blev sultet: 228 sekunder af en 463-sekunders
+    tur gik hverken med at vente på nettet eller med at regne.
+
+    Fejlen var usynlig fordi fallbacken LYKKES — resultatet er korrekt, bare
+    hundrede gange langsommere, og den loggede kun på `debug`.
+
+    Rettelsen er at arbejdet skal følge ÆNDRINGEN og ikke filens størrelse. Med
+    cache-opslaget først bliver ét nyt memory til en håndfuld kald i stedet for
+    5.095.
+
+    Bidderne (`_EMBED_BID`) løser et ANDET hul: den kolde start. Cache-opslaget
+    hjælper kun når teksten er set før — efter en genstart (eller ved et helt nyt
+    arbejdssæt) skal hele filen indlejres, og ét kald med 5.376 tekster timer ud
+    efter 30 s. Bidderne er ikke en hastigheds-optimering (batch er 27 ms/tekst
+    mod 43 ms serielt, altså under det dobbelte); de findes fordi en fejl skal
+    ramme sit eget bid i stedet for hele arbejdssættet.
+
+    Falder stadig tilbage til per-tekst hvis batch-vejen svigter — korrektheden
+    må ikke afhænge af batch-supporten — men nu HØJLYDT, så det ikke kan køre
+    i timevis uset igen.
+    """
     if not texts:
         return []
     import time as _t_e
     _t0_e = _t_e.monotonic()
 
-    # Primær: fastembed in-process — ét ONNX-kald for hele listen, intet netværk.
-    fe = _embed_fastembed(list(texts))
-    if fe is not None and len(fe) == len(texts):
-        _tt_embed(f"batch fastembed n={len(texts)}", int((_t_e.monotonic() - _t0_e) * 1000))
-        return fe
+    ud, mangler = _cache_hent(list(texts))
+    if not mangler:
+        _tt_embed(f"batch cached n={len(texts)}", 0)
+        return ud
+    rest = [texts[i] for i in mangler]
 
-    # Fallback: ollamas batch-endpoint (samme vektor-rum).
-    try:
-        import httpx
-        resp = httpx.post(
-            f"{_ollama_base_url()}/api/embed",
-            json={"model": _EMBED_MODEL, "input": list(texts)},
-            timeout=30,
-        )
-        if resp.status_code == 200:
-            embs = resp.json().get("embeddings")
-            if isinstance(embs, list) and len(embs) == len(texts):
-                _tt_embed(f"batch n={len(texts)}", int((_t_e.monotonic() - _t0_e) * 1000))
-                return [np.array(e, dtype=np.float32) if e else None for e in embs]
-            logger.debug("semantic_memory: batch embed gav %s vektorer for %s tekster",
-                         len(embs or []), len(texts))
-        else:
-            logger.debug("semantic_memory: batch embed HTTP %s", resp.status_code)
-    except Exception as exc:
-        logger.debug("semantic_memory: batch embed fejlede, falder til per-tekst: %s", exc)
-    return [_embed_ollama(t) for t in texts]
+    def _flet(vektorer: list) -> list:
+        for i, v in zip(mangler, vektorer):
+            ud[i] = v
+        _cache_gem([(texts[i], ud[i]) for i in mangler if ud[i] is not None])
+        return ud
+
+    # Primær: fastembed in-process — ét ONNX-kald for hele listen, intet netværk.
+    fe = _embed_fastembed(rest)
+    if fe is not None and len(fe) == len(rest):
+        _tt_embed(f"batch fastembed n={len(rest)}/{len(texts)}",
+                  int((_t_e.monotonic() - _t0_e) * 1000))
+        return _flet(fe)
+
+    # Fallback: ollamas batch-endpoint (samme vektor-rum) — i BIDDER.
+    #
+    # Hvorfor bidder (3/10-2026): ét kald med hele arbejdssættet timer ud efter
+    # 30 s (målt `ReadTimeout` for 5.376 tekster), og den daværende GLOBALE
+    # fallback kostede da 5.376 serielle kald = 219 s, hvor hvert kald holder
+    # GIL'en under sin SSL-opsætning → den synlige streams tråd blev sultet.
+    # Et bid ad gangen holder hvert kald under timeouten, og en fejlet bid
+    # falder kun tilbage for SINE EGNE tekster i stedet for for hele sættet.
+    vektorer: list = []
+    faldt_tilbage = False
+    for _start in range(0, len(rest), _EMBED_BID):
+        _bid = rest[_start:_start + _EMBED_BID]
+        _v = _embed_ollama_http(_bid)
+        if _v is None:
+            faldt_tilbage = True
+            _v = [_embed_ollama(t) for t in _bid]
+        vektorer.extend(_v)
+    if faldt_tilbage:
+        _tt_embed(f"batch->seriel n={len(rest)}/{len(texts)}",
+                  int((_t_e.monotonic() - _t0_e) * 1000))
+    else:
+        _tt_embed(f"batch n={len(rest)}/{len(texts)}",
+                  int((_t_e.monotonic() - _t0_e) * 1000))
+    return _flet(vektorer)
 
 
 # ---------------------------------------------------------------------------

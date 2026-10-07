@@ -152,3 +152,104 @@ def test_koden_kraeves_FOER_app_id_overhovedet_laeses(ejer):
         ae.registrer_denne_computer(ae.TotpReq(totp="000000", app_id="hvad-som-helst"))
     assert e.value.status_code in (400, 401, 403, 429)
     assert ae.enheder()["enheder"] == []
+
+
+# ── Tokenet skal BAERE app_id bagefter (29/9-2026) ──────────────────────────
+#
+# Registreringen har haft en fallback siden 20/9: findes der intet
+# `app_id`-claim, tages det fra kroppen. Den blev tilfoejet fordi Bjoerns token
+# er aeldre end Google-login-flowet og kun har `exp, iat, iss, role, sub`.
+#
+# Men KONTROLLEN (`kode_adgang` -> `maa_bruge_kode`) laeser kun claim'et. Maalt
+# paa CT105 29/9 med enheden registreret og AKTIV:
+#
+#     maa_bruge_kode(app_id="e74bd42a-…")  -> True    (det registreringen gemte)
+#     maa_bruge_kode(app_id="")            -> False   (det tokenet gav)
+#
+# Enheden kunne tilfoejes, men aldrig genkendes. Hullet blev lukket den ene vej
+# og glemt den anden. Bjoern: «min computer er tilføjet men kan ikk få lov at
+# starte en kode session».
+
+
+def _claims(token: str) -> dict:
+    from core.runtime.jarvisx_auth import verify_token
+    return verify_token(f"Bearer {token}")
+
+
+def test_registreringen_giver_et_token_der_BAERER_app_id(ejer):
+    """Uden claim'et er enheden tilfoejet og usynlig. Tokenet er rettelsen."""
+    seed, som = ejer
+    som(app_id="")                       # som Bjoerns token: ingen claim
+    svar = ae.registrer_denne_computer(
+        ae.TotpReq(totp=tv.generate_code(seed), navn="CheifOne", app_id="desk-abc"))
+    assert svar.get("token"), "intet token — enheden ville forblive usynlig"
+    assert _claims(svar["token"])["app_id"] == "desk-abc"
+
+
+def test_tokenet_giver_ALDRIG_mere_end_kalderen_havde(ejer):
+    """Ruten udsteder et token. Den maa ikke kunne loefte en rolle."""
+    seed, som = ejer
+    som(uid="u9", rolle="member", app_id="")
+    # en member maa gerne tilfoeje sin egen computer
+    svar = ae.registrer_denne_computer(
+        ae.TotpReq(totp=tv.generate_code(seed), navn="Laptop", app_id="desk-m"))
+    c = _claims(svar["token"])
+    assert c["role"] == "member"
+    assert c["sub"] == "u9"
+
+
+def test_reglen_kan_taendes_OG_giver_tokenet_med(ejer):
+    seed, som = ejer
+    som(app_id="")
+    svar = ae.saet_enheds_krav(
+        ae.KravReq(aktiv=True, totp=tv.generate_code(seed), navn="CheifOne", app_id="desk-x"))
+    assert svar["kraev_aktivt"] is True
+    assert _claims(svar["token"])["app_id"] == "desk-x"
+
+
+def test_at_SLUKKE_reglen_udsteder_ikke_et_token(ejer):
+    """Kun naar en enhed faktisk blev registreret. Et token uden grund er en
+    credential der flyder rundt uden formaal."""
+    seed, som = ejer
+    som(app_id="")
+    ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed),
+                                   navn="CheifOne", app_id="desk-x"))
+    svar = ae.saet_enheds_krav(ae.KravReq(aktiv=False, totp=tv.generate_code(seed)))
+    assert "token" not in svar
+
+
+def test_claim_vinder_stadig_over_kroppen(ejer):
+    """En token-bunden desk maa ikke kunne omskrive sin egen identitet."""
+    seed, som = ejer
+    som(app_id="fra-claim")
+    svar = ae.registrer_denne_computer(
+        ae.TotpReq(totp=tv.generate_code(seed), navn="C", app_id="fra-kroppen"))
+    assert _claims(svar["token"])["app_id"] == "fra-claim"
+
+
+def test_KAEDEN_hele_vejen_registrér_saa_maa_man_bruge_kode(ejer, monkeypatch):
+    """Det er hele fejlen samlet: foer gav den her False til sidst."""
+    from core.identity import kode_adgang
+    seed, som = ejer
+    som(app_id="")
+    ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed),
+                                   navn="CheifOne", app_id="desk-kaede"))
+    svar = ae.registrer_denne_computer(
+        ae.TotpReq(totp=tv.generate_code(seed), navn="CheifOne", app_id="desk-kaede"))
+    # klienten gemmer tokenet; naeste anmodning baerer claim'et
+    ny = _claims(svar["token"])
+    som(app_id=str(ny["app_id"]))
+    assert kode_adgang.kode_tilladt() is True
+
+
+def test_en_fejlet_token_udstedelse_vaelter_ikke_registreringen(ejer, monkeypatch):
+    """Enheden BLEV tilfoejet. Et halvt nej ville se ud som om den ikke blev."""
+    seed, som = ejer
+    som(app_id="")
+    import core.runtime.jarvisx_auth as ja
+    monkeypatch.setattr(ja, "issue_token",
+                        lambda **kw: (_ for _ in ()).throw(RuntimeError("noeglen vaek")))
+    svar = ae.registrer_denne_computer(
+        ae.TotpReq(totp=tv.generate_code(seed), navn="C", app_id="desk-z"))
+    assert "token" not in svar
+    assert [e["navn"] for e in ae.enheder()["enheder"]] == ["C"]

@@ -179,7 +179,8 @@ def test_INGEN_andre_end_komprimering_melder_sig_til():
     fundet = set()
     for p in pathlib.Path(".").rglob("*.py"):
         s = str(p)
-        if s.startswith("tests/") or "/__pycache__/" in s or s.startswith(".worktrees"):
+        if (s.startswith("tests/") or "/__pycache__/" in s
+                or s.startswith(".worktrees") or s.startswith(".claude/")):
             continue
         try:
             if "tillad_betalt=True" in p.read_text():

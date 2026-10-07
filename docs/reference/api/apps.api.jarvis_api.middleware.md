@@ -42,7 +42,8 @@ _JarvisX user-routing + bearer-token auth middleware._
 | function | `_er_lokal_afsender` | `(request)` | Kom kaldet fra loopback eller vores eget net? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L163) |
 | function | `_er_ui_skal` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L187) |
 | function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L191) |
-| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L203) |
+| function | `_er_signeret_filhentning` | `(request)` | Er dette en GET af én fil med en gyldig, levende signatur? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L203) |
+| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L261) |
 
 ## `apps/api/jarvis_api/middleware/security_headers.py`
 _Security-headers + let-vægts rate-limiting middleware (spec §20)._

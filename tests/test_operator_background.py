@@ -77,6 +77,26 @@ class TestStart:
         await ob.start_async(command="ls", cwd="/tmp/med mellemrum", user_id="u1")
         assert "'/tmp/med mellemrum'" in f["command"]
 
+    @pytest.mark.asyncio
+    async def test_jobbet_skriver_sin_egen_exit_kode(self, monkeypatch):
+        """`.rc` blev LÆST af `background_jobs._LISTE_CMD` og PÅSTÅET i
+        docstringen — men aldrig SKREVET. Målt 3/10-2026: et færdigt job havde
+        .log/.pid/.cmd/.title og intet .rc, så `exit_code` var altid None for
+        operator-jobs. Følgen var at baggrundsjob-vagtposten — som springer
+        `exit_code is None` over, fordi det betyder «kører endnu» — ikke kunne
+        se et operator-job som fuldført. Signalet den hvilede på fandtes ikke.
+
+        Trap-formen og ikke `; echo $? >`: den skriver også når jobbet DRÆBES,
+        så et afbrudt job ikke står som «kører endnu» for evigt."""
+        f = _bash(monkeypatch, {"stdout": "1\n"})
+        r = await ob.start_async(command="sleep 1", user_id="u1")
+        rc = f"/tmp/jarvis-bg/{r['shell_id']}.rc"
+        assert rc in f["command"]
+        assert "trap" in f["command"]
+        assert "EXIT" in f["command"]
+        assert "TERM" in f["command"] and "INT" in f["command"]
+        assert "sleep 1" in f["command"]
+
 
 class TestLaesning:
     @pytest.mark.asyncio

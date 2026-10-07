@@ -43,7 +43,7 @@ def _valid(shell_id: str) -> bool:
 
 
 async def start_async(*, command: str, user_id: str, cwd: str = "",
-                      timeout_s: float = 20.0) -> dict[str, Any]:
+                      titel: str = "", timeout_s: float = 20.0) -> dict[str, Any]:
     """Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}.
 
     `setsid` + omdirigering betyder at processen overlever baade bro-kaldet og
@@ -54,14 +54,44 @@ async def start_async(*, command: str, user_id: str, cwd: str = "",
 
     sid = _new_id()
     cd = f"cd {shlex.quote(cwd)} && " if cwd else ""
+    # Kommandoen og titlen skrives som deres EGNE filer, ved siden af
+    # .log/.pid/.rc. Listekommandoen i background_jobs.py laeser dem — og
+    # indtil 29/9-2026 blev .cmd laest men ALDRIG skrevet, saa
+    # operator-shellene stod navneloese i panelet med «(baggrunds-shell)»
+    # som eneste tekst. `printf '%s'` og ikke `echo`: et indhold der
+    # begynder med «-» ville ellers blive laest som en option.
+    meta = (
+        f"printf '%s' {shlex.quote(command)} > {_ROOT}/{sid}.cmd; "
+        + (f"printf '%s' {shlex.quote(titel)} > {_ROOT}/{sid}.title; " if titel else "")
+    )
     # `;` og IKKE `&&` foran setsid. `&` binder loesere end `&&`, saa
     # «mkdir -p X && setsid ... &» sender HELE kaeden i baggrunden — og
     # «echo $!» loeb saa foer mappen fandtes. Et kapløb der tabte paa den
     # foerste aegte koersel: loggen blev skrevet, .pid gjorde ikke, og
     # dermed var baade kill_shell og «koerer stadig» stille ubrugelige.
+    # Jobbet skriver SELV sin exit-kode naar det er faerdigt.
+    #
+    # Uden det findes `.rc` aldrig. Docstringen ovenfor paastod det, og
+    # `background_jobs._LISTE_CMD` LAESTE den — men ingen SKREV den. Maalt
+    # 3/10-2026: et job der var koert faerdigt havde .log/.pid/.cmd/.title og
+    # intet .rc, saa `exit_code` var altid None for operator-jobs. Foelgen var
+    # at baggrundsjob-vagtposten (som springer `exit_code is None` over, fordi
+    # det betyder «koerer endnu») ikke kunne se et operator-job som fuldfoert —
+    # signalet den hvilede paa eksisterede ikke.
+    #
+    # Trap-formen skriver ogsaa naar jobbet DRAEBES, saa et afbrudt job ikke
+    # bliver staaende som «koerer endnu» for evigt. `[ -s ]`-vagten lader den
+    # foerste skrivning vinde, saa EXIT-trap'en ikke overskriver en signal-kode.
+    _rc = f"{_ROOT}/{sid}.rc"
+    wrapped = (
+        f"trap 'k=$?; [ -s {_rc} ] || echo $k > {_rc}' EXIT; "
+        f"trap 'echo 143 > {_rc}; exit 143' TERM; "
+        f"trap 'echo 130 > {_rc}; exit 130' INT; "
+        f"{command}"
+    )
     boot = (
-        f"mkdir -p {_ROOT}; {cd}"
-        f"setsid sh -c {shlex.quote(command)} > {_ROOT}/{sid}.log 2>&1 "
+        f"mkdir -p {_ROOT}; {meta}{cd}"
+        f"setsid sh -c {shlex.quote(wrapped)} > {_ROOT}/{sid}.log 2>&1 "
         f"& echo $! > {_ROOT}/{sid}.pid; cat {_ROOT}/{sid}.pid"
     )
     res = await operator_bash_async(command=boot, user_id=user_id,

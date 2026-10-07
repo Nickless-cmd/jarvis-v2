@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import type { ApiConfig } from '../../lib/api'
 import { getPairStatus } from '../../lib/api'
 import { fjernEnhed, hentEnheder, opretParring, saetEnhedsKrav, tilfoejDenneComputer, type EnhedsOverblik } from '../../lib/enheder'
 import { formatRelativeTime } from '../../lib/formatTime'
+import { SettingsContext } from '../../contexts/SettingsContext'
 
 /**
  * Enheder — hvem må styre denne computer, og hvem må bruge code mode.
@@ -28,6 +29,14 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
   const [kravTotp, setKravTotp] = useState('')
   const [kravAaben, setKravAaben] = useState(false)
   const [computerTotp, setComputerTotp] = useState('')
+  // Serveren sender et nyt token med `app_id` i claim'en tilbage. Gemmes det
+  // ikke, er enheden tilføjet men usynlig for code mode-kontrollen — den
+  // læser KUN claim'en, aldrig kroppen.
+  const indstillinger = useContext(SettingsContext)
+  const gemNytToken = async (r: { token?: string }) => {
+    const t = String(r?.token || '').trim()
+    if (t) await indstillinger?.update({ authToken: t })
+  }
 
   const hent = async () => {
     const r = await hentEnheder(config)
@@ -79,7 +88,8 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
     setTravl(true)
     const r = await tilfoejDenneComputer(config, computerTotp.trim(), 'Denne computer')
     setTravl(false); setComputerTotp('')
-    if (!r.ok) setFejl(r.fejl); else void hent()
+    if (!r.ok) setFejl(r.fejl)
+    else { await gemNytToken(r.data ?? {}); void hent() }
   }
 
   const skiftKrav = async () => {
@@ -87,7 +97,8 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
     setTravl(true)
     const r = await saetEnhedsKrav(config, !overblik.kraev_aktivt, kravTotp.trim(), 'Denne computer')
     setTravl(false); setKravTotp(''); setKravAaben(false)
-    if (!r.ok) setFejl(r.fejl); else void hent()
+    if (!r.ok) setFejl(r.fejl)
+    else { await gemNytToken(r.data ?? {}); void hent() }
   }
 
   return (
@@ -119,9 +130,28 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
         <p className="account-google-hint">Ingen enheder er tilføjet endnu.</p>
       ) : null}
 
-      {overblik && overblik.denne.type === 'computer' && !overblik.denne.tilfoejet ? (
+      {/* Tilbyd registrering naar denne klient IKKE maa bruge code mode — uanset
+          om serveren kan genkende den som «computer».
+
+          Foer stod her `type === 'computer'`, og `_denne()` udleder typen af
+          `app_id`-claim'et. Et token uden claim giver «ukendt», saa knappen
+          forsvandt — praecis for den klient der havde brug for den.
+
+          Bjoern 29/9-2026: «i appen stod den stadig tilfoejet, saa jeg slog
+          reglen fra». Panelet sagde «tilfoejet» (fra REGISTRET) mens serveren
+          sagde «maa ikke bruge code mode» (fra TOKENET), og der var ingen vej
+          fra det ene til det andet. En hoenen-og-aegget-faelde: man skal
+          registrere for at faa claim'et, men knappen kraevede claim'et.
+
+          Telefoner har deres egen vej (parring) og hoerer ikke her. */}
+      {overblik && overblik.denne.type !== 'telefon' && !overblik.denne.tilfoejet ? (
         <div className="enheder-denne">
-          <p className="account-google-hint">Denne computer er ikke tilføjet{overblik.kraev_aktivt ? ' — code mode er lukket her, til den er.' : '.'}</p>
+          <p className="account-google-hint">
+            {overblik.denne.type === 'ukendt'
+              ? 'Denne klient er ikke genkendt som en tilfoejet enhed. Staar computeren allerede i listen, saa tilfoej den igen — den fornyer adgangen.'
+              : 'Denne computer er ikke tilføjet'}
+            {overblik.denne.type === 'ukendt' ? '' : (overblik.kraev_aktivt ? ' — code mode er lukket her, til den er.' : '.')}
+          </p>
           <input className="enheder-totp" inputMode="numeric" maxLength={6} placeholder="Totrinskode" value={computerTotp} onChange={(e) => setComputerTotp(e.target.value)} aria-label="Totrinskode til at tilføje denne computer" />
           <button type="button" className="account-google-btn" disabled={travl || computerTotp.trim().length !== 6} onClick={() => void tilfoejComputer()}>Tilføj denne computer</button>
         </div>

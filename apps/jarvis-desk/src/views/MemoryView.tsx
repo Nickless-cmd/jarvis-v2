@@ -1,6 +1,6 @@
 /** Placeholder — rolle-skopet. Member ser relation; owner ser fuld indre memory.
  *  Server-kontrakt defineres i Memory-spec. */
-export function MemoryView({ role }: { role: 'owner' | 'member' | 'guest' }) {
+export function MemoryView({ role }: { role: 'owner' | 'partner' | 'member' | 'guest' }) {
   return (
     <div className="view-placeholder">
       <h2>Memory</h2>

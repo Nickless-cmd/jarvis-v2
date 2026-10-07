@@ -1,4 +1,4 @@
-import { initialStreamState, streamReducer, type StreamState } from './streamReducer'
+import { initialStreamState, streamReducer, visibleStreamBlocks, type StreamState } from './streamReducer'
 import { denseBlocks } from './blockHelpers'
 import type { ContentBlock } from './sseProtocol'
 
@@ -29,6 +29,74 @@ it('accumulates streamed text', () => {
 
   expect(state.blocks).toEqual([{ type: 'text', text: 'Hej' }])
   expect(state.status).toBe('working')
+})
+
+it('viser uafklaret syntese løbende og skifter til bekræftet tekst uden dublet', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'message_start',
+    message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } }
+  })
+  const system = (kind: string, payload: Record<string, unknown>) =>
+    ({ type: 'system_event' as const, kind, payload })
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Første ' }))
+  expect(streamReducer(state, system('provisional_text_delta', { run_id: 'old', delta: 'forkert' })).provisionalText).toBe('Første ')
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'syntese' }))
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Første syntese' } })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, system('provisional_text_commit', { run_id: 'r1' }))
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }])
+  state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Slutsvar' }))
+  state = streamReducer(state, system('final_answer_start', { run_id: 'r1' }))
+  state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Slutsvar' } })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
+  state = streamReducer(state, { type: 'message_stop' })
+  expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
+})
+
+it('viser fortsatte synteser når ring-bufferen har mistet message_start og tekstblokkens start', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'relay_gap', payload: { resume_idx: 256 },
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Live syntese' },
+  })
+  expect(state.status).toBe('working')
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Live syntese' }])
+
+  // Den bekræftede delta kommer, men dens content_block_start lå før ring-gappet.
+  state = streamReducer(state, {
+    type: 'content_block_delta', index: 7, delta: { type: 'text_delta', text: 'Live syntese' },
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_commit', payload: { run_id: 'r1' },
+  })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Live syntese' }])
+
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Næste syntese' },
+  })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([
+    { type: 'text', text: 'Live syntese' },
+    { type: 'text', text: 'Næste syntese' },
+  ])
+})
+
+it('beholder det afsluttende svar når tekstblokkens start mangler efter relay-gap', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'provisional_text_delta',
+    payload: { run_id: 'r1', delta: 'Afsluttende svar' },
+  })
+  state = streamReducer(state, {
+    type: 'content_block_delta', index: 9,
+    delta: { type: 'text_delta', text: 'Afsluttende svar' },
+  })
+  state = streamReducer(state, { type: 'message_stop' })
+  expect(denseBlocks(visibleStreamBlocks(state))).toEqual([{ type: 'text', text: 'Afsluttende svar' }])
 })
 
 it('captures run id from system event', () => {
@@ -234,7 +302,52 @@ it('«Taenker videre · runde N» er IKKE et vaerktoej', () => {
     }) as never)
   }
   expect(foreloebige(s)).toHaveLength(0)
-  expect(s.workingStep).toBe('Tænker videre · runde 10')
+  expect(s.workingStep).toBeNull()
+})
+
+/**
+ * BLINKET — Bjørn 30/9-2026: «Den vises og forsvinder random under streamen.
+ * Meningen er den skal vises hele tiden under streamen og væk når streamen
+ * ender.»
+ *
+ * Det var ikke random. Serveren sender et livstegn mellem HVERT
+ * værktøjskald (`visible_runs.py:2866` — «Tænker videre · runde N»), og
+ * reducer'en tømte `workingStep` på hvert af dem. Arbejdslinjen blinkede af
+ * og på for hver runde.
+ *
+ * Testen ovenfor fangede det ikke: den starter fra TOM state, så der er intet
+ * at rydde. Denne starter fra en SAT linje — det er den forskel der gør
+ * blinket synligt.
+ */
+it('et livstegn midt i streamen rydder IKKE den linje der staar', () => {
+  let s = streamReducer(initialStreamState(), workingStep({
+    action: 'read_file', step: 1, detail: 'Læser fil: a.py',
+  }) as never)
+  expect(s.workingStep).toBe('Læser fil: a.py')
+
+  s = streamReducer(s, workingStep({
+    action: 'thinking', detail: 'Tænker videre · runde 2', step: 2,
+  }) as never)
+
+  expect(s.workingStep).toBe('Læser fil: a.py')
+  expect(s.workingAction).toBe('read_file')
+})
+
+it('en NY koersel rydder den forrige turs linje', () => {
+  // Modstykket: uden dette ville den forrige turs sidste linje kort stå ved en
+  // ny turs start, netop fordi livstegnene ikke længere rydder den.
+  let s = streamReducer(initialStreamState(), workingStep({
+    action: 'read_file', step: 1, detail: 'Læser fil: a.py',
+  }) as never)
+  s = streamReducer(s, {
+    type: 'message_start',
+    message: {
+      id: 'run-2', model: 'm', provider: 'p', lane: 'l',
+      usage: { input_tokens: 1, output_tokens: 0 },
+    },
+  } as never)
+  expect(s.workingStep).toBeNull()
+  expect(s.workingAction).toBeNull()
 })
 
 it('serverens eget flag vinder over navne-gaettet', () => {
@@ -488,5 +601,151 @@ describe('billedet i den levende stream (27/9-2026)', () => {
   it('tool_use_id foelger med — ankeret der gør at billedet ikke hopper', () => {
     const s = start({ type: 'image', src: 'data:image/png;base64,B', tool_use_id: 'tu-3' })
     expect((s.blocks[0] as { tool_use_id?: string }).tool_use_id).toBe('tu-3')
+  })
+})
+
+// ── Udgivet fil/video i den levende strøm (7/10-2026) ─────────────────────
+//
+// Grenen fandtes ikke, og udsenderen sendte heller ikke blokken: en widget er
+// `text/html` → typen `file`, og `_live_billedblokke` droppede alt der ikke
+// var `image`. Fladen faldt derfor til jorden i den levende strøm og dukkede
+// først op når tråden blev genindlæst fra `content_json`.
+//
+// Testen fanger BEGGE led: at typen findes i protokollen, og at reduceren
+// lægger blokken på sit index med sin reference i behold.
+
+describe('udgivet fil i den levende strøm (7/10-2026)', () => {
+  const start = (cb: Record<string, unknown>) =>
+    streamReducer(initialStreamState(), {
+      type: 'content_block_start', index: 0, content_block: cb,
+    } as never)
+
+  it('en widget-blok (file + attachment_id + generated) lander i blocks', () => {
+    const s = start({
+      type: 'file', filename: 'widget-20261007T063003248515.html',
+      mime_type: 'text/html', attachment_id: 'att-w1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({
+      type: 'file', attachment_id: 'att-w1', kilde: 'generated',
+    })
+  })
+
+  it('en widget-blok uden attachment_id er IKKE en widget — men blokken bevares', () => {
+    const s = start({
+      type: 'file', filename: 'rapport.pdf', mime_type: 'application/pdf',
+      attachment_id: 'att-p1',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'file', attachment_id: 'att-p1' })
+  })
+
+  it('en video-blok lander ogsaa — samme hul ramte den', () => {
+    const s = start({
+      type: 'video', filename: 'k.mp4', mime_type: 'video/mp4',
+      attachment_id: 'att-v1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'video', attachment_id: 'att-v1' })
+  })
+})
+
+// ── Blinket: et tomt message_start-id maa ikke rydde blokke (1/10-2026) ────
+
+describe('blinket', () => {
+  const start = (id: string) => ({
+    type: 'message_start',
+    message: { id, model: 'm', provider: 'deepseek', lane: 'primary', session_id: 's',
+               usage: { input_tokens: 0, output_tokens: 0 } },
+  } as never)
+  const tekst = [
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hele svaret.' } },
+  ] as never[]
+  const runEvent = { type: 'system_event', kind: 'run', payload: { run_id: 'visible-abc' } } as never
+
+  it('bevarer teksten naar replayets message_start har tomt id', () => {
+    // Her ryddede mobilen UBETINGET foer 1/10: hvert message_start slettede
+    // blokkene, saa et replay fjernede hele svaret og fyldte det ind igen.
+    const s = [start(''), runEvent, ...tekst, start('')].reduce(streamReducer, initialStreamState())
+    const synlig = s.blocks.filter(Boolean)
+      .map((b) => (b && b.type === 'text' ? b.text : '')).join('')
+    expect(synlig).toContain('Hele svaret.')
+  })
+
+  it('et AEGTE nyt run rydder stadig', () => {
+    const s = [start('visible-et'), ...tekst, start('visible-to')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.blocks.filter(Boolean)).toHaveLength(0)
+    expect(s.activeRunId).toBe('visible-to')
+  })
+
+  it('run-eventets id overlever et tomt message_start', () => {
+    const s = [start(''), runEvent, start('')].reduce(streamReducer, initialStreamState())
+    expect(s.activeRunId).toBe('visible-abc')
+  })
+})
+
+// ── Arbejdsfasen er slut — `final_answer_start` (4/10-2026) ─────────────────
+//
+// Runde-linjens shimmer døde i hullet MELLEM to runder: sidste værktøjskald
+// fik sit resultat, og så tænkte modellen på den næste i et par sekunder mens
+// rækken stod død. Signalet der lukker hullet er serverens `final_answer_start`
+// — «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
+// Desk fik det 3/10 (`RaekkeTranskript.tsx:341`); mobilens reducer havde
+// hverken flaget eller grenen, så eventet faldt i `default` og gjorde intet.
+describe('final_answer_start saetter arbejdsfasen til ende', () => {
+  const start = (id: string) => ({
+    type: 'message_start' as const,
+    message: { id, model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  })
+  const system = (kind: string, payload: Record<string, unknown>) =>
+    ({ type: 'system_event' as const, kind, payload })
+
+  it('et friskt flag fra starten', () => {
+    expect(initialStreamState().finalAnswerStarted).toBe(false)
+  })
+
+  it('saetter flaget naar run-id matcher', () => {
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(true)
+  })
+
+  it('IGNORERER en forsinet start fra en tidligere koersel', () => {
+    // Uden run-id-tjekket ville et replay af en gammel `final_answer_start`
+    // slukke shimmeren i den koersel vi ser paa nu.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'old' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('et TOMT run-id taender ikke — vi kan ikke vide hvem den hoerer til', () => {
+    const s = [start('r1'), system('final_answer_start', {})]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('en NY koersel nulstiller flaget', () => {
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }), start('r2')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(false)
+  })
+
+  it('samme run beholder flaget — en genforbindelse midt i svaret', () => {
+    // Ellers ville en reconnect taende shimmeren igen midt i slutsvaret.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }), start('r1')]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.finalAnswerStarted).toBe(true)
+  })
+
+  it('en delta fra et NYT run nulstiller — naar den forrige koersel er slut', () => {
+    // Mens streamen ER i gang ignoreres en fremmed delta HELT (grenen vender
+    // tidligt om), saa flaget staar. Foerst efter `message_stop` genoptager et
+    // nyt run — og dér skal flaget nulstilles sammen med blokkene, ellers stod
+    // shimmeren slukket i en koersel der lige var begyndt.
+    const s = [start('r1'), system('final_answer_start', { run_id: 'r1' }),
+      { type: 'message_stop' as const },
+      system('provisional_text_delta', { run_id: 'r2', delta: 'nyt' })]
+      .reduce(streamReducer, initialStreamState())
+    expect(s.activeRunId).toBe('r2')
+    expect(s.finalAnswerStarted).toBe(false)
   })
 })

@@ -18,8 +18,12 @@ export interface BackgroundJob {
   /** 'supervisor' = serverens egne services. 'operator' = Bjørns maskine.
    *  'agent' = en scout-agent (17/9-2026) — kan stoppes, ikke pauses.
    *  'shell' / 'shell_operator' = en ÅBEN shell-session (26/9-2026), på
-   *  henholdsvis serveren og Bjørns maskine. Kan kun lukkes. */
+   *  henholdsvis serveren og Bjørns maskine. Kan kun lukkes.
+   *  'tool' / 'tool_operator' = et VÆRKTØJSKALD der kører lige nu (3/10-2026),
+   *  på serveren eller hans maskine. Kan hverken pauses eller stoppes —
+   *  `can_stop` er false, så panelet ikke tilbyder en knap der ikke virker. */
   kilde: 'supervisor' | 'operator' | 'agent' | 'shell' | 'shell_operator'
+    | 'tool' | 'tool_operator'
   navn: string
   kommando: string
   status: 'running' | 'paused' | 'exited' | string
@@ -27,6 +31,9 @@ export interface BackgroundJob {
   sekunder?: number | null
   exit_code?: number | null
   can_pause?: boolean
+  /** false = der findes ingen måde at stoppe den herfra. Udeladt = kan stoppes
+   *  (den hidtidige adfærd for supervisor, operator og agent). */
+  can_stop?: boolean
 }
 
 export interface JobsSvar {
@@ -78,6 +85,9 @@ export function kildeNavn(kilde: string): string {
   if (kilde === 'agent') return 'Agent'
   // 'shell_operator' skal med her: uden den faldt en shell paa HANS maskine
   // igennem til 'Server' — praecis den forveksling den samlede liste findes
-  // for at fjerne.
-  return kilde === 'operator' || kilde === 'shell_operator' ? 'Din maskine' : 'Server'
+  // for at fjerne. 'tool_operator' er samme fælde ét lag nede (3/10-2026):
+  // et operator_bash-kald er et vaerktoejskald, men det koerer DEROVRE.
+  return kilde === 'operator' || kilde === 'shell_operator' || kilde === 'tool_operator'
+    ? 'Din maskine'
+    : 'Server'
 }

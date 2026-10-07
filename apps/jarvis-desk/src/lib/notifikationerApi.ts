@@ -64,7 +64,8 @@ export async function afgoerNotifikation(
 }
 
 export async function setNotifikation(config: ApiConfig, id: string): Promise<void> {
-  await apiFetch(config, `/notifikationer/${encodeURIComponent(id)}/set`, { method: 'POST' })
+  const svar = await apiFetch<{ ok: boolean }>(config, `/notifikationer/${encodeURIComponent(id)}/set`, { method: 'POST' })
+  if (!svar.ok) throw new Error('Notifikationen kunne ikke afsluttes.')
 }
 
 export async function hentNotifikationsValg(config: ApiConfig): Promise<{ valg: Record<string, string> }> {

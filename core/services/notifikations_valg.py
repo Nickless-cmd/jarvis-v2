@@ -75,7 +75,22 @@ STANDARD: dict[str, str] = {
     "central_flag": "ingen",         # Centralens egen overvaagning — informativt, sjaeldent akut
     "membrane_breach": "auto",       # altid importance=critical: brud paa den beskyttede kerne
     "infra_security": "auto",        # altid importance=high: vaert/net i fare
-    "keymaker_key_earned": "ingen",  # "en mulighed, ikke et brud" (central_keymaker.py)
+    # 6/10-2026 (Bjoerns ord: «tag ruten til auto»). Stod paa "ingen" med
+    # begrundelsen «en mulighed, ikke et brud» — rigtigt for ren information,
+    # forkert for en besked der VENTER paa svar: tre optjente noegler stod
+    # pending i 88 dage, fordi "ingen" stopper leveringen i routerens tidlige
+    # udgang.
+    #
+    # Og filen modsagde sig selv: kommentaren ved `hent()` nedenfor siger om
+    # praecis denne slags at den «ikke er feedens bord, IKKE fordi den er
+    # fravalgt» og at fald-tilbage «skal vaere "auto" … ikke "ingen"». Den
+    # implicitte adfaerd FOER den bevidste standard var ogsaa "auto". Raekken
+    # her overskrev altsaa husets egen politik.
+    #
+    # Volumen er ikke indvendingen: 4 noegler paa 3 maaneder (~1,3/md), og
+    # `_varsl_ejer` sender med importance="normal", saa den vaekker ingen om
+    # natten.
+    "keymaker_key_earned": "auto",
     "moltbook_mention": "ingen",     # social omtale, ikke tidskritisk
 }
 

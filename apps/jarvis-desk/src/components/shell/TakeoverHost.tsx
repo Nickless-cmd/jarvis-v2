@@ -154,7 +154,7 @@ export function TakeoverHost({
       </div>
       <div className="takeover-live-body">
         {live ? (
-          <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
+          <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} />
         ) : lastAssistant ? (
           <MessageRow role="assistant" blocks={lastAssistant.content} density="compact" streaming={false} />
         ) : null}

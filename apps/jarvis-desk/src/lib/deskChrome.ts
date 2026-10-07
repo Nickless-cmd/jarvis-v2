@@ -26,6 +26,21 @@ export const DESK_CHROME = {
   headerConnection: false,
 
   /**
+   * Header: Central-status-pillen. Slået fra 30/9-2026 «for nu» (Bjørn) —
+   * den skulle dele pladsen med myldretids-badgen, og Central-status er
+   * stadig at finde på Systemstatus-siden i Cowork. Den forekomst er IKKE
+   * styret her: den er indhold på en side, ikke chrome i headeren.
+   */
+  centralBadge: false,
+
+  /**
+   * Header: myldretids-pillen (30/9-2026, Bjørns bestilling). Varsler ≤15 min
+   * før DeepSeeks myldretid åbner og tæller ned mens den kører. Tager pladsen
+   * CentralBadge gav fra. Se components/shell/PeakBadge.tsx.
+   */
+  peakBadge: true,
+
+  /**
    * Miljø-panel: Maskine / GPU / Disk. Kontekst BLIVER — det er det ene tal
    * derinde der ændrer en beslutning (skal jeg starte forfra?).
    */

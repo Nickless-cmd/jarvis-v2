@@ -46,7 +46,7 @@ it('en gemt skill_surface-blok bliver til en skill-linje', async () => {
 it('et skill-kald der kører: nutid, prikker, egen linje', async () => {
   const s = await render(<MessageList messages={[]} blocks={[
     { type: 'tool_use', id: 'c1', name: 'skill_gate', input: { query: 'lav et regneark' }, status: 'running' },
-  ]} />)
+  ]} working />)
   expect(s.getByText('Tjekker skills for «lav et regneark»')).toBeTruthy()
   expect(s.getByTestId('prikker', { includeHiddenElements: true })).toBeTruthy()
 })
@@ -59,7 +59,7 @@ it('strømmens skill_surface — også indpakket som system_event — står øve
   st = streamReducer(st, E({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }))
   st = streamReducer(st, E({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hej' } }))
   expect(st.skillFlade?.matches[0]?.name).toBe('xlsx')
-  const s = await render(<MessageList messages={[]} blocks={st.blocks} skillFlade={st.skillFlade} />)
+  const s = await render(<MessageList messages={[]} blocks={st.blocks} skillFlade={st.skillFlade} working />)
   expect(s.getByText('Skill-match: xlsx')).toBeTruthy()
   // En NY kørsel nulstiller den.
   st = streamReducer(st, E({ type: 'message_start', message: { id: 'run2', usage: { input_tokens: 0 } } }))

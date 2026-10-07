@@ -104,15 +104,54 @@ def delivery_succeeded(result: object) -> bool:
     return str(result.get("status") or "") in _DELIVERY_OK_STATUSES
 
 
+def _koe_afsender(user_id: str | None, workspace_name: str | None) -> dict[str, str]:
+    """Kun de afsender-felter der faktisk er sat — se begrundelsen ved
+    `_afsender` i `send_session_notification`. Holder kaldet til `enqueue`
+    uaendret for kaldere der ikke saetter dem."""
+    ud: dict[str, str] = {}
+    if (user_id or "").strip():
+        ud["user_id"] = str(user_id)
+    if (workspace_name or "").strip():
+        ud["workspace_name"] = str(workspace_name)
+    return ud
+
+
 def send_session_notification(
     content: str,
     *,
     source: str = "jarvis-notify",
     urgent: bool = False,
+    session_id: str | None = None,
+    user_id: str | None = None,
+    workspace_name: str | None = None,
+    push: bool = True,
 ) -> dict[str, object]:
     """Append a proactive message to the most recently active chat session.
 
     Returns a status dict. Never raises — returns error dict on failure.
+
+    2/10-2026: fire moduler skrev direkte med `append_chat_message` og var
+    derfor HELT uden daemon-vagten nedenfor — de kunne banke paa midt i en
+    saetning. De er flyttet herind, og de fire parametre er hvad flytningen
+    kraevede for at vaere adfaerds-bevarende:
+
+    * `session_id` — de kender selv deres maal (fx heartbeat'ens webchat-
+      session). Uden den ville de skifte til den session DENNE funktion
+      udvaelger, altsaa en anden samtale end i dag.
+    * `user_id`/`workspace_name` — `append_chat_message` falder tilbage paa
+      kontekst-variabler naar de er tomme, og en daemon-traad har ingen
+      kontekst. De sendes derfor videre baade paa den direkte OG den koeede
+      vej (se `session_inbox.enqueue`).
+    * `push=False` — ingen af de fire sendte mobil-push i dag. At flytte dem
+      ind maa ikke give Bjoern fire NYE push-kilder; det var det modsatte af
+      formaalet.
+
+    Resultatet baerer `message` paa "ok"-vejen, saa kaldere der skal have et
+    message_id (heartbeat-ledgeren, execution-piloten) kan faa det.
+
+    **Laes status med `delivery_succeeded()`, ikke `== "ok"`.** "queued" er
+    ogsaa en succes; den fejl kostede en dobbelt-levering 23/9 — se noten ved
+    `_DELIVERY_OK_STATUSES`.
 
     2026-05-24 (Claude): when the target session is active (chat-stream
     activity within last 5 min) AND urgent=False, the notification is
@@ -145,7 +184,7 @@ def send_session_notification(
     # Use the pinned session if set (e.g. the session currently active in the user's browser),
     # otherwise fall back to the most recently updated session that has user messages
     # (to avoid sending to autonomous-run-only sessions which the user may not be watching).
-    session_id = get_pinned_session_id()
+    session_id = (session_id or "").strip() or get_pinned_session_id()
     if not session_id:
         sessions = list_chat_sessions()
         for s in sessions:
@@ -158,8 +197,14 @@ def send_session_notification(
                 break
         if not session_id:
             session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
-    if not session_id or get_chat_session(session_id) is None:
+    if not session_id:
         return {"status": "blocked", "error": "no active session"}
+    if get_chat_session(session_id) is None:
+        # Skelnes fra «ingen aktiv session»: her HAVDE vi en session — den
+        # findes bare ikke (slettet, eller en kalder gav et id vi ikke kender).
+        # Teksten betoed foer begge ting, og det sendte fejlsoegningen forkert
+        # vej 2/10-2026 da fire kaldesteder begyndte at sende deres egen.
+        return {"status": "blocked", "error": f"unknown session: {session_id}"}
 
     # Daemon-interruption gate: queue if session is active and not urgent.
     if not urgent:
@@ -173,6 +218,7 @@ def send_session_notification(
                     content=content,
                     source=source,
                     urgent=False,
+                    **_koe_afsender(user_id, workspace_name),
                 )
                 if result.get("status") == "queued":
                     logger.info(
@@ -191,10 +237,21 @@ def send_session_notification(
             logger.exception("notification_bridge: inbox gate failed; delivering directly")
 
     try:
+        # Kun de felter afsenderen FAKTISK satte. `user_id=None` er semantisk
+        # identisk med at udelade det (append_chat_message falder tilbage paa
+        # kontekst-variabler), men at sende dem ubetinget aendrer kaldets FORM —
+        # og fire test-stubs med en smal signatur braekkede paa det 2/10. Et
+        # kald fra en kalder der ikke saetter dem er nu byte-identisk med foer.
+        _afsender: dict[str, str] = {}
+        if (user_id or "").strip():
+            _afsender["user_id"] = str(user_id)
+        if (workspace_name or "").strip():
+            _afsender["workspace_name"] = str(workspace_name)
         message = append_chat_message(
             session_id=session_id,
             role="assistant",
             content=content,
+            **_afsender,
         )
         event_bus.publish(
             "channel.chat_message_appended",
@@ -205,8 +262,10 @@ def send_session_notification(
             },
         )
         logger.info("notification_bridge: delivered [%s] to session %s", source, session_id)
-        _push_proactive(session_id, content)
-        return {"status": "ok", "session_id": session_id, "source": source}
+        if push:
+            _push_proactive(session_id, content)
+        return {"status": "ok", "session_id": session_id, "source": source,
+                "message": message}
     except Exception as exc:
         logger.error("notification_bridge: delivery failed: %s", exc, exc_info=True)
         return {"status": "error", "error": str(exc)}

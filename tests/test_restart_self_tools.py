@@ -65,16 +65,69 @@ def test_ukendte_services_afvises_stadig():
     assert ud["status"] == "error"
 
 
-def test_opslaget_har_et_ALDERSLOFT():
-    """En zombie-raekke ville ellers blokere enhver genstart for evigt — og en
-    vagt der ikke kan tilfredsstilles bliver omgaaet.
+class _FalskConn:
+    """Minimal conn der svarer med faste raekker — ingen DB i spil."""
 
-    Maalt: 5 «aktive» koersler lokalt, hvoraf ingen levede. Paa runtime var
-    tallet 1.
+    def __init__(self, raekker):
+        self._raekker = raekker
+
+    def execute(self, *a, **k):
+        self._sidste = a
+        return self
+
+    def fetchall(self):
+        return self._raekker
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _med_raekker(monkeypatch, raekker, levende: set[str]):
+    import core.runtime.db as db
+    from core.services import visible_runs as vr
+    monkeypatch.setattr(db, "connect", lambda: _FalskConn(raekker))
+    monkeypatch.setattr(vr, "is_visible_run_alive", lambda rid: rid in levende)
+
+
+def test_vagten_spoerger_HEARTBEATET_ikke_tabellen(monkeypatch):
+    """Kernen (30/9-2026). `visible_runs.status` bliver staaende paa `running`
+    indtil noget rydder den, og raekken har intet heartbeat. Kun
+    `is_visible_run_alive` kan svare — den laeser `last_activity_at` fra den
+    delte tilstand med en stale-taerskel paa 75 sekunder.
+
+    Her stod foer et ALDERSLOFT paa én time. Det slap et run paa tre minutter
+    igennem som «levende» mens heartbeatet sagde doed, og blokerede en
+    noedvendig genstart. Samme dag stod en raekke `running` i 191 minutter uden
+    ét spor i journalen.
     """
-    import inspect
-    assert rst.LEVENDE_INDEN_FOR_SEKUNDER >= 3600
-    assert "started_at >= ?" in inspect.getsource(rst._aktive_koersler)
+    _med_raekker(monkeypatch,
+                 [("visible-lever", "et rigtigt svar"),
+                  ("autonomous-zombie", "doed raekke")],
+                 levende={"visible-lever"})
+    aktive = rst._aktive_koersler()
+    assert [a["run_id"] for a in aktive] == ["visible-lever"], aktive
+
+
+def test_en_GAMMEL_men_levende_koersel_blokerer_stadig(monkeypatch):
+    """Den anden retning, som alders-loftet fik forkert: et run der har koert
+    laenge og STADIG lever, er praecis det vagten findes for. Et tidsloft ville
+    have sluppet det forbi."""
+    _med_raekker(monkeypatch,
+                 [("visible-langt-run", "en lang agentisk tur")],
+                 levende={"visible-langt-run"})
+    assert len(rst._aktive_koersler()) == 1
+
+
+def test_alle_doede_lader_genstarten_koere(monkeypatch):
+    """Kontrollen. Uden den kunne testene ovenfor bestaa paa en vagt der
+    altid blokerer — og en vagt der ikke kan tilfredsstilles bliver omgaaet."""
+    _med_raekker(monkeypatch,
+                 [("a", ""), ("b", ""), ("c", "")],
+                 levende=set())
+    assert rst._aktive_koersler() == []
 
 
 def test_opslaget_kaster_aldrig(monkeypatch):
@@ -84,3 +137,61 @@ def test_opslaget_kaster_aldrig(monkeypatch):
     monkeypatch.setattr(db, "connect",
                         lambda: (_ for _ in ()).throw(RuntimeError("nede")))
     assert rst._aktive_koersler() == []
+
+
+def test_defer_until_idle_venter_paa_FAKTUM_ikke_paa_sekunder(monkeypatch):
+    """Kernen (3/10-2026). Her laa en FAST `sleep 3`. Kaldes vaerktoejet midt i
+    en tur, draeber de tre sekunder turen: runnet stemples `interrupted`,
+    recovery-dispatcheren genoptager det senere — og Bjoern faar TO svar paa
+    én besked (maalt kl. 15:43).
+
+    Med `defer_until_idle` sendes runnets EGET id med, og genstarten venter paa
+    et faktum — at runnet ikke laengere er i live — i stedet for et tal nogen
+    skal ramme rigtigt. Jeg skrev systemd-timer-kommandoen i haanden tre gange
+    paa én dag og ramte forkert én gang (60 s der naesten draebte turen).
+
+    3/10-2026, rettelse af MIG SELV: denne test satte `_aktive_koersler` til
+    TOM, saa vagten slap den igennem — og jeg opdagede foerst i drift at
+    vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur der
+    kaldte det. Testen var indrettet efter koden i stedet for efter
+    virkeligheden. Nu koerer der et aktivt run i testen, praecis som i drift.
+    """
+    monkeypatch.setattr(rst, "_aktive_koersler",
+                        lambda *a, **k: [{"run_id": "visible-min-tur",
+                                          "preview": "tag begge to"}])
+    kaldt: list = []
+    monkeypatch.setattr(rst.subprocess, "Popen",
+                        lambda cmd, **k: kaldt.append(cmd)
+                        or type("P", (), {"pid": 7})())
+    from core.services import run_autonomy_context as rac
+    monkeypatch.setattr(rac, "current_run_id", lambda: "visible-min-tur")
+
+    ud = rst._exec_restart_self({"services": ["jarvis-api"], "defer_until_idle": True})
+
+    assert ud["status"] != "afvist", (
+        "den udskudte genstart blev afvist af den vagt den selv venter paa — "
+        "saa naarede den aldrig sin egen sti"
+    )
+    assert ud["status"] == "ok" and ud["deferred"] is True
+    assert ud["run_id"] == "visible-min-tur"
+    assert kaldt, "den udskudte genstart blev ikke sat i gang"
+    flad = " ".join(kaldt[0])
+    assert "deferred_restart.py" in flad, kaldt[0]
+    assert "visible-min-tur" in kaldt[0], (
+        "runnets EGET id skal med — ellers ved scriptet ikke hvad det venter paa"
+    )
+    assert "sleep 3" not in flad, "den faste forsinkelse maa ikke overleve"
+
+
+def test_uden_defer_bruges_den_gamle_vej(monkeypatch):
+    """Kontrollen: den udskudte sti maa ikke stjaele den direkte. Uden flaget
+    skal `sleep 3`-vejen stadig koere — ellers har jeg byttet én defekt ud med
+    en anden."""
+    monkeypatch.setattr(rst, "_aktive_koersler", lambda *a, **k: [])
+    kaldt: list = []
+    monkeypatch.setattr(rst.subprocess, "Popen",
+                        lambda cmd, **k: kaldt.append(cmd)
+                        or type("P", (), {"pid": 8})())
+    ud = rst._exec_restart_self({"services": ["jarvis-api"]})
+    assert ud.get("deferred") is not True
+    assert "sleep 3" in " ".join(kaldt[0])

@@ -272,8 +272,14 @@ def _perform_sensing(modality: str, state: dict[str, Any], now: datetime) -> dic
     return {"preview": "unknown modality", "reason": f"no handler for {modality}"}
 
 
-def _sense_visual(state: dict[str, Any], now: datetime) -> dict[str, Any]:
-    """Se rummet på eget initiativ."""
+def _sense_visual(
+    state: dict[str, Any], now: datetime, *, arkiver: bool = True
+) -> dict[str, Any]:
+    """Se rummet på eget initiativ.
+
+    `arkiver=False` bruges af `_sense_mixed`, som skriver sin EGEN post og
+    derfor ikke må efterlade en ekstra `visual`-række (se `look_around_now`).
+    """
     try:
         from core.services.visual_memory import look_around_now
         result = look_around_now(
@@ -281,7 +287,8 @@ def _sense_visual(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                 "Jeg kigger på rummet fordi jeg selv har lyst. "
                 "Beskriv stemningen som en sanseoplevelse — hvad føles anderledes "
                 "end sidst? Fokuser på det der fanger opmærksomheden."
-            )
+            ),
+            arkiver=arkiver,
         )
         if result.get("status") == "captured":
             description = result.get("description", "")
@@ -301,7 +308,9 @@ def _sense_visual(state: dict[str, Any], now: datetime) -> dict[str, Any]:
         return {"ok": False, "preview": "capture_error", "reason": str(exc)}
 
 
-def _sense_audio(state: dict[str, Any], now: datetime) -> dict[str, Any]:
+def _sense_audio(
+    state: dict[str, Any], now: datetime, *, arkiver: bool = True
+) -> dict[str, Any]:
     """Lyt i rummet på eget initiativ — og arkivér indtrykket.
 
     Optager sit EGET metadata-sample (ingen temp-WAV) og skriver til Sansernes
@@ -323,29 +332,48 @@ def _sense_audio(state: dict[str, Any], now: datetime) -> dict[str, Any]:
             f"(amplitude {amplitude_mean:.4f}±{amplitude_std:.4f})."
         )
 
-        try:
-            from core.services.sensory_archive import record_audio
-            record_audio(
-                content,
-                metadata={
-                    "source": "active_sensing_daemon",
-                    "modality": "audio",
-                    "category": category,
-                    "amplitude_mean": round(amplitude_mean, 4),
-                    "amplitude_std": round(amplitude_std, 4),
-                    "desire": state.get("last_desire", 0),
-                },
-            )
-            arkiveret = True
-        except Exception as exc:
-            logger.warning("active_sensing: audio archive failed: %s", exc)
-            arkiveret = False
+        if arkiver:
+            try:
+                from core.services.sensory_archive import record_audio
+                record = record_audio(
+                    content,
+                    metadata={
+                        "source": "active_sensing_daemon",
+                        "modality": "audio",
+                        "category": category,
+                        "amplitude_mean": round(amplitude_mean, 4),
+                        "amplitude_std": round(amplitude_std, 4),
+                        "desire": state.get("last_desire", 0),
+                    },
+                )
+                # Et lyt der endte i `silence` er kvitteringen for at der ikke var
+                # noget at høre — ikke et indtryk. Arkivet afviser den selv (se
+                # sensory_archive.skal_arkiveres); her skal turen bare sige sandt.
+                sprunget_over = bool(record.get("skipped"))
+                arkiveret = not sprunget_over
+            except Exception as exc:
+                logger.warning("active_sensing: audio archive failed: %s", exc)
+                arkiveret = False
+                sprunget_over = False
+        else:
+            # Kalderen (mixed) ejer arkiveringen. Vi afgør stadig om lyden ER et
+            # indtryk — et lyt der endte i stilhed må ikke blive en «Lyd»-del i
+            # en mixed-post. Samme gate som `record_audio` selv bruger.
+            from core.services.sensory_archive import skal_arkiveres
+            sprunget_over = not skal_arkiveres(content)
+            arkiveret = not sprunget_over
 
         # Et lyt der ikke naaede arkivet er ikke et indtryk — det er et tab.
+        if sprunget_over:
+            reason = "audio_silence_not_an_impression"
+        elif arkiveret:
+            reason = f"audio_{category}"
+        else:
+            reason = "audio_archive_failed"
         return {
             "ok": arkiveret,
             "preview": preview,
-            "reason": f"audio_{category}" if arkiveret else "audio_archive_failed",
+            "reason": reason,
             "description": content,
         }
     except Exception as exc:
@@ -363,7 +391,10 @@ def _sense_atmosphere(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                 "Beskriv atmosfæren som en fornemmelse — lysets farvetone, "
                 "rummets energi, om det føles åbent eller lukket, "
                 "varmt eller koldt. 2-3 sætninger på dansk."
-            )
+            ),
+            # Vi skriver vores EGEN atmosphere-post nedenfor. Uden dette skrev
+            # hvert atmosphere-indtryk også en identisk `visual`-række.
+            arkiver=False,
         )
         atmosphere = str(visual.get("description") or "").strip()
 
@@ -406,9 +437,14 @@ def _sense_atmosphere(state: dict[str, Any], now: datetime) -> dict[str, Any]:
 
 
 def _sense_mixed(state: dict[str, Any], now: datetime) -> dict[str, Any]:
-    """Blandet sansning — både se og lyt i samme tur."""
-    visual_result = _sense_visual(state, now)
-    audio_result = _sense_audio(state, now)
+    """Blandet sansning — både se og lyt i samme tur.
+
+    Delene arkiverer IKKE selv (6/10-2026): mixed-posten nedenfor er den fulde
+    sansning. Uden dette skrev én mixed-sansning TRE rækker — `visual`, `audio`
+    og `mixed` — hvoraf de to første var halvdele af den tredje.
+    """
+    visual_result = _sense_visual(state, now, arkiver=False)
+    audio_result = _sense_audio(state, now, arkiver=False)
     # Meldte begge dele fejl, er der ingenting at arkivere. Foer i dag skrev vi
     # «Jeg saa og lyttede samtidig. Visuelt: capture_error | Lyd: audio_error»
     # ind i arkivet og returnerede reason="mixed_captured" — altsaa et indtryk

@@ -88,7 +88,7 @@ export function LabelSkift({
 
   return (
     <View style={styles.celle}>
-      <Animated.View style={{ opacity: ind }}>
+      <Animated.View style={{ opacity: ind, flexShrink: 1, minWidth: 0 }}>
         {arbejder
           ? <GlidendeTekst text={vist.tekst} aktiv style={style} numberOfLines={1} />
           : <Text style={style} numberOfLines={1} testID="linje-titel">{vist.tekst}</Text>}
@@ -112,8 +112,11 @@ export function LabelSkift({
 }
 
 const styles = StyleSheet.create({
-  celle: { flexShrink: 1, minWidth: 0 },
-  lag: { position: 'absolute', left: 0, top: 0, right: 0 },
+  // Skaermkanten er graensen. `overflow: hidden` klipper en etiket der ikke kan
+  // krympe, og `flexShrink` + `minWidth: 0` lader den krympe saa den kan
+  // afsluttes med «…» i stedet for at skubbe linjen ud over kanten.
+  celle: { flexShrink: 1, minWidth: 0, overflow: 'hidden' },
+  lag: { position: 'absolute', left: 0, top: 0, right: 0, minWidth: 0 },
   // h-5 w-5 pt-1 i kilden
   spark: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingTop: 2 },
 })

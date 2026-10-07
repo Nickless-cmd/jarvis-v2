@@ -57,29 +57,30 @@ _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 |---|---|---|---|---|
 | class | `_Session` | `` | — | [src](../../../core/tools/bash_session.py#L74) |
 | method | `_Session.__init__` | `(self, session_id)` | — | [src](../../../core/tools/bash_session.py#L75) |
-| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L120) |
-| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L131) |
-| method | `_Session._resync` | `(self, probe_timeout=…)` | Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer. | [src](../../../core/tools/bash_session.py#L138) |
-| method | `_Session.run` | `(self, command, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L186) |
-| method | `_Session.terminate` | `(self)` | Dræb shellen UDEN at tage sessionens lås. | [src](../../../core/tools/bash_session.py#L288) |
-| method | `_Session.close` | `(self)` | Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører. | [src](../../../core/tools/bash_session.py#L312) |
-| function | `_list_row` | `(sid, sess, now)` | Én række i `list`-svaret. | [src](../../../core/tools/bash_session.py#L336) |
-| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L363) |
-| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L375) |
-| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L541) |
-| function | `_read_daemon_pid` | `()` | Læs daemonens PID fra pid-filen. None hvis den ikke findes/er ulaesbar. | [src](../../../core/tools/bash_session.py#L553) |
-| function | `_pid_is_our_daemon` | `(pid)` | Kill-guard: kun en ÆGTE bash-session-daemon. En genbrugt PID må aldrig rammes. | [src](../../../core/tools/bash_session.py#L561) |
-| function | `_kill_daemon` | `(pid)` | SIGTERM, derefter SIGKILL. Gør intet hvis PID'en ikke er vores daemon. | [src](../../../core/tools/bash_session.py#L572) |
-| function | `_force_restart_daemon` | `()` | Dræb en hængende daemon og start en frisk. True hvis den svarer bagefter. | [src](../../../core/tools/bash_session.py#L594) |
-| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L613) |
-| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L661) |
-| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L677) |
-| function | `_client_call_once` | `(payload, timeout=…)` | Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call. | [src](../../../core/tools/bash_session.py#L697) |
-| function | `_client_call` | `(payload, timeout=…)` | Send ét kald til daemonen — og helbred den selv hvis den er hængt. | [src](../../../core/tools/bash_session.py#L724) |
-| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L761) |
-| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L765) |
-| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L787) |
-| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L794) |
+| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L133) |
+| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L144) |
+| method | `_Session._resync` | `(self, probe_timeout=…)` | Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer. | [src](../../../core/tools/bash_session.py#L151) |
+| method | `_Session.run` | `(self, command, timeout=…)` | — | [src](../../../core/tools/bash_session.py#L199) |
+| method | `_Session.terminate` | `(self)` | Dræb shellen UDEN at tage sessionens lås. | [src](../../../core/tools/bash_session.py#L312) |
+| method | `_Session.close` | `(self)` | Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører. | [src](../../../core/tools/bash_session.py#L336) |
+| function | `_list_row` | `(sid, sess, now)` | Én række i `list`-svaret. | [src](../../../core/tools/bash_session.py#L360) |
+| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L391) |
+| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L403) |
+| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L575) |
+| function | `_read_daemon_pid` | `()` | Læs daemonens PID fra pid-filen. None hvis den ikke findes/er ulaesbar. | [src](../../../core/tools/bash_session.py#L587) |
+| function | `_pid_is_our_daemon` | `(pid)` | Kill-guard: kun en ÆGTE bash-session-daemon. En genbrugt PID må aldrig rammes. | [src](../../../core/tools/bash_session.py#L595) |
+| function | `_kill_daemon` | `(pid)` | SIGTERM, derefter SIGKILL. Gør intet hvis PID'en ikke er vores daemon. | [src](../../../core/tools/bash_session.py#L606) |
+| function | `_force_restart_daemon` | `()` | Dræb en hængende daemon og start en frisk. True hvis den svarer bagefter. | [src](../../../core/tools/bash_session.py#L628) |
+| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L647) |
+| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L695) |
+| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L711) |
+| function | `_client_call_once` | `(payload, timeout=…)` | Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call. | [src](../../../core/tools/bash_session.py#L731) |
+| function | `_client_call` | `(payload, timeout=…)` | Send ét kald til daemonen — og helbred den selv hvis den er hængt. | [src](../../../core/tools/bash_session.py#L758) |
+| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L795) |
+| function | `_open_arbejdssession` | `()` | Aabn den DELTE arbejds-shell — den `bash`-vaerktoejet genbruger. | [src](../../../core/tools/bash_session.py#L800) |
+| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L810) |
+| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L832) |
+| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L839) |
 
 ## `core/tools/brain_write_gate.py`
 _HARD gate for user-initiated writes to Jarvis' brain._
@@ -125,10 +126,11 @@ _`central_query` — Jarvis' direkte adgang til Den Intelligente Central (pull o
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_envelope` | `(status, action, data, error, source, t0, **meta_extra)` | — | [src](../../../core/tools/central_query_tool.py#L31) |
-| function | `_paginate` | `(items, offset, limit)` | Returnér en side + pagina-meta. ALDRIG trunkér en linje midt over: vi dropper | [src](../../../core/tools/central_query_tool.py#L39) |
-| function | `_nerve_klass` | `(nerve)` | NerveSpec.klass for en nerve (til sikker toggle). Defaulter SECURITY-SIKKERT: | [src](../../../core/tools/central_query_tool.py#L57) |
-| function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L75) |
+| function | `_incident_counts` | `(snap)` | Sande incident-tal til status-svaret. | [src](../../../core/tools/central_query_tool.py#L31) |
+| function | `_envelope` | `(status, action, data, error, source, t0, **meta_extra)` | — | [src](../../../core/tools/central_query_tool.py#L59) |
+| function | `_paginate` | `(items, offset, limit)` | Returnér en side + pagina-meta. ALDRIG trunkér en linje midt over: vi dropper | [src](../../../core/tools/central_query_tool.py#L67) |
+| function | `_nerve_klass` | `(nerve)` | NerveSpec.klass for en nerve (til sikker toggle). Defaulter SECURITY-SIKKERT: | [src](../../../core/tools/central_query_tool.py#L85) |
+| function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L103) |
 
 ## `core/tools/code_navigation_tools.py`
 _Symbol find / find usages — regex-based v1._
@@ -170,11 +172,11 @@ _Tool: send_push_notification — proaktiv push til brugerens companion (mobil/d
 | function | `_exec_send_push_notification` | `(args)` | — | [src](../../../core/tools/companion_push_tools.py#L41) |
 
 ## `core/tools/composer_suggest_tools.py`
-_Jarvis' eget forslag i komponisten — «hvad kunne Bjørn skrive nu?»._
+_Jarvis' eget forslag i komponisten — den næste OPGAVE, i Bjørns ord._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_suggest_next_message` | `(args)` | — | [src](../../../core/tools/composer_suggest_tools.py#L29) |
+| function | `_exec_suggest_next_task` | `(args)` | — | [src](../../../core/tools/composer_suggest_tools.py#L44) |
 
 ## `core/tools/composites_tools.py`
 _Composite tools interface — self-extension for Jarvis._
@@ -193,14 +195,14 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L213) |
-| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L219) |
-| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L229) |
-| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L245) |
-| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L340) |
-| function | `_betinget_kraevede` | `(user_message)` | Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem. | [src](../../../core/tools/copilot_tool_pruning.py#L367) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L414) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L419) |
+| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L368) |
+| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L374) |
+| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L384) |
+| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L400) |
+| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L495) |
+| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L530) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L584) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L589) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._
@@ -243,6 +245,17 @@ _Daemon health alert — detects inactive/crashed daemons and sends notification
 | function | `_exec_daemon_health_alert` | `(args)` | — | [src](../../../core/tools/daemon_alert_tools.py#L38) |
 | function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L118) |
 | function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L133) |
+
+## `core/tools/db_query_tool.py`
+_`db_query` — laeseadgang til Jarvis' database, med skemaet i fejlen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_json_safe_cell` | `(v)` | Coerce a raw SQLite cell value to a JSON-safe type. BLOB/bytes → utf-8 | [src](../../../core/tools/db_query_tool.py#L46) |
+| function | `_tabeller` | `(conn)` | — | [src](../../../core/tools/db_query_tool.py#L65) |
+| function | `_kolonner` | `(conn, tabel)` | — | [src](../../../core/tools/db_query_tool.py#L72) |
+| function | `skema_hint` | `(conn, fejl, sql)` | De navne der FINDES, givet en fejl om et navn der ikke gjorde. | [src](../../../core/tools/db_query_tool.py#L81) |
+| function | `_exec_db_query` | `(args)` | Run a read-only SELECT query against Jarvis' database. | [src](../../../core/tools/db_query_tool.py#L129) |
 
 ## `core/tools/decisions_tools.py`
 _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
@@ -402,6 +415,14 @@ _Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
 | function | `_exec_goal_list` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L86) |
 | function | `_exec_goal_get` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L108) |
 
+## `core/tools/graf_tools.py`
+_`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_graf_dir` | `()` | — | [src](../../../core/tools/graf_tools.py#L44) |
+| function | `_exec_vis_graf` | `(args)` | Tegn en graf og laeg den i traaden. Kaster aldrig. | [src](../../../core/tools/graf_tools.py#L49) |
+
 ## `core/tools/health_monitor_tools.py`
 _API health monitor tools — Jarvis can watch services and be notified of outages._
 
@@ -466,6 +487,17 @@ _Tools for Persistent Identity Sketch — read and update._
 | function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
 | function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
 
+## `core/tools/inbox_tools.py`
+_De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger` | `()` | Den autentificerede bruger. Tom streng når ingen er bundet. | [src](../../../core/tools/inbox_tools.py#L107) |
+| function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L148) |
+| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L170) |
+| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L193) |
+| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L213) |
+
 ## `core/tools/jarvis_brain_tools.py`
 _Visible Jarvis' værktøjer til hjernen._
 
@@ -501,29 +533,4 @@ _Single source of truth for what jarvis-code (jc) presents as tools._
 | function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L120) |
 | function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
 | function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
-
-## `core/tools/kommando_beskrivelse.py`
-_Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L55) |
-| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L59) |
-
-## `core/tools/load_more_tools.py`
-_Lazy tool schema loader for visible-lane tool pruning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_name` | `(tool_def)` | — | [src](../../../core/tools/load_more_tools.py#L10) |
-| function | `_tool_load_more_tools` | `(arguments)` | Resolve tools to add to the next round and return their full schemas. | [src](../../../core/tools/load_more_tools.py#L15) |
-
-## `core/tools/mail_tools.py`
-_Mail tools for Jarvis — jarvis@srvlab.dk_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_mail_config` | `()` | — | [src](../../../core/tools/mail_tools.py#L24) |
-| function | `_exec_send_mail` | `(args)` | Send an email from jarvis@srvlab.dk. | [src](../../../core/tools/mail_tools.py#L27) |
-| function | `_exec_read_mail` | `(args)` | Read recent emails from jarvis@srvlab.dk inbox. | [src](../../../core/tools/mail_tools.py#L70) |
 

@@ -86,3 +86,51 @@ def test_db_runtime_chronicle_signal_round_trip(isolated_runtime):
     assert updated is not None
     assert updated["status"] == "stale"
     assert updated["status_reason"] == "aged out"
+
+
+def test_upsert_brief_dedup_fyrer_for_status_briefed(isolated_runtime):
+    """Vagt mod brief-ophobningen (1/10-2026).
+
+    ``cadence_producers`` skriver briefs med status='briefed', men netop den
+    status stod IKKE i ``lookup_statuses`` i brief-upserten. ``_upsert_signal``
+    finder den eksisterende raekke via ``canonical_key`` + ``status IN (...)``,
+    saa opslaget matchede aldrig — og hver tur skrev en ny raekke. Maalt foer
+    fixet: 22.103 briefs med 15.468 unikke noegler.
+
+    Testen pinner BEGGE halvdele af fixet: at 'briefed' er foert til
+    lookup-listen, og at tre upserts med samme noegle derfor giver praecis én
+    raekke. Fjernes 'briefed' igen, fejler den her.
+    """
+    import core.runtime.db_runtime_chronicle as m
+
+    key = "chronicle-brief:2026-10-01:chat-test"
+    now = datetime.now(UTC).isoformat()
+
+    for i in range(3):
+        m.upsert_runtime_chronicle_consolidation_brief(
+            brief_id=f"brief-{i}",
+            brief_type="post_run_brief",
+            canonical_key=key,
+            status="briefed",
+            title=f"Brief {i}",
+            summary="Run brief",
+            rationale="Post-run carry-forward",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary="evidence",
+            support_summary="completed",
+            run_id=f"visible-run{i}",
+            session_id="chat-test",
+            created_at=now,
+            updated_at=now,
+        )
+
+    rows = [
+        row
+        for row in m.list_runtime_chronicle_consolidation_briefs()
+        if row["canonical_key"] == key
+    ]
+    assert len(rows) == 1, (
+        f"brief-ophobning: {len(rows)} raekker for samme noegle — 'briefed' mangler "
+        "sandsynligvis i lookup_statuses i upsert_runtime_chronicle_consolidation_brief"
+    )

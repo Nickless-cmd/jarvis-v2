@@ -161,8 +161,9 @@ _Attachment upload and serve endpoints._
 | function | `_is_executable_like` | `(mime, filename)` | Er filen af en type hvor en manglende scanning bør blokere? | [src](../../../apps/api/jarvis_api/routes/attachments.py#L156) |
 | function | `upload_attachment` | `(file, session_id=…)` | Upload a file and return its attachment_id. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L164) |
 | function | `list_images` | `(limit=…, session_id=…)` | Galleri-liste (#6): billed-attachments, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L329) |
-| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L344) |
-| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L369) |
+| function | `serve_media_from_db` | `(attachment_id)` | Samme fil, medie-agnostisk navn — til video og alt andet Jarvis laver. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L344) |
+| function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L357) |
+| function | `serve_attachment` | `(attachment_id, session_id=…)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L382) |
 
 ## `apps/api/jarvis_api/routes/auth.py`
 _Auth-routes (spec 2026-06-15 §5): register / verify-email / login._
@@ -189,16 +190,17 @@ _Enheder — list, fjern, registrér denne computer, og tænd/sluk reglen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L19) |
-| function | `_totp` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L27) |
-| function | `_app_id_for_registrering` | `(fra_kroppen)` | Desk-installationens id — fra tokenets claim, ellers fra kroppen. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L35) |
-| function | `_denne` | `()` | Er klienten der spørger, selv en tilføjet enhed? | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L66) |
-| function | `enheder` | `()` | Mine enheder, om reglen er tændt, og om DENNE klient er tilføjet. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L82) |
-| function | `fjern_enhed` | `(enheds_id)` | Fjern én af mine enheder. En telefon mister al adgang med det samme. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L90) |
-| class | `TotpReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L98) |
-| function | `registrer_denne_computer` | `(req)` | Tilføj den desk-installation der spørger (dens app_id) — med totrinskode. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L107) |
-| class | `KravReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L119) |
-| function | `saet_enheds_krav` | `(req)` | Tænd/sluk reglen «code mode kræver en tilføjet enhed». Kun ejeren. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L128) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L23) |
+| function | `_totp` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L31) |
+| function | `_app_id_for_registrering` | `(fra_kroppen)` | Desk-installationens id — fra tokenets claim, ellers fra kroppen. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L39) |
+| function | `_denne` | `()` | Er klienten der spørger, selv en tilføjet enhed? | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L70) |
+| function | `enheder` | `()` | Mine enheder, om reglen er tændt, og om DENNE klient er tilføjet. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L86) |
+| function | `fjern_enhed` | `(enheds_id)` | Fjern én af mine enheder. En telefon mister al adgang med det samme. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L94) |
+| function | `_token_med_app_id` | `(uid, app_id)` | Udsted et friskt token der BAERER `app_id` — og giv det til klienten. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L102) |
+| class | `TotpReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L157) |
+| function | `registrer_denne_computer` | `(req)` | Tilføj den desk-installation der spørger (dens app_id) — med totrinskode. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L166) |
+| class | `KravReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L181) |
+| function | `saet_enheds_krav` | `(req)` | Tænd/sluk reglen «code mode kræver en tilføjet enhed». Kun ejeren. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L190) |
 
 ## `apps/api/jarvis_api/routes/billing.py`
 _Billing / Stripe-integration (spec §21.6) — SKELET._
@@ -516,59 +518,56 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_message_reasoning` | `(message_id)` | Den FULDE tankestrøm bag ét svar — dovent, kun når nogen beder om den. | [src](../../../apps/api/jarvis_api/routes/chat.py#L573) |
 | function | `chat_roots` | `()` | Hvilke navngivne server-roots må denne bruger vælge imellem? | [src](../../../apps/api/jarvis_api/routes/chat.py#L599) |
 | function | `chat_set_session_workspace` | `(session_id, req)` | Bind samtalen til et workspace — server-root eller mappe på egen computer. | [src](../../../apps/api/jarvis_api/routes/chat.py#L616) |
-| function | `chat_get_session_permission` | `(session_id)` | Samtalens tilladelses-niveau — den ene sandhed begge klienter læser. | [src](../../../apps/api/jarvis_api/routes/chat.py#L645) |
-| function | `chat_set_session_permission` | `(session_id, req)` | Sæt samtalens tilladelses-niveau. Skriver til serveren, ikke lokalt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L662) |
-| function | `chat_tree` | `(kind=…, root=…, path=…)` | Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd | [src](../../../apps/api/jarvis_api/routes/chat.py#L679) |
-| function | `_tree_sync` | `(kind, root, path, role=…, uid=…)` | Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen. | [src](../../../apps/api/jarvis_api/routes/chat.py#L691) |
-| function | `_parse_git_status` | `(branch_out, porcelain_out, numstat_out)` | Parse git-output → {branch, dirty, added, removed}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L728) |
-| function | `_bro_findes` | `(uid)` | Er der overhovedet en bro registreret for brugeren? Self-safe. | [src](../../../apps/api/jarvis_api/routes/chat.py#L746) |
-| function | `_repo_og_vaert` | `(root=…)` | Hvilket repo, og hvilken maskine — til code-headerens kontekstlinje. | [src](../../../apps/api/jarvis_api/routes/chat.py#L755) |
-| function | `_git_status_sync` | `(kind, root, uid=…)` | BLOKERENDE git-opsamling — KØRES I TRÅD (asyncio.to_thread) så uvicorn- | [src](../../../apps/api/jarvis_api/routes/chat.py#L782) |
-| function | `chat_git_status` | `(kind=…, root=…)` | Git-state for det aktive workspace (header-chip i code-mode). Det blokerende | [src](../../../apps/api/jarvis_api/routes/chat.py#L841) |
-| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat.py#L862) |
-| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat.py#L871) |
-| function | `chat_git_branches` | `(kind=…, root=…)` | Alle branches i workspacet. Blokerende git offloades til en traad. | [src](../../../apps/api/jarvis_api/routes/chat.py#L884) |
-| class | `GitCheckoutRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L893) |
-| function | `chat_git_checkout` | `(request)` | Skift branch, eller opret og skift til en ny. | [src](../../../apps/api/jarvis_api/routes/chat.py#L901) |
-| class | `GitWorktreeRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L915) |
-| function | `chat_git_worktree` | `(request)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../apps/api/jarvis_api/routes/chat.py#L923) |
-| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L937) |
-| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat.py#L944) |
-| class | `ChatStreamRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L955) |
-| function | `_resolve_visible_target` | `(uid, provider_choice, model)` | Rolle-bevidst (provider, model)-override for en visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L992) |
-| function | `_visible_capable_providers` | `()` | Providers som stream_visible_model faktisk kan eksekvere til chat. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1058) |
-| function | `_list_visible_providers_sync` | `()` | {id, models[]} for hver visible-klar provider med enabled modeller i | [src](../../../apps/api/jarvis_api/routes/chat.py#L1068) |
-| function | `_list_ollama_models_sync` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1138) |
-| function | `chat_ollama_models` | `()` | Tilgængelige ollama-modeller på containeren (OWNER-only). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1147) |
-| class | `_TerminalRunBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1169) |
-| function | `_terminal_run_sync` | `(command, cwd)` | BLOKERENDE server-side kommando-kørsel — KØRES I TRÅD. cwd contained til | [src](../../../apps/api/jarvis_api/routes/chat.py#L1174) |
-| function | `chat_terminal_run` | `(body)` | Code-mode terminal-rude (§17), container-side: kør én kommando server-side | [src](../../../apps/api/jarvis_api/routes/chat.py#L1198) |
-| function | `chat_visible_providers` | `()` | Alle visible-klare providers + deres modeller (OWNER-only). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1217) |
-| class | `ChatSessionCreateRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1239) |
-| class | `ChatSessionRenameRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1249) |
-| function | `chat_sessions` | `(kind=…)` | List chat sessions. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1254) |
-| function | `chat_search_sessions` | `(q=…, limit=…)` | Søg sessioner på titel + besked-indhold. Scopes pr. bruger som | [src](../../../apps/api/jarvis_api/routes/chat.py#L1274) |
-| function | `chat_session_recovery` | `(session_id, response)` | Hvad er der at genoptage for denne samtale? 204 når der ikke er noget. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1284) |
-| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1306) |
-| function | `chat_cancel_active` | `(session_id)` | Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten | [src](../../../apps/api/jarvis_api/routes/chat.py#L1351) |
-| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect | [src](../../../apps/api/jarvis_api/routes/chat.py#L1373) |
-| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset 0 (cross-device + foreground- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1437) |
-| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1498) |
-| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1555) |
-| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1572) |
-| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1586) |
-| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1598) |
-| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1664) |
-| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1674) |
-| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1683) |
-| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1702) |
-| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1711) |
-| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1883) |
-| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1908) |
-| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1925) |
-| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1938) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1952) |
-| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1966) |
+| function | `chat_release_session_workspace` | `(session_id)` | Løsn samtalen fra sit workspace — «Fjern projekt». | [src](../../../apps/api/jarvis_api/routes/chat.py#L645) |
+| function | `chat_get_session_permission` | `(session_id)` | Samtalens tilladelses-niveau — den ene sandhed begge klienter læser. | [src](../../../apps/api/jarvis_api/routes/chat.py#L666) |
+| function | `chat_set_session_permission` | `(session_id, req)` | Sæt samtalens tilladelses-niveau. Skriver til serveren, ikke lokalt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L683) |
+| function | `chat_tree` | `(kind=…, root=…, path=…)` | Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd | [src](../../../apps/api/jarvis_api/routes/chat.py#L700) |
+| function | `_tree_sync` | `(kind, root, path, role=…, uid=…)` | Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen. | [src](../../../apps/api/jarvis_api/routes/chat.py#L712) |
+| function | `_parse_git_status` | `(branch_out, porcelain_out, numstat_out)` | Parse git-output → {branch, dirty, added, removed}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L749) |
+| function | `_bro_findes` | `(uid)` | Er der overhovedet en bro registreret for brugeren? Self-safe. | [src](../../../apps/api/jarvis_api/routes/chat.py#L767) |
+| function | `_repo_og_vaert` | `(root=…)` | Hvilket repo, og hvilken maskine — til code-headerens kontekstlinje. | [src](../../../apps/api/jarvis_api/routes/chat.py#L776) |
+| function | `_git_status_sync` | `(kind, root, uid=…)` | BLOKERENDE git-opsamling — KØRES I TRÅD (asyncio.to_thread) så uvicorn- | [src](../../../apps/api/jarvis_api/routes/chat.py#L803) |
+| function | `chat_git_status` | `(kind=…, root=…)` | Git-state for det aktive workspace (header-chip i code-mode). Det blokerende | [src](../../../apps/api/jarvis_api/routes/chat.py#L862) |
+| function | `chat_git_branches` | `(kind=…, root=…)` | Alle branches i workspacet. Blokerende git offloades til en traad. | [src](../../../apps/api/jarvis_api/routes/chat.py#L883) |
+| class | `GitCheckoutRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L892) |
+| function | `chat_git_checkout` | `(request)` | Skift branch, eller opret og skift til en ny. | [src](../../../apps/api/jarvis_api/routes/chat.py#L900) |
+| class | `GitWorktreeRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L914) |
+| function | `chat_git_worktree` | `(request)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../apps/api/jarvis_api/routes/chat.py#L922) |
+| class | `ChatStreamRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L936) |
+| function | `_resolve_visible_target` | `(uid, provider_choice, model)` | Rolle-bevidst (provider, model)-override for en visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L973) |
+| function | `_visible_capable_providers` | `()` | Providers som stream_visible_model faktisk kan eksekvere til chat. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1039) |
+| function | `_list_visible_providers_sync` | `()` | {id, models[]} for hver visible-klar provider med enabled modeller i | [src](../../../apps/api/jarvis_api/routes/chat.py#L1049) |
+| function | `_list_ollama_models_sync` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1119) |
+| function | `chat_ollama_models` | `()` | Tilgængelige ollama-modeller på containeren (OWNER-only). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1128) |
+| class | `_TerminalRunBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1150) |
+| function | `_terminal_run_sync` | `(command, cwd)` | BLOKERENDE server-side kommando-kørsel — KØRES I TRÅD. cwd contained til | [src](../../../apps/api/jarvis_api/routes/chat.py#L1155) |
+| function | `chat_terminal_run` | `(body)` | Code-mode terminal-rude (§17), container-side: kør én kommando server-side | [src](../../../apps/api/jarvis_api/routes/chat.py#L1179) |
+| function | `chat_visible_providers` | `()` | Alle visible-klare providers + deres modeller (OWNER-only). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1198) |
+| class | `ChatSessionCreateRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1220) |
+| class | `ChatSessionRenameRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1233) |
+| function | `chat_sessions` | `(kind=…, inkluder_arkiverede=…)` | List chat sessions. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1238) |
+| function | `chat_search_sessions` | `(q=…, limit=…)` | Søg sessioner på titel + besked-indhold. Scopes pr. bruger som | [src](../../../apps/api/jarvis_api/routes/chat.py#L1264) |
+| function | `chat_session_recovery` | `(session_id, response)` | Hvad er der at genoptage for denne samtale? 204 når der ikke er noget. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1274) |
+| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1302) |
+| function | `chat_cancel_active` | `(session_id)` | Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten | [src](../../../apps/api/jarvis_api/routes/chat.py#L1372) |
+| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect | [src](../../../apps/api/jarvis_api/routes/chat.py#L1394) |
+| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset 0 (cross-device + foreground- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1458) |
+| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1519) |
+| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1576) |
+| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1593) |
+| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1607) |
+| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1637) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1703) |
+| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1713) |
+| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1722) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1741) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1750) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1922) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1947) |
+| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1964) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1977) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1991) |
+| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L2005) |
 
 ## `apps/api/jarvis_api/routes/chat_artifacts.py`
 _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af samtaler._
@@ -588,6 +587,14 @@ _Kontekstforbrug og komprimeringsstatus til Desk._
 | function | `_system_overhead_tokens` | `(provider, model, session_id)` | Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L143) |
 | class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L173) |
 | function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L179) |
+
+## `apps/api/jarvis_api/routes/chat_inbox.py`
+_Bjørns egen vej ind i indbakken — den fjerde skriver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
+| function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
 
 ## `apps/api/jarvis_api/routes/chat_rewind.py`
 _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
@@ -614,28 +621,14 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `udled_tool_scope` | `(mode, kind)` | Mode + samtalens art → tool-scope. Ren funktion, så reglen kan testes. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L28) |
-| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L64) |
-| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L91) |
-| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L111) |
-| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L117) |
-| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L123) |
-| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L140) |
-| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L148) |
-| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L179) |
-| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L199) |
-| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L232) |
-
-## `apps/api/jarvis_api/routes/cheap_balancer.py`
-_Mission Control endpoints for cheap_lane_balancer telemetry + controls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_state` | `()` | Return full snapshot: pool, slot states, recent calls. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L12) |
-| function | `reset` | `(slot_id)` | Clear breaker, cooldown, and consecutive_failures for a slot. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L19) |
-| function | `disable` | `(slot_id)` | Force a slot's weight to 0 (excluded from selection until enabled). | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L26) |
-| function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
-| function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
-| function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
-| function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
-| function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
+| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L69) |
+| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L96) |
+| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L116) |
+| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L122) |
+| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L128) |
+| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L145) |
+| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L153) |
+| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
+| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
+| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
 

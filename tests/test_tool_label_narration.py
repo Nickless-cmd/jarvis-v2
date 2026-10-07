@@ -80,9 +80,21 @@ def test_operator_bash_faar_ogsaa_kommando_hintet():
     """Fejlen han så, hele vejen igennem: navnet OG hintet på samme kald."""
     ud = _tool_label("operator_bash",
                      {"command": "cd /media/projects/jarvis-v2 && grep -rn x core"})
-    assert ud == "Kører kommando: grep x"
+    assert ud == "Bash: grep x"
 
 
 def test_et_UKENDT_vaerktoej_opfinder_vi_ikke_et_navn_til():
-    """Bedre det rå navn end en etiket der påstår noget forkert."""
-    assert _tool_label("noget_helt_nyt") == "noget_helt_nyt"
+    """En reserveetiket må aldrig vise rå snake_case eller operator_-præfiks."""
+    assert _tool_label("noget_helt_nyt") == "Noget helt nyt"
+    assert _tool_label("operator_noget_helt_nyt") == "Noget helt nyt"
+
+
+@pytest.mark.parametrize("navn,forventet", [
+    ("github_list_issues", "Viser sager i GitHub"),
+    ("gmail_search", "Søger i Gmail"),
+    ("calendar_list_events", "Viser begivenheder i kalender"),
+    ("docs_read", "Læser dokumenter"),
+    ("operator_run_in_background", "Kører i baggrunden"),
+])
+def test_reserveetiket_for_registrerede_vaerktoejer(navn, forventet):
+    assert _tool_label(navn) == forventet

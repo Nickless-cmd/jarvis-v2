@@ -219,7 +219,8 @@ SKEMA_GRAENSE: Final[int] = 4
 _NOTE_SIDEOPGAVE = (
     "⚠ Der står {antal} TODO/FIXME i det du lige læste. Skal noget af det "
     "laves — men ikke nu — så park det i stedet for at glemme det: "
-    "`flag_side_task` (hent den med `load_more_tools`)."
+    "`flag_side_task` (hent den med `load_more_tools`, og kald den derefter med "
+    "`call_loaded_tool`)."
 )
 
 #: Mærker der betyder «her ligger arbejde nogen har udskudt».
@@ -234,7 +235,7 @@ SIDEOPGAVE_VAERKTOEJ: Final[str] = "flag_side_task"
 _NOTE_UDGIV = (
     "⚠ `{fil}` ligger nu på containeren — ikke hos Bjørn. Skal han kunne "
     "åbne den, så giv den en adresse: `publish_file` (hent den med "
-    "`load_more_tools`)."
+    "`load_more_tools`, og kald den derefter med `call_loaded_tool`)."
 )
 #: Værktøjet der giver en fil en adresse.
 UDGIV_VAERKTOEJ: Final[str] = "publish_file"

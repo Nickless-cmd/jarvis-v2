@@ -132,7 +132,11 @@ def tick_visual_memory_daemon() -> dict[str, object]:
 
     _prune_old_records()
 
-    model, provider = _vision_model()
+    # Kadencen er en sansning og tvinger derfor CONFIG-modellen (5/10-2026).
+    # Uden force_config låner den øjnene fra den tur der kører lige nu — og er
+    # den en tænke-model, skriver den sin egen instruktion ind i «indtrykket».
+    # Målt 2/10-2026: dagens eneste visuelle sans var 100% prompt-lækage.
+    model, provider = _vision_model(force_config=True)
     if not model:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
@@ -142,6 +146,13 @@ def tick_visual_memory_daemon() -> dict[str, object]:
     except Exception as exc:
         logger.warning("visual_memory: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
+
+    # Et dødt frame har intet at beskrive — og uden denne gate DIGTEDE modellen
+    # et rum ud af en sort flade. Se `_billede_er_doedt` for målingen.
+    kvalitet = _billede_er_doedt(image_b64)
+    if kvalitet["doedt"]:
+        logger.info("visual_memory: dødt frame — ingen beskrivelse (%s)", kvalitet["grund"])
+        return {"status": "image_unusable", "reason": kvalitet["grund"]}
 
     # Describe — feed most recent record for change detection
     existing_records = _load_records()
@@ -171,7 +182,7 @@ def tick_visual_memory_daemon() -> dict[str, object]:
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
 
-    _archive_sensory(
+    arkiveret = _archive_sensory(
         description,
         metadata={
             "source": "visual_memory_daemon",
@@ -189,7 +200,13 @@ def tick_visual_memory_daemon() -> dict[str, object]:
     except Exception:
         pass
 
-    return {"status": "captured", "captured_at": now, "preview": description[:80]}
+    # «Intet mærkbart ændret.» er et gyldigt udfald af at kigge — men ikke et
+    # indtryk. Tick'en skal sige det, ikke bogføre en sansning der ikke blev skrevet.
+    return {
+        "status": "captured" if arkiveret else "unchanged",
+        "captured_at": now,
+        "preview": description[:80],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -272,16 +289,29 @@ def _coarse_age_label(minutes_ago: int) -> str:
     return "(for over en uge siden)"
 
 
-def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, object]:
+def look_around_now(
+    *,
+    where: str = "",
+    prompt_override: str = "",
+    arkiver: bool = True,
+) -> dict[str, object]:
     """On-demand capture — Jarvis chooses to look. Bypasses cadence-limit.
 
     Returns {status, description, captured_at} or {status, error}.
     Called from the `look_around` tool.
+
+    `arkiver=False` giver beskrivelsen UDEN at spejle den i Sansernes Arkiv.
+    Brugt af sanse-daemonens atmosphere- og mixed-grene (6/10-2026): de skriver
+    deres EGEN post og ejer dermed modaliteten. Uden flaget skrev hver
+    atmosphere-sansning TO rækker med samme tekst — én `visual` (herfra) og én
+    `atmosphere` (fra kalderen) — og `count(modality='visual')` talte dem begge.
     """
     if not _enabled():
         return {"status": "disabled", "reason": "layer_visual_memory_enabled=false"}
     _prune_old_records()
-    model, provider = _vision_model()
+    # Også et bevidst kig er en sansning: config-modellen, ikke tur-modellen.
+    # Samme grund som i `tick_visual_memory_daemon` — se `_vision_model`.
+    model, provider = _vision_model(force_config=True)
     if not model:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
@@ -293,6 +323,13 @@ def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, 
     except Exception as exc:
         logger.warning("look_around: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
+
+    # Et dødt frame har intet at beskrive. Uden denne gate DIGTEDE modellen et
+    # rum ud af en sort flade (målt 5/10-2026). Se `_billede_er_doedt`.
+    kvalitet = _billede_er_doedt(image_b64)
+    if kvalitet["doedt"]:
+        logger.info("look_around: dødt frame — ingen beskrivelse (%s)", kvalitet["grund"])
+        return {"status": "image_unusable", "reason": kvalitet["grund"], "camera": camera_label}
 
     existing_records = _load_records()
     # Et bevidst kig skal beskrive rummet. Sammenligningen med forrige optagelse
@@ -332,17 +369,18 @@ def look_around_now(*, where: str = "", prompt_override: str = "") -> dict[str, 
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
 
-    _archive_sensory(
-        description,
-        metadata={
-            "source": "look_around",
-            "model": model,
-            "provider": provider,
-            "on_demand": True,
-            "camera": camera_label,
-            "custom_prompt": bool(prompt_to_use),
-        },
-    )
+    if arkiver:
+        _archive_sensory(
+            description,
+            metadata={
+                "source": "look_around",
+                "model": model,
+                "provider": provider,
+                "on_demand": True,
+                "camera": camera_label,
+                "custom_prompt": bool(prompt_to_use),
+            },
+        )
 
     try:
         event_bus.publish(
@@ -364,7 +402,10 @@ def build_visual_memory_surface() -> dict[str, object]:
     _prune_old_records()
     records = _load_records()
     latest = records[-1] if records else None
-    model, provider = _vision_model()
+    # Fladen beskriver SANSINGS-laget, og lagets øjne er config-modellen
+    # (5/10-2026). Uden force_config kunne feltet `configured_model` vise den
+    # valgte tur-model — et mærke der løj om hvad laget faktisk bruger.
+    model, provider = _vision_model(force_config=True)
     return {
         "enabled": _enabled(),
         "configured_model": model or "(ikke konfigureret)",
@@ -382,6 +423,70 @@ def build_visual_memory_surface() -> dict[str, object]:
 # Internal: image capture
 # ---------------------------------------------------------------------------
 
+
+
+# ---------------------------------------------------------------------------
+# Dødt frame — bærer billedet information? (se `_billede_er_doedt`)
+# ---------------------------------------------------------------------------
+
+#: Et frame uden struktur bærer ingen information. Målt 5/10-2026 i gråtoner
+#: (std): helt sort 0,00 · sort med svag støj 0,50 · næsten sort 0,56 ·
+#: mørkt rum med ét lysglimt 3,87 · lyst rum 39,87. Springet mellem «dødt» og
+#: «levende» er syvfoldigt, så grænsen ligger roligt i den tomme dal.
+_MINDSTE_STRUKTUR = 1.0
+
+
+def _billede_er_doedt(image_b64: str) -> dict[str, object]:
+    """Bærer billedet information — eller er det en død flade?
+
+    ## Hvorfor det ikke er nok at spørge modellen
+
+    Målt 5/10-2026: tre poster i Sansernes Arkiv var ikke sanseindtryk.
+    Modellen havde fået et dødt frame og DIGTEDE et rum i stedet for at sige
+    at der ikke var noget at se:
+
+      «Da billedet er helt sort, bliver sanseoplevelsen ikke visuel, men
+       flytter sig i stedet ind i det, der sker i fraværet af lys.»
+      «Jeg kan desværre ikke se noget billede ... Hvis du uploader billedet
+       igen, vil jeg meget gerne beskrive stemningen ...»
+
+    Værn i arkivet kunne fange dem, men det ville være at lede efter
+    formuleringer — og formuleringer er uendelige. GENERATOREN er at et dødt
+    frame overhovedet når modellen. Er der intet at se, skal der ikke
+    beskrives: ingen model, intet indtryk, ingen post.
+
+    ## Hvad der måles
+
+    Standardafvigelsen i gråtoner — ikke gennemsnittet. Et mørkt rum er ikke
+    det samme som et dødt frame: målt 17/9-2026 beskrev arkivet «kun en svag
+    kornet tekstur anes», og den sansning er ægte. Struktur er signalet, og
+    en ensartet flade har ingen, uanset hvor lys den er.
+
+    Returnerer ``{"doedt": bool, "std": float | None, "grund": str}``. Et
+    frame der ikke kan afkodes regnes som dødt — hvad vi ikke kan måle, kan
+    modellen heller ikke se.
+    """
+    import numpy as _np
+
+    try:
+        import cv2
+
+        raa = base64.b64decode(image_b64, validate=False)
+        graa = cv2.imdecode(_np.frombuffer(raa, dtype=_np.uint8), cv2.IMREAD_GRAYSCALE)
+    except Exception as exc:  # hvad vi ikke kan måle, kan modellen heller ikke se
+        return {"doedt": True, "std": None, "grund": f"måling fejlede: {exc}"}
+
+    if graa is None:
+        return {"doedt": True, "std": None, "grund": "frame kunne ikke afkodes"}
+    std = float(graa.std())
+
+    if std < _MINDSTE_STRUKTUR:
+        return {
+            "doedt": True,
+            "std": std,
+            "grund": f"ingen struktur i frame (std {std:.2f} < {_MINDSTE_STRUKTUR})",
+        }
+    return {"doedt": False, "std": std, "grund": ""}
 
 
 # ---------------------------------------------------------------------------
@@ -744,7 +849,20 @@ def _describe_via_ollama(
         pass
     text = str(data.get("response") or "").strip()
     if len(text) > _MAX_DESC_CHARS:
-        text = text[:_MAX_DESC_CHARS].rstrip() + "…"
+        # Klip ved en SAETNINGSGRAENSE — ikke blindt ved tegnet.
+        #
+        # Maalt 6/10-2026: 818 poster (30% af arkivet) var klippet midt i en
+        # saetning, fordi `num_predict: 150` tillader ~450-600 tegn mens
+        # graensen her er 300. Et halvt led LIGNER et indtryk — det har
+        # laengde, og «…» laeses som stil — men det er et svar der aldrig
+        # blev faerdigt, arkiveret som om det var en sansning.
+        #
+        # Maalt mod alle 818 foer aendringen: 0 ville blive tomme, 813 bliver
+        # kortere men HELE. «…» betyder herefter praecis: her blev der klippet
+        # midt i noget — et helt indtryk slutter uden.
+        from core.services.sensory_archive import klip_ved_saetningsgraense
+        hel = klip_ved_saetningsgraense(text, _MAX_DESC_CHARS)
+        text = hel if hel else text[:_MAX_DESC_CHARS].rstrip() + "…"
     return text
 
 
@@ -768,24 +886,37 @@ def _prune_old_records() -> None:
         set_runtime_state_value(_STATE_KEY, kept)
 
 
-def _vision_model() -> tuple[str, str]:
+def _vision_model(*, force_config: bool = False) -> tuple[str, str]:
     """Return (model_name, provider) — den valgte model vinder over config.
 
     Har Bjørn valgt en syns-model i composeren, skal look_around kigge gennem de
     øjne han har valgt. Uden et aktivt valg — daemon-stien, hvor ingen tur kører
     — gælder runtime-config som før.
+
+    Når force_config=True, springes den aktive visible model over — brug til
+    sansningsværktøjer (look_around, natrutine) hvor thinking-modeller som
+    deepseek-v4-flash lækker reasoning ind i impressionen. Se arkiv-tjek
+    2/10-2026: dagens eneste visuelle sans var 100% prompt-lækage.
+
+    KOBLET TIL 5/10-2026: `tick_visual_memory_daemon`, `look_around_now` og
+    `build_visual_memory_surface` sender nu force_config=True. Indtil da var
+    parameteren bygget men kaldt af ingen — og sansnings-vejen lånte derfor den
+    valgte tur-models øjne. Den valgte model gælder stadig for læsning af
+    billeder Bjørn selv sender (attachment_service); grænsen går mellem at LÆSE
+    et billede nogen gav mig, og at PRODUCERE et sanseindtryk.
     """
-    try:
-        from core.services.vision_backend import (
-            active_visible_target,
-            model_can_see,
-            resolve_vision_provider,
-        )
-        chosen_provider, chosen_model = active_visible_target()
-        if chosen_model and model_can_see(chosen_model):
-            return chosen_model, (chosen_provider or resolve_vision_provider(chosen_model))
-    except Exception:
-        pass
+    if not force_config:
+        try:
+            from core.services.vision_backend import (
+                active_visible_target,
+                model_can_see,
+                resolve_vision_provider,
+            )
+            chosen_provider, chosen_model = active_visible_target()
+            if chosen_model and model_can_see(chosen_model):
+                return chosen_model, (chosen_provider or resolve_vision_provider(chosen_model))
+        except Exception:
+            pass
 
     settings = load_settings()
     model = str(settings.extra.get("vision_model_name") or "").strip()
@@ -806,10 +937,17 @@ def _enabled() -> bool:
     return bool(settings.extra.get("layer_visual_memory_enabled", True))
 
 
-def _archive_sensory(description: str, *, metadata: dict[str, object]) -> None:
-    """Mirror every visual memory into Sansernes Arkiv. Silent on failure."""
+def _archive_sensory(description: str, *, metadata: dict[str, object]) -> bool:
+    """Mirror every visual memory into Sansernes Arkiv.
+
+    Returnerer False når posten blev sprunget over som kvittering (fx «Intet
+    mærkbart ændret.») — kalderen skal kunne sige at der ikke var noget nyt,
+    i stedet for at bogføre et indtryk der ikke blev skrevet. Tavs ved fejl.
+    """
     try:
         from core.services.sensory_archive import record_visual
-        record_visual(description, metadata=dict(metadata))
+        record = record_visual(description, metadata=dict(metadata))
+        return not record.get("skipped")
     except Exception as exc:
         logger.debug("visual_memory: archive mirror failed: %s", exc)
+        return False

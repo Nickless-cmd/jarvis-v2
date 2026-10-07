@@ -158,3 +158,93 @@ def test_decentralized_veto_escalates_on_nongreen(monkeypatch) -> None:
     out = _evaluate()
     assert "veto" in called               # eskaleret til Centralen fordi lokalt var ikke-grønt
     assert out.blocked is True            # central RED + enforce → blokeret
+
+
+# ── Decentralisering: en optjent noegle sparer Centralens round-trip ──────────
+#
+# Wiret 6/10-2026. decision_gate er den stoerste kandidat: 74.898 groenne mod 12
+# roede (seneste 7/9) og 2 gule. Testene maaler ADFAERDEN — hvilke nerver der
+# naaede `central.decide` — ikke at koden staar der.
+
+
+class _TaellendeCentral(_FakeCentral):
+    """Som _FakeCentral, men husker hvilke nerver der faktisk naaede decide()."""
+
+    def __init__(self, verdicts: dict) -> None:
+        super().__init__(verdicts)
+        self.naaede: list[str] = []
+
+    def decide(self, nerve, ctx, fn, **kw):  # noqa: ANN001
+        self.naaede.append(nerve)
+        return self._v.get(nerve)
+
+
+def _sæt_noegler(monkeypatch, *navne: str) -> None:
+    monkeypatch.setattr("core.services.central_keymaker.is_decentralized",
+                        lambda n: n in navne)
+
+
+def _lokal_gate(decision: Decision):
+    return lambda ctx: Verdict("decision_gate", decision, reason="lokal")
+
+
+def test_optjent_decision_gate_springer_centralen_over_naar_groen(monkeypatch) -> None:
+    fake = _TaellendeCentral({
+        "veto": Verdict("veto", Decision.GREEN, "ok"),
+        "decision_gate": Verdict("decision_gate", Decision.GREEN, "ok"),
+    })
+    monkeypatch.setattr(central_core, "central", lambda: fake)
+    _sæt_noegler(monkeypatch, "decision_gate")
+    monkeypatch.setattr("core.services.gate_commit.commit_gate", _lokal_gate(Decision.GREEN))
+
+    ud = _evaluate()
+    assert ud.blocked is False and ud.reason is None
+    assert "decision_gate" not in fake.naaede, (
+        "en optjent+groen decision_gate skal resolvere lokalt, uden central-skat"
+    )
+    assert "veto" in fake.naaede, "veto har ingen noegle her og skal stadig gennem Centralen"
+
+
+def test_optjent_men_ikke_groen_eskalerer_til_centralen(monkeypatch) -> None:
+    """Fail-safe: noeglen fjerner kun overhead paa groent. Ikke-groent skal
+    optages og haandhaeves af Centralen som foer."""
+    central_switches.set_enabled("gate_enforce", "decision_gate", True)
+    try:
+        fake = _TaellendeCentral({
+            "veto": Verdict("veto", Decision.GREEN, "ok"),
+            "decision_gate": Verdict("decision_gate", Decision.RED, "konflikt"),
+        })
+        monkeypatch.setattr(central_core, "central", lambda: fake)
+        _sæt_noegler(monkeypatch, "decision_gate")
+        monkeypatch.setattr("core.services.gate_commit.commit_gate", _lokal_gate(Decision.RED))
+
+        ud = _evaluate()
+        assert "decision_gate" in fake.naaede, "ikke-groent lokalt SKAL eskalere"
+        assert ud.blocked is True and ud.reason == "konflikt"
+    finally:
+        central_switches.set_enabled("gate_enforce", "decision_gate", True)
+
+
+def test_lokal_gate_der_kaster_eskalerer_og_blokerer_ikke_af_sig_selv(monkeypatch) -> None:
+    # Flaget SKAL stilles tilbage: tests/test_gate_shadow.py kraever
+    # `_is_enforced("decision_gate") is True`, og det laeser samme flag. Uden
+    # try/finally her faldt to gate_shadow-tests — men kun naar de koerte EFTER
+    # denne. Husets moenster ovenfor goer det samme af samme grund.
+    central_switches.set_enabled("gate_enforce", "decision_gate", False)
+    try:
+        fake = _TaellendeCentral({
+            "veto": Verdict("veto", Decision.GREEN, "ok"),
+            "decision_gate": Verdict("decision_gate", Decision.GREEN, "ok"),
+        })
+        monkeypatch.setattr(central_core, "central", lambda: fake)
+        _sæt_noegler(monkeypatch, "decision_gate")
+
+        def sprael(ctx):
+            raise RuntimeError("lokal gate nede")
+
+        monkeypatch.setattr("core.services.gate_commit.commit_gate", sprael)
+        ud = _evaluate()
+        assert "decision_gate" in fake.naaede, "lokal fejl → fuld central-arbitrage"
+        assert ud.blocked is False
+    finally:
+        central_switches.set_enabled("gate_enforce", "decision_gate", True)

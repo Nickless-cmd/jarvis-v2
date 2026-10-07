@@ -148,6 +148,7 @@ export interface JarvisDeskBridge {
     onReady: (cb: (info: { version?: string }) => void) => () => void
     download: () => Promise<void>
     install: () => Promise<void>
+    installNow: () => Promise<void>
   }
   /** Dependency-doctor: detektér + installér manglende værktøjer (git/gh/node/rg). */
   deps: {
@@ -230,6 +231,7 @@ const bridge: JarvisDeskBridge = {
     },
     download: () => ipcRenderer.invoke('update:download'),
     install: () => ipcRenderer.invoke('update:install'),
+    installNow: () => ipcRenderer.invoke('update:install-now'),
   },
   deps: {
     detect: () => ipcRenderer.invoke('dep:detect'),

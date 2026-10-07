@@ -108,15 +108,21 @@ def active_visible_target() -> tuple[str, str]:
     return str(state.get("provider") or ""), str(state.get("model") or "")
 
 
-def resolve_vision_target() -> tuple[str, str, str]:
+def resolve_vision_target(*, force_config: bool = False) -> tuple[str, str, str]:
     """(provider, model, kilde) for syns-vaerktoejerne lige nu.
 
     kilde er "selected-model" naar oejnene sidder i den model der svarer Bjoern,
     ellers "config".
+
+    Når force_config=True, springes den aktive visible model over — brug til
+    sansningsværktøjer (look_around, natrutine) hvor thinking-modeller som
+    deepseek-v4-flash lækker reasoning ind i impressionen. Se dybdesession
+    30/9-2026 og arkiv-tjek 2/10-2026.
     """
-    provider, model = active_visible_target()
-    if model and model_can_see(model):
-        return (provider or resolve_vision_provider(model)), model, "selected-model"
+    if not force_config:
+        provider, model = active_visible_target()
+        if model and model_can_see(model):
+            return (provider or resolve_vision_provider(model)), model, "selected-model"
     from core.services.attachment_service import _vision_model
     configured = _vision_model()
     return resolve_vision_provider(configured), configured, "config"

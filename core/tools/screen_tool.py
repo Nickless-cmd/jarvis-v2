@@ -1,119 +1,117 @@
-"""Screen control tool — Jarvis can turn monitors on/off/standby.
+"""Screen control — turn Bjørn's monitors on/off/standby, or read their state.
 
-Uses xset DPMS commands through the correct display session (DISPLAY=:1
-with gdm Xauthority). Works because Jarvis runs on the same machine as
-Bjørn's desktop (CheifOne), under the same X session.
+The command runs on the OPERATOR's desktop (CheifOne) through the JarvisX
+bridge. Jarvis' runtime lives in a container on the server (10.0.0.39) and
+has no display of its own, so nothing here runs locally.
 
-States:
-- off: DPMS force off (monitors go dark immediately)
-- on: DPMS force on (wake up from standby/off)
-- standby: DPMS force standby (power saving, slower wake)
-- status: query current DPMS state ("Monitor is On/Off/Standby")
+Two paths, both measured on CheifOne 5/10-2026:
+
+* **primary — sysfs DRM.** ``/sys/class/drm/card*-DP-*/dpms`` takes
+  On/Off/Standby. Passwordless ``sudo -n`` works, and it does NOT touch the
+  session lock.
+* **fallback — GNOME D-Bus.** ``org.gnome.ScreenSaver.SetActive(true)``.
+  NOTE: this LOCKS the session, so it is only tried for off/standby, and only
+  when no connected DP output could be reached at all.
+
+``xset dpms`` is NOT a path. The session is Wayland, and XWayland answers
+"Server does not have the DPMS Extension". The previous implementation shelled
+out to ``xset`` on a hardcoded ``DISPLAY=:1`` — dead code twice over: it
+assumed Jarvis ran on the desktop, and the extension does not exist there
+anyway.
 """
 
 from __future__ import annotations
 
 import logging
-import subprocess
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# The X display and auth that actually work for Bjørn's session
-_DISPLAY = ":1"
-_XAUTHORITY = "/run/user/1000/gdm/Xauthority"
-_USER = "bs"
+# Bridge round-trip: command timeout + the 25s approval slack operator_bash adds.
+_COMMAND_TIMEOUT_S = 20.0
+_BRIDGE_TIMEOUT_S = 50.0
 
-_BASE_CMD = [
-    "sudo", "-u", _USER,
-    "DISPLAY=" + _DISPLAY,
-    "XAUTHORITY=" + _XAUTHORITY,
-    "xset",
-]
+#: sysfs DRM loop. Shared by every action; the action is substituted in.
+#: Exits 3 when no connected DP output was found, so the caller can tell
+#: "nothing to act on" apart from "the command failed".
+_DPMS_SHELL = r"""
+set -u
+found=0
+for d in /sys/class/drm/card*-DP-*/; do
+  [ -e "$d/dpms" ] || continue
+  [ "$(cat "$d/status" 2>/dev/null)" = "connected" ] || continue
+  found=1
+  echo "{action}" | sudo -n tee "$d/dpms" >/dev/null
+  echo "$(basename "$d"): $(cat "$d/dpms")"
+done
+if [ "$found" = "0" ]; then
+  echo "ingen tilsluttede DP-udgange fundet under /sys/class/drm" >&2
+  exit 3
+fi
+"""
+
+_STATUS_SHELL = r"""
+found=0
+for d in /sys/class/drm/card*-DP-*/; do
+  [ -e "$d/dpms" ] || continue
+  st="$(cat "$d/status" 2>/dev/null)"
+  [ "$st" = "connected" ] || continue
+  found=1
+  echo "$(basename "$d"): status=$st dpms=$(cat "$d/dpms")"
+done
+if [ "$found" = "0" ]; then
+  echo "ingen tilsluttede DP-udgange fundet under /sys/class/drm" >&2
+  exit 3
+fi
+"""
+
+#: Fallback for off/standby. Locks the session — see module docstring.
+_DBUS_FALLBACK = (
+    "XDG_RUNTIME_DIR=/run/user/1000 "
+    "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus "
+    "gdbus call --session --dest org.gnome.ScreenSaver "
+    "--object-path /org/gnome/ScreenSaver "
+    "--method org.gnome.ScreenSaver.SetActive true"
+)
 
 
-def _xset_dpms(action: str) -> dict[str, Any]:
-    """Run an xset dpms command and return structured result."""
-    cmd = _BASE_CMD + ["dpms", "force", action]
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=10,
+def _dpms_command(action: str) -> str:
+    """Shell command that sets (or reads) DPMS on every connected DP output."""
+    if action == "status":
+        return _STATUS_SHELL
+    return _DPMS_SHELL.format(action=action)
+
+
+def _run_on_operator(command: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Run `command` on the operator's desktop via the bridge.
+
+    Returns the bridge payload ({stdout, stderr, exit_code, …}) on success, or
+    ``{"error": …}`` with an honest reason when the bridge cannot be reached.
+    """
+    # Lazy imports: simple_tools imports this module at module level, and the
+    # canonical (patchable) helpers live there — see the §4 monkeypatch seam.
+    from core.tools.simple_tools import _operator_user_id, _run_operator_async
+
+    user_id = _operator_user_id(args)
+
+    async def _do() -> dict[str, Any]:
+        from core.tools.operator_tools import operator_bash_async
+
+        return await operator_bash_async(
+            command=command,
+            user_id=user_id,
+            timeout_s=_COMMAND_TIMEOUT_S,
+            # No approval dialog: the action is a screen power state, and a
+            # prompt would have to be answered on the very screen being turned
+            # off. The bridge auto-rejects after 20s anyway, so a dialog would
+            # make "off" fail whenever Bjørn is away from the desk.
+            skip_approval=True,
         )
-        stderr = result.stderr.strip()
-        if result.returncode != 0:
-            return {
-                "status": "error",
-                "text": f"xset failed (exit {result.returncode}): {stderr or 'no stderr'}",
-                "action": action,
-            }
-        if stderr and "kan ikke sende" not in stderr:
-            return {
-                "status": "ok",
-                "text": f"Monitor action '{action}' sent. Stderr note: {stderr}",
-                "action": action,
-            }
-        return {
-            "status": "ok",
-            "text": f"Monitor action '{action}' sent successfully.",
-            "action": action,
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "error",
-            "text": f"xset timed out after 10s for action '{action}'",
-            "action": action,
-        }
-    except FileNotFoundError:
-        return {
-            "status": "error",
-            "text": "xset not found on this system — is x11-server-utils installed?",
-        }
-    except Exception as exc:
-        logger.exception("screen_control failed")
-        return {
-            "status": "error",
-            "text": f"Screen control failed: {exc}",
-        }
 
-
-def _xset_dpms_status() -> dict[str, Any]:
-    """Query DPMS status and return structured result."""
-    cmd = _BASE_CMD + ["q"]
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        output = result.stdout.strip()
-        stderr = result.stderr.strip()
-        if result.returncode != 0:
-            return {
-                "status": "error",
-                "text": f"xset query failed (exit {result.returncode}): {stderr or 'no stderr'}",
-            }
-        # Parse DPMS state from output
-        for line in output.splitlines():
-            if "Monitor is" in line:
-                state = line.strip()
-                return {
-                    "status": "ok",
-                    "text": state,
-                    "monitor_state": state.replace("Monitor is ", "").strip().lower(),
-                }
-        return {
-            "status": "ok",
-            "text": f"DPMS status queried. Raw:\n{output}",
-        }
-    except Exception as exc:
-        return {
-            "status": "error",
-            "text": f"DPMS status query failed: {exc}",
-        }
+    result = _run_operator_async(_do, tool_name="screen_control", timeout_s=_BRIDGE_TIMEOUT_S)
+    if result.get("status") != "ok":
+        return {"error": str(result.get("error") or "ukendt bro-fejl")}
+    return result.get("result") or {}
 
 
 def _exec_screen_control(args: dict[str, Any]) -> dict[str, Any]:
@@ -133,10 +131,56 @@ def _exec_screen_control(args: dict[str, Any]) -> dict[str, Any]:
             "text": f"Invalid action: '{action}'. Valid: on, off, standby, status.",
         }
 
-    if action == "status":
-        return _xset_dpms_status()
+    payload = _run_on_operator(_dpms_command(action), args)
 
-    result = _xset_dpms(action)
+    if payload.get("error"):
+        return {
+            "status": "error",
+            "action": action,
+            "text": (
+                f"Kunne ikke nå Bjørns maskine: {payload['error']}. "
+                "screen_control kører via JarvisX-broen — den skal være forbundet. "
+                "(xset er ikke en vej: sessionen er Wayland uden DPMS-extension.)"
+            ),
+        }
+
+    exit_code = payload.get("exit_code")
+    stdout = str(payload.get("stdout") or "").strip()
+    stderr = str(payload.get("stderr") or "").strip()
+
+    if exit_code == 3:
+        # sysfs found nothing to act on. For off/standby, try the D-Bus path.
+        if action in ("off", "standby"):
+            fallback = _run_on_operator(_DBUS_FALLBACK, args)
+            if not fallback.get("error") and fallback.get("exit_code") == 0:
+                return {
+                    "status": "ok",
+                    "action": action,
+                    "text": (
+                        "Ingen tilsluttede DP-udgange fundet — brugte GNOME D-Bus i stedet. "
+                        "BEMÆRK: den låser sessionen."
+                    ),
+                }
+        return {
+            "status": "error",
+            "action": action,
+            "text": stderr or "Ingen tilsluttede DP-udgange fundet under /sys/class/drm.",
+        }
+
+    if exit_code != 0:
+        return {
+            "status": "error",
+            "action": action,
+            "text": f"DPMS-kommando fejlede (exit {exit_code}): {stderr or stdout or 'ingen output'}",
+        }
+
+    if action == "status":
+        text = stdout or "Ingen tilsluttede DP-udgange fundet."
+    else:
+        text = f"Skærm-handling '{action}' udført.\n{stdout}" if stdout else f"Skærm-handling '{action}' udført."
+
+    result: dict[str, Any] = {"status": "ok", "action": action, "text": text}
+
     # Egress-fri Central-observation (§24.4): Jarvis HANDLER på den fysiske verden
     # (tænder/slukker Bjørns skærme). Kun handlings-label + ok-flag. Self-safe.
     try:
@@ -159,11 +203,11 @@ SCREEN_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "screen_control",
             "description": (
                 "Control the desktop monitors: turn them on, off, or "
-                "standby via DPMS. Also supports 'status' to query "
-                "current monitor state. "
+                "standby, or query their current state with 'status'. "
                 "Use 'screen_control action=off' to turn screens off, "
                 "'screen_control action=on' to wake them. "
-                "Virker på Bjørns maskine via xset DPMS."
+                "Kører på Bjørns maskine via JarvisX-broen (sysfs-DPMS). "
+                "Kræver at broen er forbundet."
             ),
             "parameters": {
                 "type": "object",
@@ -172,9 +216,9 @@ SCREEN_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "enum": ["on", "off", "standby", "status"],
                         "description": (
-                            "What to do: 'off' = sluk skærme (DPMS force off), "
-                            "'on' = tænd skærme, 'standby' = power saving, "
-                            "'status' = query current state"
+                            "What to do: 'off' = sluk skærme (DPMS off), "
+                            "'on' = tænd, 'standby' = strømspare, "
+                            "'status' = læs nuværende tilstand."
                         ),
                     },
                 },

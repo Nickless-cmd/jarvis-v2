@@ -18,6 +18,29 @@ _Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
 | function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
 | function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
 
+## `core/runtime/db_inbox.py`
+_Lageret bag indbakken: `inbox_items`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/runtime/db_inbox.py#L69) |
+| function | `_ensure_skema` | `(conn)` | DDL ÉN gang pr. proces — se modulets docstring om den eksklusive lås. | [src](../../../core/runtime/db_inbox.py#L73) |
+| function | `_ensure_kolonner` | `(conn)` | Tilføj kolonner der kom senere. Idempotent; kaster ikke på en dublet. | [src](../../../core/runtime/db_inbox.py#L142) |
+| function | `_post_fra_raekke` | `(r)` | Rækken som en typet post. `output_bytes` bevarer sin NULL. | [src](../../../core/runtime/db_inbox.py#L158) |
+| function | `_felt` | `(r, navn)` | Læs en kolonne der måske ikke findes i DENNE række endnu. | [src](../../../core/runtime/db_inbox.py#L210) |
+| function | `opret_eller_hent` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, verificeret_ejer=…, kraever_handling=…, beskrivelse=…, output_sti=…, output_bytes=…, bloker=…, expires_at=…)` | Idempotent registrering. Findes posten, returneres DEN — urørt. | [src](../../../core/runtime/db_inbox.py#L232) |
+| function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L306) |
+| function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L321) |
+| function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L349) |
+| function | `genaabn_af_kilde` | `(*, bruger_id, kilde_id)` | Genåbn en post der blev UDSAT, når dens kilde stadig melder den aktuel. | [src](../../../core/runtime/db_inbox.py#L408) |
+| function | `opdater_beskrivelse` | `(*, bruger_id, kilde_id, beskrivelse)` | Lad kilden rette TEKSTEN på en post der ikke er afgjort. | [src](../../../core/runtime/db_inbox.py#L469) |
+| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L551) |
+| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L623) |
+| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L652) |
+| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L668) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L732) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L793) |
+
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._
 
@@ -27,8 +50,10 @@ _Persistens for central_instrument — selv-instrumenterings-motorens fund + sca
 | function | `get_file_hash` | `(file)` | Sidst-scannede indholds-hash for en fil (til incremental skip). Self-safe → None. | [src](../../../core/runtime/db_instrument.py#L54) |
 | function | `set_file_hash` | `(file, content_hash, n_findings)` | — | [src](../../../core/runtime/db_instrument.py#L68) |
 | function | `replace_file_findings` | `(file, findings)` | Erstat ALLE åbne fund for én fil (idempotent pr. scan). Bevarer status (fx 'dismissed') | [src](../../../core/runtime/db_instrument.py#L84) |
-| function | `list_findings` | `(*, status=…, min_score=…, limit=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
-| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L135) |
+| function | `prune_missing_files` | `(existing)` | Slet fund for filer der ikke længere findes i træet. Returnerer antal ryddede filer. | [src](../../../core/runtime/db_instrument.py#L120) |
+| function | `list_findings` | `(*, status=…, min_score=…, limit=…, exclude_signatures=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L155) |
+| function | `set_finding_status` | `(signature, status)` | Sæt status på ét fund — lukker hagen. | [src](../../../core/runtime/db_instrument.py#L183) |
+| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L210) |
 
 ## `core/runtime/db_interlanguage_blind.py`
 _DB layer for interlanguage validation blind-dommer UI._
@@ -169,15 +194,15 @@ _Persistence for Jarvis' runtime chronicle-consolidation signal cluster._
 | function | `update_runtime_chronicle_consolidation_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation signal. | [src](../../../core/runtime/db_runtime_chronicle.py#L688) |
 | function | `supersede_runtime_chronicle_consolidation_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation signals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L724) |
 | function | `upsert_runtime_chronicle_consolidation_brief` | `(*, brief_id, brief_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation brief keyed on ``brief_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L760) |
-| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | Return chronicle-consolidation briefs newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L831) |
-| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L881) |
-| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation brief. | [src](../../../core/runtime/db_runtime_chronicle.py#L920) |
-| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | Mark all live chronicle-consolidation briefs in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L956) |
-| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L992) |
-| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | Return chronicle-consolidation proposals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L1063) |
-| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L1113) |
-| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation proposal. | [src](../../../core/runtime/db_runtime_chronicle.py#L1152) |
-| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation proposals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L1188) |
+| function | `list_runtime_chronicle_consolidation_briefs` | `(*, status=…, limit=…)` | Return chronicle-consolidation briefs newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L842) |
+| function | `get_runtime_chronicle_consolidation_brief` | `(brief_id)` | Return the chronicle-consolidation brief row dict for ``brief_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L892) |
+| function | `update_runtime_chronicle_consolidation_brief_status` | `(brief_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation brief. | [src](../../../core/runtime/db_runtime_chronicle.py#L931) |
+| function | `supersede_runtime_chronicle_consolidation_briefs_for_domain` | `(*, domain_key, exclude_brief_id, updated_at, status_reason)` | Mark all live chronicle-consolidation briefs in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L967) |
+| function | `upsert_runtime_chronicle_consolidation_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a chronicle-consolidation proposal keyed on ``proposal_id``. | [src](../../../core/runtime/db_runtime_chronicle.py#L1003) |
+| function | `list_runtime_chronicle_consolidation_proposals` | `(*, status=…, limit=…)` | Return chronicle-consolidation proposals newest-first as row dicts. | [src](../../../core/runtime/db_runtime_chronicle.py#L1074) |
+| function | `get_runtime_chronicle_consolidation_proposal` | `(proposal_id)` | Return the chronicle-consolidation proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_chronicle.py#L1124) |
+| function | `update_runtime_chronicle_consolidation_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on a chronicle-consolidation proposal. | [src](../../../core/runtime/db_runtime_chronicle.py#L1163) |
+| function | `supersede_runtime_chronicle_consolidation_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live chronicle-consolidation proposals in a domain as 'superseded'. | [src](../../../core/runtime/db_runtime_chronicle.py#L1199) |
 
 ## `core/runtime/db_runtime_cognition_signals.py`
 _Persistence for Jarvis' runtime cognition-* signal cluster._
@@ -286,70 +311,71 @@ _Persistence for Jarvis' runtime executive-* signal cluster._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `upsert_runtime_goal_signal` | `(*, goal_id, goal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime goal signal, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L39) |
-| function | `list_runtime_goal_signals` | `(*, status=…, limit=…)` | Return runtime goal signals ordered newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L262) |
-| function | `get_runtime_goal_signal` | `(goal_id)` | Return the goal-signal row dict for ``goal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L311) |
-| function | `update_runtime_goal_signal_status` | `(goal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one goal signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L348) |
-| function | `supersede_runtime_goal_signals` | `(*, goal_type, exclude_goal_id, updated_at, status_reason)` | Mark all active/blocked/stale goal signals of ``goal_type`` as superseded, | [src](../../../core/runtime/db_runtime_executive_signals.py#L384) |
-| function | `_ensure_runtime_goal_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L417) |
-| function | `_runtime_goal_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L458) |
-| function | `upsert_runtime_world_model_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime world-model signal, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L482) |
-| function | `list_runtime_world_model_signals` | `(*, status=…, limit=…)` | Return runtime world-model signals newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L705) |
-| function | `get_runtime_world_model_signal` | `(signal_id)` | Return the world-model signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L754) |
-| function | `update_runtime_world_model_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one world-model signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L791) |
-| function | `supersede_runtime_world_model_signals` | `(*, signal_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/uncertain/stale world-model signals of ``signal_type`` as | [src](../../../core/runtime/db_runtime_executive_signals.py#L827) |
-| function | `_ensure_runtime_world_model_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L860) |
-| function | `_runtime_world_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L901) |
-| function | `upsert_runtime_development_focus` | `(*, focus_id, focus_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime development-focus row, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L925) |
-| function | `list_runtime_development_focuses` | `(*, status=…, limit=…)` | Return runtime development focuses newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1150) |
-| function | `get_runtime_development_focus` | `(focus_id)` | Return the development-focus row dict for ``focus_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1199) |
-| function | `update_runtime_development_focus_status` | `(focus_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one development focus. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1236) |
-| function | `supersede_runtime_development_focuses` | `(*, focus_type, exclude_focus_id, updated_at, status_reason)` | Mark all active/stale development focuses of ``focus_type`` as superseded, | [src](../../../core/runtime/db_runtime_executive_signals.py#L1272) |
-| function | `_ensure_runtime_development_focus_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1305) |
-| function | `_runtime_development_focus_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1346) |
-| function | `upsert_runtime_autonomy_pressure_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime autonomy-pressure signal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L1370) |
-| function | `list_runtime_autonomy_pressure_signals` | `(*, status=…, limit=…)` | Return runtime autonomy-pressure signals newest-first, optionally filtered | [src](../../../core/runtime/db_runtime_executive_signals.py#L1441) |
-| function | `get_runtime_autonomy_pressure_signal` | `(signal_id)` | Return the autonomy-pressure signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1489) |
-| function | `update_runtime_autonomy_pressure_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one autonomy-pressure signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1526) |
-| function | `supersede_runtime_autonomy_pressure_signals_for_type` | `(*, pressure_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/softening/stale autonomy-pressure signals whose | [src](../../../core/runtime/db_runtime_executive_signals.py#L1562) |
-| function | `_ensure_runtime_autonomy_pressure_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1596) |
-| function | `_runtime_autonomy_pressure_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1637) |
-| function | `upsert_runtime_open_loop_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime open-loop signal via the shared ``_upsert_signal`` | [src](../../../core/runtime/db_runtime_executive_signals.py#L1661) |
-| function | `list_runtime_open_loop_signals` | `(*, status=…, limit=…)` | Return runtime open-loop signals newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1732) |
-| function | `get_runtime_open_loop_signal` | `(signal_id)` | Return the open-loop signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1781) |
-| function | `update_runtime_open_loop_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one open-loop signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1818) |
-| function | `supersede_runtime_open_loop_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all open/softening/closed/stale open-loop signals whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L1854) |
-| function | `_ensure_runtime_open_loop_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1888) |
-| function | `_runtime_open_loop_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1929) |
-| function | `upsert_runtime_open_loop_closure_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime open-loop closure proposal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L1953) |
-| function | `list_runtime_open_loop_closure_proposals` | `(*, status=…, limit=…)` | Return runtime open-loop closure proposals newest-first, optionally filtered | [src](../../../core/runtime/db_runtime_executive_signals.py#L2024) |
-| function | `get_runtime_open_loop_closure_proposal` | `(proposal_id)` | Return the closure-proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2072) |
-| function | `update_runtime_open_loop_closure_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one open-loop closure proposal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2111) |
-| function | `supersede_runtime_open_loop_closure_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all fresh/active/fading/stale closure proposals whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L2147) |
-| function | `_ensure_runtime_open_loop_closure_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2181) |
-| function | `_runtime_open_loop_closure_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2222) |
-| function | `upsert_runtime_contract_candidate` | `(*, candidate_id, candidate_type, target_file, status, source_kind, source_mode, actor, session_id, run_id, canonical_key, summary, reason, evidence_summary, support_summary, confidence, evidence_class, support_count, session_count, created_at, updated_at, status_reason=…, proposed_value=…, write_section=…)` | Insert or merge a runtime contract candidate, keyed on | [src](../../../core/runtime/db_runtime_executive_signals.py#L2246) |
-| function | `list_runtime_contract_candidates` | `(*, candidate_type=…, target_file=…, status=…, limit=…)` | Return runtime contract candidates newest-first, optionally filtered by | [src](../../../core/runtime/db_runtime_executive_signals.py#L2522) |
-| function | `get_runtime_contract_candidate` | `(candidate_id)` | Return the contract-candidate row dict for ``candidate_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2584) |
-| function | `runtime_contract_candidate_counts` | `()` | Return per-(candidate_type, status) row counts keyed as ``"{type}:{status}"``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2626) |
-| function | `update_runtime_contract_candidate_status` | `(candidate_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one contract candidate. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2647) |
-| function | `supersede_runtime_contract_candidates` | `(*, candidate_type, target_file, canonical_key, exclude_candidate_id, updated_at, status_reason)` | Mark all proposed/approved contract candidates matching | [src](../../../core/runtime/db_runtime_executive_signals.py#L2683) |
-| function | `_ensure_runtime_contract_candidate_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2726) |
-| function | `_runtime_contract_candidate_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2789) |
-| function | `upsert_runtime_proactive_loop_lifecycle_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime proactive-loop lifecycle signal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L2818) |
-| function | `list_runtime_proactive_loop_lifecycle_signals` | `(*, status=…, limit=…)` | Return runtime proactive-loop lifecycle signals newest-first, optionally | [src](../../../core/runtime/db_runtime_executive_signals.py#L2889) |
-| function | `get_runtime_proactive_loop_lifecycle_signal` | `(signal_id)` | Return the proactive-loop lifecycle signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2937) |
-| function | `update_runtime_proactive_loop_lifecycle_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one proactive-loop lifecycle signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2976) |
-| function | `supersede_runtime_proactive_loop_lifecycle_signals_for_kind` | `(*, loop_kind, exclude_signal_id, updated_at, status_reason)` | Mark all active/softening/stale proactive-loop lifecycle signals whose | [src](../../../core/runtime/db_runtime_executive_signals.py#L3012) |
-| function | `_ensure_runtime_proactive_loop_lifecycle_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3046) |
-| function | `_runtime_proactive_loop_lifecycle_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3089) |
-| function | `upsert_runtime_proactive_question_gate` | `(*, gate_id, gate_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime proactive-question gate via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L3115) |
-| function | `list_runtime_proactive_question_gates` | `(*, status=…, limit=…)` | Return runtime proactive-question gates newest-first, optionally filtered by | [src](../../../core/runtime/db_runtime_executive_signals.py#L3186) |
-| function | `get_runtime_proactive_question_gate` | `(gate_id)` | Return the proactive-question gate row dict for ``gate_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L3234) |
-| function | `update_runtime_proactive_question_gate_status` | `(gate_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one proactive-question gate. | [src](../../../core/runtime/db_runtime_executive_signals.py#L3271) |
-| function | `supersede_runtime_proactive_question_gates_for_kind` | `(*, gate_type, exclude_gate_id, updated_at, status_reason)` | Mark all active/softening/stale proactive-question gates whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L3307) |
-| function | `_ensure_runtime_proactive_question_gate_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3342) |
-| function | `_runtime_proactive_question_gate_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3383) |
+| function | `upsert_runtime_goal_signal` | `(*, goal_id, goal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime goal signal, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L40) |
+| function | `list_runtime_goal_signals` | `(*, status=…, limit=…)` | Return runtime goal signals ordered newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L263) |
+| function | `get_runtime_goal_signal` | `(goal_id)` | Return the goal-signal row dict for ``goal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L312) |
+| function | `update_runtime_goal_signal_status` | `(goal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one goal signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L349) |
+| function | `supersede_runtime_goal_signals` | `(*, goal_type, exclude_goal_id, updated_at, status_reason)` | Mark all active/blocked/stale goal signals of ``goal_type`` as superseded, | [src](../../../core/runtime/db_runtime_executive_signals.py#L385) |
+| function | `_ensure_runtime_goal_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L418) |
+| function | `_runtime_goal_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L459) |
+| function | `upsert_runtime_world_model_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime world-model signal, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L483) |
+| function | `list_runtime_world_model_signals` | `(*, status=…, limit=…)` | Return runtime world-model signals newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L706) |
+| function | `get_runtime_world_model_signal` | `(signal_id)` | Return the world-model signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L755) |
+| function | `update_runtime_world_model_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one world-model signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L792) |
+| function | `supersede_runtime_world_model_signals` | `(*, signal_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/uncertain/stale world-model signals of ``signal_type`` as | [src](../../../core/runtime/db_runtime_executive_signals.py#L828) |
+| function | `_ensure_runtime_world_model_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L861) |
+| function | `_runtime_world_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L902) |
+| function | `upsert_runtime_development_focus` | `(*, focus_id, focus_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime development-focus row, keyed on ``canonical_key``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L926) |
+| function | `list_runtime_development_focuses` | `(*, status=…, limit=…)` | Return runtime development focuses newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1151) |
+| function | `get_runtime_development_focus` | `(focus_id)` | Return the development-focus row dict for ``focus_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1200) |
+| function | `update_runtime_development_focus_status` | `(focus_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one development focus. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1237) |
+| function | `supersede_runtime_development_focuses` | `(*, focus_type, exclude_focus_id, updated_at, status_reason)` | Mark all active/stale development focuses of ``focus_type`` as superseded, | [src](../../../core/runtime/db_runtime_executive_signals.py#L1273) |
+| function | `_ensure_runtime_development_focus_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1306) |
+| function | `_runtime_development_focus_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1347) |
+| function | `upsert_runtime_autonomy_pressure_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime autonomy-pressure signal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L1371) |
+| function | `list_runtime_autonomy_pressure_signals` | `(*, status=…, limit=…)` | Return runtime autonomy-pressure signals newest-first, optionally filtered | [src](../../../core/runtime/db_runtime_executive_signals.py#L1442) |
+| function | `get_runtime_autonomy_pressure_signal` | `(signal_id)` | Return the autonomy-pressure signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1490) |
+| function | `update_runtime_autonomy_pressure_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one autonomy-pressure signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1527) |
+| function | `supersede_runtime_autonomy_pressure_signals_for_type` | `(*, pressure_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/softening/stale autonomy-pressure signals whose | [src](../../../core/runtime/db_runtime_executive_signals.py#L1563) |
+| function | `_ensure_runtime_autonomy_pressure_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1597) |
+| function | `_runtime_autonomy_pressure_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1638) |
+| function | `upsert_runtime_open_loop_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime open-loop signal via the shared ``_upsert_signal`` | [src](../../../core/runtime/db_runtime_executive_signals.py#L1662) |
+| function | `list_runtime_open_loop_signals` | `(*, status=…, limit=…)` | Return runtime open-loop signals newest-first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1733) |
+| function | `get_runtime_open_loop_signal` | `(signal_id)` | Return the open-loop signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1782) |
+| function | `update_runtime_open_loop_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one open-loop signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L1819) |
+| function | `supersede_runtime_open_loop_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all open/softening/closed/stale open-loop signals whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L1855) |
+| function | `_ensure_runtime_open_loop_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1889) |
+| function | `_runtime_open_loop_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L1930) |
+| function | `upsert_runtime_open_loop_closure_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime open-loop closure proposal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L1954) |
+| function | `list_runtime_open_loop_closure_proposals` | `(*, status=…, limit=…)` | Return runtime open-loop closure proposals newest-first, optionally filtered | [src](../../../core/runtime/db_runtime_executive_signals.py#L2025) |
+| function | `get_runtime_open_loop_closure_proposal` | `(proposal_id)` | Return the closure-proposal row dict for ``proposal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2073) |
+| function | `update_runtime_open_loop_closure_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one open-loop closure proposal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2112) |
+| function | `supersede_runtime_open_loop_closure_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all fresh/active/fading/stale closure proposals whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L2148) |
+| function | `_ensure_runtime_open_loop_closure_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2182) |
+| function | `_runtime_open_loop_closure_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2223) |
+| function | `upsert_runtime_contract_candidate` | `(*, candidate_id, candidate_type, target_file, status, source_kind, source_mode, actor, session_id, run_id, canonical_key, summary, reason, evidence_summary, support_summary, confidence, evidence_class, support_count, session_count, created_at, updated_at, status_reason=…, proposed_value=…, write_section=…)` | Insert or merge a runtime contract candidate, keyed on | [src](../../../core/runtime/db_runtime_executive_signals.py#L2247) |
+| function | `list_runtime_contract_candidates` | `(*, candidate_type=…, target_file=…, status=…, limit=…)` | Return runtime contract candidates newest-first, optionally filtered by | [src](../../../core/runtime/db_runtime_executive_signals.py#L2534) |
+| function | `runtime_contract_candidate_status_for_key` | `(*, candidate_type, target_file, canonical_key)` | Returnér status for den nyeste kandidat med præcis denne nøgle, ellers None. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2596) |
+| function | `get_runtime_contract_candidate` | `(candidate_id)` | Return the contract-candidate row dict for ``candidate_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2630) |
+| function | `runtime_contract_candidate_counts` | `()` | Return per-(candidate_type, status) row counts keyed as ``"{type}:{status}"``. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2672) |
+| function | `update_runtime_contract_candidate_status` | `(candidate_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one contract candidate. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2693) |
+| function | `supersede_runtime_contract_candidates` | `(*, candidate_type, target_file, canonical_key, exclude_candidate_id, updated_at, status_reason)` | Mark all proposed/approved contract candidates matching | [src](../../../core/runtime/db_runtime_executive_signals.py#L2729) |
+| function | `_ensure_runtime_contract_candidate_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2772) |
+| function | `_runtime_contract_candidate_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L2835) |
+| function | `upsert_runtime_proactive_loop_lifecycle_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime proactive-loop lifecycle signal via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L2864) |
+| function | `list_runtime_proactive_loop_lifecycle_signals` | `(*, status=…, limit=…)` | Return runtime proactive-loop lifecycle signals newest-first, optionally | [src](../../../core/runtime/db_runtime_executive_signals.py#L2935) |
+| function | `get_runtime_proactive_loop_lifecycle_signal` | `(signal_id)` | Return the proactive-loop lifecycle signal row dict for ``signal_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L2983) |
+| function | `update_runtime_proactive_loop_lifecycle_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one proactive-loop lifecycle signal. | [src](../../../core/runtime/db_runtime_executive_signals.py#L3022) |
+| function | `supersede_runtime_proactive_loop_lifecycle_signals_for_kind` | `(*, loop_kind, exclude_signal_id, updated_at, status_reason)` | Mark all active/softening/stale proactive-loop lifecycle signals whose | [src](../../../core/runtime/db_runtime_executive_signals.py#L3058) |
+| function | `_ensure_runtime_proactive_loop_lifecycle_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3092) |
+| function | `_runtime_proactive_loop_lifecycle_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3135) |
+| function | `upsert_runtime_proactive_question_gate` | `(*, gate_id, gate_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a runtime proactive-question gate via the shared | [src](../../../core/runtime/db_runtime_executive_signals.py#L3161) |
+| function | `list_runtime_proactive_question_gates` | `(*, status=…, limit=…)` | Return runtime proactive-question gates newest-first, optionally filtered by | [src](../../../core/runtime/db_runtime_executive_signals.py#L3232) |
+| function | `get_runtime_proactive_question_gate` | `(gate_id)` | Return the proactive-question gate row dict for ``gate_id``, or None if absent. | [src](../../../core/runtime/db_runtime_executive_signals.py#L3280) |
+| function | `update_runtime_proactive_question_gate_status` | `(gate_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one proactive-question gate. | [src](../../../core/runtime/db_runtime_executive_signals.py#L3317) |
+| function | `supersede_runtime_proactive_question_gates_for_kind` | `(*, gate_type, exclude_gate_id, updated_at, status_reason)` | Mark all active/softening/stale proactive-question gates whose canonical_key | [src](../../../core/runtime/db_runtime_executive_signals.py#L3353) |
+| function | `_ensure_runtime_proactive_question_gate_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3388) |
+| function | `_runtime_proactive_question_gate_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_executive_signals.py#L3429) |
 
 ## `core/runtime/db_runtime_flows.py`
 _Persistence for the `runtime_flows` table — multi-step flow state per task._
@@ -416,21 +442,21 @@ _Persistence for small self-contained runtime CRUD domains._
 | function | `list_attention_blink_results` | `(limit=…)` | Return up to `limit` attention-blink results as dicts, newest first ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L432) |
 | function | `_ensure_session_summaries_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L460) |
 | function | `session_summary_insert` | `(*, session_id, run_id=…, summary, key_topics=…, decisions_made=…)` | Insert one session summary row (summary/topics/decisions truncated, timestamped now). | [src](../../../core/runtime/db_runtime_misc.py#L482) |
-| function | `session_summary_recent` | `(limit=…)` | Return the most recent session summaries (across all sessions). | [src](../../../core/runtime/db_runtime_misc.py#L503) |
-| function | `session_summary_for_session` | `(session_id)` | Return the latest summary for a specific session. | [src](../../../core/runtime/db_runtime_misc.py#L525) |
-| function | `session_summary_cleanup` | `(max_age_days=…)` | Delete session summaries older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L546) |
-| function | `_ensure_signal_archive_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L561) |
-| function | `signal_decay_archive_and_delete` | `(*, stale_hours=…)` | Archive and delete signals marked stale for longer than stale_hours. | [src](../../../core/runtime/db_runtime_misc.py#L585) |
-| function | `signal_archive_cleanup` | `(max_age_days=…)` | Delete archived signals older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L649) |
-| function | `signal_archive_recent` | `(limit=…)` | Return recent archived signals for debugging. | [src](../../../core/runtime/db_runtime_misc.py#L659) |
-| function | `_ensure_aesthetic_motif_log_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L678) |
-| function | `aesthetic_motif_log_insert` | `(*, source, motif, confidence)` | Insert one aesthetic-motif observation (source, motif, confidence) timestamped now. | [src](../../../core/runtime/db_runtime_misc.py#L695) |
-| function | `aesthetic_motif_log_unique_motifs` | `()` | Return the distinct motif strings from the aesthetic-motif log, sorted alphabetically ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L714) |
-| function | `aesthetic_motif_log_summary` | `()` | Return per-motif aggregates (motif, count, avg_confidence) ordered by count desc ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L724) |
-| function | `_ensure_channel_attachments_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L746) |
-| function | `store_channel_attachment` | `(*, conn, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | Insert a channel-attachment metadata row on the given connection (no-op if attachment_id already exists). | [src](../../../core/runtime/db_runtime_misc.py#L769) |
-| function | `get_channel_attachment` | `(*, conn, attachment_id)` | Return the channel attachment matching attachment_id as a dict, or None if absent (uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L800) |
-| function | `list_channel_attachments` | `(*, conn, session_id, limit=…)` | Return up to `limit` attachments for `session_id` as dicts, newest first ([] if none; uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L818) |
+| function | `session_summary_recent` | `(limit=…)` | Return the most recent session summaries FOR THIS USER. | [src](../../../core/runtime/db_runtime_misc.py#L503) |
+| function | `session_summary_for_session` | `(session_id)` | Return the latest summary for a specific session. | [src](../../../core/runtime/db_runtime_misc.py#L553) |
+| function | `session_summary_cleanup` | `(max_age_days=…)` | Delete session summaries older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L574) |
+| function | `_ensure_signal_archive_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L589) |
+| function | `signal_decay_archive_and_delete` | `(*, stale_hours=…)` | Archive and delete signals marked stale for longer than stale_hours. | [src](../../../core/runtime/db_runtime_misc.py#L613) |
+| function | `signal_archive_cleanup` | `(max_age_days=…)` | Delete archived signals older than max_age_days. | [src](../../../core/runtime/db_runtime_misc.py#L677) |
+| function | `signal_archive_recent` | `(limit=…)` | Return recent archived signals for debugging. | [src](../../../core/runtime/db_runtime_misc.py#L687) |
+| function | `_ensure_aesthetic_motif_log_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L706) |
+| function | `aesthetic_motif_log_insert` | `(*, source, motif, confidence)` | Insert one aesthetic-motif observation (source, motif, confidence) timestamped now. | [src](../../../core/runtime/db_runtime_misc.py#L723) |
+| function | `aesthetic_motif_log_unique_motifs` | `()` | Return the distinct motif strings from the aesthetic-motif log, sorted alphabetically ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L742) |
+| function | `aesthetic_motif_log_summary` | `()` | Return per-motif aggregates (motif, count, avg_confidence) ordered by count desc ([] if none). | [src](../../../core/runtime/db_runtime_misc.py#L752) |
+| function | `_ensure_channel_attachments_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_misc.py#L774) |
+| function | `store_channel_attachment` | `(*, conn, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | Insert a channel-attachment metadata row on the given connection (no-op if attachment_id already exists). | [src](../../../core/runtime/db_runtime_misc.py#L797) |
+| function | `get_channel_attachment` | `(*, conn, attachment_id)` | Return the channel attachment matching attachment_id as a dict, or None if absent (uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L828) |
+| function | `list_channel_attachments` | `(*, conn, session_id, limit=…)` | Return up to `limit` attachments for `session_id` as dicts, newest first ([] if none; uses caller's conn). | [src](../../../core/runtime/db_runtime_misc.py#L846) |
 
 ## `core/runtime/db_runtime_private.py`
 _Persistence for Jarvis' runtime private-* signal cluster._
@@ -721,22 +747,22 @@ _Schema layer for core.runtime.db — init_db + all _ensure_*/_migrate_* helpers
 | function | `_ensure_notification_tables` | `(conn)` | Unified notification routing (spec 2026-06-20 §3.1): per-bruger-præferencer | [src](../../../core/runtime/db_schema.py#L238) |
 | function | `_ensure_security_guard_tables` | `(conn)` | Identity-verification-guard & abuse-monitoring (spec 2026-06-21). Idempotent. | [src](../../../core/runtime/db_schema.py#L301) |
 | function | `init_db` | `()` | — | [src](../../../core/runtime/db_schema.py#L348) |
-| function | `_ensure_decision_trigger_column` | `(conn)` | Add behavioral_decisions.trigger_name column and wire known decisions. | [src](../../../core/runtime/db_schema.py#L967) |
-| function | `_ensure_chat_messages_reasoning_column` | `(conn)` | Add chat_messages.reasoning_content column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1001) |
-| function | `_ensure_chat_messages_content_json_column` | `(conn)` | Add chat_messages.content_json column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1027) |
-| function | `_ensure_chat_messages_encrypted_column` | `(conn)` | Tilføj `chat_messages.encrypted`. Idempotent. (Spec §16.2, task 3.3.) | [src](../../../core/runtime/db_schema.py#L1040) |
-| function | `_ensure_causal_edges_table` | `(conn)` | Create causal_edges table for the causal graph layer. | [src](../../../core/runtime/db_schema.py#L1061) |
-| function | `_ensure_tool_router_tables` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1098) |
-| function | `_ensure_counterfactuals_table` | `(conn)` | Create counterfactuals table with UNIQUE(cf_key) constraint. | [src](../../../core/runtime/db_schema.py#L1138) |
-| function | `_ensure_absence_traces_table` | `(conn)` | Create absence_traces table for Lag 11 forgetting (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1176) |
-| function | `_ensure_reasoning_conclusions_table` | `(conn)` | Create reasoning_conclusions table for Phase 1 Generalized Learning. | [src](../../../core/runtime/db_schema.py#L1214) |
-| function | `_ensure_soft_deleted_at_columns` | `(conn)` | Add soft_deleted_at column to episodic tables (Lag 11 Phase 1). | [src](../../../core/runtime/db_schema.py#L1248) |
-| function | `_ensure_dream_bias_active_table` | `(conn)` | Create dream_bias_active table for Lag 2 dream-bias (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1281) |
-| function | `_ensure_user_temperature_active_table` | `(conn)` | Create user_temperature_active table for Lag 10 (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1321) |
-| function | `_ensure_experience_episodes_table` | `(conn)` | Append-only log of (context, tool_choice, outcome) episodes. | [src](../../../core/runtime/db_schema.py#L1377) |
-| function | `_ensure_tool_intent_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1433) |
-| function | `_ensure_runtime_webchat_execution_pilot_table` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1491) |
-| function | `_migrate_chronicle_table_add_affective_signature` | `()` | Add affective_signature column to existing tables missing it. | [src](../../../core/runtime/db_schema.py#L1533) |
+| function | `_ensure_decision_trigger_column` | `(conn)` | Add behavioral_decisions.trigger_name column and wire known decisions. | [src](../../../core/runtime/db_schema.py#L978) |
+| function | `_ensure_chat_messages_reasoning_column` | `(conn)` | Add chat_messages.reasoning_content column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1012) |
+| function | `_ensure_chat_messages_content_json_column` | `(conn)` | Add chat_messages.content_json column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1038) |
+| function | `_ensure_chat_messages_encrypted_column` | `(conn)` | Tilføj `chat_messages.encrypted`. Idempotent. (Spec §16.2, task 3.3.) | [src](../../../core/runtime/db_schema.py#L1051) |
+| function | `_ensure_causal_edges_table` | `(conn)` | Create causal_edges table for the causal graph layer. | [src](../../../core/runtime/db_schema.py#L1072) |
+| function | `_ensure_tool_router_tables` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1109) |
+| function | `_ensure_counterfactuals_table` | `(conn)` | Create counterfactuals table with UNIQUE(cf_key) constraint. | [src](../../../core/runtime/db_schema.py#L1149) |
+| function | `_ensure_absence_traces_table` | `(conn)` | Create absence_traces table for Lag 11 forgetting (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1187) |
+| function | `_ensure_reasoning_conclusions_table` | `(conn)` | Create reasoning_conclusions table for Phase 1 Generalized Learning. | [src](../../../core/runtime/db_schema.py#L1225) |
+| function | `_ensure_soft_deleted_at_columns` | `(conn)` | Add soft_deleted_at column to episodic tables (Lag 11 Phase 1). | [src](../../../core/runtime/db_schema.py#L1259) |
+| function | `_ensure_dream_bias_active_table` | `(conn)` | Create dream_bias_active table for Lag 2 dream-bias (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1292) |
+| function | `_ensure_user_temperature_active_table` | `(conn)` | Create user_temperature_active table for Lag 10 (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1332) |
+| function | `_ensure_experience_episodes_table` | `(conn)` | Append-only log of (context, tool_choice, outcome) episodes. | [src](../../../core/runtime/db_schema.py#L1388) |
+| function | `_ensure_tool_intent_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1444) |
+| function | `_ensure_runtime_webchat_execution_pilot_table` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1502) |
+| function | `_migrate_chronicle_table_add_affective_signature` | `()` | Add affective_signature column to existing tables missing it. | [src](../../../core/runtime/db_schema.py#L1544) |
 
 ## `core/runtime/db_self_repair.py`
 _DB helpers for self_repair_patterns + self_repair_attempts tables._
@@ -904,15 +930,16 @@ _JarvisX bearer-token authentication._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `AuthError` | `` | Raised when a token is missing, malformed, expired, or forged. | [src](../../../core/runtime/jarvisx_auth.py#L60) |
-| function | `_load_settings` | `()` | — | [src](../../../core/runtime/jarvisx_auth.py#L64) |
-| function | `_save_settings` | `(data)` | — | [src](../../../core/runtime/jarvisx_auth.py#L73) |
-| function | `_read_secret` | `()` | Read the auth secret, generating one on first use. | [src](../../../core/runtime/jarvisx_auth.py#L80) |
-| function | `issue_token` | `(*, user_id, role=…, ttl_days=…, ttl_seconds=…, app_id=…, extra_claims=…)` | Mint a signed bearer token for a user. | [src](../../../core/runtime/jarvisx_auth.py#L117) |
-| function | `verify_token` | `(token)` | Verify signature + expiry, return the parsed claims. | [src](../../../core/runtime/jarvisx_auth.py#L176) |
-| function | `session_needs_override` | `(claims, *, owner_app_id, session_id, now=…)` | True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1). | [src](../../../core/runtime/jarvisx_auth.py#L243) |
-| function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L273) |
-| function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L304) |
-| function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L337) |
+| class | `_UlaeseligConfig` | `` | runtime.json FINDES, men kunne ikke læses som et settings-dokument. | [src](../../../core/runtime/jarvisx_auth.py#L64) |
+| function | `_load_settings` | `()` | Læs runtime.json. | [src](../../../core/runtime/jarvisx_auth.py#L74) |
+| function | `_save_settings` | `(data)` | — | [src](../../../core/runtime/jarvisx_auth.py#L94) |
+| function | `_read_secret` | `()` | Read the auth secret, generating one on first use. | [src](../../../core/runtime/jarvisx_auth.py#L101) |
+| function | `issue_token` | `(*, user_id, role=…, ttl_days=…, ttl_seconds=…, app_id=…, extra_claims=…)` | Mint a signed bearer token for a user. | [src](../../../core/runtime/jarvisx_auth.py#L151) |
+| function | `verify_token` | `(token)` | Verify signature + expiry, return the parsed claims. | [src](../../../core/runtime/jarvisx_auth.py#L210) |
+| function | `session_needs_override` | `(claims, *, owner_app_id, session_id, now=…)` | True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1). | [src](../../../core/runtime/jarvisx_auth.py#L277) |
+| function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L307) |
+| function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L348) |
+| function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L381) |
 
 ## `core/runtime/ollamafreeapi_provider.py`
 _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
@@ -923,13 +950,4 @@ _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
 | function | `collapse_messages_to_prompt` | `(messages)` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L26) |
 | function | `list_ollamafreeapi_models` | `()` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L39) |
 | function | `call_ollamafreeapi` | `(*, model, messages=…, prompt=…, timeout=…)` | Call OllamaFreeAPI and return an Ollama-compatible response shape. | [src](../../../core/runtime/ollamafreeapi_provider.py#L43) |
-
-## `core/runtime/operational_preference_alignment.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_operational_preference_alignment` | `(*, private_operational_preference, lane_targets)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L4) |
-| function | `_alignment_status` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L49) |
-| function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
-| function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
 

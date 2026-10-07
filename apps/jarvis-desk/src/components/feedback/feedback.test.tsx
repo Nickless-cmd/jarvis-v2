@@ -5,9 +5,12 @@ import { HangPrompt } from './HangPrompt'
 import { LivenessIndicator } from './LivenessIndicator'
 
 describe('feedback', () => {
-  it('LivenessIndicator viser varighed i CC-form («42s», ikke «0:42»)', () => {
+  // 4/10-2026: formatet er «Xs»/«XXs»/«Xm Xs» — samme regel som `varighed()`
+  // i panelet. Bjørn: «Den skal tælle Xs så XXs og så Xm og Xs». Tallet bæres
+  // af hjulenes aria-label, fordi hjulenes DOM indeholder HELE ciffer-striben.
+  it('LivenessIndicator viser varigheden som rullende tal — «42s»', () => {
     render(<LivenessIndicator status="working" elapsedMs={42000} density="compact" />)
-    expect(screen.getByText(/42s/)).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: '42s' })).toBeInTheDocument()
   })
   it('LivenessIndicator: tænke-tid i CC-form, gennemstreget når tanken er SLUT', () => {
     const { container, rerender } = render(
@@ -32,7 +35,10 @@ describe('feedback', () => {
     const { container } = render(
       <LivenessIndicator status="working" elapsedMs={1000} density="compact" tokens={12800} />,
     )
-    expect(container.textContent).toContain('12.8k tokens')
+    // 4/10-2026: token-tallet ruller nu også — tallet står i hjulenes
+    // aria-label, ikke i textContent (der bærer hele ciffer-striben).
+    expect(screen.getByLabelText('12.8k')).toBeInTheDocument()
+    expect(container.textContent).toContain('tokens')
     // Ingen sektioner → ingen ledende separator før verbet.
     const { container: tom } = render(<LivenessIndicator status="working" elapsedMs={0} density="compact" />)
     expect(tom.textContent).not.toContain(' · ')

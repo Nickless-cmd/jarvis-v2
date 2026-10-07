@@ -257,6 +257,21 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Automation-suggestions — lærings-sløjfen, fase 2 (2026-10-01).
+    # Forslagene blev skrevet i 5½ måned uden en læser. Nu ligger de foran dig
+    # hver cyklus med deres id, så du kan LUKKE dem: accept_suggestion(id) hvis
+    # det skal blive en fast opgave, reject_suggestion(id) hvis det er støj.
+    try:
+        from core.services.habits_pipeline import (
+            format_pending_suggestions_for_heartbeat,
+        )
+
+        suggestions_line = format_pending_suggestions_for_heartbeat(max_items=3)
+        if suggestions_line:
+            parts.append(f"pending_suggestions: {suggestions_line}")
+    except Exception:  # forslag er berigelse — en fejl maa ikke koste heartbeat-cyklussen
+        pass
+
     # Forgetting (Lag 11) — ambient weight + self-marker echoes
     try:
         from core.services.forgetting_engine import (

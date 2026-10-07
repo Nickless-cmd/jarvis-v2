@@ -56,6 +56,26 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "baggrundsjob_vagt": {
+      "ejer": "core/services/baggrundsjob_vagt.py",
+      "beskrivelse": "Hvilke afsluttede baggrundsjob der ER meldt, saa det samme job ikke meldes to gange. {initialiseret: bool, meldt: {job_id: iso}}. `initialiseret` baerer koldstart-reglen: er den falsk, skrives alle nuvaerende faerdige jobs ind UDEN at melde, saa featuren ikke leverer en byge af gamle jobs naar den gaar live.",
+      "registreret": "2026-10-06"
+    },
+    "bg_jobs_grundlinje": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",
+      "registreret": "2026-10-03"
+    },
+    "bg_jobs_rapporteret": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Færdige baggrunds-shells — set, ikke gættet.",
+      "registreret": "2026-10-03"
+    },
+    "bg_jobs_sidste_tjek": {
+      "ejer": "core/services/background_job_watch.py",
+      "beskrivelse": "Færdige baggrunds-shells — set, ikke gættet.",
+      "registreret": "2026-10-03"
+    },
     "body_memory": {
       "ejer": "core/services/body_memory.py",
       "beskrivelse": "Body Memory — Jarvis' kropslige erindringer.",
@@ -65,6 +85,26 @@
       "ejer": "core/services/boredom_curiosity_bridge.py",
       "beskrivelse": "Boredom to Curiosity Bridge — transforms boredom into curiosity.",
       "registreret": "2026-09-25"
+    },
+    "candidate_review_digest": {
+      "ejer": "core/services/candidate_review_digest.py",
+      "beskrivelse": "Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed.",
+      "registreret": "2026-10-02"
+    },
+    "ci_watch_grundlinje": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
+    },
+    "ci_watch_set": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
+    },
+    "ci_watch_sidste_tjek": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
+      "registreret": "2026-10-03"
     },
     "computer_use_policy": {
       "ejer": "core/services/computer_use_policy.py",
@@ -151,6 +191,11 @@
       "beskrivelse": "Initiative Accumulator — proactive wants that accumulate between ticks.",
       "registreret": "2026-09-25"
     },
+    "klient_versioner": {
+      "ejer": "core/services/klient_versioner.py",
+      "beskrivelse": "Seneste APP-VERSION pr. klient (mobile/desk), meldt af klienten selv i X-Jarvis-Klientversion. Ikke en historik: én post pr. klient, sidst skrevet vinder. Findes fordi manifestet kun siger hvad der er UDGIVET, ikke hvad der er INSTALLERET.",
+      "registreret": "2026-09-28"
+    },
     "living_executive": {
       "ejer": "core/services/living_executive.py",
       "beskrivelse": "Living Executive — Jarvis' active impulse/choice/action loop.",
@@ -221,6 +266,11 @@
       "beskrivelse": "Predictive self-model — frequencies, not aspirations.",
       "registreret": "2026-09-20"
     },
+    "run_finding_decisions": {
+      "ejer": "core/services/run_finding_accounting.py",
+      "beskrivelse": "Revisionsspor over konkrete fund og deres beslutning ved afslutning af et run; side_tasks ejer opgavestatus.",
+      "registreret": "2026-10-04"
+    },
     "runtime_curiosity_budget": {
       "ejer": "core/services/curiosity_budget.py",
       "beskrivelse": "Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning).",
@@ -250,6 +300,11 @@
       "ejer": "core/services/world_model_signal_tracking.py",
       "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
       "registreret": "2026-09-20"
+    },
+    "selective_consolidation_last_tick": {
+      "ejer": "core/services/selective_consolidation_daemon.py",
+      "beskrivelse": "Throttle-tilstand: hvornaar selective consolidation sidst koerte. Persisteret 5/10-2026 — foer laa kadencen kun i en module-global, saa hver genstart udloeste en ny 50%-sletning af dagens hukommelse.",
+      "registreret": "2026-10-05"
     },
     "self_model_predictions": {
       "ejer": "core/services/self_model_predictive.py",
@@ -311,10 +366,10 @@
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
     },
-    "klient_versioner": {
-      "ejer": "core/services/klient_versioner.py",
-      "beskrivelse": "Seneste APP-VERSION pr. klient (mobile/desk), meldt af klienten selv i X-Jarvis-Klientversion. Ikke en historik: én post pr. klient, sidst skrevet vinder. Findes fordi manifestet kun siger hvad der er UDGIVET, ikke hvad der er INSTALLERET.",
-      "registreret": "2026-09-28"
+    "besked_run_kobling": {
+      "ejer": "core/services/besked_run_kobling.py",
+      "beskrivelse": "Hvilket run der skrev en given assistent-besked (message_id -> run_id). Bundet til 512 poster, aeldst falder ud. Deles mellem jarvis-api og jarvis-runtime, fordi autonome runs persisteres i den ene og snapshottet bygges i den anden. Klienten bruger den til at droppe sin bro-kopi praecist i stedet for at sammenligne prosa serveren selv har skrevet om.",
+      "registreret": "2026-10-07"
     }
   }
 }

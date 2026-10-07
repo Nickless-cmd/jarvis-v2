@@ -2,6 +2,80 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/installer_desk_appimage.py`
+_Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
+| function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
+| function | `byg_mappe` | `()` | electron-builders output-mappe, LÆST af package.json. | [src](../../../scripts/installer_desk_appimage.py#L81) |
+| function | `find_appimage` | `()` | Nyeste AppImage i electron-builders output-mappe. | [src](../../../scripts/installer_desk_appimage.py#L98) |
+| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L113) |
+| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L124) |
+| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L147) |
+| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L167) |
+| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L190) |
+| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L203) |
+| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
+| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
+
+## `scripts/interlanguage_analyze.py`
+_Interlanguage analysis — aggregate report over the practice corpus._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
+| function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
+
+## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
+_Binary: jarvis vs ollama_local — pre-check for Phase 4._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_binary_jarvis_vs_ollama.py#L40) |
+
+## `scripts/interlanguage_classifier_final.py`
+_Phase 3 FINAL classifier — pre-registered method, full 7-day data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_raw` | `()` | Load all interlanguage_practice rows from the sqlite DB, keeping only | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
+| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L126) |
+| function | `cleanup` | `(rows)` | Apply pre-registered §1 cleanup: drop rows with no primitive glyph, | [src](../../../scripts/interlanguage_classifier_final.py#L157) |
+| function | `featurize` | `(rows, embedder)` | Build the 403-dim feature matrix: normalized sentence embeddings (384) | [src](../../../scripts/interlanguage_classifier_final.py#L191) |
+| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | Permutation test for classifier accuracy: refit a LogisticRegression on | [src](../../../scripts/interlanguage_classifier_final.py#L209) |
+| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L229) |
+| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L255) |
+| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
+| function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
+| function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
+
+## `scripts/interlanguage_classifier_interim.py`
+_Interim Phase 3 classifier — pre-registered method, partial data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_raw` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L49) |
+| function | `cleanup` | `(rows)` | Pre-registreret cleanup (§1): | [src](../../../scripts/interlanguage_classifier_interim.py#L62) |
+| function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L101) |
+| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L118) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L136) |
+
+## `scripts/interlanguage_drift_classifier.py`
+_Phase 3 supplementary — drift-feature classifier for jarvis vs random._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_peer_expressions` | `(peer)` | Pull all post-cleanup expressions for one peer, chronologically ordered. | [src](../../../scripts/interlanguage_drift_classifier.py#L60) |
+| function | `featurize_snapshot` | `(expressions)` | 19-dim: 5 op-freqs + 14 vocab-freqs (relative to total ops + total vocab). | [src](../../../scripts/interlanguage_drift_classifier.py#L89) |
+| function | `featurize_chunk` | `(chunk)` | Return (snapshot_19, drift_19) where drift = late_half - early_half. | [src](../../../scripts/interlanguage_drift_classifier.py#L106) |
+| function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
+| function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
+
 ## `scripts/interlanguage_llm_judge.py`
 _LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
 
@@ -107,6 +181,61 @@ _Engangs-oprydning: luk flows hvis opgave allerede er afsluttet._
 | function | `luk` | `(conn, foraeldede)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L92) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L109) |
 
+## `scripts/maal_indbakke.py`
+_Virker indbakkens to trin? Og er 2 det rigtige tal?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_iso_graense` | `(dage)` | `strftime`, ikke `datetime('now', …)`. | [src](../../../scripts/maal_indbakke.py#L69) |
+| function | `_haent` | `(dage)` | — | [src](../../../scripts/maal_indbakke.py#L82) |
+| function | `_poster_i` | `(payload)` | Post-id'erne i en hændelse, uanset om den bærer én eller mange. | [src](../../../scripts/maal_indbakke.py#L103) |
+| function | `maal` | `(dage=…)` | — | [src](../../../scripts/maal_indbakke.py#L113) |
+| function | `_taerskel` | `()` | — | [src](../../../scripts/maal_indbakke.py#L187) |
+| function | `_tilstand` | `()` | Hvad STAAR der i tabellen lige nu, uanset hvad sporet siger? | [src](../../../scripts/maal_indbakke.py#L198) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_indbakke.py#L214) |
+| function | `registrer_vindue` | `(timer=…)` | Opgave 7 trin 3: registrér maalevinduet, saa paamindelsen melder. | [src](../../../scripts/maal_indbakke.py#L265) |
+
+## `scripts/maal_raesonnering_ab.py`
+_A/B: koster det noget at lade mellem-runderne vaere uden raesonnering?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `armdata` | `(db, *, dage=…, procent=…, siden=…)` | {arm: {ud, raeson, runs, runder, pr_dag}} — kilden BAADE CLI og monitor laeser. | [src](../../../scripts/maal_raesonnering_ab.py#L55) |
+| function | `runder_pr_run_pr_dag` | `(arm, *, min_runs=…)` | Dagsserien for én arm. Dage med for faa runs udelades — én run paa en | [src](../../../scripts/maal_raesonnering_ab.py#L104) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_raesonnering_ab.py#L115) |
+
+## `scripts/maal_vaerktoejer_pr_runde.py`
+_Vaerktoejer pr. agentisk runde — dagsserie._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `dagsserie` | `(db, dage)` | Dagsserien, som BAADE denne CLI og monitoren laeser. | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L69) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_vaerktoejer_pr_runde.py#L83) |
+
+## `scripts/maal_ventende_i_prompten.py`
+_Hvor meget af Jarvis' synlige prompt er VENTENDE TILSTAND?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_label_of` | `(tekst)` | Identisk med `prompt_contract._label_of` — med vilje samme regel. | [src](../../../scripts/maal_ventende_i_prompten.py#L70) |
+| function | `split_system_by_sections` | `(tekst)` | (navn, tegn, tokens) per blok, navngivet som runtimen navngiver sine dele. | [src](../../../scripts/maal_ventende_i_prompten.py#L77) |
+| function | `_er_ventende` | `(navn)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L138) |
+| function | `_del_ved_halen` | `(tekst)` | (stabilt prefix, dynamisk hale). Halen er det EFTER sentinel'en. | [src](../../../scripts/maal_ventende_i_prompten.py#L143) |
+| function | `_byg` | `(provider, model, besked, session_id)` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L158) |
+| function | `_maal_en_del` | `(navn, tekst)` | Sektionér én del (prefix eller hale) og del tokens i ventende/andet. | [src](../../../scripts/maal_ventende_i_prompten.py#L166) |
+| function | `_maal_aendring` | `(tekster)` | Hvilke sektioner ændrede sig mellem bygningerne? | [src](../../../scripts/maal_ventende_i_prompten.py#L194) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_ventende_i_prompten.py#L252) |
+
+## `scripts/maal_visuelle_svar.py`
+_Hvor ofte svarer Jarvis VISUELT? — nulpunkt og dagsserie._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_conn` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L38) |
+| function | `dagsserie` | `(c, dage)` | Pr. dag: assistent-beskeder, heraf med et tegnebart hegn, og raten. | [src](../../../scripts/maal_visuelle_svar.py#L45) |
+| function | `i_alt` | `(c)` | — | [src](../../../scripts/maal_visuelle_svar.py#L72) |
+| function | `main` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L86) |
+
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._
 
@@ -199,6 +328,15 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 
+## `scripts/migrer_filer_per_bruger.py`
+_Flyt de gamle fælles filer ind i ejerens egen mappe._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hash` | `(p)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L42) |
+| function | `find_ejer` | `()` | Ejerens workspace-navn. Tom streng når det ikke kan afgøres. | [src](../../../scripts/migrer_filer_per_bruger.py#L50) |
+| function | `migrer` | `(*, udfoer, ejer_ws=…)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L62) |
+
 ## `scripts/migrer_shared_runtime_til_state_store.py`
 _Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
 
@@ -242,6 +380,15 @@ _Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
+
+## `scripts/normalize_sensory_sources.py`
+_Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel først._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes_alle` | `(conn)` | — | [src](../../../scripts/normalize_sensory_sources.py#L30) |
+| function | `_plan` | `(rows)` | Returnér (id, gammel_json, ny_json, nye_metadata) for rækker der ændres. | [src](../../../scripts/normalize_sensory_sources.py#L35) |
+| function | `main` | `()` | — | [src](../../../scripts/normalize_sensory_sources.py#L59) |
 
 ## `scripts/nudge_well_cleanup.py`
 _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
@@ -301,162 +448,4 @@ _Fase 5 «Bor der nogen?» — indsamler._
 | function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L79) |
 | function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
 | function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
-
-## `scripts/phase6_analyze.py`
-_Fase 6 «Bæres han på tværs af tid?» — analyse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `embed` | `(text)` | — | [src](../../../scripts/phase6_analyze.py#L39) |
-| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase6_analyze.py#L57) |
-| function | `centroid` | `(vs)` | — | [src](../../../scripts/phase6_analyze.py#L64) |
-| function | `main` | `()` | — | [src](../../../scripts/phase6_analyze.py#L69) |
-
-## `scripts/phase6_collect.py`
-_Fase 6 «Bæres han på tværs af tid?» — indsamler._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — bygges PÅ NY ved hvert tidspunkt. | [src](../../../scripts/phase6_collect.py#L52) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase6_collect.py#L66) |
-| function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
-| function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
-
-## `scripts/phase7_analyze.py`
-_Fase 7 — analyse, præcis som forhåndsregistreret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L38) |
-| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L44) |
-| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L53) |
-| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L61) |
-| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L115) |
-
-## `scripts/phase7_build_probes.py`
-_Fase 7 — bygger proberne af arkivet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
-| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L98) |
-| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L106) |
-| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L115) |
-| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L125) |
-| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L142) |
-| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L149) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L171) |
-
-## `scripts/phase7_collect.py`
-_Fase 7 — indsamler svarene._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L55) |
-| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L63) |
-| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L71) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L80) |
-| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L92) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L104) |
-
-## `scripts/phase7_judge.py`
-_Fase 7 — blind bedømmelse af svarene._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L71) |
-| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L80) |
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L93) |
-| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L99) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L103) |
-| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L148) |
-
-## `scripts/phone_home_auto.py`
-_phone_home_auto — hold phone_adb_address i runtime.json opdateret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L51) |
-| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L55) |
-| function | `_skriv_state` | `(**felter)` | — | [src](../../../scripts/phone_home_auto.py#L66) |
-| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L79) |
-| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L89) |
-| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L111) |
-| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L119) |
-| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L130) |
-| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L138) |
-| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L143) |
-| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L156) |
-| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L190) |
-
-## `scripts/primary_cache_warmer.py`
-_Primary lane cache warmer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_discover_active_workspaces` | `()` | Find aktive bruger-workspaces der skal cache-warmes. | [src](../../../scripts/primary_cache_warmer.py#L73) |
-| function | `_fetch_system_prompt` | `(workspace_name=…)` | Hent primary lane system prompt. | [src](../../../scripts/primary_cache_warmer.py#L110) |
-| function | `_save_prompt_to_file` | `(content)` | Gem prompt til fil så standalone kald kan bruge det senere. | [src](../../../scripts/primary_cache_warmer.py#L171) |
-| function | `_check_dedup` | `(*, force=…)` | Tjek om et kald er for nyligt. | [src](../../../scripts/primary_cache_warmer.py#L184) |
-| function | `_touch_last_run` | `()` | — | [src](../../../scripts/primary_cache_warmer.py#L208) |
-| function | `_fetch_warmer_tools` | `()` | Hent samme pruned tools-array som visible-chats sender. | [src](../../../scripts/primary_cache_warmer.py#L218) |
-| function | `_build_payload` | `(system_prompt)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L256) |
-| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L280) |
-| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L287) |
-| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L359) |
-| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L413) |
-| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L432) |
-| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L448) |
-| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L458) |
-| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L475) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L555) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L629) |
-
-## `scripts/publish_mobile_apk.py`
-_Læg en ny mobil-APK op — og behold præcis én version tilbage._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L42) |
-| function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L46) |
-| function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
-| function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L86) |
-| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L113) |
-
-## `scripts/regenerate_tier1.py`
-_Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_usage` | `()` | Count tool.invoked events per tool over the last WINDOW_DAYS from the runtime DB. | [src](../../../scripts/regenerate_tier1.py#L58) |
-| function | `load_registered_tools` | `()` | Return the set of tool names from the live TOOL_DEFINITIONS catalog. | [src](../../../scripts/regenerate_tier1.py#L79) |
-| function | `compute_new_tier1` | `(usage, registered)` | Build the new Tier-1 set: tools used >= USAGE_THRESHOLD unioned with | [src](../../../scripts/regenerate_tier1.py#L96) |
-| function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
-| function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
-| function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
-
-## `scripts/repro_streaming_fault.py`
-_Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
-| function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
-
-## `scripts/requirements_gen.py`
-_Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + first-party)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `top_level_imports` | `(tree)` | Root module names of ABSOLUTE imports in one parsed file (relative imports ignored). | [src](../../../scripts/requirements_gen.py#L15) |
-| function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
-| function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
-
-## `scripts/reset_heartbeat_state.py`
-_Reset heartbeat scheduler state when it gets stuck._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
 

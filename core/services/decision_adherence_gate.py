@@ -14,6 +14,7 @@ This module is imported lazily in prompt_contract.py to avoid circular imports.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,18 @@ def decision_adherence_section() -> str:
     raekker.sort(key=lambda r: r[0])
 
     lines = ["\n[DECISION-ADHERENCE-GATE]"]
+    # Handlingen skrives ÉN gang per bånd, ikke én gang per post.
+    #
+    # Målt 4/10-2026 på Bjørns levende samtale: blokken var 1.177 tokens — den
+    # STØRSTE i hele den dynamiske hale, 17,4 % af den — og ~297 af dem (25 %)
+    # var den samme sætning gentaget tolv gange. Handlingen er pr. BÅND, ikke
+    # pr. beslutning; den var identisk hver gang fordi den aldrig kunne være
+    # andet.
+    #
+    # Formen er ikke ændret: båndet eskalerer stadig i HANDLING, og en
+    # beslutning slettes stadig ikke. Kun gentagelsen er væk.
+    kritiske_vist = 0
+    imperative_vist = 0
     for score, dec_id, directive in raekker[:_MAKS_LINJER]:
         if score < _CRITICAL_THRESHOLD:
             # Critical band — adherence below 25%.
@@ -137,23 +150,31 @@ def decision_adherence_section() -> str:
             lines.append(
                 f"Adherence {score:.0%} (kritisk band) — {dec_id}: {directive}"
             )
-            lines.append(
-                "  Handling: kan ikke opfyldes som formuleret — omformulér den "
-                "til trigger → handling → bevis. Den slettes ikke."
-            )
+            kritiske_vist += 1
         elif score < _ADVISORY_THRESHOLD:
             # Imperative band — adherence below 40%
             lines.append(
                 f"Adherence {score:.0%} (imperativ band) — {dec_id}: {directive}"
             )
-            lines.append(
-                "  Handling: bruddet gentages — navngiv det eksplicit i næste svar."
-            )
+            imperative_vist += 1
         else:
             # Advisory band — adherence below good threshold
             lines.append(
                 f"Adherence {score:.0%} (advisory band) — {dec_id}: {directive}"
             )
+
+    # Handlingerne, én per bånd der faktisk har poster.
+    if kritiske_vist:
+        lines.append(
+            f"  → De {kritiske_vist} i kritisk band kan ikke opfyldes som "
+            "formuleret: omformulér hver til trigger → handling → bevis. "
+            "De slettes ikke."
+        )
+    if imperative_vist:
+        lines.append(
+            f"  → De {imperative_vist} i imperativ band gentager bruddet — "
+            "navngiv det eksplicit i næste svar."
+        )
 
     skjulte = len(raekker) - _MAKS_LINJER
     if skjulte > 0:
@@ -163,3 +184,112 @@ def decision_adherence_section() -> str:
 
     lines.append("[/DECISION-ADHERENCE-GATE]\n")
     return "\n".join(lines)
+
+# ── Indbakken (4/10-2026) ───────────────────────────────────────────────────
+
+def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
+    """Giv hver beslutning under tærsklen en post i indbakken.
+
+    ## Hvorfor
+
+    `_MAKS_LINJER` er et DISPLAY-loft, ikke et antal. Målt 4/10-2026: 75 aktive
+    beslutninger, 34 under tærsklen, 19 af dem kritiske — og gaten viser 12.
+    **Syv kritiske beslutninger står helt uden for prompten.**
+
+    Gaten er ikke tavs om dem; den skriver «… og N flere under tærsklen (ikke
+    vist her)». Men et tal uden id'er er ikke en adresse: man kan ikke lukke,
+    omformulere eller slå op på noget man ikke kan navngive. Indbakken kan bære
+    dem alle uden at vokse prompten, fordi `inbox` er et værktøj han KALDER.
+
+    ## De gater ikke, og det er med vilje
+
+    Posterne oprettes uden for et levende run, så `verificeret_jarvis_run` kan
+    intet bevise — den kræver et run der KØRER. Derfor bliver
+    `kraever_handling=False`, og det er det rigtige udfald: en beslutning er en
+    forpligtelse Jarvis har givet sig selv, men den er ikke et stykke arbejde
+    der venter — og skrive-kontrakten siger at kun verificerede, egne poster må
+    nægte en mutation. `decision` står desuden i `IKKE_GATENDE_KILDETYPER` som
+    et selvstændigt værn. Beslutnings-gaten har sin EGEN eskalering; indbakken
+    skal ikke lægge en anden oven på.
+
+    ## Mærket: `[dig]`, ikke `[huset]` (målt 4/10-2026)
+
+    Posterne blev mærket `huset`, fordi de registreres fra en baggrundsvej og
+    ikke fra et levende run. Mærket beskriver SKRIVEREN — og jeg læste det som
+    et udsagn om EJERSKABET: posten stod på Bjørns bord med `[huset]`, og jeg
+    afviste den over for ham som husets sag. Bjørn: «du må aldrig være i tvivl
+    om hvad der er til dig.»
+
+    Beslutningen ER min egen. `behavioral_decisions.created_by` står `jarvis` i
+    79 af 80 rækker (målt 4/10), og den række ER kilden — så ejerskabet gives
+    videre derfra gennem `kilde_ejer`, som kun kan flytte etiketten. Den gamle
+    begrundelse for `huset` («husets review satte scoren») beskrev hvem der
+    REGNEDE, ikke hvem forpligtelsen tilhører.
+
+    ## `drop` må ikke kunne tie en beslutning
+
+    Gatens egen begrundelse fra 26/9 er utvetydig: «Et bånd der kan revoke,
+    sletter systematisk de svære og beholder de lette: den modsatte af
+    læring.» Derfor skal et `inbox_drop` kunne fortrydes: posten kommer tilbage
+    ved næste registrering, fordi beslutningen stadig står under tærsklen i
+    kilden.
+
+    ## Rettelse 5/10-2026: den gamle begrundelse var forkert
+
+    Her stod der at `expires_at` blev sat på hver post. Det gjorde den ikke —
+    og ingen af de tre veje bar påstanden:
+
+    * `registrer_kilde` sendte ikke `expires_at`, og tom streng betyder
+      UDLØBER ALDRIG.
+    * `db_inbox.saet_udloeb()` er den eneste skriver af feltet og havde nul
+      kaldere uden for tests.
+    * `opret_eller_hent` returnerer en eksisterende række urørt, så en
+      genregistrering var en no-op.
+
+    Målt i drift: 76 beslutnings-poster stod i `drop` og kom aldrig igen. Nu
+    bæres påstanden af `db_inbox.genaabn_af_kilde`, kaldt fra
+    `inbox_state.registrer_kilde` — og den er gated på at kildetypen ikke kan
+    nægte en mutation, så kun en post der i forvejen ikke kan gate må flyttes.
+    Indbakken kan altså udsætte, ikke slette — og den beslutning den peger på
+    er uberørt.
+    """
+    try:
+        from core.services.behavioral_decisions import (
+            count_decisions,
+            list_active_decisions,
+        )
+        active = list_active_decisions(limit=max(50, count_decisions(status="active")))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("decision_adherence_gate: kunne ikke laese beslutninger: %s", exc)
+        return {"status": "fejl", "error": str(exc)}
+
+    from core.services.inbox_state import registrer_kilde
+
+    oprettet = 0
+    fejl = 0
+    for d in active:
+        raa = d.get("adherence_score")
+        score = float(raa) if raa is not None else 1.0
+        if score >= _GOOD_THRESHOLD:
+            continue
+        dec_id = str(d.get("decision_id") or "").strip()
+        if not dec_id:
+            continue
+        baand = ("kritisk" if score < _CRITICAL_THRESHOLD
+                 else "imperativ" if score < _ADVISORY_THRESHOLD else "advisory")
+        r = registrer_kilde(
+            bruger_id=bruger_id,
+            kildetype="decision",
+            kilde_id=dec_id,
+            # Ingen `oprettende_run_id`: posten oprettes af en baggrundsvej, og
+            # et run-id der ikke kører ville være en påstand. Ejerskabet kommer
+            # i stedet fra KILDENS egen række — `created_by` — og kildetypen
+            # `decision` kan ikke gate, så det flytter etiketten og intet andet.
+            kilde_ejer=str(d.get("created_by") or ""),
+            beskrivelse=f"[{baand} {score:.0%}] {str(d.get('directive') or '')}",
+        )
+        if r.get("status") == "ok":
+            oprettet += 1
+        else:
+            fejl += 1
+    return {"status": "ok", "registreret": oprettet, "fejlede": fejl}

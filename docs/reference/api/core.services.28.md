@@ -1,0 +1,579 @@
+# `core.services.28` — reference
+
+> Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
+
+## `core/services/visible_run_journal.py`
+_Persist the visible run and its composer context for durable recovery._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mark_visible_run_started` | `(run, *, tool_scope=…, force_user_id=…)` | Record the settings a resumed run needs to keep its original lane. | [src](../../../core/services/visible_run_journal.py#L9) |
+
+## `core/services/visible_run_outcome_state.py`
+_Et synligt runs terminale beslutning — og vagten mod en optimistisk standard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RunOutcomeState` | `` | Holder beslutningen og beskytter den mod at blive arvet ved et uheld. | [src](../../../core/services/visible_run_outcome_state.py#L45) |
+| method | `RunOutcomeState.__init__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L50) |
+| method | `RunOutcomeState.status` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L57) |
+| method | `RunOutcomeState.error` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L61) |
+| method | `RunOutcomeState.finalized` | `(self)` | Nåede runnet et eksplicit terminalt punkt? | [src](../../../core/services/visible_run_outcome_state.py#L65) |
+| method | `RunOutcomeState.is_default` | `(self)` | Står beslutningen stadig på den optimistiske standard? | [src](../../../core/services/visible_run_outcome_state.py#L70) |
+| method | `RunOutcomeState.mark` | `(self, status, *, error=…, finalized=…)` | Træf den terminale beslutning. | [src](../../../core/services/visible_run_outcome_state.py#L75) |
+| method | `RunOutcomeState.reach_finalization` | `(self)` | Marker at runnet nåede sit done-yield uden at ændre status. | [src](../../../core/services/visible_run_outcome_state.py#L89) |
+| method | `RunOutcomeState.set_error` | `(self, error)` | — | [src](../../../core/services/visible_run_outcome_state.py#L93) |
+| method | `RunOutcomeState.downgrade_if_abandoned` | `(self, abort_kind=…)` | Nedgradér en aldrig-nået standard til `interrupted`. Returnerer om | [src](../../../core/services/visible_run_outcome_state.py#L98) |
+| method | `RunOutcomeState.__repr__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L113) |
+
+## `core/services/visible_run_recovery_coordinator.py`
+_Durable, idempotent settlement for every visible-run segment ending._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FailureClass` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L17) |
+| class | `RecoverySettlementRequest` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L27) |
+| class | `RecoverySettlement` | `` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L41) |
+| function | `_was_same_recovery` | `(before, *, reason, final_synthesis)` | — | [src](../../../core/services/visible_run_recovery_coordinator.py#L49) |
+| function | `settle_segment` | `(request)` | Settle exactly once before stream closure or continuation dispatch. | [src](../../../core/services/visible_run_recovery_coordinator.py#L60) |
+
+## `core/services/visible_run_recovery_dispatcher.py`
+_Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udskydelses_backoff` | `(tidligere)` | Vent længere for hver gang samtalen var optaget — men aldrig i det uendelige. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L44) |
+| function | `_er_runtime_processen` | `()` | Runtime-processen dispatcher ikke. Den må forlige, ikke starte. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L54) |
+| function | `_besked_fra` | `(record)` | Den oprindelige anmodning — det er DEN opgaven handler om. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L60) |
+| function | `_luk_afloest_raekke` | `(run_id, *, reason)` | Luk den afløste kørsels EGEN række i `visible_runs`. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L70) |
+| function | `_samtalen_gik_videre` | `(session_id, efter)` | Er brugeren gået videre, siden den her kørsel døde? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L111) |
+| function | `recover_due_once` | `(*, owner=…)` | Tag ÉN forfalden opgave og start dens fortsættelse. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L157) |
+| function | `signal_recovery_dispatcher` | `()` | Væk dispatcheren nu — kaldes lige efter en durabel afregning. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L322) |
+| function | `_loop` | `()` | — | [src](../../../core/services/visible_run_recovery_dispatcher.py#L327) |
+| function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L341) |
+| function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L358) |
+
+## `core/services/visible_run_segment_exit.py`
+_Afgoer hvad et agentisk segment blev til, og goer det durabelt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kaede_nr_eller_loft` | `(session_id)` | Hvor langt er genoptagelses-kaeden naaet for denne samtale? | [src](../../../core/services/visible_run_segment_exit.py#L46) |
+| function | `afgoer_segment_udfald` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, truncated=…)` | Skriv segmentets ophoer durabelt og giv dommen tilbage. | [src](../../../core/services/visible_run_segment_exit.py#L62) |
+
+## `core/services/visible_run_segment_settlement.py`
+_Ét sted hvor et unormalt segment-ophør bliver durabelt — før noget lukkes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `failure_class_for` | `(exit_reason)` | Grundens klasse. Ukendt → `RUNTIME`; vi gætter ikke på en udbyder. | [src](../../../core/services/visible_run_segment_settlement.py#L73) |
+| class | `SegmentUdfald` | `` | Dommen, den durable post, og hvad kalderen skal sende ud. | [src](../../../core/services/visible_run_segment_settlement.py#L90) |
+| function | `settle_user_stop` | `(*, run_id, session_id=…, task_id=…, reason=…)` | Brugeren trykkede stop. Det er endeligt — og skal skrives ned FØRST. | [src](../../../core/services/visible_run_segment_settlement.py#L106) |
+| function | `settle_segment_exit` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, explicit_user_cancel=…, waiting_for_user=…, recovery_attempt=…, recovery_limit=…, task_id=…, summary=…, checkpoint_ref=…, generation=…, owner=…, final_synthesis_attempted=…, failure_class=…)` | Gør segmentets ophør durabelt og sig hvad der skal sendes. | [src](../../../core/services/visible_run_segment_settlement.py#L123) |
+
+## `core/services/visible_run_steers.py`
+_Keep real mid-flight user steers distinct from runtime turn notices._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `append_real_user_steers` | `(tail, steers)` | Append only genuine client steers with user role; stop at a cancel steer. | [src](../../../core/services/visible_run_steers.py#L12) |
+
+## `core/services/visible_run_terminal_recovery.py`
+_Resolve whether an agentic run segment completed or needs recovery._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `has_incompletion_evidence` | `(text)` | Explicit unfinished work; absence of a completion keyword is not proof. | [src](../../../core/services/visible_run_terminal_recovery.py#L32) |
+| class | `AgenticExitResolution` | `` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L44) |
+| function | `resolve_agentic_exit` | `(*, exit_reason, final_text, finish_reason=…, forced_finalize=…, pending_tool_intent=…, recovery_attempt=…, recovery_limit=…)` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L51) |
+
+## `core/services/visible_run_trace.py`
+_Sporet gennem én synlig kørsel — og runde-grænserne i den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_last_visible_execution_trace` | `()` | — | [src](../../../core/services/visible_run_trace.py#L73) |
+| function | `_start_visible_execution_trace` | `(run)` | — | [src](../../../core/services/visible_run_trace.py#L77) |
+| function | `_update_visible_execution_trace` | `(run, updates)` | — | [src](../../../core/services/visible_run_trace.py#L112) |
+| function | `_set_last_visible_execution_trace` | `(trace)` | — | [src](../../../core/services/visible_run_trace.py#L126) |
+| function | `_visible_trace_payload` | `(run)` | — | [src](../../../core/services/visible_run_trace.py#L135) |
+| function | `_publish_agentic_round_start` | `(*, run_id, round_num)` | Publish runtime.agentic_round_start event and return its event_id. | [src](../../../core/services/visible_run_trace.py#L144) |
+| function | `_etiket` | `(vaerktoejer, hensigt)` | Indirektion så tråden kan byttes ud i en test uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L190) |
+| function | `_tanke_resume` | `(tanke, hensigt)` | Indirektion så tråden kan testes uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L196) |
+| function | `udsend_runde_etiket` | `(*, run_id, round_num, vaerktoejer, hensigt=…, tanke=…)` | Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG. | [src](../../../core/services/visible_run_trace.py#L202) |
+| function | `haent_ventende` | `(run_id)` | Tøm køen af færdige etiketter for en kørsel. | [src](../../../core/services/visible_run_trace.py#L276) |
+| function | `hoest_etiketter` | `(run_id, tur=…, frist_s=…)` | Hent faerdige runde-etiketter — og laeg dem i turen, saa de GEMMES. | [src](../../../core/services/visible_run_trace.py#L287) |
+| function | `ryd_ventende` | `(run_id)` | Smid en kørsels kø OG dens tråd-bogholderi væk. | [src](../../../core/services/visible_run_trace.py#L306) |
+| function | `haent_ventende_med_frist` | `(run_id, frist_s)` | Tøm køen — men vent KORT på en etiket der stadig regnes. | [src](../../../core/services/visible_run_trace.py#L316) |
+
+## `core/services/visible_runs.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kald_digest` | `(tool_name, arguments)` | Digesten over kaldet — broens definition, ikke en ny. | [src](../../../core/services/visible_runs.py#L262) |
+| function | `_godkendelses_ejer` | `(run)` | Hvem skal kunne svare paa dette kort? | [src](../../../core/services/visible_runs.py#L274) |
+| function | `_friske_godkendelser` | `(raa)` | Genopliv KUN kort der stadig er inden for deres levetid. | [src](../../../core/services/visible_runs.py#L291) |
+| function | `godkendelser_nu` | `()` | Kortene som de ER paa disken. Disken er sandheden, ikke processens kopi. | [src](../../../core/services/visible_runs.py#L343) |
+| function | `saet_godkendelse` | `(approval_id, kort)` | Tilfoej ét kort — uden at overskrive den anden proces' kort. | [src](../../../core/services/visible_runs.py#L364) |
+| function | `fjern_godkendelse` | `(approval_id)` | Fjern ét kort og giv det tilbage. `None` = det fandtes ikke. | [src](../../../core/services/visible_runs.py#L375) |
+| function | `_publicer_approval_requested` | `(*, approval_id, tool, run_id, session_id, result)` | Haendelse naar et godkendelses-kort BLIVER LAVET. | [src](../../../core/services/visible_runs.py#L387) |
+| class | `VisibleRun` | `` | — | [src](../../../core/services/visible_runs.py#L479) |
+| class | `VisibleRunController` | `` | — | [src](../../../core/services/visible_runs.py#L528) |
+| method | `VisibleRunController.attach_stream` | `(self, stream)` | — | [src](../../../core/services/visible_runs.py#L544) |
+| method | `VisibleRunController.clear_stream` | `(self)` | — | [src](../../../core/services/visible_runs.py#L547) |
+| method | `VisibleRunController.cancel` | `(self)` | — | [src](../../../core/services/visible_runs.py#L550) |
+| method | `VisibleRunController.is_cancelled` | `(self)` | — | [src](../../../core/services/visible_runs.py#L557) |
+| function | `_thinking_for_round` | `(run, exchanges)` | Tænknings-tilstand for en agentisk FØLGE-runde. | [src](../../../core/services/visible_runs.py#L576) |
+| function | `is_visible_run_alive` | `(run_id)` | Den AUTORITATIVE liveness-test — CROSS-PROCES. | [src](../../../core/services/visible_runs.py#L600) |
+| function | `start_visible_run` | `(message, session_id=…, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, local_tool_exec=…, surface=…)` | Begin a visible run. | [src](../../../core/services/visible_runs.py#L662) |
+| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_runs.py#L997) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_runs.py#L1055) |
+| function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1323) |
+| function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1329) |
+| function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1350) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6598) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6670) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6703) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6710) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6714) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6740) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6771) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6783) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6827) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6885) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6959) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7012) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7050) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7054) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7065) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7079) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7102) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7134) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7161) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7192) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7244) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7279) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7283) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7300) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7350) |
+
+## `core/services/visible_runs_approvals.py`
+_Pending tool-approval resolution for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_udloebet` | `(pending)` | Er godkendelsen for gammel til at maatte bruges? Returnerer grunden. | [src](../../../core/services/visible_runs_approvals.py#L34) |
+| function | `resolve_pending_approval` | `(approval_id, *, approved, answered_by=…)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L64) |
+
+## `core/services/visible_runs_capabilities.py`
+_Workspace-capability planning + execution for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_extract_capability_plan` | `(text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L35) |
+| function | `_execute_visible_capability_entries` | `(run, *, all_capabilities)` | — | [src](../../../core/services/visible_runs_capabilities.py#L135) |
+| function | `_planned_visible_capability_steps` | `(run, *, all_capabilities, step_offset)` | — | [src](../../../core/services/visible_runs_capabilities.py#L336) |
+| function | `_visible_capability_step_description` | `(*, capability_id, target_path, command_text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L376) |
+| function | `_is_known_workspace_capability` | `(capability_id)` | — | [src](../../../core/services/visible_runs_capabilities.py#L397) |
+| function | `_resolve_visible_capability_target_path` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L406) |
+| function | `_extract_external_target_path_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L432) |
+| function | `_resolve_visible_capability_command_text` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L441) |
+| function | `_merge_argument_sources` | `(*sources)` | — | [src](../../../core/services/visible_runs_capabilities.py#L467) |
+| function | `_extract_exec_command_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L478) |
+| function | `_capability_visible_text` | `(*, capability_id, invocation)` | — | [src](../../../core/services/visible_runs_capabilities.py#L496) |
+| function | `_workspace_search_visible_text` | `(*, capability_id, execution_mode, result)` | — | [src](../../../core/services/visible_runs_capabilities.py#L518) |
+
+## `core/services/visible_runs_cognitive.py`
+_Per-turn cognitive/candidate tracking-pipeline for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_visible_cadence_updates` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood)` | Run post-turn cadence producers without letting them block finalization. | [src](../../../core/services/visible_runs_cognitive.py#L25) |
+| function | `_legacy_regex_detectors_enabled` | `()` | Er de gamle ordmønster-detektorer stadig tændt? (default: nej) | [src](../../../core/services/visible_runs_cognitive.py#L58) |
+| function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L73) |
+| function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L99) |
+
+## `core/services/visible_runs_error_messaging.py`
+_User-facing error messages for visible runs (Jarvis voice)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
+
+## `core/services/visible_runs_learning_signals.py`
+_Post-run learning signals for a visible run (extracted from visible_runs.py,_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_brugerafbrydelse` | `(fejl)` | True hvis fejlteksten beskriver en afbrydelse frem for en fejl. | [src](../../../core/services/visible_runs_learning_signals.py#L29) |
+| function | `tool_names` | `(collected_native_tool_calls)` | Names of the native tool calls in order (objects or OpenAI-style dicts). | [src](../../../core/services/visible_runs_learning_signals.py#L35) |
+| function | `record_visible_run_learning_signals` | `(*, run_ref, collected_native_tool_calls, outcome_status, outcome_error, followup_text, output_tokens)` | — | [src](../../../core/services/visible_runs_learning_signals.py#L53) |
+
+## `core/services/visible_runs_memory.py`
+_Memory/continuity post-processing for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
+| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L50) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L288) |
+
+## `core/services/visible_runs_outcomes.py`
+_Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_preview_text` | `(text, limit=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L33) |
+| function | `_mark_mid_word_truncation` | `(text)` | Append "…" if the assistant text ends abruptly mid-word. | [src](../../../core/services/visible_runs_outcomes.py#L40) |
+| function | `_origin_of_session` | `(session_id)` | «auto-dream-20260902» → «dream». Tom for almindelige samtaler. | [src](../../../core/services/visible_runs_outcomes.py#L79) |
+| function | `_normaliser_tekstblokke` | `(blocks)` | Samme blokstruktur-rettelse på tekstblokkene som på `content`. | [src](../../../core/services/visible_runs_outcomes.py#L88) |
+| function | `_med_udgivne_filer` | `(blocks, run)` | Laeg turens udgivne filer BAGEST i blok-arrayet. | [src](../../../core/services/visible_runs_outcomes.py#L108) |
+| function | `_indsaet_ved_deres_vaerktoej` | `(blocks, filer)` | Sæt hver udgiven fil DÉR hvor den blev lavet. | [src](../../../core/services/visible_runs_outcomes.py#L128) |
+| function | `_with_thinking_block` | `(blocks, run, reasoning)` | Sæt turens tænkning FORREST i blok-arrayet, hvis der blev tænkt. | [src](../../../core/services/visible_runs_outcomes.py#L176) |
+| function | `_med_tabt_optakt` | `(tekst, blokke)` | Giv `content` den optakt som blokkene har, men teksten mangler. | [src](../../../core/services/visible_runs_outcomes.py#L225) |
+| function | `_ws` | `(s)` | Samme normalisering som klienternes `assistantNorm`. | [src](../../../core/services/visible_runs_outcomes.py#L282) |
+| function | `_persist_session_assistant_message` | `(run, text, *, reasoning_content=…, blocks=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L288) |
+| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L567) |
+| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L608) |
+| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L663) |
+| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L677) |
+| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L692) |
+| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L713) |
+| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L757) |
+| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L826) |
+| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L875) |
+| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L896) |
+| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L910) |
+| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L974) |
+| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1047) |
+
+## `core/services/visible_runs_sse_v2.py`
+_Translator: legacy SSE-events → Anthropic-style v2-protokol._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ToolEchoFilter` | `` | Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar. | [src](../../../core/services/visible_runs_sse_v2.py#L80) |
+| method | `ToolEchoFilter.__init__` | `(self, tool_names=…)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L91) |
+| method | `ToolEchoFilter._is_echo_line` | `(self, line)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L103) |
+| method | `ToolEchoFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L107) |
+| method | `ToolEchoFilter.flush` | `(self)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L156) |
+| function | `_parse_legacy_sse` | `(chunk)` | Parse en legacy SSE event-blok til (event_name, payload_dict). | [src](../../../core/services/visible_runs_sse_v2.py#L166) |
+| function | `_live_udgivne_blokke` | `(tool_use_id, allerede_sendt)` | Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream. | [src](../../../core/services/visible_runs_sse_v2.py#L201) |
+| function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_runs_sse_v2.py#L275) |
+| function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_runs_sse_v2.py#L303) |
+| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L318) |
+
+## `core/services/visible_runs_watchdog.py`
+_Agentic-round watchdog — hvornår skal en runde opgives?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `effective_silence_budget_s` | `(max_silence_s, loop_lag_peak_ms)` | Tavsheds-budget justeret for hvor blokeret vores eget loop har været. | [src](../../../core/services/visible_runs_watchdog.py#L34) |
+| function | `agentic_watchdog_timeout_reason` | `(*, started_at, last_progress_at, now, max_total_s, max_silence_s, loop_lag_peak_ms=…)` | Returnér watchdog-timeout-grunden, eller None hvis runden må fortsætte. | [src](../../../core/services/visible_runs_watchdog.py#L47) |
+
+## `core/services/visible_self_state_summary.py`
+_Visible-chat self-state summary — let Jarvis answer questions about_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_decision_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L29) |
+| function | `_goals_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L56) |
+| function | `_recent_tick_quality` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L87) |
+| function | `build_self_state_block` | `()` | Return a short prompt section. Empty string when nothing useful to add. | [src](../../../core/services/visible_self_state_summary.py#L112) |
+
+## `core/services/visible_stream_gate.py`
+_In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `visible_streaming` | `()` | True hvis mindst én synlig tur i øjeblikket assembler/streamer i denne proces. | [src](../../../core/services/visible_stream_gate.py#L27) |
+| function | `enter_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L38) |
+| function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
+| function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
+
+## `core/services/visible_synthesis_stream.py`
+_Den streamede syntese, skrubbet — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SyntesStykke` | `` | Ét renset stykke på vej til skærmen. | [src](../../../core/services/visible_synthesis_stream.py#L39) |
+| class | `SyntesFacit` | `` | Den færdige, skrubbede tekst. Kommer sidst, præcis én gang. | [src](../../../core/services/visible_synthesis_stream.py#L45) |
+| function | `skrubbet_syntese` | `(stroem, *, delta_klasse)` | Kør en syntese-strøm igennem `StroemSkrubber` og giv rensede stykker. | [src](../../../core/services/visible_synthesis_stream.py#L50) |
+
+## `core/services/visible_terminal_policy.py`
+_Single source of truth for visible task terminal decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TerminalState` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L14) |
+| class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L23) |
+| class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L36) |
+| function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L51) |
+| function | `is_non_retryable_recovery_reason` | `(reason)` | Reject retries for deterministic request and local-code failures. | [src](../../../core/services/visible_terminal_policy.py#L55) |
+| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L64) |
+| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L103) |
+| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L142) |
+
+## `core/services/visible_text_scrub.py`
+_Fjern runtime'ens interne markører fra den tekst brugeren ser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slut_paa_note` | `(tekst, start)` | Indeks EFTER den klamme der lukker noten der begynder på `start`. | [src](../../../core/services/visible_text_scrub.py#L52) |
+| function | `_foerste_markoer` | `(tekst, fra=…)` | Indeks på den tidligste interne markør fra `fra`, eller -1. | [src](../../../core/services/visible_text_scrub.py#L70) |
+| function | `fjern_interne_markoerer` | `(tekst)` | Teksten uden runtime-noter, med tomme linjer ryddet op efter sig. | [src](../../../core/services/visible_text_scrub.py#L77) |
+| function | `_ryd_tomrum` | `(tekst)` | Noten stod i sit eget afsnit. Fjerner man den, står der tre tomme | [src](../../../core/services/visible_text_scrub.py#L95) |
+| function | `_uden_markoerord` | `(tekst)` | Teksten med selve markoer-ordene fjernet, men indholdet bevaret. | [src](../../../core/services/visible_text_scrub.py#L103) |
+| class | `StroemSkrubber` | `` | Samme fjernelse, men på en strøm hvor markøren kan være delt over flere | [src](../../../core/services/visible_text_scrub.py#L110) |
+| method | `StroemSkrubber.__init__` | `(self)` | — | [src](../../../core/services/visible_text_scrub.py#L119) |
+| method | `StroemSkrubber.foed` | `(self, stykke)` | Den del af `stykke` der trygt kan sendes videre nu. | [src](../../../core/services/visible_text_scrub.py#L122) |
+| method | `StroemSkrubber.skyl` | `(self)` | Resten, når strømmen er slut. Uafsluttede noter ryger. | [src](../../../core/services/visible_text_scrub.py#L137) |
+| function | `fjern_interne_markoerer_stroem` | `(buffer)` | (klar-til-udsendelse, hale-der-skal-holdes-tilbage). | [src](../../../core/services/visible_text_scrub.py#L144) |
+| function | `_klap_tomrum_sammen` | `(tekst)` | Tre eller flere linjeskift bliver til ét afsnitsbrud. | [src](../../../core/services/visible_text_scrub.py#L191) |
+| function | `_muligt_praefiks` | `(buffer)` | Den slut-stump der kunne være starten på en markør — ellers «». | [src](../../../core/services/visible_text_scrub.py#L202) |
+
+## `core/services/visible_thinking_trace.py`
+_Hvor længe tænkte han? — målt ét sted, læst ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_evict_if_needed` | `()` | Hold kortet lille. Ældste post ryger — kaldes altid under _lock. | [src](../../../core/services/visible_thinking_trace.py#L31) |
+| function | `mark_start` | `(run_id)` | Første tænke-blok i turen. Senere kald ignoreres. | [src](../../../core/services/visible_thinking_trace.py#L38) |
+| function | `mark_end` | `(run_id)` | Seneste tænke-blok lukkede. Sidste lukning vinder — se mark_start. | [src](../../../core/services/visible_thinking_trace.py#L54) |
+| function | `take_seconds` | `(run_id)` | Varigheden i sekunder, og RYD posten. None hvis der ikke blev tænkt. | [src](../../../core/services/visible_thinking_trace.py#L66) |
+| function | `peek_seconds` | `(run_id)` | Som take_seconds, men uden at rydde. Til observation/test. | [src](../../../core/services/visible_thinking_trace.py#L90) |
+
+## `core/services/visible_tool_exec.py`
+_Shared tool-exec pump for the visible run (Boy-Scout extraction, 2026-07-19)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger_til_stede` | `(run)` | Er der et menneske i den anden ende af den her tur? | [src](../../../core/services/visible_tool_exec.py#L36) |
+| function | `_vis_argumenter` | `(navn, args)` | Argumenterne klienten faar — plus en sti den maa HENTE billedet paa. | [src](../../../core/services/visible_tool_exec.py#L66) |
+| function | `run_tool_batch` | `(tool_calls, *, run, loop, tool_scope, step_counter, heartbeat_interval_s, heartbeat_phase, out, heartbeat_extra=…, exec_start=…, er_afbrudt=…)` | Announce → execute → heartbeat pump for one tool batch. | [src](../../../core/services/visible_tool_exec.py#L96) |
+
+## `core/services/visible_tool_labels.py`
+_Human-readable labels and short hints for visible tool activity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bash_hint` | `(cmd)` | Hvad kommandoen egentlig GØR — ikke dens første ord. | [src](../../../core/services/visible_tool_labels.py#L145) |
+| function | `_hoved_og_genstand` | `(ord_)` | «grep tool_calls» — kommandoen og det den blev kørt på. | [src](../../../core/services/visible_tool_labels.py#L202) |
+| function | `_tool_hint` | `(tool_name, arguments=…)` | Emnet for ét kald — HVAD det handler om, uden label foran. | [src](../../../core/services/visible_tool_labels.py#L228) |
+| function | `_tool_label` | `(tool_name, arguments=…)` | — | [src](../../../core/services/visible_tool_labels.py#L275) |
+| function | `_reserveetiket` | `(name)` | Læsbar reserve for nye værktøjer; aldrig rå snake_case i UI'et. | [src](../../../core/services/visible_tool_labels.py#L316) |
+
+## `core/services/visible_turn_accumulator.py`
+_Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TurnAccumulator` | `` | Samler tekst-segmenter, værktøjskald og deres rækkefølge for én tur. | [src](../../../core/services/visible_turn_accumulator.py#L30) |
+| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L62) |
+| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L76) |
+| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L80) |
+| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L84) |
+| method | `TurnAccumulator._luk_tanketid` | `(self)` | En tanke varer til det NÆSTE begynder — ikke til dens sidste token. | [src](../../../core/services/visible_turn_accumulator.py#L88) |
+| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L102) |
+| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L141) |
+| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L160) |
+| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L163) |
+| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L169) |
+| method | `TurnAccumulator.add_round_label` | `(self, etik)` | Gem en runde-etiket som den blok Claude Desktop selv gemmer. | [src](../../../core/services/visible_turn_accumulator.py#L182) |
+| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L212) |
+| function | `_med_etiketter_foer_svaret` | `(blokke, etiketter)` | Læg etiketterne ind lige før den sidste tekstblok. | [src](../../../core/services/visible_turn_accumulator.py#L250) |
+| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L269) |
+
+## `core/services/visible_turn_blocks.py`
+_Den kanoniske content-blok-array for en assistent-tur (spec §4)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_label` | `(tool_name, arguments=…)` | Narrationen for ét værktøjskald — samme tekst som live-visningen brugte. | [src](../../../core/services/visible_turn_blocks.py#L31) |
+| function | `_tool_hint` | `(tool_name, arguments=…)` | Emnet alene — «git status», «raekkeModel.ts», uden label foran. | [src](../../../core/services/visible_turn_blocks.py#L42) |
+| function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L54) |
+| function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
+| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L124) |
+
+## `core/services/vision_backend.py`
+_Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `model_can_see` | `(model)` | Kan DENNE model selv se et billede? | [src](../../../core/services/vision_backend.py#L86) |
+| function | `active_visible_target` | `()` | (provider, model) for den synlige tur der koerer lige nu — ("","") hvis ingen. | [src](../../../core/services/vision_backend.py#L99) |
+| function | `resolve_vision_target` | `(*, force_config=…)` | (provider, model, kilde) for syns-vaerktoejerne lige nu. | [src](../../../core/services/vision_backend.py#L111) |
+| function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L131) |
+| function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L147) |
+| function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L197) |
+| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L220) |
+| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L243) |
+
+## `core/services/vision_preview.py`
+_Hvilket billede må en klient hente — og hvad gør vi når svaret er «ingen»?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../core/services/vision_preview.py#L75) |
+| function | `maa_vises` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../core/services/vision_preview.py#L83) |
+| function | `_kopinavn` | `(fuld)` | Et navn udledt af filen selv, så samme billede giver samme kopi. | [src](../../../core/services/vision_preview.py#L109) |
+| function | `visnings_sti` | `(sti)` | Den sti en klient kan HENTE billedet på. Tom streng hvis ingen findes. | [src](../../../core/services/vision_preview.py#L120) |
+
+## `core/services/visual_memory.py`
+_Visual memory — webcam snapshots beskrevet af vision-model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compare_suffix` | `(previous_desc, time_ago_label)` | Mandatory instruction: always describe what has changed. | [src](../../../core/services/visual_memory.py#L95) |
+| function | `_ollama_base_url` | `()` | Pull Ollama base URL from provider_router.json (falls back to localhost). | [src](../../../core/services/visual_memory.py#L108) |
+| function | `tick_visual_memory_daemon` | `()` | Capture webcam snapshot and describe it via vision model. | [src](../../../core/services/visual_memory.py#L128) |
+| function | `get_visual_memories` | `(*, limit=…)` | Return most recent visual memory records (newest first). | [src](../../../core/services/visual_memory.py#L217) |
+| function | `get_latest_visual_memory_for_prompt` | `()` | Return the most recent visual memory as a quiet prompt hint. | [src](../../../core/services/visual_memory.py#L224) |
+| function | `_coarse_age_label` | `(minutes_ago)` | Bucket minutes-since into coarse labels so prompt cache stays stable. | [src](../../../core/services/visual_memory.py#L267) |
+| function | `look_around_now` | `(*, where=…, prompt_override=…, arkiver=…)` | On-demand capture — Jarvis chooses to look. Bypasses cadence-limit. | [src](../../../core/services/visual_memory.py#L292) |
+| function | `build_visual_memory_surface` | `()` | MC observability surface. | [src](../../../core/services/visual_memory.py#L400) |
+| function | `_billede_er_doedt` | `(image_b64)` | Bærer billedet information — eller er det en død flade? | [src](../../../core/services/visual_memory.py#L439) |
+| function | `_fold` | `(text)` | Sammenlign navne uden at snuble over æøå, store bogstaver og bindestreger. | [src](../../../core/services/visual_memory.py#L532) |
+| function | `known_cameras` | `()` | Alle kendte kameraer — config vinder over det indbyggede kort. | [src](../../../core/services/visual_memory.py#L545) |
+| function | `default_camera` | `()` | Nøglen på det kamera der bruges når ingen har sagt hvor der skal kigges. | [src](../../../core/services/visual_memory.py#L559) |
+| function | `resolve_camera` | `(where=…)` | Slå et menneskeligt stednavn op. Tom streng giver standardkameraet. | [src](../../../core/services/visual_memory.py#L580) |
+| function | `capture_from_camera` | `(where=…)` | Hent et billede. Returnerer (base64-jpeg, kamera-nøgle, læsbart navn). | [src](../../../core/services/visual_memory.py#L624) |
+| function | `describe_cameras` | `()` | Én linje pr. kamera — til værktøjsbeskrivelser og prompten. | [src](../../../core/services/visual_memory.py#L639) |
+| function | `_capture_image` | `(where=…)` | Hent et billede fra et navngivet kamera. Returnerer (base64-jpeg, kameranavn). | [src](../../../core/services/visual_memory.py#L653) |
+| function | `_capture_source` | `()` | Return 'ha_camera' or 'webcam' based on runtime config. | [src](../../../core/services/visual_memory.py#L674) |
+| function | `_ha_camera_entity` | `()` | Return HA camera entity_id from runtime config. | [src](../../../core/services/visual_memory.py#L680) |
+| function | `_capture_ha_camera` | `(entity_id=…)` | Fetch snapshot from Home Assistant camera and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L686) |
+| function | `_capture_webcam` | `(device_index=…)` | Capture one frame from webcam and return as base64 JPEG string. | [src](../../../core/services/visual_memory.py#L722) |
+| function | `_describe_image` | `(image_b64, *, model, provider, prompt=…, previous=…)` | Send image to vision model and return description. | [src](../../../core/services/visual_memory.py#L747) |
+| function | `_previous_time_label` | `(captured_at)` | — | [src](../../../core/services/visual_memory.py#L769) |
+| function | `_build_prompt` | `(previous=…, prompt_index=…)` | Assemble the full vision prompt: prefix + rotating focus + optional compare. | [src](../../../core/services/visual_memory.py#L784) |
+| function | `_describe_via_ollama` | `(image_b64, *, model, prompt=…, previous=…)` | Call Ollama generate API with image payload. | [src](../../../core/services/visual_memory.py#L806) |
+| function | `_load_records` | `()` | — | [src](../../../core/services/visual_memory.py#L874) |
+| function | `_prune_old_records` | `()` | — | [src](../../../core/services/visual_memory.py#L881) |
+| function | `_vision_model` | `(*, force_config=…)` | Return (model_name, provider) — den valgte model vinder over config. | [src](../../../core/services/visual_memory.py#L889) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/visual_memory.py#L935) |
+| function | `_archive_sensory` | `(description, *, metadata)` | Mirror every visual memory into Sansernes Arkiv. | [src](../../../core/services/visual_memory.py#L940) |
+
+## `core/services/voice_anchor.py`
+_Voice anchor — combined static seed + auto-refreshed external exemplars._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `read_voice_anchor` | `()` | Return concatenated VOICE.md + VOICE_RECENT.md, or empty string. | [src](../../../core/services/voice_anchor.py#L20) |
+
+## `core/services/voice_curator.py`
+_Voice curator — refresh VOICE_RECENT.md from EXTERNAL output only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `refresh_voice_recent` | `()` | Rebuild workspace/VOICE_RECENT.md from external output. | [src](../../../core/services/voice_curator.py#L35) |
+| function | `_pick_diverse` | `(*, chat, chronicle, journals)` | Pick up to _TARGET_TOTAL exemplars, max _MAX_PER_SOURCE per source. | [src](../../../core/services/voice_curator.py#L66) |
+| function | `_format_recent` | `(exemplars)` | Render exemplars as a markdown blob for VOICE_RECENT.md. | [src](../../../core/services/voice_curator.py#L97) |
+| function | `_fetch_chat_exemplars` | `(*, limit)` | Pull recent assistant replies from chat_messages (all sessions). | [src](../../../core/services/voice_curator.py#L113) |
+| function | `_fetch_chronicle_exemplars` | `(*, limit)` | Pull recent chronicle narratives as voice exemplars. | [src](../../../core/services/voice_curator.py#L151) |
+| function | `_fetch_journal_exemplars` | `(*, limit)` | Pull recent journal entry bodies as voice exemplars. | [src](../../../core/services/voice_curator.py#L172) |
+| function | `_strip_frontmatter` | `(text)` | Drop a leading `---\n...\n---\n` YAML block if present. | [src](../../../core/services/voice_curator.py#L205) |
+
+## `core/services/voice_daemon.py`
+_Voice daemon — runs the Hey Jarvis voice loop as a background thread._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_voice_enabled` | `()` | Check if voice is enabled via config or env. | [src](../../../core/services/voice_daemon.py#L24) |
+| function | `_run_loop` | `()` | Supervisor thread: start worker, restart on crash until stopped. | [src](../../../core/services/voice_daemon.py#L30) |
+| function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
+| function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
+| function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
+
+## `core/services/wakeup_dispatcher.py`
+_Wakeup dispatcher — autonomous fire of self-wakeups._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L52) |
+| function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L80) |
+| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L153) |
+| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L184) |
+| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L377) |
+
+## `core/services/weekly_manifest.py`
+_Weekly manifest — Jarvis' running self-reflection._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_weekly_manifest_path` | `()` | — | [src](../../../core/services/weekly_manifest.py#L32) |
+| function | `_gather_context` | `()` | Pull recent self-state to ground the reflection. | [src](../../../core/services/weekly_manifest.py#L36) |
+| function | `_build_prompt` | `(ctx)` | — | [src](../../../core/services/weekly_manifest.py#L58) |
+| function | `build_weekly_manifest` | `()` | Generate weekly manifest, write to WEEKLY_MANIFEST.md, return summary. | [src](../../../core/services/weekly_manifest.py#L73) |
+
+## `core/services/weighted_slot_health.py`
+_Quota and adaptive health calculations for cheap-lane candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_account_block_key` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L13) |
+| function | `record_account_block` | `(provider, auth_profile, code, retry_after_seconds)` | Pause every model on a profile when the provider rejects that account. | [src](../../../core/services/weighted_slot_health.py#L17) |
+| function | `clear_account_block` | `(provider, auth_profile)` | A real success proves that the account can be used again. | [src](../../../core/services/weighted_slot_health.py#L32) |
+| function | `_account_block_record` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L39) |
+| function | `_account_block_until` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L46) |
+| function | `active_account_block` | `(provider, auth_profile, now_epoch)` | Return the active account cooldown and its cause for telemetry. | [src](../../../core/services/weighted_slot_health.py#L50) |
+| function | `account_block_active` | `(provider, auth_profile, now_epoch)` | Whether this provider account is in its temporary shared cooldown. | [src](../../../core/services/weighted_slot_health.py#L64) |
+| function | `quota_snapshot` | `(candidate, *, get_state, count_invocations, decode_metadata, cache_prefix, cache_ttl_seconds, reset_hours)` | — | [src](../../../core/services/weighted_slot_health.py#L69) |
+| function | `adaptive_snapshot` | `(candidate, *, state, get_state, decode_metadata)` | — | [src](../../../core/services/weighted_slot_health.py#L145) |
+| function | `latency_rank_multiplier` | `(avg_latency_ms, success_count)` | Bias small cheap tasks toward proven fast models without excluding slow ones. | [src](../../../core/services/weighted_slot_health.py#L186) |
+| function | `decode_state_metadata` | `(state)` | — | [src](../../../core/services/weighted_slot_health.py#L193) |
+| function | `rolling_average` | `(*, current_avg, current_count, new_value)` | — | [src](../../../core/services/weighted_slot_health.py#L204) |
+| function | `normalize_probe_text` | `(value)` | — | [src](../../../core/services/weighted_slot_health.py#L210) |
+| function | `smoke_quality_score` | `(*, expected, actual)` | — | [src](../../../core/services/weighted_slot_health.py#L215) |
+
+## `core/services/widget_dokument.py`
+_Pak model-skrevet HTML i et dokument der ikke kan naa noget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `maerke` | `(titel=…)` | — | [src](../../../core/services/widget_dokument.py#L70) |
+| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L78) |
+| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L82) |
+
+## `core/services/witness_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_witness_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/witness_signal_tracking.py#L29) |
+| function | `refresh_runtime_witness_signal_statuses` | `()` | — | [src](../../../core/services/witness_signal_tracking.py#L51) |
+| function | `build_runtime_witness_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/witness_signal_tracking.py#L120) |
+| function | `_extract_witness_candidates` | `(*, run_id)` | — | [src](../../../core/services/witness_signal_tracking.py#L156) |
+| function | `_persist_witness_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/witness_signal_tracking.py#L254) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, title, summary, rationale, status_reason, source_items, self_narrative, meaning, temperament, relation_continuity)` | — | [src](../../../core/services/witness_signal_tracking.py#L323) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L456) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L468) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L472) |
+| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L477) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L482) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/witness_signal_tracking.py#L487) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/witness_signal_tracking.py#L496) |
+| function | `_latest_self_narrative_continuity` | `(*, run_id, domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L569) |
+| function | `_latest_meaning_significance` | `(*, run_id, domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L577) |
+| function | `_latest_temperament_tendency` | `(*, run_id, domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L585) |
+| function | `_latest_relation_continuity` | `(*, run_id, domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L593) |
+| function | `_latest_signal_for_domain` | `(items, *, run_id, domain_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L601) |
+| function | `_focus_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L618) |
+| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/witness_signal_tracking.py#L623) |
+| function | `_derive_becoming_direction` | `(*, signal_type, self_narrative, meaning, temperament, relation_continuity)` | — | [src](../../../core/services/witness_signal_tracking.py#L628) |
+| function | `_derive_becoming_weight` | `(*, self_narrative, meaning, temperament, relation_continuity)` | — | [src](../../../core/services/witness_signal_tracking.py#L657) |
+| function | `_derive_maturation_hint` | `(*, signal_type, self_narrative, temperament, relation_continuity)` | — | [src](../../../core/services/witness_signal_tracking.py#L677) |
+| function | `_derive_maturation_state` | `(*, signal_type, status, becoming_direction, becoming_weight, maturation_hint)` | — | [src](../../../core/services/witness_signal_tracking.py#L698) |
+| function | `_derive_maturation_marker` | `(*, maturation_state, maturation_hint)` | — | [src](../../../core/services/witness_signal_tracking.py#L719) |
+| function | `_derive_persistence_state` | `(*, status, becoming_direction, maturation_state, support_count, session_count)` | — | [src](../../../core/services/witness_signal_tracking.py#L739) |
+| function | `_derive_persistence_marker` | `(*, persistence_state, maturation_state)` | — | [src](../../../core/services/witness_signal_tracking.py#L760) |
+| function | `_becoming_summary` | `(*, domain_title, becoming_direction, becoming_weight, signal_type)` | — | [src](../../../core/services/witness_signal_tracking.py#L780) |
+| function | `_maturation_summary` | `(*, domain_title, becoming_direction, maturation_state, maturation_marker)` | — | [src](../../../core/services/witness_signal_tracking.py#L796) |
+| function | `_persistence_summary` | `(*, domain_title, persistence_state, persistence_marker, becoming_direction)` | — | [src](../../../core/services/witness_signal_tracking.py#L811) |
+| function | `_summary_marker` | `(text, key)` | — | [src](../../../core/services/witness_signal_tracking.py#L826) |
+| function | `_last_summary_fragment` | `(text)` | — | [src](../../../core/services/witness_signal_tracking.py#L835) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/witness_signal_tracking.py#L841) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/witness_signal_tracking.py#L847) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/witness_signal_tracking.py#L860) |
+| function | `run_witness_daemon` | `(*, trigger=…, last_visible_at=…)` | Bounded inner witness daemon — produces witness signals without visible turn. | [src](../../../core/services/witness_signal_tracking.py#L884) |
+| function | `get_witness_daemon_state` | `()` | Return current witness daemon state for MC observability. | [src](../../../core/services/witness_signal_tracking.py#L1000) |
+

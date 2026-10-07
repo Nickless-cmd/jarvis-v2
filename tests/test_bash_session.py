@@ -44,6 +44,40 @@ def test_sund_kommando_virker(session):
     assert "HELLO_A" in (r.get("output") or "")
 
 
+# ── Pipefail: en pipe må ikke skjule en fejl (29/9-2026) ────────────────
+#
+# Målt 28-29/9-2026: `git commit … 2>&1 | tail -40` gav exit 0 selv når en
+# pre-commit-hook AFVISTE commit'en. `{ cmd ; } ; echo "$?"` rapporterer
+# SIDSTE led i pipen — altså `tail`, som altid lykkes. Et afvist commit
+# lignede derfor et der lykkedes, og Bjørn måtte sige det til mig.
+
+
+def test_pipe_skjuler_ikke_en_fejl(session):
+    """Kernen: fejler kommandoen, skal exit-koden sige det — også gennem en pipe."""
+    r = session.run("false | tail -3", timeout=10)
+    assert r["status"] == "ok"
+    assert r["exit_code"] != 0, "pipen skjulte fejlen — tail's 0 blev rapporteret"
+
+
+def test_pipe_med_sidste_led_i_orden_men_foerste_i_stykker(session):
+    """Samme klasse, med en rigtig git-kommando: ugyldig ref gennem pipe."""
+    r = session.run("git rev-parse --verify no-such-ref-xyz 2>&1 | tail -3", timeout=10)
+    assert r["exit_code"] != 0, "git-fejlen forsvandt bag tail"
+
+
+def test_sund_pipe_er_stadig_nul(session):
+    """Modstykket: en pipe hvor ALT lykkes må ikke blive en falsk fejl."""
+    r = session.run("echo hej | tail -3", timeout=10)
+    assert r["exit_code"] == 0
+    assert "hej" in (r.get("output") or "")
+
+
+def test_pipefail_er_slaaet_til_i_sessionen(session):
+    """Indstillingen skal stå i selve shellen — ikke kun i ét kald."""
+    r = session.run("set -o | grep pipefail", timeout=10)
+    assert "on" in (r.get("output") or ""), f"pipefail er ikke slået til: {r}"
+
+
 def test_desync_forgifter_ikke_sessionen(session, tmp_path):
     """KERNEN: efter en desyncende kommando skal den NÆSTE kommando stadig virke."""
     session.run("echo HELLO_A", timeout=10)
@@ -143,13 +177,18 @@ def test_close_paa_en_OPTAGET_session_vender_tilbage_med_det_samme():
 class _Attrap:
     """Nok af en session til at `_list_row` kan læses uden en daemon."""
 
-    def __init__(self, *, laast: bool, kommando: str, levende: bool = True):
+    def __init__(self, *, laast: bool, kommando: str, levende: bool = True,
+                 titel: str = "", arbejde: bool = False):
         self.lock = threading.Lock()
         if laast:
             self.lock.acquire()
         self.running_command = kommando
         self.last_used = time.time() - 42
         self._levende = levende
+        # Sat ved `open` (29/9-2026) — attrap'en skal baere dem, ellers
+        # maaler testen en anden kontrakt end daemonen udsteder.
+        self.titel = titel
+        self.arbejde = arbejde
 
     def alive(self) -> bool:
         return self._levende
@@ -164,6 +203,19 @@ def test_list_siger_om_sessionen_er_optaget_og_hvad_der_koerer():
     assert r["command"] == "npm run build"
     # `last_used` sættes ved kommandoens START, så tallet ER køretiden.
     assert r["idle_seconds"] == 42
+
+
+def test_list_baerer_titel_og_arbejdsmaerkning():
+    # Panelet skal kunne se HVAD en session er til, og om den overhovedet
+    # hoerer hjemme i panelet. Begge dele skrives ved `open` og skal derfor
+    # med i list-svaret — ellers maa panelet gaette bagefter.
+    r = _list_row("bsh-z", _Attrap(laast=False, kommando="",
+                                   titel="bygger klienten", arbejde=True), time.time())
+    assert r["titel"] == "bygger klienten"
+    assert r["arbejde"] is True
+    # Uden maerkning er det en almindelig session aabnet med vilje.
+    r2 = _list_row("bsh-w", _Attrap(laast=False, kommando=""), time.time())
+    assert r2["titel"] == "" and r2["arbejde"] is False
 
 
 def test_list_viser_ikke_en_gammel_kommando_paa_en_ledig_session():

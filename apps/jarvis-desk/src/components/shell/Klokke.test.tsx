@@ -201,10 +201,18 @@ describe('Klokke', () => {
   // Maalt 26/9-2026 stod 100 `run_done` aabne samtidig, og et taeller der
   // talte dem gjorde klokken til en konstant «9+» hvor intet ventede.
 
-  it('prikken vises også for ulæste svar', async () => {
+  // 4/10-2026 VENDT. 26/9 var problemet taelleren; prikken fik dengang lov at
+  // staa for `run_done`. Maalt 4/10 stod 1152 aabne, og der kommer en ny hvert
+  // andet minut — prikken lyste derfor permanent, praecis som taelleren gjorde
+  // 26/9. Nu reagerer klokken kun paa poster der KRAEVER et svar: serverens
+  // `venter` (`slags != "run_done"`), den samme maengde som fanen «Venter paa
+  // dig» viser. En klokke der altid ringer, ringer aldrig.
+  it('prikken vises IKKE for run_done — baggrundsstof lyser ikke', async () => {
     hent.mockResolvedValue({ poster: [{ ...posts(1)[0], slags: 'run_done' }], antal: 100, venter: 0 })
     render(<Klokke config={cfg} onAaben={() => {}} />)
-    expect(await screen.findByTestId('klokke-ulast')).toBeInTheDocument()
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Notifikationer' })).toBeInTheDocument())
+    expect(screen.queryByTestId('klokke-ulast')).toBeNull()
   })
 
   it('virker også med ældre server uden venter', async () => {

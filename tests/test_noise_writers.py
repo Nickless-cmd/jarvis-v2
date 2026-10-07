@@ -64,6 +64,37 @@ def test_sentence_like_domain_keys_are_dropped():
     assert not [p for p in proposals if p.get("proposal_type") == "stable-context-update"]
 
 
+def test_foldningen_afvaebner_saetnings_vagten_hvis_den_maales_bagefter():
+    """Selve årsagen, pinnet uafhængigt af kaldestedet.
+
+    `_domain_from_canonical_key` folder halen gennem `normalize_candidate_domain`
+    for at samle to formuleringer af samme opgave i ét domæne — helt rimeligt for
+    DET formål. Men foldningen fjerner småordene, og det er præcis dem
+    `_looks_like_sentence` tæller på. Målt 2/10-2026:
+
+        raa hale  det-er-fordi-du-prompt-er-rodet   7 dele → sætning
+        foldet    fordi-prompt-rodet                3 dele → ikke sætning
+
+    En hel brugerbesked slap derfor gennem vagten og blev et
+    stabilt-kontekst-forslag. Denne test siger hvorfor rækkefølgen betyder noget,
+    så den næste der folder noget opstrøms ikke genindfører hullet i stilhed.
+    """
+    from core.services import memory_md_update_proposal_tracking as t
+
+    canonical = "witness:stable-context:det-er-fordi-du-prompt-er-rodet"
+    raa = t._raw_tail_from_canonical_key(canonical)
+    foldet = t._domain_from_canonical_key(canonical)
+
+    assert raa == "det-er-fordi-du-prompt-er-rodet", raa
+    assert len([p for p in foldet.split("-") if p]) < len([p for p in raa.split("-") if p]), (
+        "foldningen fjerner ikke længere dele — så er præmissen for denne test væk"
+    )
+    assert t._looks_like_sentence(raa) is True, "vagten ser ikke sætningen i den rå hale"
+    assert t._looks_like_sentence(foldet) is False, (
+        "foldningen skjuler ikke længere sætningen — tjek om tærsklen er ændret"
+    )
+
+
 def test_refresh_marks_old_fresh_proposals_stale():
     from core.services import memory_md_update_proposal_tracking as t
 

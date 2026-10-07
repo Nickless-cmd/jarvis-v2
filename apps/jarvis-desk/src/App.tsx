@@ -1,6 +1,6 @@
 import { GenoptagelsesVarselHost } from './components/feedback/GenoptagelsesVarselHost'
-import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { UpdateCard } from './components/shell/UpdateCard'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { UpdateHost } from './components/shell/UpdateHost'
 import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
@@ -26,6 +26,7 @@ import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { PrivacyDialog } from './components/PrivacyDialog'
+import { BugRapport } from './components/BugRapport'
 import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
@@ -34,11 +35,14 @@ import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { ArtifactsView } from './views/ArtifactsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
-import { OpmaerksomhedsVaert } from './components/shell/OpmaerksomhedsVaert'
+// OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026): det lille arbejder-felt i
+// højre nederste hjørne skulle ud. Komponenten er bevaret — kun renderingen
+// er fjernet. Genaktiveres med: import + <OpmaerksomhedsVaert setSurface={setSurface} />
 import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/liveness.css'
 import './styles/environment-inspector.css'
 import './styles/cheap-lane.css'
 import './styles/cowork-categories.css'
@@ -100,7 +104,7 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <ViewRequestWatcher config={cfg} />
-            <OpmaerksomhedsVaert setSurface={setSurface} />
+            {/* OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026) */}
             <AiTransparencyNotice onNavigate={setSurface} />
             <UpdateHost />
             <DependencyHost />
@@ -108,45 +112,6 @@ export function App() {
         </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
-  )
-}
-
-interface UpdatesBridge {
-  onAvailable: (cb: (i: { version?: string }) => void) => () => void
-  onReady: (cb: (i: { version?: string }) => void) => () => void
-  download: () => Promise<void>
-  install: () => Promise<void>
-}
-function updatesBridge(): UpdatesBridge | undefined {
-  return (window as unknown as { jarvisDesk?: { updates?: UpdatesBridge } }).jarvisDesk?.updates
-}
-
-/** Lytter på app-opdaterings-events fra main og viser UpdateCard (§22.5). */
-function UpdateHost() {
-  const [upd, setUpd] = useState<{ version: string; phase: 'available' | 'ready' } | null>(null)
-  // Afvist version huskes, så de 15-min polls ikke nager om SAMME version igen — men en
-  // NYERE version (eller 'ready'-fasen efter download) bryder altid igennem (Bjørn 2026-06-23).
-  const dismissedRef = useRef<string>('')
-  useEffect(() => {
-    const u = updatesBridge()
-    if (!u) return
-    const offA = u.onAvailable((i) => {
-      const v = i.version ?? ''
-      if (v && v === dismissedRef.current) return  // allerede afvist denne version
-      setUpd({ version: v, phase: 'available' })
-    })
-    const offR = u.onReady((i) => setUpd({ version: i.version ?? '', phase: 'ready' }))
-    return () => { offA(); offR() }
-  }, [])
-  if (!upd) return null
-  return (
-    <UpdateCard
-      version={upd.version}
-      phase={upd.phase}
-      onUpdate={() => void updatesBridge()?.download()}
-      onInstall={() => void updatesBridge()?.install()}
-      onDismiss={() => { if (upd.phase === 'available') dismissedRef.current = upd.version; setUpd(null) }}
-    />
   )
 }
 
@@ -225,7 +190,7 @@ function Shell({
 }: {
   surface: Surface
   setSurface: (s: Surface) => void
-  role: 'owner' | 'member' | 'guest'
+  role: 'owner' | 'partner' | 'member' | 'guest'
   userName: string
   model: string
 }) {
@@ -234,9 +199,14 @@ function Shell({
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   const [searchOpen, setSearchOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  // Fejl-rapporten bor her og ikke i Sidebar, af samme grund som
+  // privatlivs-dialogen: begge er `<dialog>`-elementer der skal ligge i
+  // top-laget MIDT på skærmen, ikke inde i sidens kolonne-layout.
+  const [bugOpen, setBugOpen] = useState(false)
   return (
     <div className="window">
-      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)} />
+      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)}
+               onOpenBug={() => setBugOpen(true)} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
         <PresenceHost />
@@ -288,6 +258,7 @@ function Shell({
           {surface === 'scheduling' && <SchedulingView role={role} />}
         </ShellWithPanel>
         {privacyOpen && <PrivacyDialog config={cfg} onClose={() => setPrivacyOpen(false)} />}
+        {bugOpen && <BugRapport config={cfg} onClose={() => setBugOpen(false)} />}
         {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}
       </main>
     </div>

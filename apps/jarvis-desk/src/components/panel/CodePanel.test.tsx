@@ -90,4 +90,15 @@ describe('CodePanel', () => {
     await screen.findByDisplayValue('print(1)')
     expect(screen.queryByTitle('Gem & commit')).not.toBeInTheDocument()
   })
+
+  it('vis ændringer: diff mellem original og redigeret tekst', async () => {
+    const { container } = render(<CodePanel config={cfg} kind="container" root="repo" />)
+    fireEvent.contextMenu(await screen.findByText('x.py'))
+    fireEvent.click(screen.getByText('Åbn i editor'))
+    const ta = await screen.findByDisplayValue('print(1)')
+    fireEvent.change(ta, { target: { value: 'print(2)' } })
+    fireEvent.click(screen.getByTitle('Vis ændringer (diff)'))
+    await waitFor(() => expect(container.querySelector('.diffview')).toBeTruthy())
+    expect(container.querySelector('.diffview')?.textContent ?? '').toContain('print(2)')
+  })
 })

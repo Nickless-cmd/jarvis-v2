@@ -41,13 +41,21 @@ def test_hollow_promise_is_still_detected_on_the_forced_finalize_round():
     assert "_run_degenerated = True" in block
     assert '_agentic_loop_exit_reason = "pending-tool-intent"' in block
     assert "note_detected" in block
-    assert "løkken tvang en" in block
+    # 3/10-2026: selve note-TEKSTEN bor nu i `visible_run_guard_notices`, fordi
+    # den skal filtreres ud af model-input (klasse 3) og teksten derfor kun maa
+    # staa ÉT sted — ellers kan skriveren og filteret drive fra hinanden.
+    # Vagten foelger soemmen og hedder nu kaldet i stedet for prosaen.
+    assert "loekken_tvang_en_afslutning()" in block
 
 
 def test_the_honest_note_reaches_both_the_stream_and_the_persisted_answer():
+    """Noten skal naa BEGGE veje: streamen (Bjoern ser den live) og `_a_parts`
+    (den persisteres). At den siden filtreres ud af MODEL-input er en anden sag
+    og pinnes i `test_visible_run_guard_notices`."""
     src = _source()
-    idx = src.index("løkken tvang en")
-    block = src[idx: idx + 700]
+    anker = "loekken_tvang_en_afslutning()"
+    assert anker in src, f"{anker} kaldes ikke laengere i visible_runs"
+    block = src[src.index(anker):][:700]
     assert "_a_parts.append(_stop_note)" in block
     assert "_all_followup_parts.append(_stop_note)" in block
     assert '"delta": _stop_note' in block
@@ -61,10 +69,21 @@ def test_followup_rounds_resolve_their_own_thinking_mode():
 
 def test_forced_finalize_uses_pending_tool_intent_not_completed_default():
     src = _source()
+    import inspect
+
+    from core.services import visible_run_segment_exit as vrse
+
     assert "_a_pending_tool_intent" in src
-    # Opgave 3 (17/9-2026): udgangen går gennem `settle_segment_exit`, som
-    # skriver den durable post før den terminale SSE og selv kalder
-    # klassifikationen bag `resolve_agentic_exit`.
-    assert "settle_segment_exit(" in src
+    # Opgave 3 (17/9-2026): udgangen går gennem den durable afregning, som
+    # skriver posten før den terminale SSE og selv kalder klassifikationen bag
+    # `resolve_agentic_exit`.
+    #
+    # 30/9-2026: selve afgørelsen er udskilt til `visible_run_segment_exit`, så
+    # `settle_segment_exit(` og kæde-opslaget ikke længere står i `visible_runs`.
+    # Vagten følger sømmen. SSE og tilstands-markering blev i løkken, fordi de
+    # hænger på generatoren — og dét er stadig det denne test skal beskytte.
+    assert "afgoer_segment_udfald(" in src
     assert 'yield _sse(_terminal.event_name, _terminal.event_payload)' in src
-    assert "recovery_attempt=_recovery_attempt" in src
+    enhed = inspect.getsource(vrse)
+    assert "settle_segment_exit(" in enhed
+    assert "recovery_attempt=" in enhed, "kæde-nummeret skal med til afregningen"

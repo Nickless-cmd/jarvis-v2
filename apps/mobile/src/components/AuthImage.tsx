@@ -162,7 +162,7 @@ const stilPlads = StyleSheet.create({
  * tilbage i, må ikke hente det samme billede ti gange over mobilnettet.
  */
 export async function hentTilCache(
-  config: ApiConfig, url: string, navn: string,
+  config: ApiConfig, url: string, navn: string, praefiks = 'img-',
 ): Promise<string> {
   // ABSOLUT adresse, her og ikke hos kalderen. `createDownloadResumable`
   // kender ingen base, saa en relativ sti henter ingenting — tavst, fordi
@@ -173,7 +173,10 @@ export async function hentTilCache(
   // ellers maa vises.
   const adresse = new URL(url, config.apiBaseUrl).toString()
   const rent = String(navn || 'b').replace(/[^A-Za-z0-9._-]/g, '_')
-  const dest = `${FileSystem.cacheDirectory}img-${rent}`
+  // Praefikset holder medietyperne fra hinanden i cachen. Uden det ville en
+  // video ligge som «img-…» — og et navn der lyver om sit indhold er praecis
+  // den slags der koster en time naeste gang nogen debugger cachen.
+  const dest = `${FileSystem.cacheDirectory}${praefiks}${rent}`
   const info = await FileSystem.getInfoAsync(dest)
   if (info.exists && (info.size ?? 0) > 0) return dest
   const opg = FileSystem.createDownloadResumable(

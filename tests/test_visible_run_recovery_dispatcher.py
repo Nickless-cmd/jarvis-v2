@@ -53,6 +53,21 @@ def test_en_forladt_opgave_genoptages_praecis_EN_gang(spawn):
     assert spawn[0]["recovery_generation"] == 1
 
 
+def test_halv_relay_post_uden_anmodning_maa_ikke_starte_betalt_run(spawn):
+    """Den ydre stream har et andet id end modellens run og bærer ingen tekst."""
+    ifr.stempl_genoptagelse(
+        run_id="relay-1", session_id="chat-1", task_id="old-task",
+        recovery_attempt=2, recovery_generation=2,
+    )
+    ifr.settle_recovering("relay-1", reason="shutdown")
+
+    assert D.recover_due_once()["started"] == 0
+    assert spawn == []
+    post = ifr.get_record("relay-1")
+    assert post["status"] == "failed_terminal"
+    assert post["notice_pending"] is False
+
+
 def test_genoptagelse_bevarer_composer_og_afsenderflade(spawn, monkeypatch):
     monkeypatch.setattr("core.services.session_permission.hent_permission", lambda sid: "trust")
     ifr.mark_started(
@@ -419,3 +434,197 @@ def test_et_opgivet_run_faar_ikke_at_vide_at_checkpointet_kan_genoptages():
     lever = recovery_notice("pending-tool-intent", continuing=True)
     assert "fortsaetter automatisk" in lever["message"]
     assert lever["continuing"] is True
+
+
+# ── Samtalen der gik videre (3/10-2026) ─────────────────────────────────────
+#
+# Maalt 3/10-2026: `visible-6d1c15e7` doede 13:24:48 uden at svare. Den blev
+# genoptaget 13:43:31 — nitten minutter senere — og en fortsaettelse faar HELE
+# samtale-historikken med. Saa den svarede paa Bjoerns NYESTE besked, som en
+# levende koersel havde besvaret 26 sekunder foer. Ét spoergsmaal, to svar.
+#
+# Vaernet fandtes ikke: `recover_due_once` spurgte kun «koerer der noget LIGE
+# NU». Det spoergsmaal er sandt i et kort vindue og falsk igen bagefter — det
+# ser ikke at samtalen er gaaet videre imens posten ventede.
+#
+# Reglen: har brugeren skrevet noget NYT i denne samtale efter posten doede, er
+# opgaven forladt. Ikke et tab: skrev han noget, findes der et nyere run der
+# baerer hans spoergsmaal, og det bliver genoptaget for sig selv hvis det ogsaa
+# doer. Vi dropper kun det gamle.
+
+def _falsk_chat(rows: list[tuple[str, str, str]]):
+    """En RIGTIG SQLite-forbindelse med en `chat_messages`-tabel.
+
+    Vi tester SQL'en og ikke et mock. Fejlen her var et spoergsmaal der aldrig
+    blev stillet, og et mock ville svare paa hvad vi nu engang skrev ned.
+    `datetime()`-sammenligningen er hele pointen: den laeser baade `+00:00` og
+    `Z`, og giver NULL paa skrald.
+    """
+    import sqlite3
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _connect():
+        conn = sqlite3.connect(":memory:")
+        conn.execute(
+            "CREATE TABLE chat_messages (session_id TEXT, role TEXT, created_at TEXT)")
+        conn.executemany("INSERT INTO chat_messages VALUES (?, ?, ?)", rows)
+        yield conn
+        conn.close()
+
+    return _connect
+
+
+def _doede_for(run_id: str, *, minutter: int) -> None:
+    """Flyt postens doedstidspunkt tilbage i tiden."""
+    from datetime import UTC, datetime, timedelta
+    poster = ifr._load()
+    n = ifr._record_key(poster, run_id)
+    t = (datetime.now(UTC) - timedelta(minutes=minutter)).isoformat()
+    poster[n]["settled_at"] = t
+    poster[n]["interrupted_at"] = t
+    poster[n]["first_interrupted_at"] = t
+    ifr._save(poster)
+
+
+def _besked_for(minutter_siden: int, *, rolle: str = "user",
+                session: str = "chat-1") -> tuple[str, str, str]:
+    from datetime import UTC, datetime, timedelta
+    t = (datetime.now(UTC) - timedelta(minutes=minutter_siden)).isoformat()
+    return (session, rolle, t)
+
+
+def test_en_forladt_opgave_droppes_naar_brugeren_skrev_noget_nyere(spawn, monkeypatch):
+    """Det praecise tilfaelde: posten ventede, og imens gik samtalen videre."""
+    monkeypatch.setattr(
+        "core.runtime.db.connect",
+        _falsk_chat([_besked_for(10)]),
+    )
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)       # doede for 20 min siden
+    # ... og han skrev for 10 min siden: samtalen er gaaet videre
+
+    svar = D.recover_due_once()
+    assert svar["started"] == 0 and svar["error"] == "samtalen-gik-videre"
+    assert spawn == [], "der blev startet en fortsaettelse han ikke ventede paa"
+
+
+def test_ny_besked_mellem_to_afbrydelser_opgiver_den_gamle_opgave(spawn, monkeypatch):
+    """En senere retry maa ikke flytte graensen for om brugeren gik videre."""
+    monkeypatch.setattr("core.runtime.db.connect", _falsk_chat([
+        _besked_for(10, rolle="user"),
+    ]))
+    _forladt_opgave()
+    _doede_for("task-1", minutter=5)
+    poster = ifr._load()
+    poster["task-1"]["first_interrupted_at"] = _besked_for(20)[2]
+    ifr._save(poster)
+
+    svar = D.recover_due_once()
+    assert svar["error"] == "samtalen-gik-videre"
+    assert spawn == []
+
+
+def test_foerste_afbrydelse_bevares_naar_samme_opgave_dor_igen():
+    _forladt_opgave()
+    foerste = ifr.get_record("task-1")["first_interrupted_at"]
+    ifr.settle_recovering("task-1", reason="shutdown")
+    assert ifr.get_record("task-1")["first_interrupted_at"] == foerste
+
+
+def test_en_forladt_opgave_uden_nye_beskeder_genoptages_stadig(spawn, monkeypatch):
+    """Modproeven — og den vigtigste. Vaernet maa ikke draebe al genoptagelse.
+
+    Skrev han INTET efter den doede, venter han stadig. Saa skal opgaven
+    fortsaettes, uanset hvor laenge den har ligget.
+    """
+    monkeypatch.setattr(
+        "core.runtime.db.connect",
+        _falsk_chat([_besked_for(30)]),      # hans besked kom FOER den doede
+    )
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+
+    assert D.recover_due_once()["started"] == 1
+    assert spawn[0]["session_id"] == "chat-1"
+
+
+def test_en_forladt_opgave_lukkes_og_bliver_ikke_liggende(spawn, monkeypatch):
+    """Den maa ikke bare springes over: saa laa den som `recovering` for evigt
+    og LIGNEDE noget der stadig kunne hentes — og naeste tick tog den igen."""
+    monkeypatch.setattr("core.runtime.db.connect", _falsk_chat([_besked_for(10)]))
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+    D.recover_due_once()
+
+    post = ifr.get_record("task-1")
+    assert post["status"] == "cancelled"
+    assert post["exit_reason"] == "samtalen gik videre efter afbrydelsen"
+    assert post["notice_pending"] is False, "en foraeldet opgave skal ikke varsle"
+    # ... og den kan ikke tages en gang til.
+    assert D.recover_due_once() == {"started": 0, "released": 0, "claimed": ""}
+    assert spawn == []
+
+
+def test_en_proaktiv_besked_er_ikke_ham_der_gik_videre(spawn, monkeypatch):
+    """Graensen gaar paa ROLLE. En heartbeat-ping i samtalen er ikke et svar.
+
+    Talte vi ogsaa assistent-beskeder, ville enhver proaktiv besked droppe en
+    opgave han stadig ventede paa.
+    """
+    monkeypatch.setattr(
+        "core.runtime.db.connect",
+        _falsk_chat([_besked_for(5, rolle="assistant")]),
+    )
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+
+    assert D.recover_due_once()["started"] == 1
+    assert spawn[0]["session_id"] == "chat-1"
+
+
+def test_en_anden_samtales_beskeder_taeller_ikke(spawn, monkeypatch):
+    """Reglen er pr. SAMTALE — praecis den fejl `_allerede_besvaret` har.
+
+    `living_executive` spoerger `visible_runs` uden sessions-filter, saa en
+    afsluttet koersel i ENHVER samtale kan droppe genoptagelsen her.
+    """
+    monkeypatch.setattr(
+        "core.runtime.db.connect",
+        _falsk_chat([_besked_for(5, session="chat-en-helt-anden")]),
+    )
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+
+    assert D.recover_due_once()["started"] == 1
+
+
+def test_en_ulaeselig_chat_tabel_blokerer_ikke_genoptagelsen(spawn, monkeypatch):
+    """Self-safe: kan vi ikke se efter, maa arbejdet ikke gaa i staa.
+
+    Samme afvejning som `active_run_for_session`: et run maa aldrig doe tavst,
+    saa tvivlen falder ud til fordel for at proeve.
+    """
+    def _braekker():
+        raise RuntimeError("databasen er vaek")
+    monkeypatch.setattr("core.runtime.db.connect", _braekker)
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+
+    assert D.recover_due_once()["started"] == 1
+
+
+def test_et_ulaeseligt_tidsstempel_dropper_ikke_opgaven(spawn, monkeypatch):
+    """`datetime()` giver NULL paa skrald — og saa skal vi genoptage.
+
+    Uden det ville en raa streng-sammenligning se skrald som «senere end» alt
+    og droppe en opgave i utide.
+    """
+    monkeypatch.setattr(
+        "core.runtime.db.connect",
+        _falsk_chat([("chat-1", "user", "ikke-et-tidspunkt")]),
+    )
+    _forladt_opgave()
+    _doede_for("task-1", minutter=20)
+
+    assert D.recover_due_once()["started"] == 1

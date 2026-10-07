@@ -74,3 +74,67 @@ describe('streamen og en 403 med forklaring', () => {
     expect(fejl.message).toMatch(/tilføjet i desk/)
   })
 })
+
+// ── Knappen skal findes for den klient der har brug for den (29/9-2026) ─────
+//
+// Blokken stod bag `denne.type === 'computer'`, og serveren udleder typen af
+// `app_id`-claim'et. Et token uden claim giver «ukendt» — altsaa forsvandt
+// knappen praecis for den klient der ikke maatte bruge code mode.
+//
+// Samtidig stod computeren i LISTEN som tilfoejet, for den kommer fra
+// registret og ikke fra tokenet. Panelet sagde ét, serveren et andet.
+//
+// Bjoern: «i appen stod den stadig tilfoejet, saa jeg slog reglen fra og saa
+// svarede han». Reglen blev slukket fordi der ikke var nogen vej ind.
+
+describe('registrering tilbydes naar klienten ikke maa bruge code mode', () => {
+  // Svarforsinkelse i mock'en — og den er med vilje.
+  //
+  // `mockResolvedValue` resolver i samme microtask, saa `setOverblik` naaede
+  // at batche inden `waitFor`s foerste check. Racen blev derfor ALDRIG fanget
+  // lokalt, kun i CI. 40 ms er nok til at bryde batchen, og det matcher et
+  // rigtigt netvaerkskald bedre end et svar der er klar i samme tick.
+  const SVARFORSINKELSE_MS = 40
+
+  const vis = async (denne: enh.EnhedsOverblik['denne'], kraev = true) => {
+    vi.spyOn(enh, 'hentEnheder').mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, SVARFORSINKELSE_MS))
+      return { ok: true, data: overblik({ denne, kraev_aktivt: kraev }) }
+    })
+    render(<EnhederSection config={config} ejer />)
+    // Vent paa at SVARET er tegnet — ikke paa at kaldet skete. `hentEnheder`
+    // kaldes synkront i mount-effect'en, saa `toHaveBeenCalled()` var opfyldt
+    // et tick FOER `setOverblik` naaede DOM'en. Under CI-load naaede `knap()`
+    // derfor at se null. Maalt 29/9-2026 med en mock der svarer 40 ms
+    // forsinket: praecis de tre tests der forventer knappen fejlede.
+    // «Bjoerns Pixel» kommer fra SAMME render som knappen, saa den er det
+    // rigtige anker — og den er altid i `overblik()`s enhedsliste.
+    await screen.findByText('Bjørns Pixel')
+  }
+  const knap = () => screen.queryByRole('button', { name: /Tilføj denne computer/i })
+
+  it('en UKENDT klient faar knappen — det var hans sag', async () => {
+    await vis({ type: 'ukendt', tilfoejet: false, kode_tilladt: false })
+    expect(knap()).not.toBeNull()
+  })
+
+  it('og en forklaring paa hvorfor den staar der selvom computeren er i listen', async () => {
+    await vis({ type: 'ukendt', tilfoejet: false, kode_tilladt: false })
+    expect(screen.getByText(/tilfoej den igen/i)).toBeInTheDocument()
+  })
+
+  it('en genkendt men ikke-tilfoejet computer faar den stadig', async () => {
+    await vis({ type: 'computer', tilfoejet: false, kode_tilladt: false })
+    expect(knap()).not.toBeNull()
+  })
+
+  it('en TILFOEJET computer faar den ikke — intet at gentage', async () => {
+    await vis({ type: 'computer', tilfoejet: true, kode_tilladt: true })
+    expect(knap()).toBeNull()
+  })
+
+  it('en TELEFON faar den aldrig — den har sin egen vej (parring)', async () => {
+    await vis({ type: 'telefon', tilfoejet: false, kode_tilladt: false })
+    expect(knap()).toBeNull()
+  })
+})

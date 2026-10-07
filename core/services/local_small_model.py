@@ -37,9 +37,26 @@ STANDARD_TIMEOUT_S = 1.5
 
 
 def base_url() -> str:
+    """CHAT-ollamaens adresse — ikke embeddings'.
+
+    Maalt 2/10-2026: her stod ``semantic_memory._ollama_base_url()``, og den
+    peger med vilje paa den DEDIKEREDE EMBED-vaert (``embed_ollama_base_url``,
+    127.0.0.1:11435), som KUN har ``nomic-embed-text``. Chat-modellen
+    (``qwen3:4b``) ligger paa 11434.
+
+    Foelgen var tavs: hvert kald svarede ``None`` paa 0,00 s, og
+    ``local_intent_gate`` fejler LUKKET — saa gaten sagde nej til ALT.
+    Gate-events viser det praecist: sidste ``gate=1`` var 24/9-2026, derefter
+    nul ja i otte doegn. Ingen opdagede det, fordi kanalen var slukket og
+    sektionen returnerede tomt alligevel.
+
+    Det er samme fejl som ``model_pair_resolver`` fik rettet 28/9-2026 — den
+    blev blot ikke rettet her, hvor kopien stod. Adressen tages derfor fra
+    samme kilde som den der FAKTISK kalder chat-modellen.
+    """
     try:
-        from core.services.semantic_memory import _ollama_base_url
-        return (_ollama_base_url() or "").rstrip("/") or "http://127.0.0.1:11434"
+        from core.services.model_pair_resolver import _chat_ollama_base_url
+        return (_chat_ollama_base_url() or "").rstrip("/") or "http://127.0.0.1:11434"
     except Exception:
         return "http://127.0.0.1:11434"
 

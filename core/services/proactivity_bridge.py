@@ -188,7 +188,7 @@ def collect_candidates() -> list[dict[str, Any]]:
     # (run_closure_gate, mail, wakeups, outreach, indre stemmer …).
     try:
         from core.services.proactive_candidates import bridge_candidates
-        out.extend(bridge_candidates())
+        out.extend(bridge_candidates(_owner_uid()))
     except Exception:
         pass
     try:
@@ -272,16 +272,35 @@ def _persist_as_chat(uid: str, text: str) -> str:
     i den dedikerede proactivity-session som før. Self-safe; returnerer
     session_id ('' ved fejl)."""
     try:
-        from core.services.chat_sessions import (get_or_create_named_session,
-                                                 append_chat_message)
+        from core.services.chat_sessions import get_or_create_named_session
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
         sid = _sidst_aktive_samtale()
         if not sid:
             sid = get_or_create_named_session(_PROACTIVITY_SESSION_ID,
                                               _PROACTIVITY_SESSION_TITLE)
-        append_chat_message(session_id=sid, role="assistant", content=text,
-                            user_id=uid, workspace_name="default")
+        # 2/10-2026: gennem daemon-vagten. Foer skrev vi direkte, saa et
+        # «Mens du var vaek taenkte jeg paa» kunne lande midt i en saetning —
+        # seks gange paa tre doegn i Bjoerns arbejdssession. Sessionen vaelges
+        # STADIG her (sidst aktive, ellers den dedikerede), saa flytningen
+        # aendrer kun HVORNAAR beskeden lander, ikke hvor.
+        # `push=False`: denne vej sendte ikke mobil-push foer.
+        svar = send_session_notification(
+            text,
+            source="proactivity-bridge",
+            session_id=sid,
+            user_id=uid,
+            workspace_name="default",
+            push=False,
+        )
+        if not delivery_succeeded(svar):
+            logger.warning("proactivity_bridge: levering afvist: %s", svar)
+            return ""
         return sid
     except Exception:
+        logger.warning("proactivity_bridge: kunne ikke levere initiativ", exc_info=True)
         return ""
 
 

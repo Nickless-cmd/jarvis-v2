@@ -208,6 +208,9 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "prompt": ("cognition", "prompt"),
     # INVARIANT: FAMILY_ROUTES ⊆ ALLOWED — begge steder, ellers er signalet tabt.
     "tool_discovery": ("cognition", "prompt"),
+    # Selv-instrumenteringen (29/9-2026): fund om KODE — signatur, fil, linje.
+    # Metadata, ikke indre liv; ingen grund til at kunne naa Discord/abonnenter.
+    "central_instrument": ("system", "instrument"),
     "communication": ("channel", "communication"),  # kan bære besked-tekst → egress-frit (konservativt)
     # SPEJLET (audit #1): selv-model-events → egress-frit (privat selv-erkendelse; komplementerer
     # central_self_model-spejlets snapshot-producer). ALDRIG egress.
@@ -475,6 +478,7 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "learning_policy", "initiative_accumulator", "identity_composer", "valence_trajectory",
     "absence_awareness", "calm_anchor", "causal", "nudge", "promise", "pushback", "prompt",
     "tool_discovery",   # tool_discovery.nudge — hvilke usynlige tools blev foreslaaet.
+    "central_instrument",  # selv-instrumentering: accepterede fund (kodemetadata) — egress-frit
                         # Privat som "prompt": det er telemetri om hans egen prompt.
     "communication", "runtime_self_model",
     # ── §7.1 quick-wins (3. jul): spejl af de nye PRIVATE_NO_EGRESS_ROUTES (invariant: enhver

@@ -97,7 +97,300 @@ def test_acknowledged_does_not_save_bare_except():
     assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
 
 
+# ── Mærket i funktionens DOCSTRING skal tælle ────────────────────────────────
+# Målt 4/10-2026: af 1098 proposal-værdige fund havde 157 mærket i docstringen —
+# men `_acknowledged` kiggede kun ±5 linjer omkring except'en, så kodebasens EGEN
+# dokumentation («Selv-sikker → 0») var usynlig for scanneren. Fundet stod åbent
+# og blev filét igen og igen. Mærket findes; vinduet nåede det ikke.
+
+
+def _dokumenteret(doc: str) -> str:
+    """En funktion hvor except'en ligger LANGT under docstringen (±5-vinduet når den ikke)."""
+    return (
+        f"def f():\n"
+        f'    """{doc}"""\n'
+        f"    x = 1\n"
+        f"    y = 2\n"
+        f"    z = 3\n"
+        f"    w = 4\n"
+        f"    try:\n"
+        f"        return _hent(x)\n"
+        f"    except Exception:\n"
+        f"        return None\n"
+    )
+
+
+def test_maerket_i_docstringen_daemper_selv_langt_fra_excepten():
+    fs = ci.scan_source("core/x.py", _dokumenteret("Laes en raekke. Selv-sikker: DB nede → None."))
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is True
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_en_docstring_UDEN_maerke_daemper_ikke():
+    """Modprøven: rettelsen må ikke gøre enhver docstring til et fribrev."""
+    fs = ci.scan_source("core/x.py", _dokumenteret("Laes en raekke fra tabellen."))
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_docstring_maerke_redder_heller_ikke_bare_except():
+    """Også her: bare except er aldrig forsvarligt, uanset hvor mærket står."""
+    src = ("def f():\n"
+           '    """Selv-sikker: maa aldrig vaelte runtime."""\n'
+           "    x = 1\n    y = 2\n    z = 3\n    w = 4\n"
+           "    try:\n        x()\n    except:\n        pass\n")
+    fs = ci.scan_source("core/x.py", src)
+    bare = next(f for f in fs if f.kind == "bare_except")
+    assert bare.acknowledged is False
+    assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_maerke_i_KROPPEN_langt_fra_faldet_daemper_ikke():
+    """Grænsen, valgt med vilje: docstringen tæller — ikke hele funktions-kroppen.
+
+    Et mærke langt nede i kroppen er ikke nødvendigvis en begrundelse for DETTE fald,
+    og et bredt vindue ville lade én kommentar dæmpe alle funktionens fald på én gang.
+    Målt 4/10-2026: 15 af 1098 proposal-værdige fund står netop her.
+    """
+    src = ("def f():\n"
+           '    """Laes en raekke."""\n'
+           "    x = 1\n"
+           "    # selv-sikker: bevidst\n"
+           "    y = 2\n    z = 3\n    w = 4\n    v = 5\n"
+           "    try:\n        return _hent(x)\n"
+           "    except Exception:\n        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+
+
 def test_self_exclusion_in_file_list():
     files = ci._iter_py_files()
     assert ci._SELF_EXCLUDE not in files
     assert all("__pycache__" not in f and "/tests/" not in f for f in files)
+
+
+# ── Dedup: et fund må filéres HØJST én gang (målt 4/10-2026) ──────────────
+#
+# `_file_proposals` tjekkede kun `pending`-køen. Så snart et forslag forlod
+# køen — afvist, arkiveret eller udført — var fundet frit igen, og fordi
+# `list_findings` sorterer deterministisk (`score DESC, severity, file`) ramte
+# hver kørsel de SAMME fund. Målt i drift: 48 fund stod bag 1.129 forslag
+# (~23 gen-filinger hver), mens 937 kandidater nedenfor i sorteringen aldrig
+# blev nået.
+
+
+def _fund(sig: str, *, score: int = 4) -> dict:
+    return {"signature": sig, "line": 1, "kind": "except_silent",
+            "severity": "high", "score": score, "function": "f", "snippet": "x"}
+
+
+def test_et_fund_fileres_kun_en_gang(isolated_runtime):
+    """Forslaget forlader køen uden at udføre — fundet må ikke filéres igen."""
+    from core.runtime import db_instrument as dbi
+    from core.services import autonomy_proposal_queue as q
+
+    dbi.replace_file_findings("core/a.py", [_fund("sig-a")])
+    assert ci._file_proposals(max_new=10) == 1
+
+    forslag = q.list_pending_proposals(limit=10)
+    assert len(forslag) == 1
+    q.reject_proposal(forslag[0]["proposal_id"], resolution_note="nej")
+
+    # Fundet er STADIG åbent — koden er ikke rettet. Men anmodningen er afvist,
+    # og en anmodning der er afvist skal ikke gentages.
+    assert any(r["signature"] == "sig-a"
+               for r in dbi.list_findings(status="open", min_score=3, limit=10))
+    assert ci._file_proposals(max_new=10) == 0
+
+
+def test_filede_fund_optager_ikke_vinduet(isolated_runtime):
+    """Et filéret fund må ikke SKUBBE et ufiléret ud af vinduet.
+
+    Uden filtrering i SQL returnerer `LIMIT max_new` de samme filede fund hver
+    kørsel, og daemonen står stille for evigt — de 937 nås aldrig.
+    """
+    from core.runtime import db_instrument as dbi
+    from core.services.autonomy_proposal_queue import file_proposal
+
+    # Ti filede fund der sorterer FORAN de tre ufilede: samme score og severity,
+    # så rækkefølgen er filnavnet (core/f* < core/n*).
+    for i in range(10):
+        sig = f"sig-f{i:02d}"
+        dbi.replace_file_findings(f"core/f{i:02d}.py", [_fund(sig)])
+        file_proposal(kind="instrument_fix", title=f"gammel {i}", rationale="",
+                      payload={"finding": _fund(sig)}, created_by="test",
+                      canonical_key=sig)
+    for i in range(3):
+        dbi.replace_file_findings(f"core/n{i:02d}.py", [_fund(f"sig-n{i:02d}")])
+
+    assert ci._file_proposals(max_new=3) == 3
+
+
+def test_ukendt_filingstilstand_filer_intet(isolated_runtime, monkeypatch):
+    """Kan vi ikke afgøre hvad der er filéret, filer vi INTET — ikke «løs».
+
+    Et DB-fejl må ikke ligne «intet er filéret»: den ene udsætter en kørsel,
+    den anden gentager en anmodning Bjørn allerede har set.
+    """
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/a.py", [_fund("sig-a")])
+    monkeypatch.setattr(ci, "_allerede_filet", lambda: None)
+    assert ci._file_proposals(max_new=10) == 0
+
+
+def test_foraeldrede_fund_ryddes_naar_filen_forsvinder(isolated_runtime):
+    """En fil der flyttes eller slettes scannes aldrig — dens fund skal ryddes.
+
+    `replace_file_findings` rydder kun fund for filer der BLIVER scannet, og en
+    fil der er væk besøges aldrig af `_iter_py_files()`. Målt 4/10-2026: 35
+    forældede fund over 9 stier — `core/services/db_central_incidents.py` var
+    flyttet til `core/runtime/`, `tiktok_tools.py` og `prospective_memory.py`
+    var slettede. De talte med i køen som om koden stadig havde fejlen.
+    """
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/findes.py", [_fund("sig-findes")])
+    dbi.replace_file_findings("core/vaek.py", [_fund("sig-vaek")])
+    dbi.set_file_hash("core/vaek.py", "h", 1)
+
+    assert dbi.prune_missing_files({"core/findes.py"}) == 1
+
+    aabne = {f["signature"] for f in dbi.list_findings(status="open", limit=50)}
+    assert "sig-vaek" not in aabne, "et fund for en fil der ikke findes skal ryddes"
+    assert "sig-findes" in aabne, "et fund for en fil der FINDES maa ikke roeres"
+    assert dbi.get_file_hash("core/vaek.py") is None, "scan-cachen skal ryddes med"
+
+
+def test_rydningen_roerer_intet_naar_alle_filer_findes(isolated_runtime):
+    """Modprøven: er der ingen forældede filer, sker der ingenting."""
+    from core.runtime import db_instrument as dbi
+
+    dbi.replace_file_findings("core/findes.py", [_fund("sig-findes")])
+    assert dbi.prune_missing_files({"core/findes.py"}) == 0
+    assert any(f["signature"] == "sig-findes"
+               for f in dbi.list_findings(status="open", limit=50))
+
+
+def test_scanningen_rydder_fund_for_en_fil_der_er_vaek(isolated_runtime, monkeypatch, tmp_path):
+    """KOBLINGEN: `scan_repo` skal selv rydde fund for filer der ikke længere findes.
+
+    Funktionen alene er ikke nok. Uden kaldet inde i `scan_repo` står fundet for
+    en flyttet eller slettet fil i køen for evigt, fordi `replace_file_findings`
+    kun besøger filer der BLIVER scannet — og den er væk.
+    """
+    from core.runtime import db_instrument as dbi
+    from core.services import central_instrument as ci
+
+    dbi.replace_file_findings("core/vaek.py", [_fund("sig-vaek")])
+    (tmp_path / "core").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "core" / "findes.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr(ci, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(ci, "_iter_py_files", lambda: ["core/findes.py"])
+    monkeypatch.setattr(ci, "_security_files", lambda: set())
+
+    rep = ci.scan_repo(changed_only=False)
+
+    assert rep["pruned_files"] == 1
+    aabne = {f["signature"] for f in dbi.list_findings(status="open", limit=50)}
+    assert "sig-vaek" not in aabne, "scanningen skal have ryddet fundet for den væk fil"
+
+
+# ── Brugs-signalet: måler BRUG, ikke form (4/10-2026) ────────────────────────
+#
+# Instrumentet spurgte «returnerer `except`-grenen en success-lignende værdi?».
+# Det er FORM. Spørgsmålet der afgør om et fund er en ANMODNING om handling er
+# om nogen LÆSER svaret — en kalder der smider det væk kan ikke skelne noget,
+# fordi den ikke prøver.
+
+def _trae(tmp_path, monkeypatch, kilde: str):
+    (tmp_path / "a.py").write_text(kilde, encoding="utf-8")
+    monkeypatch.setattr(ci, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(ci, "_iter_py_files", lambda: ["a.py"])
+    return ci._funktions_brug()
+
+
+def test_funktions_brug_skelner_laest_fra_smidt_vaek(tmp_path, monkeypatch):
+    laeste = _trae(tmp_path, monkeypatch,
+                   "def laest():\n    return 1\n"
+                   "def bart():\n    return 2\n"
+                   "def aldrig_kaldt():\n    return 3\n"
+                   "def brug():\n"
+                   "    x = laest()\n"
+                   "    bart()\n"
+                   "    return x\n")
+    assert "laest" in laeste, "x = laest() — værdien læses"
+    assert "bart" not in laeste, "bart() står alene — værdien smides væk"
+    assert "aldrig_kaldt" not in laeste
+
+
+def test_funktions_brug_ser_bart_metodekald(tmp_path, monkeypatch):
+    """`self.foo(x)` er også et bart kald — det var fælden der gjorde indekset tomt for signal."""
+    laeste = _trae(tmp_path, monkeypatch, "def brug(self):\n    self.hemmelig()\n")
+    assert "hemmelig" not in laeste
+
+
+def test_funktions_brug_laeser_indre_kald_paa_en_bart_linje(tmp_path, monkeypatch):
+    """Den yderste kaldes for sin bivirkning — men de indre kald læses stadig."""
+    laeste = _trae(tmp_path, monkeypatch, "def brug():\n    _observe(hent())\n")
+    assert "hent" in laeste
+    assert "_observe" not in laeste
+
+
+def test_funktions_brug_tror_ikke_def_linjen_er_et_kald(tmp_path, monkeypatch):
+    """`def foo(x):` matcher samme mønster. Uden springet blev hver funktion «læst»."""
+    laeste = _trae(tmp_path, monkeypatch, "def helt_ukaldt(x):\n    return x\n")
+    assert "helt_ukaldt" not in laeste
+
+
+def _fund_d(funktion: str, *, kind: str = "except_silent", fil: str = "core/x.py") -> dict:
+    return {"signature": "s", "file": fil, "line": 1, "kind": kind,
+            "severity": "high", "score": 4, "function": funktion, "snippet": "x"}
+
+
+def test_vaerd_at_foreslaa_springer_ulæst_over():
+    f = _fund_d("aldrig_laest")
+    assert ci._vaerd_at_foreslaa(f, læste={"noget_andet"}, sikkerhed=set()) is False
+
+
+def test_vaerd_at_foreslaa_beholder_naar_nogen_laeser():
+    f = _fund_d("laest")
+    assert ci._vaerd_at_foreslaa(f, læste={"laest"}, sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_undtager_sikkerhedsflader():
+    """På en sikkerhedsflade er FORMEN nok — vi springer ikke over fordi ingen læser."""
+    f = _fund_d("aldrig_laest", fil="core/auth/port.py")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed={"core/auth/port.py"}) is True
+
+
+def test_vaerd_at_foreslaa_roerer_ikke_andre_kinds():
+    f = _fund_d("aldrig_laest", kind="except_pass")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_fail_open_naar_indekset_ikke_kunne_bygges():
+    """Kan vi ikke afgøre det, filer vi — den fejl er den sikre."""
+    f = _fund_d("hvad_som_helst")
+    assert ci._vaerd_at_foreslaa(f, læste=None, sikkerhed=set()) is True
+
+
+def test_vaerd_at_foreslaa_fail_open_paa_MODUL_niveau():
+    """Den femte spærre, og den manglede en vagt (Opus, 4/10).
+
+    `if not navn: return True` — et fund uden funktionsnavn ligger på
+    modul-niveau, og dér er der INGEN kalder at måle. Fail-open er derfor
+    rigtigt, men det var uprøvet: en mutation til `return False` ville
+    undertrykke hvert modul-niveau-fund i tavshed, og de fire andre tests
+    bestod uændret.
+
+    Fundet ved at mutere alle fem spærrer; fire faldt, denne gjorde ikke.
+    """
+    f = _fund_d("")
+    assert ci._vaerd_at_foreslaa(f, læste=set(), sikkerhed=set()) is True
+    # Og med et navn der ikke læses, falder den — saa testen ovenfor maaler
+    # NAVNETS fravaer og ikke blot at funktionen svarer ja til alt.
+    assert ci._vaerd_at_foreslaa(_fund_d("x"), læste=set(), sikkerhed=set()) is False

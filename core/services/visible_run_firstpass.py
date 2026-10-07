@@ -75,7 +75,11 @@ KEEPALIVE_S = 6.0
 # fire gange hurtigere end de 906-940 sekunder det kostede 14/9.
 FOERSTE_ELEMENT_LOFT_S = 240.0
 
-# Hvor laenge der maa komme linjer UDEN indhold foer vi opgiver forsoeget.
+# Hvor laenge der maa komme keepalive-linjer foer vi opgiver forsoeget.
+# Graensen maales paa om der er kommet en `data:`-linje overhovedet — IKKE
+# paa om den bar et `content`-felt. En thinking-model sender sin foerste
+# tekst i `reasoning_content`, og den afvaebner vagten paa lige fod; ellers
+# ville et svar der taenker i over et minut blive draebt som tavst.
 # 14/9 kom der ca. 41 bytes hvert 8. sekund i femten minutter — keepalive,
 # ikke tekst. httpx' laese-timeout saa bytes og var derfor tilfreds.
 STALL_UDEN_DATA_S = 60.0

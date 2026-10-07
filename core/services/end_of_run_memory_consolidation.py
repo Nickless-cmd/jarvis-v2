@@ -18,6 +18,7 @@ from core.identity.candidate_workflow import (
 )
 from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.runtime.db import upsert_runtime_contract_candidate
+from core.services.candidate_hygiene import is_transient_line
 from core.services.text_clip import clip_text
 
 _EXCERPT_MEMORY_CHARS = 2400
@@ -35,6 +36,7 @@ def consolidate_run_memory(
     user_message: str = "",
     assistant_response: str = "",
     internal_context: str = "",
+    human_user_message: bool = True,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "consolidated": False,
@@ -62,6 +64,13 @@ def consolidate_run_memory(
         except Exception:
             pass
         return result
+
+    if not human_user_message:
+        # Recurring/heartbeat work has a task brief, not a fresh request from
+        # Bjørn. Consolidating it as "User:" fabricated repeat requests and
+        # unsolicited rule proposals after each scheduled execution.
+        result["skipped_reason"] = "no-human-user-turn"
+        return _finish()
 
     if len(user_message) < 12 and len(assistant_response) < 40:
         result["skipped_reason"] = "conversation-too-short"
@@ -409,6 +418,12 @@ def _normalize_memory_items(raw_items: object) -> list[dict[str, str]]:
             line = line or f"- {request}"
         elif not line:
             continue
+        # C (2/10-2026): en flygtig linje — en dato, et handlings-verbum
+        # («fikset», «pushet») eller en indholdsløs titel — er en hændelse,
+        # ikke varig viden. Den blev før løftet til kandidat og levede til
+        # den udløb. Afvis den ved kilden.
+        if target != "REQUEST" and is_transient_line(line):
+            continue
         key = (target, (request or line).lower())
         if key in seen:
             continue
@@ -632,14 +647,21 @@ def _normalize_line(value: object) -> str:
         return ""
     if not normalized.startswith("- "):
         normalized = f"- {normalized}"
-    return normalized[:220]
+    # 1/10-2026: rå `[:220]` kløvede midt i en sætning. Målt den dag: 8 af 28
+    # kandidater stod på PRÆCIS 220 tegn med en halv sætning til slut
+    # («…Fikset i morges med»). Kandidatens tekst godkendes og skrives ind i
+    # hukommelsen, så en kløvet linje bliver en permanent halv sætning.
+    # `clip_text` klipper ved sætnings- så ord-grænse og sætter kun ellipsis
+    # når der FAKTISK blev klippet — den er allerede importeret her og bruges
+    # af `_daily_excerpt` længere nede.
+    return clip_text(normalized, limit=220)
 
 
 def _normalize_sentence(value: object) -> str:
     normalized = " ".join(str(value or "").split()).strip()
     if normalized.lower() in _NONE_MARKERS:
         return ""
-    return normalized[:220]
+    return clip_text(normalized, limit=220)
 
 
 def _normalize_confidence(value: object) -> str:

@@ -267,6 +267,35 @@ def mark_started(
         return
     sid = str(session_id or "")
     def change(records):
+        # ARV AF KAEDEN. En genoptagelse stempler sit kaedenummer paa run_id
+        # FOER koerslen journalfoerer sig selv (`stempl_genoptagelse`).
+        # `start_visible_run` — den der kalder herind — har ingen
+        # recovery-parametre og ville skrive 0 hen over stemplet. Saa talte
+        # baade loftet i `claim_due_recovery` og dommen i
+        # `visible_terminal_policy` forfra ved hvert led i kaeden.
+        tidligere = records.get(str(run_id)) or {}
+        kaede = max(int(recovery_attempt),
+                    int(tidligere.get("recovery_attempt") or 0))
+        slaegt = max(int(recovery_generation),
+                     int(tidligere.get("recovery_generation") or 0))
+        # RYDNING. Docstringen har altid lovet dette; koden gjorde det ikke.
+        # Maalt 30/9-2026: 174 poster, 149 af dem paa ÉN samtale, i en fil paa
+        # 287 kB som `_mutate` skriver HELT om under laasen ved hvert
+        # fremskridts-stempel.
+        #
+        # Et ULAEST varsel overlever med vilje: det er den eneste besked om at
+        # en opgave blev opgivet, og `recovery_snapshot` henter den netop paa
+        # `failed_terminal` + `notice_pending`.
+        if sid:
+            doede = [
+                noegle for noegle, rec in records.items()
+                if noegle != str(run_id)
+                and str(rec.get("session_id") or "") == sid
+                and str(rec.get("status") or "") in _AFSLUTTEDE
+                and not rec.get("notice_pending")
+            ]
+            for noegle in doede:
+                records.pop(noegle, None)
         records[str(run_id)] = {
             "task_id": str(task_id or run_id),
             "run_id": str(run_id),
@@ -287,8 +316,8 @@ def mark_started(
             "last_progress_at": _iso(),
             "last_tool": "",
             "owner_proc": current_owner(),
-            "recovery_generation": max(0, int(recovery_generation)),
-            "recovery_attempt": max(0, int(recovery_attempt)),
+            "recovery_generation": max(0, slaegt),
+            "recovery_attempt": max(0, kaede),
             "recovery_limit": max(0, int(recovery_limit)),
             "recovery_owner": "",
             "recovery_lease_until": "",
@@ -296,6 +325,101 @@ def mark_started(
             "notice_pending": False,
         }
     _mutate(change)
+
+
+def stempl_genoptagelse(
+    *,
+    run_id: str,
+    session_id: str = "",
+    task_id: str = "",
+    recovery_attempt: int = 0,
+    recovery_generation: int = 0,
+) -> None:
+    """Skriv kaedenummeret paa en genoptagelse FOER den journalfoerer sig selv.
+
+    `start_user_run_detached` kender kaeden — den staar i kravet den fik af
+    `claim_due_recovery`. Men det er `start_visible_run` der kalder
+    `mark_started`, og den har ingen recovery-parametre. Tallet naaede derfor
+    kun en log-linje i `detached_run`, og hver genoptagelse registrerede sig som
+    forsoeg 0.
+
+    Maalt 30/9-2026 i én samtale: ti genoptagelser, ni af dem med
+    `recovery_attempt=1`. Hvert led var altsaa sit eget foerste forsoeg, loftet
+    paa tre blev aldrig naaet, og kaederne laa i forlaengelse af hinanden uden
+    ende — tre af dem inden for 24 minutter.
+
+    Stemplet er en HALV post. `mark_started` skriver den faerdig et oejeblik
+    senere og arver tallet herfra.
+    """
+    if not run_id or int(recovery_attempt) <= 0:
+        return
+
+    def change(records):
+        rec = records.get(str(run_id))
+        if rec is None:
+            rec = {
+                "run_id": str(run_id),
+                "task_id": str(task_id or run_id),
+                "session_id": str(session_id or ""),
+                "status": "running",
+                "kind": "visible",
+                "started_at": _iso(),
+                "last_progress_at": _iso(),
+                "owner_proc": current_owner(),
+                "notice_pending": False,
+            }
+            records[str(run_id)] = rec
+        rec["recovery_attempt"] = max(0, int(recovery_attempt))
+        rec["recovery_generation"] = max(0, int(recovery_generation))
+        return True
+
+    try:
+        _mutate(change)
+    except Exception:
+        logger.warning("kunne ikke stemple genoptagelsen %s", run_id,
+                       exc_info=True)
+
+
+def aktiv_kaede_nr(session_id: str) -> int:
+    """Hvilket forsoeg i raekken er samtalens NYESTE synlige koersel?
+
+    Journalen er den eneste taeller der overlever et procesksifte: den synlige
+    tur og den der genoptager den behoever ikke koere i samme proces.
+    `auto_continuation._KAEDE` var en modul-dict, og dens skriver havde nul
+    kaldere — se `kaede_nr` der.
+
+    NYESTE, ikke stoerste. En helt ny brugertur journalfoerer sig med 0 og
+    nulstiller dermed kaeden af sig selv, mens en gammel post der aldrig blev
+    ryddet ikke kan forgifte den. Det bevarer den levetid det gamle register
+    havde med vilje: et kaedetal maa ikke kunne blokere en fortsaettelse timer
+    senere af en grund ingen kan se.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return 0
+    kandidater = [
+        rec for rec in _load().values()
+        if str(rec.get("session_id") or "") == sid
+        and str(rec.get("kind") or "visible") == "visible"
+    ]
+    if not kandidater:
+        return 0
+    nyeste = max(kandidater, key=lambda r: str(r.get("started_at") or ""))
+    return max(0, int(nyeste.get("recovery_attempt") or 0))
+
+
+def _genoptagelse_opbrugt(rec: dict[str, Any]) -> bool:
+    """Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang.
+
+    Samme regel som `visible_terminal_policy.decide_terminal` og
+    `claim_due_recovery` bruger — men de to skriver aldrig status-feltet om,
+    saa `recovering` blev staaende som et loefte der ikke kunne holdes.
+    """
+    if str(rec.get("status") or "") != "recovering":
+        return False
+    return int(rec.get("recovery_attempt") or 0) >= max(
+        0, int(rec.get("recovery_limit") or 3)
+    )
 
 
 def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
@@ -326,6 +450,50 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
     ]
     if not kandidater:
         return None
+    # 3/10-2026: et `recovering`-run hvis genoptagelses-budget er BRUGT OP er
+    # ikke «i gang» — det er opgivet. Policy-laget ved det allerede
+    # (`visible_terminal_policy.decide_terminal`: forsoeg >= loft →
+    # FAILED_TERMINAL), og dispatcheren goer det samme naar vinduet udloeber
+    # (se `claim_due_recovery`). Men status-feltet blev staaende som
+    # `recovering`, og DETTE lag laeste det som «der er noget at genoptage» —
+    # for evigt, med loeftet «checkpointet er bevaret til genoptagelse».
+    #
+    # Maalt 3/10-2026: 13 poster i én samtale, alle `shutdown` 3/3. Banneret
+    # stod over composeren ved HVER afsluttet tur, fordi klienten spoerger
+    # igen hver gang en tur slutter — og `_kvitter_varsel` kun ramte
+    # `failed_terminal`, saa en `recovering`-post blev aldrig brugt op.
+    # Vi lukker dem nu: saa kvitteres de, og `_ryd_afsluttede` rydder dem.
+    opbrugte = [r for r in kandidater if _genoptagelse_opbrugt(r)]
+    if opbrugte:
+        # Én begivenhed (typisk én genstart), ikke tretten. Kun den nyeste faar
+        # ordet; resten lukkes tavst. Han fik «runtime genstarter» da det skete,
+        # og et banner pr. draebt forsoeg er stoj — ikke et svar.
+        nyeste_opbrugte = max(
+            opbrugte,
+            key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""),
+        )
+        for _rec in opbrugte:
+            rid = str(_rec.get("run_id") or _rec.get("task_id") or "")
+            try:
+                settle_terminal(
+                    rid,
+                    status="failed_terminal",
+                    reason="genoptagelses-forsoegene-opbrugt",
+                )
+            except Exception:
+                logger.warning(
+                    "kunne ikke lukke en opbrugt genoptagelse %s", rid,
+                    exc_info=True,
+                )
+            # Kopien skal matche filen: `settle_terminal` skrev den nye
+            # `exit_reason`, og beskeden laeses fra KOPIEN. Glemmer jeg det,
+            # lover `recovery_notice` genoptagelse paa grund af den GAMLE
+            # grund («shutdown») — praecis den fejl testen fandt.
+            _rec["status"] = "failed_terminal"
+            _rec["exit_reason"] = "genoptagelses-forsoegene-opbrugt"
+            _rec["notice_pending"] = _rec is nyeste_opbrugte
+            if _rec is not nyeste_opbrugte:
+                _kvitter_varsel(rid)
     # Den nyeste først: en samtale kan have en gammel post der aldrig blev ryddet.
     rec = max(kandidater, key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""))
     status = str(rec.get("status") or "")
@@ -433,7 +601,9 @@ def mark_interrupted(run_id: str, *, reason: str = "", summary: str = "") -> Non
         rec["status"] = "interrupted"
         rec["interruption_reason"] = str(reason or "")[:120]
         rec["interruption_summary"] = str(summary or "")[:240]
-        rec["interrupted_at"] = _iso()
+        now = _iso()
+        rec.setdefault("first_interrupted_at", rec.get("interrupted_at") or now)
+        rec["interrupted_at"] = now
     _mutate(change)
 
 
@@ -471,6 +641,7 @@ def settle_recovering(
         rec["recovery_limit"] = max(0, int(recovery_limit))
         rec.setdefault("recovery_attempt", 0)
         rec.setdefault("recovery_generation", 0)
+        rec.setdefault("first_interrupted_at", rec.get("interrupted_at") or now)
         rec["settled_at"] = now
         rec["interrupted_at"] = now
         rec["notice_pending"] = True
@@ -561,8 +732,6 @@ def claim_due_recovery(
         candidates: list[tuple[str, dict[str, Any]]] = []
         udloebne: list[str] = []
         for key, rec in records.items():
-            if str(rec.get("kind") or "visible") != "visible":
-                continue
             status = str(rec.get("status") or "")
             if status == "recovering":
                 pass
@@ -571,6 +740,46 @@ def claim_due_recovery(
                 if lease is not None and lease > instant:
                     continue
             else:
+                continue
+            # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
+            # her overhovedet — kun `interrupted_for_session` havde en. Det
+            # gjorde ikke noget saa laenge et taellefejl braendte budgettet paa
+            # halvandet minut (se `release_recovery_claim`), for saa stoppede
+            # opgaven af sig selv. Naar udskydelser ikke laengere koster et
+            # forsoeg, kan en post vente i dagevis — og en fortsaettelse af et
+            # spoergsmaal fra i forgaars er ikke hjaelp, den er stoej i en
+            # samtale der for laengst er gaaet videre.
+            #
+            # 30/9-2026: tjekket laa EFTER kind-filteret, saa vinduet saa kun
+            # den synlige lane. Og `_ryd_afsluttede` tager kun `_AFSLUTTEDE`,
+            # hvori `recovering` ikke staar. En AUTONOM post der naaede
+            # `recovering` var derfor dobbelt uudslettelig: den kunne hverken
+            # genoptages eller udloebe. Maalt: én fra 29/9 kl. 14:38 stod der
+            # stadig et doegn senere, med et ulaest varsel ingen kunne naa.
+            #
+            # Vinduet gaelder nu ALLE slags. Selve genoptagelsen — og alt
+            # nedenfor — er stadig kun den synlige lanes.
+            settled = _parsed(rec.get("settled_at")) or _parsed(rec.get("interrupted_at"))
+            if settled is not None and (
+                instant - settled
+            ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
+                udloebne.append(key)
+                continue
+            if str(rec.get("kind") or "visible") != "visible":
+                continue
+            # Den ydre detached stream har sit eget run-id og kan efterlade en
+            # halv recovery-post uden original_request. At genoptage den ville
+            # starte en betalt model med kun "Fortsæt hvor du slap." som opgave.
+            if not any(str(rec.get(field) or "").strip() for field in (
+                "original_request", "user_message", "original_message", "excerpt",
+            )):
+                rec["status"] = "failed_terminal"
+                rec["exit_reason"] = "recovery-original-request-missing"
+                rec["settled_at"] = instant.isoformat()
+                rec["recovery_owner"] = ""
+                rec["recovery_lease_until"] = ""
+                rec["next_attempt_at"] = ""
+                rec["notice_pending"] = False
                 continue
             if is_non_retryable_recovery_reason(rec.get("exit_reason")):
                 rec["status"] = "failed_terminal"
@@ -582,20 +791,6 @@ def claim_due_recovery(
                 continue
             due = _parsed(rec.get("next_attempt_at"))
             if due is not None and due > instant:
-                continue
-            # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
-            # her overhovedet — kun `interrupted_for_session` havde en. Det
-            # gjorde ikke noget saa laenge et taellefejl braendte budgettet paa
-            # halvandet minut (se `release_recovery_claim`), for saa stoppede
-            # opgaven af sig selv. Naar udskydelser ikke laengere koster et
-            # forsoeg, kan en post vente i dagevis — og en fortsaettelse af et
-            # spoergsmaal fra i forgaars er ikke hjaelp, den er stoej i en
-            # samtale der for laengst er gaaet videre.
-            settled = _parsed(rec.get("settled_at")) or _parsed(rec.get("interrupted_at"))
-            if settled is not None and (
-                instant - settled
-            ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
-                udloebne.append(key)
                 continue
             exhausted = int(rec.get("recovery_attempt") or 0) >= int(
                 rec.get("recovery_limit") or 3)

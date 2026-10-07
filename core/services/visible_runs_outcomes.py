@@ -221,6 +221,70 @@ def _with_thinking_block(
     return [block, *blocks]
 
 
+
+def _med_tabt_optakt(tekst: str, blokke: object) -> str:
+    """Giv `content` den optakt som blokkene har, men teksten mangler.
+
+    ## Maalt 7/10-2026
+
+    250 assistent-svar fra to doegn, flerblok-ture sammenlignet blok for blok:
+
+        content == alle tekstblokke          6
+        content == tekstblokke UDEN den 1.   179
+        hverken eller                        47
+
+    Altsaa: **77 % af svarene mangler deres aabning i `content`.** Og det er
+    ikke kosmetik — `recent_chat_session_messages` og
+    `chat_session_messages_since_last_compact` laeser begge `content`, saa den
+    historik Jarvis ser af sine EGNE svar mangler deres foerste afsnit. Det
+    tabte er substans, ikke stoej: «Tak — jeg er her. Og jeg kommer tilbage til
+    noget der ikke er afsluttet: genstarten fra …».
+
+    ## Hvorfor det sker
+
+    `content` er `visible_output_text`, som den agentiske loekke samler. Det
+    FOERSTE tekst-segment streames foer loekken begynder at samle, saa det
+    lander kun i akkumulatorens `text_segments` — og dermed kun i blokkene.
+
+    ## Hvorfor rettelsen sidder HER og kun PREPENDER
+
+    Den kunne bygges af blokkene i stedet, men saa ville den gaa uden om alt
+    det `normalized` allerede har vaeret igennem: leak-saneringen og
+    `normalize_markdown_structure`. Derfor roeres selve svaret ikke — der
+    saettes kun det foran som blokkene har og teksten mangler, og kun naar
+    blokkenes tekst ENDER paa svaret. Gaelder det ikke, er forskellen noget
+    andet end en tabt optakt, og saa lader vi den vaere.
+
+    Self-safe: en fejl her maa aldrig koste et gemt svar.
+    """
+    try:
+        if not isinstance(blokke, list) or not tekst.strip():
+            return tekst
+        dele = [str(b.get("text") or "") for b in blokke
+                if isinstance(b, dict) and b.get("type") == "text"]
+        dele = [d for d in dele if d.strip()]
+        if len(dele) < 2:
+            return tekst
+        hel = "\n\n".join(dele)
+        n_hel, n_tekst = _ws(hel), _ws(tekst)
+        if n_hel == n_tekst or not n_hel.endswith(n_tekst):
+            return tekst
+        # Find optakten i den UNORMALISEREDE streng, saa den bevares som skrevet.
+        for i in range(1, len(dele)):
+            if _ws("\n\n".join(dele[i:])) == n_tekst:
+                return "\n\n".join(dele[:i]) + "\n\n" + tekst
+        return tekst
+    except Exception as exc:
+        logger.warning("kunne ikke genskabe tabt optakt: %s", exc)
+        return tekst
+
+
+def _ws(s: str) -> str:
+    """Samme normalisering som klienternes `assistantNorm`."""
+    import re as _re
+    return _re.sub(r"\s+", " ", s or "").strip()
+
+
 def _persist_session_assistant_message(
     run: "_vr.VisibleRun",
     text: str,
@@ -233,6 +297,36 @@ def _persist_session_assistant_message(
     normalized = str(text or "").strip()
     if not normalized:
         return
+    if (getattr(run, "autonomous", False)
+            and str(getattr(run, "user_message", "") or "").startswith("[SELF-WAKEUP FIRED")
+            and normalized == "[wakeup:no-update]"):
+        return
+    # notify_user has already written the user-facing message. The model's
+    # closing receipt belongs to the run, not to the chat transcript.
+    if getattr(run, "autonomous", False) and blocks:
+        notify_ids = {
+            str(block.get("id") or "") for block in blocks
+            if isinstance(block, dict) and block.get("type") == "tool_use"
+            and block.get("name") == "notify_user"
+        }
+        delivered = any(
+            isinstance(block, dict)
+            and block.get("type") == "tool_result"
+            and str(block.get("tool_use_id") or "") in notify_ids
+            and not block.get("is_error")
+            and str(block.get("status") or "") == "done"
+            and str(block.get("content") or "").startswith("Delivered to: ")
+            and any(
+                (destination.startswith("webchat:")
+                 and not destination.startswith(("webchat:failed(", "webchat:error(")))
+                or destination.startswith("discord:dm:")
+                for destination in str(block.get("content") or "")
+                .removeprefix("Delivered to: ").split(", ")
+            )
+            for block in blocks
+        )
+        if delivered:
+            return
     # ── Leak/dump-guard (2026-06-23) ────────────────────────────────────────
     # Model echoer et råt (kæmpe) tool-result som svar i stedet for at opsummere
     # (Bjørns 27KB-dumps). Observe-only → synlig i Centralen, raffineres med data.
@@ -403,6 +497,9 @@ def _persist_session_assistant_message(
     # array når kill-switchen er ON, så tool-kort overlever reload uden reconcile.
     # Flag OFF eller ingen blokke → content_json=None → uændret tekst-kun adfærd.
     content_json = None
+    # Bundet FOER try'en: `_med_tabt_optakt` nedenfor skal kunne se blokkene,
+    # og et `locals()`-opslag ville tie hvis navnet aldrig blev sat.
+    _blokke: list[dict] | None = None
     if blocks:
         try:
             from core.services.structured_content_flag import structured_content_v2_enabled
@@ -415,6 +512,8 @@ def _persist_session_assistant_message(
         except Exception:
             content_json = None
 
+    normalized = _med_tabt_optakt(normalized, _blokke)
+
     message = _append_chat_message_with_retry(
         session_id=run.session_id,
         role="assistant",
@@ -422,6 +521,33 @@ def _persist_session_assistant_message(
         reasoning_content=str(reasoning_content or ""),
         content_json=content_json,
     )
+    # HVILKET RUN SKREV DEN (6/10-2026). Uden denne linje har klienten ingen
+    # præcis nøgle og må afdublere sin bro-kopi på en byte-sammenligning af
+    # prosa — en prosa vi selv har omskrevet lige ovenfor (`_with_thinking_block`,
+    # `_med_udgivne_filer`, `_normaliser_tekstblokke`). Det slog fejl, og Bjørn så
+    # samme svar to gange i tråden. Se `besked_run_kobling` for hele kæden.
+    #
+    # Self-safe med vilje: en afdublerings-hjælp må aldrig koste et gemt svar.
+    try:
+        from core.services.besked_run_kobling import noter as _noter_run
+        _noter_run(str((message or {}).get("id") or ""), str(run.run_id or ""))
+    except Exception as exc:
+        logger.warning("besked-run-kobling fejlede run_id=%s: %s", run.run_id, exc)
+    if not bool(getattr(run, "autonomous", False)):
+        try:
+            from core.services.decision_action_gate import record_outcomes
+
+            tool_names = [
+                str(block.get("name") or block.get("tool") or "")
+                for block in (blocks or [])
+                if isinstance(block, dict) and block.get("type") in {"tool_use", "progress"}
+            ]
+            record_outcomes(
+                run.run_id, str(getattr(run, "user_message", "") or ""), normalized,
+                tool_names=tool_names,
+            )
+        except Exception as exc:
+            logger.warning("decision action outcome recording failed run_id=%s: %s", run.run_id, exc)
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("channel.chat_message_appended", {
@@ -584,6 +710,50 @@ def _guarantee_visible_outcome(run: "_vr.VisibleRun") -> None:
         pass
 
 
+def _stemple_afslutning_synkront(
+    run_id: str, *, status: str, finished_at: str, error: str | None = None
+) -> None:
+    """Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen.
+
+    Målt 3/10-2026: fire af dagens syv ``interrupted``-stempler sad på ture der
+    HAVDE svaret. Rækkefølgen var: svaret skrives til ``chat_messages``
+    (synkront), ``finished_at`` beregnes — og rækken i ``visible_runs`` skrives
+    i en daemon-tråd bagefter. Ramte en nedlukning vinduet imellem, spurgte
+    ``run_er_terminal`` «er runnet slut?» om en række der stadig stod ``running``
+    med tom ``finished_at``, fik «nej», og stemplede et færdigt run som afbrudt.
+
+    Vinduet er ikke mikroskopisk: kommentaren i ``set_last_visible_run_outcome``
+    måler selv tråden til at kunne dække 1-15 s under WAL-pres.
+
+    Ét UPDATE — ikke de tre INSERTs der blev flyttet til tråden 18/7. Det er kun
+    ``visible_runs``-rækken som ``run_er_terminal`` læser der skal stå rigtigt;
+    projektionerne (``visible_work_units``, ``visible_work_notes``) må fortsat
+    følge i tråden. Ét UPDATE er hurtigt nok til at være synkront — det var de
+    tre INSERTs under ét write-lock der ikke var.
+
+    Rører KUN en række der ikke er afsluttet (``finished_at = ''``), så hverken
+    et rigtigt udfald eller et sweep-stempel kan overskrives herfra. Self-safe:
+    kaster aldrig.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return
+    try:
+        with connect() as conn:
+            conn.execute(
+                "UPDATE visible_runs SET status = ?, finished_at = ?, error = ? "
+                "WHERE run_id = ? AND finished_at = ''",
+                (
+                    str(status or ""),
+                    finished_at,
+                    (_vr._bounded_error(error) if error else None),
+                    rid,
+                ),
+            )
+    except Exception:
+        logger.debug("kunne ikke stemple afslutning synkront for %s", rid, exc_info=True)
+
+
 def set_last_visible_run_outcome(
     run: "_vr.VisibleRun",
     *,
@@ -635,6 +805,14 @@ def set_last_visible_run_outcome(
     # load-bearing del (in-memory _LAST_VISIBLE_RUN_OUTCOME + empty-completion-guard) er
     # ALLEREDE kørt synkront ovenfor; DB-projektionen (MC-dashboard/visible_runs) behøver
     # ikke blokere svaret. Kør den i en daemon-tråd så streamen lukker med det samme.
+    # ── LUK RACE-VINDUET (3/10-2026) ────────────────────────────────────────
+    # Rækken skrives i en daemon-tråd herunder for ikke at blokere svaret. Men
+    # `run_er_terminal` læser netop DEN række — og nedluknings-sweepen spørger
+    # den. Står rækken stadig `running` med tom `finished_at` når sweepen
+    # spørger, stempler den et run der lige har svaret som afbrudt.
+    # Ét synkront UPDATE lukker vinduet; den tunge projektion bliver i tråden.
+    _stemple_afslutning_synkront(
+        run.run_id, status=status, finished_at=finished_at, error=error)
     import threading as _t_outcome
     _t_outcome.Thread(
         target=_persist_visible_run_outcome,
@@ -794,7 +972,7 @@ def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
 
 
 def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
-    """Luk en ``recovering``-række hvis genoptagelse skete under et andet run_id.
+    """Luk en afløst række hvis genoptagelse skete under et andet run_id.
 
     ## Hullet (målt 25/9-2026)
 
@@ -818,9 +996,29 @@ def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
     journalen under et andet run_id. ``settlement_shadow`` normaliserer allerede
     ``recovering`` → ``interrupted``, så de to lag siger nu det samme.
 
-    Rører ALDRIG ``finished_at`` eller ``error`` — begge er allerede sat og
-    sande. Kalderen afgør om rækken er forældreløs; denne funktion stempler
-    kun. Self-safe: kaster aldrig.
+    ## Også ``running`` (målt 6/10-2026)
+
+    ``recovering`` var ikke den eneste blindgyde. Genoptagelses-dispatcheren
+    afregnede kun journal-posten, så en kørsel der døde UDEN at nå sin egen
+    afslutning blev liggende ``running`` med tom ``finished_at``:
+    ``visible-bd1727a4`` stod sådan uden ét eneste ``costs``-opslag, mens dens
+    fortsættelse ``visible-3433cf05`` kørte færdig med 16. Først
+    ``_ryd_visible_drift`` lukkede den 30 minutter senere — og indtil da
+    blokerede den genstarts-vagten, altså hvert deploy.
+
+    Derfor dækker WHERE nu begge tilstande. ``finished_at`` sættes KUN hvis den
+    er tom: en ``recovering``-række har den allerede, og den er sand.
+
+    ## Hvorfor netop denne, og ikke ``stamp_visible_run_interrupted``
+
+    Den anden udsender ``runtime.visible_run_interrupted``, og
+    ``living_executive`` planlægger en self-wakeup på det event («Resume from
+    interrupted visible run»). Kaldt fra dispatcherens succes-sti ville den
+    altså bede om en genoptagelse af noget der LIGE blev genoptaget. Denne er
+    tavs med vilje — rækken er afløst, ikke efterladt.
+
+    Rører aldrig ``error``: den er allerede sat og sand. Kalderen afgør om
+    rækken er forældreløs; denne funktion stempler kun. Self-safe: kaster aldrig.
     """
     rid = str(run_id or "").strip()
     if not rid:
@@ -828,18 +1026,20 @@ def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
     try:
         with connect() as conn:
             cur = conn.execute(
-                "UPDATE visible_runs SET status = 'interrupted' "
-                "WHERE run_id = ? AND status = 'recovering'",
-                (rid,),
+                "UPDATE visible_runs SET status = 'interrupted', "
+                "finished_at = CASE WHEN finished_at = '' OR finished_at IS NULL "
+                "THEN ? ELSE finished_at END "
+                "WHERE run_id = ? AND status IN ('recovering', 'running')",
+                (datetime.now(UTC).isoformat(), rid),
             )
             stemplet = bool(cur.rowcount)
     except Exception:
         logger.debug(
-            "kunne ikke lukke foraeldet recovering-raekke %s", rid, exc_info=True)
+            "kunne ikke lukke afloest raekke %s", rid, exc_info=True)
         return False
     if stemplet:
         logger.info(
-            "visible_runs: %s stod 'recovering' uden en post i journalen — "
+            "visible_runs: %s var afloest under et andet run_id — "
             "stemplet 'interrupted' (%s)", rid, str(reason or "")[:120])
     return stemplet
 
@@ -981,7 +1181,7 @@ def _persist_visible_run_outcome(
         run_id=run.run_id,
         session_id=run.session_id,
         model=run.model,
-        user_message=user_message_preview or "",
+        user_message=(user_message_preview or "") if not getattr(run, "autonomous", False) else "",
         assistant_response=work_preview or "",
         outcome_status=status,
     )

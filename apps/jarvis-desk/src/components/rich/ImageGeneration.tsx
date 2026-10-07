@@ -10,6 +10,14 @@ export function erBilledVaerktoej(name: string): boolean {
   return name === 'openrouter_image' || name === 'openrouter_image_edit' || name === 'pollinations_image'
 }
 
+/** Video-værktøjerne. Egen liste, fordi ventetiden er en HELT anden:
+ *  billed-generering er målt til ~8 s, mens `pollinations_video` bruger 39 s
+ *  på pipelinen og har op til 600 s timeout. Uden et tegn på liv står turen
+ *  død i op til ti minutter. */
+export function erVideoVaerktoej(name: string): boolean {
+  return name === 'pollinations_video' || name === 'pollinations_video_edit'
+}
+
 /** Det eneste syns-værktøj i drift. `operator_screenshot` og
  *  `jarvis_browser_screenshot` TAGER billeder og er målt til ~0,1 s — de har
  *  intet at animere. */
@@ -19,11 +27,19 @@ export function erBilledAnalyse(name: string): boolean {
 
 /** Hvad der arbejdes på lige nu. To slags — de ligner ikke hinanden på
  *  skærmen, fordi de ikke er det samme arbejde. */
-export type BilledArbejde =
+export type MedieArbejde =
   | { slags: 'generering' }
+  /** Video. Egen variant frem for at genbruge `generering`, fordi de to ikke
+   *  ligner hinanden på skærmen og ikke skal: otte sekunders prik-gitter er
+   *  noget andet end ti minutters venten. */
+  | { slags: 'video' }
   /** `kilde` er navnet, til etiketten. `sti` er den FULDE sti — den er den
    *  eneste af de to der kan hentes, gennem `/visning/billede`. */
   | { slags: 'analyse'; kilde: string; sti: string }
+
+/** Det gamle navn. Typen daekker nu ogsaa video, saa «Billed» loej — men tre
+ *  kaldesteder og en test bruger navnet, og et alias koster ingenting. */
+export type BilledArbejde = MedieArbejde
 
 /** Navnet på det billede der kigges på: sidste led af stien, ellers værten på
  *  en URL. Tom når kaldet ikke siger hvad det ser på — så står animationen
@@ -78,10 +94,11 @@ function billedArgumenter(kald: LevendeKald): Record<string, unknown> | undefine
  * ét af stederne. Kører både en generering og en analyse i samme runde,
  * vinder den der står først — den blev startet først.
  */
-export function levendeBilledArbejde(kald: LevendeKald[]): BilledArbejde | null {
+export function levendeBilledArbejde(kald: LevendeKald[]): MedieArbejde | null {
   for (const k of kald) {
     if ((k.status ?? 'running') !== 'running') continue
     if (erBilledVaerktoej(k.name)) return { slags: 'generering' }
+    if (erVideoVaerktoej(k.name)) return { slags: 'video' }
     if (erBilledAnalyse(k.name)) {
       const input = billedArgumenter(k)
       return { slags: 'analyse', kilde: billedKilde(input), sti: billedSti(input) }
@@ -90,10 +107,46 @@ export function levendeBilledArbejde(kald: LevendeKald[]): BilledArbejde | null 
   return null
 }
 
-export function BilledArbejdeAnimation({ arbejde, config }: { arbejde: BilledArbejde; config?: ApiConfig }) {
-  return arbejde.slags === 'analyse'
-    ? <ImageAnalysisProgress kilde={arbejde.kilde} sti={arbejde.sti} config={config} />
-    : <ImageGenerationProgress />
+export function BilledArbejdeAnimation({ arbejde, config }: { arbejde: MedieArbejde; config?: ApiConfig }) {
+  if (arbejde.slags === 'analyse') {
+    return <ImageAnalysisProgress kilde={arbejde.kilde} sti={arbejde.sti} config={config} />
+  }
+  if (arbejde.slags === 'video') return <VideoGenerationProgress />
+  return <ImageGenerationProgress />
+}
+
+/**
+ * Video bliver til: en tidslinje der fyldes, og et ur.
+ *
+ * ## Hvorfor den ikke bare er prik-gitteret
+ *
+ * Billed-generering tager ~8 s. `pollinations_video` bruger 39 s på
+ * pipelinen og har op til **600 s** timeout. Et gitter der blinker i ti
+ * minutter siger ikke noget andet efter otte minutter end efter ét — og det
+ * er præcis dér man tror turen er gået i stå og afbryder den.
+ *
+ * Uret er derfor ikke pynt: det er den eneste oplysning der ændrer sig, og
+ * den eneste måde at se forskel på «arbejder stadig» og «hængt». Backend
+ * giver ingen procent, så vi lover ingen — tidslinjen løber i ring frem for
+ * at foregive et fremskridt vi ikke kender.
+ */
+export function VideoGenerationProgress() {
+  const [sekunder, setSekunder] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setSekunder((n) => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const ur = sekunder < 60
+    ? `${sekunder} s`
+    : `${Math.floor(sekunder / 60)}:${String(sekunder % 60).padStart(2, '0')}`
+  return <div className="video-generation" role="progressbar" aria-label="Genererer video">
+    <span className="video-generation-label">
+      Genererer video… <span className="video-generation-ur">{ur}</span>
+    </span>
+    <div className="video-generation-spor" aria-hidden="true">
+      <span className="video-generation-hoved" />
+    </div>
+  </div>
 }
 
 /** Backend giver ingen procent; prikkerne viser kun at kaldet stadig kører. */

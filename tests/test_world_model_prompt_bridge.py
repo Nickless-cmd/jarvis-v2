@@ -5,9 +5,29 @@ from uuid import uuid4
 
 
 def _system_text_from_visible_input(visible_model, message: str = "Hello") -> str:
+    """Al tekst i SYSTEM-rolle — ikke kun element 0.
+
+    `_build_visible_input` deler samlingen ved `DYNAMIC_TAIL_SENTINEL` og lægger
+    den volatile hale som et SELVSTÆNDIGT system-element lige før den aktuelle
+    brugertur, så alt før den kan caches. Testene her måler INDHOLD (står
+    forbeholdet der, er blokken afgrænset) — ikke placering. Læste de kun
+    element 0, ville de fejle hver gang en sektion med rette flyttes til halen,
+    og det skete 30/9-2026 da `support_signals` blev flyttet dertil (dens
+    indhold er et tids-snapshot, se `test_praefiks_uden_levende_tal.py`).
+
+    PLACERINGEN er låst et andet sted — `test_praefiks_uden_levende_tal.py`
+    kræver netop at forbeholdet IKKE står i præfikset. De to vagter måler
+    hver sin halvdel og må ikke blandes sammen.
+    """
     payload = visible_model._build_visible_input(message, session_id="test-session")
     assert payload[0]["role"] == "system"
-    return payload[0]["content"][0]["text"]
+    dele = [
+        blok.get("text", "")
+        for item in payload
+        if item.get("role") == "system"
+        for blok in (item.get("content") or [])
+    ]
+    return "\n\n".join(d for d in dele if d)
 
 
 def _self_report_block(visible_model, message: str) -> str:

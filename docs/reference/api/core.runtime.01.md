@@ -250,7 +250,8 @@ _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
 | function | `expire_orphan_incidents` | `(*, older_than_hours=…)` | Luk ULØSTE incidents UDEN run-tilknytning der er ældre end vinduet. Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L282) |
 | function | `has_unresolved_message` | `(*, cluster, nerve, message, within_seconds=…)` | True hvis en uløst incident med SAMME besked allerede findes inden for tidsvinduet. | [src](../../../core/runtime/db_central_incidents.py#L310) |
 | function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L336) |
-| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L363) |
+| function | `count_open_incidents` | `()` | Antal ULØSTE incidents, opdelt — talt i DB, ikke i en klippet liste. | [src](../../../core/runtime/db_central_incidents.py#L363) |
+| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L397) |
 
 ## `core/runtime/db_chat_rewind.py`
 _Spol en samtale tilbage — og fortryd det, indtil næste besked._
@@ -433,11 +434,12 @@ _Jarvis' EGET forslag til Bjørns næste besked — skrevet i hans egen tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L50) |
-| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L68) |
-| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L81) |
-| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L127) |
-| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L163) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L68) |
+| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L86) |
+| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L99) |
+| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L145) |
+| function | `ryd_forslag` | `(*, session_id)` | Slet sessionens forslag. Returnerer antal slettede raekker. | [src](../../../core/runtime/db_composer_jarvis.py#L181) |
+| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L202) |
 
 ## `core/runtime/db_composites.py`
 _Composite tools store — Jarvis proposals of new tool sequences._
@@ -473,29 +475,29 @@ _Core infrastructure for core.runtime.db modulet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ClosingConnection` | `` | — | [src](../../../core/runtime/db_core.py#L62) |
-| method | `ClosingConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L63) |
-| class | `PooledConnection` | `` | Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer | [src](../../../core/runtime/db_core.py#L70) |
-| method | `PooledConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L73) |
-| method | `PooledConnection.close` | `(self)` | — | [src](../../../core/runtime/db_core.py#L77) |
-| function | `_make_connection` | `(_factory)` | Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous). | [src](../../../core/runtime/db_core.py#L88) |
-| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L113) |
-| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L124) |
-| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L165) |
-| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L169) |
-| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L175) |
-| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L190) |
-| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L361) |
-| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L366) |
-| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L372) |
-| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L392) |
-| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L425) |
-| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L457) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L476) |
-| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L525) |
-| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L549) |
-| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L559) |
-| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L577) |
+| class | `ClosingConnection` | `` | — | [src](../../../core/runtime/db_core.py#L71) |
+| method | `ClosingConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L72) |
+| class | `PooledConnection` | `` | Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer | [src](../../../core/runtime/db_core.py#L79) |
+| method | `PooledConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L82) |
+| method | `PooledConnection.close` | `(self)` | — | [src](../../../core/runtime/db_core.py#L86) |
+| function | `_make_connection` | `(_factory)` | Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous). | [src](../../../core/runtime/db_core.py#L97) |
+| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L122) |
+| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L133) |
+| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L174) |
+| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L178) |
+| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L184) |
+| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L199) |
+| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L370) |
+| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L375) |
+| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L381) |
+| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L401) |
+| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L434) |
+| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L466) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L485) |
+| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L534) |
+| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L558) |
+| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L568) |
+| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L586) |
 
 ## `core/runtime/db_credit_assignment.py`
 _Credit assignment — schema migration, choice recording, and outcome querying._
@@ -524,13 +526,15 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 | function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
 | function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
 | function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L187) |
-| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L249) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L266) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L278) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L309) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L320) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L335) |
+| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L176) |
+| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L211) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L232) |
+| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L294) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L311) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L323) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L354) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L365) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L380) |
 
 ## `core/runtime/db_devices.py`
 _Enheder — hvem må styre denne computer, og hvem må bruge code mode._
@@ -598,8 +602,8 @@ _FTS5 full-text search over session summaries and chat messages._
 | function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L96) |
 | function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
 | function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
-| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries. Each hit: id, session_id, run_id, | [src](../../../core/runtime/db_fts.py#L136) |
-| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages. Each hit: id, message_id, session_id, | [src](../../../core/runtime/db_fts.py#L166) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L136) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L196) |
 
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._

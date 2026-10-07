@@ -507,3 +507,118 @@ class TestEdgeCases:
         assert count >= expected - 10, (
             f"Only got {count}/{expected} concurrent events"
         )
+
+
+# ---------------------------------------------------------------------------
+# Dead-letter: en batch der ikke kan committes SPILLES til disk, kastes ikke
+# ---------------------------------------------------------------------------
+
+import sqlite3  # noqa: E402
+
+
+def _dead_letter_fil(tmp_db: Path) -> Path:
+    return tmp_db.parent / "eventbus_dead_letter.jsonl"
+
+
+class TestDeadLetter:
+    """Målt 6/10-2026: før dette blev en batch der fejlede to gange KASTET.
+
+    Rækken nåede hverken events-tabellen eller abonnenterne, og hverken
+    krydsproces-relæet (krydsproces.py) eller poll-vejene (recent_since_id)
+    kunne genskabe den — de læser alle tabellen hvor rækken aldrig kom. Tabet
+    var derfor endeligt. Målt i journalen: 60 events på tre døgn, klumpet i ét
+    46-minutters vindue hvor ~3,6 % af trafikken faldt — heraf ~8 bærende
+    (chat-beskeder, beslutningsbrud, godkendelser).
+    """
+
+    def _spild(self, bus, monkeypatch, antal: int = 1) -> None:
+        """Tving publishes gennem den fejlede skrive-vej (retry → spill)."""
+
+        def _boom(_batch):
+            raise sqlite3.OperationalError("database is locked")
+
+        monkeypatch.setattr(bus, "_write_events_batch", _boom)
+        for i in range(antal):
+            bus.publish("alpha.spild", {"i": i})
+        bus.flush()
+
+    def test_fejlet_skrivning_spilles_til_disk_i_stedet_for_at_kastes(
+        self, event_bus, monkeypatch, tmp_path
+    ):
+        self._spild(event_bus, monkeypatch, antal=3)
+
+        fil = _dead_letter_fil(tmp_path / "jarvis.db")
+        assert fil.exists(), "batchen skal være spillet til disk, ikke kastet"
+        linjer = [
+            linje for linje in fil.read_text(encoding="utf-8").splitlines() if linje.strip()
+        ]
+        assert len(linjer) == 3
+        assert all(json.loads(linje)["kind"] == "alpha.spild" for linje in linjer)
+
+    def test_intet_spilles_naar_skrivningen_lykkes(self, event_bus, tmp_path):
+        event_bus.publish("alpha.fin", {"ok": True})
+        event_bus.flush()
+
+        fil = _dead_letter_fil(tmp_path / "jarvis.db")
+        assert not fil.exists(), "en vellykket skrivning må ikke efterlade en fil"
+
+    def test_drain_genindlaeser_events_med_deres_aegte_tid(
+        self, event_bus, monkeypatch, tmp_path
+    ):
+        from core.runtime.db import connect
+
+        aegte = event_bus._write_events_batch
+        self._spild(event_bus, monkeypatch, antal=2)
+        monkeypatch.setattr(event_bus, "_write_events_batch", aegte)
+
+        fil = _dead_letter_fil(tmp_path / "jarvis.db")
+        spillede = [
+            json.loads(linje)
+            for linje in fil.read_text(encoding="utf-8").splitlines()
+            if linje.strip()
+        ]
+        assert len(spillede) == 2
+
+        antal = event_bus._drain_dead_letter()
+        assert antal == 2
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT kind, payload_json, created_at FROM events ORDER BY id"
+            ).fetchall()
+        assert len(rows) == 2
+        assert all(r["kind"] == "alpha.spild" for r in rows)
+        # Tiden er den OPRINDELIGE, ikke drain-tidspunktet.
+        assert [r["created_at"] for r in rows] == [s["created_at"] for s in spillede]
+        assert fil.read_text(encoding="utf-8").strip() == "", "filen skal tømmes"
+
+    def test_drain_beholder_resten_naar_skrivningen_stadig_fejler(
+        self, event_bus, monkeypatch, tmp_path
+    ):
+        self._spild(event_bus, monkeypatch, antal=2)  # _boom står stadig
+
+        antal = event_bus._drain_dead_letter()
+        assert antal == 0
+
+        fil = _dead_letter_fil(tmp_path / "jarvis.db")
+        resterende = [
+            linje for linje in fil.read_text(encoding="utf-8").splitlines() if linje.strip()
+        ]
+        assert len(resterende) == 2, "intet må gå tabt når drain fejler"
+
+    def test_stats_taeller_spild_og_drain(self, event_bus, monkeypatch, tmp_path):
+        aegte = event_bus._write_events_batch
+        self._spild(event_bus, monkeypatch, antal=2)
+        monkeypatch.setattr(event_bus, "_write_events_batch", aegte)
+
+        foer = event_bus.dead_letter_stats()
+        assert foer["spilled_total"] == 2
+        assert foer["drained_total"] == 0
+        assert foer["pending_bytes"] > 0
+
+        event_bus._drain_dead_letter()
+
+        efter = event_bus.dead_letter_stats()
+        assert efter["spilled_total"] == 2
+        assert efter["drained_total"] == 2
+        assert efter["pending_bytes"] == 0

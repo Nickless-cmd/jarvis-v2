@@ -99,8 +99,9 @@ def observe_config_drift() -> dict[str, Any]:
                 record_central_incident(cluster="system", nerve="config_drift", kind="drift",
                                         severity="severe", message=msg)
                 try:
-                    from core.services.ntfy_gateway import send_notification
-                    send_notification("⚠ " + msg, title="Config-drift", priority="high")
+                    from core.services.alarm_ud import send_alert
+                    send_alert(titel="Config-drift", tekst=msg, slags="infra_security",
+                               importance="high")
                 except Exception:
                     pass
         except Exception:

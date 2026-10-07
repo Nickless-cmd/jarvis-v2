@@ -41,6 +41,29 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             arguments = {}
     if not isinstance(arguments, dict):
         arguments = {}
+    # ── Dispatcheren pakkes ud HER, foer alt andet (30/9-2026) ─────────────
+    # `call_loaded_tool` er en TRANSPORT, ikke en udfoerer. Hver eneste gate
+    # herunder noegles paa `name`: commit-gaten, r2.5, veto, skema-kontrakten,
+    # dedup, godkendelser og telemetrien. Udpakkede vi senere — eller lod
+    # dispatcheren selv udfoere — ville de alle se `call_loaded_tool` i stedet
+    # for `delete_file`, og den var dermed en universel gate-omgaaelse for alle
+    # ~370 vaerktoejer. Efter denne linje findes dispatcheren ikke laengere.
+    from core.tools.kaldt_vaerktoej import KALD_NAVN as _KALD_NAVN, pak_ud as _pak_ud
+    _var_dispatch = name == _KALD_NAVN
+    name, arguments = _pak_ud(name, arguments)
+    if _var_dispatch:
+        # Udpakningen sker FOER telemetrien, saa `tool.invoked` baerer det
+        # AEGTE navn — hvilket er meningen, men goer dispatcheren usynlig for
+        # den maaling der skal afgoere om fletten i `visible_runs` kan skaeres.
+        # Derfor ét eget spor. Self-safe: maalingen maa aldrig stoppe kaldet.
+        try:
+            event_bus.publish("tool_router.dispatcher_brugt", {
+                "vaerktoej": name,
+                "ukendt_navn": name == _KALD_NAVN,
+                "run_id": run_id,
+            })
+        except Exception:  # et adoptions-spor maa ALDRIG stoppe et vaerktoejskald
+            pass
     if not name:
         return ("skip", None)
     try:
@@ -119,6 +142,41 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             "tool_name": name, "arguments": arguments,
             "result": {"status": "gate_blocked", "gate_type": "r2_5_gate", "message": _r25},
             "result_text": f"[r2_5_gate] {_r25}", "status": "gate_blocked"})
+    # Indbakke-gaten (Opgave 4, 3/10-2026) — en EGEN forudsaetning i samme
+    # mutationspunkt, ikke en gren i R2.5's procesglobale `_blok`. Dens
+    # livscyklus er per bruger og per post: et readback eller ti minutter
+    # frigiver den IKKE, kun `inbox_done`/`inbox_drop` paa dens poster.
+    #
+    # Trin 1 paaminder og slipper igennem; trin 2 naegter. Begge varsler er
+    # kilde-maerkede, fordi alt der ikke er skrevet fra Bjoerns composer skal
+    # kunne skelnes fra ham — umaerket tekst i jeg-form startede runder i
+    # hans navn.
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services.inbox_gate import evaluer_inbox_mutation
+        _ib = evaluer_inbox_mutation(current_user_id(), name, arguments,
+                                     tur=run_id or "")
+    except Exception as _ib_exc:  # noqa: BLE001
+        # Fail-open, synligt. En gate der naegter fordi den selv braekkede kan
+        # ikke slaas fri — og en tavs slugning her ville goere hele gaten
+        # usynligt virkningsloes.
+        logger.warning("inbox_gate: forudsaetningen fejlede, mutationen slipper "
+                       "igennem: %s", _ib_exc)
+        _ib = {"blokeret": False, "varsel": ""}
+    if _ib.get("blokeret"):
+        _besked = str(_ib.get("varsel") or "")
+        try:
+            event_bus.publish("inbox_gate.blocked", {
+                "tool_name": name, "poster": list(_ib.get("poster") or []),
+                "run_id": run_id})
+        except Exception as _pub_exc:  # noqa: BLE001
+            # Telemetrien er en tilfoejelse; naegtelsen staar uanset.
+            logger.debug("inbox_gate: kunne ikke publicere blokeringen: %s", _pub_exc)
+        return ("result", {
+            "tool_name": name, "arguments": arguments,
+            "result": {"status": "gate_blocked", "gate_type": "inbox_gate",
+                       "message": _besked, "poster": list(_ib.get("poster") or [])},
+            "result_text": f"[inbox_gate] {_besked}", "status": "gate_blocked"})
     # Reserve the signature for within-round dedup (parallel: success unknown yet;
     # a same-round exact duplicate read is suppressed — benign for idempotent reads).
     round_seen.add(signature)
@@ -126,7 +184,15 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
                     "signature": signature, "soft_warn": _cg.soft_warn,
                     # Turen følger med: jagt-noten tæller pr. tur, og uden
                     # id'et ville to samtidige ture dele tæller.
-                    "run_id": run_id or ""})
+                    "run_id": run_id or "",
+                    # Trin 1's paamindelse. Den SKAL med paa resultatet:
+                    # taelleren i `inbox_items` taeller «leverede
+                    # paamindelser», og blev varslet beregnet og smidt vaek,
+                    # ville blokeringen fyre paa paamindelser der aldrig naaede
+                    # modellen — en gate der straffer for noget der ikke blev
+                    # sagt. Det er `built_but_not_connected` i gatens egen
+                    # taeller.
+                    "inbox_varsel": str(_ib.get("varsel") or "")})
 
 
 def _finalize_call(token, raw_result, *, controller, exec_fmt):
@@ -182,6 +248,13 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
     if soft_warn:
         result_text = f"⚠ {soft_warn}\n\n{result_text}"
         result_text_full = f"⚠ {soft_warn}\n\n{result_text_full}"
+    _ib_varsel = str(token.get("inbox_varsel") or "")
+    if _ib_varsel:
+        # FORAN resultatet, ikke bagved: en linje efter 112 kB jobs-output
+        # bliver aldrig laest. Og den er kilde-maerket, saa den ikke kan
+        # forveksles med noget Bjoern har skrevet.
+        result_text = f"{_ib_varsel}\n\n{result_text}"
+        result_text_full = f"{_ib_varsel}\n\n{result_text_full}"
     if controller and raw_result.get("status") == "ok":
         controller.seen_simple_tool_call_signatures.add(signature)
         # ── VERIFIKATION EFTER SKRIVNING (2026-09-05) ────────────────────────

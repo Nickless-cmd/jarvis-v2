@@ -50,24 +50,86 @@ _OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
 # ── Ollama adapter (preserves existing /api/chat NDJSON behavior) ────────────
 
 
-def _append_image_message(messages: list[dict], tr) -> None:
-    """Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06).
+def _billed_besked(tr) -> dict | None:
+    """Pixels som en user-besked — eller None naar resultatet ikke bar et billede.
 
-    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen —
-    derfor foelger billedet som en user-besked lige efter. Kun `read_attachment`
-    paa en model der SELV kan se saetter feltet, saa for alle andre ture er
-    denne funktion et no-op og beskedstroemmen byte-identisk med foer.
+    Et `tool`-resultat kan ikke selv baere et billede i OpenAI-protokollen,
+    saa billedet foelger som en user-besked (2026-09-06). Kun `read_attachment`
+    paa en model der SELV kan se saetter feltet.
     """
     url = str(getattr(tr, "image_data_url", "") or "")
     if not url:
-        return
-    messages.append({
+        return None
+    return {
         "role": "user",
         "content": [
             {"type": "text", "text": "[vedhæftet billede — se selv]"},
             {"type": "image_url", "image_url": {"url": url}},
         ],
-    })
+    }
+
+
+def _billeder_efter_tool_svarene(messages: list[dict], billeder: list[dict]) -> None:
+    """Laeg billederne EFTER alle tool-svarene i runden, ikke mellem dem.
+
+    ## Hvad der var galt (29/9-2026)
+
+    Billedet blev appendet lige efter DET tool-resultat der bar det. Havde
+    runden flere vaerktoejskald, havnede user-beskeden midt imellem
+    tool-svarene:
+
+        assistant (2 tool_calls)
+        tool  c1      <- read_attachment
+        user          <- billedet
+        tool  c2      <- bash
+
+    OpenAI-protokollen kraever at ALLE tool-svar foelger umiddelbart efter
+    assistent-beskeden. DeepSeek afviser med HTTP 400: «An assistant message
+    with 'tool_calls' must be followed by tool messages responding to each
+    'tool_call_id'.»
+
+    Maalt paa CT105: 28 afbrudte ture over to doegn, foerste gang 28/9 kl.
+    12:50 — da billederne begyndte at naa modellen. Betingelserne skal vaere
+    opfyldt samtidig: han laeser et billede OG kalder mindst ét vaerktoej mere
+    i samme runde. Derfor ramte den kun nogle gange, og derfor lignede den et
+    udbyder-udfald.
+
+    Modellen ser stadig pixels — de staar bare efter svarene i stedet for
+    inde i dem. Baerer ingen resultater billeder, er listen uroert.
+    """
+    messages.extend(billeder)
+
+
+
+def _dt_ind(session_id: str, tekst: str) -> None:
+    """Notér én delta i delta-sporets punkt «ind» — fra UDBYDEREN.
+
+    ## Hvorfor den er her og ikke kun i `visible_model_adapters`
+
+    Første udgave af sporet sad kun på første pas. Målt 3/10-2026 gav to
+    rigtige ture NUL «ind»-linjer mod to «ud» — fordi det meste af teksten i
+    en synlig tur kommer fra de AGENTISKE RUNDER, og de yielder `FollowupDelta`
+    herfra, ikke `VisibleModelDelta` derovre. Instrumenteringen sad på den vej
+    der producerer mindst.
+
+    Nøglen er sessionen, ikke run-id'et: run-id'et lever i en ContextVar der
+    ikke følger med ind i arbejdstråden (målt samme dag, egen commit).
+
+    IKKE DÆKKET: ollama-adapterens `stream_followup` (samme fil, det andet
+    `FollowupDelta`-sted). Den har intet `session_id` i sin signatur, og et
+    kontekst-opslag ville være netop den fejl der gjorde den første måling
+    ubrugelig. Den betjener de autonome ture på ollama — ikke Bjørns synlige
+    bane, som kører `deepseek/deepseek-v4-flash`. Skal den dækkes, skal
+    session-id'et trådes eksplicit igennem.
+    """
+    try:
+        from core.services import delta_trace as _dt
+        if not _dt.taendt():
+            return
+        _dt.noter("ind", str(session_id or ""), len(tekst))
+    except Exception:  # et spor maa aldrig vaelte en runde; alternativet er
+        # at miste svaret, og det er altid vaerre end en manglende maaling.
+        pass
 
 
 class OllamaFollowupAdapter:
@@ -227,6 +289,7 @@ class OllamaFollowupAdapter:
             if exch.reasoning_content:
                 _asst["thinking"] = exch.reasoning_content
             messages.append(_asst)
+            _billeder: list[dict] = []
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -237,7 +300,11 @@ class OllamaFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
-                _append_image_message(messages, tr)
+                _billede = _billed_besked(tr)
+                if _billede is not None:
+                    _billeder.append(_billede)
+            # EFTER alle tool-svarene — se `_billeder_efter_tool_svarene`.
+            _billeder_efter_tool_svarene(messages, _billeder)
         return messages
 
     def stream_followup(
@@ -251,6 +318,7 @@ class OllamaFollowupAdapter:
         thinking_mode: str = "think",
         temperature: float | None = None,
         top_p: float | None = None,
+        trailing_messages: list[dict] | None = None,
     ) -> Iterator[FollowupEvent]:
         # 2026-06-13: ollama-followup skal bruge OLLAMA-providerens base_url, ikke
         # visible-lanen (deepseek-API). Ellers POST'er tool-runden ollama-format til
@@ -263,7 +331,8 @@ class OllamaFollowupAdapter:
             _pburl(provider="ollama", registry=_lprr()) or "http://127.0.0.1:11434"
         ).rstrip("/")
 
-        messages = list(base_messages) + self._serialize_exchanges(exchanges)
+        messages = (list(base_messages) + self._serialize_exchanges(exchanges)
+                    + list(trailing_messages or []))
 
         _options: dict[str, object] = {"num_ctx": 262_144}
         # Lav agentisk temperatur (anti-hallucination). Ollama læser sampling-
@@ -745,6 +814,20 @@ class OpenAICompatFollowupAdapter:
                     # 22 %, ved vi ikke — derfor noteres det.
                     if spor is not None:
                         spor["thinking_disabled"] = True
+        # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump). Her er
+        # `payload` 100 % færdigbygget — inkl. tools, tool_choice og de
+        # thinking-justeringer der ellers kun ses i koden. Se prompt_dump.py.
+        try:
+            from core.services import prompt_dump as _pd
+            _pd.dump_payload(
+                provider=self.provider_id, model=model,
+                messages=payload.get("messages"),
+                tools=payload.get("tools"), lane="visible-followup",
+                params={k: v for k, v in payload.items()
+                        if k not in ("messages", "tools", "model")},
+            )
+        except Exception:  # self-safe: en dump maa ikke kaste ind i stream-stien
+            pass
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -793,6 +876,7 @@ class OpenAICompatFollowupAdapter:
             if exch.reasoning_content:
                 assistant_msg["reasoning_content"] = exch.reasoning_content
             messages.append(assistant_msg)
+            _billeder: list[dict] = []
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -803,7 +887,11 @@ class OpenAICompatFollowupAdapter:
                 if tr.tool_name:
                     tool_msg["name"] = tr.tool_name
                 messages.append(tool_msg)
-                _append_image_message(messages, tr)
+                _billede = _billed_besked(tr)
+                if _billede is not None:
+                    _billeder.append(_billede)
+            # EFTER alle tool-svarene — se `_billeder_efter_tool_svarene`.
+            _billeder_efter_tool_svarene(messages, _billeder)
         return messages
 
     def stream_followup(
@@ -819,7 +907,9 @@ class OpenAICompatFollowupAdapter:
         top_p: float | None = None,
         tool_choice: str | None = None,
         run_id: str = "",
+        session_id: str = "",
         autonomous: bool = False,
+        trailing_messages: list[dict] | None = None,
         _length_retry: bool = False,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
@@ -843,6 +933,22 @@ class OpenAICompatFollowupAdapter:
                 deepseek_request_for_thinking_mode,
             )
             model, _mode_body = deepseek_request_for_thinking_mode(model, thinking_mode)
+            # A/B 5/10-2026: en andel af runs koerer MELLEM-runderne uden
+            # raesonnering. 32,9 % af alt output er raesonnering, og latensen er
+            # naesten linjaer i output (2,69 s ved 0-400 ud, 14,10 s ved 1600+).
+            # Men det er HER han vaelger vaerktoej, saa kvalitetsprisen er umaalt
+            # — kommentaren ved tool_choice-grenen nedenfor noterer selv tvivlen.
+            # Armen er en ren funktion af run_id, saa analysen kan regne den ud
+            # bagefter uden en ny kolonne. Andelen staar i runtime.json
+            # (`raesonnering_daempet_procent`); 0 slaar forsoeget helt fra.
+            from core.services.raesonnering_eksperiment import daemp_krop
+            _mode_body, _raeson_daempet = daemp_krop(
+                _mode_body, run_id, thinking_mode=thinking_mode,
+            )
+            if _raeson_daempet:
+                _log.info(
+                    "raesonnering-ab: run=%s runde=%d arm=daempet", run_id, round_index
+                )
 
         # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
         # afviser hele requesten hvis feltet mangler. Tidligere strippede vi
@@ -850,10 +956,8 @@ class OpenAICompatFollowupAdapter:
         # samtale. Tilføjer placeholder reasoning i stedet så indholdet
         # bevares. Strip kun fra base_messages — current-run exchanges har
         # reasoning_content via _serialize_exchanges.
-        _is_thinking_model = (
-            self.provider_id == "deepseek"
-            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-        )
+        from core.services.deepseek_modelnavne import er_thinking_model
+        _is_thinking_model = er_thinking_model(model, provider=self.provider_id)
         if _is_thinking_model:
             _LEGACY_REASONING_PLACEHOLDER = (
                 "[legacy turn — reasoning trace not preserved before "
@@ -870,7 +974,11 @@ class OpenAICompatFollowupAdapter:
                 for m in base_messages
             ]
 
-        messages = list(base_messages) + self._serialize_exchanges(exchanges)
+        # Halen haeftes paa EFTER historikken. Laa den i base_messages, sad den
+        # foran alle exchanges — og en besked der kommer og gaar dér forskyder
+        # hele resten og braekker praefiks-cachen. Se noten i visible_runs.
+        messages = (list(base_messages) + self._serialize_exchanges(exchanges)
+                    + list(trailing_messages or []))
 
         # Belt-and-suspenders: even after _is_thinking_model patch above
         # covered base_messages, current-run exchanges can still arrive
@@ -879,10 +987,8 @@ class OpenAICompatFollowupAdapter:
         # thinking-mode rejects the entire request with HTTP 400 if ANY
         # assistant message lacks reasoning_content. Patch the merged
         # message list once, right before send.
-        if (
-            self.provider_id == "deepseek"
-            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
-        ):
+        from core.services.deepseek_modelnavne import er_thinking_model
+        if er_thinking_model(model, provider=self.provider_id):
             _PLACEHOLDER = (
                 "[reasoning trace not captured for this turn — preserving "
                 "field so deepseek thinking-mode accepts the request]"
@@ -907,7 +1013,7 @@ class OpenAICompatFollowupAdapter:
                 1 for m in messages
                 if m.get("role") == "assistant" and not str(m.get("reasoning_content") or "").strip()
             )
-            if _no_rc and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+            if _no_rc and er_thinking_model(model, provider=self.provider_id):
                 _log.warning(
                     "deepseek followup round=%d model=%s missing reasoning_content on %d assistants — patching",
                     round_index, model, _no_rc,
@@ -968,7 +1074,10 @@ class OpenAICompatFollowupAdapter:
 
         try:
             with urllib_request.urlopen(req, timeout=180) as response:
-                for event in _iter_sse_events(response):
+                # Maale-noeglen er sessionen — se `delta_trace.noter`. Uden den
+                # maaler laese-sporet ingenting.
+                for event in _iter_sse_events(
+                        response, maale_noegle=str(session_id or "")):
                     if _ttfb_ms is None:
                         _ttfb_ms = int((_time.monotonic() - _t0) * 1000)
                     # include_usage: DeepSeek sender en afsluttende chunk med usage.
@@ -986,6 +1095,7 @@ class OpenAICompatFollowupAdapter:
                         )
                         if safe:
                             parts.append(safe)
+                            _dt_ind(session_id, safe)
                             yield FollowupDelta(delta=safe)
                     reasoning_delta = _extract_chat_completion_reasoning(event)
                     if reasoning_delta:
@@ -1122,7 +1232,15 @@ class OpenAICompatFollowupAdapter:
                     run_id=run_id, round_index=round_index, autonomous=autonomous,
                     lane="visible", provider=self.provider_id, model=model,
                     prefix_sha=_sha, prefix_len=_plen, cache_hit=_ch, cache_miss=_cm,
-                    session_id=current_session_id(), **_parts,
+                    # `session_id` traades eksplicit igennem som `run_id` (30/9-2026).
+                    # `stream_followup` er en GENERATOR: dens krop koerer i
+                    # forbrugerens kontekst, og ctxvar'en som `visible_runs:1400`
+                    # saetter naar den ikke herind. Maalt: session_id var tom paa
+                    # 3.115 af 3.115 telemetri-raekker, saa intet kunne grupperes
+                    # pr. session — praecis det spoergsmaal maalingen stod og
+                    # manglede. Ctxvar'en beholdes som fallback, saa ingen sti
+                    # bliver daarligere end i dag.
+                    session_id=session_id or current_session_id(), **_parts,
                 )
         except Exception:
             pass
@@ -1141,6 +1259,15 @@ class OpenAICompatFollowupAdapter:
             _out = int(_u.get("completion_tokens") or 0)
             _hit = int(_u.get("prompt_cache_hit_tokens") or 0)
             _miss = int(_u.get("prompt_cache_miss_tokens") or 0)
+            # Tænke-tokens er en DELMÆNGDE af completion_tokens (DeepSeek:
+            # `completion_tokens_details.reasoning_tokens`) — de er allerede
+            # betalt som output, så prisen røres ikke. Kolonnen gør det bare
+            # målbart hvor meget af output der er tænkning. `_usage` er HELE
+            # usage-chunken (samme blok som hit/miss læses fra), så detaljerne
+            # er i scope her uden at gå gennem streaming-adapteren.
+            _reas = int(
+                (_u.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+            )
             if _in or _out:
                 record_cost(
                     lane="agentic_round",
@@ -1150,6 +1277,7 @@ class OpenAICompatFollowupAdapter:
                     output_tokens=_out,
                     cache_hit_tokens=_hit,
                     cache_miss_tokens=_miss,
+                    reasoning_tokens=_reas,
                     cost_usd=compute_cost_usd(
                         self.provider_id, model,
                         cache_hit_tokens=_hit, cache_miss_tokens=_miss,
@@ -1171,6 +1299,7 @@ class OpenAICompatFollowupAdapter:
         # — en tilbageholdt prefix der aldrig blev en rigtig opener er legitim brugertekst.
         if _dsml_buffer and not _dsml_in_block:
             parts.append(_dsml_buffer)
+            _dt_ind(session_id, _dsml_buffer)
             yield FollowupDelta(delta=_dsml_buffer)
             _dsml_buffer = ""
         elif _dsml_buffer and _dsml_in_block:
@@ -1225,7 +1354,8 @@ class OpenAICompatFollowupAdapter:
                 model=model, base_messages=base_messages, exchanges=exchanges,
                 tool_definitions=tool_definitions, round_index=round_index,
                 thinking_mode="fast", temperature=temperature, top_p=top_p,
-                tool_choice=tool_choice, run_id=run_id, autonomous=autonomous,
+                tool_choice=tool_choice, run_id=run_id, session_id=session_id,
+                autonomous=autonomous,
                 _length_retry=True,
             )
             return
@@ -1274,7 +1404,8 @@ class CodexFollowupAdapter:
 
     provider_id = "openai-codex"
 
-    def _build_input(self, base_messages: list[dict], exchanges: list[ToolExchange]) -> list[dict]:
+    def _build_input(self, base_messages: list[dict], exchanges: list[ToolExchange],
+                     *, trailing_messages: list[dict] | None = None) -> list[dict]:
         items: list[dict] = []
         for m in base_messages:
             role = str(m.get("role") or "user")
@@ -1305,6 +1436,14 @@ class CodexFollowupAdapter:
                     "call_id": str(tr.tool_call_id or ""),
                     "output": str(tr.content or ""),
                 })
+        # Halen SIDST — samme grund som i de to andre adaptere. Uden den her
+        # ville den samme runde se forskellig ud alt efter udbyder.
+        for m in (trailing_messages or []):
+            text = str(m.get("content") or "")
+            if not text:
+                continue
+            items.append({"role": str(m.get("role") or "user"),
+                          "content": [{"type": "input_text", "text": text}]})
         return items
 
     def stream_followup(
@@ -1316,6 +1455,7 @@ class CodexFollowupAdapter:
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
         thinking_mode: str = "think",
+        trailing_messages: list[dict] | None = None,
     ) -> Iterator[FollowupEvent]:
         from core.services.cheap_provider_runtime import (
             _iter_openai_codex_chat_events,
@@ -1327,7 +1467,8 @@ class CodexFollowupAdapter:
         profile = str(cfg.get("auth_profile") or "").strip() or "codex"
         base_url = str(cfg.get("base_url") or "").strip()
 
-        input_items = self._build_input(base_messages, exchanges)
+        input_items = self._build_input(
+            base_messages, exchanges, trailing_messages=trailing_messages)
         collected_tool_calls: list[dict] = []
         try:
             for ev in _iter_openai_codex_chat_events(

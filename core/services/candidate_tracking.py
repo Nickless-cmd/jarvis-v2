@@ -25,8 +25,11 @@ from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
     auto_apply_safe_user_md_candidates,
 )
-from core.runtime.db import list_runtime_contract_candidates
+from core.runtime.db import runtime_contract_candidate_status_for_key
 from core.runtime.db import upsert_runtime_contract_candidate
+from core.runtime.db_core import TERMINAL_CANDIDATE_STATUSES
+from core.services.candidate_hygiene import is_transient_line
+from core.services.candidate_hygiene import normalize_candidate_domain
 from core.services.text_clip import clip_text
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
@@ -641,6 +644,22 @@ def _candidate_from_user_md_update_proposal(proposal: dict[str, object]) -> dict
 
 
 def _candidate_from_memory_md_update_proposal(proposal: dict[str, object]) -> dict[str, str] | None:
+    # C (2/10-2026): en åben opgave er en handling, ikke viden. Løftes den til
+    # en MEMORY.md-kandidat, gentages den indtil den udløber — målt den dag
+    # dækkede 202 «domæner» reelt ~3-5 opgaver («læs adb outputtet og bekræft
+    # enhedsstatus» og varianter). Afvis flygtige forslag ved kilden. Tjekket
+    # kører på de RÅ felter, fordi domænet nedenfor er normaliseret og har
+    # mistet dato-formen.
+    if is_transient_line(
+        " ".join(
+            [
+                str(proposal.get("canonical_key") or ""),
+                str(proposal.get("title") or ""),
+                str(proposal.get("proposed_update") or ""),
+            ]
+        )
+    ):
+        return None
     proposal_type = str(proposal.get("proposal_type") or "")
     memory_kind = str(proposal.get("memory_kind") or "").strip()
     source_anchor = str(proposal.get("source_anchor") or "").strip()
@@ -988,23 +1007,34 @@ def _persist_candidates(
 
 
 def _candidate_already_applied(candidate: dict[str, str]) -> bool:
-    matches = list_runtime_contract_candidates(
+    """True når denne nøgle allerede er AFGJORT og ikke må genopstå.
+
+    Målt 2/10-2026: funktionen scannede de 20 nyeste rækker af (type, fil) og
+    ledte derefter efter nøglen *i det vindue*. For
+    `user-preference:reminders:assumption-caution` lå den `applied`-række på
+    id 82615, mens vinduets yngste grænse var 92229 — så gaten svarede «nej»
+    for evigt, og nøglen blev genskabt 680 gange. Et opslag på nøglen er
+    både billigere og korrekt.
+    """
+    status = runtime_contract_candidate_status_for_key(
         candidate_type=str(candidate["candidate_type"]),
         target_file=str(candidate["target_file"]),
-        limit=20,
+        canonical_key=str(candidate["canonical_key"]),
     )
-    canonical_key = str(candidate["canonical_key"])
-    for item in matches:
-        if str(item.get("canonical_key") or "") != canonical_key:
-            continue
-        if str(item.get("status") or "") == "applied":
-            return True
-    return False
+    return status in TERMINAL_CANDIDATE_STATUSES
 
 
 def _memory_proposal_domain(canonical_key: str) -> str:
+    """Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del.
+
+    Uden foldningen gav næsten-identiske formuleringer hver sin nøgle
+    («…-f-re-bekr-ftelsen-…» mod «…-f-r-bekr-ftelsen-…»), og 202 «domæner»
+    dækkede reelt ~3-5 opgaver. Foldningen kaster rækkefølge og stopord væk
+    og er idempotent — så det er harmløst at domænet allerede er normaliseret
+    når det kommer herind.
+    """
     parts = [part for part in canonical_key.split(":") if part]
-    return parts[-1] if parts else ""
+    return normalize_candidate_domain(parts[-1]) if parts else ""
 
 
 def _slug(value: str) -> str:

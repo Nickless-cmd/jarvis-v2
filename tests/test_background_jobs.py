@@ -21,6 +21,11 @@ def ingen_supervisor(monkeypatch):
     # Shell-sessionerne slaas fra som de to andre kilder. De tests der
     # handler OM dem taender dem igen med deres egen patch.
     monkeypatch.setattr(bj, "_shell_sessioner", lambda: [])
+    # Værktøjskilden læser den LEVENDE events-DB (3/10-2026). Uden denne patch
+    # ville hver eneste test her afhænge af hvad der tilfældigvis kørte på
+    # maskinen i det sekund — og «jobs == []» ville fejle, fordi nogen kørte
+    # en kommando. Dens egne tests tænder den igen.
+    monkeypatch.setattr(bj, "_tool_jobs", lambda: [])
 
 
 def test_en_standset_shell_er_PAUSET_ikke_koerende(monkeypatch):
@@ -114,7 +119,9 @@ def test_en_koerende_scout_vises_som_baggrundsjob(monkeypatch):
     j = bj.liste()["jobs"]
     assert len(j) == 1, "kun scout-agenter — ikke andre agent-roller"
     assert j[0]["kilde"] == "agent" and j[0]["status"] == "running"
-    assert j[0]["kommando"] == "Hvor bor cheap lane-værnet?"
+    # B (29/9-2026): spoergsmaalet er TITLEN, rollen ligger i tooltip.
+    assert j[0]["navn"] == "Hvor bor cheap lane-værnet?"
+    assert j[0]["kommando"] == "Scout-agent"
     assert j[0]["sekunder"] == 42 and j[0]["can_pause"] is False
 
 
@@ -194,6 +201,49 @@ def test_en_aaben_shell_paa_serveren_vises_som_baggrundsjob(monkeypatch):
     assert j[0]["can_pause"] is False
 
 
+def test_en_EFTERLADT_arbejds_shell_vises_ikke_selv_om_globalen_peger_andetsteds(monkeypatch):
+    # Rod (maalt 29/9-2026): arbejds-shellen blev filtreret ved at sammenligne
+    # med en PROCES-GLOBAL. Daemonen overlever genstarte, saa hver ny
+    # procesgenerations arbejds-shell slap igennem som en raekke «aaben shell»
+    # — fire af dem stod i panelet. Daemonen maerker dem nu ved fødselen, og
+    # maerkningen holder hele sessionens levetid, ogsaa efter ejeren er vaek.
+    _taend_shells(monkeypatch)
+    import core.tools.simple_tools_web as stw
+    monkeypatch.setattr(stw, "_DEFAULT_BASH_SESSION_ID", "bsh-nyproces", raising=False)
+    _monter_lokal(monkeypatch, [
+        {"session_id": "bsh-gammel1", "alive": True, "idle_seconds": 900, "arbejde": True},
+        {"session_id": "bsh-gammel2", "alive": True, "idle_seconds": 800, "arbejde": True},
+        {"session_id": "bsh-nyproces", "alive": True, "idle_seconds": 3, "arbejde": True},
+        {"session_id": "bsh-medvilje", "alive": True, "idle_seconds": 12, "arbejde": False},
+    ])
+    _monter_operator(monkeypatch, [])
+    assert [x["id"] for x in bj.liste()["jobs"]] == ["bsh-medvilje"]
+
+
+def test_en_aaben_shell_uden_titel_falder_tilbage_til_det_den_ER(monkeypatch):
+    # «aaben shell» er aerligt naar vi intet ved — men naar vi VED hvad
+    # sessionen er til, skal det staa. Titlen skrives ved aabningen.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [
+        {"session_id": "bsh-a", "alive": True, "idle_seconds": 5,
+         "titel": "bygger klienten"},
+        {"session_id": "bsh-b", "alive": True, "idle_seconds": 5},
+    ])
+    _monter_operator(monkeypatch, [])
+    navne = {x["id"]: x["navn"] for x in bj.liste()["jobs"]}
+    assert navne["bsh-a"] == "bygger klienten"
+    assert navne["bsh-b"] == "åben shell"
+
+
+def test_operator_sessionens_titel_kommer_med(monkeypatch):
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [])
+    _monter_operator(monkeypatch, [{"session_id": "opsess-abc123",
+                                    "cwd": "~/proj", "idle_s": 7,
+                                    "titel": "rydder logs op"}])
+    assert [x["navn"] for x in bj.liste()["jobs"]] == ["rydder logs op"]
+
+
 def test_panelet_maa_ikke_STARTE_daemonen_for_at_kigge_efter_den(monkeypatch):
     # `_exec_bash_session_list` gaar gennem `_ensure_daemon_running()`, som
     # spawner en daemon naar der ikke er nogen. Panelet poller hvert femte
@@ -264,21 +314,7 @@ def test_to_doede_shell_kilder_vaelter_ikke_de_oevrige_jobs(monkeypatch):
     assert [x["id"] for x in bj.liste()["jobs"]] == ["grid-bot"]
 
 
-def test_arbejds_shellen_maerkes_op_saa_den_ikke_ligner_en_stray(monkeypatch):
-    # Det almindelige `bash`-vaerktoej genbruger EN delt session. Den staar i
-    # daemonens liste side om side med dem der er aabnet med vilje, og et stop
-    # paa den smider Jarvis' cd/env/venv vaek midt i en opgave.
-    _taend_shells(monkeypatch)
-    import core.tools.simple_tools_web as stw
-    monkeypatch.setattr(stw, "_DEFAULT_BASH_SESSION_ID", "bsh-aaaaaaaaaa", raising=False)
-    _monter_lokal(monkeypatch, [
-        {"session_id": "bsh-aaaaaaaaaa", "alive": True, "idle_seconds": 4},
-        {"session_id": "bsh-bbbbbbbbbb", "alive": True, "idle_seconds": 9},
-    ])
-    _monter_operator(monkeypatch, [])
-    kort = {j["id"]: j["kommando"] for j in bj.liste()["jobs"]}
-    assert "arbejds-shell" in kort["bsh-aaaaaaaaaa"]
-    assert "arbejds-shell" not in kort["bsh-bbbbbbbbbb"]
+
 
 
 def test_tallets_betydning_er_forskellig_paa_de_to_kilder(monkeypatch):
@@ -318,3 +354,53 @@ def test_en_daemon_uden_busy_feltet_paastaar_ingenting(monkeypatch):
     kommando = bj.liste()["jobs"][0]["kommando"]
     assert "kører:" not in kommando
     assert "åben shell" in kommando
+
+
+# ── Operator-linjen: titel og kommando kom fra en forkert sti ────────────────
+#
+# Maalt 6/10-2026 paa ni aegte jobs paa Bjoerns maskine: BEGGE felter var tomme,
+# saa hvert operator-job stod som «(baggrunds-shell)» — ogsaa efter at titlen
+# blev bygget 3/10 praecis for at raade bod paa at «Jarvis' kommandoer var
+# usynlige». `cmd` og `titel` blev laest fra `"$f".cmd`/`"$f".title`, hvor `$f`
+# ER pid-filen, altsaa `<id>.pid.cmd`. Skriveren laegger dem i `<id>.cmd`.
+
+
+def test_listekommandoen_laeser_cmd_og_title_fra_id_ikke_fra_pid_filen():
+    """Vagten mod at stien falder tilbage til `"$f"`. Egenskaben er at der
+    laeses fra `<id>.cmd`, ikke fra pid-filens navn med en endelse paa."""
+    kommando = bj._LISTE_CMD
+    assert '"$f".cmd' not in kommando, "cmd laeses igen fra pid-filens sti"
+    assert '"$f".title' not in kommando, "title laeses igen fra pid-filens sti"
+    assert "$id.cmd" in kommando and "$id.title" in kommando
+
+
+def test_titel_og_kommando_naar_frem(monkeypatch):
+    linje = "bg_1|4242|S||1700000000|Bygger APK 280 (kun arm64)|cd /x && gradle assemble"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert len(j) == 1
+    assert j[0]["titel"] == "Bygger APK 280 (kun arm64)"
+    assert j[0]["navn"] == "Bygger APK 280 (kun arm64)"
+    assert j[0]["kommando"] == "cd /x && gradle assemble"
+
+
+def test_en_pipe_i_kommandoen_afkorter_den_ikke_og_spiser_ikke_titlen():
+    """Kommandoen staar SIDST og samles igen. Stod den foer titlen, delte
+    `split("|")` den midt over, og titel-feltet fik halen af kommandoen."""
+    linje = "bg_2|7|S||1700000000|Finder fejl|grep -r x . | head -20 | wc -l"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["titel"] == "Finder fejl"
+    assert j[0]["kommando"] == "grep -r x . | head -20 | wc -l"
+
+
+def test_uden_titel_falder_navnet_tilbage_paa_kommandoen():
+    linje = "bg_3|7|S||1700000000||npm run build"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["titel"] == ""
+    assert j[0]["navn"] == "npm run build"
+
+
+def test_uden_baade_titel_og_kommando_staar_der_noget_aerligt():
+    linje = "bg_4|7|S||1700000000||"
+    j = bj._operator_jobs("u1", _bro(linje))
+    assert j[0]["navn"] == "(baggrunds-shell)"
+    assert j[0]["kommando"] == ""

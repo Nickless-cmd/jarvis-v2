@@ -256,11 +256,22 @@ def _within_cooldown() -> bool:
 
 
 def _send_ntfy(message: str, *, title: str | None = None, priority: str = "default") -> bool:
-    # title=None lets ntfy_gateway resolve from identity_composer.get_entity_name().
+    """Driftsbesked gennem routeren — device-aware, med ntfy som sidste udvej.
+
+    Hed `_send_ntfy` indtil 7/10-2026, hvor den kaldte `ntfy_gateway` direkte
+    og dermed sprang routeren over: ingen device-awareness, ingen eskalering,
+    ingen kvittering, og beskeden havnede på en offentlig ntfy-topic selv når
+    Bjørn sad ved desktoppen. Navnet er beholdt fordi kalderne kender det;
+    vejen er skiftet.
+    """
     try:
-        from core.services.ntfy_gateway import send_notification
-        result = send_notification(message, title=title, priority=priority)
-        return bool(result.get("status") == "sent")
+        from core.services.alarm_ud import send_alert
+        return send_alert(
+            titel=title or "Jarvis",
+            tekst=message,
+            slags="infra_security",
+            importance="high" if priority in ("high", "urgent") else "normal",
+        )
     except Exception:
         return False
 

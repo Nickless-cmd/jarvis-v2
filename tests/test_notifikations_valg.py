@@ -186,6 +186,13 @@ def test_reach_out_har_faaet_en_standard_igen(isolated_runtime) -> None:
 
 # ── De seks router-ejede slags har hver en bevidst STANDARD (samme opgave) ──
 def test_de_seks_router_slags_har_bevidste_standarder(isolated_runtime) -> None:
+    """`keymaker_key_earned` flyttede fra "ingen" til "auto" 6/10-2026 (Bjoerns
+    beslutning). Grunden staar her saa den ikke bliver vendt tilbage som en
+    oprydning: "ingen" stopper leveringen i routerens tidlige udgang, og tre
+    OPTJENTE noegler stod derfor pending i 88 dage uden at ejeren blev spurgt.
+    `hent()`s egen kommentar i modulet siger ogsaa at fald-tilbage for netop
+    denne slags «skal vaere "auto" … ikke "ingen"», saa raekken modsagde husets
+    politik. De fem oevrige er uaendrede."""
     from core.services import notifikations_valg as v
 
     forventet = {
@@ -193,7 +200,7 @@ def test_de_seks_router_slags_har_bevidste_standarder(isolated_runtime) -> None:
         "central_flag": "ingen",
         "membrane_breach": "auto",
         "infra_security": "auto",
-        "keymaker_key_earned": "ingen",
+        "keymaker_key_earned": "auto",
         "moltbook_mention": "ingen",
     }
     for slags, kanal in forventet.items():

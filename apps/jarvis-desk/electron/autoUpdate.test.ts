@@ -35,4 +35,25 @@ describe('wireUpdater', () => {
     api.installNow()
     expect(up.quitAndInstall).toHaveBeenCalled()
   })
+
+  it('Installér nu tjekker, henter og installerer i rækkefølge', async () => {
+    const up = fakeUpdater()
+    up.checkForUpdates.mockResolvedValue({ updateInfo: { version: '0.3.0' } })
+    up.downloadUpdate.mockResolvedValue([])
+    const api = wireUpdater(up as never, () => {})
+    await api.downloadAndInstall()
+    expect(up.checkForUpdates).toHaveBeenCalledOnce()
+    expect(up.downloadUpdate).toHaveBeenCalledOnce()
+    expect(up.quitAndInstall).toHaveBeenCalledOnce()
+    expect(up.downloadUpdate.mock.invocationCallOrder[0]).toBeLessThan(up.quitAndInstall.mock.invocationCallOrder[0]!)
+  })
+
+  it('genstarter ikke hvis hentningen fejler', async () => {
+    const up = fakeUpdater()
+    up.checkForUpdates.mockResolvedValue({ updateInfo: { version: '0.3.0' } })
+    up.downloadUpdate.mockRejectedValue(new Error('Netværksfejl'))
+    const api = wireUpdater(up as never, () => {})
+    await expect(api.downloadAndInstall()).rejects.toThrow('Netværksfejl')
+    expect(up.quitAndInstall).not.toHaveBeenCalled()
+  })
 })

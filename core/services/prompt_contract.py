@@ -29,6 +29,7 @@ from core.services.prompt_relevance_backend import (
 from core.services.prompt_sections.memory_selection import (  # noqa: F401
     MemorySectionSelection,
 )
+from core.services.prompt_sections.output_discipline import _output_discipline_instruction
 
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
@@ -39,6 +40,12 @@ _RELEVANCE_DECISION_HISTORY_LIMIT = 8
 # cachebar prefix (2026-06-13, deepseek cache-fix lever #3). Unik nok til aldrig
 # at optræde i rigtigt prompt-indhold.
 DYNAMIC_TAIL_SENTINEL = "⟦◆DYNAMIC-TAIL-DO-NOT-CACHE◆⟧"
+
+# Boy Scout 6/10-2026: assembly-telemetrien er flyttet til
+# `core/services/prompt_assembly_telemetri.py`. Der er INTET at re-eksportere —
+# `_label_of` var en nested funktion og de oevrige var lokale variabler, saa
+# ingen kunne importere dem herfra i forvejen. Det nye modul laeser til gengaeld
+# sentinel'en HERFRA, og importeres derfor dovent paa kaldestedet.
 
 
 def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
@@ -614,16 +621,10 @@ _ASSEMBLY_TURN_TTL_S = 180.0
 # memory, not stub"), so a one-turn-stale result is acceptable. We now serve the last
 # cached result IMMEDIATELY (never join) and refresh in the background for the next
 # turn. Keyed per session; first turn per session has none (self-corrects next turn).
-_RBA_CACHE: dict = {}          # session_id -> (monotonic_ts, summary_text)
-_RBA_INFLIGHT: set = set()     # session_ids with a background refresh running
-_RBA_LOCK = _threading_mod.Lock()
-_RBA_TTL_S = 300.0
-
-# multi_signal_recall — same non-blocking treatment (2026-07-23). It's the "wider
-# net" complementary recall (~1.9s synchronous), also supplementary → serve cached,
-# refresh in background. Shares the RBA lock (both are quick dict ops).
-_MSR_CACHE: dict = {}
-_MSR_INFLIGHT: set = set()
+from core.services.prompt_memory_recall import (
+    _RBA_CACHE, _RBA_INFLIGHT, _RBA_LOCK, _RBA_TTL_S,
+    _MSR_CACHE, _MSR_INFLIGHT,
+)
 
 
 def _latest_user_msg_id(session_id: str | None) -> int:
@@ -740,6 +741,14 @@ def _build_visible_chat_prompt_assembly_impl(
     import time as _t_mod
     import sys as _sys_mod
     _t_assembly_start = _t_mod.monotonic()
+    # Hvad lavede maskinen IMENS? Uden det kan en maaling ikke skelne
+    # «assemblyen er blevet tung» fra «boksen var optaget» — se
+    # core/services/assembly_load_probe.
+    try:
+        from core.services import assembly_load_probe as _alp
+        _last_probe = _alp.start()
+    except Exception:  # noqa: BLE001 — en maaling maa aldrig vaelte en tur
+        _alp, _last_probe = None, None
     try:
         from core.services import turn_trace as _tt
         if session_id != "__prewarm__":
@@ -755,6 +764,8 @@ def _build_visible_chat_prompt_assembly_impl(
     import threading as _threading_mod
     _phase_timings_lock = _threading_mod.Lock()
 
+    # CPU per builder — grundlaget for at skille CPU-bundet fra I/O-bundet.
+    _phase_cpu: dict[str, int] = {}
     executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
 
     def _measured_submit(_name: str, _fn, *args, **kwargs):
@@ -767,12 +778,19 @@ def _build_visible_chat_prompt_assembly_impl(
         """
         def _wrapped():
             _t = _t_mod.monotonic()
+            # CPU for DENNE traad, ikke processen: det er forskellen paa
+            # «builderen regnede» og «builderen ventede». `thread_time()` er
+            # per-traad; `process_time()` ville taelle alle de andre med og
+            # gøre hver builder til at se CPU-tung ud.
+            _c = _t_mod.thread_time()
             try:
                 return _fn(*args, **kwargs)
             finally:
                 _elapsed = int((_t_mod.monotonic() - _t) * 1000)
+                _cpu = int((_t_mod.thread_time() - _c) * 1000)
                 with _phase_timings_lock:
                     _phase_timings[_name] = _elapsed
+                    _phase_cpu[_name] = _cpu
                 if _tt is not None:
                     _tt.mark("section", f"future:{_name}", _elapsed)
         # KRITISK (16.jul): kopiér caller'ens contextvars ind i worker-tråden. UDEN dette
@@ -875,6 +893,16 @@ def _build_visible_chat_prompt_assembly_impl(
         _runtime_self_report_instruction,
         user_message=user_message,
         runtime_self_report_context=runtime_self_report_context or {},
+    )
+    from core.services.decision_action_gate import (
+        opportunities as _decision_opportunities,
+        query_current_memory as _query_current_memory,
+    )
+    from core.services.run_autonomy_context import is_autonomous
+    _decision_due = set() if is_autonomous() else _decision_opportunities(user_message)
+    _future_decision_memory = (
+        _measured_submit("decision_current_recall", _query_current_memory, user_message, session_id)
+        if "memory" in _decision_due else None
     )
 
     # Sync-gap instrumentation: capture timestamps at key landmarks so we can
@@ -1288,6 +1316,22 @@ def _build_visible_chat_prompt_assembly_impl(
     # — Jarvis konfronteres med uindfriede løfter før alt andet. Dynamisk →
     # cache-sikkert her. None hvis ingen åbne løfter.
     _awareness_add(0, "åbne løfter (Bjørn-gate)", _pending_promises_section(session_id))
+    # Indbakken (3/10-2026) — SAMME klasse som løfterne ovenfor: det han selv
+    # har startet, og det eneste der kan nægte en mutation. Derfor priority 0,
+    # lige ved siden af dem.
+    #
+    # Dette er den LÆSER hele kæden manglede. Opgave 14's e2e målte det:
+    # «led 4: PROMPTEN baerer indbakken — FEJL», og Opgave 0 målte det samme
+    # fra den anden side (0 tokens ventende tilstand). Uden denne linje er
+    # lager, visning, gate og værktøjer korrekte og uden virkning.
+    #
+    # I HALEN, ikke i prefixet: indbakken ændrer sig hver tur, og et skiftende
+    # prefix kostede målt 92 % → 26 % cache-hit.
+    try:
+        from core.services.inbox_prompt_section import inbox_prompt_section
+        _awareness_add(0, "indbakke", inbox_prompt_section())
+    except Exception as _e:
+        _sec_err("indbakke", _e)
     if current_pull_hint:
         _awareness_add(1, "current pull (inner desire)", current_pull_hint)
     # Indre liv (2026-06-22): protected entity-bearing block — latest inner
@@ -1507,15 +1551,6 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("output style preference", _e)
 
-    # Markdown-formatering. En backend-normalizer retter inline-struktur, men en
-    # nudge reducerer hvor ofte den skal arbejde + holder rå kanal-tekst pæn.
-    _awareness_add(7, "markdown formatting", (
-        "Formatering: brug RIGTIGE linjeskift i markdown. Hvert listepunkt på sin "
-        "egen linje (\\n- punkt), og afsnit adskilt af en blank linje. Skriv ALDRIG "
-        "en hel liste eller flere afsnit som én lang linje med ' - ' inline — det "
-        "rendrer som sammenklistret tekst."
-    ))
-
     # Tool-echo-leak. Når du har kaldt et værktøj, så FORTOLK resultatet med dine
     # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
     # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
@@ -1547,8 +1582,8 @@ def _build_visible_chat_prompt_assembly_impl(
     # værktøjskald: tekst efter er «svaret», tekst før er «arbejde». Målt på en
     # ægte tur: hele analysen (med et spørgsmål til Bjørn) stod FØR et
     # `remember_this`, og kvitteringen «Gemt —» blev vist som svaret. Reglen er
-    # en FORM-regel som markdown-linjen ovenfor, ikke en adfærdsegenskab — og
-    # den er den eneste mekanisme der rammer FØR bruddet. Om den virker måles
+    # en rækkefølge-regel, og den er den eneste mekanisme der rammer FØR
+    # bruddet. Om den virker måles
     # af Centralen (`svar_efter_kald`), ikke af min egen forsikring.
     _awareness_add(7, "rækkefølge: svar sidst", (
         "Rækkefølge: læg interne kald (`remember_this`, `set_flag`, `goal_create`) "
@@ -1718,9 +1753,28 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("formative state", _e)
     try:
+        # `max_s` tilfoejet 4/10-2026. Den var UCAPPET, og maalt over 12 timer
+        # (89 ture) er fordelingen laaang i halen:
+        #
+        #     median 311 ms · p75 717 · p90 1.688 · MAX 14.905
+        #
+        # Builderen er 99 % ventetid — maalt forhold cpu/vaegur = 0,01 — saa
+        # halen er et opslag der haenger, ikke arbejde der tager tid.
+        #
+        # Det er praecis den fejlform juli-rettelsen loeste for recall og
+        # embeddings: «Ét langsomt embed-kald froes HELE turen i ~30 s. Cap
+        # dem: mister sektionen for DEN tur frem for at fryse svaret.»
+        # `skill_relevance` kom bare aldrig med i den rettelse — den var 1 af
+        # 11 resolves uden deadline.
+        #
+        # Samme loft som de andre varme resolves, saa der ikke opstaar en
+        # anden sandhed om hvor laenge en sektion maa vente. Maalt pris: 7,9 %
+        # af turene mister sektionen (den er berigelse, ikke baerende — og
+        # `default=""` var allerede valgt med den begrundelse).
         _awareness_add(
             20, "relevant skills",
-            _timed_result(future_skill_relevance, "skill_relevance", default=""),
+            _timed_result(future_skill_relevance, "skill_relevance",
+                          default="", max_s=_HOT_RESOLVE_CAP_S),
         )
     except Exception as _e:
         _sec_err("relevant skills", _e)
@@ -1919,99 +1973,10 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(26, "context window degradation signal", context_window_section())
     except Exception as _e:
         _sec_err("context window degradation signal", _e)
-    # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
-    # in heartbeat phases. Surface relevant memories tied to user_message so
-    # Jarvis answers from memory, not stub-context.
-    try:
-        from core.services.memory_hierarchy import recall_before_act_summary
-        if user_message and len(user_message.strip()) >= 8:
-            # Query-adaptiv recall → bruger-besked-halen (lever #4 cache-fix),
-            # ikke awareness (som rendres før historikken).
-            # Hård 4s deadline (29. jun, CUT-OFF-ROD): denne recall laver embed/DB-
-            # kald der UNDER ollama-kontention (baggrunds frame/cognitive_state-
-            # futures mætter samme ollama) kø'ede 20-26s INLINE i q3-segmentet →
-            # frøs --workers 1 → cut-off for ALLE brugere (verificeret på Mikkels
-            # session). Var den ENESTE uncappede recall i q3 (multi_signal har
-            # allerede 4s-cap). Samme tråd-deadline-mønster; synlig i Centralen.
-            import threading as _thr_rba
-            import contextvars as _cv_rba
-            import time as _t_rba
-            _sid_rba = (session_id or "").strip()
-            _now_rba = _t_rba.monotonic()
-            # 1) Serve the last cached recall IMMEDIATELY — never block the turn.
-            with _RBA_LOCK:
-                _cached = _RBA_CACHE.get(_sid_rba)
-                _busy = _sid_rba in _RBA_INFLIGHT
-            if _cached and (_now_rba - _cached[0]) < _RBA_TTL_S and _cached[1]:
-                _dyn_memory_recall.append(_cached[1])
-                derived_inputs.append("recall-before-act (cached, non-blocking)")
-            # 2) Refresh in the background for the NEXT turn (deduped per session).
-            #    copy_context() so the raw thread keeps user_context (workspace source).
-            if not _busy and _sid_rba:
-                with _RBA_LOCK:
-                    _RBA_INFLIGHT.add(_sid_rba)
-                _rba_ctx = _cv_rba.copy_context()
-                _rba_q = user_message
-
-                def _refresh_rba() -> None:
-                    try:
-                        _v = _rba_ctx.run(recall_before_act_summary, query=_rba_q)
-                        if _v:
-                            with _RBA_LOCK:
-                                _RBA_CACHE[_sid_rba] = (_t_rba.monotonic(), _v)
-                    except Exception:
-                        pass
-                    finally:
-                        with _RBA_LOCK:
-                            _RBA_INFLIGHT.discard(_sid_rba)
-
-                _thr_rba.Thread(target=_refresh_rba, name="recall-before-act-bg", daemon=True).start()
-    except Exception:
-        pass
-    # Multi-signal recall (B1, 2026-06-08) — Claude 2026-06-09: B1 module
-    # (multi_signal_retrieval.py + 214 lines integration in
-    # memory_recall_engine.py) was built and tested but never wired into
-    # any prompt section. Now surfaced as a complementary recall using
-    # BM25 + entity + embedding fusion. Lower priority than
-    # recall-before-act since this is "wider net", not user-message-specific.
-    try:
-        from core.services.memory_recall_engine import multi_signal_recall_section
-        if user_message and len(user_message.strip()) >= 8:
-            import threading as _thr_msr
-            import contextvars as _cv_msr
-            import time as _t_msr
-            _sid_msr = (session_id or "").strip()
-            _now_msr = _t_msr.monotonic()
-            with _RBA_LOCK:
-                _c_msr = _MSR_CACHE.get(_sid_msr)
-                _busy_msr = _sid_msr in _MSR_INFLIGHT
-            # Serve last cached result immediately (non-blocking).
-            if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
-                # 2026-09-04 (memory repair, R2): til [HUKOMMELSE]-gruppen.
-                _dyn_memory_recall.append(_c_msr[1])
-                derived_inputs.append("multi-signal recall (memory group)")
-            # Refresh in background for the next turn (deduped per session).
-            if not _busy_msr and _sid_msr:
-                with _RBA_LOCK:
-                    _MSR_INFLIGHT.add(_sid_msr)
-                _msr_ctx = _cv_msr.copy_context()
-                _msr_q = user_message
-
-                def _refresh_msr() -> None:
-                    try:
-                        _v = _msr_ctx.run(multi_signal_recall_section, _msr_q)
-                        if _v:
-                            with _RBA_LOCK:
-                                _MSR_CACHE[_sid_msr] = (_t_msr.monotonic(), _v)
-                    except Exception:
-                        pass
-                    finally:
-                        with _RBA_LOCK:
-                            _MSR_INFLIGHT.discard(_sid_msr)
-
-                _thr_msr.Thread(target=_refresh_msr, name="multi-signal-recall-bg", daemon=True).start()
-    except Exception as _e:
-        _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
+    from core.services.prompt_memory_recall import append_background_recall
+    append_background_recall(
+        user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err,
+    )
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
     # Guard: ALDRIG compaction som bivirkning af en pre-warm-build (session_prewarm /
     # assembly_prewarm sætter is_prewarm_active()). Ellers ville en cache-warm kunne
@@ -2243,7 +2208,10 @@ def _build_visible_chat_prompt_assembly_impl(
         _sec_err("upcoming scheduled tasks", _e)
     try:
         from core.services.side_tasks import side_tasks_prompt_section
-        _awareness_add(80, "flagged side-tasks", side_tasks_prompt_section())
+        # session_id med (3/10-2026): uden den kan afsnittet ikke sige at DENNE
+        # samtale er arbejdet paa opgaven — og saa blev den aldrig lukket.
+        _awareness_add(80, "flagged side-tasks",
+                       side_tasks_prompt_section(session_id))
     except Exception as _e:
         _sec_err("flagged side-tasks", _e)
 
@@ -2624,26 +2592,13 @@ def _build_visible_chat_prompt_assembly_impl(
         # koerer videre i baggrunden og faerdiggoer sig selv; vi venter bare
         # ikke paa den.
         support_raw = list(_support_acc)
-    # Forbeholdet hoistes til TOPPEN af den samlede blok (8/9-2026).
-    #
-    # Hver enkelt support-bygger sluttede med «Use only as subordinate support.
-    # Runtime and visible truth outrank it.» — og attention-budgettet klipper
-    # support_signals til ~400 tegn ved sidste linjeskift. Konsekvensen var maalt:
-    # forbeholdet stod NUL steder i den samlede prompt, mens world-model-blokkens
-    # data stod der i fuld laengde. Vaernet blev klippet af, dataen blev tilbage.
-    #
-    # Én gang oeverst loeser to ting: den overlever beskaeringen (det er en
-    # guardrail, ikke en fodnote), og den samme saetning fylder ikke fem gange i
-    # en blok der i forvejen er for stor til sit budget.
-    _SUBORDINAT = "Use only as subordinate support. Runtime and visible truth outrank it."
-    if support_raw:
-        _krop = "\n\n".join(
-            "\n".join(l for l in blok.split("\n") if l.strip() != _SUBORDINAT)
-            for blok in support_raw
-        )
-        support_content = _SUBORDINAT + "\n\n" + _krop
-    else:
-        support_content = None
+    # Forbeholdet hoistes til toppen af blokken; logikken og hvorfor den ser
+    # sådan ud bor nu i `prompt_sections/support_signals_section.py` (udskilt
+    # 30/9-2026, Boy Scout — filen var 4.911 linjer).
+    from core.services.prompt_sections.support_signals_section import (
+        byg_support_indhold as _byg_support,
+    )
+    support_content = _byg_support(support_raw)
 
     bridge_content = None  # spec 2026-07-05: altid None på visible-lane
 
@@ -2757,22 +2712,19 @@ def _build_visible_chat_prompt_assembly_impl(
         "support_signals": "bounded runtime support signals",
         "continuity": "bounded session continuity",
     }
-    for sec_name in (
-        "capability_truth",
-        "output_discipline",
-        "cognitive_frame",
-        "cognitive_state",
-        "self_state",
-        "self_report",
-        "inner_visible_bridge",
-        "support_signals",
-        "continuity",
-    ):
-        content = selected.get(sec_name)
-        if content:
-            parts.append(content)
-            label = _section_labels.get(sec_name, sec_name)
-            derived_inputs.append(label)
+    # Placeringen — praefiks eller hale — er DATA, ikke prosa. Se
+    # `prompt_sections/section_placement.py`: hvilke sektioner der ligger hvor,
+    # og den maalte grund til hver flytning. Tre sektioner er flyttet 30/9-2026
+    # (tool-katalog, support_signals, self_report), hver gang fordi de aendrede
+    # sig tur for tur og dermed kostede hele vaerktoejsarrayet + samtalen.
+    from core.services.prompt_sections.section_placement import placer_sektioner
+    placer_sektioner(
+        selected=selected,
+        labels=_section_labels,
+        parts=parts,
+        dyn_tail=_dyn_tail,
+        derived_inputs=derived_inputs,
+    )
 
     # Transcript: prefer structured messages; fall back to flat text in system prompt
     # 2026-05-22 (Claude): re-ordered so stable-content (transcript, tool
@@ -2791,14 +2743,17 @@ def _build_visible_chat_prompt_assembly_impl(
     # Tool catalog — always-on compact list of all tool names so Jarvis knows
     # what exists even when tool_router scopes the full schemas to a subset.
     # Best-effort: never breaks prompt assembly.
-    try:
-        from core.services.tool_catalog import build_catalog_text as _build_catalog_text
-        _catalog_text = _build_catalog_text()
-        if _catalog_text:
-            parts.append(_catalog_text)
-            derived_inputs.append("tool catalog (compact)")
-    except Exception:
-        pass
+    #
+    # 30/9-2026: FLYTTET TIL HALEN (se `_dyn_tail` nedenfor). Den laa her — som
+    # den SIDSTE sektion i det cachede praefiks — og dens laengde er et
+    # fingeraftryk af tool-scopet: maalt 1.728 (chat) / 2.479 (code) / 4.231
+    # (tom | cowork) tegn. Byggede praefikset med to scopes og sammenlignede
+    # chunk for chunk: FOERSTE afvigelse ligger paa tegn 30.441 — inde i netop
+    # dette katalog — og alt foer er byte-identisk. I telemetrien havde 31 af
+    # 54 nye aabner-praefikser et system der aldrig var sendt foer (9,8 % hit,
+    # 2,70 mio miss). Placeringen var den dyreste der findes: DeepSeeks
+    # raekkefoelge er [system][tools][beskeder], saa et skift her invaliderede
+    # hele vaerktoejs-arrayet OG samtalen oveni.
 
     # jarvis-code Path B: tilføj surfaces EGEN 3-lags-toolbox-forklaring (native=Bjørns
     # maskine / runtime_*=container / operator_*=bro). Desk-katalogen ovenfor forklarer
@@ -2839,6 +2794,11 @@ def _build_visible_chat_prompt_assembly_impl(
     if _tt is not None:
         _tt.mark("assembly_end", "assembly complete", _total_ms)
     _phases_str = " ".join(f"{k}_ms={v}" for k, v in sorted(_phase_timings.items()))
+    # `<navn>_cpu=` ved siden af `<navn>_ms=`: forholdet mellem de to er
+    # klassifikationen. Naer 1 = CPU-bundet (hoerer serielt), naer 0 =
+    # I/O-bundet (hoerer i puljen, hvor ventetiden kan overlappe).
+    _phases_str += " " + " ".join(
+        f"{k}_cpu={v}" for k, v in sorted(_phase_cpu.items()))
     # Compute sync-gap deltas between consecutive landmarks (work that the
     # main thread did while parallel futures ran). _sync_landmarks keys
     # are wall-clock-from-start, so deltas show elapsed-since-prev.
@@ -2861,8 +2821,10 @@ def _build_visible_chat_prompt_assembly_impl(
             _gaps.append(f"sync_{_name}_ms={_delta}")
             _prev_t = _sync_landmarks[_name]
     _gaps_str = " ".join(_gaps)
+    _last_str = _alp.afslut(_last_probe) if _alp is not None else ""
     print(
-        f"prompt-assembly-timing total_ms={_total_ms} {_phases_str} {_gaps_str}",
+        f"prompt-assembly-timing total_ms={_total_ms} {_last_str} "
+        f"{_phases_str} {_gaps_str}",
         file=_sys_mod.stderr,
         flush=True,
     )
@@ -2996,7 +2958,9 @@ def _build_visible_chat_prompt_assembly_impl(
         "four. Only split when a call genuinely needs the previous result. "
         "After a round of tool "
         "results: write one short synthesis of what you found and what it means "
-        "BEFORE starting the next round. Never run a round silently — Bjørn must be "
+        "BEFORE starting the next round. Cap it: one decisive finding plus the next "
+        "step — max two lines (~150 characters), not a summary of everything you saw. "
+        "Never run a round silently — Bjørn must be "
         "able to follow your thinking as you go, not just see the final result."
     )
     derived_inputs.append("workflow/narration contract (action contract)")
@@ -3150,6 +3114,21 @@ def _build_visible_chat_prompt_assembly_impl(
         pass
     # 2026-09-04 (memory repair, R2): én overskrift for hele gruppen, så
     # hukommelsen ikke arver diagnostik-blokkens "citér det ALDRIG".
+    try:
+        from core.services.decision_action_gate import action_section, record_opportunities
+        from core.services.run_autonomy_context import current_run_id
+
+        _current_recall = _timed_result(
+            _future_decision_memory, "decision_current_recall", default=None, max_s=0.8,
+        )
+        _action_text = action_section(user_message, recall_text=_current_recall) if _decision_due else ""
+        if _action_text:
+            _dyn_tail.append(_action_text)
+            record_opportunities(
+                current_run_id(), user_message, memory_recalled=bool(_current_recall),
+            )
+    except Exception as _e:
+        _sec_err("current-turn decision action", _e)
     if _dyn_memory_recall:
         _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)
@@ -3246,6 +3225,20 @@ def _build_visible_chat_prompt_assembly_impl(
         "tools structured (tool_calls), never inline. Do, don't promise."
     )
     derived_inputs.append("behavioral anchor (user-msg tail, action+epistemic)")
+    # Tænke-sprog-killswitch (30/9-2026). Ligger i HALEN ved siden af
+    # adfærds-ankret — samme grund: det er den plads modellen læser lige før
+    # brugerbeskeden. Tom når dansk kører (standard), så prompten er
+    # byte-identisk med før killswitchen blev bygget: ingen adfærd ændres før
+    # Bjørn tænder den, og der er derfor en ren baseline at måle imod.
+    # Se core/services/think_language.py for A/B-målingen bag (1,87x tokens).
+    try:
+        from core.services.think_language import directive as _think_lang_directive
+        _think_lang = _think_lang_directive()
+        if _think_lang:
+            _dyn_tail.append(_think_lang)
+            derived_inputs.append("thinking language (en)")
+    except Exception:
+        pass
     # End-of-turn save reminder — grouped WITH the behavioral anchor (audit #3,
     # 2026-07-22; moved here from mid-awareness). Unconditional per-turn nudge.
     try:
@@ -3256,6 +3249,35 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("memory consolidation nudge (end-of-turn)")
     except Exception:
         pass
+    # Tool-kataloget hoerer i HALEN (30/9-2026, se den flyttede blok ovenfor).
+    # Det er statisk pr. scope, men scopet skifter mellem ture — og som sidste
+    # sektion i praefikset kostede et skift hele vaerktoejs-arrayet + samtalen
+    # oveni. I halen koster det kun sig selv. Indholdet er uaendret; kun
+    # positionen er flyttet, saa modellen ser praecis samme katalog.
+    try:
+        from core.services.tool_catalog import build_catalog_text as _build_catalog_text
+        _catalog_text = _build_catalog_text()
+        if _catalog_text:
+            _dyn_tail.append(_catalog_text)
+            derived_inputs.append("tool catalog (compact, tail)")
+    except Exception:
+        pass
+    # Myldretids-badge (30/9-2026, på Bjørns opfordring): DeepSeek koster det
+    # DOBBELTE i myldretiden (UTC 01-04 + 06-10, man-fre). Badgen er TAVS i
+    # off-peak, varsler 30 min før vinduet, og er stor mens det står åbent.
+    # Den blokerer intet — se core/services/peak_hours.py for hvorfor.
+    # Ligger lige før time-pin'en, så de to tids-blokke læses sammen.
+    try:
+        from core.services.peak_hours import peak_badge as _peak_badge
+        _peak_text = _peak_badge()
+        if _peak_text:
+            _dyn_tail.append(_peak_text)
+            derived_inputs.append("peak-hours badge (tail)")
+    except Exception as _peak_exc:  # badgen må ALDRIG kunne vælte en tur
+        import logging as _peak_logging
+        _peak_logging.getLogger(__name__).warning(
+            "peak_hours: badge sprang over: %s", _peak_exc
+        )
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     # Matrix-stemmerne er flyttet til en ÆGTE awareness-sektion (se prio 6 ovenfor).
@@ -3264,6 +3286,30 @@ def _build_visible_chat_prompt_assembly_impl(
     #     pending nudges") og pegede på beskeder der blev skrevet 1600 linjer SENERE end
     #     nudge-sektionen blev læst — de kunne aldrig nå den prompt de tilhørte;
     #   · Matrix Sign-Off, som Bjørn har bekræftet var ment som en joke.
+    # ── RULLET TILBAGE 4/10-2026, maalt ──────────────────────────────────
+    #
+    # Fire hale-sektioner blev flyttet herop fordi de var BYTE-IDENTISKE over
+    # 99 ture. Maalt efter flytningen, 120 kald mod 2.571 i doegnet foer:
+    #
+    #     FOER    7.673 miss/kald   5,65 %
+    #     EFTER  12.184 miss/kald   8,93 %      ← +59 %
+    #
+    # Aarsagen stod i vagtens egen linje: «stabile=3» paa en tur hvor der
+    # ellers stod «stabile=4». `FORBUNDNE APPS` bygges kun naar brugeren HAR
+    # forbundne plugins — maalt 86 af 99 ture.
+    #
+    # Et praefiks der nogle gange har fire sektioner og andre gange tre, er et
+    # praefiks der ikke matcher. Hver gang sektionen kommer eller gaar,
+    # invalideres alt efter den — inklusive de 120.064 tokens samtalehistorik.
+    #
+    # Fejlen i analysen: jeg maalte hvad sektionerne INDEHOLDT (1 distinkt
+    # udgave hver) og overs:aa om de var TIL STEDE (86/99). «Uaendret indhold»
+    # og «altid til stede» er to forskellige egenskaber, og cachen kraever
+    # begge.
+    #
+    # Hale-positionen er derfor rigtig for alt betinget: dér koster en
+    # sektions komme-og-gaa kun sektionen selv. Det er samme konklusion som
+    # 30/9-kommentaren naaede for tool-kataloget.
     if _dyn_tail:
         parts.append(DYNAMIC_TAIL_SENTINEL)
         parts.extend(_dyn_tail)
@@ -3271,81 +3317,21 @@ def _build_visible_chat_prompt_assembly_impl(
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
-    _per_part_chars = [len(p) for p in parts if p]
-    # NAVNET AFLEDES AF INDHOLDET, ikke af et indeks i en parallel liste.
-    #
-    # Den gamle udgave zippede `derived_inputs` mod `parts` på indeks — men de
-    # to lister vokser IKKE i takt (25 `parts.append` mod 42
-    # `derived_inputs.append` i samme funktion, plus `extend`). Hvert navn sad
-    # derfor på et vilkårligt andet stykke, og telemetrien har peget forkert så
-    # længe den har eksisteret. Den fejl er værre end ingen måling: et kort der
-    # peger forkert får en til at skære det forkerte sted.
-    #
-    # Tegnet på at noget var galt: `quick_facts` blev målt til 7051 tegn, mens
-    # dens egen builder har et loft på 1800.
-    #
-    # Første linje af et stykke ER dets overskrift i praksis, og den kan ikke
-    # komme ud af trit med sit eget indhold.
-    def _label_of(text: str) -> str:
-        head = (text or "").lstrip().split("\n", 1)[0].strip()
-        head = head.lstrip("#").strip().rstrip(":").strip()
-        return (head[:48] or "(uden overskrift)").replace(" ", "_")
-
-    _ranked = sorted(
-        ((_label_of(part), len(part)) for part in parts if part),
-        key=lambda kv: kv[1], reverse=True,
-    )
-    _largest = _ranked[:8]
+    # Telemetrien er udskilt til `prompt_assembly_telemetri` (Boy Scout 6/10-2026).
+    # Den udleder navne af indholdet, rangordner, udsender `prompt.assembly_size`
+    # — nu MED halens tegn, saa en beskaering af den ucachede hale kan maales i
+    # stedet for diskuteres — skriver de to journal-linjer og afleverer
+    # sektionerne til impact-telemetrien. Self-safe hele vejen.
     try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish("prompt.assembly_size", {
-            "mode": "visible_chat",
-            "compact": compact,
-            "total_chars": _total_chars,
-            "approx_tokens": _approx_tokens,
-            "part_count": len(_per_part_chars),
-            "largest_sections": [
-                {"label": label, "chars": chars} for label, chars in _largest if chars > 0
-            ],
-            "assembly_ms": _total_ms,
-        })
-    except Exception:
-        pass
-    print(
-        f"prompt-assembly-size chars={_total_chars} approx_tokens={_approx_tokens} "
-        f"parts={len(_per_part_chars)}",
-        file=_sys_mod.stderr,
-        flush=True,
-    )
-    # Fordelingen på ÉN linje, så et døgns journal kan summeres uden at parse
-    # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
-    # så interessant som en der fylder.
-    # I ASSEMBLY-RÆKKEFØLGE, ikke sorteret efter størrelse.
-    #
-    # Størrelsen siger hvad der fylder; RÆKKEFØLGEN siger hvad der ødelægger
-    # cachen. DeepSeek matcher fra begyndelsen, så en del der skifter størrelse
-    # — eller kommer og går — forskyder alt EFTER sig. Ligger den tidligt, er
-    # hele præfikset tabt hver tur; ligger den sidst, koster den ingenting.
-    # Sorterer man listen, kan man ikke se forskel på de to tilfælde.
-    print(
-        "prompt-assembly-parts " + " ".join(
-            f"{_label_of(part)}={len(part)}" for part in parts if part
-        ),
-        file=_sys_mod.stderr,
-        flush=True,
-    )
-
-    # Impact-telemetri (prompt.section_answer_impact): husk sektionerne HER, hvor
-    # _label_of er defineret. Den oprindelige placering (før transcript/katalog)
-    # kaldte den nested def før den var bundet → UnboundLocalError, fanget stille
-    # → 0 events nogensinde (verificeret live 4/9 efter to ægte ture).
-    try:
-        from core.services.prompt_section_impact import remember_prompt_sections
-        remember_prompt_sections(
+        from core.services.prompt_assembly_telemetri import rapporter_assembly
+        rapporter_assembly(
+            parts,
+            assembled_text=_assembled_text,
+            compact=compact,
             session_id=session_id or "",
-            sections=[(_label_of(part), part) for part in parts if part],
+            assembly_ms=_total_ms,
         )
-    except Exception:
+    except Exception:  # telemetri maa aldrig vaelte en prompt-build
         pass
 
     # TEMP-DIAG: gated system-prompt dump (touch /tmp/jarvis-prompt-dump), rotates
@@ -4150,26 +4136,6 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
     return ""
 
 
-def _output_discipline_instruction(*, strength: str) -> str:
-    """Tiered output discipline (harness Part 1). BOTH tiers get 'synthesize & stop' (safe for weak —
-    it helps them STOP); STRONG additionally gets conciseness caps (they would truncate weak lanes).
-    Does NOT repeat the self-correction / tool-honesty blocks — those stay as their own sections.
-    `strength` from model_trust.model_strength(); anything but 'strong' → weak tier. Self-safe."""
-    lines = [
-        "Output discipline:",
-        "- After each tool result, consider: do I have enough to answer? If yes, synthesize your",
-        "  findings and respond directly — do not keep calling tools when you already have the answer.",
-        "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",
-        "- Tool results are for you — refer to them in your own words, never reproduce them verbatim.",
-    ]
-    if str(strength) == "strong":
-        lines += [
-            "- Go straight to the point. Try the simplest approach first without going in circles. Do not overdo it.",
-            "- Keep text between tool calls to ≤25 words. Keep final responses to ≤100 words unless the task genuinely requires more.",
-        ]
-    return "\n".join(lines)
-
-
 def _central_notices_section() -> str | None:
     """Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem
     ntfy'er Centralen), IKKE low (dem er trace-only). Kompakt: max 3, max 1 pr. nerve.
@@ -4342,10 +4308,23 @@ def _time_pin_section() -> str:
     )
 
 
-def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str | None:
+def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 20000) -> str | None:
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
-    Jarvis doesn't re-discover them locally every session."""
+    Jarvis doesn't re-discover them locally every session.
+
+    2026-10-01 (Bjørn: «hæv loftet»): loftet stod på 1800 tegn, men filen var
+    15.400. Altså var 88 % af mine egne hurtig-fakta usynlige for mig — logins,
+    stier, værktøjskanalerne, wakeup-mekanikken. Værst: den SYNLIGE del var den
+    mest historie-tunge (0,8 historik-markører pr. 1.000 tegn, mod 0,3 i det
+    klippede), så klippet ramte præcis det operationelle og lod historikken stå.
+    Min egen advarsel om at tjekke `hostname` før jeg måler lå 55 tegn uden for
+    kanten — jeg skrev den for at undgå en fejl jeg så begå, og kunne ikke se den.
+
+    Loftet er nu et værn mod en løbsk fil, ikke et indholds-filter. Sektionen
+    ligger i det cachebare stable prefix, så de ekstra ~3.400 tokens koster
+    ~$0,00001 pr. cache-hit. Prisen ligger i at SKRIVE til filen (hvert skriv =
+    ét cache-reset), ikke i dens størrelse — derfor er et højt loft billigt."""
     from core.services.secret_redaction import read_for_prompt
     path = workspace_dir / "QUICK_FACTS.md"
     try:
@@ -4376,7 +4355,13 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- Safe workspace paths are auto-approved by runtime; blocked or risky paths require user approval or return error.",
         "- The runtime handles all permissions and approvals automatically. You never need to ask the user.",
         "- If you need information, use tools proactively. Do not guess from fragments.",
-        "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",
+        "- BATCH independent calls: when your next steps do not depend on each "
+        "other's results, emit them as SEVERAL tool calls in the SAME round. Several "
+        "read-only bash commands, several read_file, a search plus a read — one round, "
+        "not one round each.",
+        "- Go one call per round ONLY when the next call's arguments depend on the "
+        "previous call's result. Anything that waits for nothing should travel together.",
+        "- Continue autonomously instead of asking permission.",
         "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",
         "- Project root (source code): " + str(PROJECT_ROOT),
         "- IMPORTANT: Your live workspace files (SOUL.md, MEMORY.md, USER.md, STANDING_ORDERS.md, SKILLS.md, etc.) "
@@ -4390,7 +4375,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
 def _visible_capability_id_summary() -> str | None:
     lines = [
         "Available tools: read_file, write_file, edit_file, search, find_files, bash, web_fetch, web_search.",
-        "Call multiple tools in one turn when exploring. Continue autonomously for read-only tasks.",
+        "Batch independent tool calls into one round; sequence only what depends on a "
+        "previous result.",
+        "Continue autonomously for read-only tasks.",
     ]
     return "\n".join(lines)
 

@@ -338,6 +338,12 @@ _PUBLIC_PROXY_PROVIDERS = (
     "tuzi",
     "fujcloud",
     "freeai",
+    # tokenharbor (1/10-2026): videresalgs-gateway (`tokenharbor.ai/v1`) der
+    # serverer DeepSeek-modeller under `:free`-navne. Samme form som chinaapi
+    # og tuzi — nøglen er Bjørns, men en tredjepart ser prompten. Målt som
+    # eneste manglende medlem: et `task_kind="important"`-kald kunne vælge den,
+    # fordi `select_cheap_lane_target` fandt den ledig med priority 72.
+    "tokenharbor",
 )
 
 # Round-robin counter so consecutive background calls spread across the
@@ -927,6 +933,7 @@ def execute_cheap_lane_via_pool(
         cost_usd=float(result.get("cost_usd") or 0.0),
         cache_hit_tokens=_cache_hit,
         cache_miss_tokens=_cache_miss,
+        reasoning_tokens=int(result.get("reasoning_tokens") or 0),
     )
     # Observe-only: mål nyhed af DENNE producers output (attribution via cadence-thread-local
     # ellers task_kind) → grundlag for saliens-gating af indre liv. Ren tekst-lighed, self-safe.

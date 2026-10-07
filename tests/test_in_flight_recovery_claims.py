@@ -226,3 +226,50 @@ def test_koersel_startet_foer_en_udskydelse_kan_stadig_afregne(_isolated_records
     )
     assert rec is not None, "opgaven kunne ikke lukkes — loopet er tilbage"
     assert rec["status"] == "completed"
+
+
+# ── Udloebs-vinduet gaelder ALLE slags ──────────────────────────────────────
+
+def _gammel_recovering(records, rid, *, kind, timer):
+    t = (datetime.now(UTC) - timedelta(hours=timer)).isoformat()
+    records[rid] = {
+        "run_id": rid, "task_id": rid, "session_id": "s1", "kind": kind,
+        "status": "recovering", "exit_reason": "provider-timeout",
+        "started_at": t, "settled_at": t, "recovery_attempt": 0,
+        "recovery_limit": 3, "notice_pending": True,
+    }
+
+
+def test_en_autonom_recovering_post_kan_UDLOEBE(_isolated_records):
+    """30/9-2026: udloebs-tjekket laa efter kind-filteret, saa vinduet saa kun
+    den synlige lane — og `recovering` staar ikke i `_AFSLUTTEDE`, saa
+    aldersfejningen tog den heller ikke. En autonom post var dobbelt
+    uudslettelig. Maalt: én fra 29/9 stod der stadig et doegn senere."""
+    _gammel_recovering(_isolated_records, "auto1", kind="autonomous",
+                       timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["auto1"]["status"] == "failed_terminal"
+    assert _isolated_records["auto1"]["exit_reason"] == "genoptagelses-vinduet udloeb"
+
+
+def test_en_FRISK_autonom_post_roeres_ikke(_isolated_records):
+    """Vinduet, ikke slagsen, afgoer det. En autonom post inden for vinduet
+    skal stadig staa — den er ikke doed, den er bare ikke vores at genoptage."""
+    _gammel_recovering(_isolated_records, "auto2", kind="autonomous", timer=1.0)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["auto2"]["status"] == "recovering"
+
+
+def test_en_autonom_post_bliver_stadig_ALDRIG_genoptaget(_isolated_records):
+    """Kun vinduet blev flyttet op over kind-filteret. Selve genoptagelsen er
+    stadig den synlige lanes alene — ellers ville en autonom opgave pludselig
+    blive taget op som en samtale."""
+    _gammel_recovering(_isolated_records, "auto3", kind="autonomous", timer=1.0)
+    assert ifr.claim_due_recovery(owner="100:1") is None
+
+
+def test_den_synlige_lane_udloeber_som_foer(_isolated_records):
+    _gammel_recovering(_isolated_records, "vis1", kind="visible",
+                       timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["vis1"]["status"] == "failed_terminal"

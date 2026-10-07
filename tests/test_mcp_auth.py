@@ -74,3 +74,23 @@ def test_manglende_env_giver_ingen_authorization():
 
 def test_uden_token_og_uden_config_er_der_ingen_headers():
     assert mcp_auth.resolve_headers("s", {}) == {}
+
+
+# ── Et ulæseligt `expires_at` er ikke «intet at fornye» (4/10-2026) ───────────
+#
+# Tidsstemplet FINDES, men kan ikke læses. Før svarede vi False — og tokenet blev
+# aldrig fornyet, så auth fejlede senere med en fejl der pegede på credentials i
+# stedet for på tidsstemplet.
+
+def test_ulaeseligt_expires_at_fornyer(monkeypatch):
+    monkeypatch.setattr(
+        mcp_auth, "get_token",
+        lambda name: {"access_token": "a", "expires_at": "ikke-et-tal"},
+    )
+    assert mcp_auth.needs_refresh("s") is True
+
+
+def test_manglende_expires_at_er_stadig_intet_at_fornye(monkeypatch):
+    """Modprøven: uden et tidsstempel er der intet at sammenligne med."""
+    monkeypatch.setattr(mcp_auth, "get_token", lambda name: {"access_token": "a"})
+    assert mcp_auth.needs_refresh("s") is False

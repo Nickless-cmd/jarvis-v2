@@ -63,9 +63,25 @@ def _bind_budget_profil(monkeypatch) -> None:
 
 
 def _system_text_from_visible_input(visible_model, message: str = "Hello") -> str:
+    """Al tekst i SYSTEM-rolle — ikke kun element 0.
+
+    `_build_visible_input` lægger den volatile hale som et selvstændigt
+    system-element lige før brugerturen, så alt før den kan caches. Denne test
+    måler INDHOLD, ikke placering; placeringen er låst i
+    `test_praefiks_uden_levende_tal.py`. Læste den kun element 0, ville den
+    fejle hver gang en sektion med rette flyttes til halen — det skete
+    30/9-2026 med `support_signals`.
+    """
     payload = visible_model._build_visible_input(message, session_id="test-session")
     assert payload[0]["role"] == "system"
-    return payload[0]["content"][0]["text"]
+    dele = [
+        blok.get("text", "")
+        for item in payload
+        if item.get("role") == "system"
+        for blok in (item.get("content") or [])
+    ]
+    return "\n\n".join(d for d in dele if d)
+
 
 
 def test_visible_input_omits_reflection_support_block_when_no_relevant_signals_exist(isolated_runtime) -> None:

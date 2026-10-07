@@ -263,11 +263,12 @@ def _notify_owner(tool_name: str, feeling: str, reason: str, event_id: str) -> N
     Self-safe: en fejl her må aldrig påvirke beslutningen der allerede er taget."""
     def _send() -> None:
         try:
-            from core.services.ntfy_gateway import send_notification
-            send_notification(
-                f"Jarvis overstyrede veto-gaten for '{tool_name}' ({feeling}).\n"
-                f"Begrundelse: {reason[:300]}\n[event: {event_id}]",
-                title="Gate-override", priority="default", tags=["unlock"],
+            from core.services.alarm_ud import send_alert
+            send_alert(
+                titel="Gate-override",
+                tekst=f"Jarvis overstyrede veto-gaten for '{tool_name}' ({feeling}).\n"
+                      f"Begrundelse: {reason[:300]}\n[event: {event_id}]",
+                slags="infra_security", importance="normal",
             )
         except Exception:
             pass

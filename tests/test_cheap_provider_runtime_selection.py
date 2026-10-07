@@ -416,3 +416,18 @@ def test_nscale_er_IKKE_en_mellemhandler():
     from core.services.cheap_provider_runtime_selection import _is_public_proxy
 
     assert not _is_public_proxy("nscale")
+
+
+def test_tokenharbor_er_en_mellemhandler():
+    """Videresalgs-gateway der serverer DeepSeek-modeller under `:free`-navne.
+
+    Målt 1/10-2026: den manglede på listen, og det var ikke kosmetik. Testen
+    `test_important_cheap_lane_skips_ollamafreeapi` faldt på det — et vigtigt
+    kald valgte tokenharbor, fordi `select_cheap_lane_target` fandt den ledig
+    med priority 72. Cheap-lanen kører på indhold fra `chat_messages`, så
+    uden medlemskab kunne Bjørns samtaler gå i klartekst gennem en tredjepart
+    på netop det arbejde hvor vi hellere vil fejle end at degradere.
+    """
+    from core.services.cheap_provider_runtime_selection import _is_public_proxy
+
+    assert _is_public_proxy("tokenharbor")

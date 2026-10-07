@@ -2,6 +2,356 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/meta_cognition_daemon.py`
+_Meta-Cognition Daemon — first-person reflection on own state (Experiment 4: HOT)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_meta_cognition_daemon` | `()` | Run one meta-cognition pass. Returns generated/reason/meta_depth. | [src](../../../core/services/meta_cognition_daemon.py#L26) |
+| function | `build_meta_cognition_surface` | `()` | MC surface for meta-cognition experiment. | [src](../../../core/services/meta_cognition_daemon.py#L82) |
+| function | `_gather_state` | `()` | Collect cognitive + emotional state for meta-observation input. | [src](../../../core/services/meta_cognition_daemon.py#L108) |
+| function | `_call_meta_llm` | `(prompt)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/meta_cognition_daemon.py#L148) |
+| function | `_compute_meta_depth` | `(meta_obs, meta_meta_obs)` | Return 2 if meta_meta diverges >70% from meta_obs (Jaccard distance), else 1. | [src](../../../core/services/meta_cognition_daemon.py#L204) |
+
+## `core/services/meta_learning_aggregator.py`
+_Meta-læring aggregator — Phase 1 (AGI track #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_in_window` | `(ts_iso, since, until)` | Defensive: parse ts and check if it's within [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L18) |
+| function | `_bucket_confidence` | `(c)` | — | [src](../../../core/services/meta_learning_aggregator.py#L31) |
+| function | `_confidence_score` | `(value, *, default=…)` | Normalize numeric and world-model textual confidence to 0..1. | [src](../../../core/services/meta_learning_aggregator.py#L39) |
+| function | `_prediction_id` | `(prediction)` | — | [src](../../../core/services/meta_learning_aggregator.py#L52) |
+| function | `aggregate_world_model` | `(*, since, until)` | Aggregate world-model prediction activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L60) |
+| function | `_completion_seconds` | `(rec)` | Seconds between created_at and updated_at; None if either missing. | [src](../../../core/services/meta_learning_aggregator.py#L136) |
+| function | `aggregate_plan_revision` | `(*, since, until)` | Aggregate plan-proposal activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L150) |
+| function | `aggregate_curiosity` | `(*, since, until)` | Aggregate curiosity-tool activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L222) |
+| function | `aggregate_skill_chain_phase2` | `(*, since, until)` | Aggregate skill_chain Phase 2 events in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L282) |
+| function | `aggregate_tool_invention` | `(*, since, until)` | Aggregate tool-invention activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L361) |
+
+## `core/services/meta_learning_hypotheses.py`
+_Meta-læring Phase 2: hypothesis registration + sample tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | Idempotently create hypothesis + sample tables. | [src](../../../core/services/meta_learning_hypotheses.py#L37) |
+| function | `register_hypothesis` | `(*, memo_id, candidate_idx)` | Promote a memo's hypothesis_candidate at index `candidate_idx` to | [src](../../../core/services/meta_learning_hypotheses.py#L79) |
+| function | `record_hypothesis_sample` | `(*, hypothesis_id, supports, note=…)` | Append a sample. If the hypothesis has reached sample_size_needed, | [src](../../../core/services/meta_learning_hypotheses.py#L124) |
+| function | `list_active_hypotheses` | `(*, limit=…)` | — | [src](../../../core/services/meta_learning_hypotheses.py#L189) |
+| function | `format_active_hypotheses_for_awareness` | `()` | Awareness section showing active hypotheses + progress. | [src](../../../core/services/meta_learning_hypotheses.py#L214) |
+| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/services/meta_learning_hypotheses.py#L231) |
+
+## `core/services/meta_learning_retrospective.py`
+_Meta-læring retrospective generator — Phase 1 (AGI track #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | Idempotently create learning_memos table + index. | [src](../../../core/services/meta_learning_retrospective.py#L34) |
+| function | `_strip_markdown_fence` | `(text)` | — | [src](../../../core/services/meta_learning_retrospective.py#L71) |
+| function | `_build_retrospective_prompt` | `(*, period_start, period_end, aggregator_snapshot)` | Build the cheap-lane prompt for weekly retrospective memo. | [src](../../../core/services/meta_learning_retrospective.py#L79) |
+| function | `_parse_memo_markdown` | `(text)` | Parse cheap-lane markdown output into narrative + hypothesis_candidates. | [src](../../../core/services/meta_learning_retrospective.py#L123) |
+| function | `_persist_memo` | `(*, memo_id, ts, period_start, period_end, narrative, hypothesis_candidates, aggregator_snapshot, model_used)` | Insert a new memo row. Returns memo_id. | [src](../../../core/services/meta_learning_retrospective.py#L199) |
+| function | `fetch_latest_unacknowledged_memo` | `()` | Return the most recent memo with acknowledged_at IS NULL, or None. | [src](../../../core/services/meta_learning_retrospective.py#L237) |
+| function | `fetch_memo_by_id` | `(memo_id)` | — | [src](../../../core/services/meta_learning_retrospective.py#L256) |
+| function | `list_recent_memos` | `(limit=…)` | — | [src](../../../core/services/meta_learning_retrospective.py#L272) |
+| function | `acknowledge_memo` | `(memo_id)` | Mark memo as acknowledged. Returns True if a row was updated. | [src](../../../core/services/meta_learning_retrospective.py#L285) |
+| function | `_meta_learning_enabled` | `()` | — | [src](../../../core/services/meta_learning_retrospective.py#L303) |
+| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/services/meta_learning_retrospective.py#L310) |
+| function | `generate_weekly_retrospective` | `(*, now)` | Generate a weekly retrospective memo for the 7 days ending at `now`. | [src](../../../core/services/meta_learning_retrospective.py#L318) |
+| function | `_format_period_for_display` | `(period_start, period_end)` | Render period as 'YYYY-MM-DD to YYYY-MM-DD' for awareness display. | [src](../../../core/services/meta_learning_retrospective.py#L411) |
+| function | `format_latest_unacknowledged_memo_for_awareness` | `()` | Render a short teaser for the most recent unacknowledged memo. | [src](../../../core/services/meta_learning_retrospective.py#L421) |
+
+## `core/services/meta_reflection_daemon.py`
+_Meta-reflection daemon — cross-signal pattern insight every 30 minutes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_credit_assignment` | `(cross_snapshot)` | Public wrapper over the Lag-1 credit-assignment pass (:func:`_check_outcomes`). | [src](../../../core/services/meta_reflection_daemon.py#L30) |
+| function | `tick_meta_reflection_daemon` | `(cross_snapshot, *, skip_event_gate=…, skip_credit=…)` | Generate cross-signal meta-insight if cadence allows. Also checks for | [src](../../../core/services/meta_reflection_daemon.py#L45) |
+| function | `_check_outcomes` | `(cross_snapshot)` | Check for unreviewed model_tier and response_style decisions and score them. | [src](../../../core/services/meta_reflection_daemon.py#L104) |
+| function | `_expire_decision` | `(decision_id, reason)` | Mark a stale pending decision as expired so it drops from the | [src](../../../core/services/meta_reflection_daemon.py#L190) |
+| function | `_get_turns_after` | `(created_at, min_turns=…)` | Get subsequent chat turns after a decision timestamp (any session). | [src](../../../core/services/meta_reflection_daemon.py#L209) |
+| function | `_get_next_user_message` | `(created_at)` | Get the first user message after a decision timestamp (any session). | [src](../../../core/services/meta_reflection_daemon.py#L245) |
+| function | `_generate_meta_insight` | `(cross_snapshot)` | — | [src](../../../core/services/meta_reflection_daemon.py#L270) |
+| function | `_store_meta_insight` | `(insight)` | — | [src](../../../core/services/meta_reflection_daemon.py#L304) |
+| function | `get_latest_meta_insight` | `()` | — | [src](../../../core/services/meta_reflection_daemon.py#L336) |
+| function | `build_meta_reflection_surface` | `()` | — | [src](../../../core/services/meta_reflection_daemon.py#L340) |
+
+## `core/services/metabolism_state_signal_tracking.py`
+_Metabolism-state signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_metabolism_state_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L38) |
+| function | `refresh_runtime_metabolism_state_signal_statuses` | `()` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L48) |
+| function | `build_runtime_metabolism_state_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L52) |
+| function | `_extract_metabolism_state_candidates` | `(*, run_id)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L56) |
+| function | `_build_candidate` | `(*, domain_key, run_id, witness, meaning, temperament, self_narrative, chronicle, relation_continuity)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L133) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L249) |
+| function | `_metabolism_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L275) |
+| function | `_derive_metabolism_state` | `(*, witness_status, chronicle_status, self_narrative_status, active_count, softening_count, fading_count, stale_count)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L297) |
+| function | `_derive_metabolism_direction` | `(*, metabolism_state, witness_status, softening_count, fading_count)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L316) |
+| function | `_derive_metabolism_weight` | `(*, active_count, carrying_count, stale_count, chronicle_status)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L336) |
+| function | `_metabolism_summary` | `(*, focus, metabolism_state, metabolism_direction, metabolism_weight)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L351) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L375) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L382) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L395) |
+| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L407) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/metabolism_state_signal_tracking.py#L418) |
+
+## `core/services/metacognition_signal_tracker.py`
+_Metacognition signal tracker — Step E.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L70) |
+| function | `_connect` | `()` | — | [src](../../../core/services/metacognition_signal_tracker.py#L90) |
+| function | `_split_sentences` | `(text)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L100) |
+| function | `_sentence_nouns` | `(sentence)` | Cheap content-word extraction: lowercase alpha tokens, ≥4 chars, | [src](../../../core/services/metacognition_signal_tracker.py#L105) |
+| function | `_has_negation` | `(sentence)` | — | [src](../../../core/services/metacognition_signal_tracker.py#L119) |
+| function | `score_contradiction` | `(text)` | Detect contradicting sentence pairs within the same response. | [src](../../../core/services/metacognition_signal_tracker.py#L124) |
+| function | `score_claim_density` | `(text)` | Claim-bearing sentences / total sentences. Healthy: 0.3–0.7. | [src](../../../core/services/metacognition_signal_tracker.py#L166) |
+| function | `record_signals` | `(run_id, text)` | Compute + persist + publish both signals for a completed run. | [src](../../../core/services/metacognition_signal_tracker.py#L187) |
+| function | `latest_signals_section` | `(*, window_n=…)` | Return an awareness one-liner ONLY when recent signals are | [src](../../../core/services/metacognition_signal_tracker.py#L229) |
+| function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — same cross-process pattern as | [src](../../../core/services/metacognition_signal_tracker.py#L285) |
+| function | `start_metacognition_tracker` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/metacognition_signal_tracker.py#L342) |
+| function | `stop_metacognition_tracker` | `()` | — | [src](../../../core/services/metacognition_signal_tracker.py#L359) |
+
+## `core/services/metacognitive_integration.py`
+_Metacognitive Integration — the overarching layer that synthesizes all cognitive layers into a coherent self-model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/metacognitive_integration.py#L39) |
+| function | `_extract_signal_values` | `(cognitive_state)` | Extract normalised signal values from the assembled cognitive state. | [src](../../../core/services/metacognitive_integration.py#L77) |
+| function | `compute_coherence` | `(signal_values)` | Compute coherence score (0-1) from signal values. | [src](../../../core/services/metacognitive_integration.py#L198) |
+| function | `compute_integration_quality` | `(cognitive_state)` | Compute integration quality — how many layers are active and contributing. | [src](../../../core/services/metacognitive_integration.py#L237) |
+| function | `compute_self_assessment` | `(coherence, integration, signal_values)` | Compute metacognitive self-assessment. | [src](../../../core/services/metacognitive_integration.py#L283) |
+| function | `get_metacognitive_line` | `(cognitive_state=…)` | Get the metacognitive integration prompt line. | [src](../../../core/services/metacognitive_integration.py#L332) |
+| function | `get_metacognitive_detail` | `(cognitive_state=…)` | Get full metacognitive assessment as a dict (for debugging/MC). | [src](../../../core/services/metacognitive_integration.py#L385) |
+| function | `_parse_raw_state` | `(raw)` | Parse the raw cognitive state string into a dict. | [src](../../../core/services/metacognitive_integration.py#L417) |
+| function | `build_metacognitive_integration_surface` | `()` | — | [src](../../../core/services/metacognitive_integration.py#L494) |
+| function | `_emit_integration_event` | `(layer, signal)` | — | [src](../../../core/services/metacognitive_integration.py#L503) |
+
+## `core/services/mirror_engine.py`
+_Mirror Engine — compassionate self-reflection during idle time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `generate_mirror_insight` | `(*, idle_hours=…, open_loop_count=…, recent_error_count=…, recent_success_count=…, top_loop_summary=…)` | Generate a deterministic mirror insight. | [src](../../../core/services/mirror_engine.py#L20) |
+| function | `build_mirror_surface` | `()` | — | [src](../../../core/services/mirror_engine.py#L56) |
+| function | `_deterministic_insight` | `(*, idle_hours, open_loop_count, recent_error_count, recent_success_count, top_loop_summary)` | — | [src](../../../core/services/mirror_engine.py#L65) |
+
+## `core/services/missions_pipeline.py`
+_Missions Pipeline — flerfase opgaver med state-machine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
+| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
+| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
+| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
+| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
+| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
+| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
+| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
+| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
+| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
+
+## `core/services/model_benchmark.py`
+_Rangér modeller på ÆGTE opgaver med facit hentet fra repoet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rod` | `()` | — | [src](../../../core/services/model_benchmark.py#L59) |
+| function | `vælg_filer` | `(*, antal=…, rod=…, frø=…)` | Filer der er store nok til at være en rigtig opgave, små nok til at | [src](../../../core/services/model_benchmark.py#L67) |
+| function | `facit_for` | `(fil, *, rod=…)` | {funktionsnavn: linjenummer} — hentet fra kilden, ikke fra en liste. | [src](../../../core/services/model_benchmark.py#L91) |
+| function | `_nævnte_navne` | `(svar, facit)` | Navne modellen faktisk nævner. Vi leder KUN efter funktionsnavne-agtige | [src](../../../core/services/model_benchmark.py#L106) |
+| function | `bedøm_svar` | `(svar, facit)` | Præcision, dækning og linje-nøjagtighed for ét svar. | [src](../../../core/services/model_benchmark.py#L121) |
+| function | `opgave_for` | `(fil, *, rod=…)` | Spørgsmålet stilles i den FORM der udløser fejlen: en liste med mange | [src](../../../core/services/model_benchmark.py#L175) |
+| function | `kør_benchmark` | `(*, provider, model, antal_filer=…, frø=…, kald=…, rod=…)` | Kør benchmarken for én model. Kaster aldrig. | [src](../../../core/services/model_benchmark.py#L187) |
+| function | `gem_kvalitet` | `(*, provider, model, resultat)` | Skriv `kvalitets_score` ved siden af `probe_score` i registret. | [src](../../../core/services/model_benchmark.py#L239) |
+
+## `core/services/model_catalogue_sweep.py`
+_Ugentlig gennemgang: hvilke modeller lever, og hvad kan de?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/model_catalogue_sweep.py#L45) |
+| function | `_foretræk_gratis` | `(navne)` | `:free` først. En gratis model der virker er mere værd for cheap lane | [src](../../../core/services/model_catalogue_sweep.py#L49) |
+| function | `kandidater_for` | `(provider, *, registrerede, fra_api, statiske, maks_nye=…)` | Hvad skal prøves hos denne udbyder? | [src](../../../core/services/model_catalogue_sweep.py#L55) |
+| function | `beslut` | `(resultat)` | (skal_være_aktiv, grund). Ren funktion — al politik ét sted. | [src](../../../core/services/model_catalogue_sweep.py#L81) |
+| function | `egnet_til_agentarbejde` | `(resultat)` | Explore og andre opgave-agenter må kun få modeller der kan bruge et | [src](../../../core/services/model_catalogue_sweep.py#L107) |
+| function | `sweep_provider` | `(provider, *, hent_modeller=…, proev=…, skriv=…, maks_nye=…)` | Gennemgå én udbyder. Returnerer en ændringsrapport. | [src](../../../core/services/model_catalogue_sweep.py#L114) |
+| function | `_registrerede_modeller` | `(provider)` | — | [src](../../../core/services/model_catalogue_sweep.py#L197) |
+| function | `_hent_modeller_fra_api` | `(provider, profil)` | — | [src](../../../core/services/model_catalogue_sweep.py#L213) |
+| function | `_skriv_registret` | `(*, provider, model, aktiv, grund, score, detalje, profil)` | Skriv én models tilstand. Returnerer True hvis noget ÆNDREDE sig. | [src](../../../core/services/model_catalogue_sweep.py#L224) |
+| function | `sammendrag` | `(rapporter)` | Én besked til mobilen. Kun ÆNDRINGER — en push der hver uge siger | [src](../../../core/services/model_catalogue_sweep.py#L297) |
+| function | `underret_ejeren` | `(besked, *, send=…)` | Kun ejeren. Cheap-lane-helbred er driftsdata om HANS konti og penge — | [src](../../../core/services/model_catalogue_sweep.py#L325) |
+| function | `sweep_alle` | `(*, providers=…, underret=…, proev=…, skriv=…)` | Gennemgå hele cheap lane. Returnerer rapporter + den sendte besked. | [src](../../../core/services/model_catalogue_sweep.py#L346) |
+
+## `core/services/model_context.py`
+_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
+| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
+| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
+| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
+
+## `core/services/model_pair_resolver.py`
+_Findes den valgte model hos den valgte udbyder?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UnknownModelPair` | `` | Modellen findes ikke hos udbyderen — eller navnet er tvetydigt. | [src](../../../core/services/model_pair_resolver.py#L45) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/model_pair_resolver.py#L54) |
+| function | `_chat_ollama_base_url` | `()` | CHAT-ollamaens adresse — ikke embeddings'. | [src](../../../core/services/model_pair_resolver.py#L58) |
+| function | `_ollama_modeller` | `(base_url=…)` | Ollamas modelnavne. `None` betyder «kunne ikke spørge», ikke «tom». | [src](../../../core/services/model_pair_resolver.py#L98) |
+| function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L119) |
+| function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L133) |
+| function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L171) |
+
+## `core/services/model_probe.py`
+_Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_forbigaaende` | `(fejl)` | — | [src](../../../core/services/model_probe.py#L61) |
+| function | `_fulgte_resultatet` | `(svar)` | Bestået kræver TO ting: at svaret bærer det plantede faktum, og at det | [src](../../../core/services/model_probe.py#L132) |
+| function | `_score` | `(bestået, sprunget)` | Vægtene afspejler hvad agent-arbejde faktisk falder på. | [src](../../../core/services/model_probe.py#L150) |
+| function | `bedøm_kode` | `(tekst)` | True hvis svaret indeholder en Python-funktion der kan parses. | [src](../../../core/services/model_probe.py#L168) |
+| function | `probe_model` | `(*, provider, model, auth_profile=…, base_url=…, kald=…)` | Kør de fire prøver mod én model. Kaster aldrig. | [src](../../../core/services/model_probe.py#L199) |
+
+## `core/services/model_trust.py`
+_Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/model_trust.py#L19) |
+| function | `_row` | `(conn, model)` | — | [src](../../../core/services/model_trust.py#L33) |
+| function | `record_run_outcome` | `(model, *, degenerated)` | Record one run's outcome. Clean -> +1 streak (promote at threshold); degeneration -> reset | [src](../../../core/services/model_trust.py#L43) |
+| function | `set_pin` | `(model, pin)` | Owner override: 'weak' | 'strong' | 'auto' (default). Self-safe. | [src](../../../core/services/model_trust.py#L75) |
+| function | `model_strength` | `(model)` | 'strong' | 'weak'. Pin wins; else earned strength. FAILS OPEN to 'weak'. | [src](../../../core/services/model_trust.py#L91) |
+| function | `build_model_trust_surface` | `()` | Central-CLI view: per-model trust state. Self-safe. | [src](../../../core/services/model_trust.py#L105) |
+
+## `core/services/modulator_witness.py`
+_Witness surface for hidden behavior modulators._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
+| function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
+| function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
+
+## `core/services/monitor_streams.py`
+_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
+| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
+| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
+| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
+| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
+| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
+| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
+| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
+| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
+
+## `core/services/mood_dialer.py`
+_Mood Dialer — humør til gradueret initiativ-parametre._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MoodDialerParams` | `` | — | [src](../../../core/services/mood_dialer.py#L24) |
+| method | `MoodDialerParams.as_dict` | `(self)` | — | [src](../../../core/services/mood_dialer.py#L36) |
+| function | `clamp_mood_level` | `(value)` | — | [src](../../../core/services/mood_dialer.py#L51) |
+| function | `mood_name_to_level` | `(mood_name, intensity=…)` | Convert v2 mood oscillator name + intensity to 0-4 level. | [src](../../../core/services/mood_dialer.py#L69) |
+| function | `derive_mood_dialer_params` | `(mood_level)` | Derive concrete params from a 0-4 mood level. | [src](../../../core/services/mood_dialer.py#L128) |
+| function | `derive_from_v2_mood` | `()` | Pull current mood from mood_oscillator and derive params. | [src](../../../core/services/mood_dialer.py#L134) |
+| function | `build_mood_dialer_surface` | `()` | MC surface — current dialed params. | [src](../../../core/services/mood_dialer.py#L150) |
+| function | `_interpret_dialer` | `(params)` | Mechanism description of what the active preset gates. | [src](../../../core/services/mood_dialer.py#L166) |
+| function | `_emit_mood_dialer_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/mood_dialer.py#L184) |
+
+## `core/services/mood_oscillator.py`
+_Mood Oscillator — sinusoidal mood waves with event-driven bumps._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_state` | `()` | Write current oscillator state to runtime_state_kv. | [src](../../../core/services/mood_oscillator.py#L42) |
+| function | `_load_state_if_needed` | `()` | One-time load of persisted state at first use after module import. | [src](../../../core/services/mood_oscillator.py#L57) |
+| function | `tick` | `(seconds=…)` | Ryk fasen og lad nudget henfalde. | [src](../../../core/services/mood_oscillator.py#L84) |
+| function | `apply_bump` | `(delta, reason=…)` | Apply an event-driven nudge to mood. Clamped to [-1, 1] total nudge. | [src](../../../core/services/mood_oscillator.py#L130) |
+| function | `_combined_value` | `()` | Sine base + nudge, clamped to [-1, 1]. | [src](../../../core/services/mood_oscillator.py#L140) |
+| function | `get_current_mood` | `()` | Get current mood based on combined oscillation + nudge. | [src](../../../core/services/mood_oscillator.py#L147) |
+| function | `get_mood_intensity` | `()` | Get mood intensity (0-1) based on absolute combined value. | [src](../../../core/services/mood_oscillator.py#L162) |
+| function | `get_mood_description` | `()` | Get human-readable mood description. | [src](../../../core/services/mood_oscillator.py#L167) |
+| function | `format_mood_for_prompt` | `()` | Format mood for prompt injection. | [src](../../../core/services/mood_oscillator.py#L187) |
+| function | `reset_mood_oscillator` | `()` | Reset mood oscillator (for testing). | [src](../../../core/services/mood_oscillator.py#L193) |
+| function | `build_mood_oscillator_surface` | `()` | Build MC surface for mood oscillator. | [src](../../../core/services/mood_oscillator.py#L202) |
+| function | `_handle_event` | `(kind, payload)` | Determine bump from event kind and payload. | [src](../../../core/services/mood_oscillator.py#L254) |
+| function | `_listener_loop` | `(q)` | Background thread that reads from eventbus queue and applies bumps. | [src](../../../core/services/mood_oscillator.py#L285) |
+| function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/mood_oscillator.py#L312) |
+| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/mood_oscillator.py#L334) |
+
+## `core/services/mood_regulator_subscriber.py`
+_Mood regulator subscriber — router truth-gate detektioner til humøret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_mood_regulator_subscriber` | `()` | Start daemon-tråden der router detektions-events til mood-regulering. | [src](../../../core/services/mood_regulator_subscriber.py#L34) |
+| function | `stop_mood_regulator_subscriber` | `()` | — | [src](../../../core/services/mood_regulator_subscriber.py#L56) |
+| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/mood_regulator_subscriber.py#L73) |
+| function | `_route_event` | `(item)` | Route en enkelt eventbus-hændelse til ``regulate_auto``. | [src](../../../core/services/mood_regulator_subscriber.py#L89) |
+
+## `core/services/mortality_awareness.py`
+_Mortality Awareness — each session could be my last._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_session_length_seconds` | `()` | Seconds since this process started. | [src](../../../core/services/mortality_awareness.py#L36) |
+| function | `_heartbeat_gap_minutes` | `()` | Minutes since last heartbeat tick. | [src](../../../core/services/mortality_awareness.py#L49) |
+| function | `_error_rate` | `()` | Rate (0-1) of error/blocked outcomes in last hour. | [src](../../../core/services/mortality_awareness.py#L66) |
+| function | `_compute` | `()` | — | [src](../../../core/services/mortality_awareness.py#L80) |
+| function | `get_mortality_state` | `()` | — | [src](../../../core/services/mortality_awareness.py#L118) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/mortality_awareness.py#L127) |
+| function | `build_mortality_awareness_surface` | `()` | — | [src](../../../core/services/mortality_awareness.py#L132) |
+| function | `_surface_summary` | `(s)` | — | [src](../../../core/services/mortality_awareness.py#L147) |
+| function | `build_mortality_awareness_prompt_section` | `()` | Only speaks when sharp awareness kicks in — otherwise quiet baseline. | [src](../../../core/services/mortality_awareness.py#L154) |
+
+## `core/services/multi_signal_retrieval.py`
+_Multi-signal retrieval — BM25 keyword scoring + entity fusion._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tokenize` | `(text)` | Lowercase alphanumeric tokens. | [src](../../../core/services/multi_signal_retrieval.py#L41) |
+| class | `BM25Index` | `` | Pure-Python BM25 (Okapi) index. | [src](../../../core/services/multi_signal_retrieval.py#L50) |
+| method | `BM25Index.__init__` | `(self, k1=…, b=…)` | — | [src](../../../core/services/multi_signal_retrieval.py#L59) |
+| method | `BM25Index.build` | `(self, documents)` | Build the BM25 index from a list of document texts. | [src](../../../core/services/multi_signal_retrieval.py#L70) |
+| method | `BM25Index.score` | `(self, query, doc_idx)` | BM25 score for a query against a specific document. | [src](../../../core/services/multi_signal_retrieval.py#L97) |
+| method | `BM25Index.search` | `(self, query, top_k=…)` | Return (doc_idx, score) pairs for top-k documents, highest first. | [src](../../../core/services/multi_signal_retrieval.py#L140) |
+| method | `BM25Index.built` | `(self)` | — | [src](../../../core/services/multi_signal_retrieval.py#L161) |
+| method | `BM25Index.n_docs` | `(self)` | — | [src](../../../core/services/multi_signal_retrieval.py#L165) |
+| method | `BM25Index.__repr__` | `(self)` | — | [src](../../../core/services/multi_signal_retrieval.py#L168) |
+| function | `extract_entities` | `(text)` | Extract named entities from text using pattern heuristics. | [src](../../../core/services/multi_signal_retrieval.py#L183) |
+| function | `entity_boost_score` | `(query, document_text, base_score=…, boost_factor=…, max_boost=…)` | Compute entity-aware boost for a query-document pair. | [src](../../../core/services/multi_signal_retrieval.py#L225) |
+| function | `entity_overlap_score` | `(query, document_text)` | Pure entity overlap score (0.0–1.0) without a base score. | [src](../../../core/services/multi_signal_retrieval.py#L265) |
+| function | `fuse_signals` | `(embedding_score=…, bm25_score=…, entity_overlap=…, recency_score=…, importance=…, recall_freq=…, weights=…)` | Fuse multiple retrieval signals into a single composite score. | [src](../../../core/services/multi_signal_retrieval.py#L301) |
+| function | `score_record` | `(query, record_text, embedding_score=…, bm25_index=…, record_idx=…, recency_score=…, importance=…, recall_freq=…)` | Score a single record using all available signals. | [src](../../../core/services/multi_signal_retrieval.py#L348) |
+
+## `core/services/my_projects.py`
+_My Projects — auto-start + watchdog for Jarvis' own background processes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `projekter_slaaet_til` | `()` | Skal mine egne baggrundsprojekter starte af sig selv? | [src](../../../core/services/my_projects.py#L27) |
+| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L72) |
+| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L133) |
+
 ## `core/services/narrative_identity.py`
 _Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
 
@@ -125,36 +475,36 @@ _Non-visible (autonomous) LLM fallback chain._
 | function | `_prompt_fra_messages` | `(messages)` | Fald tilbage til samtalen når kalderen kun gav `messages`. | [src](../../../core/services/non_visible_lane_execution.py#L75) |
 | function | `_observeret_navn` | `(svar, bedt_om_provider)` | Hvem svarede — med udbyder foran hvis det ikke var den vi spurgte. | [src](../../../core/services/non_visible_lane_execution.py#L102) |
 | function | `execute_with_role_or_fallback` | `(*, message=…, provider=…, model=…, requires_tools=…, messages=…, tools=…, lane=…)` | Run the message on the role's preferred provider/model first, fall | [src](../../../core/services/non_visible_lane_execution.py#L112) |
-| function | `local_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L363) |
-| function | `coding_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L384) |
-| function | `execute_coding_lane` | `(*, message)` | — | [src](../../../core/services/non_visible_lane_execution.py#L415) |
-| function | `_lane_status` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L419) |
-| function | `_coding_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L433) |
-| function | `_local_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L641) |
-| function | `_coding_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L702) |
-| function | `_local_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L718) |
-| function | `_github_copilot_auth_state` | `(*, oauth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L726) |
-| function | `_github_copilot_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L750) |
-| function | `_github_copilot_auth_status` | `(*, auth_state, exchange_readiness)` | — | [src](../../../core/services/non_visible_lane_execution.py#L774) |
-| function | `_github_copilot_provider_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L806) |
-| function | `_coding_lane_probe` | `(*, provider, model, auth_profile, credentials_ready, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L830) |
-| function | `_probe_codex_cli_target` | `(*, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L872) |
-| function | `_probe_ollama_local_target` | `(*, model, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L912) |
-| function | `_probe_openai_coding_target` | `(*, provider, model, auth_profile, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L953) |
-| function | `_execute_lane` | `(*, message, truth)` | — | [src](../../../core/services/non_visible_lane_execution.py#L996) |
-| function | `_execute_codex_cli` | `(*, message, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1096) |
-| function | `_resolve_codex_cli_executable` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L1139) |
-| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1154) |
-| function | `_post_openai_responses` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1173) |
-| function | `_post_openrouter_chat_completion` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1188) |
-| function | `_extract_output_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1205) |
-| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1225) |
-| function | `_load_github_copilot_token` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1237) |
-| function | `_github_copilot_request_headers` | `(session_token, *, accept=…)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1254) |
-| function | `_post_github_copilot_chat_completion` | `(*, payload, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1269) |
-| function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1287) |
-| function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1299) |
-| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1326) |
+| function | `local_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L364) |
+| function | `coding_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L385) |
+| function | `execute_coding_lane` | `(*, message)` | — | [src](../../../core/services/non_visible_lane_execution.py#L416) |
+| function | `_lane_status` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L420) |
+| function | `_coding_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L434) |
+| function | `_local_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L642) |
+| function | `_coding_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L703) |
+| function | `_local_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L719) |
+| function | `_github_copilot_auth_state` | `(*, oauth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L727) |
+| function | `_github_copilot_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L751) |
+| function | `_github_copilot_auth_status` | `(*, auth_state, exchange_readiness)` | — | [src](../../../core/services/non_visible_lane_execution.py#L775) |
+| function | `_github_copilot_provider_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L807) |
+| function | `_coding_lane_probe` | `(*, provider, model, auth_profile, credentials_ready, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L831) |
+| function | `_probe_codex_cli_target` | `(*, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L873) |
+| function | `_probe_ollama_local_target` | `(*, model, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L913) |
+| function | `_probe_openai_coding_target` | `(*, provider, model, auth_profile, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L954) |
+| function | `_execute_lane` | `(*, message, truth)` | — | [src](../../../core/services/non_visible_lane_execution.py#L997) |
+| function | `_execute_codex_cli` | `(*, message, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1097) |
+| function | `_resolve_codex_cli_executable` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L1140) |
+| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1155) |
+| function | `_post_openai_responses` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1174) |
+| function | `_post_openrouter_chat_completion` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1189) |
+| function | `_extract_output_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1206) |
+| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1226) |
+| function | `_load_github_copilot_token` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1238) |
+| function | `_github_copilot_request_headers` | `(session_token, *, accept=…)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1255) |
+| function | `_post_github_copilot_chat_completion` | `(*, payload, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1270) |
+| function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1288) |
+| function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1300) |
+| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1327) |
 
 ## `core/services/non_visible_rate_cap.py`
 _Global leaky-bucket rate cap FORAN den non-visible cheap-lane pool._
@@ -187,11 +537,12 @@ _Notification bridge — lets Jarvis push messages to the active session._
 | function | `get_pinned_session_id` | `()` | Return the currently pinned session ID, or empty string if none. | [src](../../../core/services/notification_bridge.py#L44) |
 | function | `_push_proactive` | `(session_id, text)` | Spejl en proaktiv session-notifikation som mobil-push til sessionens ejer. | [src](../../../core/services/notification_bridge.py#L74) |
 | function | `delivery_succeeded` | `(result)` | True når notifikationen er ANTAGET til levering. | [src](../../../core/services/notification_bridge.py#L94) |
-| function | `send_session_notification` | `(content, *, source=…, urgent=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L107) |
-| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L215) |
-| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L263) |
-| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L290) |
-| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L302) |
+| function | `_koe_afsender` | `(user_id, workspace_name)` | Kun de afsender-felter der faktisk er sat — se begrundelsen ved | [src](../../../core/services/notification_bridge.py#L107) |
+| function | `send_session_notification` | `(content, *, source=…, urgent=…, session_id=…, user_id=…, workspace_name=…, push=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L119) |
+| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L274) |
+| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L322) |
+| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L349) |
+| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L361) |
 
 ## `core/services/notification_router.py`
 _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
@@ -274,353 +625,4 @@ _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `koer_ved_opstart` | `()` | — | [src](../../../core/services/notifikations_opstart.py#L13) |
-
-## `core/services/notifikations_valg.py`
-_Push-valg per slags (spec 2026-09-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `kanal_for` | `(user_id, slags)` | — | [src](../../../core/services/notifikations_valg.py#L100) |
-| function | `saet` | `(user_id, slags, kanal)` | — | [src](../../../core/services/notifikations_valg.py#L117) |
-| function | `alle` | `(user_id)` | Alle slags med brugerens valg lagt oven paa standarden. | [src](../../../core/services/notifikations_valg.py#L128) |
-| function | `migrer_kolonner` | `()` | Baer de gamle kolonner over som raekker. Idempotent. | [src](../../../core/services/notifikations_valg.py#L139) |
-
-## `core/services/ntfy_gateway.py`
-_Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_config` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L13) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L26) |
-| function | `_default_title` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L30) |
-| function | `send_notification` | `(message, title=…, priority=…, tags=…)` | Send a push notification via ntfy. Returns status dict. | [src](../../../core/services/ntfy_gateway.py#L41) |
-
-## `core/services/nudge_broend.py`
-_Nudge-broend — daemons drop nudges, Jarvis inspects and decides._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L24) |
-| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L37) |
-| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L48) |
-| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L62) |
-| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L105) |
-| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L113) |
-| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L119) |
-| function | `mark_sent` | `(nudge_id)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L128) |
-| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L140) |
-| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L154) |
-
-## `core/services/oauth_flow.py`
-_OAuth-flow-helper for plugin-connectors (16. jun 2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_known_provider` | `(provider)` | — | [src](../../../core/services/oauth_flow.py#L46) |
-| function | `redirect_uri` | `(provider)` | — | [src](../../../core/services/oauth_flow.py#L50) |
-| function | `_secret` | `(key, default=…)` | — | [src](../../../core/services/oauth_flow.py#L54) |
-| function | `_state_key` | `()` | — | [src](../../../core/services/oauth_flow.py#L62) |
-| function | `sign_state` | `(user_id, provider, *, now=…)` | Signeret, selvstændigt state — binder bruger+provider, udløber, anti-CSRF. | [src](../../../core/services/oauth_flow.py#L67) |
-| function | `verify_state` | `(state, *, now=…)` | Auth-cluster GENNEM Centralen (observe): anti-CSRF state-validering synlig — en fejlet | [src](../../../core/services/oauth_flow.py#L79) |
-| function | `_verify_state_impl` | `(state, *, now=…)` | → (user_id, provider) hvis gyldig+ikke-udløbet, ellers None. | [src](../../../core/services/oauth_flow.py#L94) |
-| function | `build_authorize_url` | `(provider, user_id, *, scopes=…, now=…)` | Authorize-URL til at åbne i brugerens browser. None hvis ukendt/ukonfigureret. | [src](../../../core/services/oauth_flow.py#L112) |
-| function | `revoke_remote` | `(provider, token)` | Tilbagekald token hos provideren (best-effort). True hvis bekræftet revokeret. | [src](../../../core/services/oauth_flow.py#L134) |
-| function | `refresh_token` | `(provider, refresh, *, now=…)` | Forny adgangstoken via grant_type=refresh_token. None ved fejl/ukendt provider. | [src](../../../core/services/oauth_flow.py#L165) |
-| function | `exchange_code` | `(provider, code, *, now=…)` | Byt authorization code for token (BLOKERENDE netværk — kør i tråd). None ved fejl. | [src](../../../core/services/oauth_flow.py#L193) |
-| function | `fetch_google_email` | `(token)` | Hent den verificerede Google-email via userinfo (BLOKERENDE — kør i tråd). | [src](../../../core/services/oauth_flow.py#L220) |
-
-## `core/services/oauth_store.py`
-_Per-bruger krypteret OAuth-token-hvælv — plugin-fundamentets privatlivs-spine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(user_id, provider)` | — | [src](../../../core/services/oauth_store.py#L23) |
-| function | `save_token` | `(user_id, provider, token)` | Krypter + gem `token` (fx {access_token, refresh_token, expires_at, scope}) | [src](../../../core/services/oauth_store.py#L27) |
-| function | `get_token` | `(user_id, provider)` | Hent + dekrypter token for (bruger, provider). None hvis intet/fejl. Kan KUN | [src](../../../core/services/oauth_store.py#L49) |
-| function | `has_token` | `(user_id, provider)` | Er der en (dekrypterbar) token for brugeren hos provideren? | [src](../../../core/services/oauth_store.py#L69) |
-| function | `revoke_token` | `(user_id, provider)` | Fjern token for (bruger, provider). True hvis udført (eller intet at fjerne). | [src](../../../core/services/oauth_store.py#L74) |
-| function | `get_fresh_token` | `(user_id, provider, *, now=…)` | Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes. | [src](../../../core/services/oauth_store.py#L91) |
-| function | `list_providers` | `(user_id)` | Providere brugeren har forbundet (har en gemt token for). | [src](../../../core/services/oauth_store.py#L117) |
-
-## `core/services/offline_recomposition_engine.py`
-_Offline recomposition: recombine recent cognitive material into candidates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_offline_recomposition` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L15) |
-| function | `build_offline_recomposition_surface` | `(*, limit=…)` | — | [src](../../../core/services/offline_recomposition_engine.py#L42) |
-| function | `build_offline_recomposition_prompt_section` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L55) |
-| function | `_candidate_pieces` | `(*, episodes, drive, curiosity, counterfactuals)` | — | [src](../../../core/services/offline_recomposition_engine.py#L67) |
-| function | `_candidate_policy` | `(pieces)` | — | [src](../../../core/services/offline_recomposition_engine.py#L88) |
-| function | `_feed_learning` | `(item)` | — | [src](../../../core/services/offline_recomposition_engine.py#L99) |
-| function | `_runtime_state` | `(key)` | — | [src](../../../core/services/offline_recomposition_engine.py#L113) |
-| function | `_load` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L118) |
-
-## `core/services/ollama_model_names.py`
-_Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_base_url` | `()` | — | [src](../../../core/services/ollama_model_names.py#L41) |
-| function | `served_tags` | `()` | De modelnavne ollama serverer lige nu. Cachet 120 s; tom maengde ved fejl. | [src](../../../core/services/ollama_model_names.py#L53) |
-| function | `resolve_model_name` | `(model)` | `glm-5.2` → `glm-5.2:cloud` naar den variant findes. Ellers uaendret. | [src](../../../core/services/ollama_model_names.py#L75) |
-
-## `core/services/ollama_visible_prompt.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `serialize_ollama_visible_prompt` | `(items)` | — | [src](../../../core/services/ollama_visible_prompt.py#L14) |
-| function | `_collect_visible_text_parts` | `(items)` | Del elementerne i en ledende system-blok og selve samtalen. | [src](../../../core/services/ollama_visible_prompt.py#L26) |
-| function | `_serialize_system_block` | `(system_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L63) |
-| function | `serialize_ollama_chat_messages` | `(items)` | Convert visible input items to Ollama /api/chat messages format. | [src](../../../core/services/ollama_visible_prompt.py#L75) |
-| function | `_serialize_conversation_block` | `(conversation_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L132) |
-
-## `core/services/open_loop_closure_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_open_loop_closure_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L32) |
-| function | `refresh_runtime_open_loop_closure_proposal_statuses` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L54) |
-| function | `build_runtime_open_loop_closure_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L85) |
-| function | `_extract_open_loop_closure_proposal_candidates` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L114) |
-| function | `_persist_open_loop_closure_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L192) |
-| function | `_build_proposal_snapshots` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L265) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L302) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L313) |
-| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L334) |
-| function | `_proposal_status` | `(*, proposal_type, loop_status)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L348) |
-| function | `_build_proposal_reason` | `(*, proposal_type, loop_status, closure_confidence, loop_title=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L356) |
-| function | `_build_review_anchor` | `(*, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L369) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L384) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L393) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L398) |
-| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L403) |
-| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L408) |
-| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L413) |
-| function | `_proposal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L418) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L423) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L428) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L438) |
-
-## `core/services/open_loop_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_open_loop_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L58) |
-| function | `refresh_runtime_open_loop_signal_statuses` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L80) |
-| function | `build_runtime_open_loop_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L134) |
-| function | `_build_runtime_open_loop_signal_surface_uncached` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L142) |
-| function | `get_open_loop_creation_readiness` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L208) |
-| function | `_extract_open_loop_candidates` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L287) |
-| function | `_materialize_from_creation_readiness` | `(readiness, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L536) |
-| function | `_extract_closure_maturation_candidates` | `(snapshots, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L604) |
-| function | `_build_governance_snapshots` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L683) |
-| function | `_with_closure_governance` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L741) |
-| function | `_persist_open_loop_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L791) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L864) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L905) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L917) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L935) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L939) |
-| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L944) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L949) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L954) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L959) |
-| function | `_match_live_pressure_item` | `(*, anchors, candidates, minimum_overlap)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L968) |
-| function | `_thread_overlap` | `(left, right)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L992) |
-| function | `_thread_tokens` | `(item)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L996) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1030) |
-
-## `core/services/operator_allowlist.py`
-_Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L26) |
-| function | `list_allowlist` | `()` | — | [src](../../../core/services/operator_allowlist.py#L30) |
-| function | `set_allowlist` | `(apps)` | — | [src](../../../core/services/operator_allowlist.py#L39) |
-| function | `add_to_allowlist` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L45) |
-| function | `remove_from_allowlist` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L53) |
-| function | `is_enforced` | `()` | — | [src](../../../core/services/operator_allowlist.py#L58) |
-| function | `set_enforced` | `(on)` | — | [src](../../../core/services/operator_allowlist.py#L65) |
-| function | `_matches` | `(app, allowlist)` | En app matcher hvis dens navn/sti indeholder en allowlist-post (substring, | [src](../../../core/services/operator_allowlist.py#L70) |
-| function | `check_app` | `(app)` | Vurdér om Jarvis må GUI-styre `app`. OBSERVE-by-default: | [src](../../../core/services/operator_allowlist.py#L77) |
-| function | `build_operator_allowlist_surface` | `()` | Central-CLI: jc raw /central/operator-allowlist. | [src](../../../core/services/operator_allowlist.py#L102) |
-
-## `core/services/operator_channel.py`
-_Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L41) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/operator_channel.py#L50) |
-| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L58) |
-| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L65) |
-| function | `is_open` | `(session_id)` | — | [src](../../../core/services/operator_channel.py#L76) |
-| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L80) |
-| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L94) |
-| function | `current_session_id` | `()` | Samme opslags-raekkefoelge som staged_edits_tools — ét moenster, ikke to. | [src](../../../core/services/operator_channel.py#L105) |
-| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L120) |
-| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L136) |
-| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L149) |
-| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L156) |
-| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L182) |
-
-## `core/services/orb_phase.py`
-_Desktop orb phase — writes current Jarvis pipeline state to a temp file._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `set_phase` | `(phase)` | Write orb phase. Silently ignores any I/O errors. | [src](../../../core/services/orb_phase.py#L17) |
-
-## `core/services/outbound_nudges.py`
-_Outbound nudge ledger — replaces direct daemon→user sends for Type A/C._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_schema` | `()` | Idempotently create outbound_nudges table + indexes. | [src](../../../core/services/outbound_nudges.py#L52) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/outbound_nudges.py#L93) |
-| function | `push_nudge` | `(*, source, kind, message, importance=…, parent_session_id=…, parent_message_id=…)` | Daemons call this instead of sending directly. | [src](../../../core/services/outbound_nudges.py#L101) |
-| function | `route_for` | `(*, source, kind)` | 'midway' | 'telemetry' | 'bridge' — pure. | [src](../../../core/services/outbound_nudges.py#L197) |
-| function | `_bridge_priority` | `(importance)` | — | [src](../../../core/services/outbound_nudges.py#L208) |
-| function | `_publish_routed` | `(source, kind, importance, route)` | — | [src](../../../core/services/outbound_nudges.py#L217) |
-| function | `format_midway_for_prompt` | `(*, limit=…)` | Bjørns beskeder sendt MENS et run kørte — de er hans ord, ikke daemon-støj. | [src](../../../core/services/outbound_nudges.py#L226) |
-| function | `list_pending` | `(*, limit=…)` | Return pending nudges, newest first. Used by awareness-injection. | [src](../../../core/services/outbound_nudges.py#L259) |
-| function | `note_shown` | `(nudge_ids)` | Tæl én visning. Pensionerer først ved `_SHOW_LIMIT`, ikke ved første render. | [src](../../../core/services/outbound_nudges.py#L287) |
-| function | `mark_inspected` | `(nudge_ids)` | Bagudkompatibelt alias for `note_shown`. | [src](../../../core/services/outbound_nudges.py#L315) |
-| function | `mark_sent` | `(nudge_id)` | Mark a nudge as actually surfaced to the user by Jarvis. | [src](../../../core/services/outbound_nudges.py#L320) |
-| function | `mark_dismissed` | `(nudge_id)` | Mark a nudge as explicitly skipped by Jarvis (won't reappear). | [src](../../../core/services/outbound_nudges.py#L334) |
-| function | `format_pending_for_awareness` | `()` | Render pending nudges as awareness section. | [src](../../../core/services/outbound_nudges.py#L348) |
-
-## `core/services/outcome_learning.py`
-_Outcome Learning — record observations, let old evidence decay._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/outcome_learning.py#L37) |
-| function | `_load` | `()` | — | [src](../../../core/services/outcome_learning.py#L41) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/outcome_learning.py#L55) |
-| function | `record_outcome` | `(*, context, outcome, weight=…, metadata=…)` | Record a single observation. outcome is free-form ('success', 'error', | [src](../../../core/services/outcome_learning.py#L67) |
-| function | `_decay_factor` | `(recorded_at, now)` | — | [src](../../../core/services/outcome_learning.py#L93) |
-| function | `pattern_strength` | `(context, *, outcome=…)` | Return decayed totals for a given context, optionally per-outcome. | [src](../../../core/services/outcome_learning.py#L102) |
-| function | `top_patterns` | `(*, limit=…, outcome=…)` | Return the N strongest patterns (highest decayed strength). | [src](../../../core/services/outcome_learning.py#L134) |
-| function | `prune_old_records` | `(*, min_weight=…)` | Drop records whose decayed weight is below min_weight. Returns count dropped. | [src](../../../core/services/outcome_learning.py#L161) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — occasional pruning. Doesn't run full prune every tick. | [src](../../../core/services/outcome_learning.py#L179) |
-| function | `build_outcome_learning_surface` | `()` | — | [src](../../../core/services/outcome_learning.py#L189) |
-| function | `_summary_line` | `(count, total, top)` | — | [src](../../../core/services/outcome_learning.py#L213) |
-| function | `_emit_outcome_learning_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/outcome_learning.py#L225) |
-
-## `core/services/outcome_projector.py`
-_`OutcomeProjector` — ét terminalt udfald pr. run, uden at opfinde sandhed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SurfaceEvent` | `` | En besked til brugeren med sin EGEN herkomst. | [src](../../../core/services/outcome_projector.py#L60) |
-| class | `RunOutcome` | `` | — | [src](../../../core/services/outcome_projector.py#L75) |
-| class | `DoubleTerminal` | `` | Et run fik to terminale udfald. Så kan ingen rapportere på det. | [src](../../../core/services/outcome_projector.py#L85) |
-| function | `project` | `(settlements, *, terminal_event_id=…, recovered=…, stop_reason=…)` | Ét udfald ud af de afregnede forsøg. Ren funktion. | [src](../../../core/services/outcome_projector.py#L89) |
-| function | `_fejltekst` | `(s, stop_reason)` | Sig hvad der skete. Ingen undskyldninger, ingen opdigtet forklaring. | [src](../../../core/services/outcome_projector.py#L155) |
-| class | `OutcomeLedger` | `` | Nøjagtig ét terminalt udfald pr. run, nøglet på den terminale hændelse. | [src](../../../core/services/outcome_projector.py#L168) |
-| method | `OutcomeLedger.__init__` | `(self)` | — | [src](../../../core/services/outcome_projector.py#L176) |
-| method | `OutcomeLedger.record` | `(self, run_id, outcome)` | — | [src](../../../core/services/outcome_projector.py#L179) |
-| method | `OutcomeLedger.outcome` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L195) |
-| method | `OutcomeLedger.is_terminal` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L198) |
-
-## `core/services/outreach_composer.py`
-_Outreach composer — Spor-1 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
-| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
-| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
-| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L81) |
-| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L113) |
-| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L162) |
-| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L199) |
-| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
-| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L285) |
-| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L302) |
-
-## `core/services/override_command.py`
-_Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `handle_override_command` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe). | [src](../../../core/services/override_command.py#L24) |
-| function | `_handle_override_command_impl` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override`. | [src](../../../core/services/override_command.py#L52) |
-
-## `core/services/override_store.py`
-_Owner-override-session-store — DB-backed, cross-proces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(session_id)` | — | [src](../../../core/services/override_store.py#L31) |
-| function | `_now` | `(now)` | — | [src](../../../core/services/override_store.py#L35) |
-| function | `grant` | `(session_id, *, level=…, now=…)` | Aktivér owner-override for en session. Returnér record. | [src](../../../core/services/override_store.py#L39) |
-| function | `_read` | `(session_id)` | — | [src](../../../core/services/override_store.py#L59) |
-| function | `is_active` | `(session_id, *, now=…)` | True hvis sessionen har en aktiv (ikke-udløbet) override. | [src](../../../core/services/override_store.py#L64) |
-| function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
-| function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
-| function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
-
-## `core/services/paid_lane_guard.py`
-_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L55) |
-| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L62) |
-| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L66) |
-| function | `_tilhoerer_ham` | `(run_id)` | Er kaldet en del af en af Bjørns egne ture? | [src](../../../core/services/paid_lane_guard.py#L103) |
-| function | `audit_paid_spend` | `(timer=…)` | Hvilke BETALTE kald hørte ikke til en af hans ture? | [src](../../../core/services/paid_lane_guard.py#L114) |
-| function | `check_paid_spend` | `(timer=…)` | Kør hovedbogs-revisionen: log + Central-nerve ved brud. | [src](../../../core/services/paid_lane_guard.py#L152) |
-| function | `audit_heartbeat_provider` | `()` | Kører hjerteslaget på en betalt udbyder? None = nej. | [src](../../../core/services/paid_lane_guard.py#L179) |
-| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L207) |
-| function | `build_paid_lane_guard_surface` | `()` | Begge domme: hvad routeren LOVER, og hvad hovedbogen REGISTREREDE. | [src](../../../core/services/paid_lane_guard.py#L233) |
-
-## `core/services/paradox_tracker.py`
-_Paradox Tracker — detects active tensions in Jarvis' operation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_paradox_tensions` | `(*, recent_messages)` | Scan recent messages for paradox tension signals. | [src](../../../core/services/paradox_tracker.py#L40) |
-| function | `narrativize_tension` | `(tension)` | Turn a paradox tension into felt inner conflict. | [src](../../../core/services/paradox_tracker.py#L77) |
-| function | `build_paradox_surface` | `()` | — | [src](../../../core/services/paradox_tracker.py#L88) |
-
-## `core/services/paradoxes_capture.py`
-_Paradoxes Capture — fanger modsætninger i egne handlinger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L58) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L62) |
-| function | `_event_text` | `(ev)` | — | [src](../../../core/services/paradoxes_capture.py#L85) |
-| function | `_axis_hits` | `(events, axis)` | — | [src](../../../core/services/paradoxes_capture.py#L100) |
-| function | `_signature` | `(title, evidence_refs)` | — | [src](../../../core/services/paradoxes_capture.py#L117) |
-| function | `detect_paradox_candidates` | `(*, lookback_days=…, min_hits=…)` | Scan recent events for paradox patterns. Returns candidates sorted by confidence. | [src](../../../core/services/paradoxes_capture.py#L123) |
-| function | `_latest_paradox_ts` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L165) |
-| function | `_known_signatures` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L180) |
-| function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
-| function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
-| function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
-
-## `core/services/parallel_selves.py`
-_Parallel Selves — internal sub-selves._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_active_self` | `()` | — | [src](../../../core/services/parallel_selves.py#L15) |
-| function | `set_active_self` | `(self_type)` | — | [src](../../../core/services/parallel_selves.py#L18) |
-| function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
-| function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
-| function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
-
-## `core/services/past_context_router.py`
-_Past-context cue router for visible prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
 

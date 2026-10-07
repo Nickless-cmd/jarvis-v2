@@ -2,6 +2,114 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/conversation_topics.py`
+_Conversation-continuity topics, deliberately separate from world truth._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_conversation_topic` | `(*, canonical_key, title, summary=…, source_kind=…, session_id=…, run_id=…)` | — | [src](../../../core/services/conversation_topics.py#L14) |
+| function | `list_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/services/conversation_topics.py#L43) |
+
+## `core/services/copilot_catalogue.py`
+_Hvad Copilot-abonnementet FAKTISK giver — spurgt, ikke antaget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_api_token` | `()` | — | [src](../../../core/services/copilot_catalogue.py#L82) |
+| function | `hent_modeller` | `(*, tving=…)` | Live-listen fra API'et. Tom liste hvis den ikke kan hentes. | [src](../../../core/services/copilot_catalogue.py#L90) |
+| function | `_ensure_naabar` | `(conn)` | — | [src](../../../core/services/copilot_catalogue.py#L131) |
+| function | `_naabar_i_db` | `(model)` | Den holdbare dom, eller `None` hvis den mangler/er for gammel. | [src](../../../core/services/copilot_catalogue.py#L143) |
+| function | `_gem_naabar` | `(model, naabar)` | — | [src](../../../core/services/copilot_catalogue.py#L175) |
+| function | `_naabar` | `(model, *, timeout_s=…)` | Svarer modellen overhovedet? ÉT lille kald, cachet et doegn. | [src](../../../core/services/copilot_catalogue.py#L192) |
+| function | `_maalt_uegnet` | `()` | Modeller der ER proevet og ALDRIG svarede. | [src](../../../core/services/copilot_catalogue.py#L247) |
+| function | `_brugbar` | `(m, *, uegnet=…)` | Kun modeller der kan KALDE VAERKTOEJER og er valgbare. | [src](../../../core/services/copilot_catalogue.py#L272) |
+| function | `rangeret` | `(opgave=…, *, maks=…)` | Modeller til denne opgave, bedste foerst. | [src](../../../core/services/copilot_catalogue.py#L322) |
+
+## `core/services/cost_optimization_daemon.py`
+_D5 — Cost optimization daemon._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick` | `()` | Run the cost optimization check cycle. | [src](../../../core/services/cost_optimization_daemon.py#L23) |
+| function | `_load_budgets` | `()` | Read cost budget settings from runtime.json `extra` dict. | [src](../../../core/services/cost_optimization_daemon.py#L118) |
+| function | `_emit` | `(kind, payload)` | Emit an eventbus event — defensive, never blocks. | [src](../../../core/services/cost_optimization_daemon.py#L133) |
+| function | `_emit_savings_estimate` | `()` | Estimate potential savings from routing more calls to cheap lane. | [src](../../../core/services/cost_optimization_daemon.py#L142) |
+
+## `core/services/council_deliberation_controller.py`
+_Council Deliberation Controller — active agent dynamics inside deliberation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DeliberationResult` | `` | — | [src](../../../core/services/council_deliberation_controller.py#L28) |
+| function | `_cosine_similarity` | `(a, b)` | Bag-of-words cosine similarity between two strings. Returns 0.0–1.0. | [src](../../../core/services/council_deliberation_controller.py#L37) |
+| function | `_is_deadlocked` | `(round_outputs)` | Return True if round N is semantically similar to round N-2 (1-indexed rounds). | [src](../../../core/services/council_deliberation_controller.py#L54) |
+| function | `_check_witness_escalation` | `(witness_output)` | Return True if the witness is requesting to escalate to active participant. | [src](../../../core/services/council_deliberation_controller.py#L63) |
+| function | `build_witness_prompt` | `(*, transcript)` | Build the system prompt for the witness agent. | [src](../../../core/services/council_deliberation_controller.py#L68) |
+| function | `_call_recruitment_llm` | `(*, topic, transcript)` | — | [src](../../../core/services/council_deliberation_controller.py#L79) |
+| function | `_analyze_recruitment_need` | `(*, topic, transcript, active_members)` | Ask LLM if a new role is needed. Returns role name or None. | [src](../../../core/services/council_deliberation_controller.py#L91) |
+| class | `DeliberationController` | `` | Manages a deliberation with witness escalation, recruitment, and deadlock handling. | [src](../../../core/services/council_deliberation_controller.py#L110) |
+| method | `DeliberationController.__init__` | `(self, *, topic, members, max_rounds=…)` | — | [src](../../../core/services/council_deliberation_controller.py#L113) |
+| method | `DeliberationController.run` | `(self)` | Run the full deliberation. Returns DeliberationResult. | [src](../../../core/services/council_deliberation_controller.py#L130) |
+| method | `DeliberationController._run_round` | `(self)` | Run one round of deliberation. Override in subclasses for real agent execution. | [src](../../../core/services/council_deliberation_controller.py#L207) |
+| method | `DeliberationController._synthesize` | `(self, *, forced=…)` | Produce council conclusion. Override in real integration. | [src](../../../core/services/council_deliberation_controller.py#L211) |
+
+## `core/services/council_memory_daemon.py`
+_Council Memory Daemon — injects relevant past council conclusions into heartbeat context._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_council_memory_daemon` | `(*, recent_context=…)` | Check COUNCIL_LOG.md for relevant past deliberations and inject into context. | [src](../../../core/services/council_memory_daemon.py#L23) |
+| function | `build_council_memory_surface` | `()` | — | [src](../../../core/services/council_memory_daemon.py#L65) |
+| function | `_load_entries` | `()` | — | [src](../../../core/services/council_memory_daemon.py#L75) |
+| function | `_call_similarity_llm` | `(*, recent_context, index_text)` | — | [src](../../../core/services/council_memory_daemon.py#L83) |
+| function | `_parse_indices` | `(response, max_idx)` | Extract valid 1-based indices from LLM response. Returns [] if 'ingen'. | [src](../../../core/services/council_memory_daemon.py#L95) |
+| function | `_format_for_heartbeat` | `(entries)` | Compact representation for heartbeat context injection. | [src](../../../core/services/council_memory_daemon.py#L110) |
+
+## `core/services/council_memory_service.py`
+_Council Memory Service — persists council conclusions to COUNCIL_LOG.md._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_log_file` | `()` | — | [src](../../../core/services/council_memory_service.py#L16) |
+| function | `append_council_conclusion` | `(*, topic, score, members, signals, transcript, conclusion, initiative)` | Append a council conclusion entry to COUNCIL_LOG.md. | [src](../../../core/services/council_memory_service.py#L20) |
+| function | `read_all_entries` | `()` | Parse COUNCIL_LOG.md and return list of entry dicts. | [src](../../../core/services/council_memory_service.py#L51) |
+| function | `_parse_entries` | `(content)` | Parse markdown content into list of entry dicts. | [src](../../../core/services/council_memory_service.py#L64) |
+| function | `_parse_single_entry` | `(block)` | Parse a single markdown entry block. | [src](../../../core/services/council_memory_service.py#L78) |
+| function | `_extract_section` | `(block, heading)` | Extract text content between a heading and the next heading. | [src](../../../core/services/council_memory_service.py#L122) |
+| function | `build_council_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/council_memory_service.py#L129) |
+
+## `core/services/council_receipt.py`
+_Et raad kvitteres nu med det samme — Fase 6._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/council_receipt.py#L43) |
+| function | `start_round_in_background` | `(council_id)` | Start raadsrunden uden at vente paa den. Returnerer om den blev startet. | [src](../../../core/services/council_receipt.py#L47) |
+| function | `receipt` | `(council_id, *, topic, roles, started)` | Kvitteringen. Siger hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/council_receipt.py#L103) |
+| function | `status` | `(council_id)` | Hvor er raadet naaet til? Den direkte afhentning. | [src](../../../core/services/council_receipt.py#L126) |
+
+## `core/services/council_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_council_runtime_surface` | `()` | — | [src](../../../core/services/council_runtime.py#L10) |
+| function | `_build_council_runtime_surface_uncached` | `()` | — | [src](../../../core/services/council_runtime.py#L18) |
+| function | `build_council_runtime_from_sources` | `(*, subagent_ecology, affective_meta_state, epistemic_runtime_state, conflict_trace)` | — | [src](../../../core/services/council_runtime.py#L27) |
+| function | `build_council_runtime_prompt_section` | `(surface=…)` | — | [src](../../../core/services/council_runtime.py#L107) |
+| function | `_role_position` | `(*, role, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L134) |
+| function | `_derive_divergence_level` | `(role_positions)` | — | [src](../../../core/services/council_runtime.py#L177) |
+| function | `_derive_recommendation` | `(role_positions)` | — | [src](../../../core/services/council_runtime.py#L188) |
+| function | `_derive_recommendation_reason` | `(*, recommendation, divergence_level, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L203) |
+| function | `_derive_confidence` | `(*, recommendation, divergence_level, role_positions)` | — | [src](../../../core/services/council_runtime.py#L223) |
+| function | `_derive_council_state` | `(*, role_positions, divergence_level)` | — | [src](../../../core/services/council_runtime.py#L237) |
+| function | `_source_contributors` | `(*, ecology, affective, epistemic, conflict)` | — | [src](../../../core/services/council_runtime.py#L255) |
+| function | `_guidance_for_council` | `(*, state)` | — | [src](../../../core/services/council_runtime.py#L305) |
+| function | `_safe_subagent_ecology` | `()` | — | [src](../../../core/services/council_runtime.py#L319) |
+| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/council_runtime.py#L329) |
+| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/council_runtime.py#L339) |
+| function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/council_runtime.py#L349) |
+| function | `get_latest_council_conclusion` | `()` | Return the most recent closed council session summary, or None. | [src](../../../core/services/council_runtime.py#L359) |
+
 ## `core/services/council_settlement.py`
 _Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
 
@@ -411,8 +519,8 @@ _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 | function | `daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call LLM for daemon output. Tries cache first, then cheap lane (Groq), | [src](../../../core/services/daemon_llm.py#L129) |
 | function | `tegn_for_tokens` | `(tokens)` | Oversaet et token-budget til den TEGN-graense `max_len` klipper paa. | [src](../../../core/services/daemon_llm.py#L166) |
 | function | `quality_daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path for QUALITY-CRITICAL daemons (self-review, decision-review, | [src](../../../core/services/daemon_llm.py#L184) |
-| function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L299) |
-| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L321) |
+| function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L300) |
+| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L322) |
 
 ## `core/services/daemon_manager.py`
 _Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
@@ -420,20 +528,21 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L797) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L801) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L811) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L817) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L821) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L829) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L835) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L844) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L849) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L858) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L867) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L879) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L902) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L933) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L807) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L811) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L821) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L827) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L831) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L839) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L845) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L854) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L859) |
+| function | `_tick_resume` | `(result)` | Et resumé der kan svare på om et medlem kørte. | [src](../../../core/services/daemon_manager.py#L879) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L921) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L930) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L942) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L965) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L996) |
 
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
@@ -504,110 +613,4 @@ _DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerend
 | function | `scan` | `()` | Census + vækst-delta vs forrige snapshot + flag egregious vækst. Returnér rapport. | [src](../../../core/services/db_sentinel.py#L81) |
 | function | `observe` | `()` | Kør scan + central.observe(summary) + flag egregious vækst som incident (review). | [src](../../../core/services/db_sentinel.py#L105) |
 | function | `build_db_health_surface` | `()` | MC-surface — read-only meta-projektion af DB-helbred + kandidat-død-liste til review. | [src](../../../core/services/db_sentinel.py#L131) |
-
-## `core/services/decision_adherence_gate.py`
-_Gate 1: Decision-adherence gate._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L31) |
-
-## `core/services/decision_enforcement.py`
-_Decision enforcement — close the loop between commitment and behavior._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `enforcement_section` | `()` | High-priority awareness: lists active decisions as obligations + asks | [src](../../../core/services/decision_enforcement.py#L39) |
-| function | `_raekkefoelge_blok` | `(blocks)` | Rækkefølgen som prompt-tekst — inkl. markøren når svaret blev skubbet. | [src](../../../core/services/decision_enforcement.py#L114) |
-| function | `_seneste_bruger_besked` | `(limit=…, workspace=…)` | De seneste beskeder fra brugeren — præmissen dommen skal holdes op mod. | [src](../../../core/services/decision_enforcement.py#L139) |
-| function | `_build_breach_prompt` | `(assistant_text, decisions, blocks=…)` | — | [src](../../../core/services/decision_enforcement.py#L179) |
-| function | `_parse_breaches` | `(text)` | — | [src](../../../core/services/decision_enforcement.py#L212) |
-| function | `_blok_tekst` | `(b)` | Blokkens tekst, trimmet. Tom for alt der ikke er en tekstblok. | [src](../../../core/services/decision_enforcement.py#L262) |
-| function | `_blok_kald` | `(b)` | Navnet på det værktøj blokken kalder — tom streng hvis den ikke er et kald. | [src](../../../core/services/decision_enforcement.py#L269) |
-| function | `blok_rekkefoelge` | `(blocks)` | Turens blokke som en kort, ordnet liste — til dommerens prompt. | [src](../../../core/services/decision_enforcement.py#L276) |
-| function | `svar_blev_arbejde` | `(blocks)` | Blev turens svar skubbet ind i «arbejdet»? | [src](../../../core/services/decision_enforcement.py#L301) |
-| function | `detect_breach_in_output` | `(assistant_text, blocks=…)` | Return list of detected breaches. Empty if none. LLM-led. | [src](../../../core/services/decision_enforcement.py#L348) |
-| function | `_blokke_fra_payload` | `(payload, besked)` | Turens blokliste ud af `channel.chat_message_appended`. | [src](../../../core/services/decision_enforcement.py#L432) |
-| function | `_observer_svar_skubbet` | `(blokke)` | Mål mønsteret i Centralen — uafhængigt af dommeren og dens cooldown. | [src](../../../core/services/decision_enforcement.py#L480) |
-| function | `_poll_loop` | `()` | — | [src](../../../core/services/decision_enforcement.py#L509) |
-| function | `subscribe` | `()` | — | [src](../../../core/services/decision_enforcement.py#L562) |
-
-## `core/services/decision_evidence.py`
-_Ekstern sandhed til adfærds-reviews — hvad der FAKTISK skete i vinduet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_afgraens_workspace` | `(eksplicit=…)` | Den workspace regnskabet må læse fra. Tom streng = læs intet. | [src](../../../core/services/decision_evidence.py#L115) |
-| function | `_repo_root` | `()` | Repoets rod, fundet ud fra dette moduls egen placering. | [src](../../../core/services/decision_evidence.py#L143) |
-| function | `_tool_names_since` | `(since, until)` | Hvilke værktøjer blev udført i vinduet, og hvor mange gange. | [src](../../../core/services/decision_evidence.py#L148) |
-| function | `_commits_since` | `(since, until)` | Commits i vinduet, som korte emnelinjer. | [src](../../../core/services/decision_evidence.py#L185) |
-| function | `_foelelses_uddrag` | `(tekst, *, foer=…, efter=…)` | Vinduet OMKRING markøren — ikke begyndelsen af svaret. | [src](../../../core/services/decision_evidence.py#L208) |
-| function | `_foelelses_traef` | `(uddrag)` | De uddrag der nævner en indre tilstand. Se ``_FOLELSE_MARKOER``. | [src](../../../core/services/decision_evidence.py#L225) |
-| function | `_normalisér_ord` | `(tekst)` | Tekst → ordrække, lowercase, uden tegnsætning. Ren funktion. | [src](../../../core/services/decision_evidence.py#L240) |
-| function | `_citat_traef` | `(bjoern_tekster, mine_tekster)` | Hvilke af Bjørns beskeder har et genkendeligt uddrag i mine svar? | [src](../../../core/services/decision_evidence.py#L245) |
-| function | `_messages_since` | `(since, until, workspace=…)` | Indgående beskeder i vinduet — tvillingen til ``_own_words_since``. | [src](../../../core/services/decision_evidence.py#L272) |
-| function | `_own_words_since` | `(since, until, workspace=…)` | Mine egne synlige svar i vinduet — kanalen hvor «sig det højt» står. | [src](../../../core/services/decision_evidence.py#L338) |
-| function | `_signals_since` | `(since, until)` | Beslutnings-triggere der fyrede i vinduet — instrumentets puls. | [src](../../../core/services/decision_evidence.py#L387) |
-| function | `_inner_state_since` | `(since, until)` | Den indre tilstand, som runtime selv skrev den ned i vinduet. | [src](../../../core/services/decision_evidence.py#L425) |
-| function | `gather_evidence` | `(*, since, until=…, workspace=…)` | Saml regnskabet for vinduet. Returnerer også en kompakt tekst. | [src](../../../core/services/decision_evidence.py#L455) |
-| function | `channel_has_data` | `(evidence, channel)` | Har den kanal dommen hviler på faktisk data i vinduet? | [src](../../../core/services/decision_evidence.py#L584) |
-| function | `evidence_permits_verdict` | `(verdict, evidence, *, channel=…)` | Nedgradér en dom der ikke har dækning i regnskabet. | [src](../../../core/services/decision_evidence.py#L599) |
-
-## `core/services/decision_gate.py`
-_Decision gate — pre-execution decision conflict detection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L27) |
-| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L125) |
-| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L141) |
-| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L214) |
-| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L247) |
-| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L252) |
-
-## `core/services/decision_ghosts.py`
-_Decision Ghosts — de veje der blev fravalgt, og dem der holdt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/decision_ghosts.py#L58) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/decision_ghosts.py#L70) |
-| function | `_vaelg` | `(poster, felt)` | Den mest saliente — eller den nyeste hvis ingen har et maalt tal. | [src](../../../core/services/decision_ghosts.py#L77) |
-| function | `record_rejected_path` | `(decision, reason, alternative, regret_potential=…)` | Gem en vej der blev fravalgt eller brudt. | [src](../../../core/services/decision_ghosts.py#L91) |
-| function | `record_confirmed_path` | `(decision, outcome, key_factor=…, success_echo=…)` | Gem en beslutning der holdt. `success_echo` er `adherence_score`. | [src](../../../core/services/decision_ghosts.py#L113) |
-| function | `record_reaffirmed_decision` | `(decision_id, title, verdict, adherence_score=…)` | Kaldes fra `behavioral_decisions.review_decision`. | [src](../../../core/services/decision_ghosts.py#L128) |
-| function | `record_broken_decision` | `(decision_id, title, adherence_score=…, note=…)` | En brudt beslutning er den rigtige kilde til en fortrydelse. | [src](../../../core/services/decision_ghosts.py#L145) |
-| function | `describe_ghost_decision` | `()` | — | [src](../../../core/services/decision_ghosts.py#L163) |
-| function | `describe_success_echo` | `()` | — | [src](../../../core/services/decision_ghosts.py#L171) |
-| function | `format_decision_ghost_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L179) |
-| function | `format_decision_echo_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L184) |
-| function | `reset_decision_ghosts` | `()` | — | [src](../../../core/services/decision_ghosts.py#L189) |
-| function | `build_decision_ghosts_surface` | `()` | — | [src](../../../core/services/decision_ghosts.py#L193) |
-
-## `core/services/decision_log.py`
-_Decision Log — records high-stakes decisions with context, options, and rationale._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_decision` | `(*, title, context=…, options=…, decision=…, why=…, refs=…)` | Record a decision in the log. | [src](../../../core/services/decision_log.py#L20) |
-| function | `build_decision_log_surface` | `()` | — | [src](../../../core/services/decision_log.py#L50) |
-
-## `core/services/decision_review_daemon.py`
-_Decision review daemon — closes the adherence loop automatically._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_record_own_state` | `(result)` | Skriv tick'ets eget spor til DAEMON_STATE — uafhængigt af returvejen. | [src](../../../core/services/decision_review_daemon.py#L34) |
-| function | `tick_decision_review_daemon` | `()` | Daemon tick: review overdue behavioral decisions. | [src](../../../core/services/decision_review_daemon.py#L55) |
-
-## `core/services/decision_review_prompter.py`
-_Decision review prompter — closes the adherence loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_dedup_gate_enabled` | `()` | Er 24t-skip-gaten aktiv? Default TRUE (den reducerede, tilsigtede adfærd). | [src](../../../core/services/decision_review_prompter.py#L44) |
-| function | `_last_review_time` | `(decision)` | Nyeste review-tidspunkt for en beslutning. | [src](../../../core/services/decision_review_prompter.py#L53) |
-| function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L82) |
-| function | `_parse_review` | `(text)` | Læs dommen. Returnerer (verdict, channel, reasoning) — eller None. | [src](../../../core/services/decision_review_prompter.py#L111) |
-| function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L155) |
 

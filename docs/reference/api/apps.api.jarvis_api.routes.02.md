@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
+_Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L20) |
+| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
+| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
+| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
+
+## `apps/api/jarvis_api/routes/cheap_balancer.py`
+_Mission Control endpoints for cheap_lane_balancer telemetry + controls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_state` | `()` | Return full snapshot: pool, slot states, recent calls. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L12) |
+| function | `reset` | `(slot_id)` | Clear breaker, cooldown, and consecutive_failures for a slot. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L19) |
+| function | `disable` | `(slot_id)` | Force a slot's weight to 0 (excluded from selection until enabled). | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L26) |
+| function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
+| function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
+| function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
+| function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
+| function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
+
 ## `apps/api/jarvis_api/routes/cheap_lane_control.py`
 _Owner-only read surface for the Cheap Lane control center._
 
@@ -67,33 +91,36 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 | function | `cowork_queue` | `()` | Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L67) |
 | function | `cowork_opmaerksomhed` | `()` | Tilstands-hjernen: ÉN samlet tilstand for den indloggede brugers | [src](../../../apps/api/jarvis_api/routes/cowork.py#L76) |
 | function | `cowork_opmaerksomhed_set` | `(session_id)` | Brugeren har åbnet samtalen — dens «færdig»/«fejlede» forsvinder. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L86) |
-| function | `cowork_side_tasks` | `()` | Jarvis' flaggede sideopgaver der stadig er åbne (pending + activated). | [src](../../../apps/api/jarvis_api/routes/cowork.py#L97) |
-| function | `cowork_side_task_status` | `(side_task_id, payload=…)` | Skift en sideopgaves status fra Desk: `activated` (startet fra kortet — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L112) |
-| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L127) |
-| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L136) |
-| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L148) |
-| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L162) |
-| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L176) |
-| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L186) |
-| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L199) |
-| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L210) |
-| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L220) |
-| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L226) |
-| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L235) |
-| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L247) |
-| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L263) |
-| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L272) |
-| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L285) |
-| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L294) |
+| function | `cowork_side_tasks` | `(scope=…)` | Jarvis' flaggede sideopgaver. `scope=open` (standard) er de åbne; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L97) |
+| function | `cowork_side_task_status` | `(side_task_id, payload=…)` | Skift en sideopgaves status fra Desk: `activated` (startet fra kortet — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L122) |
+| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L147) |
+| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L156) |
+| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L168) |
+| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L182) |
+| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L196) |
+| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L206) |
+| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L219) |
+| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L230) |
+| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L240) |
+| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L246) |
+| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L255) |
+| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L267) |
+| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L283) |
+| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L292) |
+| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L305) |
+| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L314) |
 
 ## `apps/api/jarvis_api/routes/files.py`
-_File download route — serves files Jarvis has published to ~/.jarvis-v2/files/._
+_Udgivne filer — per bruger._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_files_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L17) |
-| function | `download_file` | `(filename)` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L23) |
-| function | `list_files` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L43) |
+| function | `_min_mappe` | `(*, opret=…)` | Den autentificerede brugers filmappe, eller 401. | [src](../../../apps/api/jarvis_api/routes/files.py#L52) |
+| function | `ensure_files_dir` | `()` | Den autentificerede brugers mappe, oprettet. Bevarer det gamle navn, | [src](../../../apps/api/jarvis_api/routes/files.py#L70) |
+| class | `LinkOenske` | `` | Hvilken fil, og hvor længe. | [src](../../../apps/api/jarvis_api/routes/files.py#L76) |
+| function | `udsted_link` | `(req)` | Et kortlivet signeret link til én af MINE filer. | [src](../../../apps/api/jarvis_api/routes/files.py#L88) |
+| function | `download_file` | `(filename, ws=…)` | Hent én fil — min egen, eller en andens via et gyldigt signeret link. | [src](../../../apps/api/jarvis_api/routes/files.py#L124) |
+| function | `list_files` | `()` | MINE filer. Aldrig nogen andens, og aldrig de gamle faelles. | [src](../../../apps/api/jarvis_api/routes/files.py#L173) |
 
 ## `apps/api/jarvis_api/routes/health.py`
 
@@ -703,23 +730,4 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L106) |
 | function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
 | function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L170) |
-
-## `apps/api/jarvis_api/routes/notifikations_valg.py`
-_Push-valg per slags. Scoper til den auth'ede bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
-| function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
-| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
-
-## `apps/api/jarvis_api/routes/oauth.py`
-_OAuth connect-flow til plugin-connectors (16. jun 2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_close_page` | `(ok, msg)` | — | [src](../../../apps/api/jarvis_api/routes/oauth.py#L17) |
-| function | `oauth_start` | `(provider)` | Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L32) |
-| function | `oauth_callback` | `(provider, code=…, state=…, error=…)` | Browser-callback. Verificér state → byt code → gem token krypteret pr. bruger. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L53) |
 

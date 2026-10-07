@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-26 from app.routes (live) — 617 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-04 from app.routes (live) — 622 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -114,6 +114,7 @@
 | GET | `/api/workspace/tree` | dict | jarvisx_workspace |
 | GET | `/attachments/image/{attachment_id}` |  | attachments |
 | GET | `/attachments/images` | dict | attachments |
+| GET | `/attachments/media/{attachment_id}` |  | attachments |
 | POST | `/attachments/upload` | dict | attachments |
 | GET | `/attachments/{attachment_id}` |  | attachments |
 | GET | `/auth/openai/callback/{profile}` |  | openai_auth |
@@ -237,6 +238,7 @@
 | POST | `/chat/git/commit-all` | dict | chat |
 | POST | `/chat/git/create-pr` | dict | chat |
 | POST | `/chat/git/worktree` | dict | chat |
+| POST | `/chat/inbox/flag` | dict | chat_inbox |
 | POST | `/chat/messages/{message_id}/feedback` | dict | chat |
 | GET | `/chat/messages/{message_id}/reasoning` | dict | chat |
 | GET | `/chat/messages/{message_id}/tool-result/{tool_use_id}` | dict | chat |
@@ -267,6 +269,7 @@
 | POST | `/chat/sessions/{session_id}/rewind/{rewind_id}/undo` | dict | chat_rewind |
 | GET | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
 | PUT | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
+| DELETE | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/stream` |  | chat |
 | POST | `/chat/stream/v2` |  | chat_stream_v2 |
@@ -275,9 +278,9 @@
 | GET | `/chat/tree` | dict | chat |
 | GET | `/chat/visible-providers` | dict | chat |
 | POST | `/chat/warm` | dict | chat_stream_v2 |
-| GET | `/chat/workspace-trust` | dict | chat |
-| POST | `/chat/workspace-trust` | dict | chat |
-| GET | `/chat/workspace-trust/list` | dict | chat |
+| GET | `/chat/workspace-trust` | dict | chat_workspace_trust |
+| POST | `/chat/workspace-trust` | dict | chat_workspace_trust |
+| GET | `/chat/workspace-trust/list` | dict | chat_workspace_trust |
 | GET | `/companion/presence` | dict | companion |
 | GET | `/companion/senses` | dict | companion |
 | GET | `/companion/thoughts` | dict | companion |
@@ -306,6 +309,7 @@
 | GET | `/cowork/ui-panel/pending` | dict | cowork |
 | POST | `/cowork/ui-panel/{request_id}/ack` | dict | cowork |
 | GET | `/files/` | dict | files |
+| POST | `/files/link` | dict | files |
 | GET | `/files/{filename}` |  | files |
 | GET | `/health` | HealthResponse | health |
 | GET | `/interlanguage-blind` |  | interlanguage_blind |
@@ -581,6 +585,7 @@
 | POST | `/notifikations-valg` | dict | notifikations_valg |
 | POST | `/paste` | dict | paste |
 | GET | `/paste/{paste_id}` | dict | paste |
+| GET | `/peak/state` | dict | peak |
 | GET | `/plugins` | dict | plugins |
 | POST | `/plugins/channel/{plugin_id}/inbound` | dict | plugins |
 | GET | `/plugins/channel/{plugin_id}/response` | dict | plugins |

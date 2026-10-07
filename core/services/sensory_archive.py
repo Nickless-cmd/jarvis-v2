@@ -21,6 +21,7 @@ from core.runtime.db_sensory import (
     list_sensory_memories,
     search_sensory_memories,
 )
+from core.services.sensory_source import normalize_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,176 @@ def _uden_raa_tanke(content: str) -> tuple[str, bool]:
     return tekst[sidste.end():].strip(), True
 
 
+# Prompt-ekko — modellens EGEN instruktion ekkoet tilbage som «indtryk».
+#
+# Maalt 5/10-2026: 30 poster i `sensory_memories` var ikke sanseindtryk men
+# vision-modellens gengivelse af sin opgave: «We need answer in Danish only.
+# Need describe changes since previous observation…». Familien er
+# SELVFORSTAERKENDE — den forrige beskrivelse foeres tilbage ind i prompten, saa
+# et ekko bliver til naeste ekko. Maalt 13/9: tre poster i traek, hvor den
+# sidste citerer den forrige — «previous description provided is weird: "We need
+# answer in Danish only…"».
+#
+# Vaernene fandtes i forvejen, men ingen af dem kigger efter dette:
+# `_uden_raa_tanke` fjerner `<think>`-blokke, og `er_kvittering` fanger «Intet
+# maerkbart aendret.». Ekkoet har ingen tags og er ingen kvittering.
+#
+# Bevidst smalt: hvert moenster er en vending en BESKRIVELSE af et rum ikke
+# bruger. En falsk positiv koster et aegte indtryk, og det er dyere end at
+# overse et ekko.
+_PROMPT_EKKO_MOENSTRE = (
+    # Den engelske familie — modellen taenker hoejt paa engelsk.
+    re.compile(r"\bwe need (?:answer|describe|infer|observe|compare|analy[sz]e)\b", re.I),
+    re.compile(r"\bneed (?:to )?(?:describe|infer|answer|observe|compare|analy[sz]e)\b", re.I),
+    re.compile(r"\banswer (?:only )?in danish\b", re.I),
+    re.compile(r"\bwe have (?:only )?(?:one |current |the )?(?:image|billede)\b", re.I),
+    re.compile(r"\bprevious description\b", re.I),
+    re.compile(r"\b(?:the )?user (?:wants|asks)\b", re.I),
+    re.compile(r"\bi need to describe\b", re.I),
+    # Den danske familie — samme ekko, andet sprog.
+    re.compile(r"\b(?:vi|jeg) skal beskrive\b", re.I),
+    re.compile(r"\bsidste beskrivelse var\b", re.I),
+    re.compile(r"\bbrugeren (?:vil|beder|spørger)\b", re.I),
+    # Prompten selv, ordret indsat midt i teksten.
+    re.compile(r"\bspørgsmålet\s*:", re.I),
+    re.compile(r"\bsvar kun\b", re.I),
+    re.compile(r"\bhvis intet mærkbart\b", re.I),
+    # Digtning: modellen opdager at billedet er ubrugeligt og finder paa et rum.
+    re.compile(r"\bmin fantasi til at skabe\b", re.I),
+    # Raesonnement uden <think>-tags (maalt 5/10-2026): modellen skriver sin
+    # EGEN nummererede plan ind som indtryk — «1. **Analyser brugerens
+    # anmodning:** … 6. **Endelig polering**». `_uden_raa_tanke` fanger den
+    # ikke, for der er ingen tags. To poster (1/10), den ene 4.567 tegn ren
+    # tankeraekke. Bevidst smalt: vendingen hoerer til en PLAN, ikke til en
+    # beskrivelse af et rum.
+    re.compile(r"\banaly[sz]er brugerens\b", re.I),
+)
+
+# Svar-preamble — modellen ANMELDER sit svar i stedet for at sanse.
+# «Her er en beskrivelse af rummet: **Atmosfæren og lyset** Der hersker …»
+# Maalt 5/10-2026: 20 poster. Her STRYGES anmeldelsen frem for at posten
+# afvises — modsat ekkoet baerer resten et aegte indtryk.
+#
+# Ledet efter et NAVNORD, ikke bare «her er»: «Her er ingen mennesker» er en
+# gyldig beskrivelse af et rum og maa ikke rammes.
+#
+# Kolon-hullet (maalt 5/10-2026): `active_sensing` skriver sin mixed-sansning
+# som «Jeg så og lyttede samtidig. Visuelt: Her er en beskrivelse af …». Der
+# staar altsaa et KOLON mellem leddet og anmeldelsen — og den gamle graense
+# kraevede `(?<=[.!?])`, saa tre poster slap igennem i maanedvis (16/5, 8/9).
+# Kolon er tilfoejet som graense, og `\s*` frem for `\s+` daekker ogsaa
+# «Visuelt:Her er» uden mellemrum.
+_PREAMBLE_MOENSTER = re.compile(
+    r"(?:\A|(?<=[.!?:])\s*)(?:okay,?\s*)?(?:her er|lad os)\b[^:.]{0,80}?"
+    r"(?:beskrivelse|sansebeskrivelse|registrering|gengivelse|opsummering|skildring)\b",
+    re.I,
+)
+
+#: Hvor en saetning slutter. Bruges til at rykke et klip tilbage til sidste
+#: hele led, saa der ikke staar et halvt stykke tilbage.
+_SAETNINGSSLUT = re.compile(r"[.!?](?=\s|$)|\n\n")
+
+
+def klip_ved_saetningsgraense(tekst: str, pos: int) -> str:
+    """Klip `tekst` ved `pos`, men ryk tilbage til sidste saetningsgraense.
+
+    Uden det stod «Da billedet er helt sort, maa jeg bruge» tilbage som et halvt
+    led — over laengdekravet, og derfor vaerre end ingenting: det ligner et
+    indtryk. Er der ingen graense foer `pos`, findes der intet indtryk.
+    """
+    hale = tekst[:pos]
+    sidste = None
+    for traef in _SAETNINGSSLUT.finditer(hale):
+        sidste = traef
+    return hale[: sidste.end()].strip() if sidste else ""
+
+
+def _fjern_anmeldelse(tekst: str, traef: re.Match[str]) -> str:
+    """Fjern selve anmeldelsen — ikke resten af posten.
+
+    Maalt 5/10-2026: «Det er sent paa aftenen, og rummet er praeget af en daempet
+    atmosfaere. Her er en detaljeret beskrivelse: **Lys og skygger:** …» har et
+    aegte indtryk PAA BEGGE SIDER af anmeldelsen. Baade at klippe foran og at
+    klippe bagved ville tabe et af dem, saa kun anmeldelses-leddet fjernes.
+
+    Slutter anmeldelsen med kolon, er det den der afgraenser. Goer den ikke
+    («… baseret paa det visuelle indtryk. Det foeles som …»), er det foerste
+    saetningsslutning i stedet.
+    """
+    rest = tekst[traef.end():]
+    kolon = rest.find(":")
+    punktum = _SAETNINGSSLUT.search(rest)
+    if kolon >= 0 and (punktum is None or kolon < punktum.start()):
+        slut = traef.end() + kolon + 1
+    elif punktum is not None:
+        slut = traef.end() + punktum.end()
+    else:
+        slut = len(tekst)
+
+    foer = tekst[: traef.start()].strip()
+    efter = tekst[slut:].strip()
+    return f"{foer} {efter}".strip() if foer else efter
+
+
+#: Maskinelt lag fra `active_sensing`: «Jeg så og lyttede samtidig. Visuelt:
+#: … | Lyd: …». Det er STRUKTUR, ikke et indtryk — og naar gaten skal afgoere
+#: om der er noget tilbage efter et klip, maa laget ikke taelle med.
+#:
+#: Maalt 5/10-2026: post `931e8920` var en ren tankeraekke, men klippet efterlod
+#: «Jeg så og lyttede samtidig. Visuelt: 1.» — 39 tegn wrapper og et listetal,
+#: over `_MINDSTE_INDTRYK`, og derfor gemt som om det var en sansning.
+_WRAPPER_LAG = re.compile(
+    r"^\s*Jeg så og lyttede samtidig\.\s*|^\s*Visuelt:\s*|\s*\|\s*Lyd:\s*[^|]*",
+    re.I,
+)
+
+
+def _uden_wrapper(tekst: str) -> str:
+    """Teksten uden `active_sensing`s maskinelle lag — til VURDERING, ikke gem."""
+    return _WRAPPER_LAG.sub("", tekst or "").strip()
+
+
+def _uden_stillads(content: str) -> tuple[str, bool]:
+    """Fjern stillads foran et indtryk. Returnerer `(tekst, var_stillads)`.
+
+    To familier, begge maalt i drift 5/10-2026 (29 + 20 poster):
+
+    * **Prompt-ekko** — modellens egen instruktion. Her KLIPPES der ved foerste
+      traef, men kun ved en saetningsgraense, saa et aegte indtryk FORAN ekkoet
+      bevares. Maalt 27/9 begyndte en post med «Billedet viser en stue med to
+      personer …» og fortsatte med prompten ordret.
+    * **Svar-preamble** — «Her er en beskrivelse af rummet: …». Anmeldelsen
+      stryges; indtrykket paa begge sider af den beholdes.
+
+    Er der intet indtryk tilbage, er posten rent stillads, og `_record` afviser
+    den. Det gaelder ogsaa naar resten kun er `active_sensing`s wrapper-lag:
+    «Jeg så og lyttede samtidig. Visuelt: 1.» ser ud som 39 tegn indhold, men
+    der staar intet bag laget.
+    """
+    tekst = (content or "").strip()
+    roert = False
+
+    foerste = None
+    for moenster in _PROMPT_EKKO_MOENSTRE:
+        traef = moenster.search(tekst)
+        if traef is not None and (foerste is None or traef.start() < foerste):
+            foerste = traef.start()
+    if foerste is not None:
+        tekst = klip_ved_saetningsgraense(tekst, foerste)
+        roert = True
+        # En rest der kun er wrapper-laget er ikke et indtryk. Uden dette
+        # stod «Jeg så og lyttede samtidig. Visuelt: 1.» tilbage som en post.
+        if len(_uden_wrapper(tekst)) < _MINDSTE_INDTRYK:
+            tekst = ""
+
+    anmeldelse = _PREAMBLE_MOENSTER.search(tekst)
+    if anmeldelse is not None:
+        tekst = _fjern_anmeldelse(tekst, anmeldelse)
+        roert = True
+
+    return tekst, roert
+
+
 def _record(
     modality: str,
     content: str,
@@ -152,18 +323,61 @@ def _record(
             "sensory memory content is model reasoning, not an impression"
         )
 
+    # Stillads-gaten — den tredje indgangsgraense (5/10-2026). Fjerner
+    # prompt-ekko og svar-preamble FOER kvitterings-gaten, fordi et ekko kan
+    # indeholde en pladsholder og omvendt. Er der intet indtryk tilbage, er
+    # posten rent stillads og afvises som raesonnement ovenfor.
+    content, var_stillads = _uden_stillads(content)
+    if var_stillads and len(content) < _MINDSTE_INDTRYK:
+        raise ValueError(
+            "sensory memory content is scaffolding (prompt echo or answer "
+            "preamble), not an impression"
+        )
+
+    # Kvitterings-gaten — den anden indgangsgrænse. Et sanseindtryk markerer at
+    # noget ÆNDREDE sig; «Intet mærkbart ændret.» og et lyt der endte i
+    # `silence` er svaret på at der ikke var noget at sanse. De arkiveres ikke,
+    # men returneres som en tydelig «sprunget over», så kalderen kan sige sandt
+    # i stedet for at bogføre et indtryk der aldrig blev skrevet.
+    if not skal_arkiveres(content):
+        return {
+            "id": None,
+            "timestamp": None,
+            "modality": modality,
+            "content": content.strip(),
+            "skipped": True,
+            "reason": "kvittering",
+        }
+
     # Auto-extract mood if not provided
     final_mood = mood_tone
     if final_mood is None:
         final_mood = _extract_mood_from_content(content, modality)
 
-    # Append concept-perception note (Layer 2b memory enrichment)
+    # Concept-perception note (Layer 2b memory enrichment) — i METADATA, ikke
+    # i indholdet.
+    #
+    # MÅLT 5/10-2026: noten blev skrevet ind i `content`, og 841 af 2.744 poster
+    # (31%) bar den. Median 28% af en posts indhold var prompt-instruktion —
+    # «[concept-focus: Bemærk særligt menneskelig tilstedeværelse …]» — ikke et
+    # sanseindtryk. Det er samme fejlform som prompt-ekkoerne: stillads arkiveret
+    # som indhold, hvor det læses som noget Jarvis har sanset.
+    #
+    # Noten er en INSTRUKTION til hvad der skal lægges mærke til næste gang. Den
+    # hører i prompten (se `visual_memory.py`, hvor den stadig tilføjes) — ikke i
+    # arkivet over hvad der BLEV sanset. Ingen læser den ud af `content`; målt
+    # med grep over core/ og apps/ er `visual_memory.py` den eneste anden bruger,
+    # og den bygger en prompt.
+    #
+    # Funktionen bevares uændret: den er stadig tilgængelig på posten, nu under
+    # `metadata["concept_focus"]`, så intet går tabt — det flytter kun felt.
     final_content = content.strip()
+    extra_meta: dict[str, Any] = {}
     try:
         from core.services.affect_modulation import compute_concept_perception_focus
         focus = compute_concept_perception_focus()
         if focus:
-            final_content = f"{final_content}\n[concept-focus: {focus}]"
+            extra_meta["concept_focus"] = focus
     except Exception:
         pass
 
@@ -171,7 +385,10 @@ def _record(
         modality=modality,
         content=final_content,
         mood_tone=final_mood,
-        metadata=metadata or {},
+        # Kilden er fri tekst fra kalderen, og når kalderen er en rutine, opdigtes
+        # et nyt navn hver nat — målt 28/9-2026: 69 navne for ni kilder. Her er
+        # det ene punkt alle skrivninger går igennem, så her foldes navnet.
+        metadata=normalize_metadata({**(metadata or {}), **extra_meta}),
     )
     try:
         event_bus.publish(
@@ -268,6 +485,61 @@ _PLADSHOLDERE = (
     "ingen ændring",
     "ingen aendring",
 )
+
+# Kvitteringer der ikke er pladsholder-TEKSTER men kvitteringer for et udfald.
+# Lyd-siden skriver sin klassifikation som indhold, i to formater kodebasen
+# selv producerer: «Jeg lyttede til rummet. Klassifikation: silence (amplitude
+# …)» (active_sensing) og «Lydbillede: silence» (ambient_sound). Begge betyder
+# at der ikke var noget at høre. Målt 28/9-2026: 24 sådanne poster, nyeste 26/9.
+# Bevidst snævert: en BESKRIVELSE der nævner 'silence' («…kategori 'silence'
+# betyder, at der er en meget lav lydintensitet») er et indtryk og rammes ikke.
+_KVITTERING_MOENSTRE = (
+    re.compile(r"(?:klassifikation|lydbillede):\s*silence\b", re.IGNORECASE),
+)
+
+# Hvornår en kvittering er en sansning. Ukendt værdi falder til «skip».
+_KVITTERING_MODES = ("skip", "always")
+
+
+def er_kvittering(content: object) -> bool:
+    """Er dette kvitteringen for at der blev sanset — ikke et indtryk?
+
+    Fanger to familier: pladsholder-teksterne ("Intet mærkbart ændret.") og
+    lyd-klassifikationen `silence`, som betyder at der ikke var noget at høre.
+    """
+    tekst = str(content or "").strip()
+    if not tekst:
+        return True
+    lav = tekst.lower()
+    if any(lav.startswith(p) for p in _PLADSHOLDERE):
+        return True
+    return any(m.search(tekst) for m in _KVITTERING_MOENSTRE)
+
+
+def _kvittering_mode() -> str:
+    """Hvornår en kvittering er en sansning: skip | always."""
+    try:
+        from core.runtime.settings import load_settings
+
+        raa = str(load_settings().sensory_receipt_archive_mode or "")
+    except Exception as exc:  # indstillingerne kan ikke læses → sikkert valg
+        logger.debug("sensory_archive: kunne ikke læse indstilling: %s", exc)
+        return "skip"
+    mode = raa.strip().lower()
+    return mode if mode in _KVITTERING_MODES else "skip"
+
+
+def skal_arkiveres(content: object) -> bool:
+    """Skal denne tekst arkiveres som en sansning?
+
+    `er_maettet` har svaret på det siden 18/9 — men kun på LÆSESIDEN: arkivet
+    blev ved med at fyldes med kvitteringer, og filteret skjulte dem bagefter.
+    Her er det samme spørgsmål flyttet til det ene punkt alle skrivninger går
+    igennem, så hanen lukkes i stedet for at gulvet moppes.
+    """
+    if _kvittering_mode() == "always":
+        return True
+    return not er_kvittering(content)
 
 
 def er_maettet(content: object) -> bool:

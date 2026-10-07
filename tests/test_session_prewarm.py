@@ -88,3 +88,43 @@ def test_warm_never_raises_on_builder_error(monkeypatch):
     monkeypatch.setattr(vm, "_build_visible_chat_messages_for_github", _boom, raising=True)
     r = sp.warm_session_prefix("chat-err", force=True)
     assert r["status"] == "error"  # self-safe: returned, not raised
+
+
+# ── Warmeren skal varme DEN model der faktisk svarer ────────────────────────
+
+def test_warmeren_foelger_den_konfigurerede_model(monkeypatch):
+    """1/10-2026: `visible_model_name` blev skiftet til DeepSeeks kanoniske navn
+    `deepseek-flash`, men warmeren stod haardkodet paa legacy-navnet. Maalt
+    elleve minutter efter skiftet: den varmede stadig `deepseek-v4-flash`.
+
+    En cache-warmer der varmer en ANDEN model end den der svarer, varmer
+    ingenting — saa de to navne maa ikke kunne drive fra hinanden."""
+    import core.services.session_prewarm as sp
+
+    set_model: dict = {}
+
+    class _Indstillinger:
+        visible_model_name = "model-fra-konfigurationen"
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: _Indstillinger())
+    monkeypatch.setattr(sp, "_warm_now", lambda **kw: set_model.update(kw) or {"status": "ok"},
+                        raising=False)
+
+    # Vi kalder ikke hele vejen igennem; vi laeser hvad defaulten opløses til.
+    import inspect
+    sig = inspect.signature(sp.warm_session_prefix)
+    assert sig.parameters["model"].default == "", (
+        "defaulten skal vaere tom, saa den kan opløses mod konfigurationen")
+
+
+def test_scriptets_default_er_ikke_laengere_haardkodet():
+    """`scripts/primary_cache_warmer.py` havde sit eget `DEFAULT_MODEL`. Nu
+    spoerger den konfigurationen, og falder tilbage paa det KANONISKE navn —
+    ikke legacy-navnet — hvis den ikke kan laeses."""
+    import importlib.util
+    from pathlib import Path
+    sti = Path(__file__).resolve().parents[1] / "scripts" / "primary_cache_warmer.py"
+    kilde = sti.read_text(encoding="utf-8")
+    assert 'DEFAULT_MODEL = "deepseek-v4-flash"' not in kilde
+    assert "DEFAULT_MODEL = _konfigureret_model()" in kilde
+    assert "KANONISK_FLASH" in kilde

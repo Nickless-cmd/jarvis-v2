@@ -12,9 +12,9 @@ const toolMsg = (id: string) => ({ id, role: 'tool' as const, content: [{ type: 
 describe('mergeServer afdublering', () => {
   it('fjerner tomme blokindeks fra hentede beskeder før de vises', () => {
     const server = [{ ...asstMsg('a-hole', 'svar'),
-      content: [null, { type: 'text', text: 'svar' }] as never }]
+      content: [null, { type: 'text' as const, text: 'svar' }] as never }]
     const merged = mergeServer([], server)
-    expect(merged[0]!.content).toEqual([{ type: 'text', text: 'svar' }])
+    expect(merged[0]!.content).toEqual([{ type: 'text' as const, text: 'svar' }])
   })
 
   it('beholder array- og beskedreferencer når serverens transcript er uændret', () => {
@@ -81,7 +81,7 @@ describe('mergeServer afdublering', () => {
       clientStatus: 'server_missing_keep_stream' as const,
       content: [
         { type: 'tool_use', id: 'tu-1', name: 'bash', input: {}, status: 'done', result: 'ok' },
-        { type: 'text', text: 'svaret' },
+        { type: 'text' as const, text: 'svaret' },
       ] as unknown as { type: 'text'; text: string }[],
     }
     const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'svaret')] // server = KUN tekst
@@ -107,7 +107,7 @@ describe('mergeServer afdublering', () => {
       clientStatus: 'server_missing_keep_stream' as const,
       content: [
         { type: 'tool_use', id: 'ask-1', name: 'pause_and_ask', input: {}, status: 'done', result: pauseResult },
-        { type: 'text', text: 'Jeg venter på dit valg.' },
+        { type: 'text' as const, text: 'Jeg venter på dit valg.' },
       ] as unknown as { type: 'text'; text: string }[],
     }
     // Persistenslaget kan allerede have et andet tool-kort og kan normalisere
@@ -119,7 +119,7 @@ describe('mergeServer afdublering', () => {
         ...asstMsg('srv-a', 'Jeg afventer dit valg.'),
         content: [
           { type: 'tool_use', id: 'other-1', name: 'read_file', input: {}, status: 'done', result: 'ok' },
-          { type: 'text', text: 'Jeg afventer dit valg.' },
+          { type: 'text' as const, text: 'Jeg afventer dit valg.' },
         ] as unknown as { type: 'text'; text: string }[],
       },
     ]
@@ -142,7 +142,7 @@ describe('mergeServer afdublering', () => {
       clientStatus: 'server_missing_keep_stream' as const,
       content: [
         { type: 'tool_use', id: 'tu-1', name: 'bash', input: {}, status: 'done', result: 'ok' },
-        { type: 'text', text: 'svaret' },
+        { type: 'text' as const, text: 'svaret' },
       ] as unknown as { type: 'text'; text: string }[],
     }
     const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'svaret')] // KUN tekst
@@ -197,7 +197,7 @@ describe('mergeServer afdublering', () => {
       { id: 'srv-a', role: 'assistant' as const, created_at: 'now', parent_id: null,
         content: [
           { type: 'tool_use', id: 'toolu_1', name: 'bash', input: {}, status: 'done', result: 'ok' },
-          { type: 'text', text: 'svaret' },
+          { type: 'text' as const, text: 'svaret' },
         ] as unknown as { type: 'text'; text: string }[] },
     ]
     const merged = mergeServer([], server)
@@ -223,7 +223,7 @@ describe('SessionContext reconcile', () => {
     const { result } = renderHook(() => useSessions(), { wrapper })
     await act(async () => { result.current.select('s1') })
     act(() => {
-      result.current.appendOptimistic({ id: 'u-1', role: 'user', content: [{ type: 'text', text: 'hej' }], created_at: 'now', parent_id: null })
+      result.current.appendOptimistic({ id: 'u-1', role: 'user', content: [{ type: 'text' as const, text: 'hej' }], created_at: 'now', parent_id: null })
     })
     expect(result.current.messages.some((m) => m.id === 'u-1')).toBe(true)
   })
@@ -232,7 +232,7 @@ describe('SessionContext reconcile', () => {
     const { result } = renderHook(() => useSessions(), { wrapper })
     await act(async () => { result.current.select('s1') })
     act(() => {
-      result.current.reconcile({ id: 'a-temp', role: 'assistant', content: [{ type: 'text', text: 'svar' }], created_at: 'now', parent_id: null })
+      result.current.reconcile({ id: 'a-temp', role: 'assistant', content: [{ type: 'text' as const, text: 'svar' }], created_at: 'now', parent_id: null })
     })
     // server-load returnerer tom (race) — beskeden må IKKE forsvinde
     await act(async () => { await result.current.refresh() })
@@ -397,5 +397,81 @@ describe('en fejlet hentning maa ikke ligne en tom samtale', () => {
     await act(async () => { result.current.genindlaes() })
     await waitFor(() => expect(result.current.messages).toHaveLength(1))
     expect(result.current.loadFejl).toBe('')
+  })
+})
+
+// ── RUN-ID SOM PRÆCIS NØGLE (Bjørn 6/10-2026) ──────────────────────────────
+//
+// «Jeg ser 2 runs i tråden med samme svar.» Dubletten stod IKKE i databasen —
+// ligheden mellem svarparrene i vinduet var 1-12 %. Det var bro-kopien der blev
+// stående, fordi afdubleringen var et BYTE-match på en prosa serveren selv har
+// skrevet om. Mobilens kommentar navngav forskellen samme dag: serveren
+// persisterer alle text-blokke UNDTAGEN den første, mens broen joiner dem alle.
+describe('mergeServer: run-id slaar tekst-matchet', () => {
+  const bro = (runId: string, tekst: string) => ({
+    id: `a-${runId}`,
+    role: 'assistant' as const,
+    content: [{ type: 'text' as const, text: tekst }],
+    created_at: '2026-10-06T17:00:00Z',
+    parent_id: null,
+    clientStatus: 'server_missing_keep_stream' as const,
+  })
+
+  it('dropper broen naar run-id matcher, OGSAA naar teksten er forskellig', () => {
+    // Serverens kopi mangler den foerste text-blok (den maalte asymmetri), og
+    // turen slutter paa en tool-raekke, saa serverCaughtUp er falsk. Begge de
+    // gamle veje fejler her — det er praecis dubletten paa skaermen.
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: 'ANDEN DEL af svaret' }],
+        created_at: '2026-10-06T17:00:01Z', parent_id: null,
+        run_id: 'visible-bd1727a4' },
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-06T17:00:02Z', parent_id: null },
+    ]
+    const merged = mergeServer([bro('visible-bd1727a4', 'FOERSTE DEL. ANDEN DEL af svaret')], server)
+    expect(merged.filter((m) => m.role === 'assistant')).toHaveLength(1)
+    expect(merged.find((m) => m.id === 'a-visible-bd1727a4')).toBeUndefined()
+  })
+
+  it('BEHOLDER broen naar run-id ligger paa et ANDET run', () => {
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: 'et helt andet svar' }],
+        created_at: '2026-10-06T17:00:01Z', parent_id: null,
+        run_id: 'visible-et-andet-run' },
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-06T17:00:02Z', parent_id: null },
+    ]
+    const merged = mergeServer([bro('visible-bd1727a4', 'mit svar')], server)
+    expect(merged.find((m) => m.id === 'a-visible-bd1727a4')).toBeDefined()
+  })
+
+  it('BEHOLDER broen naar serveren ikke sender run_id (tomt kort efter genstart)', () => {
+    // Fallbacken skal bevares: uden den var dubletten blevet PERMANENT netop
+    // i det tilfaelde hvor kortet er tomt.
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: 'ANDEN DEL af svaret' }],
+        created_at: '2026-10-06T17:00:01Z', parent_id: null },
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-06T17:00:02Z', parent_id: null },
+    ]
+    const merged = mergeServer([bro('visible-bd1727a4', 'FOERSTE DEL. ANDEN DEL af svaret')], server)
+    expect(merged.find((m) => m.id === 'a-visible-bd1727a4')).toBeDefined()
+  })
+
+  it('et tomt run_id paa serveren matcher ALDRIG en bro', () => {
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: 'andet' }],
+        created_at: '2026-10-06T17:00:01Z', parent_id: null, run_id: '' },
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-06T17:00:02Z', parent_id: null },
+    ]
+    // broen har et id der IKKE starter med 'a-' -> intet run at matche paa
+    const uden = { ...bro('x', 'mit svar'), id: 'noget-andet' }
+    const merged = mergeServer([uden], server)
+    expect(merged.find((m) => m.id === 'noget-andet')).toBeDefined()
   })
 })

@@ -27,6 +27,14 @@ def test_load_more_tools_in_tier1():
     assert "load_more_tools" in ctp.TIER_1_ALWAYS_ON
 
 
+def test_side_task_accounting_tools_survive_visible_cap():
+    names = {"flag_side_task", "activate_side_task", "dismiss_side_task"}
+    selected = set(_names(ctp.select_tools_for_visible(
+        _make_tools(), user_message="hello", session_id="s",
+    )))
+    assert names <= selected
+
+
 def test_visible_set_is_deterministic_across_messages():
     tools = _make_tools()
     assert len(tools) > ctp.MAX_TOOLS  # ensure pruning actually triggers
@@ -78,3 +86,128 @@ def test_full_catalog_under_cap_returned_unchanged():
     tools = [{"function": {"name": f"t{i}"}} for i in range(10)]
     out = ctp.select_tools_for_copilot(tools, user_message="anything", max_tools=128)
     assert _names(out) == _names(tools)
+
+
+# ── De fire hyppigst hentede skal HAVE en plads (30/9-2026) ──────────────────
+#
+# Alle fire stod allerede i TIER_1_ALWAYS_ON og blev alligevel hentet 76 gange
+# paa 30 dage, fordi Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+# ankomstraekkefoelge — 77 af de 118 naaede aldrig arrayet. Medlemskab af
+# Tier 1 er ingen garanti; `REQUIRED_LAZY_TOOL_NAMES` er.
+#
+# Hver hentning koster ~8.704 tokens (maalt mod DeepSeeks API), fordi
+# vaerktoejsarrayet ligger foer hele samtalen i praefikset.
+
+_HYPPIGST_HENTEDE = (
+    "send_discord_dm",          # 28 hentninger paa 30 dage
+    "record_sensory_memory",    # 18 — stod ikke engang i Tier 1
+    "send_webchat_message",     # 15
+    "recall_sensory_memories",  # 15
+)
+
+
+def test_de_hyppigst_hentede_naar_faktisk_arrayet():
+    """Ikke «staar i Tier 1» — men «bliver rent faktisk sendt»."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    valgt = ctp.select_tools_for_visible(get_tool_definitions(), user_message="", session_id=None)
+    navne = {(d.get("function") or d).get("name") for d in valgt}
+    mangler = [n for n in _HYPPIGST_HENTEDE if n not in navne]
+    assert not mangler, f"hentes ofte, men sendes ikke: {mangler}"
+
+
+def test_byttet_sproenger_ikke_loftet():
+    """Kontrollen. Uden den kunne testen ovenfor bestaa ved at sende ALT —
+    og et array der vokser er praecis det problem de fire skulle loese."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    valgt = ctp.select_tools_for_visible(get_tool_definitions(), user_message="", session_id=None)
+    assert len(valgt) == ctp.VISIBLE_MAX_TOOLS
+
+
+def test_escape_vejene_overlever_byttet():
+    """Begge veje ud til de ~320 oevrige skal blive: `load_more_tools` finder
+    dem, `call_loaded_tool` kalder dem uden at roere arrayet."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    navne = {(d.get("function") or d).get("name")
+             for d in ctp.select_tools_for_visible(get_tool_definitions(),
+                                                   user_message="", session_id=None)}
+    assert {"load_more_tools", "call_loaded_tool"} <= navne
+
+
+# ── Sikkerhedsgulvet skal HAANDHAEVES, ikke bare staa skrevet (30/9-2026) ────
+#
+# Gulvet stod i `scripts/regenerate_tier1.py` med teksten «must always be
+# available regardless of past usage» og blev unioneret ind i TIER_1_ALWAYS_ON
+# ved regenerering. Men Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+# ankomstraekkefoelge — saa gulvet var et krav ingen haandhaevede.
+#
+# Maalt: 7 af de 28 registrerede gulv-navne blev ikke sendt, heriblandt
+# `memory_upsert_section` med 157 kald paa 30 dage.
+
+def test_hele_sikkerhedsgulvet_naar_arrayet():
+    """Ikke «staar i en liste» — men «bliver rent faktisk sendt»."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    alle = get_tool_definitions()
+    registreret = {(d.get("function") or d).get("name") for d in alle}
+    valgt = {(d.get("function") or d).get("name")
+             for d in ctp.select_tools_for_visible(alle, user_message="", session_id=None)}
+    mangler = (set(ctp.SAFETY_FLOOR) & registreret) - valgt
+    assert not mangler, f"sikkerhedsgulvet naar ikke arrayet: {sorted(mangler)}"
+
+
+def test_gulvet_navngiver_kun_vaerktoejer_der_FINDES():
+    """`propose_git_commit` stod i gulvet uden at findes i kataloget. Et navn
+    ingen kan kalde er ikke et sikkerhedsgulv — det er en stavefejl med
+    autoritet."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    registreret = {(d.get("function") or d).get("name") for d in get_tool_definitions()}
+    ukendte = set(ctp.SAFETY_FLOOR) - registreret
+    assert not ukendte, f"gulvet navngiver vaerktoejer der ikke findes: {sorted(ukendte)}"
+
+
+def test_gulvet_har_ÉN_kilde():
+    """Gulvet stod to steder og blev haandhaevet nul. Generatoren skal LAESE
+    runtime-listen, ikke have sin egen."""
+    from pathlib import Path
+
+    kilde = Path("scripts/regenerate_tier1.py").read_text(encoding="utf-8")
+    assert "from core.tools.copilot_tool_pruning import SAFETY_FLOOR" in kilde, (
+        "generatoren har sin egen kopi af gulvet igen — dobbelt sandhed")
+
+
+
+# ── scout BLIVER, spawn gaar (30/9-2026) ─────────────────────────────────────
+#
+# Maalt en uge efter at `spawn_agent_task` blev sat i inventaret for at goere
+# den synlig: `scout_agent` 35 kald (15 siden 23/9), `spawn_agent_task` NUL i
+# 30 dage. Indgrebet virkede ikke, og den kostede 2.510 tegn i hver prompt.
+#
+# Bjoern 30/9: «den hedder scout idag» og «scout skal vaere i kataloget».
+
+def test_scout_er_i_kataloget():
+    """Bjoerns krav, og det han faktisk bruger. Faldt den ud af inventaret,
+    ville han igen kun kunne se det han ikke bruger."""
+    from core.services.tool_catalog import build_catalog_text
+
+    assert "scout_agent" in build_catalog_text()
+
+
+def test_spawn_agent_task_er_ude_af_det_faste_array():
+    """Det dyreste enkeltvaerktoej med nul kald. Den kan stadig naas — den
+    staar i kataloget og hentes med load_more_tools + call_loaded_tool."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.services.tool_catalog import build_catalog_text
+
+    assert "spawn_agent_task" not in ctp.REQUIRED_LAZY_TOOL_NAMES
+    assert "spawn_agent_task" not in ctp.SAFETY_FLOOR
+    # men den skal stadig kunne FINDES, ellers er evnen vaek og ikke bare flyttet
+    assert "spawn_agent_task" in build_catalog_text()

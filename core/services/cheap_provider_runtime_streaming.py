@@ -196,8 +196,8 @@ def _iter_openai_compatible_chat_events(
                             provider=provider, code=_vf.STALL_KODE,
                             message=(
                                 f"{provider}/{model} holdt forbindelsen aaben i "
-                                f"{int(_stime.monotonic() - _t_aabnet)}s uden ét "
-                                f"eneste indholds-event"
+                                f"{int(_stime.monotonic() - _t_aabnet)}s uden en "
+                                f"eneste data-linje — kun keepalive"
                             ),
                         )
                     continue
@@ -365,6 +365,12 @@ def _iter_openai_compatible_chat_events(
     if provider == "deepseek":
         enriched_usage.setdefault("model", model)
     cost_usd = float(_estimate_cheap_cost(provider=provider, usage=enriched_usage))
+    # Tænke-tokens: DELMÆNGDE af completion_tokens (allerede betalt som output) —
+    # sendes videre så hovedbogen kan måle hvor meget af output der er tænkning.
+    # Læses fra `completion_tokens_details`, som DeepSeek lægger i usage-chunken.
+    _reasoning_tokens = int(
+        (final_usage.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+    )
     yield {
         "kind": "done",
         "full_text": full_text,
@@ -373,6 +379,7 @@ def _iter_openai_compatible_chat_events(
         "output_tokens": output_tokens,
         "cache_hit_tokens": cache_hit,
         "cache_miss_tokens": cache_miss,
+        "reasoning_tokens": _reasoning_tokens,
         "cost_usd": cost_usd,
         "finish_reason": _finish_reason,
         "observed_model": _observed_model,

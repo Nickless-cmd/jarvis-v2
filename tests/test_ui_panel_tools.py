@@ -33,11 +33,24 @@ def test_registered_in_global_catalog(isolated_runtime) -> None:
     assert "open_ui_panel" in names
 
 
-def test_close_action_valid() -> None:
-    from core.tools.ui_panel_tools import _exec_open_ui_panel
-    r = _exec_open_ui_panel({"action": "close"})
-    assert r["status"] == "ok"
+def test_close_sender_en_rigtig_forespoergsel(isolated_runtime, monkeypatch) -> None:
+    """3/10-2026: lukningen svarede «ok» UDEN at sende noget.
+
+    Den gamle test hed `test_close_action_valid` og låste netop fejlen: den
+    tjekkede kun at svaret sagde «close». Desk's `UiPanelWatcher` har hele tiden
+    kunnet lukke (`req.action === 'close'` → `panel.close()`), men serveren
+    lagde aldrig posten — så panelet blev stående. Bjørn målte det 3/10.
+    """
+    from core.tools import ui_panel_tools as u
+    from core.services.ui_panel_store import list_pending
+
+    monkeypatch.setattr(u, "get_request_status", lambda rid: "opened")
+    r = u._exec_open_ui_panel({"panel": "right", "action": "close"})
+    assert r["status"] == "ok" and r["confirmed"] is True
     assert r["action"] == "close"
+    assert "lukkede" in r["note"]
+    # Posten SKAL stå i butikken — det var hele fejlen at den ikke gjorde.
+    assert any(p["action"] == "close" and p["panel"] == "right" for p in list_pending())
 
 
 def test_open_is_default_action(isolated_runtime, monkeypatch) -> None:
@@ -100,7 +113,7 @@ def test_scope_naar_faktisk_frem_til_store(monkeypatch):
 
     set_ = {}
 
-    def falsk_request_panel(panel, *, detail="", scope="repo", session_id=""):
+    def falsk_request_panel(panel, *, detail="", scope="repo", session_id="", action="open"):
         set_.update(panel=panel, detail=detail, scope=scope)
         return {"id": "panel-prøve"}
 

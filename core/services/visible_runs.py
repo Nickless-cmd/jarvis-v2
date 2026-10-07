@@ -222,7 +222,6 @@ from core.services.visible_model import (
 # core.services.visible_runs.run_non_visible_with_fallback direkte.
 from core.services.non_visible_fallback import run_non_visible_with_fallback
 from core.memory.private_layer_pipeline import write_private_terminal_layers
-from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     connect,
@@ -927,6 +926,23 @@ def start_visible_run(
             yield _sse("done", {"type": "done", "status": "failed"})
         logger.warning("visible-run afvist: %s", _model_problem)
         return _afvis_model()
+
+    # ÉN model pr. session (3/10-2026) — se `session_model_pin`. Laasen sidder
+    # EFTER par-valideringen, saa det der laases altid er et gyldigt par, og
+    # et eksplicit valg fra klienten vinder stadig: det laases i stedet, saa
+    # hans valg ogsaa holder paa NAESTE tur.
+    try:
+        from core.services import session_model_pin as _smp
+        if provider_override or model_override:
+            _smp.pin(normalized_session_id, _vis_provider, _vis_model)
+            _pin_kilde = "eksplicit"
+        else:
+            _vis_provider, _vis_model, _pin_kilde = _smp.resolve(
+                normalized_session_id, _vis_provider, _vis_model)
+        logger.info("visible-model session=%s %s/%s kilde=%s",
+                    normalized_session_id, _vis_provider, _vis_model, _pin_kilde)
+    except Exception:
+        logger.warning("model-laas fejlede — bruger routerens valg", exc_info=True)
     # Adaptiv tænkning (12. jul): 'think' fik deepseek til at ræsonnere ~9s FØR svar på
     # HVER tur — også simpel snak. resolve_thinking_mode skruer kode/opgave→think, resten→
     # fast (−9s TTFT); eksplicit fast/deep fra klienten respekteres. Kill-switch:
@@ -1485,8 +1501,10 @@ async def _stream_visible_run(
                                     "input_tokens": 0, "output_tokens": 0})
                 return
             if _hook_dom.get("action") == "inject" and _hook_dom.get("message"):
+                from core.services.run_trailing import runtime_instruction_message
                 run.user_message = (
-                    f"{run.user_message}\n\n[HOOK]\n{_hook_dom['message']}")
+                    f"{run.user_message}\n\n"
+                    f"{runtime_instruction_message('[HOOK] ' + str(_hook_dom['message']))['content']}")
             # Kun naar en hook faktisk gjorde noget — en linje pr. tur ville
             # vaere stoej, og den almindelige vej er «ingen hooks».
             if _hook_dom.get("action") != "allow":
@@ -1652,34 +1670,14 @@ async def _stream_visible_run(
             import time as _fptime
             _fp_t0 = _fptime.monotonic()
 
+            from core.services.visible_first_pass_pump import pump_first_pass
+
             def _pump_model_stream() -> None:
-                # RE-ASSERT tool-scope + local-exec (2026-07-22, MÅLT rod): ContextVars sat
-                # øverst i denne async-generator (~:1237) TABES her — async-generatorer bevarer
-                # ikke ContextVar-mutationer over yields (og/eller tråd-grænsen). Målt: scope=''
-                # ved tool-bygningen → get_tool_definitions() ser DEFAULT → ALLE 126 tools
-                # (17.751 tok = 56% af prompten) i stedet for code-scopets ~22. Re-sæt fra
-                # closuren så tool-bygningen ser det RIGTIGE scope. Se reference_tool_scope_ctxvar_lost.
-                try:
-                    from core.tools.tool_scoping import set_tool_scope as _sts_reassert, set_local_exec as _sle_reassert
-                    if tool_scope:
-                        _sts_reassert(tool_scope)
-                    _sle_reassert(bool(getattr(run, "local_tool_exec", False)))
-                except Exception:
-                    pass
-                try:
-                    for item in stream_visible_model(
-                        message=run.user_message,
-                        provider=run.provider,
-                        model=run.model,
-                        session_id=run.session_id,
-                        controller=controller,
-                        thinking_mode=run.thinking_mode,
-                    ):
-                        loop.call_soon_threadsafe(queue.put_nowait, item)
-                except Exception as exc:
-                    loop.call_soon_threadsafe(queue.put_nowait, exc)
-                finally:
-                    loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
+                pump_first_pass(
+                    run, controller=controller, tool_scope=tool_scope or "",
+                    loop=loop, queue=queue, sentinel=_sentinel,
+                    stream_fn=stream_visible_model,
+                )
 
             _run_stage = "first_pass_streaming"
             # KONTEKST-PROPAGATION (2026-07-22, målt rod): run_in_executor kopierer IKKE
@@ -1919,6 +1917,15 @@ async def _stream_visible_run(
             user_message = friendly_provider_error_message(exc)
             stage_error = f"first-pass-provider-error: {raw_message}"
             logger.warning("visible_runs first-pass provider error: %s", raw_message)
+            # Slip model-laasen (3/10-2026). Uden dette ville en model der er
+            # nede kile sessionen fast: hver tur ville vaelge den igen, fejle,
+            # og laasen aldrig aendre sig. Naeste tur laaser routerens nye valg.
+            try:
+                from core.services import session_model_pin as _smp_rel
+                _smp_rel.release(str(run.session_id or ""),
+                                 grund=f"provider-fejl: {raw_message[:80]}")
+            except Exception:
+                logger.warning("kunne ikke slippe model-laasen", exc_info=True)
             _update_visible_execution_trace(
                 run,
                 {
@@ -2168,15 +2175,15 @@ async def _stream_visible_run(
                     for _lm_n in _lm_added:
                         if _lm_n and _lm_n not in _round_extra_tools:
                             _round_extra_tools.append(str(_lm_n))
-                    # 2026-09-05: udvid præfiks-låsen, så et værktøj han hentede
-                    # frem holder ved til næste tur i stedet for at forsvinde og
-                    # tvinge et nyt load_more_tools (og et nyt præfiks).
+                    # 2026-09-05: laasen holdt et hentet vaerktoej ved til
+                    # naeste tur i stedet for at tvinge en ny hentning.
+                    # 30/9-2026: det — og fletten nedenfor — springes over naar
+                    # `visible_tools_frozen` er sat, for begge aendrer arrayet,
+                    # og arrayet ligger foer hele samtalen. Se
+                    # `hentede_vaerktoejer.py` for maalingen og killswitchen.
                     if _lm_added:
-                        try:
-                            from core.services.session_tool_pin import extend as _pin_extend
-                            _pin_extend(run.session_id, [str(n) for n in _lm_added])
-                        except Exception:
-                            pass
+                        from core.services.hentede_vaerktoejer import udvid_laasen
+                        udvid_laasen(run.session_id, [str(n) for n in _lm_added])
                 except Exception:
                     pass
 
@@ -2236,6 +2243,12 @@ async def _stream_visible_run(
                         })
                 visible_input_pre = await _bvi_task
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
+                # Turens hale. ALT der opstaar undervejs — styringer,
+                # nudges, hook-noter, baggrunds-noter, per-runde-vink —
+                # hoerer HER og ikke paa base_messages. Se run_trailing for
+                # hvad det kostede at have dem det forkerte sted.
+                from core.services.run_trailing import RundeHale
+                _tur_hale = RundeHale()
 
                 # ── Cache-boundary drift observer (harness Part B, Mechanism A) ──
                 # Zero prompt mutation: hash the STATIC system message (base_messages[0])
@@ -2539,8 +2552,20 @@ async def _stream_visible_run(
                         # 6.400-8.320 (= systembeskeden) mens miss voksede til
                         # 76k. Nu bestemmer routeren ÉN gang pr. session.
                         from core.services.session_tool_pin import resolve as _pin_resolve
+                        # Atomaritet (2/10-2026): prompten kan nævne et skill
+                        # («[SKILLS DER MATCHER DENNE OPGAVE]»), men målt samme
+                        # dag overlevede INTET skill-værktøj router+pin i de
+                        # agentiske runder — kun `load_more_tools` og
+                        # `call_loaded_tool`. Den betingede pin fandtes kun i
+                        # første pas. Samme betingelse, samme delte opslag, så
+                        # prompt og værktøjssæt ikke kan sige hver sit.
+                        try:
+                            from core.tools.copilot_tool_pruning import _betinget_kraevede
+                            _betinget = _betinget_kraevede(run.user_message)
+                        except Exception:
+                            _betinget = ()
                         _names, _pin_src = _pin_resolve(
-                            run.session_id, list(_selection.selected_names))
+                            run.session_id, list(_selection.selected_names), _betinget)
                         _selected_set = set(_names)
                         _agentic_tools = [
                             d for d in _agentic_tools
@@ -2569,10 +2594,21 @@ async def _stream_visible_run(
                 _ds_active: dict[str, str] = {}
                 from core.services import decision_signal_staging as _dss
 
+                # Klasse-2-advarsler til MODELLEN — ikke i _a_parts, saa Bjoern
+                # ikke ser en dublet. Begrundelser: visible_run_guard_notices.
+                _vaerns_advarsler: list[str] = []
+                from core.services import visible_run_guard_notices as _gn
+
                 def _exchange_text() -> str:
                     """Assistant-turen til modellen = rent svar (_a_parts) + efemere
-                    decision-noter. _a_parts forbliver ren (persist + resolution-tjek)."""
-                    return _dss.compose_exchange_text(_a_parts, _ds_active)
+                    decision-noter. _a_parts forbliver ren (persist + resolution-tjek).
+
+                    3/10: klasse-3-noter filtreres UD paa vejen til modellen — se
+                    visible_run_guard_notices. Listen selv roeres ikke.
+                    """
+                    _rene = _gn.fjern_menneske_noter(_a_parts)
+                    _tekst = _dss.compose_exchange_text(_rene, _ds_active)
+                    return _tekst + "".join(_vaerns_advarsler)
 
                 # Udskilt til visible_followup_results (Boy Scout, 18/9-2026) —
                 # og baerer nu kaldets status, saa en fejl ogsaa er en fejl i den
@@ -2706,6 +2742,9 @@ async def _stream_visible_run(
                 # 70 annoncerede, tool_choice=required) — det er ikke dét.
                 _hollow_promise_nudges = 0
                 _HOLLOW_MAX_NUDGES = 2
+                # Skill-beslutning (2/10-2026): ét stærkt match = ét krav om
+                # svar. Cap 1, samme grund som hollow-promise-loftet.
+                _skill_gate_nudges = 0
                 _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
                 _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
@@ -2721,7 +2760,10 @@ async def _stream_visible_run(
                 _a_pending_tool_intent = False
                 _a_finish_reason = ""
                 # Batch-vink: maalt 13/9 kaldte 304 af 366 runder ÉT vaerktoej.
+                # 4/10-2026: vinket kraever at MOENSTERET gentager sig — se
+                # `tool_batch_notice`. Derfor baeres to runders tal, ikke ét.
                 _forrige_runde_kald = 0
+                _forrige_forrige_kald = 0
                 _batch_vink_vist = 0
                 # CUT-OFF-flag (12. sep 2026 — ROD-ÅRSAG til UnboundLocalError):
                 # initialiseres HER, ikke kun pr. forsøg inde i loopet. To tidlige
@@ -2886,6 +2928,26 @@ async def _stream_visible_run(
                             })
                         except Exception:
                             pass
+                    # ── Rundeskille (1/10-2026) ──────────────────────────────
+                    # Runderne blev lagt sammen med "".join() uden separator, så
+                    # runde N's sidste sætning og runde N+1's første smeltede
+                    # sammen. Målt i Bjørns besked 1/10-2026: «...koster én fil.
+                    # Skillen er læst...» blev gemt som «...koster én fil.Skillen
+                    # er læst...» — præcis ÉT lim-sted i 6.714 tegn, og det lå på
+                    # rundeskiftet. Det næste skift var rent, fordi modellen dér
+                    # selv skrev et indledende \n\n. Vi må ikke afhænge af det.
+                    # Separatoren lægges FØR snapshot'et nedenfor, så en retry-
+                    # trunkering beholder den; overskydende blanklinjer kollapses
+                    # af normalize_markdown_structure (\n{3,} → \n\n) på den
+                    # gemte tekst. Delta'en sendes også, så live-visningen
+                    # stemmer med det der persisteres.
+                    if _all_followup_parts and not _all_followup_parts[-1].endswith("\n"):
+                        _all_followup_parts.append("\n\n")
+                        yield _sse("delta", {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": "\n\n",
+                        })
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_round_reasoning: str = ""  # captured from FollowupDone
@@ -2914,6 +2976,24 @@ async def _stream_visible_run(
                     # Runde ≥1 + flag ON = lean (drop tung per-turn-hale). Flag OFF
                     # → ``_round_base_messages is base_messages`` (byte-identisk i dag).
                     _round_base_messages = base_messages
+                    # ── HALEN: per-runde-beskeder hoerer EFTER historikken ──
+                    #
+                    # De tre vink nedenfor laa foer i `_round_base_messages`, og
+                    # kommentarerne kaldte dem «append-only trailing tur». Det var
+                    # de ikke: beskedlisten bygges som `base_messages + exchanges`,
+                    # saa alt der laegges paa base_messages havner MIDT i prompten,
+                    # foran hele den voksende historik.
+                    #
+                    # Maalt 28/9-2026 paa ét run: batch-vinket (273 tegn) dukkede op
+                    # paa plads 7 i runde 9, 12 og 14 og forsvandt igen imellem.
+                    # Hver optraeden OG hver forsvinden forskoed alt bagefter én
+                    # plads og braekkede praefiks-cachen ved 156.497 tegn. De seks
+                    # ramte runder kostede 6.840 miss-tokens i snit mod 1.109 i de
+                    # oevrige — 34.388 ekstra, 27 % af hele runets miss.
+                    #
+                    # Halen sendes nu som sin egen liste og haeftes paa EFTER
+                    # exchanges, hvor den ikke forskyder noget.
+                    _tur_hale.ny_runde()
                     try:
                         if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
                             _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(
@@ -2929,6 +3009,26 @@ async def _stream_visible_run(
                                     saved_tokens=int(_lean_metrics.get("saved_tokens") or 0),
                                     applied=bool(_lean_metrics.get("changed")))
                             except Exception:
+                                pass
+                            # ... OG et VARIGT spor. `note_lean_prompt` gaar til
+                            # Centralens trace-sink, som er en ring-buffer i
+                            # hukommelsen med SSE-abonnenter. Den viser det live
+                            # og husker intet: da slankningen holdt op med at
+                            # virke midt i et run 28/9-2026 og kostede 120.704
+                            # tokens paa én runde, fandtes der bagefter INTET
+                            # spor af at den ikke havde skaaret. Aarsagen maatte
+                            # udledes af hale-laengden i cache-telemetrien.
+                            try:
+                                from core.services import central_timeseries as _cts_lean
+                                _cts_lean.record(
+                                    "context", "lean_prompt",
+                                    float(_lean_metrics.get("saved_tokens") or 0),
+                                    meta={"run_id": run.run_id,
+                                          "round": _agentic_round + 1,
+                                          "applied": bool(_lean_metrics.get("changed")),
+                                          "before_chars": int(_lean_metrics.get("before_chars") or 0),
+                                          "after_chars": int(_lean_metrics.get("after_chars") or 0)})
+                            except Exception:  # telemetri maa aldrig vaelte en tur
                                 pass
                     except Exception:
                         # Fail-open mod bloat — fald til full prompt, aldrig et brud.
@@ -3063,14 +3163,13 @@ async def _stream_visible_run(
                         except Exception:
                             _varsel = ""
                         if _varsel:
-                            _round_base_messages = list(_round_base_messages) + [
-                                {"role": "user", "content": _varsel},
-                            ]
+                            _tur_hale.tilfoej_runde(_varsel)
                     if not _is_last_round:
                         try:
                             from core.services.tool_batch_notice import tool_batch_notice as _tbn
                             _vink = _tbn(
                                 forrige_runde_kald=_forrige_runde_kald,
+                                forrige_forrige_kald=_forrige_forrige_kald,
                                 runder_tilbage=_AGENTIC_MAX_ROUNDS - _agentic_round,
                                 gange_vist=_batch_vink_vist,
                             )
@@ -3078,31 +3177,35 @@ async def _stream_visible_run(
                             _vink = ""
                         if _vink:
                             _batch_vink_vist += 1
-                            _round_base_messages = list(_round_base_messages) + [
-                                {"role": "user", "content": _vink},
-                            ]
+                            _tur_hale.tilfoej_runde(_vink)
                     if _is_last_round:
                         _forced_finalize_seen = True
-                        _round_tool_definitions = None
-                        _round_base_messages = list(_round_base_messages) + [{
-                            "role": "user",
-                            "content": (
-                                "Skriv nu dit endelige svar til brugeren i prosa, baseret "
-                                "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
-                                "— opsummer hvad du fandt og svar direkte."),
-                        }]
-                    # Merge in tools added by load_more_tools in previous rounds
+                        # Behold listen hos de udbydere der ER maalt til at
+                        # adlyde tool_choice="none" — saa er praefikset urørt og
+                        # den dyreste runde i turen bliver billig. Se
+                        # finalize_tool_policy for tallene og hvorfor det er en
+                        # hvidliste.
+                        from core.services.finalize_tool_policy import (
+                            behold_vaerktoejer_paa_finalize as _behold,
+                        )
+                        if _behold(_active_provider):
+                            _round_tool_choice = "none"
+                        else:
+                            _round_tool_definitions = None
+                        _tur_hale.tilfoej_runde(
+                            "Skriv nu dit endelige svar til brugeren i prosa, baseret "
+                            "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
+                            "— opsummer hvad du fandt og svar direkte.")
+                    # Flet de hentede definitioner ind — med mindre arrayet er
+                    # frosset. Logikken og maalingen bor i
+                    # `hentede_vaerktoejer.flet_ind`; frosset koster hentningen
+                    # intet praefiks, men kraever at modellen bruger
+                    # `call_loaded_tool` for at kalde vaerktoejet.
                     if _round_tool_definitions is not None and _round_extra_tools:
-                        _all_defs = _get_tool_defs() or []
-                        _extra_set = set(_round_extra_tools)
-                        _existing_names = {
-                            ((d.get("function") or {}).get("name") or d.get("name") or "")
-                            for d in _round_tool_definitions
-                        }
-                        for _xd in _all_defs:
-                            _xn = (_xd.get("function") or {}).get("name") or _xd.get("name") or ""
-                            if _xn in _extra_set and _xn not in _existing_names:
-                                _round_tool_definitions = list(_round_tool_definitions) + [_xd]
+                        from core.services.hentede_vaerktoejer import flet_ind
+                        _round_tool_definitions = flet_ind(
+                            _round_tool_definitions, _round_extra_tools,
+                            _get_tool_defs() or [])
 
                     # ── Fase 1 inner attempt-loop (spec §4.1): re-runs THIS round's
                     # model-sampling on a retryable transient failure (round-retry that
@@ -3151,6 +3254,9 @@ async def _stream_visible_run(
                             # full snapshot as a default arg so every attempt's pump
                             # captures byte-identical messages — never recompute lean.
                             round_base_messages=_round_base_messages,
+                            # Samme grund som linjen ovenfor: halen bindes ÉN
+                            # gang pr. runde, saa et retry sender byte-identisk.
+                            round_trailing=_tur_hale.som_liste(),
                             # Fase 3 (S6/§11.2): bind the CURRENT (possibly failed-
                             # over) provider/model. Flag OFF → these equal run's own
                             # → byte-identical dispatch.
@@ -3165,6 +3271,7 @@ async def _stream_visible_run(
                                     provider=pump_provider,
                                     model=pump_model,
                                     base_messages=round_base_messages,
+                                    trailing_messages=round_trailing,
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
                                     round_index=rnd,
@@ -3173,6 +3280,7 @@ async def _stream_visible_run(
                                     top_p=pump_top_p,
                                     tool_choice=pump_tool_choice,
                                     run_id=run.run_id,
+                                    session_id=run.session_id,
                                     autonomous=run.autonomous,
                                 )
                                 # Expose this attempt's generator so a retry can
@@ -3693,10 +3801,7 @@ async def _stream_visible_run(
                                 # truncated on the exhausting attempt) + an honest
                                 # note so the user never gets a blank loss. The
                                 # interruption nerve still fires below.
-                                _exhaust_note = (
-                                    "\n\n_(Forbindelsen blev ved med at glippe — "
-                                    "jeg prøvede igen et par gange men måtte give op. "
-                                    "Her er hvad jeg nåede; sig til, så fortsætter jeg.)_")
+                                _exhaust_note = _gn.forbindelsen_glippede()  # klasse 3
                                 _a_parts.append(_exhaust_note)
                                 _all_followup_parts.append(_exhaust_note)
                                 yield _sse("delta", {
@@ -3853,15 +3958,11 @@ async def _stream_visible_run(
                     # abandoned mid-token; we'll re-enter the loop with the
                     # steer added so the next round picks up where we steered.
                     if _mid_round_steers:
-                        for s in _mid_round_steers:
-                            content = str(s.get("content") or "").strip()
-                            if not content:
-                                continue
-                            base_messages.append({"role": "user", "content": content})
-                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
-                            if content.strip().lower() in stop_words:
-                                _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
-                                break
+                        from core.services.visible_run_steers import append_real_user_steers
+                        _, _mid_steer_stop = append_real_user_steers(
+                            _tur_hale, _mid_round_steers)
+                        if _mid_steer_stop:
+                            _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
                         # Record the abandoned partial as an empty exchange so
                         # the next prompt has a clean slate (no half-tool-calls
                         # leaked into the followup history).
@@ -4029,6 +4130,7 @@ async def _stream_visible_run(
                             _hp_note = _hp_note_fn(str(_active_model or ""))
                             _a_parts.append(_hp_note)
                             _all_followup_parts.append(_hp_note)
+                            _vaerns_advarsler.append(_gn.tomt_loefte_advarsel())  # klasse 2
                             yield _sse("delta", {
                                 "type": "delta", "run_id": run.run_id, "delta": _hp_note,
                             })
@@ -4093,8 +4195,7 @@ async def _stream_visible_run(
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(
                                         text=_exchange_text(), tool_calls=[], results=[]))
-                                base_messages.append(
-                                    {"role": "user", "content": HOLLOW_PROMISE_NUDGE})
+                                _tur_hale.tilfoej_vedvarende(HOLLOW_PROMISE_NUDGE)
                                 # Redesign 4/9: næste runde tvinger et tool-kald og udfaldet
                                 # persisteres (runtime.hollow_promise_detected/outcome).
                                 _hollow_force_next = True
@@ -4139,11 +4240,7 @@ async def _stream_visible_run(
                             ):
                                 _run_degenerated = True
                                 _agentic_loop_exit_reason = "pending-tool-intent"
-                                _stop_note = (
-                                    "\n\n_(Jeg stoppede her fordi løkken tvang en "
-                                    "afslutning — ikke fordi jeg var færdig. Sig til, "
-                                    "så tager jeg den derfra.)_"
-                                )
+                                _stop_note = _gn.loekken_tvang_en_afslutning()  # klasse 3
                                 _a_parts.append(_stop_note)
                                 _all_followup_parts.append(_stop_note)
                                 yield _sse("delta", {
@@ -4175,6 +4272,80 @@ async def _stream_visible_run(
                                     pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
+                        # ── SKILL-BESLUTNING (2/10-2026, flag-gated, fail-open) ──
+                        # Fladen skriver «[SKILLS DER MATCHER DENNE OPGAVE]» i
+                        # prompten, og Bjørn ser den i chatten. Men målt samme
+                        # dag: i de agentiske runder (117 værktøjer) overlevede
+                        # INTET skill-værktøj router+pin. Vejen til et skill var
+                        # tre trin mod bash' ét, og sidste faktiske brug var 29/9.
+                        # Et STÆRKT match må ikke ties ihjel: enten invokeres
+                        # det, eller svaret nævner det ved navn. ÉN nudge pr. tur.
+                        # Ligger efter hollow-promise-vagten med vilje: et brudt
+                        # løfte er en tillids-sag og vejer tungere end metode.
+                        if not _is_last_round and _skill_gate_nudges < 1:
+                            try:
+                                from core.services.skill_gate_guard import (
+                                    build_nudge as _sg_nudge,
+                                    is_unanswered_skill_match as _sg_unanswered,
+                                    samle_kaldte_navne as _sg_navne,
+                                    skill_gate_guard_enabled as _sg_enabled,
+                                )
+                                from core.services.skill_relevance_surface import (
+                                    skill_flade_event as _sg_flade,
+                                )
+                                _sg_ev = _sg_flade(run.user_message) or {}
+                                _sg_primaere = [
+                                    str(m.get("name") or "")
+                                    for m in (_sg_ev.get("matches") or [])
+                                    if m.get("primary") and str(m.get("name") or "")
+                                ]
+                                # Navne-indsamlingen er udskilt til
+                                # `skill_gate_guard.samle_kaldte_navne` 3/10-2026:
+                                # den havde TO huller (transport-navnet, og den
+                                # aktuelle rundes kald der mangler fordi
+                                # `_a_tool_calls` er per-runde mens exchangen
+                                # lægges EFTER gaten) — begge fundet i produktion
+                                # frem for af en test, fordi koden sad inline i
+                                # denne generator. Kanterne er nu pinnede i
+                                # `tests/test_skill_gate_guard.py`.
+                                _sg_kaldte = _sg_navne(
+                                    _followup_exchanges, _a_tool_calls)
+                                if _sg_enabled() and _sg_unanswered(
+                                    primary_matches=_sg_primaere,
+                                    called_tool_names=_sg_kaldte,
+                                    final_text="".join(_a_parts),
+                                    nudged_already=bool(_skill_gate_nudges),
+                                ):
+                                    _skill_gate_nudges += 1
+                                    _sg_tekst = _sg_nudge(_sg_primaere)
+                                    _tur_hale.tilfoej_vedvarende(_sg_tekst)
+                                    _followup_exchanges.append(
+                                        _vf.ToolExchange(
+                                            text=_exchange_text(),
+                                            tool_calls=[], results=[]))
+                                    logger.info(
+                                        "skill-gate run_id=%s — staerkt match uden "
+                                        "svar: %s", run.run_id, ", ".join(_sg_primaere[:3]))
+                                    try:
+                                        from core.eventbus.bus import event_bus as _sg_bus
+                                        _sg_bus.publish("skill_gate.nudge", {
+                                            "run_id": str(run.run_id or ""),
+                                            "session_id": str(run.session_id or ""),
+                                            "skills": _sg_primaere[:3],
+                                        })
+                                    except Exception as _sg_exc:
+                                        # Telemetri må ikke vælte turen — men den
+                                        # må heller ikke forsvinde i tavshed. Målt
+                                        # 3/10-2026: `skill_gate` stod ikke i
+                                        # ALLOWED_EVENT_FAMILIES, så HVERT publish
+                                        # kastede her og blev slugt. Gaten fyrede,
+                                        # sporet fandtes ikke.
+                                        logger.warning(
+                                            "skill-gate-telemetri fejlede "
+                                            "(turen fortsaetter): %s", _sg_exc)
+                                    continue
+                            except Exception:
+                                pass  # fail-open → normal break nedenfor
                         # ── Baggrunds-shells: slut ikke mens noget koerer ──
                         # `operator_run_in_background` er ubrugelig uden det her:
                         # man starter en kommando, turen slutter, og resultatet
@@ -4187,8 +4358,7 @@ async def _stream_visible_run(
                                 str(run.session_id or ""), str(force_user_id or ""))
                             if _bg_note and not _bg_resumed_this_turn:
                                 _bg_resumed_this_turn = True
-                                base_messages.append(
-                                    {"role": "user", "content": _bg_note})
+                                _tur_hale.tilfoej_vedvarende(_bg_note)
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(text=_exchange_text(),
                                                      tool_calls=[], results=[]))
@@ -4221,11 +4391,8 @@ async def _stream_visible_run(
                                     user_id=str(force_user_id or ""))
                                 if _sd.get("action") == "block":
                                     _stop_hook_resumed = True
-                                    base_messages.append({
-                                        "role": "user",
-                                        "content": ("[HOOK] " + str(
-                                            _sd.get("message")
-                                            or "Du er ikke faerdig endnu."))})
+                                    _tur_hale.tilfoej_vedvarende("[HOOK] " + str(
+                                        _sd.get("message") or "Du er ikke faerdig endnu."))
                                     _followup_exchanges.append(
                                         _vf.ToolExchange(text=_exchange_text(),
                                                          tool_calls=[], results=[]))
@@ -4259,10 +4426,11 @@ async def _stream_visible_run(
                                     "agentic_loop_rounds_completed": _agentic_round + 1,
                                 },
                             )
-                            _empty_guard_msg = (
-                                f"⚠ I ran {_MAX_EMPTY_TEXT_ROUNDS} rounds without producing text. "
-                                "Something went wrong — try again."
-                            )
+                            # Klasse 1 — holder runnet i gang; naar modellen med vilje.
+                            _empty_guard_msg = _gn.ingen_tekst_i_runder(_MAX_EMPTY_TEXT_ROUNDS)
+                            _vaerns_advarsler.append(_gn.systemmaerket(
+                                "Et vaern afsluttede runden efter runder uden tekst. "
+                                "Det var runtimens beslutning, ikke brugerens."))
                             yield _sse("delta", {
                                 "type": "delta",
                                 "run_id": run.run_id,
@@ -4411,11 +4579,7 @@ async def _stream_visible_run(
                             )
                             # Yield a visible text message so the user always sees
                             # something in chat instead of "[Tool calls only]".
-                            _guard_msg = (
-                                "⚠ Jeg faldt i et tool-call loop — "
-                                f"{_consecutive_tool_only_rounds} runder uden synligt svar. "
-                                "Her er hvad jeg fandt:"
-                            )
+                            _guard_msg = _gn.tool_call_loekke(_consecutive_tool_only_rounds)  # klasse 3
                             yield _sse("delta", {
                                 "type": "delta",
                                 "run_id": run.run_id,
@@ -4503,6 +4667,9 @@ async def _stream_visible_run(
                         _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                         _outcome_state.set_error("user-cancelled-during-tool-exec")
                         break
+                    # Skub historikken foer vi overskriver: vinket skal kunne se
+                    # om den forrige runde OGSAA noejedes med ét kald.
+                    _forrige_forrige_kald = _forrige_runde_kald
                     _forrige_runde_kald = len(_a_tool_calls or [])
                     _a_results = _a_batch_out["results"]
                     _step_counter = _a_batch_out["step_counter"]
@@ -4881,11 +5048,11 @@ async def _stream_visible_run(
                     except Exception:
                         steers = []
                     if steers:
-                        for s in steers:
-                            content = str(s.get("content") or "").strip()
-                            if not content:
-                                continue
-                            base_messages.append({"role": "user", "content": content})
+                        from core.services.visible_run_steers import append_real_user_steers
+                        _accepted_steers, _steer_stop = append_real_user_steers(
+                            _tur_hale, steers)
+                        for s in _accepted_steers:
+                            content = s["content"]
                             yield _sse("steer_received", {
                                 "type": "steer_received",
                                 "run_id": run.run_id,
@@ -4896,10 +5063,8 @@ async def _stream_visible_run(
                                 "agentic-steer run_id=%s round=%d injected=%d_chars",
                                 run.run_id, _agentic_round + 1, len(content),
                             )
-                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
-                            if content.strip().lower() in stop_words:
-                                _agentic_loop_exit_reason = "user-steer-stop"
-                                break
+                        if _steer_stop:
+                            _agentic_loop_exit_reason = "user-steer-stop"
                         if _agentic_loop_exit_reason == "user-steer-stop":
                             break
 
@@ -4950,24 +5115,17 @@ async def _stream_visible_run(
                     from core.services.auto_continuation import OPBRUGT as _OPBRUGT
                     if _agentic_loop_exit_reason == "completed":
                         _agentic_loop_exit_reason = _OPBRUGT
-                # CUT-OFF (2026-08-19): loopet sluttede "completed", men en runde
-                # blev afkortet (finish_reason=length) → exit-grunden skal ikke
-                # lyve om ren succes. Status forbliver completed (der ER et svar),
-                # men telemetri/incident viser truncation ærligt.
-                if _a_truncated and _agentic_loop_exit_reason == "completed":
-                    _agentic_loop_exit_reason = "completed-truncated"
                 # DURABEL FØRST, DEREFTER SSE (opgave 3). Før afgjorde dette
                 # sted selv hvad turen blev til og sendte beskeden — og hvis
                 # processen døde i mellemrummet, havde klienten set en
-                # afslutning ingen journal kendte. `settle_segment_exit` skriver
-                # posten og giver os dommen tilbage.
-                from core.services.visible_run_segment_settlement import settle_segment_exit
-                try:
-                    from core.services.auto_continuation import kaede_nr as _recovery_kaede_nr
-                    _recovery_attempt = _recovery_kaede_nr(run.session_id)
-                except Exception:
-                    _recovery_attempt = 0
-                _terminal = settle_segment_exit(
+                # afslutning ingen journal kendte.
+                #
+                # Selve afgoerelsen bor i `visible_run_segment_exit`: den retter
+                # exit-grunden, laeser genoptagelses-kaeden og lader
+                # afregningen skrive posten. Kun SSE og tilstands-markeringen
+                # nedenfor bliver her, fordi de haenger paa generatoren.
+                from core.services.visible_run_segment_exit import afgoer_segment_udfald
+                _terminal = afgoer_segment_udfald(
                     run_id=run.run_id,
                     session_id=run.session_id,
                     exit_reason=_agentic_loop_exit_reason,
@@ -4975,8 +5133,7 @@ async def _stream_visible_run(
                     finish_reason=_a_finish_reason,
                     forced_finalize=_forced_finalize_seen,
                     pending_tool_intent=_a_pending_tool_intent,
-                    recovery_attempt=_recovery_attempt,
-                    summary=str(_agentic_loop_exit_reason or ""),
+                    truncated=bool(_a_truncated),
                 )
                 _agentic_loop_exit_reason = _terminal.exit_reason
                 if _terminal.decision.should_continue:
@@ -5095,23 +5252,34 @@ async def _stream_visible_run(
                     _had_tools_r = any(
                         getattr(_ex, "tool_calls", None) for _ex in _fu_ex_r)
                     if _had_tools_r:
+                        from core.services import visible_post_tool_synthesis as _vps
+                        _rescued = ""
+                        # Skrubningen bor i `visible_synthesis_stream` — ÉT
+                        # sted for begge syntese-strømme. To kopier af en
+                        # skrubning driver fra hinanden, og det var præcis
+                        # sådan fejlen opstod: tre skrub-steder blev til ét,
+                        # fordi ingen af dem var den samme kode.
+                        from core.services import visible_synthesis_stream as _vss
                         try:
-                            _rescued = await asyncio.to_thread(
-                                _vf.synthesize_final_answer,
-                                provider=run.provider, model=run.model,
-                                base_messages=locals().get("base_messages") or [],
-                                exchanges=_fu_ex_r,
-                            )
+                            async for _s in _vss.skrubbet_syntese(
+                                _vps.stream_final_synthesis(
+                                    provider=run.provider, model=run.model,
+                                    base_messages=locals().get("base_messages") or [],
+                                    exchanges=_fu_ex_r,
+                                ),
+                                delta_klasse=_vps.SynthesisDelta,
+                            ):
+                                if isinstance(_s, _vss.SyntesFacit):
+                                    _rescued = _s.tekst
+                                elif not run.autonomous:
+                                    yield _sse("delta", {
+                                        "type": "delta", "run_id": run.run_id,
+                                        "delta": _s.tekst,
+                                    })
                         except Exception:
                             _rescued = ""
-                        _rescued = _vts.fjern_interne_markoerer(_rescued)
                         if _rescued:
                             followup_text = _rescued
-                            if not run.autonomous:
-                                yield _sse("delta", {
-                                    "type": "delta", "run_id": run.run_id,
-                                    "delta": _rescued,
-                                })
                             _observe_streamed_text_recovered(
                                 run, chars=len(_rescued), source="finalize_synthesis")
 
@@ -5153,21 +5321,28 @@ async def _stream_visible_run(
                     )
                     _fu_ex_guard = locals().get("_followup_exchanges") or []
                     if is_hollow_post_tool_answer(_real_answer, _fu_ex_guard):
-                        _synth_guard = await asyncio.to_thread(
-                            _vf.synthesize_final_answer,
-                            provider=run.provider, model=run.model,
-                            base_messages=locals().get("base_messages") or [],
-                            exchanges=_fu_ex_guard,
-                        )
-                        if should_replace_with_synthesis(_real_answer, _synth_guard):
-                            _synth_guard = _vts.fjern_interne_markoerer(_synth_guard)
-                            followup_text = _synth_guard
-                            _real_answer = _synth_guard
-                            if not run.autonomous:
+                        from core.services import visible_post_tool_synthesis as _vps
+                        _synth_guard = ""
+                        from core.services import visible_synthesis_stream as _vss
+                        async for _s in _vss.skrubbet_syntese(
+                            _vps.stream_final_synthesis(
+                                provider=run.provider, model=run.model,
+                                base_messages=locals().get("base_messages") or [],
+                                exchanges=_fu_ex_guard,
+                                min_chars=max(24, len(_real_answer.strip()) + 12),
+                            ),
+                            delta_klasse=_vps.SynthesisDelta,
+                        ):
+                            if isinstance(_s, _vss.SyntesFacit):
+                                _synth_guard = _s.tekst
+                            elif not run.autonomous:
                                 yield _sse("delta", {
                                     "type": "delta", "run_id": run.run_id,
-                                    "delta": _synth_guard,
+                                    "delta": _s.tekst,
                                 })
+                        if should_replace_with_synthesis(_real_answer, _synth_guard):
+                            followup_text = _synth_guard
+                            _real_answer = _synth_guard
                 except Exception:
                     pass
                 if not _real_answer and _outcome_state.status == "completed":
@@ -5368,16 +5543,15 @@ async def _stream_visible_run(
                 # Cost-ledger er en del af run-kontrakten, ikke best-effort
                 # efterbehandling. SSE-v2 lukker legacy-generatoren så snart den
                 # ser done; kode efter yield'et bliver derfor aldrig kørt.
-                record_cost(
-                    provider=run.provider,
-                    model=run.model,
+                from core.services.visible_run_cost import (
+                    bogfoer_koerslens_omkostning,
+                )
+                bogfoer_koerslens_omkostning(
+                    run,
                     input_tokens=total_input_tokens,
                     output_tokens=total_output_tokens,
-                    cost_usd=0.0,
-                    lane="visible",
                     cache_hit_tokens=total_cache_hit_tokens,
                     cache_miss_tokens=total_cache_miss_tokens,
-                    run_id=run.run_id,
                 )
                 try:
                     from core.services import turn_tail_timing as _hale
@@ -5789,16 +5963,14 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
-        record_cost(
-            lane=run.lane,
-            provider=run.provider,
-            model=run.model,
+        from core.services.visible_run_cost import bogfoer_koerslens_omkostning
+        bogfoer_koerslens_omkostning(
+            run,
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
-            cost_usd=total_cost_usd,
             cache_hit_tokens=total_cache_hit_tokens,
             cache_miss_tokens=total_cache_miss_tokens,
-            run_id=run.run_id,
+            cost_usd=total_cost_usd,
         )
         event_bus.publish(
             "cost.recorded",
@@ -6590,284 +6762,10 @@ def _assert_presentation_invariant(text: str) -> None:
         )
 
 
-_TOOL_LABELS: dict[str, str] = {
-    # Filer
-    "read_file": "Læser fil",
-    "write_file": "Skriver fil",
-    "edit_file": "Redigerer fil",
-    "find_files": "Søger filer",
-    "search": "Søger i filer",
-    "read_archive": "Læser arkiv",
-    "publish_file": "Publicerer fil",
-    # System
-    "bash": "Kører kommando",
-    "internal_api": "Kalder intern API",
-    "db_query": "Forespørger database",
-    "update_setting": "Opdaterer indstilling",
-    "compact_context": "Komprimerer kontekst",
-    # Web
-    "web_fetch": "Henter webside",
-    "web_scrape": "Skraber webside",
-    "web_search": "Søger på nettet",
-    "get_weather": "Henter vejr",
-    "geolocation_lookup": "Finder lokation",
-    "geocode": "Slår adresse op",
-    "reverse_geocode": "Slår koordinater op",
-    "route_directions": "Beregner rute",
-    "nearby_search": "Søger i nærheden",
-    "get_news": "Henter nyheder",
-    "get_exchange_rate": "Henter valutakurs",
-    "wolfram_query": "Beregner (Wolfram)",
-    # Hukommelse og identitet
-    "search_memory": "Søger i hukommelse",
-    "read_chronicles": "Læser krøniker",
-    "read_dreams": "Læser drømme",
-    "read_self_state": "Læser selvtilstand",
-    "read_model_config": "Læser modelkonfig",
-    "read_mood": "Læser stemning",
-    "adjust_mood": "Justerer stemning",
-    "read_self_docs": "Læser selvdokumentation",
-    "read_tool_result": "Læser tool-resultat",
-    "recall_council_conclusions": "Henter rådskonklusioner",
-    # Sanser
-    "analyze_image": "Analyserer billede",
-    "look_around": "Kigger rundt",
-    "deep_analyze": "Dybdeanalyserer",
-    # Initiativer og opgaver
-    "push_initiative": "Registrerer initiativ",
-    "list_initiatives": "Lister initiativer",
-    "schedule_task": "Planlægger opgave",
-    "list_scheduled_tasks": "Lister planlagte opgaver",
-    "cancel_task": "Annullerer opgave",
-    "edit_task": "Redigerer opgave",
-    "queue_followup": "Kø-stiller opfølgning",
-    # Kode og forslag
-    "propose_source_edit": "Foreslår kodeændring",
-    "propose_git_commit": "Foreslår commit",
-    "approve_proposal": "Godkender forslag",
-    "list_proposals": "Lister forslag",
-    # Projekt
-    "my_project_status": "Læser projektstatus",
-    "my_project_journal_write": "Skriver projektlog",
-    "my_project_accept_proposal": "Godkender projektforslag",
-    "my_project_declare": "Deklarerer projekt",
-    # System/runtime
-    "heartbeat_status": "Tjekker heartbeat",
-    "trigger_heartbeat_tick": "Trigger heartbeat",
-    "daemon_status": "Tjekker daemons",
-    "control_daemon": "Styrer daemon",
-    "list_signal_surfaces": "Lister signalflader",
-    "read_signal_surface": "Læser signalflade",
-    "eventbus_recent": "Læser eventbus",
-    # Kommunikation
-    "search_chat_history": "Søger i chathistorik",
-    "discord_status": "Tjekker Discord",
-    "send_telegram_message": "Sender Telegram-besked",
-    "send_ntfy": "Sender notifikation",
-    "notify_user": "Notificerer bruger",
-    "send_webchat_message": "Sender webchat-besked",
-    "send_discord_dm": "Sender Discord DM",
-    "discord_channel": "Tilgår Discord-kanal",
-    # Råd og agenter
-    "convene_council": "Indkalder råd",
-    "quick_council_check": "Hurtig rådscheck",
-    "spawn_agent_task": "Spawner agent",
-    "send_message_to_agent": "Sender besked til agent",
-    "list_agents": "Lister agenter",
-    "relay_to_agent": "Videresender til agent",
-    "cancel_agent": "Annullerer agent",
-    # Smart home
-    "home_assistant": "Home Assistant",
-    # De hyppigste der MANGLEDE (målt 17/9-2026 på to ugers tool.invoked:
-    # operator_bash 16.045, remember_this 336, bash_session_run 237, …).
-    # Bjørn: «mange kommandoer har navne remember_this eller operator_bash og
-    # det ser sku ikke særlig godt ud». De stod med deres rå funktionsnavn,
-    # fordi tabellen kun kendte halvdelen af huset.
-    "remember_this": "Husker",
-    "archive_brain_entry": "Arkiverer note",
-    "bash_session_run": "Kører i terminalen",
-    "grep": "Søger efter",
-    "glob": "Finder filer",
-    "list_dir": "Ser i mappe",
-    "multi_edit": "Redigerer fil",
-    "verify_file_contains": "Verificerer fil",
-    "explore": "Undersøger",
-    "recall": "Genkalder",
-    "memory_search": "Søger i hukommelse",
-    "memory_upsert_section": "Opdaterer hukommelse",
-    "central_query": "Spørger centralen",
-    "channel": "Skriver i kanal",
-    "load_more_tools": "Henter flere værktøjer",
-    "schedule_self_wakeup": "Sætter en påmindelse",
-    "mark_wakeup_consumed": "Kvitterer påmindelse",
-    "skill_invoke": "Bruger en skill",
-    "scout_agent": "Sender en spejder",
-    "phone_adb_shell": "Styrer telefonen",
-    "list_proposals_diff": "Viser forslags-diff",
-}
-
-
-#: Led der KUN sætter scenen. Hele leddet springes over — resten af det er
-#: argumentet til skiftet, ikke en kommando («cd /media/projects/jarvis-v2»).
-_SCENE_LED = {"cd", "export", "source", ".", "set", "conda"}
-#: Shell-NØGLEORD er syntaks, ikke en kommando. `for … do … done` og
-#: `if … then … fi` beskriver en løkke; `echo` er en overskrift. Uden dem stod
-#: liveness-linjen «Kører kommando: do if» og «Kører kommando: echo ===»
-#: (Bjørn 23/9-2026: «det samme i progress»). Desk's `kommandoEmne` fik
-#: listen 23/9 — denne kopi gjorde ikke, så de to sagde hver sit om samme kald.
-_NOEGLEORD = {
-    "for", "while", "until", "if", "then", "else", "elif", "fi", "do", "done",
-    "case", "esac", "in", "echo", "exit", "unset",
-}
-#: Ord der står FORAN den rigtige kommando i samme led og skal skrælles af.
-_PRAEFIKS = {"sudo", "nohup", "env", "time", "timeout", "exec", "command", "xargs"}
-#: Omdirigering: `>`, `>>`, `2>`, `<<'PY'`, `&1`.
-_OMDIRIGERING = re.compile(r"^(?:\d?[<>]{1,2}|&\d?|<<[-']?\w*)$")
-
-
-def _bash_hint(cmd: str) -> str:
-    """Hvad kommandoen egentlig GØR — ikke dens første ord.
-
-    Målt 17/9-2026: hintet var `cmd.split()[0]`, så liveness-linjen stod på
-    «Kører kommando: cd» det meste af en tung kørsel, fordi næsten hver
-    kommando begynder med `cd /media/projects/jarvis-v2 && …`. Bjørn: «næsten
-    altid på køre kommando: cd indtil kommandoen er kørt».
-
-    Her springes scene-sætningen over — mappeskift, `sudo`, `timeout`,
-    miljøvariable — og der vises kommandoen plus dens første rigtige argument.
-    """
-    s = " ".join((cmd or "").split())
-    if not s:
-        return ""
-    led = [d.strip() for d in re.split(r"&&|\|\||;", s) if d.strip()]
-    for d in led:
-        ord_ = d.split()
-        # Miljøvariable foran (FOO=bar kommando) hører til scenen.
-        while ord_ and "=" in ord_[0] and not ord_[0].startswith("-"):
-            ord_ = ord_[1:]
-        # Resten af et VARIABEL-led er variablens egne argumenter, ikke en
-        # kommando: `RUN_ID=manual-$(date -u +%Y%m%dT%H%M%SZ)-$(openssl ...)`
-        # gav ellers «Koerer kommando: -u +%Y%m%dT%H%M%SZ)-$(openssl» (Bjoern
-        # 23/9-2026). Et led der begynder med `-` er aldrig en kommando.
-        if not ord_ or ord_[0].startswith("-"):
-            continue
-        if ord_[0] in _SCENE_LED or ord_[0] in _NOEGLEORD:
-            continue                      # leddet var scene-sætning eller nøgleord
-        while ord_ and ord_[0] in _PRAEFIKS:
-            ord_ = ord_[1:]
-            # `sudo -n x`, `timeout 300 x`: flaget/tallet hører til præfikset.
-            while ord_ and (ord_[0].startswith("-") or ord_[0].isdigit()):
-                ord_ = ord_[1:]
-        if ord_:
-            return _hoved_og_genstand(ord_)
-    # Kun scene-sætning — så er DET hvad der skete («cd /tmp»).
-    if not led:
-        return s[:40]
-    foerste = led[0].split()
-    if foerste and "=" in foerste[0] and not foerste[0].startswith("-"):
-        # Ren variabel-tildeling: der findes ingen ydre kommando. Navnet siger
-        # mere end «RUN_ID=manual-$(date -u» (Bjoern 23/9-2026).
-        return foerste[0].split("=", 1)[0][:40]
-    # Ren `echo`: det meningsfulde er det den UDSKRIVER, ikke ordet «echo» og
-    # dets dekorations-`===`. Bjoern 23/9-2026: «dette echo === burde vise den
-    # faktisk kommando». `echo "=== koerer electron-builder? ==="` giver
-    # «koerer electron-builder?»; et banner-løst `echo === status ===` giver
-    # «status». Grebet rammer KUN faldbacken — staar der en rigtig kommando
-    # efter echo-leddet, fandt løkken den allerede.
-    if foerste and foerste[0].split("/")[-1] == "echo":
-        budskab = " ".join(foerste[1:]).strip("\"' ")
-        renset = budskab.strip("= -_").strip()
-        if renset:
-            return renset[:40]
-    return " ".join(foerste[:2])[:40]
-
-
-def _hoved_og_genstand(ord_: list[str]) -> str:
-    """«grep tool_calls» — kommandoen og det den blev kørt på."""
-    hoved = ord_[0].split("/")[-1]        # /opt/conda/…/python → python
-    genstand = ""
-    for o in ord_[1:]:
-        # Flag og omdirigering er ikke kommandoens genstand: `cat > fil.py`
-        # handler om filen, ikke om pilen.
-        if o.startswith("-") or _OMDIRIGERING.match(o):
-            continue
-        genstand = o.strip("\"'`")
-        if "/" in genstand:
-            genstand = genstand.rstrip("/").split("/")[-1] or genstand
-        break
-    return (f"{hoved} {genstand}".strip() if genstand else hoved)[:40]
-
-
-#: Felter et emne ledes efter når værktøjet ikke har sin egen gren — første
-#: ikke-tomme streng vinder. Det dækker de ~350 værktøjer uden håndskrevet
-#: gren, så linjen sjældent står uden et «hvad». Uden den stod «Opdaterer
-#: hukommelse» og «Verificerer fil» uden emne (Bjørn 23/9-2026).
-_HINT_FELTER = (
-    "path", "file_path", "title", "heading", "query", "q", "pattern",
-    "url", "command", "name", "action", "text", "agent_id",
+from core.services.visible_tool_labels import (
+    _TOOL_LABELS, _SCENE_LED, _NOEGLEORD, _PRAEFIKS, _OMDIRIGERING,
+    _HINT_FELTER, _bash_hint, _hoved_og_genstand, _tool_hint, _tool_label,
 )
-
-
-def _tool_hint(tool_name: str, arguments: dict | None = None) -> str:
-    """Emnet for ét kald — HVAD det handler om, uden label foran.
-
-    «git status», «raekkeModel.ts», «Rækkevisningen — tre rettelser». Klienten
-    sætter selv værktøjets ikon foran, så labelen («Kører kommando») hører
-    ikke her; `_tool_label` limer de to sammen for de flade tekst-kanaler
-    (Discord, liveness-linjen).
-    """
-    if not arguments:
-        return ""
-    navn = str(tool_name or "")
-    name = navn[len("operator_"):] if navn.startswith("operator_") else navn
-    a = arguments
-    hint = ""
-    if name in {"read_file", "write_file", "edit_file", "publish_file",
-                "verify_file_contains"}:
-        path = str(a.get("path") or a.get("file_path") or "")
-        if path:
-            hint = path.split("/")[-1]  # basename only
-    elif name == "find_files":
-        hint = str(a.get("pattern") or a.get("path") or "")[:40]
-    elif name in {"search", "web_search", "search_memory", "search_chat_history"}:
-        hint = str(a.get("query") or a.get("q") or "")[:40]
-    elif name == "web_fetch":
-        url = str(a.get("url") or "")
-        hint = url.replace("https://", "").replace("http://", "").split("/")[0][:40]
-    elif name in {"bash", "bash_session_run"}:
-        hint = _bash_hint(str(a.get("command") or ""))
-    elif name in {"discord_channel", "send_discord_dm"}:
-        hint = str(a.get("channel") or a.get("user") or "")[:30]
-    elif name == "home_assistant":
-        hint = str(a.get("action") or a.get("entity_id") or "")[:30]
-    elif name in {"spawn_agent_task", "send_message_to_agent", "relay_to_agent", "cancel_agent"}:
-        hint = str(a.get("agent_id") or a.get("task_id") or "")[:20]
-    elif name in {"todo_set", "todo_add"}:
-        todos = a.get("todos")
-        hint = f"{len(todos)} opgaver" if isinstance(todos, list) else ""
-    if not hint:
-        for felt in _HINT_FELTER:
-            vaerdi = a.get(felt)
-            if isinstance(vaerdi, str) and vaerdi.strip():
-                renset = vaerdi.strip()
-                hint = renset.split("/")[-1] if felt in {"path", "file_path"} else renset
-                break
-    return hint.strip()[:60]
-
-
-def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
-    navn = str(tool_name or "")
-    base = _TOOL_LABELS.get(navn)
-    if base is None:
-        # `operator_read_file` og `read_file` er samme handling for læseren —
-        # og operator-sættet er det MEST brugte (16.045 kald på to uger).
-        # Uden dette stod der «operator_bash» i klartekst.
-        grund = navn[len("operator_"):] if navn.startswith("operator_") else navn
-        base = _TOOL_LABELS.get(grund, grund or "tool")
-        tool_name = grund or tool_name
-    hint = _tool_hint(tool_name, arguments)
-    return f"{base}: {hint}" if hint else base
-
 
 
 def _parse_tc_args(tc: dict) -> dict:
@@ -7592,13 +7490,24 @@ def _update_cognitive_systems_async(
             pass
 
         # --- Habit signal recording ---
-        # Hver bruger-besked tracker habit-patterns + friction.
-        # Trigger'er automation-suggestions når thresholds nås.
-        try:
-            from core.services.habits_pipeline import record_habit_signal
-            record_habit_signal(message=user_message)
-        except Exception:
-            pass
+        # 2026-10-01: KUN rigtige brugerbeskeder. Kommentaren her sagde
+        # «hver bruger-besked», men `user_message` er i en AUTONOM kørsel
+        # daemonens eget prompt — ikke Bjørns ord. Målt i DB'en: top-1
+        # «vane» var drømme-daemonens systemprompt (838 forekomster),
+        # nr. 2 var runtime-inspektionsopgaven (319). Mit eget maskinrum
+        # blev registreret som brugeradfærd og injiceret i heartbeat som
+        # indsigt om ham.
+        #
+        # Autonome sessioner har prefix `auto-` (se `_origin_of_session` i
+        # visible_runs_outcomes.py: «auto-dream-20260902» → «dream»; tom for
+        # almindelige samtaler). `session_id` er i scope her, så gaten er ét
+        # led — ingen parameter-ændring i kalderen.
+        if not str(session_id or "").startswith("auto-"):
+            try:
+                from core.services.habits_pipeline import record_habit_signal
+                record_habit_signal(message=user_message)
+            except Exception:
+                pass
 
         # --- Self-surprise detection ---
         # Kaldsstedet leverer IKKE længere forventningen — detektoren udleder den selv

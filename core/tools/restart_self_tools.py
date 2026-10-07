@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,18 @@ RESTART_SELF_TOOL_DEFINITIONS = [
                         "description": "Channel for confirmation after restart (discord, telegram, webchat). Default: discord",
                         "default": "discord",
                     },
+                    "defer_until_idle": {
+                        "type": "boolean",
+                        "description": (
+                            "Vent til din EGEN tur er slut, og genstart saa. "
+                            "Brug denne naar genstarten ikke kan vente paa at "
+                            "du svarer — den draeber ALDRIG turen og giver "
+                            "derfor intet dublet-svar. I stedet for et antal "
+                            "sekunder venter den paa et faktum: at runnet ikke "
+                            "laengere er i live."
+                        ),
+                        "default": False,
+                    },
                     "force": {
                         "type": "boolean",
                         "description": (
@@ -76,38 +89,53 @@ RESTART_SELF_TOOL_DEFINITIONS = [
 ]
 
 
-#: Hvor ung skal en `running`-raekke vaere for at taelle som LEVENDE?
-#:
-#: En time. En raekke der har staaet `running` laengere er en zombie — og en
-#: vagt der taeller zombier med kan ALDRIG tilfredsstilles. Saa bliver den
-#: omgaaet med `force`, og saa beskytter den ingenting.
-#:
-#: Maalt lokalt: 5 «aktive» koersler, hvoraf ingen levede. Paa runtime var det
-#: tal 1. Forskellen er praecis grunden til loftet.
-LEVENDE_INDEN_FOR_SEKUNDER = 3600.0
-
-
 def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
-    """Hvilke synlige koersler er i gang lige nu — og kan plausibelt leve?
+    """Hvilke synlige koersler LEVER lige nu?
+
+    Tabellen kan ikke svare paa det. `visible_runs.status` bliver staaende paa
+    `running` indtil noget rydder den, og der findes intet heartbeat i raekken
+    — den har hverken `updated_at` eller andet der bevaeger sig. Derfor spoerger
+    vi `is_visible_run_alive()`, som modulet selv kalder «den AUTORITATIVE
+    liveness-test — CROSS-PROCES»: den laeser `last_activity_at` fra den DELTE
+    tilstand, som et levende run toucher hvert par sekunder, med en
+    stale-taerskel paa 75 sekunder.
+
+    HER STOD FOER ET ALDERSLOFT PAA ÉN TIME (30/9-2026). Det var en proxy for
+    det samme spoergsmaal, opfundet fordi forfatteren vidste at tabellen lyver
+    — og proxyen fejler i begge retninger:
+
+      * den slap et run paa TRE MINUTTER igennem som «levende», mens
+        `is_visible_run_alive` sagde False. Det blokerede en noedvendig
+        genstart, maalt samme dag;
+      * og den ville lade et run der HAR koert over en time — og stadig lever —
+        slippe forbi vagten, hvilket er den fejl vagten findes for.
+
+    Samme dag stod en `autonomous`-raekke `running` i 191 minutter uden ét spor
+    i journalen. Loftet skjulte den; heartbeatet doemte den doed med det samme.
+    Raekken ryddes foerst af `_ryd_visible_drift` ved 6-timers-graensen — tre
+    forskellige tal for det samme, hvoraf kun ét maaler noget.
 
     Selv-sikker: kan vi ikke spoerge, svarer vi TOMT — altsaa «ingen kendte».
     En vagt der blokerer paa sin egen fejl ville goere en noedvendig genstart
     umulig, og det er vaerre end den fejl den beskytter mod.
     """
-    from datetime import UTC, datetime, timedelta
     try:
         from core.runtime.db import connect
-        graense_tid = (datetime.now(UTC)
-                       - timedelta(seconds=LEVENDE_INDEN_FOR_SEKUNDER)).isoformat()
+        from core.services.visible_runs import is_visible_run_alive
         with connect() as conn:
             raekker = conn.execute(
                 "SELECT run_id, substr(text_preview, 1, 60) FROM visible_runs "
                 "WHERE status = 'running' AND (finished_at IS NULL OR "
-                "finished_at = '') AND started_at >= ? "
+                "finished_at = '') "
                 "ORDER BY started_at DESC LIMIT ?",
-                (graense_tid, int(graense)),
+                (int(graense),),
             ).fetchall()
-        return [{"run_id": str(r[0]), "preview": str(r[1] or "")} for r in raekker]
+        # Tabellen giver KANDIDATER; heartbeatet giver svaret.
+        return [
+            {"run_id": str(r[0]), "preview": str(r[1] or "")}
+            for r in raekker
+            if is_visible_run_alive(str(r[0]))
+        ]
     except Exception:
         logger.debug("restart_self: kunne ikke slaa aktive koersler op",
                      exc_info=True)
@@ -137,7 +165,15 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     # Vagten AFVISER ikke; den svarer med hvad der koerer, saa Jarvis selv kan
     # vaelge at vente. En genstart der bare naegter ville han omgaa ad en anden
     # vej, og saa er vi vaerre stillet end nu.
-    if not bool(args.get("force")):
+    # 3/10-2026: `defer_until_idle` skal springe vagten over.
+    #
+    # Vagten spoerger «koerer der noget nu?». Med defer er svaret JA — det er
+    # MIN egen tur, og det er praecis derfor vi venter. At afvise dér er
+    # bagvendt: den naegter paa det faktum den skulle vente paa. Maalt samme
+    # dag: vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur
+    # der kaldte det, saa den udskudte sti blev aldrig naaet.
+    _defer = bool(args.get("defer_until_idle"))
+    if not bool(args.get("force")) and not _defer:
         aktive = _aktive_koersler()
         if aktive:
             return {
@@ -160,7 +196,42 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     PENDING_RESTART_FILE.write_text(json.dumps(confirmation, indent=2))
     logger.info("restart_self: wrote confirmation to %s", PENDING_RESTART_FILE)
 
-    # 2. Build restart command with a short delay so response can reach user first
+    # 2. Build the restart command.
+    #
+    # 3/10-2026: her laa en FAST `sleep 3`. Kaldes vaerktoejet midt i en tur,
+    # draeber de 3 sekunder turen: runnet stemples `interrupted` og genoptages
+    # senere af recovery-dispatcheren — og Bjoern faar TO svar paa én besked
+    # (maalt 3/10 kl. 15:43). Med `defer_until_idle` venter vi i stedet paa et
+    # FAKTUM: at runnet ikke laengere er i live. Ingen sekunder at ramme
+    # forkert, ingen afbrudt tur.
+    if _defer:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+            _rid = str(current_run_id() or "")
+        except Exception:
+            _rid = ""
+        _script = Path(__file__).resolve().parents[2] / "scripts" / "deferred_restart.py"
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, str(_script), _rid, ",".join(services), "5"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as e:
+            PENDING_RESTART_FILE.unlink(missing_ok=True)
+            return {"status": "error", "error": f"Failed to schedule deferred restart: {e}"}
+        logger.info("restart_self: deferred restart scheduled pid=%s run_id=%s", proc.pid, _rid)
+        return {
+            "status": "ok",
+            "scheduled": True,
+            "deferred": True,
+            "run_id": _rid,
+            "services": services,
+            "pid": proc.pid,
+            "channel": channel,
+            "note": "Genstarter naar turen er slut — ingen fast forsinkelse.",
+        }
     restart_cmds = " && ".join(f"sudo systemctl restart {svc}" for svc in services)
     full_cmd = f"sleep 3 && {restart_cmds}"
 
@@ -254,22 +325,17 @@ def _try_fallback_channels(base_msg: str) -> bool:
     except Exception as exc:
         logger.info("restart confirmation: Telegram fallback exception: %s", exc)
 
-    # Forsøg ntfy push notifikation
+    # Sidste udvej: gennem routeren (device-aware, ntfy som bageste led)
     try:
-        from core.services.ntfy_gateway import send_notification as ntfy_send
-        result = ntfy_send(
-            message=base_msg,
-            title="Jarvis genstartet",
-            priority="high",
-            tags=["white_check_mark", "robot"],
-        )
-        if isinstance(result, dict) and result.get("status") == "ok":
-            logger.info("restart confirmation: sent via ntfy fallback")
+        from core.services.alarm_ud import send_alert
+        ok = send_alert(titel="Jarvis genstartet", tekst=base_msg,
+                        slags="infra_security", importance="high")
+        if ok:
+            logger.info("restart confirmation: sent via router")
             return True
-        reason = result.get("reason", "ukendt") if isinstance(result, dict) else str(result)
-        logger.info("restart confirmation: ntfy fallback failed: %s", reason)
+        logger.info("restart confirmation: router kunne ikke levere")
     except Exception as exc:
-        logger.info("restart confirmation: ntfy fallback exception: %s", exc)
+        logger.info("restart confirmation: router exception: %s", exc)
 
     return False
 

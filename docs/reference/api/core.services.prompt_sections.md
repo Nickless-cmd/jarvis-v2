@@ -119,13 +119,13 @@ _Heartbeat + future-agent + epistemic prompt sections._
 | function | `_future_agent_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L61) |
 | function | `_heartbeat_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L75) |
 | function | `_heartbeat_living_context_line` | `()` | Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L209) |
-| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L511) |
-| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L534) |
-| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L552) |
-| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L580) |
-| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L599) |
-| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L612) |
-| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L647) |
+| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L526) |
+| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L549) |
+| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L567) |
+| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L595) |
+| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L614) |
+| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L627) |
+| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L662) |
 
 ## `core/services/prompt_sections/jarvis_brain.py`
 _Always-on Jarvis Brain summary injection for prompt_contract._
@@ -182,13 +182,15 @@ _MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L32) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L41) |
-| function | `_lexical_coverage` | `(query, section, text)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L53) |
-| function | `_memory_md_sections` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L61) |
-| function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L94) |
-| function | `_lexical_candidates` | `(msg, workspace_dir, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L124) |
-| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L140) |
+| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L38) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L47) |
+| function | `_sektioner_og_vaegte` | `(workspace_dir)` | Sektionerne og deres idf-vaegte, cachet paa filens (mtime, stoerrelse). | [src](../../../core/services/prompt_sections/memory_md_selection.py#L65) |
+| function | `_idf_vaegte` | `(sektioner)` | log(N/df) pr. term over sektionerne. Tom dict naar der er for lidt data. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L88) |
+| function | `_lexical_coverage` | `(query, section, text, *, vaegte=…)` | Hvor meget af forespoergslen daekker denne sektion, 0..1. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L120) |
+| function | `_memory_md_sections` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L150) |
+| function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L183) |
+| function | `_lexical_candidates` | `(msg, workspace_dir, *, limit, vaegte=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L213) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L238) |
 
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
@@ -232,6 +234,13 @@ _MEMORY.md line/section selection for the visible prompt._
 | function | `memory_could_change_answer` | `(user_message, memory_text)` | Cheap gate: inject memory only when it can affect this answer's substance. | [src](../../../core/services/prompt_sections/memory_selection.py#L260) |
 | function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L280) |
 | function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L284) |
+
+## `core/services/prompt_sections/output_discipline.py`
+_Output discipline guidance for visible model prompts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_output_discipline_instruction` | `(*, strength)` | Return the output guidance appropriate to a model's strength. | [src](../../../core/services/prompt_sections/output_discipline.py#L4) |
 
 ## `core/services/prompt_sections/pattern_counterfactuals.py`
 _Surface pattern-counterfactual hypotheses in the prompt._
@@ -296,6 +305,20 @@ _Runtime self-report + self-model prompt sections._
 | function | `_runtime_awareness_prompt_surface` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L390) |
 | function | `_should_include_self_report` | `(text)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L412) |
 
+## `core/services/prompt_sections/section_placement.py`
+_Hvilke budget-valgte sektioner der hører i præfikset, og hvilke i halen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `placer_sektioner` | `(*, selected, labels, parts, dyn_tail, derived_inputs)` | Læg hver budget-valgt sektion i præfikset eller i halen. | [src](../../../core/services/prompt_sections/section_placement.py#L79) |
+
+## `core/services/prompt_sections/support_signals_section.py`
+_Support-signalernes indhold — forbeholdet hoistet, kroppen samlet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `byg_support_indhold` | `(support_raw)` | Saml support-blokkene til ÉN sektion med forbeholdet øverst. | [src](../../../core/services/prompt_sections/support_signals_section.py#L33) |
+
 ## `core/services/prompt_sections/tool_discovery_nudge.py`
 _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikke ved findes._
 
@@ -310,17 +333,18 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 | function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L224) |
 | function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L246) |
 | function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L256) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L269) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L279) |
-| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L291) |
-| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L312) |
-| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L331) |
-| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L362) |
-| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L408) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L424) |
-| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L495) |
-| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L501) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L506) |
+| function | `_kernens_navne` | `()` | De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L276) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L324) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L334) |
+| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L346) |
+| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L367) |
+| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L386) |
+| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L417) |
+| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L463) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L479) |
+| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L574) |
+| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L580) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L585) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._
@@ -338,13 +362,13 @@ _Transcript rendering + session compaction for prompts._
 | function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L139) |
 | function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L192) |
 | function | `_build_structured_transcript_messages` | `(session_id, *, limit, include, bivirkninger=…)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L230) |
-| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L543) |
-| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L580) |
-| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L591) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L609) |
-| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L652) |
-| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L657) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L693) |
+| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L564) |
+| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L601) |
+| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L612) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L630) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L673) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L678) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L714) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

@@ -135,10 +135,16 @@ def _always_core_set(limit: int) -> list[str]:
         pinned = set()
     try:
         with connect() as c:
+            # `datetime('now')` giver MELLEMRUM mellem dato og tid, mens
+            # `events.created_at` er ISO med 'T'. 'T' (84) sorterer efter
+            # mellemrum (32), saa en mellemrums-graense slipper hele
+            # graensedoegnet igennem. Maalt 29/9-2026: 59.779 raekker mod
+            # 58.686 med den rigtige form — 1.093 for mange (1,9 %). Samme
+            # faelde ramte tre andre maalinger samme doegn.
             rows = c.execute(
                 "SELECT json_extract(payload_json, '$.tool') AS tool, COUNT(*) AS n "
                 "FROM events WHERE kind = 'tool.invoked' "
-                "AND created_at >= datetime('now', '-7 days') "
+                "AND created_at >= replace(datetime('now', '-7 days'), ' ', 'T') "
                 "GROUP BY tool ORDER BY n DESC LIMIT ?",
                 (max(limit, 200),),
             ).fetchall()
@@ -156,6 +162,40 @@ def _always_core_set(limit: int) -> list[str]:
     out = pinned_in_core + rest[: max(0, limit - len(pinned_in_core))]
     return out
 
+
+
+def kald_pr_bruger(dage: int = 7) -> dict[str, dict[str, int]]:
+    """Hvilke vaerktoejer kalder hver bruger — grundlaget kernen mangler.
+
+    `_always_core_set` ovenfor er ÉN global liste uden bruger- eller
+    rolle-dimension. Bjoern 29/9-2026: «andre brugere har andre tool saet..
+    vores maaling holder stadig ikke.» Den her svarer ikke paa hvad kernen
+    SKAL vaere — den goer det muligt at se om der overhovedet ER forskellige
+    saet, foer nogen skaerer kassen efter ét menneskes uge.
+
+    Identiteten laeses fra payloadens rod (`tool_call_telemetry`); kald fra
+    foer den aendring har den ikke og lander under ``UKENDT``. Det er med
+    vilje synligt: 63 % manglede feltet da det blev maalt.
+    """
+    ud: dict[str, dict[str, int]] = {}
+    try:
+        with connect() as c:
+            rows = c.execute(
+                "SELECT COALESCE(json_extract(payload_json, '$.user_id'), 'UKENDT') AS u, "
+                "json_extract(payload_json, '$.tool') AS tool, COUNT(*) AS n "
+                "FROM events WHERE kind = 'tool.invoked' "
+                "AND created_at >= replace(datetime('now', ?), ' ', 'T') "
+                "GROUP BY u, tool ORDER BY u, n DESC",
+                (f"-{int(dage)} days",),
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("tool_router.kald_pr_bruger query failed: %s", exc)
+        return ud
+    for r in rows:
+        if not r[1]:
+            continue
+        ud.setdefault(str(r[0]), {})[str(r[1])] = int(r[2])
+    return ud
 
 def _load_more_rate_7d() -> float:
     try:
@@ -393,7 +433,15 @@ def _select_inner(
     load_more_rate = _load_more_rate_7d()
 
     try:
-        sim = top_k_similar(_embedding_query(user_message), k=settings.tool_router_k_embeddings)
+        sim = top_k_similar(
+            _embedding_query(user_message),
+            k=settings.tool_router_k_embeddings,
+            # Kort deadline MED VILJE. Et timeout her er ikke en fejl, det er
+            # et fravalg: vi gaar videre med kerne-vaerktoejerne frem for at
+            # lade turen staa stille. Se `tool_router_embed_timeout_s` for
+            # maalingen bag de 4 sekunder.
+            timeout_s=float(getattr(settings, "tool_router_embed_timeout_s", 4.0) or 4.0),
+        )
     except Exception as exc:
         logger.warning("tool_router: embedding lookup failed: %s", exc)
         sim = []

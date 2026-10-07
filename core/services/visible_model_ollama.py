@@ -83,8 +83,8 @@ def _execute_ollama_model(
 
     visible_input = _vm()._build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
-    tools = select_tools_for_visible(
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 
@@ -281,8 +281,8 @@ def _stream_ollama_model(
 
     visible_input = _vm()._build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
-    tools = select_tools_for_visible(
+    from core.services.turens_vaerktoejer import vaerktoejer_for_turen
+    tools = vaerktoejer_for_turen(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 

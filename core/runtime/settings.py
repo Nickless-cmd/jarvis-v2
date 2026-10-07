@@ -320,6 +320,16 @@ class RuntimeSettings:
     # (87% af vinduet) UDEN nogensinde at compacte → near-fuldt vindue → loop/cut-off. 130k
     # rammer overgroede sessioner men lader sunde (~80k) være, og giver glm ~70k headroom.
     context_compact_threshold_tokens: int = 130_000
+
+    #: A/B 5/10-2026: andel af SYNLIGE runs der koerer mellem-runderne UDEN
+    #: raesonnering. 32,9 % af alt output er raesonnering, og latensen er
+    #: naesten linjaer i output — men det er paa mellem-runderne han vaelger
+    #: vaerktoej, saa kvalitetsprisen er umaalt. Armen er binaer: probet mod
+    #: API'en ignorerer deepseek-v4-flash `reasoning_effort` i tavshed
+    #: (high/medium/low giver alle 296-317 raeson-tokens), saa den eneste
+    #: indstilling der virker er `thinking: disabled`.
+    #: 0 = ingen eksponering. Se `core/services/raesonnering_eksperiment.py`.
+    raesonnering_daempet_procent: int = 20
     # 2026-06-30: model-BEVIDST compaction-tærskel. 130k flat var GLM-æra (200k-
     # vindue) — på deepseek-v4-flash (1M-vindue) betød det compaction ved ~13% af
     # vinduet = unødigt tidligt cache-reset hver gang en session voksede lidt. Hver
@@ -355,6 +365,85 @@ class RuntimeSettings:
     # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
     # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
     session_tool_pin_enabled: bool = True
+    #: Samme laas, ét lag op: ÉN model pr. session (3/10-2026).
+    #:
+    #: Bjoern: «stortset alle mine beskeder kolder starter». Maalt paa CT105:
+    #: runderne INDE i en tur ligger paa 95-96,5 % hit, mens aabneren ligger
+    #: paa 50-56 % — og hit-tallene gentager sig (16.512 x2, 19.584 x4,
+    #: 10.112 x2) paa input fra 41k til 126k. Samme signatur som ovenfor.
+    #:
+    #: Aarsagen var at TRE modeller betjente nabo-ture i samme samtale
+    #: (deepseek-flash, deepseek-v4-flash, glm-5.2:cloud). DeepSeek cacher per
+    #: model, saa to modeller deler ingen cache uanset byte-stabilitet — og
+    #: modelnavnet staar ved tegn ~80 i systembeskeden. Timer med ÉN model gav
+    #: 95,1 og 96,5 % hit; timer med to faldt til 50,4 %.
+    #:
+    #: Et EKSPLICIT valg fra klienten vinder altid og laases i stedet.
+    #: Saet False for at vaelge pr. tur igen (gammel adfaerd, uden deploy).
+    session_model_pin_enabled: bool = True
+    #: Indbakke-gaten (Opgave 4, 3/10-2026). To trin, som Bjoern formulerede
+    #: det: «foerst bede ham checke indbox, og hvis ignoreret eskalerer som
+    #: den goer nu». Foerste udkast af spec'en kollapsede det til oejeblikkelig
+    #: blokering — det var en vurdering sat i stedet for hans form.
+    #:
+    #: Kontakten er her, fordi en gate der skaerer skal kunne slukkes uden et
+    #: deploy. False = indbakken paaminder aldrig og blokerer aldrig.
+    inbox_gate_enabled: bool = True
+    #: Hvor mange LEVEREDE, ubesvarede paamindelser foer en mutation naegtes.
+    #:
+    #: 2 er et STARTPUNKT, ikke en maaling. R2's 15 % er ikke inboxens
+    #: heed-rate, og Opgave 7 skal maale begge trins rater hver for sig foer
+    #: tallet kan forsvares. Det staar som en settings-vaerdi netop derfor.
+    inbox_paamindelser_foer_blok: int = 2
+    #: Samme vaerktoejskasse i BEGGE trin af en tur (30/9-2026).
+    #:
+    #: Foerste pas brugte `select_tools_for_visible` (48 vaerktoejer), de
+    #: agentiske runder `tool_router` + laasen (~119). Saettene var ikke
+    #: indlejrede: 77 vaerktoejer kunne KUN kaldes i runderne, og 6 kun i
+    #: foerste pas — heriblandt `read_tool_result`, som laeser resultater fra
+    #: andre vaerktoejer og manglede netop i de runder hvor resultater laeses.
+    #:
+    #: Maalt: 95 % af alle ture har mere end én runde og bruger altsaa
+    #: vaerktoejer (median 9 runder). Den lille foerste kasse sparer derfor
+    #: noget paa 5 % af turene og tvinger en omvej i de 95 %, hvor det store
+    #: array alligevel sendes fra runde 1. Forenet sendes ÉT array pr. tur i
+    #: stedet for to, og prosa-turene rammer samme varme praefiks som resten.
+    #:
+    #: Killswitch: saet den til false i settings.json. `load_settings()` laeser
+    #: filen ved HVERT kald, saa den virker UDEN genstart.
+    visible_tools_unified: bool = True
+    #: Hold vaerktoejsarrayet HELT stille efter en `load_more_tools`-hentning
+    #: (30/9-2026). Baade fletten i `visible_runs` og udvidelsen af
+    #: `session_tool_pin` springes over, saa praefikset er byte-identisk paa
+    #: tvaers af ture og sessioner.
+    #:
+    #: Maalt: én ny definition i arrayet koster 8.704 tokens mod DeepSeeks API,
+    #: og +419 tegn kostede 62.672 miss i produktion — fordi arrayet ligger foer
+    #: hele samtalen. Skemaerne staar allerede i hentningens RESULTAT, altsaa i
+    #: beskederne, hvor de koster ~0; `call_loaded_tool` kalder dem derfra.
+    #:
+    #: RISIKOEN: bruger modellen ikke dispatcheren, kan et hentet vaerktoej ikke
+    #: kaldes — DeepSeek afviser et vaerktoej der ikke er deklareret. Derfor er
+    #: den en killswitch der virker UDEN genstart: `load_settings()` laeser
+    #: filen ved hvert kald.
+    visible_tools_frozen: bool = True
+
+    #: Braek lange prosa-linjer op i afsnit ved saetningsgraenser.
+    #:
+    #: Jarvis byggede splitningen 1/10-2026 (prop-2389e27bfb36444f) mod en
+    #: maalt virkelighed: 227 text-blokke over 200 tegn uden ét linjeskift.
+    #: Samme dag fjernede Codex prompt-kravet om korte afsnit. Tilbage stod en
+    #: mekanisk haandhaevelse af en regel huset netop havde droppet.
+    #:
+    #: Og den koerer KUN i udfalds-stien, ikke under streaming. Teksten du saa
+    #: flyde som ét afsnit blev derfor til tre i det oejeblik turen sluttede —
+    #: ikke ny tekst, men den du allerede havde laest der FLYTTEDE sig. Bjoern
+    #: 1/10: «det ser ud som om teksten bliver dumpet ind».
+    #:
+    #: Slaaet FRA som standard. Jarvis' maaling er ikke forkert, saa koden
+    #: bliver staaende: én vaerdi i runtime.json taender den igen, og
+    #: `load_settings()` laeser filen ved hvert kald — ingen genstart.
+    markdown_split_lange_linjer: bool = False
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
@@ -437,6 +526,29 @@ class RuntimeSettings:
     sensory_perception_time_window_days: int = 7
     sensory_perception_min_baseline_records: int = 3
     sensory_perception_recent_baseline_size: int = 3
+    # Selvreparation → Sanser: hvornår en reparation er en SANSNING.
+    # "first" = kun første gang et (mønster, udfald) sker. En gentagelse er
+    # ikke en ny oplevelse — forsøget ligger i forvejen i self_repair_attempts.
+    # Målt 28/9-2026: 287 poster, men kun 11 unikke indhold (175x den samme).
+    # "off" = skriv aldrig · "always" = gammel adfærd (hver reparation).
+    emotion_repair_senses_bridge_mode: str = "first"
+    # Reflection → Plan: konvertér en tanke til en eksekverbar plan.
+    # False (default 29/9-2026) = skriv ingen planer. Tre daemons (inner_voice,
+    # self_review, blind_spots) skrev planer ind i cognitive_reflective_plans,
+    # men INGEN læste dem: accept_reflective_plan() og
+    # build_reflection_to_plan_surface() kaldes ikke ét sted uden for deres egen
+    # fil. Tabellen var skrive-kun — målt 29/9: 603 planer, alle 'proposed',
+    # ældste fra 14. maj. True = gammel adfærd (skriv planer igen).
+    reflection_to_plan_enabled: bool = False
+    # Kvitteringer → Sanser: hvornår en KVITTERING for at der blev sanset
+    # ("Intet mærkbart ændret.", "Jeg lyttede til rummet. Klassifikation:
+    # silence") er en SANSNING. Den er ikke — den er svaret på at der ikke var
+    # noget at sanse. "skip" arkiverer den ikke; "always" er den gamle adfærd.
+    # Målt 28/9-2026: 45 "Intet mærkbart ændret." og 24 silence-lyt i arkivet,
+    # begge med en hane der stadig skrev. Læsesiden (`er_maettet`) filtrerede
+    # dem allerede fra — her lukkes SKRIVESIDEN, så filteret ikke længere skal
+    # skjule dem bagefter. Se `sensory_archive.skal_arkiveres`.
+    sensory_receipt_archive_mode: str = "skip"
     # Self-repair engine — runtime-instigated repair actions for known patterns.
     self_repair_engine_enabled: bool = True
     self_repair_default_cooldown_seconds: int = 300
@@ -524,6 +636,29 @@ class RuntimeSettings:
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"
     tool_router_embedding_provider: str = "ollama"
+    #: Deadline paa routerens ENE embed-kald, i sekunder.
+    #:
+    #: Maalt 6/10-2026 paa CT105, 1.650 beslutninger over 7 dage:
+    #:   MED picks  (1.407): p50 364 ms · p75 2.246 · p90 5.346 · p99 12.487
+    #:   UDEN picks   (243): p50 15.197 ms — HVER ENESTE var `timeout=15`
+    #: De 243 ventede altsaa et kvarter og fik INGEN picks. De gik videre med
+    #: de 70 kerne-vaerktoejer — praecis det de ville have faaet med det samme.
+    #:
+    #: Aarsagen er koe, ikke en kold model: `nomic-embed-text` er varm
+    #: (KEEP_ALIVE=-1), men ollama SERIALISERER pr. model, og `memory_search`
+    #: bruger samme model paa samme vaert. Maalt alene: 28 ms. Maalt under en
+    #: batch: 5-7 s.
+    #:
+    #: 4 sekunder er KNAEET i maalingen, ikke et oensket tal:
+    #:    500 ms → taber picks paa 33,8 % · sparer 88 min/uge
+    #:   2000 ms → 26,1 % · 73 min/uge
+    #:   4000 ms → 14,6 % · 55 min/uge   ← holder 85 % af picks
+    #:   8000 ms → 3,6 %  · 31 min/uge
+    #: Og prisen for at miste picks er maalt: `load_more`-raten gaar fra 6,8 %
+    #: til 8,2 % — 1,4 procentpoint. Degraderingen fandtes i forvejen
+    #: (`except` → `sim = []` → koer videre); den udloeses nu efter 4 s i
+    #: stedet for efter 15.
+    tool_router_embed_timeout_s: float = 4.0
     # Anthropic-compat endpoint (added 2026-05-06)
     anthropic_compat_enabled: bool = True
     # When true, requests without x-api-key are accepted in dev (resolves to default workspace).
@@ -608,10 +743,15 @@ _TIDLIGERE_UINDLAESTE = (
     "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
+    "session_model_pin_enabled",
+    "inbox_gate_enabled", "inbox_paamindelser_foer_blok",
+    "visible_tools_unified", "visible_tools_frozen",
+    "markdown_split_lange_linjer",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",
-    "tool_router_embedding_provider", "anthropic_compat_enabled",
+    "tool_router_embedding_provider", "tool_router_embed_timeout_s",
+    "anthropic_compat_enabled",
     "anthropic_compat_dev_mode_open", "decision_signals_enabled",
 )
 
@@ -1008,6 +1148,7 @@ def load_settings() -> RuntimeSettings:
         visible_ollama_num_predict=int(data.get("visible_ollama_num_predict", defaults.visible_ollama_num_predict)),
         visible_context_headroom_tokens=int(data.get("visible_context_headroom_tokens", defaults.visible_context_headroom_tokens)),
         context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
+        raesonnering_daempet_procent=int(data.get("raesonnering_daempet_procent", defaults.raesonnering_daempet_procent)),
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         context_attention_budget_tokens=int(data.get("context_attention_budget_tokens", defaults.context_attention_budget_tokens)),
@@ -1040,6 +1181,9 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_time_window_days=int(data.get("sensory_perception_time_window_days", defaults.sensory_perception_time_window_days)),
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
+        emotion_repair_senses_bridge_mode=str(data.get("emotion_repair_senses_bridge_mode", defaults.emotion_repair_senses_bridge_mode)),
+        reflection_to_plan_enabled=bool(data.get("reflection_to_plan_enabled", defaults.reflection_to_plan_enabled)),
+        sensory_receipt_archive_mode=str(data.get("sensory_receipt_archive_mode", defaults.sensory_receipt_archive_mode)),
         self_repair_engine_enabled=_som_bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
         self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),
         self_repair_default_max_attempts_per_window=int(data.get("self_repair_default_max_attempts_per_window", defaults.self_repair_default_max_attempts_per_window)),

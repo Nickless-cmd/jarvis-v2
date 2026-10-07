@@ -1,6 +1,6 @@
 """Én alarm pr. cooldown — paa tvaers af processer OG genstarter.
 
-MAALT i Bjoerns `jarvis-heartbeat` natten til 13/9-2026. Cooldownen er seks
+MAALT i Bjoerns notifikationer natten til 13/9-2026. Cooldownen er seks
 timer, men alarmerne kom 00:00, 00:21, 00:34, 01:36 og 02:25 — og 00:21, 00:34
 og 01:36 kom hver TO gange i samme minut.
 
@@ -32,10 +32,19 @@ def _rent_bord(monkeypatch):
 
 @pytest.fixture
 def sendte(monkeypatch):
+    """Tæller alarmer på den port daemonen FAKTISK bruger.
+
+    Indtil 7/10-2026 patchede denne fixture `ntfy_gateway.send_notification`
+    direkte — dengang kaldte daemonen selv gateway'en. Siden `b5c479d05` går
+    alarmen gennem `alarm_ud.send_alert` og videre til `notification_router`,
+    så den gamle patch målte en port ingen kaldte: testene faldt til nul træf
+    og fejlede på en vej der var blevet flyttet. Porten er skiftet her, så
+    testen måler den vej koden bruger nu.
+    """
     ud: list = []
-    import core.services.ntfy_gateway as ng
-    monkeypatch.setattr(ng, "send_notification",
-                        lambda msg, **kw: ud.append(msg) or {"status": "sent"})
+    import core.services.alarm_ud as au
+    monkeypatch.setattr(au, "send_alert",
+                        lambda **kw: ud.append(kw.get("tekst", "")) or True)
     return ud
 
 
@@ -81,3 +90,13 @@ def test_utilgaengelig_delt_tilstand_giver_alarm_frem_for_tavshed(sendte, monkey
     monkeypatch.setattr(sc, "get", lambda k: (_ for _ in ()).throw(RuntimeError("nede")))
     iw._maybe_emit_critical(KRITISK)
     assert len(sendte) == 1
+
+
+def test_alarmen_gaar_gennem_routeren_og_ikke_direkte_til_telefonen():
+    """7/10-2026: ti moduler sprang routeren over og gik direkte til ntfy —
+    ingen device-awareness, ingen eskalering, ingen kvittering. Daemonen her
+    var ét af dem. Kilden laeses som tekst, saa en fremtidig tilbageskrivning
+    til det direkte kald fanges."""
+    kilde = inspect.getsource(iw._maybe_emit_critical)
+    assert "alarm_ud" in kilde, "alarmen gaar ikke gennem alarm_ud"
+    assert "ntfy_gateway" not in kilde, "alarmen gaar direkte til telefonen igen"

@@ -1,15 +1,18 @@
 import { maaPolle } from '../lib/ro'
-import { Fragment } from 'react'
+import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useFastholdBund } from '../lib/useFastholdBund'
+import { useChatScroll } from '../lib/useChatScroll'
 import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
+import { PlansPanel } from '../components/panel/PlansPanel'
+import { PrPanel } from '../components/panel/PrPanel'
 import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
-import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
+import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
@@ -18,6 +21,7 @@ import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
@@ -29,7 +33,6 @@ import { KoeChip } from '../components/transcript/KoeChip'
 import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
-import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
@@ -43,12 +46,13 @@ import { startSideOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
@@ -61,13 +65,13 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail } from '../components/chat/MessageRail'
+import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 
-const NEAR_BOTTOM_PX = 120
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
@@ -89,8 +93,6 @@ export function ChatView({
   // Brister strømmen, ligger svaret allerede gemt på serveren. Hent det hjem.
   useGenopretEfterBrud(stream.status, sessions.activeId ?? null, sessions.refresh)
   const transcriptRef = useRef<HTMLDivElement>(null)
-  const [atBottom, setAtBottom] = useState(true)
-  const [unread, setUnread] = useState(0)
   const [compactAt, setCompactAt] = useState(0)
   // Autonomt baggrunds-run (fx operator_wakeup) i NETOP denne session — som
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
@@ -390,67 +392,39 @@ export function ChatView({
     }
   }, [bgActive, bgRunId, followRetry, sessionId, settings])
 
-  const scrollToBottom = () => {
-    const el = transcriptRef.current
-    if (el) el.scrollTop = el.scrollHeight
-    setUnread(0)
-  }
-
-  const onScroll = () => {
-    const el = transcriptRef.current
-    if (!el) return
-    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
-    setAtBottom(near)
-    if (near) setUnread(0)
-  }
-
-  const lastScrolledSession = useRef<string | null>(null)
-  useEffect(() => {
-    const el = transcriptRef.current
-    if (!el) return
-    const isNewSession = lastScrolledSession.current !== sessionId
-    if (isNewSession) {
-      el.scrollTop = el.scrollHeight
-      if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
-      setUnread(0)
-      return
-    }
-    if (atBottom) el.scrollTop = el.scrollHeight
-    else setUnread((u) => u + 1)
-  }, [sessions.messages.length, sessionId])
+  // Én scroll-koordinator (spec'ens punkt 1a, 29/9-2026). Før skrev fire steder i
+  // dette view til `scrollTop`, hver med sin egen opfattelse af hvem der bestemte:
+  // scrollToBottom, ny-session/ny-besked-effekten, usePinVedStart, useFastholdBund
+  // og ResizeObserveren. Nu melder de alle intent, og koordinatorens `melder`
+  // afgør om der må skrives. `arbejder` er dit EGET svar (pin-ved-start); `aktiv`
+  // er alt arbejde, også et cross-device run (interval-nettet).
+  const scroll = useChatScroll(transcriptRef, {
+    arbejder: stream.status === 'working',
+    aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+  })
+  const { melder } = scroll
 
   // Stream-blokke der vokser, holdes i bund af browserens scroll-anker
   // (.bund-anker nederst i transcriptet, styles/transcript-ydelse.css) — ikke
   // af en effekt der læste scrollHeight ved hver opdatering (19/9-2026).
 
-  // Mens der arbejdes: hold ruden i bund uanset hvor indholdet kommer fra.
-  // Effekterne ovenfor kender kun stream-blokke, follow-blokke og ANTALLET af
-  // beskeder; et svar der lander som en erstattet besked (samme antal) eller
-  // ved refresh efter et autonomt run voksede indholdet usynligt for dem.
-  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
-  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
-
-  useFastholdBund(
-    transcriptRef,
-    stream.status === 'working' || bgActive || followState.status === 'working',
-    atBottom,
-  )
-
-  // Re-pin til bund når transcript-containerens HØJDE ændrer sig (Bjørn 29. jun):
-  // takeover-banneret ("anden enhed følger med") + liveness-indikatoren sidder UDENFOR
-  // scroll-containeren, så når de dukker op krymper .transcript → nederste nye besked
-  // falder under folden, og auto-scroll-effekten ovenfor (der kun lytter på blocks/atBottom)
-  // fyrer ikke → det SER stille ud selvom streamen kører. ResizeObserver dækker ALLE
-  // layout-ændringer generisk; respekterer at brugeren har scrollet op (kun ved atBottom).
+  // Ny session eller nyt indhold: HVAD der skete meldes her — om der må flyttes
+  // på rullen afgør koordinatoren. Et svar der lander som en erstattet besked
+  // (samme antal) eller ved refresh efter et autonomt run fanges ikke her; det
+  // er interval-nettet i koordinatoren der dækker det (Bjørn 17/9-2026).
+  const lastScrolledSession = useRef<string | null>(null)
   useEffect(() => {
-    const el = transcriptRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => {
-      if (atBottom) el.scrollTop = el.scrollHeight
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [atBottom])
+    if (!transcriptRef.current) return
+    const isNewSession = lastScrolledSession.current !== sessionId
+    if (isNewSession) {
+      // Først når der ER beskeder i den nye session husker vi den — ellers skal
+      // den første besked der lander stadig følge med ned.
+      if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
+      melder('ny-session')
+      return
+    }
+    melder('ny-besked')
+  }, [sessions.messages.length, sessionId, melder])
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
@@ -479,8 +453,8 @@ export function ChatView({
       created_at: new Date().toISOString(),
       parent_id: null,
     })
-    setAtBottom(true)
-    setUnread(0)
+    // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
+    melder('pin-start')
     stream.send(message, {
       sessionId: sid,
       approvalMode: opts.permission,
@@ -553,7 +527,17 @@ export function ChatView({
     } catch { /* pollen forliger tilstanden */ }
   }
 
-  const koe = useSendeKoe({ arbejder: streaming, online, send: doSend })
+  const koe = useSendeKoe({
+    arbejder: streaming, online, send: doSend,
+    // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
+    // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
+    steer: async (text) => {
+      const runId = stream.activeRunId
+      if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
+    },
+    kanSteer: !!stream.activeRunId,
+  })
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
@@ -576,7 +560,7 @@ export function ChatView({
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
-  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
 
   // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
   // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
@@ -647,7 +631,7 @@ export function ChatView({
   )
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !koe.koet && !bgActive)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && koe.items.length === 0 && !bgActive)
 
   const ensureSessionId = async () => {
     if (sessionId ?? sessions.activeId) return (sessionId ?? sessions.activeId)!
@@ -673,19 +657,25 @@ export function ChatView({
 
   // Sideopgave-kortet (CC's «Suggested task») flyder over inputfeltet.
   const sideCfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null
+  // Handlerne returnerer den samtale der LØSER opgaven, så kortet kan knytte
+  // de to sammen (Bjørn 3/10: «måtte jeg minde ham om at markere den flaggede
+  // opgave færdig»). Uden linket kan ingen lukke opgaven.
   const sideHandlinger = {
     startLokalt: async (t: SideTask) => {
       if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat' })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
       await sessions.refresh()
       sessions.select(sid)
+      return sid
     },
     baggrund: async (t: SideTask) => {
       if (!sideCfg) return
-      await startSideOpgave(sideCfg, t, { kind: 'chat' })
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
       void sessions.refresh()
+      return sid
     },
-    loesHer: (t: SideTask) => resend(t.prompt),
+    // «Løs her» kører i den AKTUELLE samtale — den er arbejdet.
+    loesHer: (t: SideTask) => { void resend(t.prompt); return sessionId ?? undefined },
   }
 
   // Øverst i chatten, højrestillet over samtalen — som CC's «Suggested task»
@@ -701,6 +691,24 @@ export function ChatView({
   // Stabile props til rækkerne — ellers holder MessageRow's memo aldrig,
   // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
   const resendStabil = useSenesteFn(resend)
+  /** En widget bad om at sige noget i samtalen.
+   *
+   *  Teksten er FAERDIG-MAERKET af serveren (`[fra widget «…»] …`) og sendes
+   *  som den er. Vi laegger ikke vores eget maerke paa: formatet har ÉN kilde,
+   *  saa desk og mobil ikke kan drive fra hinanden.
+   *
+   *  Staaende regel (Bjoern 3/10-2026): alt der ikke er skrevet fra composeren
+   *  skal vaere maerket. Maerket staar derfor i selve beskeden — ikke kun i et
+   *  felt klienten kunne glemme at vise — saa BAADE Bjoern og Jarvis kan se at
+   *  det var en widget der skrev. `WidgetBlock` sender slet ikke en besked
+   *  uden maerke.
+   *
+   *  Samme vej som side-opgaver og forslag bruger, saa model-, provider- og
+   *  taenke-valg arver det VALGTE. */
+  const widgetPrompt = useCallback((markeretTekst: string) => {
+    const t = markeretTekst.trim()
+    if (t) resendStabil(t)
+  }, [resendStabil])
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
   const raekkeConfig = useMemo(
@@ -729,6 +737,7 @@ export function ChatView({
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
+        draftKey="chat"
       />
       <VoiceConversation
         active={voice.active}
@@ -748,12 +757,19 @@ export function ChatView({
   // i chat — hvor Bjoern arbejder mest — var der ingen vej til det overhovedet.
   // (16/9-2026: «hvorfor de ikk bliver vist overhovede … alt du naesten laver
   // bliver vist der i».)
-  const [jobsOpen, setJobsOpen] = useState(false)
-  const [browserOpen, setBrowserOpen] = useState(false)
+  // Panel-tilstand huskes i localStorage (Bjørn 4/10-2026: «appen husker ikk om
+  // de var åbne … alle paneler nulstiller ved app genstart»).
+  const [jobsOpen, setJobsOpen] = usePersistedState('jarvis-desk:panel:jobs', false)
+  const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
+  // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
+  // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
+  const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
+  const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
+  const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
-  const [changesOpen, setChangesOpen] = useState(false)
+  const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
@@ -768,8 +784,8 @@ export function ChatView({
   // skærmen for denne samtale, og hvordan åbnes/lukkes panelerne. Tilstanden
   // læses gennem en ref, så opslaget ser NU — ikke hvad der gjaldt ved
   // registreringen.
-  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open, browserOpen })
-  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open, browserOpen }
+  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open, browserOpen, artifactsOpen, plansOpen, prOpen })
+  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open, browserOpen, artifactsOpen, plansOpen, prOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -777,7 +793,7 @@ export function ChatView({
       flade: 'chat',
       aabne: () => {
         const t = skaermNu.current
-        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview', t.browserOpen && 'browser'].filter(Boolean) as string[]
+        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview', t.browserOpen && 'browser', t.artifactsOpen && 'artifact', t.plansOpen && 'plan', t.prOpen && 'pr'].filter(Boolean) as string[]
       },
       vis: (p, a) => {
         if (p === 'diff') { setChangesOpen(true); if (a.path) setFokusFil(a.path); return null }
@@ -789,7 +805,10 @@ export function ChatView({
         }
         if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') return 'Terminalen findes kun i kode-tilstand.'
-        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+        if (p === 'artifact') { setArtifactsOpen(true); return null }
+        if (p === 'plan') { setPlansOpen(true); return null }
+        if (p === 'pr') { setPrOpen(true); return null }
+        return `Ukendt panel: ${p}`
       },
       // Lukker Jarvis en rude gennem kanalen, skal dens FULDE visning også
       // slippe. Uden det blev `fuldRude` stående på en rude der var væk, og
@@ -803,6 +822,9 @@ export function ChatView({
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file') panel.close()
         else if (p === 'browser') setBrowserOpen(false)
+        else if (p === 'artifact') setArtifactsOpen(false)
+        else if (p === 'plan') setPlansOpen(false)
+        else if (p === 'pr') setPrOpen(false)
         return null
       },
     })
@@ -813,7 +835,7 @@ export function ChatView({
   // browserOpen SKAL være med: uden den åbnede skinnen kun hvis ændringer
   // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
   // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
-  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen)
+  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen)
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
@@ -861,6 +883,9 @@ export function ChatView({
           onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
         />
       )}
+      {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
+      {plansOpen && cfgSkinne && <PlansPanel config={cfgSkinne} onClose={() => setPlansOpen(false)} />}
+      {prOpen && cfgSkinne && <PrPanel config={cfgSkinne} onClose={() => setPrOpen(false)} />}
     </div>
   ) : null
 
@@ -879,8 +904,11 @@ export function ChatView({
         {/* «Aktiv på en anden enhed» bor HER nu, ikke som et banner over
             samtalen — ved siden af de andre tilstands-signaler. */}
         <AndenEnhedMaerke aktiv={showTakeover} />
-        {settings && (
+        {DESK_CHROME.centralBadge && settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
+        )}
+        {DESK_CHROME.peakBadge && settings && (
+          <PeakBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
         {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
@@ -956,6 +984,7 @@ export function ChatView({
       {sideKort}
       {jobsRude}
       <div className="transcript-wrap">
+      <WidgetPrompt.Provider value={widgetPrompt}>
       <MessageRail
         containerRef={transcriptRef}
         anchors={railAnchors}
@@ -963,7 +992,7 @@ export function ChatView({
       {/* is-at-bottom slukker bund-fade'en naar man ER i bunden (Bjørn 17/9):
           der er intet nedenfor at tone ud, og masken aad ellers den sidste
           linje. Toppen beholder sin — der ER altid mere ovenfor. */}
-      <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
+      <div className={`transcript${scroll.atBottom ? ' is-at-bottom' : ''}`} ref={scroll.containerRef} onScroll={scroll.onScroll}>
         {/* En fejlet hentning saa foer ud som en TOM samtale — det mest
             foruroligende en chat kan vise (Codex' punkt 2, 21/9-2026). */}
         {sessions.loadFejl && (
@@ -1002,15 +1031,15 @@ export function ChatView({
           </div>
           </Fragment>
         ))}
-        {streaming && stream.blocks.length > 0 && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+        {streaming && (stream.blocks.length > 0 || !!stream.provisionalText) && (
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
-        {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+        {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
         )}
         {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
             styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
@@ -1018,6 +1047,7 @@ export function ChatView({
             og intet flytter sig. */}
         <div className="bund-anker" aria-hidden="true" />
       </div>
+      </WidgetPrompt.Provider>
       </div>
 
       <div className="composer-area">
@@ -1041,12 +1071,12 @@ export function ChatView({
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
+            onOpenJobs={() => setJobsOpen(true)}
             compacting={compacting}
-            blocks={stream.blocks}
           />
         )}
         <div className="composer-notices">
-          <GodkendelsesKort />
+          <GodkendelsesKort sessionId={sessionId} />
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
@@ -1086,9 +1116,12 @@ export function ChatView({
             />
           )}
         </div>
-        <JumpToLatest synlig={!atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+        <JumpToLatest synlig={!scroll.atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
         <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
-        <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
+        <KoeChip
+          items={koe.items} busy={streaming} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+          onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
+        />
         {composer}
       </div>
     </div>

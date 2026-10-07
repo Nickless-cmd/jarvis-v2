@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { initialStreamState, liveBlokke, streamReducer } from '../../lib/streamReducer'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -33,8 +35,44 @@ const TUR: ContentBlock[] = [
   kald('bash', { command: 'curl -s /v1/models' }, '{"result":{"stdout":"http=200 bytes=96185","exit_code":0}}'),
   tekst('Nøglen er gyldig — men ikke betalingsklar.'),
 ]
+const TUR_UNDER_ARBEJDE = TUR.slice(0, -1)
 
 beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
+
+// Ældre tests undersøger indholdet af arbejdsrækkerne. Åbn dem eksplicit,
+// når den levende svartekst nu har foldet turen sammen som standard.
+function render(ui: ReactElement) {
+  const view = rtlRender(ui)
+  if (ui.type === RaekkeTranskript && (ui.props as { streaming?: boolean }).streaming) {
+    const header = view.container.querySelector('.rv-tur')
+    if (header?.getAttribute('aria-expanded') === 'false') fireEvent.click(header)
+  }
+  return view
+}
+
+it('tegner mellem-syntesen mens deltas ankommer og uden spring ved bekræftelse', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  })
+  state = streamReducer(state, { type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 't1', name: 'bash', input: {} } })
+  const view = render(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  const push = (delta: string) => {
+    state = streamReducer(state, { type: 'system_event', kind: 'provisional_text_delta', payload: { run_id: 'r1', delta } })
+    view.rerender(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  }
+  push('Jeg fandt ')
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt')
+  push('årsagen.')
+  expect(view.container.querySelectorAll('.rv-mellem')).toHaveLength(1)
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt årsagen.')
+  state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
+  state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Jeg fandt årsagen.' } })
+  state = streamReducer(state, { type: 'system_event', kind: 'provisional_text_commit', payload: { run_id: 'r1' } })
+  view.rerender(<RaekkeTranskript blocks={liveBlokke(state)} streaming />)
+  expect(view.container.querySelectorAll('.rv-mellem')).toHaveLength(1)
+  expect(view.container.querySelector('.rv-mellem')).toHaveTextContent('Jeg fandt årsagen.')
+})
 
 describe('underagent-rækken', () => {
   const SCOUT: ContentBlock[] = [{
@@ -78,28 +116,53 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
+  it('holder arbejdet åbent gennem synteser og folder først ved bekræftet afslutning', () => {
+    const arbejde: ContentBlock[] = [tanke('Finder årsagen.'), kald('read_file')]
+    const { container, rerender } = rtlRender(<RaekkeTranskript blocks={arbejde} streaming />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+
+    rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Her er svaret')]} streaming />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
+    expect(screen.getByText('Her er svaret')).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep')]} streaming />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Jeg tjekker mere.')).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep'), tekst('Færdig.')]} streaming={false} />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Færdig.')).toBeInTheDocument()
+  })
+
   it('har læsbare foldpile og lader aktive rækkers ikoner følge shimmeren', () => {
     const { container, rerender } = render(<RaekkeTranskript blocks={[
-      statusKald('read_file', { path: 'app.ts' }, 'running'), tekst('Svar.'),
+      statusKald('read_file', { path: 'app.ts' }, 'running'),
     ]} streaming />)
     const runde = container.querySelector('.rv-arbejdsknap')!
     expect(runde).toHaveAttribute('data-koerer')
     expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-arbejdsikon .rv-ikon-glimt')).toBeInTheDocument()
     expect(runde.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
-    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
+    expect(runde.querySelector('.rv-turC .rv-ikon-glimt')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
     expect(container.querySelector('.rv-turTekst')).toHaveClass('shimmer')
-    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
+    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
     expect(css).not.toMatch(/\.rv-(?:r|tur|arbejdsknap)\[data-koerer\]::after/)
+    expect(css).not.toContain('rv-ikon-lys')
+    expect(css).toContain('rv-glimt-venstre 1.8s linear infinite 300ms')
+    expect(css).toContain('rv-glimt-hoejre 1.8s linear infinite 300ms')
+    expect(css).toContain('rv-glimt-tekst 1.8s linear infinite 300ms')
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
     ]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '18')
+    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '14')
   })
 
   it('holder billedrækken åben og viser lightbox uden for rækken ved klik', async () => {
@@ -131,10 +194,10 @@ describe('RaekkeTranskript', () => {
       vi.restoreAllMocks()
     }
   })
-  it('bevarer Working øverst og samler rækker mellem synlige synteser', () => {
+  it('bevarer Working øverst og samler rækker mellem synlige synteser mens arbejdet kører', () => {
     const { container } = render(<RaekkeTranskript blocks={[
       tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),
-      tekst('Jeg retter den nu.'), kald('edit_file'), tekst('Færdig.'),
+      tekst('Jeg retter den nu.'), kald('edit_file'),
     ]} streaming />)
     expect(screen.getByText('Working…')).toBeInTheDocument()
     const gruppe = container.querySelector('.rv-gruppe')!
@@ -142,7 +205,6 @@ describe('RaekkeTranskript', () => {
       'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem', 'rv-arbejdsrunde',
     ])
     expect(gruppe.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
-    expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
   it('folder værktøjsrækkerne ud fra deres egen arbejdsrække', () => {
@@ -155,6 +217,19 @@ describe('RaekkeTranskript', () => {
     expect(knap).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Bash')).toBeVisible()
     expect(screen.getByText('Search')).not.toBeVisible()
+  })
+
+  it('opdaterer skjulte detaljer når et værktøj faktisk ændrer sig', () => {
+    const intro = tekst('Jeg læser kommandoen.')
+    const gammel = kald('bash', { command: 'echo gammel' })
+    const { container, rerender } = render(<RaekkeTranskript blocks={[intro, gammel]} streaming />)
+    const detaljer = container.querySelector('.rv-arbejdsdetaljer')!
+    expect(detaljer).toHaveAttribute('hidden')
+    expect(detaljer.textContent).toContain('gammel')
+
+    const ny = { ...gammel, input: { command: 'echo ny' } }
+    rerender(<RaekkeTranskript blocks={[intro, ny]} streaming />)
+    expect(detaljer.textContent).toContain('ny')
   })
 
   it('bruger Jarvis’ egen kommandobeskrivelse og en levende værktøjsfallback', () => {
@@ -174,7 +249,7 @@ describe('RaekkeTranskript', () => {
 
   it('skifter tekst og Lucide-ikon når det aktuelle værktøj skifter', () => {
     const start = [tekst('Jeg undersøger problemet.'),
-      statusKald('read_file', { path: 'app.ts' }, 'running'), tekst('Svar.')]
+      statusKald('read_file', { path: 'app.ts' }, 'running')]
     const { container, rerender } = render(<RaekkeTranskript blocks={start} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
@@ -186,7 +261,6 @@ describe('RaekkeTranskript', () => {
       tekst('Jeg undersøger problemet.'),
       statusKald('read_file', { path: 'app.ts' }, 'done'),
       statusKald('edit_file', { path: 'app.ts' }, 'running'),
-      tekst('Svar.'),
     ]} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Redigerer app.ts')
@@ -232,11 +306,38 @@ describe('RaekkeTranskript', () => {
     ]
     const { container, rerender } = render(<RaekkeTranskript blocks={aktivt} streaming />)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
+    // 3/10-2026: svaret er begyndt — serveren siger det eksplicit med
+    // `final_answer_start`, og så folder arbejdet sammen. Fold ud for at se
+    // runden. Før blev «tekst efter sidste kald» brugt som gæt på det samme,
+    // og det gæt slog forkert i hullet mellem to runder.
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
-    ]} streaming rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
+    ]} streaming finalAnswerStarted rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Fandt fejlen i filen')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Læser app.ts')
+    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+  })
+
+  it('holder shimmeren i live gennem hullet mellem to runder (3/10-2026)', () => {
+    // Bjørn: «i runde linjerne … skal shimmer fortsætte til første tænke i
+    // næste runde, ellers opstår der et par sekunders stilhed hvor du tænker».
+    // Fejlen: `harSvar` talte rundeopsummeringen (`tool_use_summary`) med som
+    // «svar», og den lander lige når værktøjet er færdigt — altså i PRÆCIS det
+    // vindue hvor modellen tænker på næste runde. Rækken stod død i sekunder.
+    const { container } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'a.ts' }, 'done'),
+      { type: 'tool_use_summary', summary: 'Læste filen', preceding_tool_use_ids: ['read_file-1'] },
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
+  })
+
+  it('slukker først shimmeren naar det endelige svar begynder', () => {
+    // `render`-helperen ovenfor klikker selv foldelinjen ud når turen er
+    // sammenfoldet — så der skal IKKE klikkes igen her (det folder den ind).
+    const { container } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'a.ts' }, 'done'), tekst('Svar.'),
+    ]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
   })
 
@@ -362,9 +463,20 @@ describe('RaekkeTranskript', () => {
   })
 
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
-    render(<RaekkeTranskript blocks={TUR} streaming />)
+    render(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
     expect(screen.getByText('Working…')).toBeInTheDocument()
     expect(screen.getByText('Bash')).toBeInTheDocument()
+  })
+
+  it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
+    const { container, rerender } = rtlRender(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del')]} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Første del')).toBeInTheDocument()
+    rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del og resten')]} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Første del og resten')).toBeInTheDocument()
   })
 
   it('lægger den korte syntese INDE i arbejdet, ikke i svaret', () => {
@@ -485,7 +597,8 @@ describe('RaekkeTranskript', () => {
     expect(tal?.querySelector('.git-add')?.textContent).toBe('+5')
     expect(tal?.querySelector('.git-del')?.textContent).toBe('−2')
     rerender(<RaekkeTranskript blocks={redigering} streaming={false} />)
-    fireEvent.click(container.querySelector('.rv-tur')!)
+    if (container.querySelector('.rv-tur')?.getAttribute('aria-expanded') === 'false')
+      fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap .rv-diffstat')?.textContent).toContain('+5')
   })
 

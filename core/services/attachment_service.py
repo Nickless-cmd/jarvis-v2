@@ -154,6 +154,9 @@ def list_image_attachments(
                 SELECT attachment_id, session_id, filename, mime_type, created_at,
                        channel_type
                 FROM channel_attachments ca
+                -- Bevidst KUN billeder: begge klienter tegner denne liste som
+                -- et galleri af <img>. En video her ville blive et tomt felt.
+                -- Video vises i tråden via blokken, ikke i galleriet.
                 WHERE ca.mime_type LIKE 'image/%'
                   AND (? = '' OR ca.session_id = ?)
                   AND EXISTS (
@@ -226,11 +229,11 @@ def _send_generated_to_channel(session_id: str, local_path: str) -> None:
         )
 
 
-def register_generated_image(
-    *, local_path: str, mime_type: str = "image/jpeg", source_url: str = "",
-    session_id: str | None = None,
+def register_generated_media(
+    *, local_path: str, mime_type: str = "application/octet-stream",
+    source_url: str = "", session_id: str | None = None,
 ) -> str:
-    """Gør et billede Jarvis LAVEDE synligt — returnerer attachment_id, ellers "".
+    """Gør en fil Jarvis LAVEDE synlig — returnerer attachment_id, ellers "".
 
     ## Hvorfor den findes
 
@@ -242,6 +245,19 @@ def register_generated_image(
     kunne se.
 
     Filen bliver liggende hvor den er; det er kun opslaget der mangler.
+
+    ## Hvorfor den ikke længere hedder «image» (28/9-2026)
+
+    Den hed `register_generated_image` og tog alligevel `mime_type` som
+    parameter — navnet løj om hvad den kunne. Video-værktøjet kaldte den slet
+    ikke, så en genereret video kunne aldrig nå tråden. Nu er den medie-agnostisk,
+    og `register_generated_image` står tilbage som en tynd indpakning, fordi
+    både `openrouter_image_tools` og `pollinations_tools` kalder det navn.
+
+    Bemærk hvad der IKKE blev generaliseret: `list_image_attachments` (som
+    fodrer galleriet i begge klienter) og `image_data_url` (modellens egne
+    øjne). Galleriet tegner `<img>`, og en video i en vision-prompt er ikke
+    en ting. De to filtrerer stadig med vilje på `image/`.
 
     Self-safe og tavs på fejl: en registrering der slår fejl må aldrig kunne
     vælte den generering der lykkedes. Værktøjet svarer stadig med stien.
@@ -256,8 +272,8 @@ def register_generated_image(
             from core.services.session_context_resolve import aktiv_session_id
             session_id = aktiv_session_id()
         sid = str(session_id or "").strip()
-        # UDEN en session ville billedet staa i galleriet uden ophav og dukke
-        # op i ENHVER samtales liste. Hellere ikke registrere det.
+        # UDEN en session ville filen staa uden ophav og dukke op i ENHVER
+        # samtales liste. Hellere ikke registrere den.
         if not sid:
             return ""
         aid = uuid4().hex
@@ -266,18 +282,29 @@ def register_generated_image(
             session_id=sid,
             channel_type=GENERERET,
             filename=sti.name,
-            mime_type=mime_type or "image/jpeg",
+            mime_type=mime_type or "application/octet-stream",
             size_bytes=int(sti.stat().st_size),
             local_path=str(sti),
             source_url=source_url or "",
         )
     except Exception:
-        logger.debug("register_generated_image: kunne ikke registrere", exc_info=True)
+        logger.debug("register_generated_media: kunne ikke registrere", exc_info=True)
         return ""
     # UDEN FOR try: rækken er skrevet, og en kanal-fejl må ikke koste
     # attachment_id'et. Billedet er synligt i tråden uanset hvad Discord gør.
     _send_generated_to_channel(sid, str(sti))
     return aid
+
+
+def register_generated_image(
+    *, local_path: str, mime_type: str = "image/jpeg", source_url: str = "",
+    session_id: str | None = None,
+) -> str:
+    """Bagudkompatibelt navn. Se :func:`register_generated_media`."""
+    return register_generated_media(
+        local_path=local_path, mime_type=mime_type or "image/jpeg",
+        source_url=source_url, session_id=session_id,
+    )
 
 
 def attachment_visible_to_user(attachment_id: str, user_id: str | None) -> bool:

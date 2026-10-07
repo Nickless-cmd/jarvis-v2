@@ -133,7 +133,19 @@ def push_nudge(
     route = route_for(source=source, kind=kind)
     if route == "telemetry":
         _publish_routed(source, kind, importance, "telemetry")
-        return {"status": "telemetry", "route": "telemetry"}
+        # Telemetri er ikke en besked til en bruger — men den er heller ikke
+        # spild. Den lander hos OWNER (og kun der), så den der ejer maskinen
+        # kan se den. Før forsvandt den her, samtidig med at `add_candidate`
+        # kastede den væk for anden gang: to veje, samme svar. Prioritet «low»
+        # — telemetri må aldrig fortrænge et rigtigt spørgsmål.
+        try:
+            from core.services.proactive_candidates import add_candidate
+            res = add_candidate(source=source, kind=kind, text=message, priority="low")
+        except Exception as exc:
+            logger.debug("outbound_nudges: telemetri-koe fejlede: %s", exc)
+            res = {"status": "error", "error": str(exc)[:120]}
+        return {"status": "telemetry", "route": "telemetry",
+                "nudge_id": str(res.get("candidate_id") or ""), "candidate": res}
     if route == "bridge":
         try:
             from core.services.proactive_candidates import add_candidate
@@ -202,6 +214,15 @@ def route_for(*, source: str, kind: str) -> str:
         return "midway"
     if src in _TELEMETRY_SOURCES or knd in _TELEMETRY_KINDS:
         return "telemetry"
+    # Den kanoniske liste bor nu i `proactive_candidates` (værnet ved indgangen).
+    # Her læses den SAMME regel, så ruten og `push_nudge`s kvittering ikke siger
+    # «bridge» om noget indgangen alligevel afviser som telemetri.
+    try:
+        from core.services.proactive_candidates import er_telemetri
+        if er_telemetri(src, knd):
+            return "telemetry"
+    except ImportError:  # kan ikke importeres → den smallere regel ovenfor gælder
+        return "bridge"
     return "bridge"
 
 

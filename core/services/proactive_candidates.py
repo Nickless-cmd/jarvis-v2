@@ -1,4 +1,4 @@
-"""Proactive candidates — the ONE queue for "Jarvis wants to tell Bjørn something".
+"""Proactive candidates — the ONE queue for "Jarvis wants to tell a user something".
 
 Replaces the two nudge wells as a decision surface (redesign 2026-09-04):
 
@@ -16,6 +16,35 @@ Now:
 
 Statuses: pending → surfaced (sent by the bridge) | mentioned (Jarvis said it
 in a reply) | dismissed | expired.
+
+Bruger-dimension (bygget 6/10-2026, Bjørn). Køen var GLOBAL: 312 rækker og
+ingen `user_id`-kolonne overhovedet. Leverings-vejen matchede på TEKST-overlap,
+ikke på ejerskab — så «Alarm: Bjørn skal til møde med Line» var en kandidat for
+enhver der skrev ordet «møde». Fem brugere deler runtime'en (bjorn, michelle,
+mikkel, lotte, rune), og hver har sit eget workspace.
+
+Nu bærer hver kandidat en `user_id` — tre betydninger:
+
+* ``''`` = INTERN. Vises ALDRIG. Bogholderi uden en ejer-mening, og den SIKRE
+  default: kan ejeren ikke afgøres, bliver kandidaten tavs frem for gættet.
+* ``<owner_id>`` = OWNER-KUN. Maskinrummets telemetri — wakeups, heartbeat,
+  run-status. Den er ikke en besked til en bruger, men den er heller ikke
+  spild: den hører til den der ejer maskinen, og til ingen anden. (Bjørn,
+  6/10-2026: «telemetrien bør være owner only». Før blev den kastet væk ved
+  indgangen, så hans EGEN telemetri var usynlig for alle — også ham.)
+* ``<discord_id>`` = vises KUN for den bruger.
+
+Ejeren afgøres ved INDGANGEN (`_bruger_for`): eksplicit argument →
+`current_user_id()` → session-ejeren → ``''``. Session-ejer-leddet er ikke
+pynt: owner (Bjørn) har ofte tom `current_user_id()` inde i run-generatoren —
+samme fælde som `memory_tools._resolve_memory_uid` løser — så uden det ville
+hans EGNE kandidater blive mærket «interne» og gjort tavse. Fejlen ville ramme
+den ene bruger vi har flest af.
+
+Kilder i `_OWNER_KILDER` tvinger owner-uid uanset kontekst: et autonomt run kan
+have en session, men «run efterlod 5 ucommittede filer» er ikke en besked til
+den der ejer sessionen — den er til den der ejer maskinen. `_INTERNE_KILDER`
+tvinger ``''``.
 """
 from __future__ import annotations
 
@@ -48,6 +77,135 @@ _STOP = frozenset({
 
 _SHOWN: dict[str, tuple[float, list[str]]] = {}
 _SHOWN_TTL_S = 900.0
+
+#: Maskinrummets telemetri. `er_telemetri` holder `outbound_nudges.route_for`
+#: og dette modul enige om HVAD der er telemetri; `_OWNER_KILDER` er den
+#: bredere flok der skal lande hos owner. Målt 6/10-2026 over 7 døgn:
+#: `wakeup_dispatcher` 48 kandidater, `heartbeat` 3, `run_closure_gate` 4,
+#: `autonomous_run` og `autonomy_budget` 1 hver.
+_TELEMETRI_KILDER = frozenset({"wakeup_dispatcher", "heartbeat"})
+_TELEMETRI_KINDS = frozenset({"heartbeat_ping"})
+
+#: Telemetri hører til OWNER og til ingen anden. Før kastede indgangen den væk
+#: («skipped»), så Bjørns EGEN telemetri var usynlig for alle — også ham.
+#:
+#: `kerne_curator` og `development_ritual` stod her oprindeligt som «interne»
+#: med en note om at de hørte i en «delinger»-flade der ikke var bygget. Målt
+#: 6/10-2026: de er ikke telemetri — de er forslag TIL owner («skal den op i
+#: Kerne?», «det her vil jeg skrive om mig selv i SOUL.md»). At lægge dem i en
+#: flade der ikke findes betød at de aldrig nåede nogen. De hører til owner nu;
+#: en egen «delinger»-flade er stadig en åben beslutning, ikke en forudsætning.
+_OWNER_KILDER = frozenset({
+    "wakeup_dispatcher", "heartbeat", "run_closure_gate", "autonomous_run",
+    "autonomy_budget", "kerne_curator", "development_ritual",
+})
+
+#: Bogholderi uden en ejer-mening — vises aldrig. Tom for nu; den findes som
+#: det sted en kilde skal hen når den hverken er telemetri eller et forslag.
+_INTERNE_KILDER: frozenset[str] = frozenset()
+
+#: Et spørgsmål der ER stillet og ikke besvaret skal ikke hænge for evigt.
+#: Målt 3/10-2026: 155 `surfaced` + 118 `mentioned` — den ældste fra 4/9,
+#: 29 dage gammel — og `expire_stale` ramte kun `pending`. Et ubesvaret
+#: spørgsmål forblev altså «åbent» i al evighed.
+_STILLET_EXPIRE_DAYS = 14
+
+#: Loft over hvor mange ÅBNE kandidater der må ligge pr. `kind`. Målt samme dag:
+#: 37 åbne `rule_proposal:request` — de samme tre rutiner stillet igen og igen i
+#: ny ordlyd. Ord-sammenligning kan ikke fange dansk↔engelsk («Send morning
+#: briefing to Michelle» vs «Send dagligt morgenvejr til Mikkel» deler ét ord),
+#: så loftet er det deterministiske sikkerhedsnet: ét tal, én regel, ingen
+#: semantik.
+_MAX_AABNE_PER_KIND = 3
+
+#: Hvor ens to kærner skal være for at være «samme spørgsmål». Ord-Jaccard.
+_SAMME_KERNE = 0.5
+
+#: Den underliggende anmodning i et regel-forslag, ikke skabelonen omkring.
+_CITERET_RE = re.compile(r"«([^»]{4,300})»")
+
+
+def er_telemetri(source: str, kind: str = "") -> bool:
+    """Er dette intern telemetri frem for en besked Bjørn skal se?"""
+    return str(source or "") in _TELEMETRI_KILDER or str(kind or "") in _TELEMETRI_KINDS
+
+
+def _owner_uid() -> str:
+    """Owner'ens discord-id — samme kanoniske vej som `proactivity_bridge._owner_uid`.
+
+    Self-safe: kan den ikke afgøres, gives ``''``, og telemetrien bliver intern
+    frem for at blive gættet til en tilfældig bruger.
+    """
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+
+        uid = (get_owner_discord_id() or "").strip()
+        if uid:
+            return uid[:64]
+    except Exception as exc:
+        logger.debug("proactive_candidates: owner-opslag fejlede: %s", exc)
+    return ""
+
+
+def _bruger_for(user_id: str | None, source: str, session_id: str = "",
+                kind: str = "") -> str:
+    """Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig).
+
+    Telemetri (`er_telemetri` / `_OWNER_KILDER`) får owner-uid uanset kontekst:
+    et autonomt run kan have en session, men «run efterlod 5 ucommittede filer»
+    er ikke en besked til den der ejer sessionen — den er til den der ejer
+    maskinen.
+
+    Ellers er rækkefølgen den samme som `memory_tools._resolve_memory_uid`:
+    eksplicit argument → ``current_user_id()`` → session-ejeren → ``''``.
+    Session-ejer-leddet er ikke pynt — se docstringen øverst. Self-safe: enhver
+    fejl i opslaget giver ``''``, altså tavs frem for gættet.
+
+    `session_id` tages med fordi prompt-byggeren kender sessionen som PARAMETER,
+    hvor contextvar'en ikke altid er sat. Uden den ville en kandidat kunne
+    falde tilbage til «intern» midt i en samtale den hører til.
+    """
+    if user_id is not None:
+        return str(user_id).strip()[:64]
+    if er_telemetri(source, kind) or str(source or "") in _OWNER_KILDER:
+        return _owner_uid()
+    if str(source or "") in _INTERNE_KILDER:
+        return ""
+    try:
+        from core.identity.workspace_context import current_session_id, current_user_id
+
+        uid = (current_user_id() or "").strip()
+        if uid:
+            return uid[:64]
+        sid = (current_session_id() or "").strip() or str(session_id or "").strip()
+        if sid:
+            from core.services.chat_sessions import get_session_owner
+
+            return (get_session_owner(sid) or "").strip()[:64]
+    except Exception as exc:
+        logger.debug("proactive_candidates: bruger-opslag fejlede: %s", exc)
+        return ""
+    return ""
+
+
+def _kerne(text: str) -> str:
+    """Anmodningen selv — ikke skabelonen den er pakket ind i.
+
+    Et regel-forslag har formen «Du har bedt om det samme N gange …:
+    «<anmodning>». …». Sammenligner man HELE teksten, deler to forskellige
+    rutiner skabelonens ord og ligner hinanden; sammenligner man kun den
+    citerede anmodning, er de to forskellige.
+    """
+    m = _CITERET_RE.search(str(text or ""))
+    return m.group(1) if m else str(text or "")
+
+
+def _kerne_similarity(a: str, b: str) -> float:
+    """Jaccard mellem to kærners ord (0-1)."""
+    ta, tb = _terms(a), _terms(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
 
 
 def _now_iso() -> str:
@@ -89,18 +247,27 @@ def ensure_table(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             surfaced_at TEXT NOT NULL DEFAULT '',
-            mentioned_run_id TEXT NOT NULL DEFAULT ''
+            mentioned_run_id TEXT NOT NULL DEFAULT '',
+            user_id TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    # Migrering af DB'er skabt før 6/10-2026. Kolonnen lægges SIDST, så
+    # rækkefølgen matcher CREATE'en ovenfor — `_row`s tuple-gren læser efter
+    # position, og en forskel mellem ny og migreret DB ville give `user_id`
+    # en anden plads i de to.
+    kolonner = {str(r[1]) for r in conn.execute("PRAGMA table_xinfo(proactive_candidates)")}
+    if "user_id" not in kolonner:
+        conn.execute("ALTER TABLE proactive_candidates ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_proactive_candidates_status ON proactive_candidates(status, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_proactive_candidates_user ON proactive_candidates(user_id, status)")
 
 
 def _row(r: Any) -> dict[str, Any]:
     if isinstance(r, sqlite3.Row):
         return dict(r)
     cols = ["id", "candidate_id", "source", "kind", "text", "norm_text", "priority", "status",
-            "created_at", "updated_at", "surfaced_at", "mentioned_run_id"]
+            "created_at", "updated_at", "surfaced_at", "mentioned_run_id", "user_id"]
     return dict(zip(cols, r))
 
 
@@ -113,12 +280,25 @@ def normalize_priority(importance: str) -> str:
     return "medium"
 
 
-def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str = "") -> dict[str, Any]:
-    """Queue a message for Bjørn. Deduped on normalized text within 24 h.
+def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str = "",
+                  user_id: str | None = None, session_id: str = "") -> dict[str, Any]:
+    """Queue a message for a user. Deduped on normalized text within 24 h.
+
+    `user_id=None` (default) → ejeren afgøres af `_bruger_for`, som også ser på
+    `session_id`. Giv `user_id` eksplicit når kalderen allerede VED hvem
+    beskeden er til; giv `session_id` når kalderen har en session men ingen
+    kontekst — fx ved run-slut, hvor `current_user_id()` er tom for owner.
+
     Returns {"status": "added"|"duplicate"|"skipped", "candidate_id": ...}."""
     body = " ".join(str(text or "").split()).strip()
     if len(body) < 8:
         return {"status": "skipped", "reason": "empty"}
+    # Telemetri afvises IKKE længere her (6/10-2026). Før returnerede dette
+    # sted «skipped», og det var forkert ad to veje: det kastede Bjørns EGEN
+    # telemetri væk, så den var usynlig for alle — også ham — og
+    # `push_nudge`s telemetri-gren svarede det samme et andet sted. Nu bærer
+    # telemetrien owner-uid (`_bruger_for`), så den findes for den ene der ejer
+    # maskinen og for ingen anden.
     # Laekage-vaern ved INDGANGEN (8/9-2026). Uden det stod den indre daemons
     # telemetri og generatorens egen output-kontrakt som Jarvis' tanker i den
     # proaktive kanal. Her frem for ved visningen, saa ét vaern daekker alle
@@ -130,6 +310,7 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         grund = ""
     if grund:
         return {"status": "skipped", "reason": grund}
+    uid = _bruger_for(user_id, source, session_id, kind)
     norm = _norm_text(body)
     now = _now_iso()
     cutoff = (datetime.now(UTC) - timedelta(hours=_DEDUPE_HOURS)).isoformat()
@@ -143,12 +324,33 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
         ).fetchone()
         if dup is not None:
             return {"status": "duplicate", "candidate_id": dup[0]}
+        # Samme spørgsmål i NY ordlyd? Skabelonen ændrer sig (tal, ordvalg), så
+        # `norm_text` alene fanger den ikke — målt 3/10: «natlig sanseregistrering»
+        # blev stillet 6 gange og morgenbriefen 5, hver med sit eget norm_text.
+        # Her sammenlignes KÆRNEN (den citerede anmodning) i stedet for hele
+        # spørgsmålet, og UDEN 24-timers-vinduet: et åbent forslag blokerer indtil
+        # det er afsluttet eller udløbet.
+        aabne = conn.execute(
+            "SELECT candidate_id, text FROM proactive_candidates "
+            "WHERE kind = ? AND status IN ('pending', 'surfaced', 'mentioned') "
+            "ORDER BY created_at DESC LIMIT 200",
+            (str(kind or "")[:50],),
+        ).fetchall()
+        kerne = _kerne(body)
+        for row in aabne:
+            if _kerne_similarity(kerne, _kerne(str(row[1] or ""))) >= _SAMME_KERNE:
+                return {"status": "duplicate", "candidate_id": row[0]}
+        if len(aabne) >= _MAX_AABNE_PER_KIND:
+            # Sikkerhedsnettet når ord-sammenligningen ikke rækker: dansk↔engelsk
+            # deler næsten ingen ord, så «samme rutine, ny formulering» slipper
+            # igennem kærne-tjekket. Tre ubesvarede er nok til at han ikke svarer.
+            return {"status": "skipped", "reason": "kind-cap"}
         cid = f"pc-{uuid4().hex[:12]}"
         conn.execute(
             "INSERT INTO proactive_candidates (candidate_id, source, kind, text, norm_text, priority, "
-            "status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+            "user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
             (cid, str(source or "unknown")[:80], str(kind or "")[:50], body[:1000], norm,
-             normalize_priority(priority), now, now),
+             normalize_priority(priority), uid, now, now),
         )
         # cap: the oldest pending beyond the limit expire
         rows = conn.execute(
@@ -164,9 +366,20 @@ def add_candidate(*, source: str, text: str, priority: str = "medium", kind: str
     return {"status": "added", "candidate_id": cid}
 
 
-def list_pending(*, limit: int = 20, priorities: tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+def list_pending(*, limit: int = 20, priorities: tuple[str, ...] | None = None,
+                 user_id: str | None = None) -> list[dict[str, Any]]:
+    """Pending kandidater. `user_id` er et FILTER på kolonnen:
+
+    * ``None`` (default) → alle rækker, uanset ejer. Til diagnostik og
+      overflader — ikke til levering.
+    * ``''`` → kun INTERNE rækker.
+    * ``'<discord_id>'`` → kun den brugers egne.
+    """
     sql = "SELECT * FROM proactive_candidates WHERE status='pending'"
     params: list[Any] = []
+    if user_id is not None:
+        sql += " AND user_id = ?"
+        params.append(str(user_id))
     if priorities:
         sql += f" AND priority IN ({','.join('?' for _ in priorities)})"
         params.extend(priorities)
@@ -199,17 +412,25 @@ def mark(candidate_ids: list[str], status: str, *, run_id: str = "") -> int:
         return int(cur.rowcount or 0)
 
 
-def expire_stale(*, days: int = _EXPIRE_DAYS) -> int:
-    cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+def expire_stale(*, days: int = _EXPIRE_DAYS, aabne_days: int = _STILLET_EXPIRE_DAYS) -> int:
+    """Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned`
+    efter `aabne_days` — de er allerede VIST, men blev aldrig afsluttet."""
     now = _now_iso()
     with connect() as conn:
         ensure_table(conn)
         cur = conn.execute(
             "UPDATE proactive_candidates SET status='expired', updated_at=? WHERE status='pending' AND created_at < ?",
-            (now, cutoff),
+            (now, (datetime.now(UTC) - timedelta(days=days)).isoformat()),
         )
+        n = int(cur.rowcount or 0)
+        cur = conn.execute(
+            "UPDATE proactive_candidates SET status='expired', updated_at=? "
+            "WHERE status IN ('surfaced', 'mentioned') AND created_at < ?",
+            (now, (datetime.now(UTC) - timedelta(days=aabne_days)).isoformat()),
+        )
+        n += int(cur.rowcount or 0)
         conn.commit()
-        return int(cur.rowcount or 0)
+        return n
 
 
 def counts() -> dict[str, int]:
@@ -219,16 +440,38 @@ def counts() -> dict[str, int]:
             "SELECT status, count(*) FROM proactive_candidates GROUP BY status").fetchall()}
 
 
+def counts_per_user() -> dict[str, int]:
+    """Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres."""
+    with connect() as conn:
+        ensure_table(conn)
+        return {(str(k) or "(intern)"): int(v) for k, v in conn.execute(
+            "SELECT user_id, count(*) FROM proactive_candidates "
+            "WHERE status IN ('pending', 'surfaced') GROUP BY user_id").fetchall()}
+
+
 # ── in-conversation surface ─────────────────────────────────────────────
 
 
-def relevant_for(user_message: str, *, limit: int = 1, min_coverage: float = 0.34) -> list[dict[str, Any]]:
-    """Pending items lexically relevant to what Bjørn just wrote (best first)."""
+def relevant_for(user_message: str, *, user_id: str | None = None, session_id: str = "",
+                 limit: int = 1, min_coverage: float = 0.34) -> list[dict[str, Any]]:
+    """Pending items for THIS user, lexically relevant to what they just wrote.
+
+    `user_id=None` → ejeren afgøres af `_bruger_for` (konteksten, eller
+    `session_id`). `''` → ingen bruger, intet vises.
+
+    Uden en bruger returneres intet. Før matchede den på tekst alene, så en
+    anden brugers kandidat kunne dukke op i denne samtale — «Alarm: Bjørn skal
+    til møde med Line» matchede ordet «møde» i enhver samtale. Kravet om en
+    bruger er hele fixet: overlap er ikke ejerskab.
+    """
     msg = str(user_message or "").strip()
     if len(msg) < 8:
         return []
+    uid = str(user_id).strip() if user_id is not None else _bruger_for(None, "", session_id)
+    if not uid:
+        return []
     scored = []
-    for c in list_pending(limit=60):
+    for c in list_pending(limit=60, user_id=uid):
         cov = lexical_coverage(msg, f"{c.get('text', '')}")
         if cov >= min_coverage:
             scored.append((cov, c))
@@ -247,10 +490,14 @@ def remember_shown(session_id: str, candidate_ids: list[str]) -> None:
             _SHOWN.pop(k, None)
 
 
-def build_since_last_line(user_message: str, *, session_id: str = "") -> str:
-    """At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message."""
+def build_since_last_line(user_message: str, *, session_id: str = "",
+                          user_id: str | None = None) -> str:
+    """At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message.
+
+    `user_id=None` → `relevant_for` afgør ejeren (kontekst eller `session_id`).
+    """
     try:
-        items = relevant_for(user_message, limit=1)
+        items = relevant_for(user_message, user_id=user_id, session_id=session_id, limit=1)
     except Exception as exc:
         logger.debug("proactive_candidates: relevant_for failed: %s", exc)
         return ""
@@ -290,10 +537,17 @@ def mark_mentioned_if_overlap(*, session_id: str, answer_text: str, run_id: str 
 # ── bridge integration ──────────────────────────────────────────────────
 
 
-def bridge_candidates() -> list[dict[str, Any]]:
-    """Shape expected by proactivity_bridge.collect_candidates()."""
+def bridge_candidates(user_id: str = "") -> list[dict[str, Any]]:
+    """Shape expected by proactivity_bridge.collect_candidates().
+
+    Kun ÉN brugers kandidater. Uden en bruger returneres intet: bridgen
+    leverer til en navngiven modtager, og «hvem som helst» er ikke en modtager.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return []
     out = []
-    for c in list_pending(limit=30):
+    for c in list_pending(limit=30, user_id=uid):
         out.append({
             "kind": str(c.get("kind") or "candidate"),
             "text": str(c.get("text") or ""),
@@ -310,4 +564,9 @@ def build_proactive_candidates_surface() -> dict[str, Any]:
         c = counts()
     except Exception:
         c = {}
-    return {"active": bool(c), "counts": c, "summary": f"{c.get('pending', 0)} pending proactive candidates"}
+    try:
+        per_bruger = counts_per_user()
+    except Exception:
+        per_bruger = {}
+    return {"active": bool(c), "counts": c, "per_user": per_bruger,
+            "summary": f"{c.get('pending', 0)} pending proactive candidates"}

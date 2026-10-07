@@ -123,3 +123,33 @@ def test_forklaringen_indeholder_det_Mission_Control_skal_vise():
 def test_tomme_lag_giver_en_gyldig_profil():
     p = _p()
     assert p.felter and p.hash and p.skema_version == SKEMA_VERSION
+
+
+# ── En tom afvigelses-liste skal betyde MAALT, ikke UKENDT ────────────────────
+
+def test_en_maalbar_profil_uden_afvigelser_giver_stadig_TOM_liste():
+    """Modprøven. En tom liste er svaret «målt — og alt stemmer», og den må
+    ikke forsvinde: så ville enhver ren profil se ud som en manglende måling."""
+    p = _p(("base", {"model": "m"}))
+    assert p.afvigelser() == []
+
+
+def test_afvigelser_siger_UKENDT_naar_maalingen_ikke_kunne_koere(monkeypatch):
+    """`[]` betød både «ingen afvigelser» og «jeg kunne ikke måle».
+
+    Målt 4/10-2026: fejlede importen af `profile_enforcement`, gav
+    `haandhaevelse()` `{}` og `afvigelser()` `[]` — så sikkerhedsrapporten sagde
+    «alt i orden» på en måling der aldrig blev lavet. Det er præcis den løgn
+    `profile_enforcement` er skrevet for at afsløre.
+    """
+    from core.runtime import profile_enforcement as pe
+
+    def _kaster(_felter):
+        raise RuntimeError("håndhæveren kunne ikke måles")
+
+    monkeypatch.setattr(pe, "maal", _kaster)
+    p = _p(("base", {"cross_session_context": "none"}))
+
+    assert p.haandhaevelse() == {}
+    assert p.afvigelser() != [], "en umålt sikkerhed blev rapporteret som i orden"
+    assert "kunne ikke maale" in p.afvigelser()[0]

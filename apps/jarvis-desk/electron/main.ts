@@ -36,6 +36,7 @@ import { randomUUID } from 'node:crypto'
 import * as geo from './geo'
 import { brugbarPlads, husk } from './vinduesplads'
 import * as jb from './jarvisBrowser'
+import { rendererCsp } from './rendererCsp'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'J.A.R.V.I.S.'
@@ -517,6 +518,7 @@ ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
     appId: existing.appId,
     channelPlugins: cfg.channelPlugins ?? existing.channelPlugins,
   })
+  jb.saetApiAuth(cfg.apiBaseUrl ?? existing.apiBaseUrl, cfg.authToken ?? existing.authToken)
   // Genstart operator-broen + lokale kanal-gateways med de nye credentials/plugins.
   void bootstrapBridge()
   void bootstrapLocalDiscord()
@@ -571,6 +573,10 @@ ipcMain.handle('tray:attention', (_event, on: boolean) => {
 ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
   runApiBaseUrl = apiBaseUrl
   runAuthToken = authToken
+  // OGSAA browseren. Uden denne linje stod den med opstartens token efter en
+  // fornyelse, og symptomet var 401 paa en fil der virkede for et minut siden
+  // — den slags fejl man leder efter paa serveren.
+  jb.saetApiAuth(apiBaseUrl, authToken)
 })
 // Renderer pusher den aktuelt fremme session → main kan binde operator_wakeup
 // til netop den desk-samtale (i stedet for en frisk/forkert).
@@ -856,6 +862,9 @@ app.on('before-quit', () => {
 app.whenReady().then(() => {
   const cfg = loadConfig()
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
+  // Jarvis' browser baerer Bjoerns token mod VORES API og kun der (4/10-2026).
+  // Uden den fik han 401 paa husets egne filer i sin egen browser.
+  jb.saetApiAuth(cfg.apiBaseUrl, cfg.authToken)
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
   // Login-skærmen (SetupScreen) fetcher ALTID hardcodet mod prod-API'en — også når der
   // endnu ikke findes en config (fresh install / logget ud → apiOrigin kan være 10.0.0.39).
@@ -877,6 +886,7 @@ app.whenReady().then(() => {
       const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
+      ipcMain.handle('update:install-now', () => api.downloadAndInstall())
       // Push-vejen (20/9-2026). Serveren opdager selv releasen
       // (apps/api/jarvis_api/routes/app_release.py), lægger den på event-bussen,
       // og /ws bærer den hertil — så vi tjekker i sekunder i stedet for at vente
@@ -911,25 +921,11 @@ app.whenReady().then(() => {
   })
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => TILLADT.has(permission))
 
-  // Dev mode: Vite skal kunne injecte inline scripts til HMR.
-  // Prod mode: stram CSP — kun 'self', ingen inline/eval.
-  const csp = isDev
-    ? [
-        "default-src 'self' http://localhost:5174 ws://localhost:5174",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5174",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN} http://localhost:5174 ws://localhost:5174`,
-      ]
-    : [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN}`,
-      ]
+  // Shiki behøver WebAssembly i produktion; JavaScript eval er stadig lukket.
+  const csp = rendererCsp({
+    development: isDev,
+    connectOrigins: [apiOrigin, wsOrigin, LOGIN_API_ORIGIN, LOGIN_WS_ORIGIN],
+  })
 
   // Kombineret response-headers handler: CSP for vores egne HTML/JS,
   // plus CORS-headers-injection for vores betroede API-origin.
@@ -951,8 +947,26 @@ app.whenReady().then(() => {
       ...(details.responseHeaders as Record<string, string[]>),
     }
 
-    // Set CSP for renderer HTML
-    if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
+    // Set CSP for VORES EGEN renderer — ikke for alt der er en mainFrame.
+    //
+    // Maalt 4/10-2026: denne hook ligger paa `session.defaultSession`, og
+    // Jarvis' browser-panel bruger SAMME session (ingen `partition`). Den
+    // ubetingede mainFrame-kontrol lagde derfor desk'ets egen CSP oven paa
+    // HVERT website Jarvis aabnede — og `script-src 'self'` (uden
+    // `'unsafe-inline'`) dræbte alt inline-script paa nettet.
+    //
+    // Beviset var et A/B i selve panelet: et INLINE script koerte ikke
+    // («INLINE: no-js»), mens et EKSTERNT script fra samme vaert koerte
+    // («EKSTERNT-SCRIPT-KOER»). Det er praecis signaturen paa `script-src
+    // 'self'` uden `'unsafe-inline'`.
+    //
+    // CSP'en skal beskytte VORES sider, ikke tredjeparters. Derfor afgraenses
+    // den til rendererens egen oprindelse: `file://` i prod, dev-serveren i
+    // dev — samme to vaerdier som `loadURL`/`loadFile` bruger ovenfor.
+    const egenSide = isDev
+      ? details.url.startsWith('http://localhost:5174')
+      : details.url.startsWith('file://')
+    if (egenSide && (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame')) {
       responseHeaders['Content-Security-Policy'] = [csp.join('; ')]
     }
 

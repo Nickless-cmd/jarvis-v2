@@ -40,6 +40,10 @@ _MEMBER_TICKS = {
     "ground_truth_registry": ("core.services.ground_truth_registry", "ground_truth_daemon_tick"),
     "mail_checker": ("core.services.mail_checker_daemon", "tick_mail_checker_daemon"),
     "visual_memory": ("core.services.visual_memory", "tick_visual_memory_daemon"),
+    # Beslutninger ind i indbakken (4/10-2026). Den kalder ikke en daemon-tick
+    # men `decision_adherence_gate.registrer_i_indbakken`, saa kilden er dér.
+    "beslutninger_i_indbakken": (
+        "core.services.decision_adherence_gate", "registrer_i_indbakken"),
     # Tilføjet til familien 5/9-2026 ved dækningsrevisionen — den var den eneste
     # ægte forældreløse efter 15/7-konsolideringen. Selv-throttler internt
     # (1440 min), så familien kalder hver tick.
@@ -76,8 +80,16 @@ _MEMBER_TICKS = {
 
 # Members that run EVERY tick (no family throttle): internal-throttle maintenance +
 # the idempotent file_awareness watcher-ensure.
+#
+# `visible_drift_cleanup` flyttede hertil 6/10-2026. Den havde en 30-minutters
+# familie-throttle, men reglens EGEN tredje gren kraever ogsaa 30 minutters
+# alder — to uafhaengige ure gav et vindue paa 30 til 60 minutter, og fasen var
+# tilfaeldig fordi `_INFRA_THROTTLE` nulstilles ved hver genstart. Maalt:
+# `visible-bd1727a4` stod fejeberettiget i 18 minutter gennem ~9 familie-tick
+# mens genstarts-vagten blokerede hvert deploy.
 _EVERY_TICK = {"file_awareness", "cache_maintenance", "signal_decay",
-               "provider_autodiscovery", "approval_expiry", "feedback_review"}
+               "provider_autodiscovery", "approval_expiry", "feedback_review",
+               "visible_drift_cleanup"}
 # Members the family self-throttles (had no internal timer) → cadence in minutes.
 _FAMILY_THROTTLED = {
     "wakeup_cleanup": 60,
@@ -85,9 +97,12 @@ _FAMILY_THROTTLED = {
     "ground_truth_registry": 60,
     "mail_checker": 15,
     "visual_memory": 360,
-    # `_infra_throttle_ready("visible_drift_cleanup", 30)` — familiens egen
-    # throttle, samme mekanisme som de fire ovenfor.
-    "visible_drift_cleanup": 30,
+    # `visible_drift_cleanup` stod her indtil 6/10-2026 — se `_EVERY_TICK` for
+    # hvorfor den flyttede.
+    # Samme mekanisme: `_infra_throttle_ready("beslutninger_i_indbakken", 60)`.
+    # 60 minutter fordi listen kun aendrer sig naar en adherence-score bliver
+    # reviewet, og det sker i timer.
+    "beslutninger_i_indbakken": 60,
 }
 
 

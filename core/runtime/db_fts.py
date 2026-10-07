@@ -134,22 +134,52 @@ def _bm25_to_score(rank: float) -> float:
 
 
 def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, Any]]:
-    """Keyword search over session_summaries. Each hit: id, session_id, run_id,
-    summary, key_topics, decisions_made, created_at, score."""
+    """Keyword search over session_summaries FOR THIS USER.
+
+    Målt 6/10-2026: denne FTS-søgning havde intet bruger-scope, og `recall`
+    (recall.py:180, med `session_summary` i DEFAULT_SOURCES) eksponerede den
+    direkte. BEVIST AKTIV: et recall efter «aftensmadopskrift med kylling
+    tomater mælk pasta kartofler» returnerede Michelles private samtale fra
+    29/9 som top-hit (score 1,00).
+
+    Samme retning som `chat_crypto.should_encrypt`: ekskludér KUN sessioner der
+    beviseligt tilhører en anden bruger — ustemplede/legacy og egne slipper
+    igennem, så ingen mister adgang til sin egen historik. Uden uid
+    (daemon/autonomt) er adfærden uændret.
+    """
     match = to_match_query(query)
     if not match:
         return []
     try:
+        from core.services.user_scope import scope_uid
+
+        uid = (scope_uid() or "").strip()
+    except Exception:
+        uid = ""
+    try:
         with connect() as conn:
             if "session_summaries_fts" not in ensure_fts_tables(conn):
                 return []
-            rows = conn.execute(
-                "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
-                "s.decisions_made, s.created_at, bm25(session_summaries_fts) AS rank "
-                "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
-                "WHERE session_summaries_fts MATCH ? ORDER BY rank LIMIT ?",
-                (match, int(limit)),
-            ).fetchall()
+            if uid:
+                rows = conn.execute(
+                    "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
+                    "s.decisions_made, s.created_at, bm25(session_summaries_fts) AS rank "
+                    "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
+                    "WHERE session_summaries_fts MATCH ? "
+                    "AND s.session_id NOT IN ("
+                    "  SELECT DISTINCT session_id FROM chat_messages "
+                    "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?) "
+                    "ORDER BY rank LIMIT ?",
+                    (match, uid, int(limit)),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
+                    "s.decisions_made, s.created_at, bm25(session_summaries_fts) AS rank "
+                    "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
+                    "WHERE session_summaries_fts MATCH ? ORDER BY rank LIMIT ?",
+                    (match, int(limit)),
+                ).fetchall()
     except sqlite3.OperationalError as exc:
         logger.debug("db_fts: summaries search failed: %s", exc)
         return []
@@ -166,11 +196,24 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
 def search_chat_messages(
     query: str, *, limit: int = 8, session_id: str | None = None, role: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Keyword search over chat_messages. Each hit: id, message_id, session_id,
-    role, content, created_at, score."""
+    """Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id,
+    session_id, role, content, created_at, score.
+
+    Samme bruger-scope som `search_session_summaries` (målt 6/10-2026): `chat` er
+    en opt-in recall-kilde (recall.py:194, `_source_chat`), så uden scope kunne et
+    recall med `sources=['chat']` læse en anden brugers sessioner. Kilden er ikke i
+    DEFAULT_SOURCES, men det er samme dør i samme væg — og et halvt fix på en
+    lækage giver falsk tryghed.
+    """
     match = to_match_query(query)
     if not match:
         return []
+    try:
+        from core.services.user_scope import scope_uid
+
+        uid = (scope_uid() or "").strip()
+    except Exception:
+        uid = ""
     sql = (
         "SELECT m.id, m.message_id, m.session_id, m.role, m.content, m.created_at, "
         "bm25(chat_messages_fts) AS rank FROM chat_messages_fts f "
@@ -183,6 +226,13 @@ def search_chat_messages(
     if role:
         sql += " AND m.role = ?"
         params.append(role)
+    if uid:
+        sql += (
+            " AND m.session_id NOT IN ("
+            "  SELECT DISTINCT session_id FROM chat_messages "
+            "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?)"
+        )
+        params.append(uid)
     sql += " ORDER BY rank LIMIT ?"
     params.append(int(limit))
     try:

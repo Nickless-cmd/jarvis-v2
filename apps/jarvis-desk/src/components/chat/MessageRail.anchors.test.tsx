@@ -85,6 +85,9 @@ describe('robusthed', () => {
     expect(() => render(
       <MessageRail containerRef={ref} anchors={[{ id: 'a', label: 'en' }, { id: 'b', label: 'to' }]} />,
     )).not.toThrow()
-    expect(screen.getByText('en')).toBeTruthy()
+    // 4/10-2026: rækken bærer ikke længere etiketten som SYNLIG tekst —
+    // titel-listen er væk, og spørgsmålet står i kortet. Navnet findes derfor
+    // som `aria-label`, og det er dét en skærmlæser læser op.
+    expect(screen.getByRole('button', { name: 'en' })).toBeTruthy()
   })
 })

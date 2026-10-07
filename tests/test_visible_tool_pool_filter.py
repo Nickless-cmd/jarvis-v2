@@ -34,7 +34,18 @@ def test_visible_tool_pool_keeps_catalog_order_for_deepseek_cache():
     original_order = {_tool_name(item): idx for idx, item in enumerate(all_defs)}
     selected = [_tool_name(item) for item in select_tools_for_visible(all_defs)]
 
-    assert selected == sorted(selected, key=lambda name: original_order[name])
+    # 2026-10-01: `call_loaded_tool` pinnes i REQUIRED_LAZY_TOOL_NAMES, men har
+    # med vilje INGEN executor og staar derfor ikke i kataloget (se
+    # core/tools/kaldt_vaerktoej.py: «den findes kun som et navn»). Den er en
+    # TRANSPORT, ikke et katalog-vaerktoej — saa den kan ikke slaas op i
+    # original_order. Maalt: den ER med i puljen (48 valgt), den kommer bare
+    # ikke fra kataloget. Undtag praecis den ene, og kraev at intet ANDET
+    # dukker op udefra.
+    uden_for_katalog = {n for n in selected if n not in original_order}
+    assert uden_for_katalog <= {"call_loaded_tool"}, uden_for_katalog
+
+    i_katalog = [n for n in selected if n in original_order]
+    assert i_katalog == sorted(i_katalog, key=lambda name: original_order[name])
 
 
 def test_lazy_loader_returns_full_native_tool_definitions_for_omitted_tools():

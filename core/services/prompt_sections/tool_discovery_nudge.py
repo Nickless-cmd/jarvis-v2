@@ -266,6 +266,61 @@ def _staar_i_katalog(navn: str, katalog: str) -> bool:
     return re.search(rf"\b{re.escape(navn)}\b", katalog, re.IGNORECASE) is not None
 
 
+#: Kernen aendrer sig langsomt (top-N over syv doegn), saa den maa gerne
+#: cachess kort. Uden cache ville hver eneste tur koste et DB-opslag paa den
+#: hotte prompt-sti for noget der er det samme minutter i traek.
+_KERNE_CACHE: dict[str, object] = {"navne": frozenset(), "hentet": 0.0}
+_KERNE_TTL_S = 300
+
+
+def _kernens_navne() -> frozenset[str]:
+    """De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om.
+
+    ## Hvorfor kataloget ikke raekker
+
+    `_staar_i_katalog` var det eneste filter, og det er det rigtige filter for
+    sin egen definition: «staar navnet i klartekst i katalog-teksten». Men et
+    vaerktoej kan udmaerket vaere SENDT til modellen uden at staa i katalogets
+    klartekst — always_core vaelges af routeren, ikke af katalog-teksten.
+
+    Maalt paa CT105 29/9-2026 over syv doegn: **100 af 194 nudges (52 %) var om
+    vaerktoejer der allerede laa i kernen.** `jarvis_browser_screenshot` blev
+    nudget 54 gange og staar i kernen. `send_discord_dm` 31 gange, ogsaa i
+    kernen. Halvdelen af kanalens ord pegede paa noget der laa paa bordet.
+
+    Modulets egen note siger hvorfor det er dyrt: «Stoej er vaerre end ingen
+    nudge: laerer han at kanalen er stoej, holder han op med at laese den, og
+    saa er den doed for altid.»
+
+    Vi laeser routerens SENESTE beslutning frem for at genberegne kernen: det
+    er praecis det saet der faktisk blev sendt, og det er ét raekke-opslag i
+    stedet for en GROUP BY over syv doegns events paa den hotte sti. Er der
+    ingen beslutning endnu, filtrerer vi ikke — hellere et nudge for meget end
+    en tom kanal.
+    """
+    import time as _t
+    naa = _t.monotonic()
+    if naa - float(_KERNE_CACHE["hentet"] or 0) < _KERNE_TTL_S:
+        return _KERNE_CACHE["navne"]  # type: ignore[return-value]
+    navne: frozenset[str] = frozenset()
+    try:
+        import json as _json
+        from core.runtime.db import connect
+        with connect() as c:
+            r = c.execute(
+                "SELECT always_core_names_json FROM tool_router_decisions "
+                "ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        if r and r[0]:
+            navne = frozenset(_json.loads(r[0]) or [])
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: kunne ikke laese kernen: %s", exc)
+        navne = frozenset()
+    _KERNE_CACHE["navne"] = navne
+    _KERNE_CACHE["hentet"] = naa
+    return navne
+
+
 def _undertrykt(session_id: str, navn: str) -> bool:
     if not session_id:
         return False  # uden session kan vi ikke huske — men vi tier ikke af den grund
@@ -446,6 +501,7 @@ def tool_discovery_nudge_section(
     if not registreret:
         return ""  # kan vi ikke krydstjekke, foreslaar vi ingenting
     katalog = _katalog_tekst()
+    kerne = _kernens_navne()
 
     # Porten FOER opslaget. Tidligere scorede vi mod alle 448 vaerktoejer og
     # kasserede bagefter dem der allerede stod i kataloget — det aad
@@ -455,6 +511,7 @@ def tool_discovery_nudge_section(
         navn for navn, beskrivelse in registreret.items()
         if not _er_internt(beskrivelse)      # hans eget maskineri, ikke Bjoerns verden
         and not _staar_i_katalog(navn, katalog)  # staar allerede i klartekst
+        and navn not in kerne                # SENDES allerede — 52 % af stoejen
         and not _undertrykt(sid, navn)
     ]
     if not kandidater:
@@ -470,6 +527,28 @@ def tool_discovery_nudge_section(
         return ""
     if traef is None:
         return ""   # det NORMALE svar: 50 af 60 aegte beskeder
+
+    # ── Peg kun hvis det BEDSTE svar er usynligt (2/10-2026) ─────────────
+    # Maalt paa 600 af Bjoerns egne beskeder: 100 nudges fyrede, og 6 af dem
+    # pegede paa det FORKERTE vaerktoej. Alle 6 var samme sag — «godkend
+    # prop-0b5e…» gav `approve_plan` (1,64), fordi «godkend» var det eneste
+    # faelles ord, mens det rigtige svar, `approve_proposal` (3,42), allerede
+    # stod SYNLIGT for ham og derfor var filtreret ud af kandidaterne.
+    # Uden dette led vinder en svag usynlig pr. automatik, netop naar den
+    # staerke er synlig — og saa peger sektionen paa det forkerte.
+    # Reglen fjernede praecis de 6 og beholdt alle 94 rigtige. Maalt pris:
+    # +0,10 ms pr. besked (matcheren er rene strengoperationer).
+    try:
+        synlige = set(kerne) | {
+            navn for navn in registreret if _staar_i_katalog(navn, katalog)
+        }
+        bedste_alt = _matches(besked, list(registreret))
+    except Exception as exc:
+        logger.debug("tool_discovery_nudge: feltmaal fejlede: %s", exc)
+        bedste_alt = None
+        synlige = set()
+    if bedste_alt is not None and bedste_alt.navn in synlige:
+        return ""   # svaret staar allerede foran ham — der er intet at pege paa
 
     # ANDET LED: ordmatchen fandt HVILKET vaerktoej; en lille lokal model
     # afgoer OM beskeden er en bestilling. Maalt paa 35 aegte bud: praecision

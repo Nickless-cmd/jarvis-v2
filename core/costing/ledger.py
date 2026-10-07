@@ -16,6 +16,7 @@ def record_cost(
     cost_usd: float = 0.0,
     cache_hit_tokens: int = 0,
     cache_miss_tokens: int = 0,
+    reasoning_tokens: int = 0,
     user_id: str = "",
     run_id: str = "",
 ) -> None:
@@ -77,9 +78,10 @@ def record_cost(
             """
             INSERT INTO costs (
                 lane, provider, model, input_tokens, output_tokens, cost_usd,
-                cache_hit_tokens, cache_miss_tokens, user_id, run_id, created_at
+                cache_hit_tokens, cache_miss_tokens, reasoning_tokens,
+                user_id, run_id, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 lane,
@@ -90,6 +92,7 @@ def record_cost(
                 float(cost_usd),
                 int(cache_hit_tokens),
                 int(cache_miss_tokens),
+                int(reasoning_tokens),
                 str(user_id or ""),
                 str(run_id or ""),
                 datetime.now(UTC).isoformat(),

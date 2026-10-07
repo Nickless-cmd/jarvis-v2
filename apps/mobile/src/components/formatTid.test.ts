@@ -1,4 +1,4 @@
-import { formatTid } from './InlineToolGroup'
+import { formatTid } from '../lib/arbejdslinje'
 
 // Klokken i Claude Desktops format (`BS`) — samme som desk.
 it('sekunder, minutter, timer', () => {

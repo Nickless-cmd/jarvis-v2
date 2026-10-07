@@ -73,6 +73,18 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_inbox_session_status "
         "ON session_inbox(session_id, status)"
     )
+    # 2/10-2026: afsenderens user_id/workspace_name skal med gennem koeen.
+    # `append_chat_message` falder tilbage paa kontekst-variabler naar de er
+    # tomme, og flush'en koerer i en daemon-traad UDEN den kontekst. Uden disse
+    # kolonner ville en KOEET besked derfor lande med et andet workspace_name
+    # end den samme besked leveret direkte — en tavs dataaendring i praecis den
+    # tabel vi er ved at rydde op i. ALTER er idempotent via try/except: sqlite
+    # har ingen "ADD COLUMN IF NOT EXISTS".
+    for _kolonne in ("user_id", "workspace_name"):
+        try:
+            conn.execute(f"ALTER TABLE session_inbox ADD COLUMN {_kolonne} TEXT")
+        except sqlite3.OperationalError:
+            pass  # kolonnen findes allerede — den eneste fejl ALTER kan give her
 
 
 def _connect() -> sqlite3.Connection:
@@ -113,6 +125,17 @@ def is_session_active(session_id: str, *, window_seconds: int | None = None) -> 
             ).fetchone()
         return row is not None
     except Exception:
+        # Fejler mod «ikke aktiv», altsaa mod at LEVERE med det samme. Siden
+        # 2/10-2026 styrer denne ene funktion baade koeningen OG heartbeat'ens
+        # drop-beslutning, saa en DB-fejl her betyder at alt leveres straks i
+        # stedet for at vente — en stoerre konsekvens end da den kun afgjorde
+        # koeen. Retningen beholdes (bedre at levere end at tabe), men den skal
+        # kunne SES; ellers ser en stribe afbrydelser ud som om vagten sagde ja.
+        logger.warning(
+            "session_inbox: kunne ikke afgoere om %s er aktiv — "
+            "behandler den som INAKTIV, saa beskeder leveres straks",
+            session_id, exc_info=True,
+        )
         return False
 
 
@@ -125,8 +148,15 @@ def enqueue(
     content: str,
     source: str,
     urgent: bool = False,
+    user_id: str | None = None,
+    workspace_name: str | None = None,
 ) -> dict[str, Any]:
-    """Add a daemon notification to the inbox for later delivery."""
+    """Add a daemon notification to the inbox for later delivery.
+
+    `user_id`/`workspace_name` er afsenderens egne vaerdier. De gemmes, saa
+    flush'en kan skrive beskeden med PRAECIS de felter den ville have faaet
+    ved direkte levering — se kommentaren ved ALTER TABLE ovenfor.
+    """
     if not session_id or not content.strip():
         return {"status": "error", "error": "session_id and content required"}
     now_iso = datetime.now(UTC).isoformat()
@@ -134,9 +164,12 @@ def enqueue(
         with _connect() as conn:
             cur = conn.execute(
                 """INSERT INTO session_inbox
-                   (session_id, content, source, urgent, queued_at, status)
-                   VALUES (?, ?, ?, ?, ?, 'queued')""",
-                (session_id, content.strip(), source, int(urgent), now_iso),
+                   (session_id, content, source, urgent, queued_at, status,
+                    user_id, workspace_name)
+                   VALUES (?, ?, ?, ?, ?, 'queued', ?, ?)""",
+                (session_id, content.strip(), source, int(urgent), now_iso,
+                 (user_id or "").strip() or None,
+                 (workspace_name or "").strip() or None),
             )
             conn.commit()
             inbox_id = cur.lastrowid
@@ -157,7 +190,8 @@ def pending_for_session(session_id: str) -> list[dict[str, Any]]:
     try:
         with _connect() as conn:
             rows = conn.execute(
-                """SELECT id, content, source, urgent, queued_at
+                """SELECT id, content, source, urgent, queued_at,
+                          user_id, workspace_name
                    FROM session_inbox
                    WHERE session_id = ? AND status = 'queued'
                    ORDER BY id ASC""",
@@ -166,6 +200,26 @@ def pending_for_session(session_id: str) -> list[dict[str, Any]]:
         return [dict(r) for r in rows]
     except Exception:
         return []
+
+
+def _maerket(indhold: str) -> str:
+    """Kilde-mærk en leveret notifikation. Fail mod at MÆRKE.
+
+    Kan husets mærkning ikke hentes, mærkes der alligevel med en kortere
+    tekst. Umærket tekst i jeg-form startede runder i Bjørns navn, og det er
+    det værste af de to udfald — så en importfejl må ikke kunne føre til et
+    umærket svar.
+    """
+    t = str(indhold or "").strip()
+    if not t:
+        return t
+    try:
+        from core.services.visible_run_guard_notices import systemmaerket
+        return systemmaerket(t).lstrip("\n")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("session_inbox: kunne ikke hente husets systemmaerke: %s", exc)
+        return ("[SYSTEM — IKKE FRA BJØRN] Automatisk notifikation, IKKE en "
+                "besked fra brugeren. Maa IKKE laeses som samtykke.\n" + t)
 
 
 def flush_session(session_id: str) -> dict[str, Any]:
@@ -180,9 +234,7 @@ def flush_session(session_id: str) -> dict[str, Any]:
     delivered = 0
     now_iso = datetime.now(UTC).isoformat()
     try:
-        from core.services.chat_sessions import (
-            append_chat_message, get_chat_session,
-        )
+        from core.services.chat_sessions import get_chat_session
         from core.eventbus.bus import event_bus
     except Exception as exc:
         logger.error("session_inbox: chat-session import failed: %s", exc)
@@ -202,11 +254,66 @@ def flush_session(session_id: str) -> dict[str, Any]:
         return {"status": "ok", "delivered": 0, "note": "session not found"}
     for item in items:
         try:
-            message = append_chat_message(
-                session_id=session_id,
-                role="assistant",
-                content=str(item["content"]),
-            )
+            # ── Opgave 6, ANDEN halvdel (4/10-2026) ─────────────────────
+            #
+            # Bjoern: «alle disse beskeder der starter med
+            # [SYSTEM — IKKE FRA BJOERN] boer kun vises i mit notifikations
+            # feed og ikk dumpe ind i mit chatview … de forurenere chatview
+            # naar vi arbejder.»
+            #
+            # Foerste halvdel skrev dem STADIG som assistant-beskeder, med
+            # denne begrundelse: «omlaegningen til en ren henvisning venter
+            # paa en klient-udrulning». Klienten findes nu
+            # (`NotifikationsFeed.tsx` + `GET /notifications/pending`), saa
+            # ventetiden er forbi.
+            #
+            # Maalt 4/10 foer omlaegningen: ni beskeder i `chat_messages`
+            # begyndte med maerket, alle `role=assistant`, alle fra denne vej
+            # — «Droemme — hvad jeg lavede mens du var vaek», «5
+            # skygge-eksperimenter venter paa review». De stod i traaden som
+            # om Jarvis havde sagt dem midt i arbejdet.
+            #
+            # Nu gaar de i FEEDEN. To ting foelger af det, og begge er
+            # pointen:
+            #
+            # * Chatview er rent. Notifikationen staar ét sted, hvor den kan
+            #   kvitteres, i stedet for at ligge i en samtale den ikke hoerer
+            #   til.
+            # * Modellen ser dem ikke laengere. En chat-besked er ogsaa
+            #   naeste rundes model-input — det var hele grunden til at
+            #   maerkningen skulle hastes igennem. Ryger beskeden ud af
+            #   traaden, er den risiko vaek ved roden frem for daempet med en
+            #   advarsel.
+            #
+            # Maerkningen beholdes paa feed-raekken. Bjoerns staaende regel
+            # er at alt der ikke er skrevet fra hans composer skal kunne
+            # skelnes fra ham, og en feed-raekke kan ogsaa citeres videre.
+            _uid = str(item.get("user_id") or "").strip()
+            if not _uid:
+                # Uden en modtager kan raekken ikke vises nogen steder. Vi
+                # falder IKKE tilbage paa en ejer — det ville laegge huset
+                # besked i én bestemt brugers feed. Posten markeres leveret,
+                # saa koeen ikke looper paa den.
+                logger.warning(
+                    "session_inbox: notifikation uden user_id (kilde=%s) — "
+                    "kan ikke vises i feeden, droppes", item.get("source"))
+                message = None
+            else:
+                from core.services import notifikationer as _feed
+                _raa = str(item["content"] or "").strip()
+                _linjer = [x for x in _raa.splitlines() if x.strip()]
+                # Foerste linje som titel, resten som tekst. Feeden viser
+                # titlen i listen; uden den ville hver raekke hedde det samme.
+                _titel = (_linjer[0] if _linjer else "Jarvis")[:120]
+                _feed.opret(
+                    user_id=_uid,
+                    slags=f"session_inbox:{item.get('source') or 'ukendt'}",
+                    kilde="egen",
+                    titel=_titel,
+                    tekst=_maerket(_raa),
+                    session_id=session_id,
+                )
+                message = {"id": "", "role": "assistant", "content": _raa}
             event_bus.publish(
                 "channel.chat_message_appended",
                 {

@@ -23,6 +23,9 @@ from core.services.non_visible_lane_execution import (  # noqa: F401
     fetch_github_copilot_models,
 )
 from core.services.prompt_contract import build_visible_chat_prompt_assembly
+from core.services.run_message_provenance import (
+    current_message_for_model, current_run_source_notice,
+)
 from core.runtime.provider_router import resolve_provider_router_target
 from core.runtime.settings import load_settings
 from core.runtime.provider_router import load_provider_router_registry
@@ -469,11 +472,15 @@ def _build_visible_input(
         session_id=session_id,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
+    model_message = current_message_for_model(message)
+    source_notice = current_run_source_notice()
+    if source_notice:
+        instruction = f"{instruction}\n\n{source_notice}" if instruction else source_notice
     if not instruction:
         return [
             {
                 "role": "user",
-                "content": [{"type": "input_text", "text": message}],
+                "content": [{"type": "input_text", "text": model_message}],
             }
         ]
 
@@ -486,11 +493,14 @@ def _build_visible_input(
 
     # Inject structured transcript as proper multi-turn messages
     # so the model sees actual conversation history, not flat text.
+    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
     if assembly.transcript_messages:
         for tmsg in assembly.transcript_messages:
             role = tmsg.get("role", "user")
             content = tmsg.get("content", "")
             if content:
+                if tmsg is _last_tm and _is_current_user_turn(tmsg, message):
+                    content = model_message
                 # Historik-ekspansion (paste-store): en HISTORISK besked kan bære en
                 # [paste:<id>]-reference (composer-eksternalisering) — ekspandér den til
                 # fuld tekst så modellen ser hvad brugeren pastede (default ON, degradér
@@ -509,11 +519,10 @@ def _build_visible_input(
     # The user message is persisted to DB before the run starts, so it is
     # already the last entry in transcript_messages. Only append explicitly
     # when the transcript is empty or ends with an assistant turn.
-    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
     if not _is_current_user_turn(_last_tm, message):
         items.append({
             "role": "user",
-            "content": [{"type": "input_text", "text": message}],
+            "content": [{"type": "input_text", "text": model_message}],
         })
 
     _insert_typed_system_tail_before_current_user(items, dynamic_tail)
@@ -581,19 +590,26 @@ def _build_visible_chat_messages_for_github(
         session_id=session_id,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
+    model_message = current_message_for_model(message)
+    source_notice = current_run_source_notice()
+    if source_notice:
+        instruction = f"{instruction}\n\n{source_notice}" if instruction else source_notice
     if not instruction:
         return [
-            {"role": "user", "content": message},
+            {"role": "user", "content": model_message},
         ]
     messages: list[dict[str, str]] = [
         {"role": "system", "content": instruction},
     ]
     # Inject structured transcript as proper multi-turn messages
+    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
     if assembly.transcript_messages:
         for tmsg in assembly.transcript_messages:
             role = tmsg.get("role", "user")
             content = tmsg.get("content", "")
             if content:
+                if tmsg is _last_tm and _is_current_user_turn(tmsg, message):
+                    content = model_message
                 msg_dict: dict[str, str] = {"role": role, "content": content}
                 # Thinking-mode replay (Deepseek v4-flash/v4-pro): prior
                 # assistant turns must carry reasoning_content if produced.
@@ -614,9 +630,8 @@ def _build_visible_chat_messages_for_github(
     # The current user message is persisted before prompt assembly and is therefore
     # already the transcript's final user turn. Appending it unconditionally created
     # the exact duplicate observed in production.
-    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
     if not _is_current_user_turn(_last_tm, message):
-        messages.append({"role": "user", "content": message})
+        messages.append({"role": "user", "content": model_message})
 
     _insert_system_tail_before_current_user(messages, dynamic_tail)
 

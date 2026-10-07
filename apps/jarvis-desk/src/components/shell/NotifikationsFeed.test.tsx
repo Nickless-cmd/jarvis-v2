@@ -59,10 +59,11 @@ describe('NotifikationsFeed', () => {
   })
 
   it('swipe højre markerer læst, swipe venstre sletter; hjørnekrydset bruger samme sletning', async () => {
-    hent.mockResolvedValue({ poster: [post({ slags: 'question', kan_afgoere: false })], antal: 1 })
+    hent.mockResolvedValue({ poster: [post({ slags: 'run_done', kan_afgoere: false })], antal: 1 })
     set.mockResolvedValue(undefined)
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
-    const card = (await screen.findByTestId('notif-1')).closest('li')!
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
+    const card = (await screen.findByTestId('notif-svar-1')).closest('li')!
     expect(notificationAttention(['1']).unread).toBe(true)
     fireEvent.touchStart(card, { touches: [{ clientX: 50, clientY: 100 }] })
     fireEvent.touchEnd(card, { changedTouches: [{ clientX: 140, clientY: 104 }] })
@@ -72,7 +73,94 @@ describe('NotifikationsFeed', () => {
     fireEvent.touchStart(card, { touches: [{ clientX: 140, clientY: 100 }] })
     fireEvent.touchEnd(card, { changedTouches: [{ clientX: 50, clientY: 104 }] })
     await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    await waitFor(() => expect(screen.queryByTestId('notif-svar-1')).toBeNull())
+  })
+
+  it('viser stadig individuel fjernelse for spørgsmål', async () => {
+    hent.mockResolvedValue({ poster: [post({ slags: 'question', kan_afgoere: false })], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    const card = (await screen.findByTestId('notif-1')).closest('li')!
+    expect(card).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fjern notifikation' })).toBeInTheDocument()
+  })
+
+  it('fastholder et muse-swipe og lader lodret bevægelse scrolle', async () => {
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number
+      pointerType: string
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init)
+        this.pointerId = init.pointerId ?? 0
+        this.pointerType = init.pointerType ?? 'mouse'
+      }
+    }
+    vi.stubGlobal('PointerEvent', TestPointerEvent)
+    hent.mockResolvedValue({ poster: [post({ slags: 'run_done', kan_afgoere: false })], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
+    const card = (await screen.findByTestId('notif-svar-1')).closest('li')!
+    const capture = vi.fn()
+    Object.defineProperty(card, 'setPointerCapture', { configurable: true, value: capture })
+    Object.defineProperty(card, 'releasePointerCapture', { configurable: true, value: vi.fn() })
+    fireEvent.pointerDown(card, { pointerId: 1, pointerType: 'mouse', clientX: 50, clientY: 50 })
+    expect(capture).toHaveBeenCalledWith(1)
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 53, clientY: 120 })
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 53, clientY: 120 })
+    expect(notificationAttention(['1']).unread).toBe(true)
+    fireEvent.pointerDown(card, { pointerId: 2, pointerType: 'mouse', clientX: 50, clientY: 50 })
+    fireEvent.pointerMove(card, { pointerId: 2, clientX: 112, clientY: 53 })
+    fireEvent.pointerUp(card, { pointerId: 2, clientX: 112, clientY: 53 })
+    expect(notificationAttention(['1']).unread).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
+  it('rydder kun læste informative poster', async () => {
+    const posts = [post({ id: 'reply', slags: 'run_done', kan_afgoere: false }),
+      post({ id: 'pending', slags: 'approval' }), post({ id: 'new', slags: 'run_done', kan_afgoere: false })]
+    hent.mockResolvedValueOnce({ poster: posts, antal: 3 })
+      .mockResolvedValue({ poster: posts.slice(1), antal: 2 })
+    set.mockResolvedValue(undefined)
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
+    fireEvent.click(await screen.findByTestId('notif-svar-reply'))
+    fireEvent.click(screen.getByRole('button', { name: /Ryd læste/ }))
+    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, 'reply'))
+    expect(set).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByTestId('notif-svar-reply')).toBeNull())
+  })
+
+  it('rydder alle i Venter efter bekræftelse, også ubesvarede spørgsmål, men ikke Svar', async () => {
+    const posts = [post({ id: 'approval' }), post({ id: 'question', slags: 'question', kan_afgoere: false }),
+      post({ id: 'reply', slags: 'run_done', kan_afgoere: false })]
+    hent.mockResolvedValue({ poster: posts, antal: 3 })
+    set.mockResolvedValue(undefined)
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByTestId('notif-approval')
+    fireEvent.click(screen.getByRole('button', { name: 'Ryd alle i Venter' }))
+    expect(screen.getByText(/godkendelser fjernes uden svar/)).toBeInTheDocument()
+    expect(set).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Ryd alle' }))
+    await waitFor(() => expect(set).toHaveBeenCalledTimes(2))
+    expect(set).toHaveBeenCalledWith(cfg, 'approval')
+    expect(set).toHaveBeenCalledWith(cfg, 'question')
+    expect(set).not.toHaveBeenCalledWith(cfg, 'reply')
+    await waitFor(() => expect(screen.queryByTestId('notif-approval')).toBeNull())
+    expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')
+  })
+
+  it('lukker en release straks og lader den ikke genopstå fra et forsinket feed-svar', async () => {
+    hent.mockResolvedValue({ poster: [post({ slags: 'release', kan_afgoere: false })], antal: 1 })
+    set.mockResolvedValue(undefined)
+    const installNow = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('jarvisDesk', { updates: { installNow } })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByTestId('notif-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Installér nu' }))
+    await waitFor(() => expect(installNow).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern notifikation' }))
+    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    await waitFor(() => expect(screen.queryByTestId('notif-1')).toBeNull())
+    vi.unstubAllGlobals()
   })
 
   it('en fejl ser IKKE ud som en tom feed', async () => {
@@ -86,6 +174,12 @@ describe('NotifikationsFeed', () => {
     hent.mockResolvedValue({ poster: [], antal: 0 })
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
     expect(await screen.findByText(/Ingen notifikationer/)).toBeInTheDocument()
+  })
+
+  it('viser hvor svaret er når Venter er tom', async () => {
+    hent.mockResolvedValue({ poster: [post({ slags: 'run_done', kan_afgoere: false })], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    expect(await screen.findByText('Intet venter på dig. 1 svar under Svar.')).toBeInTheDocument()
   })
 
   it('godkender og fjerner posten fra listen', async () => {

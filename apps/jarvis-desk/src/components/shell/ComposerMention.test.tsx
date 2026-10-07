@@ -38,6 +38,9 @@ const skriv = (felt: HTMLTextAreaElement, v: string) =>
 
 describe('Composer · @fil', () => {
   beforeEach(() => {
+    // Kladden persisteres nu i localStorage (4/10-2026) — ryd den, så én tests
+    // halvskrevne tekst ikke lækker ind i den næste.
+    localStorage.clear()
     apiFetch.mockReset().mockResolvedValue({ workspace: '/r' })
     listProjectFiles.mockReset().mockResolvedValue(FILER)
   })

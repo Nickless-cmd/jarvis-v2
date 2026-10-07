@@ -83,6 +83,9 @@ export function ChangesPanel({
   }, [fokusFil])
 
   const filer = data?.files ?? []
+  // Sat KUN når arbejdstræet er rent (Bjørn 4/10-2026): hvad blev der LIGE
+  // committet. Uden den blev panelet tomt i commit-øjeblikket.
+  const seneste = data?.seneste_commit
   useEffect(() => { onCount?.(filer.length) }, [filer.length, onCount])
 
   const skift = (sti: string) => setAabne((f) => {
@@ -138,7 +141,43 @@ export function ChangesPanel({
       ) : !data ? (
         <div className="changes-tom">Henter…</div>
       ) : filer.length === 0 ? (
-        <div className="changes-tom">Ingen ændringer</div>
+        seneste && (seneste.files?.length ?? 0) > 0 ? (
+          /* Træet er rent — men det er ikke det samme som «der skete ingenting».
+             Vis hvad der LIGE blev committet (Bjørn 4/10-2026: panelet blev tomt
+             i commit-øjeblikket, så man mistede det man lige havde lavet). */
+          <div className="changes-rent">
+            <div className="changes-rent-linje">Ingen ændringer i arbejdstræet</div>
+            <div className="changes-seneste-hoved">
+              Sidste commit <code>{seneste.hash}</code>
+            </div>
+            <div className="changes-seneste-emne" title={seneste.subject}>{seneste.subject}</div>
+            <div className="changes-opsummering">
+              {seneste.files.length} {seneste.files.length === 1 ? 'fil' : 'filer'}
+              <span className="git-add">+{seneste.added}</span>
+              <span className="git-del">−{seneste.removed}</span>
+            </div>
+            <ul className="changes-liste">
+              {seneste.files.map((f) => (
+                <li key={f.path} className="changes-fil">
+                  <div className="changes-fil-rk is-statisk">
+                    <FileDiff size={12} />
+                    <span className="changes-sti" title={f.path}>{f.path}</span>
+                    {f.binary ? (
+                      <span className="changes-binaer">binær</span>
+                    ) : (
+                      <>
+                        <span className="git-add">+{f.added}</span>
+                        <span className="git-del">−{f.removed}</span>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="changes-tom">Ingen ændringer</div>
+        )
       ) : (
         <>
           <div className="changes-opsummering">

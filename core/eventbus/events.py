@@ -10,6 +10,31 @@ ALLOWED_EVENT_FAMILIES = {
     "heartbeat",
     "cost",
     "reasoning",  # reasoning_store.capture_conclusion (#159) — var latent afvist
+    # Fire familier der publicerede uden at stå her (målt 3/10-2026): hvert kald
+    # kastede "Unsupported event family", og hver kaldested slugte det i sin egen
+    # `except`. Telemetrien forsvandt i tavshed — samme fejl som #159. Fundet ved
+    # at måle ALLE publish-familier mod registret, ikke kun den ene jeg ledte efter.
+    "skill_gate",  # visible_runs.py — skill-gate-nudgen
+    # Indbakken (Opgave 4 og 7, 3/10-2026). To familier, fordi de har to
+    # ejere: `inbox` er postens livscyklus (inbox_state), `inbox_gate` er
+    # gatens beslutninger. De skal kunne abonneres hver for sig.
+    #
+    # Jeg glemte dem, og min EGEN advarselslinje fangede det: hele Opgave 7s
+    # spor publicerede i tavshed, og maalingen ville have vist nul i ugevis.
+    # Det er praecis den fejlklasse publish_scan.py blev skrevet for — og det
+    # var den samme dag jeg laeste dens docstring.
+    "inbox",
+    "inbox_gate",
+    # BEMÆRK: "central" står IKKE her med vilje. Det er egress-membranen
+    # (§24.4, Rådet 1/7-2026): `central.observe()` kan bære private tanke-strenge,
+    # og garantien er at `central` ikke er en registreret familie — så Event.create
+    # afviser `central.observed` FØR writer-kø og subscribers. Håndhævet af
+    # tests/test_central_egress_invariant.py. Målt 3/10-2026: central_absorb.py
+    # publicerer derfor `central.learn`/`cluster.flag` i tavshed — det er prisen
+    # for membranen, ikke en fejl. Skal de kunne publiceres, kræver det en
+    # anden familie (fx `central_governance`) — ikke at denne åbnes.
+    "connector",  # connectors.py (connector.<event>)
+    "candidate_review_digest",  # candidate_review_digest.py
     "approvals",
     "council",
     "swarm",
@@ -251,6 +276,24 @@ ALLOWED_EVENT_FAMILIES = {
     #    release-events i bussen. (Fjerde gang samme moenster: prompt 4/9,
     #    tool_discovery 6/9, r2_5_gate 19/9.) ──
     "app",
+    # ── 29. sep 2026: selv-instrumenteringen (FEMTE gang samme moenster: prompt
+    #    4/9, tool_discovery 6/9, r2_5_gate 19/9, app 20/9).
+    #    `central_instrument.finding_accepted` blev publiceret fra
+    #    core/services/autonomy_proposal_queue.py:641, men familien stod ikke her
+    #    → publish kastede ValueError, og kaldestedets `except` slugte den. Fundet
+    #    blev lukket, men eventet naaede ALDRIG bussen. Fandt vagten
+    #    tests/test_publish_scan.py::test_ingen_NYE_utilsluttede_familier. ──
+    "central_instrument",
+    # ── 3. okt 2026: SJETTE gang samme moenster (prompt 4/9, tool_discovery 6/9,
+    #    r2_5_gate 19/9, app 20/9, central_instrument 29/9).
+    #    `mobile.stream_tempo` blev publiceret fra
+    #    apps/api/jarvis_api/routes/presence.py:76 (opus 1/10, 791a00e3f) men
+    #    familien stod ikke her → hvert ping med stream-tempo kastede ValueError,
+    #    og kaldestedets `except` slugte den i en logger.warning. Maalt 3/10:
+    #    NUL mobile.*-events nogensinde — hele maale-featureen har vaeret tavs
+    #    siden den landede. Fundet ved at tjekke CI efter en tag-push: vagten
+    #    var ROED i to doegn, 30+ ci-koersler i traek, uden at nogen saa det. ──
+    "mobile",
 }
 
 

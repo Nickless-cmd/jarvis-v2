@@ -392,15 +392,14 @@ def tick_mail_checker_daemon() -> dict[str, object]:
         except Exception:
             pass
         try:
-            from core.services.ntfy_gateway import send_notification
-            send_notification(
-                message=f"{len(actionable)} nye mails på én gang. Tjek indbakken.",
-                title="Usædvanlig meget post",
-                priority="default",
-                tags=["email"],
+            from core.services.alarm_ud import send_alert
+            send_alert(
+                titel="Usædvanlig meget post",
+                tekst=f"{len(actionable)} nye mails på én gang. Tjek indbakken.",
+                slags="infra_security", importance="normal",
             )
         except Exception as e:
-            logger.warning("mail_checker: ntfy notify failed: %s", e)
+            logger.warning("mail_checker: notify failed: %s", e)
 
     # Publish event for each new mail + proactive notification
     for mail in new_mails:
@@ -436,15 +435,14 @@ def tick_mail_checker_daemon() -> dict[str, object]:
         # Proactive notification + auto-evaluate for non-self mail
         if noisy_ok and "jarvis@srvlab.dk" not in sender and "root@srvlab.dk" not in sender:
             try:
-                from core.services.ntfy_gateway import send_notification
+                from core.services.alarm_ud import send_alert
                 decoded_subject = subject
                 if isinstance(subject, bytes):
                     decoded_subject = subject.decode("utf-8", errors="replace")
-                send_notification(
-                    message=f"Fra: {sender}\nEmne: {decoded_subject}",
-                    title="Ny mail",
-                    priority="default",
-                    tags=["email"],
+                send_alert(
+                    titel="Ny mail",
+                    tekst=f"Fra: {sender}\nEmne: {decoded_subject}",
+                    slags="infra_security", importance="normal",
                 )
             except Exception as e:
                 logger.warning("mail_checker: ntfy notify failed: %s", e)
@@ -475,12 +473,12 @@ def tick_mail_checker_daemon() -> dict[str, object]:
                                 to_addr, evaluation.get("urgency"), evaluation.get("reason"),
                             )
                             try:
-                                from core.services.ntfy_gateway import send_notification
-                                send_notification(
-                                    message=f"Til: {to_addr}\nEmne: Re: {subject}\nÅrsag: {evaluation.get('reason', '')}",
-                                    title="Auto-svar sendt",
-                                    priority="low",
-                                    tags=["incoming_envelope"],
+                                from core.services.alarm_ud import send_alert
+                                send_alert(
+                                    titel="Auto-svar sendt",
+                                    tekst=f"Til: {to_addr}\nEmne: Re: {subject}\n"
+                                          f"Årsag: {evaluation.get('reason', '')}",
+                                    slags="infra_security", importance="low",
                                 )
                             except Exception:
                                 pass

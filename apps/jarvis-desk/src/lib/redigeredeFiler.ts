@@ -1,5 +1,5 @@
 import type { ContentBlock } from './sseProtocol'
-import { diffFraResultat } from './diffStat'
+import { diffFraResultat, diffStat, diffPar } from './diffStat'
 
 /**
  * Hvilke filer redigerede Jarvis i denne tur?
@@ -10,8 +10,15 @@ import { diffFraResultat } from './diffStat'
  * Filernes stier kommer fra tool-kaldene. Nogle tool-svar indeholder desuden
  * servermålte linjetal for ændringen.
  *
- * `maalteRedigeringer` bruger kun serverens målte +/- fra værktøjsresultatet.
- * Hvis et kald mangler tal, vises intet samlet tal for filen.
+ * `maalteRedigeringer` tager serverens målte +/- fra værktøjsresultatet når
+ * de findes, og regner ellers af kaldets EGNE argumenter (`diffStat`).
+ *
+ * Faldbacken kom 29/9-2026 (Bjørn: «feltet under mangler +xx -xx ved filerne
+ * uanset om de er redigeret på din container eller min maskine»). Før stod
+ * filen uden tal når serveren ikke havde målt — og det gjorde den for
+ * `operator_*`-kaldene, som kører på Bjørns maskine hvor vi ikke har filen i
+ * hånden. Faldbacken er ikke et gæt: den regner af de SAMME par som
+ * værktøjslinjen viser, så kort og linje ikke kan sige hver sit om ét kald.
  */
 
 /** Værktøjer der SKRIVER i en fil. Læsning, søgning og listning hører ikke til. */
@@ -63,7 +70,10 @@ export function maalteRedigeringer(blocks: readonly ContentBlock[]): Record<stri
     if (!b || b.type !== 'tool_use' || !SKRIVER.has(b.name) || b.status === 'error') continue
     const path = stiFra(b.input)
     if (!path) continue
-    const diff = diffFraResultat(b.result)
+    // Serverens MÅLTE tal først: den har filen i hånden lige før den skriver
+    // og kan derfor sige hvad en overskrivning FJERNEDE — det kan argumenterne
+    // alene ikke vide. Argumenternes tal som faldback (se filens hoved).
+    const diff = diffFraResultat(b.result) ?? diffStat(b.name, b.input)
     if (!diff) { ukendte.add(path); continue }
     const nu = tal.get(path) ?? { added: 0, removed: 0 }
     tal.set(path, { added: nu.added + diff.add, removed: nu.removed + diff.del })
@@ -76,4 +86,37 @@ export function maalteRedigeringer(blocks: readonly ContentBlock[]): Record<stri
 export function kortSti(sti: string): string {
   const dele = sti.split('/').filter(Boolean)
   return dele.length <= 2 ? sti : dele.slice(-2).join('/')
+}
+
+/** Én gammel/ny-tekst-par fra et redigerende kald. */
+export interface DiffPar { gammel: string; ny: string }
+
+/**
+ * Parrene af gammel/ny tekst pr. fil — grundlaget for hover-diffen i kortet.
+ *
+ * Bjørn 29/9-2026: «hvis jeg holder musen over fil navnet i feltet så kommer
+ * der en diff visning med scrool».
+ *
+ * Kilden er den SAMME som `diffStat` regner «+N −M» af (`diffPar`), så tallet
+ * i rækken og diffen i popup'en ikke kan sige hver sit om ét kald. Serverens
+ * målte tal findes kun som tal — de bærer ingen linjer — så diffen bygges af
+ * kaldets egne par, og en `write_file` (som kun har nyt indhold) giver et par
+ * med tom «gammel» side frem for ingen diff.
+ *
+ * En fil kan være rørt flere gange i samme tur; parrene lægges i rækkefølge,
+ * så popup'en viser ændringerne som de skete.
+ */
+export function redigeredeDiffPar(blocks: readonly ContentBlock[]): Record<string, DiffPar[]> {
+  const ud: Record<string, DiffPar[]> = {}
+  for (const b of blocks) {
+    if (!b || b.type !== 'tool_use') continue
+    if (!SKRIVER.has(b.name)) continue
+    if (b.status === 'error') continue
+    const path = stiFra(b.input)
+    if (!path) continue
+    const par = diffPar(b.name, b.input)
+    if (!par) continue
+    ;(ud[path] ??= []).push(...par)
+  }
+  return ud
 }

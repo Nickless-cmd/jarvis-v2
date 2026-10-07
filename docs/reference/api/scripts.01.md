@@ -36,6 +36,18 @@ _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._
 | function | `render_md` | `(rows, source=…)` | — | [src](../../../scripts/api_reference_gen.py#L63) |
 | function | `main` | `()` | — | [src](../../../scripts/api_reference_gen.py#L74) |
 
+## `scripts/batch_maaling_monitor.py`
+_Monitor paa vaerktoejer pr. agentisk runde. Tier medmindre tallet rykker._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L76) |
+| function | `_spredning` | `(tal)` | — | [src](../../../scripts/batch_maaling_monitor.py#L115) |
+| function | `vurder_ab` | `(arme)` | Returnerer (dom, linje). Dommen er "knappen_virker_ikke", "forskel" eller None. | [src](../../../scripts/batch_maaling_monitor.py#L122) |
+| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L161) |
+| function | `_ab_besked` | `(dom, linje)` | (ref, titel, tekst). Ref'et er stabilt pr. dom, saa hver dom siges ÉN gang. | [src](../../../scripts/batch_maaling_monitor.py#L177) |
+| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L204) |
+
 ## `scripts/beacon_rapport.py`
 _Opgørelse fra vaertens crash-beacon-log._
 
@@ -104,6 +116,16 @@ _One-off: cap runaway salience_bumps in Jarvis' brain (memory repair 2026-09-04,
 |---|---|---|---|---|
 | function | `reset_salience_bumps` | `(*, cap=…, apply=…)` | Cap ``salience_bumps`` at ``cap`` for every entry above it. | [src](../../../scripts/brain_salience_reset.py#L21) |
 | function | `main` | `()` | — | [src](../../../scripts/brain_salience_reset.py#L65) |
+
+## `scripts/cache_break_report.py`
+_Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_faelles_praefiks` | `(a, b)` | — | [src](../../../scripts/cache_break_report.py#L36) |
+| function | `_pause_s` | `(foer, efter)` | Sekunder mellem to runders created_at. None hvis en mangler. | [src](../../../scripts/cache_break_report.py#L45) |
+| function | `_hent` | `(skaer)` | — | [src](../../../scripts/cache_break_report.py#L60) |
+| function | `main` | `()` | — | [src](../../../scripts/cache_break_report.py#L88) |
 
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
@@ -219,6 +241,23 @@ _Mål cold + warm import-tid for core.runtime.db._
 | function | `measure` | `(label)` | — | [src](../../../scripts/db_split_baseline.py#L18) |
 | function | `main` | `()` | — | [src](../../../scripts/db_split_baseline.py#L43) |
 
+## `scripts/deferred_restart.py`
+_Udskudt genstart — vent til turen er SLUT, genstart saa._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L49) |
+| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til runnet er doedt + margin. Returnerer sekunder ventet. | [src](../../../scripts/deferred_restart.py#L67) |
+| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L80) |
+
+## `scripts/dispatcher_adoption.py`
+_Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rækker` | `(con, kind, siden)` | — | [src](../../../scripts/dispatcher_adoption.py#L50) |
+| function | `main` | `()` | — | [src](../../../scripts/dispatcher_adoption.py#L63) |
+
 ## `scripts/docs_audit.py`
 _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable, static_
 
@@ -268,6 +307,28 @@ _Vent til ingen tur er levende, så en genstart ikke kapper en._
 | function | `levende` | `(db=…)` | Er der et levende run lige nu? `None` = kunne ikke afgøres. | [src](../../../scripts/drain_before_restart.py#L48) |
 | function | `vent` | `(loft=…, db=…)` | 0 = frit, kan genstarte. 1 = loftet nået mens noget stadig kørte. | [src](../../../scripts/drain_before_restart.py#L75) |
 
+## `scripts/e2e_indbakke.py`
+_E2E: holder indbakke-kæden usmocket, i produktionen?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Led` | `` | Ét led i kæden. Samler sit eget udfald, så ingen kan forsvinde. | [src](../../../scripts/e2e_indbakke.py#L53) |
+| method | `Led.__init__` | `(self)` | — | [src](../../../scripts/e2e_indbakke.py#L56) |
+| method | `Led.__call__` | `(self, nr, navn, status, detalje=…)` | — | [src](../../../scripts/e2e_indbakke.py#L59) |
+| method | `Led.bestod` | `(self)` | — | [src](../../../scripts/e2e_indbakke.py#L64) |
+| function | `_trin_1_units` | `(led)` | Kører BEGGE units den kode du tror? | [src](../../../scripts/e2e_indbakke.py#L68) |
+| function | `_trin_2_kilde_skriver` | `(led, bruger)` | En ÆGTE kilde skriver en post — gennem `registrer_kilde`, ikke SQL. | [src](../../../scripts/e2e_indbakke.py#L105) |
+| function | `_trin_3_visningen` | `(led, bruger, kid)` | Står posten i visningen? Kørt med den rigtige interpreter. | [src](../../../scripts/e2e_indbakke.py#L140) |
+| function | `_trin_4_prompten` | `(led, bruger, kid, session_id)` | Det afgørende led: BÆRER PROMPTEN DEN? | [src](../../../scripts/e2e_indbakke.py#L164) |
+| function | `_trin_5_gaten` | `(led, bruger)` | Nægter gaten en ægte mutation — og NAVNGIVER den posten? | [src](../../../scripts/e2e_indbakke.py#L200) |
+| function | `_trin_6_genstart` | `(led, bruger)` | Overlever tælleren en procesgenstart? | [src](../../../scripts/e2e_indbakke.py#L231) |
+| function | `_trin_7_done` | `(led, bruger, kid)` | `inbox_done` lukker den, visningen falder, og posten kan STADIG findes. | [src](../../../scripts/e2e_indbakke.py#L258) |
+| function | `_trin_8_intet_i_chatten` | `(led, session_id, foer)` | Er noget sivet ind i chatten som en assistant-besked? | [src](../../../scripts/e2e_indbakke.py#L287) |
+| function | `_trin_9_tavse_fejlformer` | `(led, bruger)` | De tre tal huset kender som tavse fejlformer. | [src](../../../scripts/e2e_indbakke.py#L305) |
+| function | `_chat_antal` | `(session_id)` | — | [src](../../../scripts/e2e_indbakke.py#L385) |
+| function | `_ryd` | `(bruger, kid)` | Luk en testpost. Kaster aldrig — oprydning må ikke vælte rapporten. | [src](../../../scripts/e2e_indbakke.py#L396) |
+| function | `main` | `()` | — | [src](../../../scripts/e2e_indbakke.py#L408) |
+
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._
 
@@ -283,9 +344,9 @@ _Pre-commit hook: enforces test coverage for core/ code changes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L160) |
-| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L165) |
-| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L191) |
+| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L167) |
+| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L172) |
+| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L198) |
 
 ## `scripts/eval_research_lane.py`
 _Offline deterministic smoke evaluation for research routing and gates._
@@ -316,8 +377,16 @@ _Render Jarvis Puls assets. Requires rsvg-convert and Pillow; run from any cwd._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `svg` | `(*, background=…, scale=…, phase=…, attention=…, rounded=…, radius=…)` | — | [src](../../../scripts/generate_puls_icons.py#L29) |
-| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L46) |
-| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L57) |
+| function | `notifikations_vektor` | `()` | Puls som Android-notifikationsikon — en monokrom silhuet. | [src](../../../scripts/generate_puls_icons.py#L46) |
+| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L79) |
+| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L90) |
+
+## `scripts/goal_report.py`
+_Kør goal-reporteren: skriv tick-kvalitet, heed-rate og adherence til målet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `(argv)` | — | [src](../../../scripts/goal_report.py#L17) |
 
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_
@@ -361,78 +430,4 @@ _Install or verify the required commit-attribution Git hooks._
 | function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
 | function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
-
-## `scripts/installer_desk_appimage.py`
-_Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
-| function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
-| function | `byg_mappe` | `()` | electron-builders output-mappe, LÆST af package.json. | [src](../../../scripts/installer_desk_appimage.py#L81) |
-| function | `find_appimage` | `()` | Nyeste AppImage i electron-builders output-mappe. | [src](../../../scripts/installer_desk_appimage.py#L98) |
-| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L113) |
-| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L124) |
-| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L147) |
-| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L167) |
-| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L190) |
-| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L203) |
-| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
-| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
-
-## `scripts/interlanguage_analyze.py`
-_Interlanguage analysis — aggregate report over the practice corpus._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_all` | `(*, days=…)` | — | [src](../../../scripts/interlanguage_analyze.py#L42) |
-| function | `analyze` | `(rows)` | — | [src](../../../scripts/interlanguage_analyze.py#L61) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_analyze.py#L96) |
-
-## `scripts/interlanguage_binary_jarvis_vs_ollama.py`
-_Binary: jarvis vs ollama_local — pre-check for Phase 4._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_binary_jarvis_vs_ollama.py#L40) |
-
-## `scripts/interlanguage_classifier_final.py`
-_Phase 3 FINAL classifier — pre-registered method, full 7-day data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_raw` | `()` | Load all interlanguage_practice rows from the sqlite DB, keeping only | [src](../../../scripts/interlanguage_classifier_final.py#L110) |
-| function | `apply_gap_filter` | `(rows)` | Drop peer rows (NOT jarvis rows) inside gap #1's hardware-rotation | [src](../../../scripts/interlanguage_classifier_final.py#L126) |
-| function | `cleanup` | `(rows)` | Apply pre-registered §1 cleanup: drop rows with no primitive glyph, | [src](../../../scripts/interlanguage_classifier_final.py#L157) |
-| function | `featurize` | `(rows, embedder)` | Build the 403-dim feature matrix: normalized sentence embeddings (384) | [src](../../../scripts/interlanguage_classifier_final.py#L191) |
-| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | Permutation test for classifier accuracy: refit a LogisticRegression on | [src](../../../scripts/interlanguage_classifier_final.py#L209) |
-| function | `per_row_interpretation` | `(report_dict, cohort_counts)` | Pre-registered note: overall accuracy is misleading under cohort | [src](../../../scripts/interlanguage_classifier_final.py#L229) |
-| function | `render_cohort_balance` | `(kept_per_peer)` | Surface cohort balance with FROZEN annotation per gap #2. | [src](../../../scripts/interlanguage_classifier_final.py#L255) |
-| function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
-| function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
-| function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
-
-## `scripts/interlanguage_classifier_interim.py`
-_Interim Phase 3 classifier — pre-registered method, partial data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_raw` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L49) |
-| function | `cleanup` | `(rows)` | Pre-registreret cleanup (§1): | [src](../../../scripts/interlanguage_classifier_interim.py#L62) |
-| function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L101) |
-| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L118) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L136) |
-
-## `scripts/interlanguage_drift_classifier.py`
-_Phase 3 supplementary — drift-feature classifier for jarvis vs random._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_peer_expressions` | `(peer)` | Pull all post-cleanup expressions for one peer, chronologically ordered. | [src](../../../scripts/interlanguage_drift_classifier.py#L60) |
-| function | `featurize_snapshot` | `(expressions)` | 19-dim: 5 op-freqs + 14 vocab-freqs (relative to total ops + total vocab). | [src](../../../scripts/interlanguage_drift_classifier.py#L89) |
-| function | `featurize_chunk` | `(chunk)` | Return (snapshot_19, drift_19) where drift = late_half - early_half. | [src](../../../scripts/interlanguage_drift_classifier.py#L106) |
-| function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
-| function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
 

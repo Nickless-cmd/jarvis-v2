@@ -16,6 +16,13 @@ const kald = (navn: string): ContentBlock => ({ type: 'tool_use', id: navn, name
 const tanke = (s: number): ContentBlock => ({ type: 'thinking', thinking: '…', seconds: s })
 
 describe('opdel', () => {
+  it('viser løbende tekst efter et værktøj som mellemsyntese indtil slutsvaret er bekræftet', () => {
+    const blocks = [kald('bash'), tekst('Næste runde undersøges nu.')]
+    expect(opdel(blocks, true).arbejde.map((e) => e.slags)).toEqual(['blok', 'mellemsvar'])
+    expect(opdel(blocks, true).svar).toEqual([])
+    expect(opdel(blocks, false).svar).toEqual([tekst('Næste runde undersøges nu.')])
+  })
+
   it('lægger tekst MELLEM to kald i arbejdet, ikke i svaret', () => {
     const { arbejde, svar } = opdel([
       kald('bash'),

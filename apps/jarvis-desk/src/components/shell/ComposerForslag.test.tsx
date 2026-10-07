@@ -79,6 +79,10 @@ function foersteValgKrop(kald: ReturnType<typeof serverForeslaar>): Record<strin
 
 describe('Composer · auto-forslag', () => {
   beforeEach(() => {
+    // Kladden persisteres nu i localStorage (4/10-2026) og ville ellers lække
+    // fra én test til den næste: feltet ville starte med den forrige tests tekst,
+    // og forslaget ville ikke stå i det tomme felt.
+    localStorage.clear()
     vi.restoreAllMocks()
     serverForeslaar('')
   })

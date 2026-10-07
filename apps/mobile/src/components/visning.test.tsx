@@ -41,15 +41,99 @@ describe('visningerne', () => {
     expect(s.getByText('Hvor sidder værnet mon?')).toBeTruthy()
   })
 
-  it('folder en tur nedad ved at holde headeren oppe i synsfeltet', async () => {
-    const scroll = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => undefined)
+  it('aabner turen UDEN at skaermen rykker sig — offset kompenseres for ny hoejde', async () => {
+    // Maalt 6/10-2026 (Bjoern): den gamle udgave kaldte
+    // `scrollToIndex({viewPosition: 0.3})` og REV skaermen et nyt sted hen.
+    // Kravet er at den staar bomstille: hovedet bliver hvor det er, og
+    // arbejdet folder ned under det.
+    const hop = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => undefined)
+    const skub = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => undefined)
     try {
       const s = await render(<MessageList messages={[tur]} blocks={[]} visning="normal" />)
+      // Skaermen staar 250 px oppe i historikken, og indholdet er 600 px hoejt.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'scroll', { nativeEvent: {
+        contentOffset: { x: 0, y: 250 },
+        layoutMeasurement: { width: 400, height: 800 },
+        contentSize: { width: 400, height: 600 },
+      } }) })
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 600) })
       await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+      // Arbejdsraekkerne folder ud: indholdet vokser 600 -> 1000.
       await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 1000) })
-      await waitFor(() => expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ animated: true, viewPosition: 0.3 })))
+      await waitFor(() => expect(skub).toHaveBeenCalledWith({ offset: 650, animated: false }))
+      // Intet hop til en raekke: skaermen skal staa stille, ikke flyttes hen.
+      expect(hop).not.toHaveBeenCalled()
     } finally {
-      scroll.mockRestore()
+      hop.mockRestore()
+      skub.mockRestore()
+    }
+  })
+
+  it('hopper IKKE til bunds: en maaling i den forkerte retning bruges ikke', async () => {
+    // Maalt 6/10-2026 (Bjoern): efter den foerste rettelse foer skaermen til
+    // BUNDS ved fold-ud og naesten til TOPS ved fold-ind. Aarsagen var at den
+    // FOERSTE stoerrelsesaendring efter trykket blev brugt, uanset fortegn: kom
+    // der en maaling den anden vej foerst (600 -> 560), blev skaermen skubbet
+    // den vej, og den aegte aendring (-> 1000) stod ukompenseret tilbage.
+    // Kravet er at skaermen staar bomstille — ogsaa naar maalingerne kommer i
+    // flere bidder.
+    const skub = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => undefined)
+    try {
+      const s = await render(<MessageList messages={[tur]} blocks={[]} visning="normal" />)
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'scroll', { nativeEvent: {
+        contentOffset: { x: 0, y: 250 },
+        layoutMeasurement: { width: 400, height: 800 },
+        contentSize: { width: 400, height: 600 },
+      } }) })
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 600) })
+      await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+      // Foerst en maaling den FORKERTE vej — den maa ikke flytte skaermen.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 560) })
+      expect(skub).not.toHaveBeenCalled()
+      // Saa den aegte: arbejdsraekkerne folder ud. Maalet er udgangs-offsettet
+      // plus HELE aendringen siden trykket (250 + 400), ikke 250 + 440.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 1000) })
+      await waitFor(() => expect(skub).toHaveBeenCalledWith({ offset: 650, animated: false }))
+    } finally {
+      skub.mockRestore()
+    }
+  })
+
+  it('folder sammen uden at fare til tops — samme faste maal den anden vej', async () => {
+    // Modstykket til bund-hoppet: fold-ind melder en KORTERE hoejde, og skaermen
+    // skal loeftes praecis lige saa meget som hovedet flytter sig.
+    const skub = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => undefined)
+    try {
+      const s = await render(<MessageList messages={[tur]} blocks={[]} visning="verbose" />)
+      // Aabnet tur: skaermen staar 650 px oppe, indholdet er 1000 px hoejt.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'scroll', { nativeEvent: {
+        contentOffset: { x: 0, y: 650 },
+        layoutMeasurement: { width: 400, height: 800 },
+        contentSize: { width: 400, height: 1000 },
+      } }) })
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 1000) })
+      // Luk turen (den er aaben i 'verbose', saa et tryk folder sammen).
+      await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+      // En sen maaling der VOKSER maa ikke bruges her.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 1040) })
+      expect(skub).not.toHaveBeenCalled()
+      // Den aegte: arbejdsraekkerne foldes ind, 1000 -> 600.
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 600) })
+      await waitFor(() => expect(skub).toHaveBeenCalledWith({ offset: 250, animated: false }))
+    } finally {
+      skub.mockRestore()
+    }
+  })
+
+  it('kompenserer IKKE naar intet tur-hoved blev foldet', async () => {
+    const skub = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => undefined)
+    try {
+      const s = await render(<MessageList messages={[tur]} blocks={[]} visning="normal" />)
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 600) })
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 900) })
+      expect(skub).not.toHaveBeenCalled()
+    } finally {
+      skub.mockRestore()
     }
   })
 })

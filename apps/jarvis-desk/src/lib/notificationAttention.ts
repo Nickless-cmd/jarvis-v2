@@ -22,7 +22,7 @@ export function notificationAttention(ids: string[]): { unread: boolean; attenti
   const state = load()
   return {
     unread: ids.some((id) => !state.read.includes(id)),
-    attention: ids.some((id) => !state.acknowledged.includes(id)),
+    attention: ids.some((id) => !state.read.includes(id) && !state.acknowledged.includes(id)),
   }
 }
 

@@ -48,15 +48,15 @@ function foersteLinje(s: string): string {
  *  Retningen skiftes ved at BYTTE ikonet frem for at rotere det, så stregen
  *  står skarp i begge tilstande — samme greb som forlægget
  *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
-function FoldPil({ aaben }: { aaben: boolean }) {
+function FoldPil({ aaben, className }: { aaben: boolean; className?: string }) {
   return aaben
-    ? <ChevronDown size={18} strokeWidth={1.75} />
-    : <ChevronRight size={18} strokeWidth={1.75} />
+    ? <ChevronDown className={className} size={14} strokeWidth={1.75} />
+    : <ChevronRight className={className} size={14} strokeWidth={1.75} />
 }
 
-function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
+const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
   return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
-}
+})
 
 const KOMMANDOER = new Set(['bash', 'bash_session_run', 'bash_session_open', 'bash_session_close', 'bash_output', 'run_in_background', 'session_run'])
 
@@ -151,8 +151,9 @@ function Raekke({
             Paa hover falmer ikonet ud og en chevron ind over 100ms; ingen
             raekke-fill, praecis som forlaegget (DisclosureRow.module.css:63). */}
         <span className="rv-ikon" aria-hidden="true">
-          <Ikon className="rv-glyf" size={14} strokeWidth={1.75} />
-          <ChevronDown className="rv-hoverChev" size={14} strokeWidth={1.75} />
+          <Ikon className="rv-glyf" size={13} strokeWidth={1.75} />
+          <Ikon className="rv-ikon-glimt rv-glyf-glimt" size={13} strokeWidth={1.75} />
+          <ChevronDown className="rv-hoverChev" size={13} strokeWidth={1.75} />
         </span>
         {slags ? <span className="rv-slags">{slags}</span> : null}
         {sum !== '' && sum != null ? (
@@ -166,7 +167,7 @@ function Raekke({
           </>
         ) : <span className="rv-sum" />}
         {mrkat && <span className="rv-mrkat">{mrkat}</span>}
-        {foldbar && <span className="rv-chev" aria-hidden="true"><FoldPil aaben={aaben} /></span>}
+        {foldbar && <span className="rv-chev" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>}
       </div>
       {foldbar && aaben && <div className="rv-krop">{krop}</div>}
     </div>
@@ -272,16 +273,49 @@ function Element({ e, streaming, config, beskedId }: {
   return <BlocksRenderer blocks={[b]} density="compact" streaming={streaming} />
 }
 
-function Arbejdsrunde({
-  elementer, streaming, sidste, harSvar, config, rundeEtiketter, beskedId,
+/** Arbejdsrundernes skjulte kroppe bliver stående i DOM'en. Under streaming
+ *  kommer der nye blok-arrays ved hvert delta, men færdige blok-objekter er
+ *  stabile. Spring deres dyre kort-render over, når indholdet er det samme. */
+function sammeArbejdsElementer(a: ArbejdsElement[], b: ArbejdsElement[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]!
+    const y = b[i]!
+    if (x.slags !== y.slags) return false
+    if (x.slags === 'blok' && y.slags === 'blok' && x.blok !== y.blok) return false
+    if (x.slags === 'mellemsvar' && y.slags === 'mellemsvar' && x.tekst !== y.tekst) return false
+    if (x.slags === 'spor' && y.slags === 'spor'
+      && (x.trin.length !== y.trin.length || x.trin.some((t, j) => t !== y.trin[j]))) return false
+  }
+  return true
+}
+
+const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, streaming, config, beskedId }: {
+  elementer: ArbejdsElement[]
+  aaben: boolean
+  streaming: boolean
+  config?: ApiConfig
+  beskedId?: string
+}) {
+  return (
+    <div className="rv-arbejdsdetaljer" hidden={!aaben}>
+      {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
+    </div>
+  )
+}, (a, b) => a.aaben === b.aaben && a.streaming === b.streaming
+  && a.config === b.config && a.beskedId === b.beskedId
+  && sammeArbejdsElementer(a.elementer, b.elementer))
+
+function ArbejdsrundeImpl({
+  elementer, streaming, sidste, svarBegyndt, config, etiket, beskedId,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
   sidste: boolean
-  harSvar: boolean
+  svarBegyndt: boolean
   config?: ApiConfig
   beskedId?: string
-  rundeEtiketter: Record<string, string>
+  etiket?: string
 }) {
   const [aaben, setAaben] = useState(false)
   const foldRef = useRef<HTMLButtonElement>(null)
@@ -295,8 +329,16 @@ function Arbejdsrunde({
   const koerer = Boolean(seneste && streaming && (seneste.status ?? 'running') === 'running')
   // Et afsluttet kald afslutter ikke nødvendigvis Jarvis' arbejdsrunde. Hold
   // den sidste fortælling levende indtil en ny sektion eller svaret begynder.
-  const visShimmer = streaming && sidste && (koerer || !harSvar)
-  const etiket = [...vaerktoejer].reverse().map((t) => rundeEtiketter[t.id]).find(Boolean)
+  //
+  // 3/10-2026 (Bjørn): «i runde linjerne … skal shimmer fortsætte til første
+  // tænke i næste runde, ellers opstår der et par sekunders stilhed hvor du
+  // tænker». Fejlen var `harSvar`: den tæller ALT efter sidste værktøjskald som
+  // «svar» — også rundeopsummeringen (`tool_use_summary`), som lander lige når
+  // værktøjet er færdigt. Derfor døde shimmeren i præcis det vindue hvor
+  // modellen tænker på næste runde, og rækken stod død i et par sekunder.
+  // Det ægte signal er `finalAnswerStarted` (serverens `final_answer_start`):
+  // det siger «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
+  const visShimmer = streaming && sidste && (koerer || !svarBegyndt)
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
@@ -314,30 +356,45 @@ function Arbejdsrunde({
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(visShimmer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
-        <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
+        <span className="rv-arbejdsikon" aria-hidden="true">
+          <Ikon size={13} strokeWidth={1.75} />
+          <Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} />
+        </span>
         <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
-        <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
+        <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
-      <div className="rv-arbejdsdetaljer" hidden={!aaben}>
-        {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
-      </div>
+      <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
     </div>
   )
 }
 
+const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
+  a.streaming === b.streaming && a.sidste === b.sidste && a.svarBegyndt === b.svarBegyndt
+  && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
+  && sammeArbejdsElementer(a.elementer, b.elementer))
+
+function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string>): string | undefined {
+  for (let i = elementer.length - 1; i >= 0; i--) {
+    const e = elementer[i]
+    if (e?.slags === 'blok' && e.blok.type === 'tool_use' && etiketter[e.blok.id]) return etiketter[e.blok.id]
+  }
+  return undefined
+}
+
 function RaekkeTranskriptImpl({
-  blocks, streaming, beskedId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, beskedId, config, rundeEtiketter,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
+  finalAnswerStarted?: boolean
   beskedId?: string
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
 }) {
-  const { arbejde, svar, kald, sekunder } = opdel(blocks)
+  const { arbejde, svar, kald, sekunder } = opdel(blocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
@@ -348,10 +405,11 @@ function RaekkeTranskriptImpl({
     e.slags === 'blok' && e.blok.type === 'tool_use' ? [postFor(e.blok.name).familie] : [],
   )
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
-  // Aaben mens der arbejdes, lukket naar turen er slut — man skal kunne
-  // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
+  // Fold først ved serverens bekræftede grænse, før det første svar-delta.
+  // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? streaming
+  const arbejdeKoerer = streaming && !finalAnswerStarted
+  const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
@@ -361,21 +419,21 @@ function RaekkeTranskriptImpl({
         <>
           <button
             type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
-            {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
+            {...(arbejdeKoerer && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
-            {streaming && aabenManuelt === null
+            {arbejdeKoerer && aabenManuelt === null
               ? <span className="rv-turTekst shimmer">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
-            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
+            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
             {aaben && sektioner.map((s, i) => {
               if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                sidste={i === sektioner.length - 1} harSvar={svar.length > 0}
-                config={config} rundeEtiketter={etiketter} beskedId={beskedId} />
+                sidste={i === sektioner.length - 1} svarBegyndt={finalAnswerStarted}
+                config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
             })}
           </div>
         </>

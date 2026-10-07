@@ -22,7 +22,7 @@ import * as useSettingsHook from '../../hooks/useSettings'
  */
 afterEach(() => { vi.restoreAllMocks() })
 
-function vis(p: unknown, rolle: string | null = 'owner') {
+function vis(p: unknown, rolle: string | null = 'owner', sessionId: string | null = 'session-a') {
   vi.spyOn(useStreamHook, 'useStream').mockReturnValue({
     pendingApproval: p, approve: vi.fn(), deny: vi.fn(),
   } as unknown as ReturnType<typeof useStreamHook.useStream>)
@@ -30,10 +30,10 @@ function vis(p: unknown, rolle: string | null = 'owner') {
     settings: { apiBaseUrl: 'http://x/', authToken: 't' },
     auth: rolle ? { user_id: 'u', display_name: 'B', role: rolle } : null,
   } as unknown as ReturnType<typeof useSettingsHook.useSettings>)
-  return render(<GodkendelsesKort />)
+  return render(<GodkendelsesKort sessionId={sessionId} />)
 }
 
-const kort = { approvalId: 'a1', tool: 'bash', action: 'ls -la' }
+const kort = { approvalId: 'a1', tool: 'bash', action: 'ls -la', sessionId: 'session-a' }
 
 describe('GodkendelsesKort', () => {
   it('tegner kortet naar der venter en godkendelse', () => {
@@ -43,6 +43,16 @@ describe('GodkendelsesKort', () => {
 
   it('tegner intet naar der ikke venter nogen', () => {
     const { container } = vis(null)
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('viser ikke et kort fra en anden session', () => {
+    const { container } = vis(kort, 'owner', 'session-b')
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('viser ikke et kort uden en aktiv session', () => {
+    const { container } = vis(kort, 'owner', null)
     expect(container.innerHTML).toBe('')
   })
 

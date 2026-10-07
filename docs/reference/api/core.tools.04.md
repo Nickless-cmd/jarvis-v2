@@ -2,6 +2,112 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_const.py`
+_Delte konstanter for workspace-capabilities._
+
+_(no top-level classes or functions)_
+
+## `core/tools/workspace_capabilities_documents.py`
+_Workspace-dokument-parsing (TOOLS.md / SKILLS.md → capability-sektioner)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_approval_policy_for_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L49) |
+| function | `_document_summary` | `(path, *, kind)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L87) |
+| function | `_document_sections` | `(path, *, kind)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L124) |
+| function | `_document_section_by_id` | `(path, *, kind, capability_id)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L163) |
+| function | `_section_summary` | `(section)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L170) |
+| function | `_runtime_capability_record` | `(item)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L289) |
+| function | `_normalize_body` | `(lines)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L312) |
+| function | `_slugify` | `(value)` | — | [src](../../../core/tools/workspace_capabilities_documents.py#L317) |
+
+## `core/tools/workspace_capabilities_exec.py`
+_Exec-kommando-klassifikation for workspace-capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_classify_exec_command` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L33) |
+| function | `_classify_shell_composed_exec_command` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L123) |
+| function | `_classify_exec_command_no_shell` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L187) |
+| function | `_split_shell_exec_segments` | `(command_text)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L265) |
+| function | `_normalize_exec_argv` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L270) |
+| function | `_classify_git_exec_command` | `(argv, *, path_normalization_applied=…, normalization_source=…)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L302) |
+| function | `_resolve_git_exec_context` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L397) |
+| function | `_is_allowed_bounded_git_log_args` | `(log_args)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L424) |
+| function | `_classify_cd_exec_command` | `(argv, *, path_normalization_applied=…, normalization_source=…)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L432) |
+| function | `_classify_git_mutation_subcommand` | `(subcommand)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L463) |
+| function | `_mutating_exec_proposal_metadata` | `(argv)` | — | [src](../../../core/tools/workspace_capabilities_exec.py#L480) |
+
+## `core/tools/workspace_capabilities_execute.py`
+_Read-only capability-udførere (runtime-event-read, grep, multi-read, outline)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_execute_runtime_event_read` | `(summary)` | Execute the runtime-event-read tool: surface recent eventbus events. | [src](../../../core/tools/workspace_capabilities_execute.py#L33) |
+| function | `_execute_project_grep` | `(summary, command_text)` | Grep across PROJECT_ROOT for a pattern. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L90) |
+| function | `_execute_multi_file_read` | `(summary, command_text, workspace_dir)` | Read multiple project files in one call. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L160) |
+| function | `_execute_project_outline` | `(summary, command_text)` | List project files with line counts. Read-only, no approval. | [src](../../../core/tools/workspace_capabilities_execute.py#L217) |
+
+## `core/tools/workspace_capabilities_memory.py`
+_Workspace-memory-fletning + støjfilter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_durable_memory_line` | `(line)` | True if a line looks like a durable fact, not session noise. | [src](../../../core/tools/workspace_capabilities_memory.py#L70) |
+| function | `_merge_workspace_memory_content` | `(*, existing_content, incoming_content)` | — | [src](../../../core/tools/workspace_capabilities_memory.py#L104) |
+
+## `core/tools/workspace_capabilities_results.py`
+_Rene result-formende helpers for workspace-capabilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_finalize_capability_result` | `(result)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L18) |
+| function | `_capability_status_family` | `(status)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L36) |
+| function | `_default_capability_detail` | `(*, status, execution_mode)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L52) |
+| function | `_requires_capability_approval` | `(summary)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L68) |
+| function | `_approval_result` | `(summary, *, approved, granted)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L72) |
+| function | `_preview_text` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L85) |
+| function | `_result_preview` | `(result)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L92) |
+| function | `_content_fingerprint` | `(text)` | — | [src](../../../core/tools/workspace_capabilities_results.py#L106) |
+
+## `core/tools/workspace_capabilities_verdict.py`
+_Approval-verdicts + proposal/execution-content for mutating/sudo exec._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_approved_mutating_exec_verdict` | `(classification)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L31) |
+| function | `_approved_sudo_exec_verdict` | `(classification, *, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L76) |
+| function | `_mutating_exec_proposal_content` | `(*, command_text, command_source, classification)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L164) |
+| function | `_mutating_exec_execution_content` | `(*, command_text, command_source, classification, exit_code, output_text)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L215) |
+| function | `_sudo_exec_execution_content` | `(*, command_text, command_source, classification, exit_code, output_text)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L249) |
+| function | `_resolve_target_path_for_sudo_exec` | `(workspace_dir, target)` | — | [src](../../../core/tools/workspace_capabilities_verdict.py#L284) |
+
+## `core/tools/workspace_capabilities_wsio.py`
+_Encryption-aware workspace-fil I/O-helpers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ws_read_text` | `(path)` | Læs workspace-fil encryption-aware (member .enc transparent). None hvis | [src](../../../core/tools/workspace_capabilities_wsio.py#L14) |
+| function | `_ws_write_text` | `(path, content)` | Skriv workspace-fil encryption-aware (member → .enc når ENCRYPT_ON_WRITE on; | [src](../../../core/tools/workspace_capabilities_wsio.py#L22) |
+| function | `_ws_path_exists` | `(path)` | Eksistens encryption-aware: plaintext eller member .enc. | [src](../../../core/tools/workspace_capabilities_wsio.py#L29) |
+
+## `core/tools/workspace_capability_decl.py`
+_Capability body declaration-parsere + workspace-sti-resolution._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_declared_read_file_path` | `(body)` | — | [src](../../../core/tools/workspace_capability_decl.py#L18) |
+| function | `_declared_search_file_spec` | `(body)` | — | [src](../../../core/tools/workspace_capability_decl.py#L22) |
+| function | `_declared_external_file_spec` | `(body)` | — | [src](../../../core/tools/workspace_capability_decl.py#L36) |
+| function | `_declared_exec_spec` | `(body)` | — | [src](../../../core/tools/workspace_capability_decl.py#L53) |
+| function | `_declared_write_target_path` | `(body)` | — | [src](../../../core/tools/workspace_capability_decl.py#L70) |
+| function | `_declared_body_value` | `(body, key, *, validate=…)` | — | [src](../../../core/tools/workspace_capability_decl.py#L74) |
+| function | `_is_valid_workspace_relative_path` | `(value)` | — | [src](../../../core/tools/workspace_capability_decl.py#L91) |
+| function | `_resolve_workspace_relative_path` | `(workspace_dir, value)` | — | [src](../../../core/tools/workspace_capability_decl.py#L102) |
+| function | `_resolve_external_path` | `(workspace_dir, value)` | — | [src](../../../core/tools/workspace_capability_decl.py#L114) |
+| function | `_is_within_workspace_root` | `(workspace_dir, candidate)` | — | [src](../../../core/tools/workspace_capability_decl.py#L126) |
+| function | `_expand_declared_path` | `(value, *, workspace_dir)` | — | [src](../../../core/tools/workspace_capability_decl.py#L135) |
+
 ## `core/tools/worktree_tools.py`
 _Git worktree primitive — let Jarvis experiment in isolation._
 

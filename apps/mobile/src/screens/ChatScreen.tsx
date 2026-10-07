@@ -21,6 +21,8 @@ import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
+import { arbejdslinjeTekst } from '../lib/arbejdslinje'
+import { visibleStreamBlocks } from '../lib/streamReducer'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -31,6 +33,7 @@ import { ErrorCard } from '../components/ErrorCard'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
+import { WidgetPrompt } from '../components/WidgetFlade'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { useFollowupQueue, type FollowupItem } from '../lib/useFollowupQueue'
@@ -339,6 +342,23 @@ export function ChatScreen({
   }, [panelOpen, config])
   const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
   const listRef = useRef<MessageListHandle>(null)
+  /** En widget bad om at sige noget i samtalen.
+   *
+   *  Teksten er FAERDIG-MAERKET af serveren (`[fra widget «…»] …`) og sendes som
+   *  den er — formatet har ÉN kilde, saa mobil og desk ikke kan drive fra
+   *  hinanden. Staaende regel (Bjoern 3/10-2026): alt der ikke er skrevet fra
+   *  composeren skal vaere maerket, og maerket staar derfor i selve beskeden —
+   *  ikke i et felt en klient kunne glemme at vise. `WidgetFlade` sender slet
+   *  ikke uden maerke. */
+  //: `sendNu` defineres 600 linjer laengere nede, og provideren skal monteres
+  //: foer den. En ref loeser raekkefoelgen uden at flytte noget: callbacken har
+  //: stabil identitet, saa WebView'en ikke gentegnes (det ville nulstille
+  //: widget'ens egen tilstand midt i en betjening).
+  const sendNuRef = useRef<((t: string) => Promise<void>) | null>(null)
+  const widgetPrompt = useCallback((markeretTekst: string) => {
+    const t = markeretTekst.trim()
+    if (t) void sendNuRef.current?.(t)
+  }, [])
   // Rul-til-bunden: vises naar man har rullet OP i traaden. Listen er inverteret,
   // saa offset 0 = nederst ved det nyeste. Taerskel paa en halv skaerm — under det
   // er man reelt stadig i bunden, og en knap ville bare staa og blinke.
@@ -959,6 +979,10 @@ export function ChatScreen({
     })
   }
 
+  // Ref'en peger paa den NUVAERENDE sendNu, saa en widget sender med de valg
+  // der gaelder nu — ikke dem der gjaldt da provideren blev monteret.
+  sendNuRef.current = (t: string) => sendNu(t)
+
   const followups = useFollowupQueue({
     sessionId: sessions.activeId,
     busy: stream.state.status === 'working' || serverBusy,
@@ -1177,6 +1201,14 @@ export function ChatScreen({
   // ville det mangle den afstandsklods der holder det over komposeren.
   const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message)
 
+  // Arbejdslinjens token-tal: HELE konteksten turen bærer — input, cache-hit,
+  // cache-miss og output — ikke kun svaret. Samme fire led som desk summerer
+  // (`ChatView.tsx:138`), så de to klienter viser samme tal for samme tur.
+  // Læses direkte fra streamen: `input` sættes ved `message_start`, `output`
+  // regnes løbende, så tallet vokser mens der arbejdes.
+  const brugteTokens = stream.state.usage.input + stream.state.usage.cacheHit
+    + stream.state.usage.cacheMiss + stream.state.usage.output
+
   return (
     <View style={styles.root}>
       <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
@@ -1197,12 +1229,26 @@ export function ChatScreen({
           {showGreeting ? (
             <GreetingHero userName={displayName} presence={presence} />
           ) : (
+            <WidgetPrompt.Provider value={widgetPrompt}>
             <MessageList
               ref={listRef}
               topInset={topInset}
               messages={sessions.messages}
-              blocks={stream.state.blocks}
-              working={stream.state.status === 'working' || serverBusy}
+              blocks={visibleStreamBlocks(stream.state)}
+              // Liveness-værnet (spejlet fra desk 3/10-2026, `8b054042f`):
+              // serverens «kører»-svar dækker også runnets EFTERSLÆB —
+              // `/active-runs` melder først færdig når `mark_done` er kørt til
+              // sidst i runnets `finally`. Er det run serveren rapporterer vores
+              // EGET (samme id som streamen kører under), er der intet fremmed
+              // at vente på, og linjen skal ikke holdes oppe af det. Er id'et
+              // tomt, falder vi tilbage til «vis» — som desk's `!currentRun?.run_id`.
+              working={
+                stream.state.status === 'working'
+                || (serverBusy && !(activeRunId && activeRunId === stream.state.activeRunId))
+              }
+              finalAnswerStarted={stream.state.finalAnswerStarted}
+              arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
+              arbejdslinjeTokens={brugteTokens}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.
@@ -1219,6 +1265,7 @@ export function ChatScreen({
               onScrollOffset={onScrollOffset}
               bottomInset={liftPadding}
             />
+            </WidgetPrompt.Provider>
           )}
         </Animated.View>
         {!showGreeting ? (

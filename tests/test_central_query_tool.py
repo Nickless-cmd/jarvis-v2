@@ -100,6 +100,52 @@ def test_status_includes_recent_and_known_signals():
     assert "known_signals" in r["data"]
 
 
+def test_uloeste_opdeles_i_fejl_og_governance(monkeypatch):
+    """3/10-2026: `unresolved_incidents` blandede to ting i ét tal.
+
+    `gate_enforce` (severity=info) er gaten der melder at den HÅNDHÆVEDE en
+    regel — en begivenhed, ikke en defekt. Målt: 51 uløste, hvoraf 42 var
+    governance og 4 var errors. Tallet fik 51 til at se ud som 51 problemer,
+    og panelet blev ubrugeligt til at finde dem der faktisk var.
+    """
+    import core.services.central_realtime as cr
+    monkeypatch.setattr(cr, "realtime_snapshot", lambda **k: {
+        "status": "yellow",
+        "incidents": [
+            {"kind": "gate_enforce", "severity": "info"},
+            {"kind": "gate_enforce", "severity": "info"},
+            {"kind": "gate_fired", "severity": "error"},
+        ],
+    })
+    r = q({"action": "status"})
+    assert r["status"] == "ok"
+    d = r["data"]
+    assert d["unresolved_incidents"] == 3, "summen skal vaere uaendret"
+    assert d["unresolved_errors"] == 1, "kun error/severed skal taelles som fejl"
+    assert d["unresolved_governance_events"] == 2
+
+
+def test_status_bruger_db_tallene_naar_de_findes(monkeypatch):
+    """4/10-2026: `unresolved_incidents` stod ALTID på 12.
+
+    Visnings-listen klippes til 12, og tallet blev regnet med `len()` af DEN — så
+    panelet viste «12» uanset om der stod 12 eller 240 åbne, og en fejl uden for
+    vinduet var usynlig. Med `incident_counts` (talt i DB) skal tallet være sandt."""
+    import core.services.central_realtime as cr
+    monkeypatch.setattr(cr, "realtime_snapshot", lambda **k: {
+        "status": "yellow",
+        "incidents": [{"kind": "gate_enforce", "severity": "info"}] * 12,
+        "incident_counts": {"unresolved": 240, "errors": 3,
+                            "governance": 237, "severe": 0, "fail_open": 0},
+    })
+    r = q({"action": "status"})
+    assert r["status"] == "ok"
+    d = r["data"]
+    assert d["unresolved_incidents"] == 240, "ikke 12 — listen er klippet"
+    assert d["unresolved_errors"] == 3, "fejlen laa uden for det klippede vindue"
+    assert d["unresolved_governance_events"] == 237
+
+
 def test_known_signals_action_envelope():
     r = q({"action": "known_signals"})
     _assert_envelope(r)

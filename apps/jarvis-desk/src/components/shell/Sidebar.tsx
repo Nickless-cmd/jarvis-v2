@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
+  Pin, Archive, ArchiveRestore, FolderInput, FolderMinus, FolderPlus,
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
-  Gauge, Users,
+  Gauge, Users, Bug,
   type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
-import { useStream } from '../../hooks/useStream'
+import { useStreamUdsnit } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { maaPolle } from '../../lib/ro'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
-import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
+import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, erKodeSamtale, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
@@ -29,6 +30,13 @@ const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
   Gauge, Users,
+}
+
+/** Rollen som den står i foden. Værdierne kommer fra `users.json` — Bjørn er
+ *  `owner`, Michelle er `partner`, Mikkel/Lotte/Rune er `member`. ÉN rolle, ikke
+ *  både role og tier: det er samme oplysning to gange. (Bjørn 29/9-2026.) */
+const ROLLE_NAVN: Record<string, string> = {
+  owner: 'owner', partner: 'partner', member: 'member', guest: 'gæst',
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
@@ -52,16 +60,23 @@ export function Sidebar({
   onSurface,
   userName,
   onSearch,
+  onOpenBug,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
   userName: string
   /** Aabner Ctrl+K-paletten. Samme vej som genvejen — ét sted at rette. */
   onSearch?: () => void
+  /** Aabner fejl-rapporten MIDT PAA SKAERMEN. Rapporten sendes til
+   *  `/chat/inbox/flag`, ikke til skrivefeltet. (Bjørn 4/10-2026.) */
+  onOpenBug?: () => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
-  const { workingSessionId } = useStream()
+  // Udsnit, ikke hele vaerdien: ellers rendrer hele sessionslisten (566 hos
+  // Bjoern) om ved HVER stream-chunk. Maalt 30,2 ms per chunk mod et
+  // frame-budget paa 16,7 ms — se `useStreamUdsnit`.
+  const workingSessionId = useStreamUdsnit((s) => s.workingSessionId)
 
   // Inddeling af sessions-listen (8/9-2026). Bjørn: «sessioner i side panelet
   // er rodet». 278 chat + 181 autonome + 1 proaktiv i én flad liste.
@@ -276,16 +291,26 @@ export function Sidebar({
                 const foldet = foldedeGrupper[g.gruppe] ?? (g.gruppe === 'baggrund')
                 return (
                   <Fragment key={g.gruppe}>
-                    <button
-                      type="button"
-                      className="sidebar-label sidebar-group"
-                      aria-expanded={!foldet}
-                      onClick={() => setFoldedeGrupper((f) => ({ ...f, [g.gruppe]: !foldet }))}
-                    >
-                      {foldet ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                      <span>{g.navn}</span>
-                      <span className="sidebar-group-count">{g.sessioner.length}</span>
-                    </button>
+                    <div className="sidebar-group-raekke">
+                      <button
+                        type="button"
+                        className="sidebar-label sidebar-group"
+                        aria-expanded={!foldet}
+                        onClick={() => setFoldedeGrupper((f) => ({ ...f, [g.gruppe]: !foldet }))}
+                      >
+                        {foldet ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                        <span>{g.navn}</span>
+                        <span className="sidebar-group-count">{g.sessioner.length}</span>
+                      </button>
+                      {/* Plusset staar KUN paa kode-gruppen (Bjoern 4/10-2026:
+                          «projekt fold ud linjen mangler et plus i enden til at
+                          oprette nyt projekt»). Et projekt findes udelukkende
+                          som en faelles `workspace_root` — se `fjernProjekt`
+                          nedenfor — saa «nyt projekt» ER en kode-samtale med en
+                          mappe. Paa chat- og baggrunds-grupperne ville knappen
+                          ikke kunne lave noget. */}
+                      {g.gruppe === 'kode' && <NytProjektKnap />}
+                    </div>
                     {!foldet && (
                       // KODE-gruppen deles yderligere op efter PROJEKT — som i
                       // CC, hvor overskriften er «jarvis-v2 · /media/projects».
@@ -294,15 +319,7 @@ export function Sidebar({
                       g.gruppe === 'kode'
                         ? grupperEfterProjekt(g.sessioner).map((p) => (
                           <Fragment key={p.rod || 'uden'}>
-                            <div className="sidebar-label sidebar-projekt">
-                              <span className="sidebar-projekt-navn">{p.navn}</span>
-                              {p.sti && (
-                                <>
-                                  <span className="sidebar-projekt-prik" aria-hidden="true">·</span>
-                                  <span className="sidebar-projekt-sti" title={p.rod}>{p.sti}</span>
-                                </>
-                              )}
-                            </div>
+                            <ProjektOverskrift navn={p.navn} sti={p.sti} rod={p.rod} sessioner={p.sessioner.map((s) => s.id)} />
                             {p.sessioner.map((s) => (
                               <SessionItem
                                 key={s.id}
@@ -310,8 +327,10 @@ export function Sidebar({
                                 title={s.title || 'Uden titel'}
                                 active={s.id === activeId}
                                 working={isWorking(s.id)}
-                                workspaceKind={s.workspace_kind}
-                                onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                                erKode={erKodeSamtale(s)}
+                                pinned={s.pinned}
+                                archived={s.archived}
+                                onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                               />
                             ))}
                           </Fragment>
@@ -323,8 +342,10 @@ export function Sidebar({
                             title={s.title || 'Uden titel'}
                             active={s.id === activeId}
                             working={isWorking(s.id)}
-                            workspaceKind={s.workspace_kind}
-                            onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                            erKode={erKodeSamtale(s)}
+                            pinned={s.pinned}
+                            archived={s.archived}
+                            onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                           />
                         ))
                     )}
@@ -344,7 +365,12 @@ export function Sidebar({
           <button type="button" className="who" aria-label="Åbn konto-menu"
                   aria-expanded={kontoAaben} onClick={() => setKontoAaben((aaben) => !aaben)}>
             <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
-            <span>{userName}</span>
+            <span className="who-navn">{userName}</span>
+            {/* Rollen står EFTER navnet med en streg imellem, og fold-ud-pilen
+                følger lige efter teksten — ikke ude i kanten. Rollen er ÉN
+                oplysning: både «member» og en tier ville sige det samme to
+                gange. (Bjørn 29/9-2026.) */}
+            <span className="who-rolle">- {ROLLE_NAVN[auth?.role ?? 'guest'] ?? auth?.role ?? 'gæst'}</span>
             <ChevronDown size={14} className="sidebar-account-arrow" />
           </button>
           {kontoAaben && (
@@ -356,6 +382,17 @@ export function Sidebar({
             />
           )}
         </div>
+        {/* Bug-ikonet bor i fodens HØJRE side. Det åbner fejl-rapporten MIDT
+            PÅ SKÆRMEN, og rapporten går til `/chat/inbox/flag` — altså til
+            indbakken, hvor den har et id og kan ses og lukkes.
+            (Bjørn 4/10-2026: «bug icon laves om til et felt midt på skærmen
+            hvor man kan melde faktisk bug til dit bug endpoint». Før lagde
+            ikonet sin tekst i skrivefeltet via `jarvis-bug` — en nødløsning
+            fra 29/9, hvor der ingen rute fandtes. Den findes nu.) */}
+        <button type="button" className="sidebar-bug" aria-label="Rapportér en fejl"
+                title="Rapportér en fejl" onClick={() => onOpenBug?.()}>
+          <Bug size={14} />
+        </button>
       </div>
     </aside>
   )
@@ -395,35 +432,207 @@ function CoworkMenu() {
   )
 }
 
+/** Projekt-overskrift i sidepanelet — «jarvis-v2 · /media/projects», som i CC.
+ *
+ *  Den var en ren <div> indtil 29/9-2026, og DERFOR kunne der ikke sidde en menu
+ *  i dens ende: der var ingen knap at hænge den på. Nu er den en række med
+ *  samme «⋮» som samtalerne — usynlig indtil musen er der.
+ *
+ *  Menuen tilbyder det der KAN gøres uden en projekt-tabel. «Omdøb projekt»
+ *  kræver et navn der ikke er en mappesti og er derfor ikke bygget — den skal
+ *  ikke stå i en menu der ikke kan holde den.
+ *
+ *  «Fjern projekt» ER bygget (29/9-2026). Projektet findes kun som den fælles
+ *  `workspace_root`, så at løsne samtalerne fra mappen ER at fjerne projektet.
+ *  Der er ingen tabel at slette en række i — og derfor heller ikke to
+ *  handlinger: «Løsn alle samtaler» ville være samme knap med et andet navn. */
+/** «+» i kode-gruppens fold-ud-linje: vælg en mappe, få et projekt.
+ *
+ *  Et projekt er ikke en post nogen steder — det findes udelukkende som den
+ *  `workspace_root` en eller flere samtaler deler (`grupperEfterProjekt`
+ *  grupperer på netop den, og `fjernProjekt` fjerner et projekt ved at løsne
+ *  hver samtale fra mappen). «Opret nyt projekt» er derfor præcis:
+ *  opret en kode-samtale, og peg den på en mappe.
+ *
+ *  Mappen vælges med husets EGEN vælger — `jarvisDesk.pickFolder`, samme
+ *  bro CodeView bruger. En egen dialog her ville være en anden vej til
+ *  samme valg, og de to ville kunne drive fra hinanden.
+ *
+ *  Rækkefølgen er vigtig: mappen FØRST, samtalen bagefter. Oprettede vi
+ *  samtalen først og brugeren fortrød i mappe-dialogen, stod der en tom
+ *  «Ny samtale» tilbage i listen som ingen havde bedt om.
+ */
+function NytProjektKnap() {
+  const { create, setWorkspace } = useSessions()
+  const [arbejder, setArbejder] = useState(false)
+
+  const nytProjekt = async () => {
+    // Ingen `stopPropagation` her, og det er MÅLT frem for antaget: en
+    // mutation der fjernede den ændrede ingen adfærd. Plusset er SØSKENDE
+    // til gruppe-knappen inde i `.sidebar-group-raekke`, ikke et barn af
+    // den, så et klik kan ikke boble op i overskriften. Havde jeg lagt
+    // knappen inde i overskriften, var den nødvendig — og så havde det
+    // været en knap i en knap, hvilket heller ikke er gyldigt HTML.
+    if (arbejder) return
+    const bro = (window as unknown as {
+      jarvisDesk?: { pickFolder?: () => Promise<string | null> }
+    }).jarvisDesk
+    if (!bro?.pickFolder) return
+    setArbejder(true)
+    try {
+      const mappe = await bro.pickFolder()
+      if (!mappe) return
+      const sess = await create('Ny samtale', 'code')
+      await setWorkspace(sess.id, 'workstation', mappe)
+    } finally {
+      setArbejder(false)
+    }
+  }
+
+  return (
+    <button type="button" className="sidebar-group-plus" onClick={nytProjekt}
+            disabled={arbejder} title="Nyt projekt — vælg en mappe"
+            aria-label="Nyt projekt — vælg en mappe">
+      <Plus size={13} />
+    </button>
+  )
+}
+
+
+function ProjektOverskrift({ navn, sti, rod, sessioner }: {
+  navn: string; sti: string; rod: string; sessioner: string[]
+}) {
+  const { create, setWorkspace, releaseWorkspace } = useSessions()
+  const [open, setOpen] = useState(false)
+  const menuAnkerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuOpad, setMenuOpad] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [open])
+
+  // Samme vending som samtale-raekkerne: projekt-overskriften kan staa nederst
+  // i listen, og dér blev menuen klippet af `.sessions`.
+  useLayoutEffect(() => {
+    if (!open) { setMenuOpad(false); return }
+    const anker = menuAnkerRef.current?.getBoundingClientRect()
+    const menu = menuRef.current?.getBoundingClientRect()
+    if (!anker || !menu) return
+    const beholder = menuAnkerRef.current?.closest('.sessions') as HTMLElement | null
+    const bund = beholder ? beholder.getBoundingClientRect().bottom : window.innerHeight
+    setMenuOpad(bund - anker.bottom < menu.height + 12)
+  }, [open])
+
+  const nySamtaleHer = async () => {
+    setOpen(false)
+    const sess = await create('Ny samtale', 'code')
+    void setWorkspace(sess.id, 'workstation', rod)
+  }
+
+  // «Fjern projekt»: løsn hver samtale i gruppen fra mappen. Projektet findes
+  // kun som den fælles `workspace_root`, så det er den eneste måde at fjerne
+  // det på — og den eneste vej UD af et forkert mappevalg.
+  const fjernProjekt = async () => {
+    setOpen(false)
+    await Promise.all(sessioner.map((id) => releaseWorkspace(id)))
+  }
+
+  return (
+    <div className="sidebar-label sidebar-projekt">
+      <span className="sidebar-projekt-navn">{navn}</span>
+      {sti && (
+        <>
+          <span className="sidebar-projekt-prik" aria-hidden="true">·</span>
+          <span className="sidebar-projekt-sti" title={rod}>{sti}</span>
+        </>
+      )}
+      {/* «Uden projekt» har ingen sti og faar ingen menu — der er intet projekt
+          at oprette en samtale i. */}
+      {rod && (
+        <div ref={menuAnkerRef} className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="session-more" aria-label="Projekt-handlinger"
+                  onClick={() => setOpen((o) => !o)}>
+            <MoreVertical size={14} />
+          </button>
+          {open && (
+            <div ref={menuRef} className={`session-menu${menuOpad ? ' opad' : ''}`}>
+              <button type="button" onClick={nySamtaleHer}>
+                <FolderPlus size={13} /> Ny samtale her
+              </button>
+              <button type="button" className="danger" onClick={fjernProjekt}>
+                <FolderMinus size={13} /> Fjern projekt
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Session-række med "..."-menu (omdøb / eksportér / slet) — vises ved hover. */
 function SessionItem({
   id,
   title,
   active,
   working,
-  workspaceKind,
+  erKode,
+  pinned,
+  archived,
   onSelect,
 }: {
   id: string
   title: string
   active: boolean
   working?: boolean
-  workspaceKind?: string | null
+  erKode?: boolean
+  /** 1/0 fra basen. Serveren sorterer fastgjorte oeVerst, saa raekken skal
+   *  bare vise tilstanden — ikke flytte sig selv. */
+  pinned?: number | null
+  /** 1/0 fra basen. Arkiverede staar i deres egen gruppe nederst og har
+   *  «Gendan» i stedet for «Arkivér» — de er skjult server-side som standard,
+   *  men panelet henter dem med, saa de kan findes igen. */
+  archived?: number | null
   onSelect: () => void
 }) {
-  const { rename, remove } = useSessions()
+  const { rename, remove, setPinned, setArchived, setWorkspace } = useSessions()
   const { settings } = useSettings()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const menuAnkerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  /** Vender menuen OPAD naar der ikke er plads nedad (Bjoern 29/9-2026:
+   *  «folder ud under sessionerne, den skal vaere oven paa»). `.sessions` har
+   *  `overflow-y: auto`, saa en menu der aabnede nedad fra en raekke naer
+   *  bunden blev KLIPPET af listen — den var der, men man kunne ikke se den.
+   *  Samme faelde som notifikations-feedet ramte; her vendes menuen i stedet. */
+  const [menuOpad, setMenuOpad] = useState(false)
 
   useEffect(() => {
     if (!open) return
     const close = () => { setOpen(false); setConfirmDelete(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
+  }, [open])
+
+  // Maales FOER browseren maler (useLayoutEffect), saa menuen ikke naar at
+  // blinke nedad og hoppe op. Hoejden laeses fra menuen selv — ingen magisk
+  // konstant der skal holdes i takt med hvor mange punkter den har.
+  useLayoutEffect(() => {
+    if (!open) { setMenuOpad(false); return }
+    const anker = menuAnkerRef.current?.getBoundingClientRect()
+    const menu = menuRef.current?.getBoundingClientRect()
+    if (!anker || !menu) return
+    const beholder = menuAnkerRef.current?.closest('.sessions') as HTMLElement | null
+    const bund = beholder ? beholder.getBoundingClientRect().bottom : window.innerHeight
+    setMenuOpad(bund - anker.bottom < menu.height + 12)
   }, [open])
 
   useEffect(() => {
@@ -450,6 +659,17 @@ function SessionItem({
     void remove(id)
   }
 
+  // «Flyt til projekt» = bind samtalen til en mappe. Projektet ER
+  // `workspace_root` — der er intet at flytte i en tabel, saa selve valget af
+  // mappe ER flytningen. Native dialog: window.prompt() virker ikke i Electron.
+  const doFlytTilProjekt = async () => {
+    setOpen(false)
+    const bridge = (window as unknown as { jarvisDesk?: { pickFolder?: () => Promise<string | null> } }).jarvisDesk
+    const sti = await bridge?.pickFolder?.()
+    if (!sti) return
+    void setWorkspace(id, 'workstation', sti)
+  }
+
   return (
     <div className={`session-item ${active ? 'active' : ''} ${working ? 'working' : ''}`}>
       {editing ? (
@@ -470,7 +690,12 @@ function SessionItem({
           {/* Typen staar FAST til venstre (20/9-2026). Foer havde chat intet tag
               — raekken saa tom ud — og de tre prikker kom og gik FORAN titlen,
               saa den rykkede hver gang en session begyndte at arbejde. */}
-          {workspaceKind
+          {/* Arten kommer fra `kind`, ikke fra arbejdstraeet. Ikonet laeste
+              `workspace_kind` — samme stedfortraeder som grupperingen brugte,
+              og rettet samme sted (29/9-2026). Uden det her ville en
+              kode-samtale UDEN bundet arbejdstrae staa i kode-listen med et
+              chat-ikon: gruppen sagde ét, maerket sagde noget andet. */}
+          {erKode
             ? <Code size={12} className="session-mode-icon" />
             : <MessageSquare size={12} className="session-mode-icon" />}
           <span className="session-titel">{title}</span>
@@ -484,7 +709,7 @@ function SessionItem({
           )}
         </button>
       )}
-      <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
+      <div ref={menuAnkerRef} className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="session-more" aria-label="Mere" onClick={() => { setOpen((o) => !o); setConfirmDelete(false) }}>
           {/* Oprejst, ikke liggende (Bjørn 20/9-2026). Den liggende form er
               den samme glyf lagt ned; den oprejste er konventionen for en
@@ -492,7 +717,29 @@ function SessionItem({
           <MoreVertical size={15} />
         </button>
         {open && (
-          <div className="session-menu">
+          <div ref={menuRef} className={`session-menu${menuOpad ? ' opad' : ''}`}>
+            {/* Fastgoer og arkivér. Begge har ligget i basen og paa serveren
+                hele tiden (`PATCH /sessions/{id}/flags`); det var kun denne
+                menu der ikke tilbød dem (Bjørn 29/9-2026). */}
+            <button type="button" onClick={() => { setOpen(false); void setPinned(id, !pinned) }}>
+              <Pin size={13} /> {pinned ? 'Frigør' : 'Fastgør'}
+            </button>
+            {/* Arkiverede har «Gendan» i stedet for «Arkivér». Uden den var
+                arkivering en sletning man ikke kunne fortryde (29/9-2026). */}
+            {archived ? (
+              <button type="button" onClick={() => { setOpen(false); void setArchived(id, false) }}>
+                <ArchiveRestore size={13} /> Gendan
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setOpen(false); void setArchived(id, true) }}>
+                <Archive size={13} /> Arkivér
+              </button>
+            )}
+            {!archived && (
+              <button type="button" onClick={doFlytTilProjekt}>
+                <FolderInput size={13} /> Flyt til projekt
+              </button>
+            )}
             <button type="button" onClick={() => { setOpen(false); setEditing(true) }}><Pencil size={13} /> Omdøb</button>
             <button type="button" onClick={doExport}><Download size={13} /> Eksportér</button>
             <button type="button" className="danger" onClick={doDelete}>

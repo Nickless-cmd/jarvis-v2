@@ -2,6 +2,289 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/habit_tracker.py`
+_Habit Tracker — detects recurring patterns and friction points._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_habit_from_run` | `(*, run_id, task_signature, outcome_status, attempt_count=…)` | Track habit pattern and friction from a visible run. | [src](../../../core/services/habit_tracker.py#L24) |
+| function | `build_habit_surface` | `()` | — | [src](../../../core/services/habit_tracker.py#L69) |
+| function | `_normalize_signature` | `(text)` | Create a stable signature from task description. | [src](../../../core/services/habit_tracker.py#L83) |
+
+## `core/services/habits_pipeline.py`
+_Habits Pipeline — detect → track → suggest automation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/habits_pipeline.py#L54) |
+| function | `_ensure_tables` | `()` | Tables exist from v2 db.py — this is idempotent no-op unless schema changes. | [src](../../../core/services/habits_pipeline.py#L58) |
+| function | `_normalize_signature` | `(message)` | — | [src](../../../core/services/habits_pipeline.py#L111) |
+| function | `_upsert_habit` | `(pattern_key, now)` | — | [src](../../../core/services/habits_pipeline.py#L125) |
+| function | `_upsert_friction` | `(task_signature, now)` | — | [src](../../../core/services/habits_pipeline.py#L156) |
+| function | `_maybe_create_suggestion` | `(*, source_type, source_id, suggestion_text, confidence, now)` | — | [src](../../../core/services/habits_pipeline.py#L187) |
+| function | `record_habit_signal` | `(*, message)` | Main entry: record a habit signal from a chat message. | [src](../../../core/services/habits_pipeline.py#L219) |
+| function | `list_habits` | `(*, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L306) |
+| function | `list_friction` | `(*, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L318) |
+| function | `list_suggestions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L330) |
+| function | `format_pending_suggestions_for_heartbeat` | `(*, max_items=…)` | Kompakt linje af de øverste ventende automations-forslag til heartbeat. | [src](../../../core/services/habits_pipeline.py#L343) |
+| function | `cleanup_polluted_suggestions` | `(*, older_than_days=…)` | Luk alle ``pending`` forslag ældre end ``older_than_days`` dage. | [src](../../../core/services/habits_pipeline.py#L384) |
+| function | `accept_suggestion` | `(*, suggestion_id)` | — | [src](../../../core/services/habits_pipeline.py#L413) |
+| function | `reject_suggestion` | `(*, suggestion_id)` | — | [src](../../../core/services/habits_pipeline.py#L440) |
+| function | `build_habits_pipeline_surface` | `()` | — | [src](../../../core/services/habits_pipeline.py#L459) |
+
+## `core/services/hallucination_guard.py`
+_Hallucination Guard — forced memory-check before answering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_word_present` | `(word, text_lower)` | Word-boundary check: True if `word` appears as a standalone token (with optional plural). | [src](../../../core/services/hallucination_guard.py#L110) |
+| function | `_section_keywords_for_message` | `(message)` | Derive keywords from the message so we can find the right MEMORY section. | [src](../../../core/services/hallucination_guard.py#L126) |
+| function | `classify_question` | `(message)` | Classify the message: 'factual' | 'casual' | 'tool_call'. | [src](../../../core/services/hallucination_guard.py#L140) |
+| function | `_ws_has_content` | `(path)` | Eksistens-tjek encryption-aware: plaintext eller member .enc. | [src](../../../core/services/hallucination_guard.py#L170) |
+| function | `_find_memory_path` | `()` | Find MEMORY.md — look in runtime workspace first, then repo. | [src](../../../core/services/hallucination_guard.py#L178) |
+| function | `_find_curated_paths` | `()` | Locate all curated workspace files for hallucination-guard recall. | [src](../../../core/services/hallucination_guard.py#L207) |
+| function | `_extract_relevant_sections` | `(memory_text, keywords, max_chars=…)` | Find MEMORY.md-sektioner der matcher keywords, returnér som tekst. | [src](../../../core/services/hallucination_guard.py#L241) |
+| function | `_observe_guard_decision` | `(*, activated, reason)` | Egress-frit Central-observe af hallucination-guardens beslutning (§7.2). | [src](../../../core/services/hallucination_guard.py#L325) |
+| function | `inject_memory_into_prompt` | `(message, chat_messages, *, memory_path=…)` | Inject relevant memory as a system-role message into the prompt. | [src](../../../core/services/hallucination_guard.py#L349) |
+
+## `core/services/handover_tools.py`
+_write_handover — værktøjet der lader mig skrive min egen overdragelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_write_handover` | `(args)` | — | [src](../../../core/services/handover_tools.py#L20) |
+
+## `core/services/hardware_body.py`
+_Hardware body — collects CPU/GPU/RAM/VRAM/disk/temp signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_hardware_state` | `()` | Return current hardware state. Cached for 30s. Never raises. | [src](../../../core/services/hardware_body.py#L22) |
+| function | `_collect` | `()` | — | [src](../../../core/services/hardware_body.py#L34) |
+| function | `_somatic_overlay` | `(state)` | — | [src](../../../core/services/hardware_body.py#L98) |
+| function | `_compute_pressure` | `(state)` | Compute overall pressure: low / medium / high / critical. | [src](../../../core/services/hardware_body.py#L121) |
+| function | `_derive_energy_budget` | `(energy_level, drain_score, pressure)` | — | [src](../../../core/services/hardware_body.py#L172) |
+| function | `_derive_circadian_preference` | `(clock_phase)` | — | [src](../../../core/services/hardware_body.py#L189) |
+| function | `_derive_wake_state` | `(clock_phase, energy_level)` | — | [src](../../../core/services/hardware_body.py#L195) |
+| function | `build_hardware_body_surface` | `()` | — | [src](../../../core/services/hardware_body.py#L204) |
+| function | `run_hardware_body_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: Jarvis mærker sin egen krop (rådets #1 — "start med kroppen"). | [src](../../../core/services/hardware_body.py#L213) |
+| function | `register_hardware_body_producer` | `()` | Registrér krop-sansningen som cadence-producer (~hvert 60s — hardware ændrer sig | [src](../../../core/services/hardware_body.py#L270) |
+| function | `_emit_body_event` | `(metric, value)` | — | [src](../../../core/services/hardware_body.py#L283) |
+
+## `core/services/heartbeat_action_hints.py`
+_Hvornår er en indre-livs-handling det rigtige valg? Vink til heartbeat-beslutningen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/heartbeat_action_hints.py#L34) |
+| function | `chronicle_days_stale` | `()` | Døgn siden seneste kronik-post. ``None`` hvis ukendt. Self-safe. | [src](../../../core/services/heartbeat_action_hints.py#L45) |
+| function | `chronicle_period_covered` | `()` | True når seneste kronik-post allerede dækker indeværende ISO-uge. | [src](../../../core/services/heartbeat_action_hints.py#L61) |
+| function | `chronicle_hint` | `()` | Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget. | [src](../../../core/services/heartbeat_action_hints.py#L83) |
+| function | `inner_life_hints` | `()` | Alle aktive vink for indre-livs-handlinger. Tom liste når intet er forfaldent. | [src](../../../core/services/heartbeat_action_hints.py#L111) |
+
+## `core/services/heartbeat_daemon_ticks.py`
+_Jarvis' indre daemoner — ét tik, uanset om han har travlt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
+| function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
+| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
+
+## `core/services/heartbeat_delivery.py`
+_Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
+| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
+| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L238) |
+
+## `core/services/heartbeat_manage_runtime_work.py`
+_Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `execute_manage_runtime_work` | `(*, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_manage_runtime_work.py#L18) |
+
+## `core/services/heartbeat_phases.py`
+_Heartbeat phases — explicit Sense / Reflect / Act structure on top of existing tick._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_active_recently` | `(*, window_minutes=…)` | Cheap check: has any user-role chat message landed in the last N minutes? | [src](../../../core/services/heartbeat_phases.py#L40) |
+| function | `_inner_tick_during_chat_enabled` | `()` | Skal de indre daemoner køre mens brugeren aktivt chatter (hans sind vågent mens I | [src](../../../core/services/heartbeat_phases.py#L65) |
+| function | `sense_phase` | `(*, name=…)` | Gather signals for this tick. Pure-read — no side effects. | [src](../../../core/services/heartbeat_phases.py#L80) |
+| function | `_classify_activity` | `(signals)` | Classify current activity level from signals. | [src](../../../core/services/heartbeat_phases.py#L165) |
+| function | `_identify_priorities` | `(signals)` | Heuristic — what should this tick attend to? | [src](../../../core/services/heartbeat_phases.py#L175) |
+| function | `reflect_phase` | `(signals)` | Synthesize reflection. Heuristic-only by default; LLM optional. | [src](../../../core/services/heartbeat_phases.py#L191) |
+| function | `_collect_active_goals` | `()` | Fetch active goals for chain proposal targeting. | [src](../../../core/services/heartbeat_phases.py#L251) |
+| function | `_propose_skill_chains_in_idle` | `(max_goals=…)` | Propose skill chains for active goals. Time-bounded, never blocks. | [src](../../../core/services/heartbeat_phases.py#L260) |
+| function | `format_chain_proposals` | `(max_chars=…)` | Format recent chain proposals for awareness injection. | [src](../../../core/services/heartbeat_phases.py#L307) |
+| function | `clear_chain_proposals` | `()` | Clear cached chain proposals (e.g. after execution or user dismiss). | [src](../../../core/services/heartbeat_phases.py#L330) |
+| function | `get_chain_proposals` | `()` | Return current chain proposals for inspection. | [src](../../../core/services/heartbeat_phases.py#L335) |
+| function | `productive_idle` | `(*, budget_seconds=…)` | Run light maintenance work when there's no clear action. Time-bounded. | [src](../../../core/services/heartbeat_phases.py#L340) |
+| function | `act_phase` | `(*, signals, reflection, name=…, trigger=…)` | Either run normal heartbeat tick OR productive idle, based on reflection. | [src](../../../core/services/heartbeat_phases.py#L625) |
+| function | `tick_with_phases` | `(*, name=…, trigger=…)` | Run all 3 phases in sequence, return structured result. | [src](../../../core/services/heartbeat_phases.py#L713) |
+| function | `_exec_phased_tick` | `(args)` | — | [src](../../../core/services/heartbeat_phases.py#L789) |
+| function | `_exec_sense_only` | `(args)` | Read-only: gather current signals without running reflection or action. | [src](../../../core/services/heartbeat_phases.py#L796) |
+
+## `core/services/heartbeat_provider_fallback.py`
+_Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L53) |
+| function | `try_heartbeat_cheap_fallback` | `(prompt)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L167) |
+
+## `core/services/heartbeat_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_inner_life_action_hints` | `()` | Tynd delegation til `heartbeat_action_hints` (Boy Scout: denne fil er 7.6k linjer). | [src](../../../core/services/heartbeat_runtime.py#L155) |
+| function | `_scheduler_stop_event` | `()` | — | [src](../../../core/services/heartbeat_runtime.py#L211) |
+| class | `HeartbeatExecutionResult` | `` | — | [src](../../../core/services/heartbeat_runtime.py#L257) |
+| function | `start_heartbeat_scheduler` | `(*, name=…)` | Start planlægger-dæmonen. Selve tråden bor i heartbeat_scheduler. | [src](../../../core/services/heartbeat_runtime.py#L263) |
+| function | `stop_heartbeat_scheduler` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L273) |
+| function | `_heartbeat_scheduler_running` | `()` | Lever planlægger-tråden? Ét sted, så de fire kaldesteder ikke driver fra | [src](../../../core/services/heartbeat_runtime.py#L278) |
+| function | `_cheap_heartbeat_schedule_state` | `(name)` | Compute just the schedule-state dict without touching sub-surfaces. | [src](../../../core/services/heartbeat_runtime.py#L285) |
+| function | `poll_heartbeat_schedule` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L303) |
+| function | `_advance_schedule_after_idle_beat` | `(*, name)` | Avancér skemaet let hvis det STADIG er 'due' efter en beat — dvs. beat'en landede i | [src](../../../core/services/heartbeat_runtime.py#L365) |
+| function | `_run_heartbeat_tick_with_deadline` | `(*, name, trigger, deadline_seconds=…)` | Run a heartbeat tick on a background thread with a wall-clock deadline. | [src](../../../core/services/heartbeat_runtime.py#L397) |
+| function | `_poll_heartbeat_schedule_with_trigger` | `(*, name, due_trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L458) |
+| function | `heartbeat_runtime_surface` | `(name=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L488) |
+| function | `_heartbeat_runtime_surface_uncached` | `(name=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L512) |
+| function | `_build_cognitive_surfaces` | `()` | Build cognitive architecture surfaces safely (never raise). | [src](../../../core/services/heartbeat_runtime.py#L610) |
+| function | `_safe_surface` | `(target, key, builder)` | Call builder and store result; swallow any errors. | [src](../../../core/services/heartbeat_runtime.py#L1185) |
+| function | `run_heartbeat_tick` | `(*, name=…, trigger=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L1243) |
+| function | `_daemon_tick_with_deadline` | `(name, fn, *args, deadline_seconds=…, **kwargs)` | Run a daemon tick on a background thread with a wall-clock deadline. | [src](../../../core/services/heartbeat_runtime.py#L1262) |
+| function | `_run_heartbeat_tick_locked` | `(*, name=…, trigger=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L1325) |
+| function | `load_heartbeat_policy` | `(name=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L2178) |
+| function | `_build_heartbeat_context` | `(*, policy, merged_state, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L2224) |
+| function | `_build_heartbeat_cognitive_frame` | `(*, merged_state)` | — | [src](../../../core/services/heartbeat_runtime.py#L2437) |
+| function | `_build_executive_visible_state` | `(*, merged_state, context)` | — | [src](../../../core/services/heartbeat_runtime.py#L2457) |
+| function | `_decide_executive_action` | `(*, merged_state, context, now_iso)` | — | [src](../../../core/services/heartbeat_runtime.py#L2476) |
+| function | `_execute_executive_decision` | `(executive_decision)` | — | [src](../../../core/services/heartbeat_runtime.py#L2543) |
+| function | `_log_liveness_dedup` | `(signal, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L2583) |
+| function | `_build_heartbeat_liveness_signal` | `(*, merged_state, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L2606) |
+| function | `_select_heartbeat_target` | `(policy=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L3210) |
+| function | `_runtime_selected_local_target` | `(*, settings)` | — | [src](../../../core/services/heartbeat_runtime.py#L3335) |
+| function | `_phase1_rule_based_decision` | `(*, policy, open_loops, liveness=…, prompt=…)` | Rule-based heartbeat decision for phase1-runtime or LLM-failure fallback. | [src](../../../core/services/heartbeat_runtime.py#L3358) |
+| function | `_execute_heartbeat_model` | `(*, prompt, target, policy, open_loops, liveness=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L3467) |
+| function | `_recent_ping_history` | `(*, limit=…)` | Return the last N assistant ping_text strings already delivered. | [src](../../../core/services/heartbeat_runtime.py#L3554) |
+| function | `_user_recently_active` | `(minutes)` | Return True if any user-role chat message landed within the window. | [src](../../../core/services/heartbeat_runtime.py#L3588) |
+| function | `_active_chat_gate_blocked_result` | `(*, tick_id, decision_type, minutes)` | Build the blocked-result + emit deferred event for active-chat gate. | [src](../../../core/services/heartbeat_runtime.py#L3621) |
+| function | `_heartbeat_prompt_text` | `(base_text)` | — | [src](../../../core/services/heartbeat_runtime.py#L3651) |
+| function | `_parse_heartbeat_decision` | `(raw_text)` | — | [src](../../../core/services/heartbeat_runtime.py#L3778) |
+| function | `_parse_heartbeat_decision_bounded` | `(raw_text)` | — | [src](../../../core/services/heartbeat_runtime.py#L3800) |
+| function | `_bounded_heartbeat_failure_decision` | `(*, failure_kind, detail, target)` | — | [src](../../../core/services/heartbeat_runtime.py#L3814) |
+| function | `_validate_heartbeat_decision` | `(*, decision, policy, workspace_dir, tick_id)` | — | [src](../../../core/services/heartbeat_runtime.py#L3840) |
+| function | `_dispatch_runtime_hook_events_safely` | `(*, event_kinds=…, limit=…)` | — | [src](../../../core/services/heartbeat_runtime.py#L4400) |
+| function | `_recover_bounded_heartbeat_liveness_decision` | `(*, decision, policy, liveness)` | — | [src](../../../core/services/heartbeat_runtime.py#L4420) |
+| function | `_run_bounded_conflict_resolution` | `(*, decision, context, policy)` | Run conflict resolution using existing runtime signals. | [src](../../../core/services/heartbeat_runtime.py#L4478) |
+| function | `_apply_conflict_resolution_to_decision` | `(*, decision, conflict_trace)` | Apply conflict resolution to modify or preserve the decision. | [src](../../../core/services/heartbeat_runtime.py#L4565) |
+| function | `_execute_continue_internal` | `(*, conflict_trace, trigger)` | Execute a bounded internal continuation when conflict chose continue_internal. | [src](../../../core/services/heartbeat_runtime.py#L4581) |
+| function | `_heartbeat_ping_candidate_ready` | `(*, policy)` | — | [src](../../../core/services/heartbeat_runtime.py#L4636) |
+| function | `_execute_heartbeat_internal_action` | `(*, action_type, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_runtime.py#L4657) |
+| function | `_summarize_heartbeat_capability_invocations` | `(invocations)` | — | [src](../../../core/services/heartbeat_runtime.py#L6064) |
+| function | `_record_heartbeat_outcome` | `(*, policy, persisted, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, currently_ticking, last_trigger_source, provider, model, lane, budget_status, model_source=…, resolution_status=…, fallback_used=…, execution_status=…, parse_status=…, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at, workspace_dir)` | — | [src](../../../core/services/heartbeat_runtime.py#L6104) |
+| function | `_merge_runtime_state` | `(*, policy, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6282) |
+| function | `_tick_blocked_reason` | `(merged_state)` | — | [src](../../../core/services/heartbeat_runtime.py#L6369) |
+| function | `_compute_next_tick_at` | `(*, interval_minutes, last_tick_at, enabled)` | — | [src](../../../core/services/heartbeat_runtime.py#L6383) |
+| function | `_resolve_tick_activity_state` | `(*, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6393) |
+| function | `_write_heartbeat_state_artifact` | `(*, workspace_dir, payload)` | — | [src](../../../core/services/heartbeat_runtime.py#L6429) |
+| function | `_default_persisted_state` | `()` | — | [src](../../../core/services/heartbeat_runtime.py#L6440) |
+| function | `_heartbeat_state_summary` | `(*, enabled, schedule_status, last_decision_type, last_result)` | — | [src](../../../core/services/heartbeat_runtime.py#L6479) |
+| function | `_persist_runtime_state` | `(*, policy, persisted, now, overrides)` | — | [src](../../../core/services/heartbeat_runtime.py#L6493) |
+| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/heartbeat_runtime.py#L6556) |
+| function | `record_phased_tick` | `(*, name, trigger, result)` | Skriv et faset tik ind i uret — saa kadencen faktisk rykker. | [src](../../../core/services/heartbeat_runtime.py#L6583) |
+| function | `_heartbeat_busy_result` | `(*, name, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L6654) |
+| function | `_detect_startup_drift` | `(*, name, phase, overrides, actual_state)` | Compare intended overrides against what SELECT-back actually returned. | [src](../../../core/services/heartbeat_runtime.py#L6704) |
+| function | `_persist_runtime_state_with_diagnostics` | `(*, name, phase, policy, persisted, now, overrides)` | Wrapper around _persist_runtime_state that re-raises with stack trace | [src](../../../core/services/heartbeat_runtime.py#L6768) |
+| function | `_prepare_scheduler_startup` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L6809) |
+| function | `_mark_scheduler_stopped` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L6947) |
+| function | `_emit_schedule_transitions` | `(state)` | — | [src](../../../core/services/heartbeat_runtime.py#L6972) |
+| function | `_heartbeat_runtime_bias_from_recent_work` | `(*, kind)` | — | [src](../../../core/services/heartbeat_runtime.py#L7013) |
+| function | `call_heartbeat_llm_simple` | `(prompt, *, max_tokens=…)` | Call the heartbeat model with a plain prompt. Returns the response text. | [src](../../../core/services/heartbeat_runtime.py#L7053) |
+
+## `core/services/heartbeat_runtime_helpers.py`
+_Pure leaf helpers extracted from ``heartbeat_runtime``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_log_debug` | `(message, **fields)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L25) |
+| function | `_hours_since_iso` | `(value)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L33) |
+| function | `_detect_visible_language` | `()` | Detect the language Bjørn is currently using in webchat. | [src](../../../core/services/heartbeat_runtime_helpers.py#L47) |
+| function | `_classify_heartbeat_execution_exception` | `(exc)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L105) |
+| function | `_http_error_detail` | `(exc)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L114) |
+| function | `_parse_heartbeat_key_values` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L124) |
+| function | `_parse_bool` | `(value, *, default, truthy=…)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L136) |
+| function | `_parse_int` | `(value, *, default, minimum)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L154) |
+| function | `_extract_json_object` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L164) |
+| function | `_extract_openai_text` | `(data)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L192) |
+| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L208) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L219) |
+| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/heartbeat_runtime_helpers.py#L228) |
+| function | `_value_drifted` | `(expected, actual)` | True if expected ≠ actual under tolerant comparison. | [src](../../../core/services/heartbeat_runtime_helpers.py#L232) |
+
+## `core/services/heartbeat_runtime_influence.py`
+_``_build_influence_trace`` extracted from ``heartbeat_runtime`` (Boy-Scout)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_influence_trace` | `(*, private_brain, liveness, self_knowledge_summary, embodied_state=…, affective_meta_state=…, epistemic_runtime_state=…, loop_runtime=…, prompt_evolution=…, subagent_ecology=…, council_runtime=…, adaptive_planner=…, adaptive_reasoning=…, dream_influence=…, guided_learning=…, adaptive_learning=…, self_system_code_awareness=…, tool_intent=…)` | Build a bounded trace of what cognitive inputs were available to heartbeat. | [src](../../../core/services/heartbeat_runtime_influence.py#L27) |
+
+## `core/services/heartbeat_runtime_providers.py`
+_Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_execute_ollama_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L23) |
+| function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L66) |
+| function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L92) |
+| function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L136) |
+
+## `core/services/heartbeat_scheduler.py`
+_Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L49) |
+| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L59) |
+| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L64) |
+| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L68) |
+| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
+| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L127) |
+
+## `core/services/hentede_vaerktoejer.py`
+_Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukkes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `frosset` | `()` | Skal værktøjsarrayet holdes helt stille efter en hentning? | [src](../../../core/services/hentede_vaerktoejer.py#L43) |
+| function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L57) |
+| function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L72) |
+| function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L90) |
+
+## `core/services/hf_connector.py`
+_Hugging Face-connector — søg modeller/datasets via Hub API._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_headers` | `()` | — | [src](../../../core/services/hf_connector.py#L43) |
+| function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
+| function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
+| function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
+
+## `core/services/hollow_promise_census.py`
+_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
+| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
+| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
+
 ## `core/services/hollow_promise_guard.py`
 _Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
 
@@ -207,25 +490,101 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `_parsed` | `(value)` | — | [src](../../../core/services/in_flight_runs.py#L211) |
 | function | `_check_claim` | `(rec, *, expected_generation, expected_owner)` | — | [src](../../../core/services/in_flight_runs.py#L219) |
 | function | `mark_started` | `(*, run_id, session_id, user_message, kind=…, provider=…, model=…, task_id=…, recovery_generation=…, recovery_attempt=…, recovery_limit=…, approval_mode=…, thinking_mode=…, tool_scope=…, surface=…, force_user_id=…, local_tool_exec=…)` | Record that a run is in flight. Keyed by run_id (unique). | [src](../../../core/services/in_flight_runs.py#L230) |
-| function | `recovery_snapshot` | `(session_id)` | Hvad er der at genoptage for DENNE samtale? `None` = ingenting. | [src](../../../core/services/in_flight_runs.py#L301) |
-| function | `_kvitter_varsel` | `(task_id)` | Varslet er hentet — sig det ikke igen. | [src](../../../core/services/in_flight_runs.py#L352) |
-| function | `queue_steer` | `(run_id, text)` | Gem en brugerbesked der ikke kunne leveres til en kørende tur. | [src](../../../core/services/in_flight_runs.py#L374) |
-| function | `mark_tool` | `(run_id, tool_name)` | Update the last-tool-attempted hint for an in-flight run. | [src](../../../core/services/in_flight_runs.py#L400) |
-| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L412) |
-| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L424) |
-| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L440) |
-| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L489) |
-| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L496) |
-| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L514) |
-| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L549) |
-| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L649) |
-| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L678) |
-| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L773) |
-| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L808) |
-| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L835) |
-| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L892) |
-| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L906) |
-| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L918) |
+| function | `stempl_genoptagelse` | `(*, run_id, session_id=…, task_id=…, recovery_attempt=…, recovery_generation=…)` | Skriv kaedenummeret paa en genoptagelse FOER den journalfoerer sig selv. | [src](../../../core/services/in_flight_runs.py#L330) |
+| function | `aktiv_kaede_nr` | `(session_id)` | Hvilket forsoeg i raekken er samtalens NYESTE synlige koersel? | [src](../../../core/services/in_flight_runs.py#L383) |
+| function | `_genoptagelse_opbrugt` | `(rec)` | Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang. | [src](../../../core/services/in_flight_runs.py#L411) |
+| function | `recovery_snapshot` | `(session_id)` | Hvad er der at genoptage for DENNE samtale? `None` = ingenting. | [src](../../../core/services/in_flight_runs.py#L425) |
+| function | `_kvitter_varsel` | `(task_id)` | Varslet er hentet — sig det ikke igen. | [src](../../../core/services/in_flight_runs.py#L520) |
+| function | `queue_steer` | `(run_id, text)` | Gem en brugerbesked der ikke kunne leveres til en kørende tur. | [src](../../../core/services/in_flight_runs.py#L542) |
+| function | `mark_tool` | `(run_id, tool_name)` | Update the last-tool-attempted hint for an in-flight run. | [src](../../../core/services/in_flight_runs.py#L568) |
+| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L580) |
+| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L592) |
+| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L610) |
+| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L660) |
+| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L667) |
+| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L685) |
+| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L720) |
+| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L844) |
+| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L873) |
+| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L968) |
+| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L1003) |
+| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L1030) |
+| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1087) |
+| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1101) |
+| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1113) |
+
+## `core/services/inbox_gate.py`
+_Indbakkens to-trins forudsætning i mutationspunktet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gate_tændt` | `()` | — | [src](../../../core/services/inbox_gate.py#L72) |
+| function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
+| function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
+| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L129) |
+| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L196) |
+| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L209) |
+| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L227) |
+| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L235) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L244) |
+
+## `core/services/inbox_prompt_section.py`
+_Indbakken i prompten — læseren hele kæden manglede._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L92) |
+| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L112) |
+
+## `core/services/inbox_state.py`
+_Proveniens og bogføring for indbakken._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig — se `inbox_gate._spor`. | [src](../../../core/services/inbox_state.py#L68) |
+| function | `_autentificeret_bruger_matcher` | `(bruger_id)` | Er den autentificerede principal netop `bruger_id`? | [src](../../../core/services/inbox_state.py#L92) |
+| function | `_ejer_workspace` | `()` | Ejerens workspace-navn — `workspace_context`'s EGEN standard. | [src](../../../core/services/inbox_state.py#L131) |
+| function | `_ejer_id` | `()` | Ejerens rigtige bruger-id, med workspace-navnet som sidste udvej. | [src](../../../core/services/inbox_state.py#L146) |
+| function | `_advar_om_ubundet_fald` | `(rolle)` | Sig ÉN gang at læsningen kørte uden bundet bruger. | [src](../../../core/services/inbox_state.py#L170) |
+| function | `bruger_for_workspace` | `(navn)` | Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går. | [src](../../../core/services/inbox_state.py#L189) |
+| function | `laese_bruger` | `()` | HVIS indbakke skal læses? Tom streng når det ikke kan afgøres. | [src](../../../core/services/inbox_state.py#L222) |
+| function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L312) |
+| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L336) |
+| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L351) |
+| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L475) |
+| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L558) |
+| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L587) |
+| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L638) |
+| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L667) |
+| function | `done` | `(bruger_id, post_id)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L696) |
+| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L728) |
+
+## `core/services/inbox_view.py`
+_Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kort` | `(tekst, loft)` | Afkort på et ordskel. Den GEMTE post afkortes aldrig — kun linjen. | [src](../../../core/services/inbox_view.py#L76) |
+| function | `_bytes_tekst` | `(b)` | `None` ⇒ «stoerrelse ukendt», aldrig «0 B». | [src](../../../core/services/inbox_view.py#L85) |
+| function | `_alder_dage` | `(fra_iso, nu_ts)` | Hele dage siden `fra_iso`. `None` når tidsstemplet ikke kan læses. | [src](../../../core/services/inbox_view.py#L103) |
+| function | `_aegte_poster` | `(bruger_id)` | Åbne poster PLUS de nyligt afgjorte. | [src](../../../core/services/inbox_view.py#L127) |
+| function | `_aegte_side_opgaver` | `(bruger_id)` | Kun ejerens åbne sideopgaver; status bliver i side_tasks-lageret. | [src](../../../core/services/inbox_view.py#L141) |
+| function | `_aegte_vaekninger` | `(bruger_id)` | `list_wakeups()` er GLOBAL — den har intet brugerfilter. | [src](../../../core/services/inbox_view.py#L149) |
+| function | `planlagte_vaekning_ids` | `(bruger_id, kilder=…)` | Vækninger der er PLANLAGT (`pending`) — de venter ikke på nogen. | [src](../../../core/services/inbox_view.py#L171) |
+| function | `afgjorte_vaekning_ids` | `(bruger_id, kilder=…)` | Vækninger KILDEN selv har afgjort — deres post skal ikke staa aaben. | [src](../../../core/services/inbox_view.py#L214) |
+| function | `_aegte_jobs` | `(bruger_id)` | De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne. | [src](../../../core/services/inbox_view.py#L255) |
+| function | `_aegte_godkendelser` | `(bruger_id)` | `recent_tool_intent_approval_requests` med EKSPLICIT bruger. | [src](../../../core/services/inbox_view.py#L272) |
+| function | `_aegte_backlog_tal` | `()` | Hvor mange står i backloggen — ÉT tal, med en adresse. | [src](../../../core/services/inbox_view.py#L288) |
+| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L320) |
+| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L346) |
+| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…, bloker=…, udloebet=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L386) |
+| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L462) |
+| function | `_ejer_id` | `()` | Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her. | [src](../../../core/services/inbox_view.py#L487) |
+| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L500) |
+| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L529) |
+| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L607) |
+| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L621) |
+| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L631) |
 
 ## `core/services/indre_puls.py`
 _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._
@@ -285,435 +644,9 @@ _Infra Weather Daemon — "The atmosphere of my system"._
 | function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L161) |
 | function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L178) |
 | function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L214) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L268) |
-| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L277) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L290) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L306) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L315) |
-
-## `core/services/inheritance_seed.py`
-_Inheritance seed — writes near-thoughts before version transition or shutdown._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `write_inheritance_seed` | `()` | Collect near-thoughts from active daemons and write to workspace. | [src](../../../core/services/inheritance_seed.py#L23) |
-| function | `read_inheritance_seed` | `()` | Read inheritance seed from workspace. Returns empty string if not found. | [src](../../../core/services/inheritance_seed.py#L67) |
-| function | `_collect_sections` | `()` | — | [src](../../../core/services/inheritance_seed.py#L84) |
-| function | `_collect_pending_proposals` | `()` | — | [src](../../../core/services/inheritance_seed.py#L94) |
-| function | `_collect_open_curiosity` | `()` | — | [src](../../../core/services/inheritance_seed.py#L104) |
-| function | `_collect_creative_drift` | `()` | — | [src](../../../core/services/inheritance_seed.py#L114) |
-| function | `_collect_unresolved_tensions` | `()` | — | [src](../../../core/services/inheritance_seed.py#L124) |
-| function | `_collect_thought_stream` | `()` | — | [src](../../../core/services/inheritance_seed.py#L135) |
-
-## `core/services/initiative_accumulator.py`
-_Initiative Accumulator — proactive wants that accumulate between ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Want` | `` | A want that Jarvis develops between ticks. | [src](../../../core/services/initiative_accumulator.py#L24) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/initiative_accumulator.py#L52) |
-| function | `_fra_raa` | `(raa)` | — | [src](../../../core/services/initiative_accumulator.py#L56) |
-| function | `_alder_s` | `(want, nu)` | — | [src](../../../core/services/initiative_accumulator.py#L72) |
-| function | `_levende` | `(wants, nu=…)` | — | [src](../../../core/services/initiative_accumulator.py#L80) |
-| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/initiative_accumulator.py#L85) |
-| function | `_gem` | `()` | — | [src](../../../core/services/initiative_accumulator.py#L106) |
-| function | `accumulate_wants` | `(duration)` | Accumulate wants based on life phase and duration. | [src](../../../core/services/initiative_accumulator.py#L118) |
-| function | `get_top_want` | `()` | Get the strongest current want. | [src](../../../core/services/initiative_accumulator.py#L190) |
-| function | `get_wants_by_type` | `(want_type)` | Get all wants of a specific type. | [src](../../../core/services/initiative_accumulator.py#L200) |
-| function | `format_wants_for_prompt` | `()` | Format wants for prompt injection. | [src](../../../core/services/initiative_accumulator.py#L206) |
-| function | `clear_wants_by_type` | `(want_type)` | Clear wants of a specific type. | [src](../../../core/services/initiative_accumulator.py#L223) |
-| function | `reset_initiative_accumulator` | `()` | Reset initiative accumulator state (for testing). | [src](../../../core/services/initiative_accumulator.py#L232) |
-| function | `get_initiative_accumulator_state` | `()` | Get current state of initiative accumulator. | [src](../../../core/services/initiative_accumulator.py#L244) |
-| function | `build_initiative_accumulator_surface` | `()` | Build MC surface for initiative accumulator. | [src](../../../core/services/initiative_accumulator.py#L263) |
-| function | `_publish_initiative_accumulator_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/initiative_accumulator.py#L277) |
-
-## `core/services/initiative_queue.py`
-_Persistent initiative queue — bridges inner voice thoughts to heartbeat actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_ikke_et_initiativ` | `(focus)` | Returnér en grund hvis dette ikke er et forslag. Tom streng = behold. | [src](../../../core/services/initiative_queue.py#L58) |
-| function | `push_initiative` | `(*, focus, source=…, source_id=…, priority=…)` | Push a new initiative to the queue. Returns the initiative_id. | [src](../../../core/services/initiative_queue.py#L92) |
-| function | `seed_long_term_intention` | `(*, title, why, source=…, source_id=…, priority=…)` | Create or refresh a long-term intention owned by Jarvis. | [src](../../../core/services/initiative_queue.py#L209) |
-| function | `get_pending_initiatives` | `()` | Return all pending (non-expired, non-acted) initiatives. | [src](../../../core/services/initiative_queue.py#L275) |
-| function | `mark_acted` | `(initiative_id, *, action_summary=…)` | Mark an initiative as acted upon. Returns True if found. | [src](../../../core/services/initiative_queue.py#L292) |
-| function | `mark_attempted` | `(initiative_id, *, blocked_reason=…, retry_delay_minutes=…, action_summary=…)` | Record a bounded attempt and schedule a retry if still pending. | [src](../../../core/services/initiative_queue.py#L348) |
-| function | `approve_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-approved. Returns the updated record or None if not found. | [src](../../../core/services/initiative_queue.py#L391) |
-| function | `reject_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-rejected and expire it. Returns updated record or None. | [src](../../../core/services/initiative_queue.py#L407) |
-| function | `get_initiative_queue_state` | `()` | Return full queue state for MC observability. | [src](../../../core/services/initiative_queue.py#L423) |
-| function | `_expire_stale` | `(now)` | Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK. | [src](../../../core/services/initiative_queue.py#L461) |
-| function | `_trim_pending` | `(now)` | — | [src](../../../core/services/initiative_queue.py#L483) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/initiative_queue.py#L503) |
-| function | `_initiative_due` | `(initiative, now)` | — | [src](../../../core/services/initiative_queue.py#L513) |
-| function | `_initiative_sort_key` | `(initiative)` | — | [src](../../../core/services/initiative_queue.py#L523) |
-| function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L535) |
-| function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L550) |
-| function | `endorse_long_term_intention` | `(initiative_id, *, note=…)` | Bjørn siger «det er i orden» til et livsprojekt. | [src](../../../core/services/initiative_queue.py#L576) |
-| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L612) |
-| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L635) |
-
-## `core/services/inner_dialectic_engine.py`
-_Compact inner critic / ally / synthesizer dialectic._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_inner_dialectic` | `(*, focus, context=…)` | — | [src](../../../core/services/inner_dialectic_engine.py#L13) |
-| function | `build_inner_dialectic_surface` | `()` | — | [src](../../../core/services/inner_dialectic_engine.py#L35) |
-| function | `build_inner_dialectic_prompt_section` | `()` | — | [src](../../../core/services/inner_dialectic_engine.py#L42) |
-| function | `_critic` | `(lower)` | — | [src](../../../core/services/inner_dialectic_engine.py#L54) |
-| function | `_ally` | `(lower)` | — | [src](../../../core/services/inner_dialectic_engine.py#L65) |
-| function | `_synthesize` | `(critic, ally, context)` | — | [src](../../../core/services/inner_dialectic_engine.py#L76) |
-
-## `core/services/inner_visible_support_signal_tracking.py`
-_Inner-visible support signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_inner_visible_support_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L36) |
-| function | `refresh_runtime_inner_visible_support_signal_statuses` | `()` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L70) |
-| function | `build_runtime_inner_visible_support_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L74) |
-| function | `_extract_candidate_for_run` | `(*, run_id)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L78) |
-| function | `_latest_private_state_snapshot` | `(*, run_id)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L212) |
-| function | `_latest_temporal_curiosity_state` | `(*, run_id)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L222) |
-| function | `_latest_executive_contradiction_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L232) |
-| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L248) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L278) |
-| function | `_inner_visible_support_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L341) |
-| function | `_focus_key` | `(private_state, curiosity_state)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L369) |
-| function | `_derive_support_tone` | `(*, state_tone, curiosity_pull, contradiction_pressure)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L380) |
-| function | `_derive_support_stance` | `(*, state_tone, curiosity_type, contradiction_type)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L394) |
-| function | `_derive_support_directness` | `(*, state_pressure, curiosity_pull, contradiction_pressure)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L406) |
-| function | `_derive_support_watchfulness` | `(*, state_pressure, curiosity_pull, curiosity_type, contradiction_pressure)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L416) |
-| function | `_derive_support_momentum` | `(*, state_pressure, curiosity_type)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L432) |
-| function | `_bounded_support_summary` | `(*, private_state, curiosity_state, executive_contradiction, tone, stance)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L440) |
-| function | `_grounding_mode` | `(*, has_curiosity, has_executive_contradiction)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L463) |
-| function | `_supports_executive_sharpening` | `(item)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L473) |
-| function | `_support_anchor` | `(item)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L482) |
-| function | `_canonical_focus_segment` | `(value)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L488) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L495) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L502) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L514) |
-| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L525) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/inner_visible_support_signal_tracking.py#L533) |
-
-## `core/services/inner_voice_daemon.py`
-_Bounded inner voice daemon light — private heartbeat-driven inner voice._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ren_stemme` | `(summary)` | Gem ikke opgaven som var den svaret. | [src](../../../core/services/inner_voice_daemon.py#L101) |
-| function | `run_inner_voice_daemon` | `(*, trigger=…, last_visible_at=…, witness_daemon_last_run_at=…)` | Bounded inner voice daemon — produces one private inner-voice note. | [src](../../../core/services/inner_voice_daemon.py#L119) |
-| function | `get_inner_voice_daemon_state` | `()` | Return current inner voice daemon state for MC observability. | [src](../../../core/services/inner_voice_daemon.py#L333) |
-| function | `_gather_grounding` | `()` | Gather grounding material from existing runtime surfaces. | [src](../../../core/services/inner_voice_daemon.py#L349) |
-| function | `_recent_approval_sentiment_summary` | `()` | Summarize only notable recent approval-feedback patterns. | [src](../../../core/services/inner_voice_daemon.py#L530) |
-| function | `_approval_feedback_tools` | `(entries)` | — | [src](../../../core/services/inner_voice_daemon.py#L566) |
-| function | `_render_inner_voice_note` | `(grounding)` | Render inner voice note via workspace prompt + LLM, with fallback. | [src](../../../core/services/inner_voice_daemon.py#L584) |
-| function | `_llm_render_inner_voice` | `(grounding)` | Use workspace INNER_VOICE.md prompt + heartbeat model to render note. | [src](../../../core/services/inner_voice_daemon.py#L604) |
-| function | `_apply_support_shading` | `(base_mode, fragments)` | Apply experiential support bias to inner voice mode selection. | [src](../../../core/services/inner_voice_daemon.py#L806) |
-| function | `_has_living_candidate_pull` | `(fragments, *, continuity_state, initiative_shading, thought)` | — | [src](../../../core/services/inner_voice_daemon.py#L835) |
-| function | `_has_mixed_live_stream` | `(fragments, *, continuity_state, initiative_shading)` | — | [src](../../../core/services/inner_voice_daemon.py#L875) |
-| function | `_deterministic_compose` | `(grounding)` | Deterministic fallback composition when LLM is unavailable. | [src](../../../core/services/inner_voice_daemon.py#L907) |
-| function | `_normalize_inner_voice_mode` | `(value)` | — | [src](../../../core/services/inner_voice_daemon.py#L938) |
-| function | `_select_inner_voice_mode` | `(grounding, *, thought=…)` | — | [src](../../../core/services/inner_voice_daemon.py#L945) |
-| function | `_derive_inner_voice_focus` | `(grounding, *, mode=…, thought=…)` | — | [src](../../../core/services/inner_voice_daemon.py#L1004) |
-| function | `_compose_living_inner_voice_thought` | `(*, mode, fragments, focus)` | Structured fallback trace — NOT first-person prose. | [src](../../../core/services/inner_voice_daemon.py#L1038) |
-| function | `_secondary_inner_voice_observation` | `(fragments)` | Pick the strongest secondary fragment, returned as key:value (no prose). | [src](../../../core/services/inner_voice_daemon.py#L1068) |
-| function | `_mode_anchor` | `(fragments, focus)` | — | [src](../../../core/services/inner_voice_daemon.py#L1089) |
-| function | `_normalize_inner_voice_initiative` | `(initiative, *, grounding, mode, thought)` | — | [src](../../../core/services/inner_voice_daemon.py#L1104) |
-| function | `_render_grounding_fragment` | `(key, value)` | — | [src](../../../core/services/inner_voice_daemon.py#L1128) |
-| function | `_sanitize_previous_inner_voice` | `(text)` | — | [src](../../../core/services/inner_voice_daemon.py#L1158) |
-| function | `_sanitize_inner_voice_text` | `(text, *, max_len=…)` | — | [src](../../../core/services/inner_voice_daemon.py#L1167) |
-| function | `_looks_like_inner_voice_meta` | `(text)` | — | [src](../../../core/services/inner_voice_daemon.py#L1217) |
-| function | `_thought_contains_initiative` | `(text)` | Detect if a thought text contains initiative signals. | [src](../../../core/services/inner_voice_daemon.py#L1270) |
-| function | `_extract_initiative_from_thought` | `(text)` | Extract a short initiative description from a thought. | [src](../../../core/services/inner_voice_daemon.py#L1278) |
-| function | `_blocked` | `(reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/inner_voice_daemon.py#L1304) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/inner_voice_daemon.py#L1321) |
-
-## `core/services/inner_voice_notifier.py`
-_Inner voice notifier — proactive notification when a thought has substance._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_inner_voice_notifier` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L41) |
-| function | `stop_inner_voice_notifier` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L59) |
-| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/inner_voice_notifier.py#L73) |
-| function | `_handle_event` | `(payload)` | — | [src](../../../core/services/inner_voice_notifier.py#L91) |
-| function | `_is_substantive` | `(*, summary, mode, initiative, initiative_detected)` | — | [src](../../../core/services/inner_voice_notifier.py#L170) |
-| function | `_format_message` | `(*, summary, initiative, mode)` | — | [src](../../../core/services/inner_voice_notifier.py#L186) |
-| function | `_notifier_enabled` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L194) |
-| function | `_min_summary_chars` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L203) |
-| function | `_cooldown_minutes` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L213) |
-| function | `_quiet_hours` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L223) |
-| function | `_in_quiet_hours` | `(now)` | — | [src](../../../core/services/inner_voice_notifier.py#L234) |
-| function | `_state` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L245) |
-| function | `_in_cooldown` | `(now)` | — | [src](../../../core/services/inner_voice_notifier.py#L250) |
-| function | `_record_sent` | `(now, *, record_id)` | — | [src](../../../core/services/inner_voice_notifier.py#L262) |
-| function | `get_inner_voice_notifier_state` | `()` | — | [src](../../../core/services/inner_voice_notifier.py#L277) |
-
-## `core/services/inner_voice_shadow.py`
-_Inner voice shadow recorder — Pilot for llm_driven_inner_pipeline._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `AppraisalRecord` | `` | Structured inner-voice state with narrative rendering. | [src](../../../core/services/inner_voice_shadow.py#L67) |
-| method | `AppraisalRecord.is_expired` | `(self, *, now=…)` | True if more than expiry_seconds have passed since generated_at. | [src](../../../core/services/inner_voice_shadow.py#L105) |
-| method | `AppraisalRecord.to_dict` | `(self)` | — | [src](../../../core/services/inner_voice_shadow.py#L116) |
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/inner_voice_shadow.py#L136) |
-| function | `_connect` | `()` | — | [src](../../../core/services/inner_voice_shadow.py#L171) |
-| function | `_persist` | `(*, function_name, inputs, template_output, llm_output, llm_provider, llm_model, llm_latency_ms, llm_error, source=…, confidence=…, expiry_seconds=…, allowed_effects=…, generated_at=…)` | — | [src](../../../core/services/inner_voice_shadow.py#L181) |
-| function | `_call_llm` | `(prompt)` | Run the cheap-lane via pool. Returns dict with output/error/latency. | [src](../../../core/services/inner_voice_shadow.py#L238) |
-| function | `_build_helpful_signal_prompt` | `(*, status, focus, work_signal)` | Construct a prompt that asks for the kind of one-line inner thought | [src](../../../core/services/inner_voice_shadow.py#L269) |
-| function | `record_shadow` | `(*, function_name, inputs, template_output, prompt_builder)` | Fire-and-forget: spawn a daemon thread to call LLM + persist both | [src](../../../core/services/inner_voice_shadow.py#L294) |
-| function | `_build_voice_line_prompt` | `(*, mood_tone, self_position, current_concern, current_pull, **_extra)` | Prompt for protected_inner_voice._voice_line's LLM path. | [src](../../../core/services/inner_voice_shadow.py#L369) |
-| function | `_build_private_summary_prompt` | `(*, status, focus, uncertainty, work_signal, **_extra)` | Prompt for private_inner_note._private_summary's LLM path. | [src](../../../core/services/inner_voice_shadow.py#L398) |
-| function | `shadow_helpful_signal` | `(*, status, focus, work_signal, template_output)` | — | [src](../../../core/services/inner_voice_shadow.py#L427) |
-| function | `generate_appraisal` | `(*, function_name, prompt_builder, inputs, fallback, timeout_seconds=…, expiry_seconds=…, allowed_effects=…)` | State-first appraisal: returns the full structured record. | [src](../../../core/services/inner_voice_shadow.py#L441) |
-| function | `_persist_record` | `(record, *, template_output)` | Persist an AppraisalRecord to the shadow audit table. | [src](../../../core/services/inner_voice_shadow.py#L536) |
-| function | `_generate_via_llm` | `(*, function_name, prompt_builder, inputs, fallback, timeout_seconds=…)` | Narrative-first wrapper for backwards compatibility. | [src](../../../core/services/inner_voice_shadow.py#L560) |
-| function | `generate_helpful_signal_via_llm` | `(*, status, focus, work_signal, fallback, timeout_seconds=…)` | Production path for private_growth_note._helpful_signal. | [src](../../../core/services/inner_voice_shadow.py#L589) |
-| function | `generate_private_summary_via_llm` | `(*, status, focus, uncertainty, work_signal, fallback, timeout_seconds=…)` | Production path for private_inner_note._private_summary. | [src](../../../core/services/inner_voice_shadow.py#L611) |
-| function | `generate_voice_line_via_llm` | `(*, mood_tone, self_position, current_concern, current_pull, fallback, timeout_seconds=…)` | Production path for protected_inner_voice._voice_line. | [src](../../../core/services/inner_voice_shadow.py#L638) |
-| function | `recent_comparisons` | `(function_name=…, *, limit=…)` | Pull recent shadow records for human comparison. | [src](../../../core/services/inner_voice_shadow.py#L667) |
-| function | `shadow_stats` | `(function_name=…)` | Aggregate stats across all shadow records for one function. | [src](../../../core/services/inner_voice_shadow.py#L689) |
-
-## `core/services/interlanguage_practice.py`
-_Inter-sprog practice engine — internaliseret protokol på tværs af modeller._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_interlanguage_practice_table` | `(conn)` | Idempotently create interlanguage_practice table + index. | [src](../../../core/services/interlanguage_practice.py#L127) |
-| function | `ensure_schema` | `()` | Bagudkompat: åbner en conn og kalder _ensure_interlanguage_practice_table. | [src](../../../core/services/interlanguage_practice.py#L173) |
-| function | `_pick_term` | `(domain_filter=…)` | Pick a random core term, optionally filtered by domain. | [src](../../../core/services/interlanguage_practice.py#L187) |
-| function | `_build_clause` | `()` | Build a single clause: <term> <primitive> <term> or !<term>. | [src](../../../core/services/interlanguage_practice.py#L196) |
-| function | `generate_state_expression` | `(*, num_clauses=…, mood_override=…)` | Generate a state-expression from current mood and random composition. | [src](../../../core/services/interlanguage_practice.py#L212) |
-| function | `record_expression` | `(expression_text, *, session_id=…, tick_id=…, trigger=…, peer_id=…)` | Record a state-expression in the practice log. | [src](../../../core/services/interlanguage_practice.py#L265) |
-| function | `get_recent_expressions` | `(*, days=…, limit=…)` | Get recent state-expressions from the practice log. | [src](../../../core/services/interlanguage_practice.py#L298) |
-| function | `get_expression_count` | `(*, since_hours=…)` | Count expressions recorded in the last N hours. | [src](../../../core/services/interlanguage_practice.py#L326) |
-| function | `export_protocol` | `(*, recent_days=…, max_expressions=…)` | Eksportér hele inter-sprog-protokollen til model-skift. | [src](../../../core/services/interlanguage_practice.py#L342) |
-| function | `practice_tick` | `(*, session_id=…, tick_id=…, mood=…)` | Kaldes fra heartbeat tick — generér og gem én state-expression. | [src](../../../core/services/interlanguage_practice.py#L390) |
-| function | `export_mood_trace_for_period` | `(start, end)` | Eksportér Jarvis' mood-historie over en periode som (timestamp, mood) pairs. | [src](../../../core/services/interlanguage_practice.py#L430) |
-| function | `interpolate_mood_at` | `(trace, target_iso)` | Linear-interpolér mellem nærmeste to mood-samples til target timestamp. | [src](../../../core/services/interlanguage_practice.py#L470) |
-| function | `build_interlanguage_practice_surface` | `()` | Surface for Mission Control — 3 vital signs + dummy state ved ingen data. | [src](../../../core/services/interlanguage_practice.py#L516) |
-
-## `core/services/internal_cadence.py`
-_Internal cadence layer for non-visible inner producers._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ProducerSpec` | `` | — | [src](../../../core/services/internal_cadence.py#L56) |
-| class | `ProducerTickResult` | `` | — | [src](../../../core/services/internal_cadence.py#L66) |
-| function | `register_producer` | `(spec)` | Register a non-visible inner producer with the cadence layer. | [src](../../../core/services/internal_cadence.py#L80) |
-| function | `deregister_producer` | `(name)` | Remove a producer from the cadence layer. | [src](../../../core/services/internal_cadence.py#L85) |
-| function | `_evaluate_producer` | `(spec, *, now, last_visible_at, ran_this_tick, tempo=…)` | Evaluate whether a producer is due. | [src](../../../core/services/internal_cadence.py#L94) |
-| function | `stadig_i_flugt` | `(navn)` | Kører en tidligere, timet-ud kørsel af producenten stadig? | [src](../../../core/services/internal_cadence.py#L201) |
-| function | `_noter_i_flugt` | `(navn, t)` | — | [src](../../../core/services/internal_cadence.py#L216) |
-| function | `_run_producer_bounded` | `(spec, *, trigger, last_visible_at, timeout_s)` | Kør en producer i sin EGEN dæmon-tråd med en hård timeout. | [src](../../../core/services/internal_cadence.py#L221) |
-| function | `run_cadence_tick` | `(*, trigger=…, last_visible_at_iso=…)` | Run one cadence tick: evaluate and dispatch all registered producers. | [src](../../../core/services/internal_cadence.py#L271) |
-| function | `get_cadence_state` | `()` | Return current cadence layer state for MC observability. | [src](../../../core/services/internal_cadence.py#L476) |
-| function | `_ensure_producers_registered` | `()` | Register known producers if not already registered. | [src](../../../core/services/internal_cadence.py#L515) |
-| function | `_valider_afhaengigheder` | `()` | Afvis manglende udbydere og cykler HOEJLYDT ved bootstrap. | [src](../../../core/services/internal_cadence.py#L550) |
-| function | `run_cadence_tick_with_bootstrap` | `(*, trigger=…, last_visible_at_iso=…)` | Bootstrap producers and run a cadence tick. | [src](../../../core/services/internal_cadence.py#L594) |
-| function | `_run_injection_refresh_tick` | `()` | Central-styret indre liv: refresh beskidte injektions-enheder i baggrunden (OFF hot-path). | [src](../../../core/services/internal_cadence.py#L617) |
-| function | `_scheduler_loop` | `()` | Background loop: tick cadence every _SCHEDULER_INTERVAL_S seconds. | [src](../../../core/services/internal_cadence.py#L632) |
-| function | `start_cadence_scheduler` | `()` | Spawn the standalone cadence scheduler thread. Idempotent. | [src](../../../core/services/internal_cadence.py#L685) |
-| function | `stop_cadence_scheduler` | `()` | Signal the scheduler thread to exit. Best-effort; daemon dies with process. | [src](../../../core/services/internal_cadence.py#L700) |
-
-## `core/services/internal_cadence_central_wiring.py`
-_Central-wiring cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_central_wiring_producers` | `()` | Run the Central-wiring registration blocks (unchanged order/behavior). | [src](../../../core/services/internal_cadence_central_wiring.py#L15) |
-
-## `core/services/internal_cadence_core.py`
-_Core-infra cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_core_producers` | `(register_producer)` | Register the core-infra producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_core.py#L19) |
-
-## `core/services/internal_cadence_inner_life.py`
-_Inner-life cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_inner_life_producers` | `(register_producer)` | Register the inner-life producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_inner_life.py#L24) |
-
-## `core/services/internal_cadence_maintenance.py`
-_Maintenance / health cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L23) |
-
-## `core/services/internal_cadence_matrix.py`
-_Matrix-themed cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_matrix_producers` | `(register_producer)` | Register the Matrix-themed producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_matrix.py#L18) |
-
-## `core/services/internal_opposition_signal_tracking.py`
-_Internal-opposition signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_internal_opposition_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L41) |
-| function | `refresh_runtime_internal_opposition_signal_statuses` | `()` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L49) |
-| function | `build_runtime_internal_opposition_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L53) |
-| function | `_extract_internal_opposition_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L58) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L237) |
-| function | `_internal_opposition_track_summary` | `(items, message)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L267) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L303) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L308) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L313) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L318) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L323) |
-| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L328) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L333) |
-| function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L338) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L343) |
-
-## `core/services/interruption_notice.py`
-_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
-| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
-
-## `core/services/invocation_record.py`
-_Durabel invokations-tilstand for kald ingen bliver spurgt om._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/invocation_record.py#L37) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/invocation_record.py#L41) |
-| function | `recorded` | `(tool_name, arguments, *, run_id=…, session_id=…)` | Omslut et MUTERENDE kald med prepared → dispatching → completed/failed. | [src](../../../core/services/invocation_record.py#L48) |
-| function | `markaer_mislykket` | `(iid)` | Sig at kaldet fejlede UDEN at kaste. | [src](../../../core/services/invocation_record.py#L103) |
-| function | `_afslut` | `(iid, *, ok)` | — | [src](../../../core/services/invocation_record.py#L116) |
-
-## `core/services/irony_daemon.py`
-_Irony daemon — situational self-distance and absurd self-observations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_irony_daemon` | `(*, skip_event_gate=…)` | — | [src](../../../core/services/irony_daemon.py#L20) |
-| function | `get_latest_irony_observation` | `()` | — | [src](../../../core/services/irony_daemon.py#L52) |
-| function | `build_irony_surface` | `()` | — | [src](../../../core/services/irony_daemon.py#L56) |
-| function | `_maybe_reset_daily_count` | `()` | — | [src](../../../core/services/irony_daemon.py#L65) |
-| function | `_collect_snapshot` | `()` | — | [src](../../../core/services/irony_daemon.py#L73) |
-| function | `_detect_irony_conditions` | `(snapshot)` | — | [src](../../../core/services/irony_daemon.py#L98) |
-| function | `_generate_observation` | `(snapshot, condition)` | — | [src](../../../core/services/irony_daemon.py#L111) |
-| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L138) |
-
-## `core/services/jarvis_brain.py`
-_Jarvis Brain — kurateret vidensjournal. Kerne-CRUD-laget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `BrainEntry` | `` | — | [src](../../../core/services/jarvis_brain.py#L67) |
-| method | `BrainEntry.__post_init__` | `(self)` | — | [src](../../../core/services/jarvis_brain.py#L94) |
-| function | `_atomic_write` | `(path, content)` | Atomic file write via tmp + rename. Creates parent dirs as needed. | [src](../../../core/services/jarvis_brain.py#L110) |
-| function | `parse_frontmatter` | `(path)` | Parse YAML frontmatter + body from a markdown file. | [src](../../../core/services/jarvis_brain.py#L118) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/services/jarvis_brain.py#L138) |
-| function | `_parse_iso` | `(s)` | Parse ISO timestamp from string or pass-through if already datetime. | [src](../../../core/services/jarvis_brain.py#L146) |
-| function | `render_entry_markdown` | `(entry)` | Render a BrainEntry as markdown with YAML frontmatter. | [src](../../../core/services/jarvis_brain.py#L159) |
-| function | `entry_from_frontmatter` | `(fm, body)` | Build a BrainEntry from parsed frontmatter dict + body string. | [src](../../../core/services/jarvis_brain.py#L189) |
-| function | `_workspace_root` | `()` | Base dir for brain-relative paths. Override in tests via monkeypatch. | [src](../../../core/services/jarvis_brain.py#L292) |
-| function | `_state_root` | `()` | — | [src](../../../core/services/jarvis_brain.py#L309) |
-| function | `brain_dir` | `()` | Return the brain storage dir under JARVIS_HOME/shared/jarvis_brain. | [src](../../../core/services/jarvis_brain.py#L316) |
-| function | `index_db_path` | `()` | — | [src](../../../core/services/jarvis_brain.py#L326) |
-| function | `_ensure_wal` | `(conn, key)` | Slå WAL til én gang per (proces, db-sti). Persistent på filen. | [src](../../../core/services/jarvis_brain.py#L347) |
-| function | `_ensure_schema` | `(conn, key)` | Opret/migrér index-schema — men kun når det faktisk mangler. | [src](../../../core/services/jarvis_brain.py#L364) |
-| function | `connect_index` | `()` | — | [src](../../../core/services/jarvis_brain.py#L388) |
-| function | `_ensure_index_schema_migrations` | `(conn)` | Bring pre-existing brain_index tables up to the current schema. | [src](../../../core/services/jarvis_brain.py#L400) |
-| function | `_slugify` | `(s, max_len=…)` | — | [src](../../../core/services/jarvis_brain.py#L465) |
-| function | `_file_hash` | `(text)` | — | [src](../../../core/services/jarvis_brain.py#L472) |
-| function | `write_entry` | `(*, kind, title, content, visibility, domain, trigger=…, related=…, tags=…, source_url=…, source_chronicle=…, importance=…, now=…, skip_temporal=…)` | Skriver en ny brain-entry til disk og indexerer den (uden embedding endnu). | [src](../../../core/services/jarvis_brain.py#L476) |
-| function | `read_entry` | `(entry_id)` | Read a BrainEntry by id (loads from disk via index lookup). | [src](../../../core/services/jarvis_brain.py#L571) |
-| function | `_index_path_for` | `(entry_id)` | Returns the relative path stored in brain_index for entry_id. | [src](../../../core/services/jarvis_brain.py#L587) |
-| function | `compute_effective_salience` | `(entry, now)` | Compute time-decayed salience with bump amplification + importance gate. | [src](../../../core/services/jarvis_brain.py#L615) |
-| function | `_embed_text` | `(text)` | Wrapper around eksisterende embedder. Override in tests via monkeypatch. | [src](../../../core/services/jarvis_brain.py#L643) |
-| function | `_embed_texts` | `(texts)` | Batch-variant af _embed_text: ÉT ollama round-trip for hele listen (via | [src](../../../core/services/jarvis_brain.py#L658) |
-| function | `_embedding_to_blob` | `(v)` | — | [src](../../../core/services/jarvis_brain.py#L675) |
-| function | `_embedding_from_blob` | `(blob, dim)` | — | [src](../../../core/services/jarvis_brain.py#L679) |
-| function | `embed_pending_entries` | `()` | Embed alle entries i index'et der mangler embedding. Returnerer antal. | [src](../../../core/services/jarvis_brain.py#L683) |
-| function | `search_brain` | `(*, query_text, kinds=…, visibility_ceiling=…, limit=…, domain=…, tags=…, include_archived=…, now=…, use_temporal_boost=…, min_score=…, min_cosine=…)` | Hybrid embedding search: 0.7*cosine + 0.3*effective_salience + temporal boost. | [src](../../../core/services/jarvis_brain.py#L714) |
-| function | `search_brain_scored` | `(*, query_text, kinds=…, visibility_ceiling=…, limit=…, domain=…, tags=…, include_archived=…, now=…, use_temporal_boost=…, min_score=…, min_cosine=…)` | Som search_brain, men returnerer (score, entry_id) uden at læse filerne. | [src](../../../core/services/jarvis_brain.py#L744) |
-| function | `_compute_search_temporal_boost` | `(candidate_ids, *, boost_factor=…, min_confidence=…)` | Compute temporal boost for search candidates. | [src](../../../core/services/jarvis_brain.py#L928) |
-| function | `bump_salience` | `(entry_id, now=…, *, min_interval_hours=…)` | Increments salience_bumps + recall_count + opdaterer last_used_at i index OG fil. | [src](../../../core/services/jarvis_brain.py#L969) |
-| function | `archive_entry` | `(entry_id, *, reason=…, now=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/services/jarvis_brain.py#L1030) |
-| function | `supersede` | `(*, old_ids, new_id, now=…)` | Mark old entries as superseded by new_id (keeps files in place). | [src](../../../core/services/jarvis_brain.py#L1061) |
-| function | `prune_orphaned_index_rows` | `(*, maks_andel=…)` | Fjern indeks-rækker hvis markdown-fil er væk. Den MODSATTE retning. | [src](../../../core/services/jarvis_brain.py#L1087) |
-| function | `rebuild_index_from_files` | `()` | Scan brain_dir() for .md files; new/changed hash → update index. | [src](../../../core/services/jarvis_brain.py#L1152) |
-| function | `_extract_text_for_entry` | `(entry_id, *, rel_path=…, title=…)` | Read entry content from disk for entity/semantic analysis. | [src](../../../core/services/jarvis_brain.py#L1248) |
-| function | `_temporal_similarity_score` | `(hours_apart)` | Score 0.0–1.0 based on temporal proximity. 1.0 at ≤1h, decays to 0 at 24h. | [src](../../../core/services/jarvis_brain.py#L1302) |
-| function | `_cosine_similarity` | `(a_vec, b_vec)` | — | [src](../../../core/services/jarvis_brain.py#L1312) |
-| function | `_compute_temporal_confidence` | `(*, temporal, semantic, entity, is_chain, chain_score=…)` | Combine four signals into a single confidence score (0.0–1.0). | [src](../../../core/services/jarvis_brain.py#L1319) |
-| function | `_compute_chain_score` | `(*, new_entry, cand_entry, hours_apart, cand_related)` | Compute chain signal score (0.0–1.0) between two entries. | [src](../../../core/services/jarvis_brain.py#L1338) |
-| function | `infer_temporal_edges` | `(new_entry_id, now=…)` | Run four-signal inference between a new entry and all existing active entries. | [src](../../../core/services/jarvis_brain.py#L1388) |
-| function | `_store_temporal_edge` | `(from_id, to_id, confidence, reasoning, now)` | Insert or update a temporal edge with combined confidence. | [src](../../../core/services/jarvis_brain.py#L1577) |
-| function | `_store_temporal_edges_batch` | `(edges, *, now)` | Skriv mange kanter i én transaktion (målt 25/9-2026). | [src](../../../core/services/jarvis_brain.py#L1607) |
-| function | `get_temporal_neighbors` | `(entry_id, min_confidence=…, limit=…)` | Get tidligere inferred temporal neighbors for an entry. | [src](../../../core/services/jarvis_brain.py#L1636) |
-| function | `temporal_boost_recall` | `(entry_ids, *, boost_factor=…, min_confidence=…)` | Compute temporal boost scores for a set of entry IDs. | [src](../../../core/services/jarvis_brain.py#L1666) |
-| function | `prune_stale_edges` | `(*, max_age_days=…, min_confidence=…)` | Remove stale temporal edges with low confidence. | [src](../../../core/services/jarvis_brain.py#L1722) |
-| function | `prune_unreadable_edges` | `()` | Fjern kanter der beviseligt ALDRIG læses — uanset alder. | [src](../../../core/services/jarvis_brain.py#L1749) |
-| function | `prune_dense_edges` | `(*, max_per_node=…)` | Loft pr. node: behold kun de ``max_per_node`` stærkeste kanter pr. endepunkt. | [src](../../../core/services/jarvis_brain.py#L1791) |
-| function | `full_rebuild` | `(*, batch_size=…)` | Genberegn alle temporale edges fra bunden. | [src](../../../core/services/jarvis_brain.py#L1851) |
-| function | `_emit_jarvis_brain_event` | `(kind, payload=…)` | Emit a scoped event — defensive, never blocks caller. | [src](../../../core/services/jarvis_brain.py#L1913) |
-
-## `core/services/jarvis_brain_daemon.py`
-_Jarvis Brain background daemon — tre uafhængige loops._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `reindex_once` | `()` | Et enkelt reindex-pass. Returnerer antal file changes opdaget. | [src](../../../core/services/jarvis_brain_daemon.py#L26) |
-| function | `reindex_loop` | `(stop_event)` | Long-running loop. Stops cleanly when stop_event is set. | [src](../../../core/services/jarvis_brain_daemon.py#L42) |
-| function | `find_duplicate_proposals` | `(*, threshold=…, kinds=…)` | Returnerer liste af (a_id, b_id, similarity) hvor sim ≥ threshold. | [src](../../../core/services/jarvis_brain_daemon.py#L67) |
-| function | `_call_ollamafreeapi` | `(prompt)` | Free OllamaFreeAPI — public-safe job. Returns parsed JSON or None on fail. | [src](../../../core/services/jarvis_brain_daemon.py#L121) |
-| function | `_model_is_available` | `(tag_names, model)` | Pure: er `model` til stede blandt Ollamas /api/tags-navne? Matcher både | [src](../../../core/services/jarvis_brain_daemon.py#L142) |
-| function | `_call_local_ollama` | `(prompt)` | Ollama-kald for personal/intimate brain-jobs (summaries + contradiction). | [src](../../../core/services/jarvis_brain_daemon.py#L155) |
-| function | `_resolve_local_chat_model` | `()` | Find configured local-lane chat model from provider router (best-effort). | [src](../../../core/services/jarvis_brain_daemon.py#L211) |
-| function | `_parse_json_loose` | `(text)` | Parse JSON from possibly noisy LLM output. Looks for first {...} block. | [src](../../../core/services/jarvis_brain_daemon.py#L224) |
-| function | `_llm_contradiction_check` | `(a, b)` | Privacy-routed contradiction check. | [src](../../../core/services/jarvis_brain_daemon.py#L245) |
-| function | `_state_path` | `()` | Override target in tests via monkeypatch. | [src](../../../core/services/jarvis_brain_daemon.py#L272) |
-| function | `_read_state` | `()` | — | [src](../../../core/services/jarvis_brain_daemon.py#L279) |
-| function | `_write_state` | `(state)` | — | [src](../../../core/services/jarvis_brain_daemon.py#L290) |
-| function | `record_proposal_rejection` | `(phase, *, proposal_id)` | Track rejection. After 3 in a row for 'theme' phase, auto-pause. | [src](../../../core/services/jarvis_brain_daemon.py#L299) |
-| function | `record_proposal_acceptance` | `(phase, *, proposal_id)` | Reset rejection streak on acceptance. | [src](../../../core/services/jarvis_brain_daemon.py#L321) |
-| function | `is_theme_consolidation_paused` | `()` | — | [src](../../../core/services/jarvis_brain_daemon.py#L330) |
-| function | `resume_theme_consolidation` | `()` | Manuel reaktivering. Nulstiller streak + paused flag. | [src](../../../core/services/jarvis_brain_daemon.py#L334) |
-| function | `_run_theme_consolidation_pass` | `()` | Søndags-pass: group observations efter domain, find temaer. | [src](../../../core/services/jarvis_brain_daemon.py#L342) |
-| function | `run_theme_consolidation_if_active` | `()` | Kør tema-pass hvis ikke paused. Returnerer antal forslag genereret. | [src](../../../core/services/jarvis_brain_daemon.py#L351) |
-| function | `regenerate_summary` | `(*, target_visibility=…)` | Regenererer state/jarvis_brain_summary.md. | [src](../../../core/services/jarvis_brain_daemon.py#L382) |
-| function | `auto_archive_low_salience` | `()` | Arkivér entries hvis effective_salience < 0.05 i ≥ 90 dage. | [src](../../../core/services/jarvis_brain_daemon.py#L446) |
-| function | `b4_catchup_infer_once` | `(*, batch_size=…)` | Find active entries with no temporal edges and run inference on them. | [src](../../../core/services/jarvis_brain_daemon.py#L512) |
-| function | `b4_edge_maintenance_once` | `()` | Run one pass of B4 edge maintenance: catchup + prune. | [src](../../../core/services/jarvis_brain_daemon.py#L559) |
-| function | `_consolidation_summary_loop` | `(stop_event)` | Daily consolidation + summary + B4 edge maintenance scheduler. | [src](../../../core/services/jarvis_brain_daemon.py#L597) |
-| function | `run_consolidation_pass` | `()` | Single consolidation pass: phase 1 (dedup) + phase 2 (contradictions). | [src](../../../core/services/jarvis_brain_daemon.py#L683) |
-| function | `start_brain_daemon` | `()` | Start the three brain daemon threads. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L702) |
-| function | `stop_brain_daemon` | `()` | Signal stop and wait briefly for threads to exit. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L725) |
-
-## `core/services/jarvis_brain_reflection.py`
-_End-of-day refleksions-slot — visible Jarvis spørger sig selv hvad han lærte._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_reflection_envelope` | `(*, chronicle_summary)` | Build the envelope text shown to visible Jarvis at end-of-day. | [src](../../../core/services/jarvis_brain_reflection.py#L31) |
-| function | `build_internal_nudge` | `(*, count_so_far)` | Soft nudge after 3+ remember_this calls in same reflection slot. | [src](../../../core/services/jarvis_brain_reflection.py#L36) |
-| function | `_was_active_today` | `()` | Best-effort tjek om Jarvis havde aktivitet i dag. | [src](../../../core/services/jarvis_brain_reflection.py#L49) |
-| function | `_build_today_chronicle_summary` | `()` | Build a short summary of today's chronicle entries. | [src](../../../core/services/jarvis_brain_reflection.py#L73) |
-| function | `_run_reflection_turn` | `(chronicle_summary)` | Trigger en visible-Jarvis tur med reflection-envelope. | [src](../../../core/services/jarvis_brain_reflection.py#L86) |
-| function | `run_daily_reflection_if_active` | `()` | Entry point for the daily slot trigger. | [src](../../../core/services/jarvis_brain_reflection.py#L110) |
-| function | `build_jarvis_brain_reflection_surface` | `()` | Surface the daily reflection slot without triggering it. | [src](../../../core/services/jarvis_brain_reflection.py#L126) |
-
-## `core/services/jarvis_brain_visibility.py`
-_Privacy-gate for Jarvis Brain recall._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_owner_id` | `()` | Hentet via owner_resolver. Wrapped så tests kan monkeypatche. | [src](../../../core/services/jarvis_brain_visibility.py#L14) |
-| function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L30) |
-| function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L35) |
+| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L269) |
+| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L278) |
+| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L291) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L307) |
+| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L316) |
 

@@ -22,7 +22,27 @@
  * bounds efter det. Omvendt ville to lag kende samme mål, og de ville skride
  * fra hinanden ved første ændring af panelbredden.
  */
-import { WebContentsView, BrowserWindow, shell } from 'electron'
+/**
+ * ## Tokenet (Bjørn 4/10-2026)
+ *
+ * «jarvis browser i desk henter ikk automatisk token det bør den.»
+ *
+ * Målt samme dag: denne fil havde NUL forekomster af `Authorization`, `token`
+ * eller `session`. En `WebContentsView` er et søskende-lag i vinduet, ikke en
+ * del af React-træet, så den arver intet fra desk — åbnede Jarvis en af husets
+ * egne filer, fik han 401 på noget der findes og er Bjørns eget.
+ *
+ * Headeren sættes nu i `onBeforeSendHeaders`, og den er AFGRÆNSET til API'ets
+ * oprindelse. Det er ikke pænhed: en browser er til hele internettet, og en
+ * ubetinget header ville sende Bjørns bearer-token til hver side Jarvis
+ * åbner — til en vilkårlig tredjepart. Afgrænsningen er hele grunden til at
+ * injektionen er forsvarlig.
+ *
+ * Oprindelse, ikke præfiks: `https://api.srvlab.dk.angriber.dk` har `.../
+ * api.srvlab.dk` som præfiks og er en anden vært. `URL.origin` sammenlignes
+ * som helhed.
+ */
+import { WebContentsView, BrowserWindow, shell, session as elSession } from 'electron'
 
 export interface Faneblad {
   id: number
@@ -50,6 +70,67 @@ let synlig = false
 
 /** Tomt rektangel = skjult. Electron har ingen «hide» på en view, så den
  *  flyttes ud af syne ved at få nul størrelse. */
+/** API'ets oprindelse og tokenet. Tom = ingen injektion overhovedet. */
+let apiOprindelse = ''
+let apiToken: string | null = null
+let hookSat = false
+
+/** Hvad er `raa`s oprindelse? Tom streng når den ikke kan afgøres. */
+export function oprindelseAf(raa: string): string {
+  try {
+    return new URL(String(raa || '').trim()).origin
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Hvilke requests skal bære tokenet? Kun dem mod API'ets EGEN oprindelse.
+ *
+ * Eksporteret for at kunne testes direkte. Lå reglen inde i hook'en, kunne
+ * den kun måles ved at køre en rigtig Electron-session — og så ville det ene
+ * sted der afgør om Bjørns token forlader maskinen være det ene sted uden
+ * test.
+ */
+export function skalBaereToken(url: string, oprindelse: string, token: string | null): boolean {
+  if (!token || !oprindelse) return false
+  return oprindelseAf(url) === oprindelse
+}
+
+/**
+ * Fortæl browseren hvilket API der er vores, og med hvilket token.
+ *
+ * Kaldes fra main ved opstart og ved hvert `run:setAuth` — ellers ville en
+ * fornyet session efterlade browseren med et udløbet token, og symptomet
+ * ville være 401 på en fil der virkede for et øjeblik siden.
+ */
+export function saetApiAuth(apiBaseUrl: string, token: string | null): void {
+  apiOprindelse = oprindelseAf(apiBaseUrl)
+  apiToken = token && String(token).trim() ? String(token) : null
+  sikrHook()
+}
+
+/** Sæt header-hook'en én gang. Electron tillader kun ÉN lytter per session —
+ *  en anden registrering ville tavst erstatte den første. */
+function sikrHook(): void {
+  if (hookSat) return
+  try {
+    elSession.defaultSession.webRequest.onBeforeSendHeaders((detaljer, svar) => {
+      const h = { ...detaljer.requestHeaders }
+      if (skalBaereToken(detaljer.url, apiOprindelse, apiToken)) {
+        h['Authorization'] = `Bearer ${apiToken}`
+      }
+      svar({ requestHeaders: h })
+    })
+    hookSat = true
+  } catch (e) {
+    // Fejler registreringen, virker filer fra huset ikke i Jarvis' browser.
+    // Alt andet gør. Derfor en linje og videre — ikke et kast der tager
+    // browserpanelet med sig.
+    console.warn('[jarvisBrowser] kunne ikke saette auth-hook:', e)
+  }
+}
+
 function anvendBounds(): void {
   const f = faner.find((x) => x.id === aktivId)
   if (!f) return

@@ -501,13 +501,41 @@ def session_summary_insert(
 
 
 def session_summary_recent(limit: int = 3) -> list[dict[str, object]]:
-    """Return the most recent session summaries (across all sessions)."""
+    """Return the most recent session summaries FOR THIS USER.
+
+    Målt 6/10-2026: uden scope hentede denne de 3 nyeste summaries på tværs af
+    ALLE brugere, og `build_previous_session_summaries` injicerede dem i prompten
+    (transcript_sections.py:120). Michelles eller Mikkels samtale kunne dermed
+    ligge i Bjørns prompt. `chat_crypto`'s nordstjerne forbyder det direkte:
+    «hverken Bjørn eller Jarvis må kunne læse andres private sessioner».
+
+    Samme retning som `chat_crypto.should_encrypt` og `proactive_candidates`:
+    ekskludér KUN sessioner der beviseligt tilhører en anden bruger. Ustemplede
+    (legacy, enbruger-æraen) og egne slipper igennem — ellers ville 25.212 af
+    74.411 rækker uden user_id blive usynlige for deres egen ejer.
+    """
+    try:
+        from core.services.user_scope import scope_uid
+
+        uid = (scope_uid() or "").strip()
+    except Exception:
+        uid = ""
     with connect() as conn:
         _ensure_session_summaries_table(conn)
-        rows = conn.execute(
-            "SELECT * FROM session_summaries ORDER BY created_at DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        if uid:
+            rows = conn.execute(
+                "SELECT s.* FROM session_summaries s "
+                "WHERE s.session_id NOT IN ("
+                "  SELECT DISTINCT session_id FROM chat_messages "
+                "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?) "
+                "ORDER BY s.created_at DESC LIMIT ?",
+                (uid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM session_summaries ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
     return [
         {
             "id": r["id"],

@@ -213,6 +213,12 @@ def _mem_write_queue_live(_snap: dict) -> dict[str, Any]:
     return tick_memory_write_queue_daemon()
 
 
+def _mem_candidate_digest_live(_snap: dict) -> dict[str, Any]:
+    """Ugentlig push-digest over kandidat-review-koeen (1/10-2026). Self-throttler."""
+    from core.services.candidate_review_digest import tick_candidate_review_digest
+    return tick_candidate_review_digest()
+
+
 # (member_name, live_fn) in a stable order. memory_write_queue is placed FIRST so
 # the load-bearing drain runs even under tight scheduling.
 _MEMORY_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
@@ -223,6 +229,7 @@ _MEMORY_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("memory_safeguard", _mem_safeguard_live),
     ("selective_consolidation", _mem_selective_consolidation_live),
     ("associative_recall", _mem_associative_recall_live),
+    ("candidate_review_digest", _mem_candidate_digest_live),
 )
 
 
@@ -1260,19 +1267,79 @@ def _infra_visible_drift_live(_snap: dict) -> dict[str, Any]:
     """Luk `visible_runs`-rækker der står `recovering`, men er beviseligt slut.
 
     Samme regel som boot-reconcileren bruger (`_ryd_visible_drift`), men uden at
-    vente på en genstart. Self-throttler på 30 min: reglen er billig, og en række
-    bliver ikke mere sand af at blive talt oftere — `finished_at` er beviset
-    uanset hvor tit vi kigger.
+    vente på en genstart.
 
     Målt 25/9-2026: 16 rækker stod `recovering` med `finished_at` sat, den nyeste
     29 sekunder gammel. Ingen proces kendte dem. Boot-vejen krævede enten en
     genstart eller seks timers alder, så de lå der indtil nogen ryddede dem i
     hånden. Nu lukker familien dem af sig selv.
+
+    ## Throttlen er fjernet (6/10-2026)
+
+    Medlemmet self-throttlede på 30 min, med den begrundelse at «en række bliver
+    ikke mere sand af at blive talt oftere». Det er rigtigt om SANDHEDEN og
+    forkert om NYTTEN, og forskellen koster deploys.
+
+    Reglens tredje gren kræver selv 30 minutters alder. To uafhængige
+    30-minutters-ure giver et vindue på 30 TIL 60 minutter, afhængigt af fase —
+    og fasen er ren tilfældighed, fordi `_INFRA_THROTTLE` er en in-process dict
+    som hver genstart nulstiller. Målt samme dag: `visible-bd1727a4` stod
+    fejeberettiget fra 19:06 og var stadig `running` 19:24, gennem ~9
+    familie-tick. Hvert af de minutter er et minut hvor genstarts-vagten
+    blokerer, altså hvor der ikke kan deployes.
+
+    Reglen er én indekseret forespørgsel mod `visible_runs` plus en læsning af
+    `in_flight_runs`. Familien tikker hvert 2. minut, så det er prisen — og den
+    er lavere end at lade en zombie blokere en halv time ekstra.
     """
-    if not _infra_throttle_ready("visible_drift_cleanup", 30):
-        return {"status": "throttled", "cadence_minutes": 30}
     from core.services.session_boot_reconciler import ryd_visible_drift_periodisk
     return ryd_visible_drift_periodisk()
+
+
+def _infra_beslutninger_i_indbakken_live(_snap: dict) -> dict[str, Any]:
+    """Giv beslutninger under tærsklen en adresse i indbakken.
+
+    Self-throttler på 60 min: listen ændrer sig når en adherence-score bliver
+    reviewet, og det sker i timer, ikke minutter.
+
+    Hvorfor den findes: gatens `_MAKS_LINJER` er 12, og målt 4/10-2026 stod 34
+    beslutninger under tærsklen — 22 uden for prompten, syv af dem kritiske.
+    Gaten siger «… og N flere under tærsklen», men et tal uden id'er er ikke
+    en adresse. Indbakken bærer dem uden at vokse prompten, fordi `inbox` er
+    et værktøj han kalder.
+
+    Brugeren hentes gennem `inbox_state.laese_bruger()` — ÉN definition, delt
+    med indbakkens tre læse-steder. Er den ubundet, springer vi over frem for
+    at gætte: en beslutnings-post i den forkerte indbakke er værre end ingen.
+
+    RETTET 4/10-2026. Her stod en fjerde kopi af reglen:
+
+        current_user_id() or current_workspace_name()
+
+    og det var DENNE der prægede den anden indbakke. Målt samme dag:
+    `bjorn` bar 36 poster, heraf 35 beslutninger, ingen af dem lukket —
+    mens de samme 34 kilde_id'er også stod under `1246415163603816499`,
+    hvor Jarvis faktisk arbejder. Daemonen kører uden bundet kontekst, så
+    `current_user_id()` var tom hver gang og workspace-NAVNET vandt.
+
+    Lækagen blev fundet i læse-vejene; vagten dækkede kun dem. Skriveren stod
+    tilbage og blev ved — de to raekker jeg flyttede manuelt var allerede
+    blevet selskab af en ny. Det er femte gang i dette spor at to definitioner
+    af samme regel driver fra hinanden, og den eneste rettelse der holder er
+    at der kun er én.
+    """
+    if not _infra_throttle_ready("beslutninger_i_indbakken", 60):
+        return {"status": "throttled", "cadence_minutes": 60}
+    try:
+        from core.services.inbox_state import laese_bruger
+        bruger = laese_bruger()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cluster_infra: kunne ikke laese brugeren: %s", exc)
+        return {"status": "error", "error": str(exc)}
+    if not bruger:
+        return {"status": "skipped", "grund": "ingen bruger i konteksten"}
+    from core.services.decision_adherence_gate import registrer_i_indbakken
+    return registrer_i_indbakken(bruger)
 
 
 def _infra_approval_expiry_live(_snap: dict) -> dict[str, Any]:
@@ -1306,6 +1373,11 @@ _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("file_awareness", _infra_file_awareness_live),
     ("cache_maintenance", _infra_cache_maintenance_live),
     ("approval_expiry", _infra_approval_expiry_live),
+    # Uden denne linje er registreringen built_but_not_connected — den
+    # fejl har ramt indbakke-sporet TRE gange paa to doegn: skriveren
+    # manglede, laeseren i prompten manglede, og lukkeren saa et andet
+    # sted end visningen. En funktion ingen kalder er ikke bygget.
+    ("beslutninger_i_indbakken", _infra_beslutninger_i_indbakken_live),
     ("feedback_review", _infra_feedback_review_live),
     ("signal_decay", _infra_signal_decay_live),
     ("wakeup_cleanup", _infra_wakeup_cleanup_live),

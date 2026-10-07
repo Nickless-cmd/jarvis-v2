@@ -17,8 +17,18 @@ export function erBilledAnalyse(name: string): boolean {
   return name === 'analyze_image'
 }
 
+/** Video-værktøjerne. Spejler desks `erVideoVaerktoej`. */
+export function erVideoVaerktoej(name: string): boolean {
+  return name === 'pollinations_video' || name === 'pollinations_video_edit'
+}
+
 export type BilledArbejde =
   | { slags: 'generering' }
+  /** Video. Egen variant, fordi ventetiden er en HELT anden: billedgenerering
+   *  er målt til ~8 s, mens `pollinations_video` bruger 39 s på pipelinen og
+   *  har op til 600 s timeout. Otte sekunders prik-gitter og ti minutters
+   *  venten skal ikke se ens ud. */
+  | { slags: 'video' }
   /** `kilde` er navnet, til etiketten. `sti` er den FULDE sti — den eneste af
    *  de to der kan hentes, gennem `/visning/billede`. */
   | { slags: 'analyse'; kilde: string; sti: string }
@@ -82,6 +92,7 @@ export function koerer(status?: string): boolean {
 export function billedArbejdeFor(kald: Kald): BilledArbejde | null {
   if (!koerer(kald.status)) return null
   if (erBilledVaerktoej(kald.name)) return { slags: 'generering' }
+  if (erVideoVaerktoej(kald.name)) return { slags: 'video' }
   if (erBilledAnalyse(kald.name)) {
     return {
       slags: 'analyse',

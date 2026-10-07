@@ -131,13 +131,20 @@ describe('MessageRow', () => {
     const img = container.querySelector('.msg-user-images img')
     expect(img?.getAttribute('src')).toBe('blob:preview-1')
   })
-  it('viser "Åbn"-affordance for langt markdown-svar', () => {
+  it('viser INGEN "Åbn"-affordance for langt markdown-svar — svaret står lige der', () => {
+    // Bjørn 29/9-2026: «aaben dokument badge, den bliver vist under din besked.
+    // den skal ud.» detectArtifacts' regel 2 gjorde ethvert svar på 40+ linjer
+    // med to overskrifter til et «Dokument»-artifact, og badgen faldt tilbage
+    // til netop titlen «Dokument» når svaret ikke havde en `# `-overskrift.
+    // Testen stod før på `getByRole(...)`: den beskriver den gamle adfærd, og
+    // den SKAL fejle hvis nogen fører reglen tilbage.
     const long = '# Titel\n' + Array.from({ length: 45 }, (_, i) => `linje ${i}`).join('\n') + '\n## Sektion\nx'
-    render(
+    const { container } = render(
       <PanelProvider defaultWidth={400}>
         <MessageRow role="assistant" blocks={[{ type: 'text', text: long }]} density="compact" streaming={false} />
       </PanelProvider>,
     )
-    expect(screen.getByRole('button', { name: /åbn/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /åbn/i })).toBeNull()
+    expect(container.querySelector('.artifact-affordance')).toBeNull()
   })
 })

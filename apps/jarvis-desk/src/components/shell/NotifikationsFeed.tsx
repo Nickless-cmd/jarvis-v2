@@ -10,18 +10,25 @@ import {
 } from '../../lib/notifikationerApi'
 import { SettingsState, SettingsActionError } from '../settings/SettingsState'
 import { markNotificationsRead, notificationAttention, NOTIFICATION_READ_EVENT } from '../../lib/notificationAttention'
+import { updatesBridge } from '../../lib/updatesBridge'
 
 function SwipeCard({ children, className, onRead, onDelete }: {
   children: ReactNode; className: string; onRead: () => void; onDelete?: () => void
 }) {
-  const start = useRef<{ x: number; y: number } | null>(null)
+  const start = useRef<{ x: number; y: number; pointerId?: number } | null>(null)
   const swiped = useRef(false)
   const [drag, setDrag] = useState(0)
-  const down = (e: ReactPointerEvent<HTMLLIElement>) => { start.current = { x: e.clientX, y: e.clientY } }
+  const down = (e: ReactPointerEvent<HTMLLIElement>) => {
+    swiped.current = false
+    // Touch events below are the fallback; handling both would commit twice.
+    if (e.pointerType === 'touch') return
+    start.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
   const move = (e: ReactPointerEvent<HTMLLIElement>) => {
-    if (!start.current || !Number.isFinite(e.clientX)) return
+    if (!start.current || start.current.pointerId !== e.pointerId || !Number.isFinite(e.clientX)) return
     const dx = e.clientX - start.current.x
-    if (Math.abs(e.clientY - start.current.y) > Math.abs(dx)) return
+    if (Math.abs(e.clientY - start.current.y) >= Math.abs(dx)) { setDrag(0); return }
     if (dx < 0 && !onDelete) return
     setDrag(Math.max(-86, Math.min(86, dx)))
   }
@@ -31,7 +38,7 @@ function SwipeCard({ children, className, onRead, onDelete }: {
     const dy = y - start.current.y
     start.current = null
     setDrag(0)
-    if (Math.abs(dx) < 68 || Math.abs(dy) > 42) return
+    if (Math.abs(dx) < 56 || Math.abs(dx) <= Math.abs(dy)) return
     if (dx < 0 && !onDelete) return
     swiped.current = true
     if (dx > 0) onRead()
@@ -41,9 +48,15 @@ function SwipeCard({ children, className, onRead, onDelete }: {
     <li className={`notif-swipe ${className}`} data-drag={drag < 0 ? 'left' : drag > 0 ? 'right' : undefined}
         onClickCapture={(e) => { if (swiped.current) { e.preventDefault(); e.stopPropagation(); swiped.current = false } }}
         onPointerDown={down} onPointerMove={move}
-        onPointerUp={(e) => finish(e.clientX, e.clientY)}
+        onPointerUp={(e) => {
+          if (start.current?.pointerId !== e.pointerId) return
+          finish(e.clientX, e.clientY)
+          e.currentTarget.releasePointerCapture?.(e.pointerId)
+        }}
         onPointerCancel={() => { start.current = null; setDrag(0) }}
+        onLostPointerCapture={() => { start.current = null; setDrag(0) }}
         onTouchStart={(e: ReactTouchEvent<HTMLLIElement>) => {
+          swiped.current = false
           const touch = e.touches[0]
           if (touch) start.current = { x: touch.clientX, y: touch.clientY }
         }}
@@ -51,7 +64,10 @@ function SwipeCard({ children, className, onRead, onDelete }: {
           const touch = e.touches[0]
           if (touch && start.current) {
             const dx = touch.clientX - start.current.x
-            if (dx >= 0 || onDelete) setDrag(Math.max(-86, Math.min(86, dx)))
+            const dy = touch.clientY - start.current.y
+            if (Math.abs(dx) > Math.abs(dy) && (dx >= 0 || onDelete))
+              setDrag(Math.max(-86, Math.min(86, dx)))
+            else setDrag(0)
           }
         }}
         onTouchEnd={(e: ReactTouchEvent<HTMLLIElement>) => {
@@ -78,6 +94,10 @@ const IKON: Record<string, typeof Bell> = {
   keymaker_key_earned: Key,
   moltbook_mention: AtSign,
 }
+
+// Only completed, informational kinds are eligible for bulk cleanup.
+// Questions, approvals, alerts and future unknown kinds stay visible.
+const RYD_BARE = new Set(['run_done', 'release', 'keymaker_key_earned'])
 
 /** «for 3 min siden» — et klokkeslaet siger mindre end et interval her. */
 function siden(iso: string): string {
@@ -138,6 +158,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
   const [handlingFejl, setHandlingFejl] = useState('')
   const [travl, setTravl] = useState('')
   const [opdaterer, setOpdaterer] = useState(false)
+  const [rydder, setRydder] = useState(false)
+  const [bekraeftRyd, setBekraeftRyd] = useState(false)
+  const [installerer, setInstallerer] = useState('')
+  const hentVersion = useRef(0)
+  const lokaltLukkede = useRef(new Set<string>())
   const [, setReadVersion] = useState(0)
   useEffect(() => {
     const changed = () => setReadVersion((n) => n + 1)
@@ -152,10 +177,14 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
 
   const hent = useCallback((manuel = false) => {
     if (!config) return
+    const version = ++hentVersion.current
     if (manuel) setOpdaterer(true)
     void hentNotifikationer(config, aktivSession)
-      .then((f) => { setPoster(f.poster); setFejl(false) })
-      .catch(() => setFejl(true))
+      .then((f) => { if (version === hentVersion.current) {
+        setPoster(f.poster.filter((p) => !lokaltLukkede.current.has(p.id)))
+        setFejl(false)
+      } })
+      .catch(() => { if (version === hentVersion.current) setFejl(true) })
       .finally(() => { if (manuel) setOpdaterer(false) })
   }, [config, aktivSession])
 
@@ -223,6 +252,8 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
     setTravl(p.id); setHandlingFejl('')
     try {
       await setNotifikation(config, p.id)
+      lokaltLukkede.current.add(p.id)
+      setPoster((forrige) => forrige?.filter((kort) => kort.id !== p.id) ?? null)
       markNotificationsRead([p.id])
       genindlaes()
     } catch {
@@ -234,6 +265,17 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
     if (p.session_id) onAabnSession(p.session_id)
     // Laesning er ikke sletning. Kortet bliver i feedet indtil kryds/venstre-swipe.
     markNotificationsRead([p.id])
+  }
+
+  const installerRelease = async (p: Notifikation) => {
+    const bridge = updatesBridge()
+    if (!bridge) return
+    setInstallerer(p.id); setHandlingFejl('')
+    try {
+      await bridge.installNow()
+    } catch (e) {
+      setHandlingFejl(`Opdateringen kunne ikke installeres: ${e instanceof Error ? e.message : String(e)}`)
+    } finally { setInstallerer('') }
   }
 
   // Et svar er ikke en opgave, og de to skal ikke dele liste.
@@ -249,6 +291,35 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
   const venter = alle.filter((p) => p.slags !== 'run_done')
   const svar = alle.filter((p) => p.slags === 'run_done')
   const afgjort = tidligere ?? []
+  const rydBare = alle.filter((p) => RYD_BARE.has(p.slags) && !p.foraeldet &&
+    !notificationAttention([p.id]).unread)
+
+  const rydPoster = async (valgte: Notifikation[]) => {
+    if (!config || valgte.length === 0 || rydder) return
+    setRydder(true); setHandlingFejl('')
+    const fjernet: string[] = []
+    let fejlet = 0
+    // Limit simultaneous requests when a long history of completed runs is cleared.
+    for (let i = 0; i < valgte.length; i += 6) {
+      const resultater = await Promise.allSettled(valgte.slice(i, i + 6).map(async (p) => {
+        await setNotifikation(config, p.id)
+        return p.id
+      }))
+      for (const resultat of resultater) {
+        if (resultat.status === 'fulfilled') fjernet.push(resultat.value)
+        else fejlet++
+      }
+    }
+    if (fjernet.length) {
+      fjernet.forEach((id) => lokaltLukkede.current.add(id))
+      setPoster((forrige) => forrige?.filter((p) => !fjernet.includes(p.id)) ?? null)
+      markNotificationsRead(fjernet)
+      hent()
+      hentHistorik()
+    }
+    if (fejlet) setHandlingFejl(`${fejlet} notifikationer kunne ikke ryddes. Prøv igen.`)
+    setRydder(false)
+  }
 
   return (
     <div className="notif-feed" role="dialog" aria-label="Notifikationer">
@@ -256,6 +327,10 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
         <div className="notif-heading">
           <span>Notifikationer</span>
         </div>
+        {rydBare.length > 0 && <button type="button" className="notif-clear-read"
+          disabled={rydder} onClick={() => void rydPoster(rydBare)}>
+          {rydder ? 'Rydder…' : `Ryd læste (${rydBare.length})`}
+        </button>}
         <button type="button" className="jobs-close notif-refresh" onClick={() => { hent(true); hentHistorik() }}
                 disabled={opdaterer} aria-label="Opdater notifikationer">
           <RefreshCw size={14} className={opdaterer ? 'spinning' : ''} />
@@ -293,6 +368,14 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           {afgjort.length > 0 && <span className="notif-fane-tal">{afgjort.length}</span>}
         </button>
       </div>
+
+      {fane === 'venter' && venter.length > 0 && <div className="notif-clear-all-row">
+        {bekraeftRyd ? <div className="notif-clear-confirm" role="group" aria-label="Bekræft ryd alle">
+          <span>Ryd {venter.length} fra Venter? Uafklarede spørgsmål og godkendelser fjernes uden svar.</span>
+          <button type="button" disabled={rydder} onClick={() => { setBekraeftRyd(false); void rydPoster(venter) }}>Ryd alle</button>
+          <button type="button" onClick={() => setBekraeftRyd(false)}>Annuller</button>
+        </div> : <button type="button" className="notif-clear-read" onClick={() => setBekraeftRyd(true)}>Ryd alle i Venter</button>}
+      </div>}
 
       <SettingsActionError message={handlingFejl} />
 
@@ -349,8 +432,10 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           </div>
         ) : poster === null ? (
           <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
-        ) : poster.length === 0 ? (
-          <p className="notif-tom">Ingen notifikationer — alt er klaret.</p>
+        ) : venter.length === 0 ? (
+          <p className="notif-tom">{svar.length
+            ? `Intet venter på dig. ${svar.length} svar under Svar.`
+            : 'Ingen notifikationer — alt er klaret.'}</p>
         ) : (
           <ul className="notif-liste">
             {venter.map((p) => {
@@ -374,6 +459,9 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
                     <span className="notif-tid">{siden(p.oprettet)}</span>
                   </div>
                   {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
+                  {p.slags === 'release' && updatesBridge()?.installNow && <button type="button"
+                    className="notif-install" disabled={installerer === p.id}
+                    onClick={() => void installerRelease(p)}>{installerer === p.id ? 'Henter…' : 'Installér nu'}</button>}
                   {p.foraeldet && (
                     <p className="notif-foraeldet">Kunne ikke opdateres — det viste er sidste nyt.</p>
                   )}

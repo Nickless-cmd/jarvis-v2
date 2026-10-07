@@ -43,15 +43,11 @@ def _facade():
 
 
 _DEFAULT_TIMEOUT_SECONDS = 30
-_OPENAI_COMPATIBLE_PROVIDERS = {
-    "groq",
-    "nvidia-nim",
-    "openrouter",
-    "mistral",
-    "sambanova",
-    "opencode",
-    "deepseek",
-}
+# 30/9-2026: her stod en LOKAL _OPENAI_COMPATIBLE_PROVIDERS med 7 providere
+# (inkl. "opencode"). Den blev overskrevet få linjer nedenfor af re-eksporten
+# fra kataloget — men `grep opencode` fandt den og fik det til at se ud som om
+# opencode stadig var i sættet. Det snød fase4-testen til at måle ingenting.
+# Sættet kommer nu fra ÉT sted: kataloget (cheap_provider_catalogue).
 
 # Codex uses a distinct responses-based protocol via chatgpt.com/backend-api.
 # NOT OpenAI-compatible — separate dispatch path.
@@ -1682,7 +1678,11 @@ _DEEPSEEK_PRICES_PER_M: dict[str, dict[str, Decimal]] = {
 
 
 def _deepseek_price_table(model: str) -> dict[str, Decimal] | None:
-    if model == "deepseek-v4-flash":
+    # BEGGE navne: `deepseek-flash` er det kanoniske i dag, og
+    # `deepseek-v4-flash` er legacy-navnet der serveres af den. Stod kun
+    # det gamle her, gav et konfigurations-skift `None` -> pris 0.
+    from core.services.deepseek_modelnavne import er_flash
+    if er_flash(model):
         return _DEEPSEEK_PRICES_PER_M["deepseek-v4-flash"]
     if model == "deepseek-v4-pro":
         from datetime import datetime, timezone

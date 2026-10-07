@@ -14,7 +14,6 @@ export interface Artifact {
 export type ArtifactRef = Artifact
 
 const CODE_MIN_LINES = 15
-const MD_MIN_LINES = 40
 
 // Interne sti-rødder vi tør linke (matcher backend path-jail).
 const FILE_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts']
@@ -48,10 +47,6 @@ function fencedBlocks(text: string): Array<{ lang: string; body: string }> {
   return out
 }
 
-function headerCount(text: string): number {
-  return (text.match(/^#{1,6}\s/gm) ?? []).length
-}
-
 export function detectArtifacts(blocks: ContentBlock[]): ArtifactRef[] {
   const refs: ArtifactRef[] = []
   for (const b of blocks) {
@@ -68,12 +63,11 @@ export function detectArtifacts(blocks: ContentBlock[]): ArtifactRef[] {
           })
         }
       }
-      // 2) langt markdown-dok (linjer + headers)
-      const lines = b.text.split('\n').length
-      if (lines >= MD_MIN_LINES && headerCount(b.text) >= 2) {
-        const title = (b.text.match(/^#\s+(.+)$/m)?.[1] ?? 'Dokument').trim()
-        refs.push({ kind: 'markdown', title, content: b.text })
-      }
+      // 2) langt markdown-doc er FJERNET (Bjørn 29/9-2026: «åben dokument
+      //    badge … den skal ud»). Reglen gjorde ethvert svar på 40+ linjer
+      //    med to overskrifter til et «Dokument»-artifact — og svaret står jo
+      //    lige der under badgen. Kode- og fil-referencerne nedenfor er
+      //    urørte: de peger på noget der IKKE står i beskeden.
       continue
     }
     // 3) fil-referencer fra FAKTISKE tool-kald (ikke prosa) — binder panelet

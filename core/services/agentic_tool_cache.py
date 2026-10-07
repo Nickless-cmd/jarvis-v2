@@ -63,12 +63,40 @@ def _signature(tool_name: str, arguments: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
 
+# Hvor længe et cachet svar må genbruges.
+#
+# Uden et loft blev et svar fra 1/10-2026 serveret 3/10: `decision_list` uden
+# argumenter ramte sin egen nøgle `{arguments: {}}` og returnerede 7 aktive
+# beslutninger, mens tabellen havde 24. Friskheds-tjekket (fil-fingeraftryk)
+# findes KUN for read_file, så alle andre cachede værktøjer — search_memory,
+# recall_memories, find_files, list_plans, todo_list — blev serveret på
+# ubestemt tid. Cache'ens eget formål er «retry-intent turns» og «interrupted
+# runs often resume»: et minut-horisont, ikke et døgn.
+_MAX_AGE_SECONDS = 15 * 60
+
+
+def _is_stale(rec: dict[str, Any]) -> bool:
+    """True hvis posten er ældre end _MAX_AGE_SECONDS — eller uden brugbart tidsstempel."""
+    stored = str(rec.get("stored_at") or "")
+    if not stored:
+        return True
+    try:
+        ts = datetime.fromisoformat(stored)
+    except (TypeError, ValueError):  # ulaeseligt tidsstempel — kan ikke dateres
+        return True
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - ts).total_seconds() > _MAX_AGE_SECONDS
+
+
 def get_cached_result(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any] | None:
     if tool_name not in _CACHEABLE_TOOLS:
         return None
     records = _load()
     rec = records.get(_signature(tool_name, arguments))
     if not rec:
+        return None
+    if _is_stale(rec):
         return None
     if tool_name == "read_file" and rec.get("file_fingerprint") != _file_fingerprint(arguments):
         return None

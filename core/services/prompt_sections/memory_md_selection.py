@@ -14,12 +14,18 @@ responsibility) when the index yields nothing.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _MIN_SCORE = 0.30
+#: Under saa faa sektioner er en df-taelling stoej, og vaegtene gaar amok.
+_IDF_MIN_SEKTIONER = 20
+#: Vaegt for et ord der ikke findes i korpus. `log(N/1)` for N=928 er 6,83;
+#: dette er et fast, konservativt loft saa én slaafejl ikke faar al vaegt.
+_IDF_UKENDT = 5.0
 _TERM_RE = re.compile(r"[0-9A-Za-zÆØÅæøå]+")
 _STOP_TERMS = frozenset({
     "hvad", "hvor", "hvilken", "hvilket", "hvilke", "hvorfor", "hvornår",
@@ -50,12 +56,95 @@ def _terms(text: str) -> set[str]:
     return terms
 
 
-def _lexical_coverage(query: str, section: str, text: str) -> float:
+#: (mtime, stoerrelse) → (sektioner, vaegte). Vaegtene aendrer sig KUN naar
+#: MEMORY.md goer, og en df-taelling over 928 sektioner tokeniserer hele filen.
+#: Uden cachen kostede IDF +236 ms pr. tur (253 → 489 ms, maalt skiftevis).
+_IDF_CACHE: dict[tuple[float, int], tuple[list[tuple[str, str]], dict[str, float]]] = {}
+
+
+def _sektioner_og_vaegte(workspace_dir: Path) -> tuple[list[tuple[str, str]], dict[str, float]]:
+    """Sektionerne og deres idf-vaegte, cachet paa filens (mtime, stoerrelse).
+
+    `select_memory_md_sections` og `_lexical_candidates` behoever begge begge
+    dele. Uden dette laeste og tokeniserede de 980 KB hver sin gang i samme
+    kald.
+    """
+    sti = workspace_dir / "MEMORY.md"
+    try:
+        st = sti.stat()
+    except OSError:  # ingen fil at noegle paa: parse direkte og cach intet
+        return _memory_md_sections(workspace_dir), {}
+    noegle = (st.st_mtime, st.st_size)
+    truffet = _IDF_CACHE.get(noegle)
+    if truffet is not None:
+        return truffet
+    sektioner = _memory_md_sections(workspace_dir)
+    par = (sektioner, _idf_vaegte(sektioner))
+    _IDF_CACHE.clear()  # kun den nyeste udgave er interessant
+    _IDF_CACHE[noegle] = par
+    return par
+
+
+def _idf_vaegte(sektioner: list[tuple[str, str]]) -> dict[str, float]:
+    """log(N/df) pr. term over sektionerne. Tom dict naar der er for lidt data.
+
+    ## Hvorfor (maalt 5/10-2026)
+
+    `_lexical_coverage` vaegter 0,65 af rangeringen i
+    `select_memory_md_sections` — altsaa mere end selve soegningen. Den taeller
+    BINAER ord-tilstedevaerelse, saa et almindeligt ord vejer som et sjaeldent.
+    Maalt paa Bjoerns 928 sektioner: «ligger» staar i 130 af dem (idf 1,97),
+    «pfsense» i 11 (idf 4,44) — og de taeller lige meget.
+
+    Konsekvensen var BUNKER, ikke forkerte svar: «hvor ligger pfsense-noeglen»
+    satte den rigtige sektion foerst, men NI sektioner stod lige paa 0,667, og
+    148 paa 0,333. Hvem der vandt afgjorde de resterende 0,35 af vaegten.
+
+    Effekten er maalt FOER den blev bygget, og den er lille: bunken paa ni
+    bliver én (0,667 → 0,804), og de tre andre proever er uaendrede. IDF retter
+    IKKE «hvordan udgiver jeg mobil-APK», som rammer «Genoptagelses-banneret»
+    fordi «Udgiver:» staar som ETIKET i den udgivelses-note — det er aegte
+    leksikalsk tvetydighed. Og den bryder ikke VESC's tre lige paa 1,0, for
+    alle tre indeholder alle ordene; det kraever term-frekvens.
+    """
+    if len(sektioner) < _IDF_MIN_SEKTIONER:
+        return {}
+    df: dict[str, int] = {}
+    for heading, text in sektioner:
+        for term in _terms(f"{heading} {text}"):
+            df[term] = df.get(term, 0) + 1
+    n = float(len(sektioner))
+    return {term: math.log(n / max(antal, 1)) for term, antal in df.items()}
+
+
+def _lexical_coverage(
+    query: str,
+    section: str,
+    text: str,
+    *,
+    vaegte: dict[str, float] | None = None,
+) -> float:
+    """Hvor meget af forespoergslen daekker denne sektion, 0..1.
+
+    Uden `vaegte` er det den uvaegtede andel med loft 5 i naevneren — uaendret
+    adfaerd, og den gaelder stadig dér hvor der ikke findes et korpus at veje
+    imod (`_focused_excerpt` scorer enkelte saetninger).
+    """
     q_terms = _terms(query)
     if not q_terms:
         return 0.0
-    haystack = f"{section} {text}"
-    return min(1.0, len(q_terms & _terms(haystack)) / max(1, min(len(q_terms), 5)))
+    haystack = _terms(f"{section} {text}")
+    ramt = q_terms & haystack
+    if not vaegte:
+        return min(1.0, len(ramt) / max(1, min(len(q_terms), 5)))
+    # Naevneren er SUMMEN af forespoergslens vaegte, ikke et loft paa fem: et
+    # sjaeldent ord der IKKE blev ramt skal traekke ned. Et ukendt ord (df 0)
+    # faar derfor den hoejeste vaegt og kan aldrig rammes — det skalerer alle
+    # kandidater ens ned og aendrer ikke RAEKKEFOELGEN, kun niveauet.
+    i_alt = sum(vaegte.get(t, _IDF_UKENDT) for t in q_terms)
+    if i_alt <= 0.0:
+        return 0.0
+    return min(1.0, sum(vaegte.get(t, _IDF_UKENDT) for t in ramt) / i_alt)
 
 
 def _memory_md_sections(workspace_dir: Path) -> list[tuple[str, str]]:
@@ -121,10 +210,19 @@ def _focused_excerpt(msg: str, text: str, *, max_chars: int = 900) -> str:
     return " ".join(chosen).strip() or body[:max_chars].strip()
 
 
-def _lexical_candidates(msg: str, workspace_dir: Path, *, limit: int) -> list[dict[str, object]]:
+def _lexical_candidates(
+    msg: str,
+    workspace_dir: Path,
+    *,
+    limit: int,
+    vaegte: dict[str, float] | None = None,
+) -> list[dict[str, object]]:
+    sektioner, egne_vaegte = _sektioner_og_vaegte(workspace_dir)
+    if vaegte is None:
+        vaegte = egne_vaegte
     out: list[dict[str, object]] = []
-    for section, text in _memory_md_sections(workspace_dir):
-        coverage = _lexical_coverage(msg, section, text)
+    for section, text in sektioner:
+        coverage = _lexical_coverage(msg, section, text, vaegte=vaegte)
         if coverage <= 0.0:
             continue
         out.append({
@@ -166,7 +264,13 @@ def select_memory_md_sections(
         logger.debug("memory_md_selection: search failed: %s", exc)
         hits = []
 
-    hits = list(hits or []) + _lexical_candidates(msg, workspace_dir, limit=max(max_sections * 4, 12))
+    # Vaegtene regnes ÉN gang og bruges baade til kandidaterne og til
+    # rangeringen nedenfor — ellers ville de to halvdele af samme formel maale
+    # paa hver sin skala.
+    _vaegte = _sektioner_og_vaegte(workspace_dir)[1]
+    hits = list(hits or []) + _lexical_candidates(
+        msg, workspace_dir, limit=max(max_sections * 4, 12), vaegte=_vaegte,
+    )
 
     per_line_cap = max(200, max_chars // 2)
     out: list[str] = []
@@ -176,7 +280,9 @@ def select_memory_md_sections(
         hits,
         key=lambda h: (
             0.35 * float(h.get("score") or 0.0)
-            + 0.65 * _lexical_coverage(msg, str(h.get("section") or ""), str(h.get("text") or ""))
+            + 0.65 * _lexical_coverage(
+                msg, str(h.get("section") or ""), str(h.get("text") or ""), vaegte=_vaegte,
+            )
         ),
         reverse=True,
     )

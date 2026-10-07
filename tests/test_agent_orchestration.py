@@ -104,7 +104,8 @@ def test_state_lists_open_work_and_waits_for_this_owner_and_session_only(pr):
                   assignment_ids=[a], condition="all_terminal")
     out = ao.orchestrator_state(owner_user_id="bjorn", session_id="s1")
     assert "a1" in out and a in out and "queued" in out and "venter (all_terminal)" in out
-    assert "a2" not in out and "a3" not in out
+    # id'erne er tilfaeldig hex: tjek linjeformen "- <agent> /", ikke en delstreng
+    assert "- a2 /" not in out and "- a3 /" not in out and "- a1 / " in out
     assert ao.orchestrator_state(owner_user_id="bjorn", session_id="s9") == ""
     assert ao.orchestrator_state(owner_user_id="", session_id="s1") == ""
 

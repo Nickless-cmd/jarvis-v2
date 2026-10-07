@@ -229,8 +229,20 @@ def spawn_agent_task(
         "confidence": True,
         "blockers": True,
     }
+    # De kollektive lag (skills.md pr. rollenavn, tvaer-agent-observationer) har INGEN ejer- eller
+    # sessionsfilter; de maa derfor ikke ind i en ANDEN brugers agent (spec 7.2). Uden en kendt
+    # bruger i konteksten (legacy) er adfaerden uaendret.
+    _anden_bruger = False
+    try:
+        from core.identity.owner_resolver import owner_user_id as _platform_owner
+        _cu = str((context or {}).get("user_id") or "").strip()
+        _anden_bruger = bool(_cu) and _cu != str(_platform_owner() or "").strip()
+    except Exception:
+        logger.warning("kunne ikke afgoere om agentens ejer er platformens ejer", exc_info=True)
     # Layer 2 (Scout Memory): inject role's learned skills.md if present
     try:
+        if _anden_bruger:
+            raise LookupError("kollektivt lag springes over for en anden brugers agent")
         from core.services.agent_skill_library import get_skills
         skills_info = get_skills(role)
         if skills_info.get("exists") and skills_info.get("content"):
@@ -247,6 +259,8 @@ def spawn_agent_task(
 
     # Layer 3 (Scout Memory): inject relevant cross-agent observations
     try:
+        if _anden_bruger:
+            raise LookupError("kollektivt lag springes over for en anden brugers agent")
         from core.services.cross_agent_memory import cross_agent_recall_section
         cross_agent_text = cross_agent_recall_section(role=role, query=goal)
         if cross_agent_text:

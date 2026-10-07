@@ -86,6 +86,9 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
         tools = json.loads(str(agent.get("allowed_tools_json") or "[]"))
     except ValueError:
         tools = []
+    from core.runtime.db_agent_memory import recall
+    memory = recall(owner_user_id=a["owner_user_id"], agent_id=str(agent.get("agent_id") or ""),
+                    session_id=a["origin_session_id"])["text"]
     layer1 = DELEGATION_TEXT.format(assignment_id=a["assignment_id"])
     layer2 = str(agent.get("system_prompt") or "")
     layer3 = "\n".join([
@@ -97,6 +100,7 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
         f"Resultatformat (efter relevans): {', '.join(RESULT_FIELDS)}",
         f"Kontekst: {json.dumps(context, ensure_ascii=False)}",
         "",
+        *([memory, ""] if memory else []),
         f"Samtalen hidtil:\n{messages_text}",
         "",
         extra_instruction,

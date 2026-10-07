@@ -148,6 +148,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.services.agent_prompt_layers import ensure_prompt_tables
 
     ensure_prompt_tables(conn)
+    from core.runtime.db_agent_memory import ensure_memory_tables
+
+    ensure_memory_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -362,6 +365,10 @@ def commit_terminal_outcome(
     except BaseException:
         conn.rollback()
         raise
+    # Agentens egen erindring: deterministisk resume af DETTE assignment, efter committet. En fejl
+    # her registreres som hukommelsesfejl og aendrer aldrig udfaldet (§7.2).
+    from core.runtime.db_agent_memory import project_summary
+    project_summary(assignment_id)
     if fired:
         from core.runtime.db_agent_wait import materialize_pending_wakes
         try:

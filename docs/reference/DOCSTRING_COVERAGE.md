@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8567/16182 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8572/16190 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 8567/16182 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 754 | 1359 | 55% |
+| `core.runtime` | 759 | 1367 | 55% |
 | `core.services` | 5710 | 10991 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
@@ -42,7 +42,7 @@ Generated from source. 8567/16182 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2251)
+## Undocumented public functions (2252)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -336,11 +336,12 @@ Generated from source. 8567/16182 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L46)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L133)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L87)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L580)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L587)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
 - `core/runtime/db_agent_lease.py` :: `release` (L115)
+- `core/runtime/db_agent_memory.py` :: `ensure_memory_tables` (L39)
 - `core/runtime/db_agent_wait.py` :: `ensure_wait_tables` (L30)
 - `core/runtime/db_agent_wait.py` :: `get_contract` (L134)
 - `core/runtime/db_approval_bridge.py` :: `state` (L315)
@@ -619,15 +620,15 @@ Generated from source. 8567/16182 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1477)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1532)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1513)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1340)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1097)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1037)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1065)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1491)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1546)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1527)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1354)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1111)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1051)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1079)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1496)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1510)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)

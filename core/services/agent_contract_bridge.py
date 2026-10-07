@@ -31,7 +31,10 @@ def resolve_owner_and_session(context: dict[str, Any] | None) -> tuple[str, str]
 
 def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent: bool,
                    context: dict[str, Any] | None, budget_tokens: int = 0,
-                   max_turns: int = 0, result_contract: dict[str, Any] | None = None) -> dict[str, Any]:
+                   max_turns: int = 0, result_contract: dict[str, Any] | None = None,
+                   idempotency_key: str = "", request_digest: str = "",
+                   target: str = "runtime-container", operation: str = "dispatch",
+                   expected_result: str = "") -> dict[str, Any]:
     """Opret agentens første assignment. Kaster aldrig: dispatch må ikke dø af bindingen."""
     if persistent:
         return {"bound": False, "reason": "persistent"}
@@ -46,9 +49,10 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
             agent_id=agent_id, owner_user_id=owner, origin_session_id=session, goal=goal,
             parent_agent_id=parent_agent_id,
             parent_run_id=str((context or {}).get("parent_run_id") or ""),
-            expected_result=",".join(sorted((result_contract or {}).keys())),
-            budget={"tokens": budget_tokens, "max_turns": max_turns},
-            created_by=parent_agent_id, idempotency_key=agent_id,
+            expected_result=expected_result or ",".join(sorted((result_contract or {}).keys())),
+            budget={"tokens": budget_tokens, "max_turns": max_turns}, target=target,
+            created_by=parent_agent_id, operation=operation,
+            idempotency_key=idempotency_key or agent_id, request_digest=request_digest,
         )
         return {"bound": True, **acc}
     except Exception as exc:

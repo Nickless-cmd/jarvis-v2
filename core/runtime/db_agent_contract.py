@@ -203,6 +203,7 @@ def accept_assignment(
     created_by: str = "",
     operation: str = "dispatch",
     idempotency_key: str = "",
+    request_digest: str = "",
 ) -> dict[str, Any]:
     """Accepter ét assignment atomisk sammen med dets første run.
 
@@ -214,8 +215,11 @@ def accept_assignment(
     session = _require(origin_session_id, "origin_session_id")
     if not (goal or "").strip():
         raise ContractError("INVALID_SCOPE", "goal mangler")
-    digest = _digest(agent_id, goal, parent_agent_id, parent_run_id, input_refs or [],
-                     expected_result, target, deadline_at, budget or {})
+    # Kalderen kan angive sin egen digest (service-laget regner den paa ANMODNINGEN,
+    # fordi agent_id foedes foerst efter idempotens-opslaget).
+    digest = request_digest or _digest(
+        agent_id, goal, parent_agent_id, parent_run_id, input_refs or [],
+        expected_result, target, deadline_at, budget or {})
     conn = _conn()
     conn.execute("BEGIN IMMEDIATE")
     try:
@@ -532,3 +536,48 @@ def claim_pending_results(*, owner_user_id: str, origin_session_id: str) -> list
         d["delivery_status"] = "claimed_by_model_step"
         out.append(d)
     return out
+
+
+# --- F1: opslag til service-laget --------------------------------------------
+
+def find_assignment_by_key(*, owner_user_id: str, origin_session_id: str, operation: str,
+                           idempotency_key: str) -> dict[str, Any] | None:
+    """Findes der allerede et assignment for netop denne ejer/session/operation/noegle?"""
+    if not idempotency_key:
+        return None
+    return _row(_conn().execute(
+        "SELECT * FROM agent_assignments WHERE owner_user_id=? AND origin_session_id=? "
+        "AND operation=? AND idempotency_key=?",
+        (owner_user_id, origin_session_id, operation, idempotency_key)).fetchone())
+
+
+def open_assignment_for_agent(agent_id: str) -> dict[str, Any] | None:
+    return _row(_conn().execute(
+        "SELECT * FROM agent_assignments WHERE agent_id=? AND status IN "
+        "('queued','active','waiting') ORDER BY created_at DESC LIMIT 1", (agent_id,)).fetchone())
+
+
+def count_open_assignments(*, owner_user_id: str = "", parent_agent_id: str = "") -> int:
+    """Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent."""
+    q = "SELECT COUNT(*) FROM agent_assignments WHERE status IN ('queued','active','waiting')"
+    args: list[Any] = []
+    if owner_user_id:
+        q += " AND owner_user_id=?"
+        args.append(owner_user_id)
+    if parent_agent_id:
+        q += " AND parent_agent_id=?"
+        args.append(parent_agent_id)
+    return int(_conn().execute(q, args).fetchone()[0])
+
+
+def set_lifecycle(*, agent_id: str, owner_user_id: str, lifecycle_status: str) -> bool:
+    """Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren,
+    og `closed` kan aldrig aabnes igen af et almindeligt kald (§4, §12.2)."""
+    if lifecycle_status not in ("available", "active", "suspended", "closing", "closed"):
+        raise ContractError("INVALID_TRANSITION", lifecycle_status)
+    conn = _conn()
+    cur = conn.execute(
+        "UPDATE agent_registry SET lifecycle_status=? WHERE agent_id=? AND owner_user_id=? "
+        "AND lifecycle_status != 'closed'", (lifecycle_status, agent_id, owner_user_id))
+    conn.commit()
+    return cur.rowcount == 1

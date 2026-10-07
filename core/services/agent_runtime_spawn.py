@@ -154,6 +154,7 @@ def spawn_agent_task(
     provider: str = "",
     respekter_model: bool = False,
     model: str = "",
+    contract: dict[str, object] | None = None,
 ) -> dict[str, object]:
     _check_spawn_limits()
     if max_turns <= 0:
@@ -378,7 +379,7 @@ def spawn_agent_task(
     from core.services.agent_contract_bridge import bind_new_agent
     bind_new_agent(agent_id=agent_id, parent_agent_id=str(parent_agent_id or ""), goal=goal,
                    persistent=persistent, context=context, budget_tokens=budget_tokens,
-                   max_turns=max_turns, result_contract=result_contract)
+                   max_turns=max_turns, result_contract=result_contract, **(contract or {}))
     # Per-agent transcript: metadata sidecar + lifecycle event + sidechain
     try:
         from core.services.agent_transcript import write_meta, write_lifecycle, write_sidechain

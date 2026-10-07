@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_transcript.py`
+_Per-agent JSONL transcript persistence._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_agent_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L32) |
+| function | `_ensure_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L36) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_transcript.py#L42) |
+| function | `write_event` | `(agent_id, entry)` | Append one event-line to the agent's transcript.jsonl. | [src](../../../core/services/agent_transcript.py#L50) |
+| function | `write_meta` | `(agent_id, meta)` | Write (or overwrite) the agent's metadata sidecar. | [src](../../../core/services/agent_transcript.py#L67) |
+| function | `write_lifecycle` | `(agent_id, event, *, note=…)` | Convenience: write a lifecycle event (spawned/started/completed/failed/...). | [src](../../../core/services/agent_transcript.py#L75) |
+| function | `write_prompt` | `(agent_id, prompt, *, run_id=…)` | Write the prompt sent to the model. | [src](../../../core/services/agent_transcript.py#L83) |
+| function | `write_result` | `(agent_id, text, *, run_id=…, input_tokens=…, output_tokens=…, cost_usd=…)` | Write the model's result. | [src](../../../core/services/agent_transcript.py#L92) |
+| function | `write_tool_call` | `(agent_id, tool_call_id, name, arguments, *, run_id=…)` | Write a tool call the model requested. | [src](../../../core/services/agent_transcript.py#L106) |
+| function | `write_tool_result` | `(agent_id, tool_call_id, content, *, run_id=…)` | Write the result of a tool execution. | [src](../../../core/services/agent_transcript.py#L118) |
+| function | `write_failure` | `(agent_id, error, *, run_id=…)` | Write a failure/error event. | [src](../../../core/services/agent_transcript.py#L129) |
+| function | `load_transcript` | `(agent_id)` | Load ALL lines from transcript.jsonl as a list of dicts. | [src](../../../core/services/agent_transcript.py#L142) |
+| function | `load_meta` | `(agent_id)` | Load metadata sidecar, or None if missing. | [src](../../../core/services/agent_transcript.py#L151) |
+| function | `load_events_by_kind` | `(agent_id, kind)` | Return only events of a specific kind (e.g. ``"tool_call"``). | [src](../../../core/services/agent_transcript.py#L160) |
+| function | `list_transcripts` | `(limit=…)` | List available agent transcripts with metadata, newest-first. | [src](../../../core/services/agent_transcript.py#L169) |
+| function | `prune_old_transcripts` | `(max_age_days=…)` | Remove transcript directories older than *max_age_days*. | [src](../../../core/services/agent_transcript.py#L193) |
+| function | `write_sidechain` | `(agent_id, role, goal)` | Write a human-readable sidechain.md for quick inspection. | [src](../../../core/services/agent_transcript.py#L215) |
+| function | `resume_from_transcript` | `(agent_id)` | Build a prompt-context dict from the transcript for agent resume. | [src](../../../core/services/agent_transcript.py#L240) |
+| function | `list_agents` | `(limit=…)` | Seneste agenter med transkript, nyeste foerst. | [src](../../../core/services/agent_transcript.py#L303) |
+| function | `read_events` | `(agent_id)` | Alle events for én agent. Tom liste hvis intet transkript. | [src](../../../core/services/agent_transcript.py#L326) |
+| function | `summarize` | `(agent_id, *, max_arg_chars=…, max_result_chars=…)` | Hvad gjorde agenten, og hvad kom der ud af det? | [src](../../../core/services/agent_transcript.py#L343) |
+
 ## `core/services/agent_wake_intentions.py`
 _Varig fortsaettelsesintention for en parent der venter paa agenter (B2, §6)._
 
@@ -560,23 +587,4 @@ _Automation DSL — declarative triggers → actions._
 | function | `tick` | `(_seconds=…)` | Heartbeat hook — expire due automations, no other side-effects here. | [src](../../../core/services/automation_dsl.py#L222) |
 | function | `build_automation_dsl_surface` | `()` | — | [src](../../../core/services/automation_dsl.py#L228) |
 | function | `_emit_automation_dsl_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/automation_dsl.py#L257) |
-
-## `core/services/autonomous_goals.py`
-_Autonomous goals — persistent top-level goals with decomposition._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm_title` | `(title)` | Normalisér til dedup: trim, lowercase, kollaps whitespace, cap 200. | [src](../../../core/services/autonomous_goals.py#L35) |
-| function | `_load` | `()` | — | [src](../../../core/services/autonomous_goals.py#L40) |
-| function | `_save` | `(goals)` | — | [src](../../../core/services/autonomous_goals.py#L47) |
-| function | `_now` | `()` | — | [src](../../../core/services/autonomous_goals.py#L51) |
-| function | `create_goal` | `(*, title, description=…, parent_id=…, priority=…, source=…)` | Create a new goal. Returns the created entry. | [src](../../../core/services/autonomous_goals.py#L55) |
-| function | `update_goal_status` | `(goal_id, new_status)` | — | [src](../../../core/services/autonomous_goals.py#L108) |
-| function | `list_goals` | `(*, status=…, priority=…, parent_id=…, limit=…)` | List goals matching filters. parent_id='any' = no filter, None = top-level only. | [src](../../../core/services/autonomous_goals.py#L129) |
-| function | `decompose_goal` | `(goal_id)` | Use cheap-lane LLM to split a goal into 3-5 concrete sub-goals. | [src](../../../core/services/autonomous_goals.py#L150) |
-| function | `goals_prompt_section` | `()` | Awareness section listing active high-priority goals. | [src](../../../core/services/autonomous_goals.py#L214) |
-| function | `_exec_goal_create` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L231) |
-| function | `_exec_goal_list` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L241) |
-| function | `_exec_goal_decompose` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L251) |
-| function | `_exec_goal_update_status` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L255) |
 

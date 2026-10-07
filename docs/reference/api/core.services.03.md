@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_goals.py`
+_Autonomous goals — persistent top-level goals with decomposition._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm_title` | `(title)` | Normalisér til dedup: trim, lowercase, kollaps whitespace, cap 200. | [src](../../../core/services/autonomous_goals.py#L35) |
+| function | `_load` | `()` | — | [src](../../../core/services/autonomous_goals.py#L40) |
+| function | `_save` | `(goals)` | — | [src](../../../core/services/autonomous_goals.py#L47) |
+| function | `_now` | `()` | — | [src](../../../core/services/autonomous_goals.py#L51) |
+| function | `create_goal` | `(*, title, description=…, parent_id=…, priority=…, source=…)` | Create a new goal. Returns the created entry. | [src](../../../core/services/autonomous_goals.py#L55) |
+| function | `update_goal_status` | `(goal_id, new_status)` | — | [src](../../../core/services/autonomous_goals.py#L108) |
+| function | `list_goals` | `(*, status=…, priority=…, parent_id=…, limit=…)` | List goals matching filters. parent_id='any' = no filter, None = top-level only. | [src](../../../core/services/autonomous_goals.py#L129) |
+| function | `decompose_goal` | `(goal_id)` | Use cheap-lane LLM to split a goal into 3-5 concrete sub-goals. | [src](../../../core/services/autonomous_goals.py#L150) |
+| function | `goals_prompt_section` | `()` | Awareness section listing active high-priority goals. | [src](../../../core/services/autonomous_goals.py#L214) |
+| function | `_exec_goal_create` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L231) |
+| function | `_exec_goal_list` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L241) |
+| function | `_exec_goal_decompose` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L251) |
+| function | `_exec_goal_update_status` | `(args)` | — | [src](../../../core/services/autonomous_goals.py#L255) |
+
 ## `core/services/autonomous_lease.py`
 _visible↔autonomous mutual-exclusion lease (marker-default)._
 
@@ -571,16 +590,4 @@ _Hygiejne for runtime-contract-kandidater — stabil nøgle + flygtigheds-filter
 | function | `candidate_domain_tokens` | `(value)` | Split en fri-tekst-streng i rene tokens (lowercase, alfanumerisk). | [src](../../../core/services/candidate_hygiene.py#L62) |
 | function | `normalize_candidate_domain` | `(value, *, max_tokens=…)` | Fold et fri-tekst-domæne til en ren, stabil nøgle-del. | [src](../../../core/services/candidate_hygiene.py#L67) |
 | function | `is_transient_line` | `(value)` | True når en linje beskriver en flygtig hændelse frem for varig viden. | [src](../../../core/services/candidate_hygiene.py#L139) |
-
-## `core/services/candidate_review_digest.py`
-_Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_last_tick` | `()` | Læs sidste udsendelse fra disk — ikke fra en modul-global. | [src](../../../core/services/candidate_review_digest.py#L53) |
-| function | `_save_last_tick` | `(now)` | — | [src](../../../core/services/candidate_review_digest.py#L70) |
-| function | `build_candidate_review_digest` | `()` | Tæl de review-bare kandidater pr. type og find den ældste. Read-only, self-safe. | [src](../../../core/services/candidate_review_digest.py#L74) |
-| function | `format_candidate_review_digest` | `(digest)` | Kort, ærlig tekst. Kun tal der faktisk står i digest'en. | [src](../../../core/services/candidate_review_digest.py#L129) |
-| function | `tick_candidate_review_digest` | `()` | Send ugentlig digest hvis køen er stor nok. Self-throttle, self-safe. | [src](../../../core/services/candidate_review_digest.py#L146) |
-| function | `build_candidate_review_digest_surface` | `()` | State til Mission Control / health-visninger. | [src](../../../core/services/candidate_review_digest.py#L188) |
 

@@ -199,9 +199,13 @@ def test_kort_koersel_siger_ikke_til(monkeypatch):
     from core.services import background_resume as br
     sendt = []
     monkeypatch.setattr(br, "_LANG_KOERSEL_S", 30.0)
-    monkeypatch.setattr("core.services.ntfy_gateway.is_configured", lambda: True)
-    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
-                        lambda *a, **k: sendt.append((a, k)))
+    # SOEMMEN FLYTTEDE 7/10-2026 (`b5c479d05`): `background_resume` kalder nu
+    # `alarm_ud.send_alert` i stedet for `ntfy_gateway` direkte. Den KORTE sag
+    # bestod stadig — den paastaar at der IKKE sendes noget, og det er sandt
+    # uanset hvilken soem man lytter paa. En test der kun kan bekraefte
+    # fravaer, kan ikke se at den lytter det forkerte sted.
+    monkeypatch.setattr("core.services.alarm_ud.send_alert",
+                        lambda **k: sendt.append(k))
     br._sig_til_hvis_lang({"startet": _t.time() - 3.0}, "faerdig")
     assert sendt == []
 
@@ -211,13 +215,16 @@ def test_lang_koersel_siger_til(monkeypatch):
 
     from core.services import background_resume as br
     sendt = []
-    monkeypatch.setattr("core.services.ntfy_gateway.is_configured", lambda: True)
-    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
-                        lambda *a, **k: sendt.append((a, k)))
+    # SOEMMEN FLYTTEDE 7/10-2026 (`b5c479d05`) — se kommentaren i den korte sag.
+    monkeypatch.setattr("core.services.alarm_ud.send_alert",
+                        lambda **k: sendt.append(k))
     br._sig_til_hvis_lang({"startet": _t.time() - 95.0}, "tests bestod")
     assert len(sendt) == 1
-    assert "95 s" in sendt[0][0][0]
-    assert "tests bestod" in sendt[0][0][0]
+    # Beskeden er nu et NAVNGIVET felt (`tekst`), ikke et positionelt argument.
+    # Den gamle paastand laeste `sendt[0][0][0]` — foerste positionelle arg —
+    # og det er praecis den slags der braekker tavst naar en soem flytter.
+    assert "95 s" in sendt[0]["tekst"], sendt[0]
+    assert "tests bestod" in sendt[0]["tekst"], sendt[0]
 
 
 def test_uden_starttid_siger_den_ikke_til(monkeypatch):

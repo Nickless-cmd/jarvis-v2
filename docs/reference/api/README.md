@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16289 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16309 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -26,9 +26,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16289 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_fts`
-- [`core.runtime.02`](core.runtime.02.md) — `db_gate_verdicts` … `db_visible`
-- [`core.runtime.03`](core.runtime.03.md) — `db_world_self_truth` … `ws_auth`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_emotional_memory`
+- [`core.runtime.02`](core.runtime.02.md) — `db_fts` … `db_view_requests`
+- [`core.runtime.03`](core.runtime.03.md) — `db_visible` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_self_evaluation`
 - [`core.services.02`](core.services.02.md) — `agent_skill_distiller` … `attention_blink_test`
 - [`core.services.03`](core.services.03.md) — `attention_budget` … `bridge_presence`

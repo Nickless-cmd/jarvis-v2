@@ -154,6 +154,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.services.agent_worktrees import ensure_worktree_tables
 
     ensure_worktree_tables(conn)
+    from core.runtime.db_agent_approvals import ensure_approval_tables
+
+    ensure_approval_tables(conn)
 
 
 _ENSURED: set[str] = set()

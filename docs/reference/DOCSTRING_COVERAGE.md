@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8604/16289 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8614/16309 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 8604/16289 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 760 | 1368 | 55% |
+| `core.runtime` | 770 | 1388 | 55% |
 | `core.services` | 5740 | 11085 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
@@ -42,7 +42,7 @@ Generated from source. 8604/16289 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2283)
+## Undocumented public functions (2288)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -332,11 +332,16 @@ Generated from source. 8604/16289 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
+- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L338)
+- `core/runtime/db_agent_approvals.py` :: `ensure_approval_tables` (L46)
+- `core/runtime/db_agent_approvals.py` :: `get` (L135)
+- `core/runtime/db_agent_approvals.py` :: `get_for_owner` (L139)
+- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L309)
 - `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L139)
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L598)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L601)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)

@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_fts.py`
+_FTS5 full-text search over session summaries and chat messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fts5_available` | `(conn)` | — | [src](../../../core/runtime/db_fts.py#L34) |
+| function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L43) |
+| function | `ensure_fts_tables` | `(conn)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L50) |
+| function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L96) |
+| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
+| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L136) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L196) |
+
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
 
@@ -935,17 +949,4 @@ _Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._
 | function | `hent` | `(request_id)` | — | [src](../../../core/runtime/db_view_requests.py#L73) |
 | function | `svar` | `(request_id, resultat)` | Desk svarer. Kun én gang: et andet vindue må ikke overskrive svaret. | [src](../../../core/runtime/db_view_requests.py#L80) |
 | function | `vent_paa_svar` | `(request_id, *, frist_s, interval_s=…)` | — | [src](../../../core/runtime/db_view_requests.py#L94) |
-
-## `core/runtime/db_visible.py`
-_Persistence for the visible-lane projection tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_visible_tables` | `(conn)` | — | [src](../../../core/runtime/db_visible.py#L15) |
-| function | `_run_user_scope` | `(user_id, include_unassigned)` | WHERE-fragment + parametre for bruger-scoping af runs. | [src](../../../core/runtime/db_visible.py#L86) |
-| function | `recent_visible_runs` | `(limit=…, *, user_id=…, include_unassigned=…, include_running=…)` | De seneste runs. UDEN `user_id` er der intet filter. | [src](../../../core/runtime/db_visible.py#L106) |
-| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L168) |
-| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L212) |
-| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L252) |
-| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L360) |
 

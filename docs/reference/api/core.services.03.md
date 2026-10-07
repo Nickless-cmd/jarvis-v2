@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/attachment_blocks.py`
+_Vedhæftninger som blokke på brugerens besked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_attachment_blocks` | `(metas)` | Lav content_json-blokke for en brugerbeskeds vedhæftninger. | [src](../../../core/services/attachment_blocks.py#L30) |
+| function | `user_message_content_json` | `(metas)` | Serialisér blokkene til det felt `append_chat_message` tager. | [src](../../../core/services/attachment_blocks.py#L59) |
+| function | `image_ids_on_message` | `(content_json)` | attachment_id'er for BILLEDER i en besked. Tom liste ved alt andet. | [src](../../../core/services/attachment_blocks.py#L88) |
+| function | `image_content_blocks` | `(content_json, *, limit=…)` | `image_url`-blokke klar til prompten. Tom liste hvis intet kan læses. | [src](../../../core/services/attachment_blocks.py#L104) |
+
 ## `core/services/attachment_service.py`
 _attachment_service — download, store, and read channel attachments._
 
@@ -633,10 +643,4 @@ _Boundary Awareness — "Where do I end?"_
 | function | `_trim_lines` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L392) |
 | function | `_safe_int` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L396) |
 | function | `_merge_unique` | `(primary, secondary)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L403) |
-
-## `core/services/bounded_workspace_write_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
 

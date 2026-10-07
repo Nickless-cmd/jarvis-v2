@@ -19,14 +19,15 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: De syv navne spec'en kraever i Jarvis' standardflade naar motoren er aktiv.
+#: De navne der er fast i Jarvis' standardflade naar motoren er aktiv (spec'ens syv + integration, F4d).
 CONTRACT_TOOL_NAMES: tuple[str, ...] = (
     "dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
-    "wait_agents", "interrupt_agent", "close_agent",
+    "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
 )
 #: Dem der KUN findes med kontrakten (de to andre har en aeldre udgave).
 _NEW_ONLY: frozenset[str] = frozenset(
-    {"dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent"})
+    {"dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
+     "integrate_agent_work"})
 
 
 def _fn(name: str, description: str, properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -87,6 +88,12 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     _fn("close_agent",
         "Gracefully close an agent identity: no new tasks; accepted work finishes.",
         {"agent_id": _ID}, ["agent_id"]),
+    _fn("integrate_agent_work",
+        "Ask for a code agent's finished work to be integrated. This ONLY creates an approval request bound to the "
+        "exact diff; you can NOT approve it - a human decides in Desk. On approval the work is merged onto a NEW "
+        "branch (integrate/<assignment>); no one's working tree is touched and the main branch is never moved.",
+        {"assignment_id": {"type": "string", "description": "The assignment_id of the finished code agent."}},
+        ["assignment_id"]),
 ]
 
 
@@ -207,3 +214,9 @@ def _exec_list_agents(args: dict[str, Any]) -> dict[str, Any]:
     if isinstance(old, dict) and old.get("status") == "ok":
         out["legacy_agents"] = old.get("agents", [])
     return out
+
+
+def _exec_integrate_agent_work(args: dict[str, Any]) -> dict[str, Any]:
+    owner, session, _ = _principal(args)
+    return _svc().request_integration(owner_user_id=owner, origin_session_id=session,
+                                      assignment_id=str(args.get("assignment_id") or "").strip())

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_boot_reconciler.py`
+_Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_container_start` | `(nu=…)` | Hvornaar startede DENNE container? ``None`` naar det ikke kan afgoeres. | [src](../../../core/services/session_boot_reconciler.py#L48) |
+| function | `_uden_omkostning_graense` | `(nu=…)` | Graensen for den tredje gren — se `_UDEN_OMKOSTNING_MINUTTER`. | [src](../../../core/services/session_boot_reconciler.py#L81) |
+| function | `_drift_graense` | `(nu=…)` | Hvor gammel skal en `running`-raekke vaere, foer den er drift? | [src](../../../core/services/session_boot_reconciler.py#L87) |
+| function | `_observe` | `(payload)` | Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort, | [src](../../../core/services/session_boot_reconciler.py#L114) |
+| function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L128) |
+| function | `_ryd_visible_drift` | `(enforced)` | `visible_runs`-rækker der står `running` og som INTET kender. | [src](../../../core/services/session_boot_reconciler.py#L221) |
+| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L364) |
+
 ## `core/services/session_context_resolve.py`
 _Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
 
@@ -528,17 +541,4 @@ _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-0
 | function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L323) |
 | function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L341) |
 | function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L465) |
-
-## `core/services/skill_autosurface.py`
-_Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_store` | `()` | — | [src](../../../core/services/skill_autosurface.py#L30) |
-| function | `_write_store` | `(data)` | — | [src](../../../core/services/skill_autosurface.py#L46) |
-| function | `_emit_governance_event` | `(kind, payload=…)` | Self-safe eventbus emission — observability must never break approval flow. | [src](../../../core/services/skill_autosurface.py#L54) |
-| function | `list_approved` | `()` | Owner-approved skill names eligible for auto-surfacing. Empty on a fresh/corrupt store. | [src](../../../core/services/skill_autosurface.py#L63) |
-| function | `approve_skill` | `(name, *, role)` | Owner-only. Validates against installed skills (skill_engine.skill_exists). | [src](../../../core/services/skill_autosurface.py#L68) |
-| function | `revoke_skill` | `(name, *, role)` | Owner-only. Removes `name` from the allowlist if present. | [src](../../../core/services/skill_autosurface.py#L91) |
-| function | `filter_to_approved` | `(names)` | Narrow `names` to the owner-approved allowlist, gated by the master flag. | [src](../../../core/services/skill_autosurface.py#L106) |
 

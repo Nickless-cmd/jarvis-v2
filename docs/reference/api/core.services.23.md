@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/secret_redaction.py`
+_Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `contains_secret` | `(text)` | Ser det ud til at indeholde en hemmelighed? Ren, ingen mutation. | [src](../../../core/services/secret_redaction.py#L70) |
+| function | `redact` | `(text)` | Maskér hemmeligheder. Bevarer alt andet tegn for tegn. | [src](../../../core/services/secret_redaction.py#L77) |
+| function | `read_for_prompt` | `(path)` | Læs en workspace-fil TIL PROMPTEN, med hemmeligheder maskeret. | [src](../../../core/services/secret_redaction.py#L92) |
+
 ## `core/services/security_guard.py`
 _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 
@@ -795,17 +804,4 @@ _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 | function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
 | function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
 | function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
-
-## `core/services/session_boot_reconciler.py`
-_Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_container_start` | `(nu=…)` | Hvornaar startede DENNE container? ``None`` naar det ikke kan afgoeres. | [src](../../../core/services/session_boot_reconciler.py#L48) |
-| function | `_uden_omkostning_graense` | `(nu=…)` | Graensen for den tredje gren — se `_UDEN_OMKOSTNING_MINUTTER`. | [src](../../../core/services/session_boot_reconciler.py#L81) |
-| function | `_drift_graense` | `(nu=…)` | Hvor gammel skal en `running`-raekke vaere, foer den er drift? | [src](../../../core/services/session_boot_reconciler.py#L87) |
-| function | `_observe` | `(payload)` | Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort, | [src](../../../core/services/session_boot_reconciler.py#L114) |
-| function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L128) |
-| function | `_ryd_visible_drift` | `(enforced)` | `visible_runs`-rækker der står `running` og som INTET kender. | [src](../../../core/services/session_boot_reconciler.py#L221) |
-| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L364) |
 

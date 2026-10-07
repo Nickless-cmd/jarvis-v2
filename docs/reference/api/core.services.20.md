@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_runtime.py`
+_Projektions-runtime — rene, versionerede folder over session-ledgeren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Projection` | `` | — | [src](../../../core/services/projection_runtime.py#L52) |
+| function | `register` | `(navn, *, version, fold, start=…)` | Registrér en projektion. Samme navn to gange er en fejl, ikke en erstatning. | [src](../../../core/services/projection_runtime.py#L64) |
+| function | `registered` | `()` | — | [src](../../../core/services/projection_runtime.py#L80) |
+| function | `_unregister_all_for_tests` | `()` | — | [src](../../../core/services/projection_runtime.py#L84) |
+| function | `_ensure_checkpoint_table` | `(conn)` | — | [src](../../../core/services/projection_runtime.py#L90) |
+| function | `checkpoint` | `(session_id, navn)` | Hvor langt er denne projektion foldet for denne session? | [src](../../../core/services/projection_runtime.py#L105) |
+| function | `_gem_checkpoint` | `(session_id, navn, version, as_of_seq)` | — | [src](../../../core/services/projection_runtime.py#L126) |
+| function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
+| function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
+| function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
+
 ## `core/services/projection_tool_router.py`
 _Projektion: `tool_router_decisions` foldet fra sessionens hændelser._
 
@@ -638,18 +654,4 @@ _Reasoning detectors for the reasoning-interceptor._
 | function | `_drift_signal` | `(ctx)` | INDEPENDENT drift signal 0..1 from the Central's OWN affect/valence nerves + an | [src](../../../core/services/reasoning_detectors.py#L131) |
 | function | `drift_on_reasoning` | `(reasoning_text, ctx)` | Affective drift (overconfidence). Grounding = the Central's own affect nerves + claim streak | [src](../../../core/services/reasoning_detectors.py#L151) |
 | function | `tone_on_reasoning` | `(reasoning_text, ctx)` | Epistemic tone — a guess stated as fact. ANCHORED (invariant 3): runs ONLY if a truth/drift | [src](../../../core/services/reasoning_detectors.py#L169) |
-
-## `core/services/reasoning_escalation.py`
-_Reasoning escalation — compose tier + gate signals into a council recommendation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_safe_tier` | `(message)` | — | [src](../../../core/services/reasoning_escalation.py#L38) |
-| function | `_safe_gate` | `()` | — | [src](../../../core/services/reasoning_escalation.py#L47) |
-| function | `_recommend_path` | `(tier, failed, unverified, signals)` | Pick the escalation path that fits the situation. | [src](../../../core/services/reasoning_escalation.py#L62) |
-| function | `evaluate_escalation` | `(message=…)` | Compose tier + gate into an escalation recommendation. | [src](../../../core/services/reasoning_escalation.py#L120) |
-| function | `escalation_section` | `(message=…)` | Format escalation recommendation as a prompt-awareness section, or None. | [src](../../../core/services/reasoning_escalation.py#L176) |
-| function | `_exec_recommend_escalation` | `(args)` | — | [src](../../../core/services/reasoning_escalation.py#L202) |
-| function | `build_reasoning_escalation_surface` | `()` | — | [src](../../../core/services/reasoning_escalation.py#L232) |
-| function | `_emit_escalation_event` | `(path, tier)` | — | [src](../../../core/services/reasoning_escalation.py#L241) |
 

@@ -2,6 +2,12 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bounded_workspace_write_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
+
 ## `core/services/brain_edge_worker.py`
 _Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
 
@@ -595,12 +601,4 @@ _Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-mot
 | method | `Central.self_diagnose` | `(self)` | Meta-helbreds-check: virker Centralen SELV? Probe decide+observe, rapportér åbne | [src](../../../core/services/central_core.py#L240) |
 | method | `Central.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/central_core.py#L271) |
 | function | `central` | `()` | — | [src](../../../core/services/central_core.py#L281) |
-
-## `core/services/central_correlate.py`
-_Cross-cluster korrelation — saml ALT hvad der skete for ét run_id på tværs af ALLE clusters_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `correlate` | `(run_id)` | Saml ét run_id's fulde rejse på tværs af clusters. break_point = hvor filmen knækker | [src](../../../core/services/central_correlate.py#L14) |
-| function | `recent_broken_runs` | `(*, window=…)` | Nylige run_ids hvor filmen knækkede (RED/error) → til TODO/debugging. Nyeste pr. run. | [src](../../../core/services/central_correlate.py#L50) |
 

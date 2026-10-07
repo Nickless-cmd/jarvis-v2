@@ -2,6 +2,41 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_runtime_spawn.py`
+_Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L54) |
+| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L79) |
+| function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L112) |
+| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…, contract=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L137) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L450) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L459) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L472) |
+| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L479) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L540) |
+| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L564) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L577) |
+| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L602) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1069) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1097) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1125) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1129) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1167) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1372) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1416) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1425) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1464) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1494) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1509) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1528) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1545) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1564) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1586) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1626) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1643) |
+
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
 
@@ -227,6 +262,13 @@ _Git-operationer for agent-worktrees (agent-contract-v1 C5a, spec 8.1)._
 | function | `tree_size` | `(path)` | Samlet filstoerrelse (bytes) uden at foelge symlinks ud af traeet. | [src](../../../core/services/agent_worktree_git.py#L151) |
 | function | `path_is_inside` | `(path, root)` | — | [src](../../../core/services/agent_worktree_git.py#L163) |
 | function | `ensure_dir` | `(path)` | — | [src](../../../core/services/agent_worktree_git.py#L168) |
+| function | `current_head` | `(repo)` | — | [src](../../../core/services/agent_worktree_git.py#L180) |
+| function | `ref_exists` | `(repo, ref)` | — | [src](../../../core/services/agent_worktree_git.py#L184) |
+| function | `commit_worktree_tree` | `(gitdir, path, base_commit, message)` | Skriv agentens samlede arbejdstilstand som ÉT commit ovenpaa basen (server-side, med det gemte gitdir). | [src](../../../core/services/agent_worktree_git.py#L188) |
+| function | `merge_tree` | `(repo, ours, theirs)` | ``git merge-tree --write-tree``: (tree-oid, []) ved ren fletning, (None, konfliktfiler) ved konflikt. | [src](../../../core/services/agent_worktree_git.py#L197) |
+| function | `commit_tree` | `(repo, tree, parents, message)` | — | [src](../../../core/services/agent_worktree_git.py#L210) |
+| function | `create_ref` | `(repo, ref, oid)` | Opret ``ref`` -> ``oid`` KUN hvis den ikke findes (old-value = nul): en eksisterende gren overskrives aldrig. | [src](../../../core/services/agent_worktree_git.py#L217) |
+| function | `set_ref` | `(repo, ref, new, old)` | — | [src](../../../core/services/agent_worktree_git.py#L222) |
 
 ## `core/services/agent_worktrees.py`
 _Worktrees til skrivende kodeagenter (agent-contract-v1 C5a, spec 8.1 og 12.3)._
@@ -606,14 +648,4 @@ _Associative Recall — dormant memories triggered by context._
 | function | `_build_session_context_text` | `(session_context)` | Build a context description string for session-level scoring. | [src](../../../core/services/associative_recall.py#L629) |
 | function | `build_associative_recall_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/associative_recall.py#L641) |
 | function | `tick_associative_recall` | `()` | Heartbeat daemon tick — decay + periodic candidate scan. | [src](../../../core/services/associative_recall.py#L664) |
-
-## `core/services/attachment_blocks.py`
-_Vedhæftninger som blokke på brugerens besked._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_attachment_blocks` | `(metas)` | Lav content_json-blokke for en brugerbeskeds vedhæftninger. | [src](../../../core/services/attachment_blocks.py#L30) |
-| function | `user_message_content_json` | `(metas)` | Serialisér blokkene til det felt `append_chat_message` tager. | [src](../../../core/services/attachment_blocks.py#L59) |
-| function | `image_ids_on_message` | `(content_json)` | attachment_id'er for BILLEDER i en besked. Tom liste ved alt andet. | [src](../../../core/services/attachment_blocks.py#L88) |
-| function | `image_content_blocks` | `(content_json, *, limit=…)` | `image_url`-blokke klar til prompten. Tom liste hvis intet kan læses. | [src](../../../core/services/attachment_blocks.py#L104) |
 

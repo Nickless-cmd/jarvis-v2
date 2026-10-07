@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/goal_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_goal_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/goal_signal_tracking.py#L23) |
+| function | `refresh_runtime_goal_signal_statuses` | `()` | — | [src](../../../core/services/goal_signal_tracking.py#L64) |
+| function | `build_runtime_goal_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/goal_signal_tracking.py#L101) |
+| function | `_extract_goal_candidates` | `(*, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L126) |
+| function | `_goal_from_active_focus` | `(focus, *, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L152) |
+| function | `_persist_goal_signals` | `(*, goals, session_id, run_id)` | — | [src](../../../core/services/goal_signal_tracking.py#L225) |
+| function | `_apply_completion_signals` | `(domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L292) |
+| function | `_supersede_replaced_goal_signals` | `(persisted_item, *, updated_at)` | — | [src](../../../core/services/goal_signal_tracking.py#L347) |
+| function | `_completed_goal_domains` | `(message)` | — | [src](../../../core/services/goal_signal_tracking.py#L377) |
+| function | `_blocking_state_for_domain` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L385) |
+| function | `_has_completed_goal_history` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L430) |
+| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L439) |
+| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L463) |
+| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L472) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L481) |
+| function | `_message_domain_key` | `(text)` | — | [src](../../../core/services/goal_signal_tracking.py#L485) |
+| function | `_goal_title` | `(domain_key, fallback)` | — | [src](../../../core/services/goal_signal_tracking.py#L494) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
+| function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L511) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L515) |
+
 ## `core/services/good_enough_gate.py`
 _Good-enough gate — completion criterion for autonomous runs._
 
@@ -559,19 +584,4 @@ _Identity mutation log — full audit trail for Tier 3 auto-mutations._
 | function | `_exec_list_identity_mutations` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L230) |
 | function | `_exec_rollback_identity_mutation` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L240) |
 | function | `_exec_identity_mutation_status` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L244) |
-
-## `core/services/identity_sketch.py`
-_Persistent Identity Sketch — dynamic "who am I right now" document._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_identity_sketch` | `()` | Read current sketch from state file. Returns {} if never written. | [src](../../../core/services/identity_sketch.py#L48) |
-| function | `identity_sketch_surface` | `()` | Mission Control surface — current sketch status. | [src](../../../core/services/identity_sketch.py#L53) |
-| function | `update_identity_sketch` | `(trigger=…)` | Generate fresh sketch from live signals and persist it. | [src](../../../core/services/identity_sketch.py#L72) |
-| function | `_gather_signals` | `()` | Collect live signals for sketch generation. Gracefully handles failures. | [src](../../../core/services/identity_sketch.py#L112) |
-| function | `_generate_sketch_text` | `(signals)` | Call compact_llm to generate sketch text from signals. | [src](../../../core/services/identity_sketch.py#L202) |
-| function | `_fallback_sketch` | `(signals)` | Simple fallback sketch when compact_llm is unavailable. | [src](../../../core/services/identity_sketch.py#L250) |
-| function | `_is_stale` | `(updated_at, *, ttl_seconds=…)` | Check if sketch is older than ttl_seconds (default 6 hours). | [src](../../../core/services/identity_sketch.py#L276) |
-| function | `tick_identity_sketch_daemon` | `()` | Heartbeat daemon tick — refresh the sketch when stale (>6h). | [src](../../../core/services/identity_sketch.py#L295) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/identity_sketch.py#L340) |
 

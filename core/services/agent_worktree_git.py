@@ -169,3 +169,55 @@ def ensure_dir(path: str) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+# --- integration (F4d): flet til en NY gren uden at roere nogens working tree ------------------------------
+
+_IDENT = {"GIT_AUTHOR_NAME": "Jarvis agent", "GIT_AUTHOR_EMAIL": "agent@jarvis.local",
+          "GIT_COMMITTER_NAME": "Jarvis agent", "GIT_COMMITTER_EMAIL": "agent@jarvis.local"}
+
+
+def current_head(repo: str) -> str:
+    return run_git(["rev-parse", "--verify", "HEAD^{commit}"], cwd=repo).stdout.decode().strip()
+
+
+def ref_exists(repo: str, ref: str) -> bool:
+    return run_git(["show-ref", "--verify", "--quiet", ref], cwd=repo, check=False).returncode == 0
+
+
+def commit_worktree_tree(gitdir: str, path: str, base_commit: str, message: str) -> str:
+    """Skriv agentens samlede arbejdstilstand som ÉT commit ovenpaa basen (server-side, med det gemte gitdir)."""
+    stage_all(gitdir, path)
+    env = {**_wt_env(gitdir, path), **_IDENT}
+    tree = run_git(["write-tree"], cwd=path, env=env).stdout.decode().strip()
+    return run_git(["commit-tree", tree, "-p", base_commit, "-m", message], cwd=path,
+                   env=env).stdout.decode().strip()
+
+
+def merge_tree(repo: str, ours: str, theirs: str) -> tuple[str | None, list[str]]:
+    """``git merge-tree --write-tree``: (tree-oid, []) ved ren fletning, (None, konfliktfiler) ved konflikt.
+    Roerer hverken index eller working tree."""
+    proc = run_git(["merge-tree", "--write-tree", "--name-only", "--no-messages", ours, theirs], cwd=repo,
+                   check=False)
+    lines = proc.stdout.decode("utf-8", "replace").splitlines()
+    if proc.returncode == 0 and lines:
+        return lines[0].strip(), []
+    if proc.returncode == 1:
+        return None, [ln for ln in lines[1:] if ln.strip()]
+    raise GitError((proc.stderr or proc.stdout).decode("utf-8", "replace")[:300], returncode=proc.returncode)
+
+
+def commit_tree(repo: str, tree: str, parents: list[str], message: str) -> str:
+    args = ["commit-tree", tree]
+    for p in parents:
+        args += ["-p", p]
+    return run_git([*args, "-m", message], cwd=repo, env=_IDENT).stdout.decode().strip()
+
+
+def create_ref(repo: str, ref: str, oid: str) -> None:
+    """Opret ``ref`` -> ``oid`` KUN hvis den ikke findes (old-value = nul): en eksisterende gren overskrives aldrig."""
+    run_git(["update-ref", ref, oid, "0" * 40], cwd=repo)
+
+
+def set_ref(repo: str, ref: str, new: str, old: str) -> None:
+    run_git(["update-ref", ref, new, old], cwd=repo)

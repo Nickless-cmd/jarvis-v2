@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/role_model_resolver.py`
+_Role-model resolver — pick best-fit (provider, model) for a role + task._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_classify_goal_tier` | `(goal)` | Classify goal text → fast | reasoning | deep using R1 classifier. | [src](../../../core/services/role_model_resolver.py#L39) |
+| function | `resolve_role_model` | `(*, role, goal=…)` | Pick (provider, model) for this role and goal complexity. | [src](../../../core/services/role_model_resolver.py#L54) |
+
 ## `core/services/role_registry.py`
 _Role registry — runtime-extensible agent roles._
 
@@ -725,13 +733,4 @@ _Deliver terminal scout runs to Jarvis' durable inbox._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
-
-## `core/services/secret_redaction.py`
-_Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `contains_secret` | `(text)` | Ser det ud til at indeholde en hemmelighed? Ren, ingen mutation. | [src](../../../core/services/secret_redaction.py#L70) |
-| function | `redact` | `(text)` | Maskér hemmeligheder. Bevarer alt andet tegn for tegn. | [src](../../../core/services/secret_redaction.py#L77) |
-| function | `read_for_prompt` | `(path)` | Læs en workspace-fil TIL PROMPTEN, med hemmeligheder maskeret. | [src](../../../core/services/secret_redaction.py#L92) |
 

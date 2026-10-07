@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/device_pairing.py`
+_QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gc` | `(now)` | — | [src](../../../core/services/device_pairing.py#L26) |
+| function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L34) |
+| function | `redeem` | `(code, *, navn=…, platform=…, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L45) |
+| function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L71) |
+| class | `TotpFejl` | `` | Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg. | [src](../../../core/services/device_pairing.py#L85) |
+| method | `TotpFejl.__init__` | `(self, besked, kode)` | — | [src](../../../core/services/device_pairing.py#L88) |
+| function | `kraev_totp` | `(user_id, kode)` | Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP. | [src](../../../core/services/device_pairing.py#L93) |
+
 ## `core/services/device_presence.py`
 _Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart._
 
@@ -690,27 +703,4 @@ _Embodied Presence — situational grounding in the physical now._
 | function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
 | function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
-
-## `core/services/emergence.py`
-_Emergence — evidence-based pattern detection across recent activity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `EmergenceCandidate` | `` | — | [src](../../../core/services/emergence.py#L44) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/emergence.py#L54) |
-| function | `_ensure_table` | `()` | Create emergent_patterns table if missing. Idempotent. | [src](../../../core/services/emergence.py#L58) |
-| function | `_fetch_recent_events` | `(*, window_days=…, limit=…)` | Pull recent events from the eventbus events table. | [src](../../../core/services/emergence.py#L80) |
-| function | `_count_by_kind_prefix` | `(events, prefix)` | — | [src](../../../core/services/emergence.py#L108) |
-| function | `_count_blocked` | `(events)` | Count events that look like blocked/denied signals. | [src](../../../core/services/emergence.py#L118) |
-| function | `_fetch_procedures_count` | `()` | — | [src](../../../core/services/emergence.py#L135) |
-| function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L146) |
-| function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L159) |
-| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L229) |
-| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L289) |
-| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L354) |
-| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L377) |
-| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L396) |
-| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L412) |
-| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
-| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
 

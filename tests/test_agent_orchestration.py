@@ -52,7 +52,7 @@ def test_every_tool_the_text_names_is_really_advertised_when_on(pr):
     named = set(re.findall(r"`([a-z_]+)`", ao.orchestrator_section())) - {"wake_if_run_ends", "include_output", "writes", "workspace"}
     advertised = {d["function"]["name"] for d in get_tool_definitions(role="owner", scope="")}
     assert named == {"dispatch_agent", "wait_agents", "send_message_to_agent", "followup_agent",
-                     "interrupt_agent", "close_agent", "list_agents"}
+                     "interrupt_agent", "close_agent", "list_agents", "integrate_agent_work"}
     assert named <= advertised, named - advertised
 
 

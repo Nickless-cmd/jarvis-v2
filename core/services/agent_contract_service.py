@@ -468,6 +468,11 @@ def supervise() -> list[dict[str, Any]]:
     except Exception:
         logger.warning("ensure_wakes fejlede", exc_info=True)
     resumed = resume_decided(_start_execution)
+    try:
+        from core.services.agent_integration import run_pending
+        run_pending()
+    except Exception:
+        logger.warning("godkendte integrationer kunne ikke udfoeres", exc_info=True)
     done = reconcile_expired_leases()
     for d in done:
         if d.get("action") == "retry":
@@ -514,4 +519,34 @@ def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, acto
     except Exception:
         logger.warning("kunne ikke aflyse vaekning for %s", approval_id, exc_info=True)
     resume_decided(_start_execution)
-    return {"status": "ok", "approval": approval_view(r), "contract_version": CONTRACT_VERSION}
+    integration = None
+    if r.get("kind") == "integration" and r["status"] == "approved":
+        from core.services.agent_integration import execute_approved
+        integration = execute_approved(r)
+    out = {"status": "ok", "approval": approval_view(r), "contract_version": CONTRACT_VERSION}
+    if integration is not None:
+        out["integration"] = {k: integration.get(k) for k in ("status", "integrate_branch", "commit", "summary",
+                                                              "error_code", "conflicts")}
+    return out
+
+
+def request_integration(*, owner_user_id: str, origin_session_id: str, assignment_id: str) -> dict[str, Any]:
+    """Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke
+    godkende den. Virker ikke naar motoren er slukket (en ny handling); afgoerelsen virker altid."""
+    if (bad := _guard(owner_user_id, origin_session_id)):
+        return bad
+    from core.services.agent_integration import request_integration as _request
+    try:
+        r = _request(owner_user_id=owner_user_id, origin_session_id=origin_session_id,
+                     assignment_id=(assignment_id or "").strip())
+    except ContractError as exc:
+        logger.info("integration kunne ikke anmodes for %s: %s", assignment_id, exc)
+        return _err(exc.code, exc.detail)
+    try:
+        from core.services.agent_approval_notify import on_requested
+        on_requested(r)
+    except Exception:
+        logger.warning("kunne ikke notificere om integrations-approval %s", r["approval_id"], exc_info=True)
+    return {"status": "approval_requested", "approval": approval_view(r),
+            "note": "Venter paa brugerens godkendelse i Desk. Du kan ikke godkende den selv.",
+            "contract_version": CONTRACT_VERSION}

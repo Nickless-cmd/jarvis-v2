@@ -31,7 +31,7 @@ _TEXT = (
     "stoppe med `interrupt_agent` og lukke en agent med `close_agent`; `list_agents` viser "
     "status. Moenstre: en specialist; flere uafhaengige opgaver parallelt; en builder og "
     "derefter en uafhaengig reviewer; eller flere selvstaendige vurderinger af en beslutning "
-    "med en syntese til sidst. Skal en agent SKRIVE kode, saa dispatch med `writes` og `workspace`: den faar sit eget worktree og kan kun skrive dér; resultatet er en diff, og intet merges uden godkendelse. Start aldrig samtidige skrivende agenter i de samme filer. "
+    "med en syntese til sidst. Skal en agent SKRIVE kode, saa dispatch med `writes` og `workspace`: den faar sit eget worktree og kan kun skrive dér; resultatet er en diff, og intet merges uden godkendelse. Skal arbejdet integreres, saa kald `integrate_agent_work`: det opretter KUN en godkendelsesanmodning bundet til netop den diff, og brugeren afgoer den i Desk. Start aldrig samtidige skrivende agenter i de samme filer. "
     "Stopper brugeren dit run manuelt, arbejder allerede accepterede agenter faerdig, men "
     "vaekker dig ikke - resultaterne ligger i inboxen til din naeste tur. Venter en agent paa en godkendelse, ligger anmodningen i din inbox: du kan IKKE godkende den, men skal forklare den for brugeren, som afgoer den i Desk. Et fejlet barn "
     "vurderes ud fra aarsag og deloutput, ikke automatisk erstattet. Brug IKKE vaerktoejet til "

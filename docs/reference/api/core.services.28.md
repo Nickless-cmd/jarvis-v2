@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model_observe.py`
+_Central-observe helpers + thinking-delimiter cleanup for the visible lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe_visible_prefill` | `(provider, model, *, prompt_tokens, prefill_ms)` | Gør ollama-lanens PREFILL-cache MÅLBAR (2026-07-19, blind-spot-luk). | [src](../../../core/services/visible_model_observe.py#L11) |
+| function | `_observe_visible_provider_error` | `(provider, model, status_code, detail)` | Gør en VISIBLE-lane provider-fejl synlig i Centralen (stream-cluster). Self-safe. | [src](../../../core/services/visible_model_observe.py#L49) |
+| function | `_observe_malformed_stream_payload` | `(provider, model, path, *, ended_malformed, detail=…)` | A11 (spec §11.1): den egne SSE/NDJSON-decoder mødte en malformet/trunkeret | [src](../../../core/services/visible_model_observe.py#L65) |
+| function | `_observe_content_empty_thinking_fallback` | `(provider, model, path, thinking_len)` | Reasoning-model svarede i `message.thinking` mens `message.content` var TOM | [src](../../../core/services/visible_model_observe.py#L92) |
+| function | `_strip_thinking_delimiters` | `(text)` | Fjern løse thinking-delimiter-tokens hvis et thinking-felt surfaces som svar. | [src](../../../core/services/visible_model_observe.py#L113) |
+| function | `_reasoning_fallback_text` | `(reasoning, *, finish_reason=…)` | Surface reasoning only when the provider completed it cleanly. | [src](../../../core/services/visible_model_observe.py#L128) |
+
 ## `core/services/visible_model_ollama.py`
 _Ollama visible-lane adapter (execute + native NDJSON streaming)._
 
@@ -510,16 +522,4 @@ _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 | function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L54) |
 | function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
 | function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L124) |
-
-## `core/services/visible_work_surfaces.py`
-_Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane laver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vr` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L15) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L21) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L53) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L80) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L111) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L163) |
 

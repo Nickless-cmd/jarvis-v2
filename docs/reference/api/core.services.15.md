@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/identity_sketch.py`
+_Persistent Identity Sketch — dynamic "who am I right now" document._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_identity_sketch` | `()` | Read current sketch from state file. Returns {} if never written. | [src](../../../core/services/identity_sketch.py#L48) |
+| function | `identity_sketch_surface` | `()` | Mission Control surface — current sketch status. | [src](../../../core/services/identity_sketch.py#L53) |
+| function | `update_identity_sketch` | `(trigger=…)` | Generate fresh sketch from live signals and persist it. | [src](../../../core/services/identity_sketch.py#L72) |
+| function | `_gather_signals` | `()` | Collect live signals for sketch generation. Gracefully handles failures. | [src](../../../core/services/identity_sketch.py#L112) |
+| function | `_generate_sketch_text` | `(signals)` | Call compact_llm to generate sketch text from signals. | [src](../../../core/services/identity_sketch.py#L202) |
+| function | `_fallback_sketch` | `(signals)` | Simple fallback sketch when compact_llm is unavailable. | [src](../../../core/services/identity_sketch.py#L250) |
+| function | `_is_stale` | `(updated_at, *, ttl_seconds=…)` | Check if sketch is older than ttl_seconds (default 6 hours). | [src](../../../core/services/identity_sketch.py#L276) |
+| function | `tick_identity_sketch_daemon` | `()` | Heartbeat daemon tick — refresh the sketch when stale (>6h). | [src](../../../core/services/identity_sketch.py#L295) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/identity_sketch.py#L340) |
+
 ## `core/services/idle_consolidation.py`
 _Bounded sleep / idle consolidation light._
 
@@ -753,15 +768,4 @@ _Hvilken udgave af appen sidder der i den anden ende?_
 | function | `_rent` | `(vaerdi, tilladte=…)` | — | [src](../../../core/services/klient_versioner.py#L44) |
 | function | `noter` | `(klient, version)` | Skriv den seneste version for én klient. True hvis noget blev skrevet. | [src](../../../core/services/klient_versioner.py#L53) |
 | function | `alle` | `()` | Hvad kører der lige nu, pr. klient. Tom dict hvis ingen har sagt det. | [src](../../../core/services/klient_versioner.py#L84) |
-
-## `core/services/layer_tension_daemon.py`
-_Layer Tension daemon — detects when two or more cognitive layers pull in opposite directions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_layer_tension_daemon` | `(snapshot)` | Detect layer tensions from runtime snapshot. | [src](../../../core/services/layer_tension_daemon.py#L35) |
-| function | `_detect_tensions` | `(snapshot)` | — | [src](../../../core/services/layer_tension_daemon.py#L61) |
-| function | `_store_tension` | `(tension, now)` | — | [src](../../../core/services/layer_tension_daemon.py#L143) |
-| function | `get_active_tensions` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L190) |
-| function | `build_layer_tension_surface` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L194) |
 

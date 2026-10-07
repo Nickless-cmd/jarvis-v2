@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/perceptual_event_engine.py`
+_Perceptual event engine — eventful perception for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_rutine_gentagelse` | `(percept, set_foer, now)` | Er det her et værktøj der lige har kørt — altså ikke en ændring? | [src](../../../core/services/perceptual_event_engine.py#L37) |
+| function | `observe_recent_changes` | `(*, limit=…)` | Scan recent eventbus items and persist newly observed changes. | [src](../../../core/services/perceptual_event_engine.py#L95) |
+| function | `classify_event_change` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L146) |
+| function | `record_perceptual_event` | `(*, change_type, summary, salience=…, source_kind=…, source_event_id=…, evidence=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L296) |
+| function | `build_perception_surface` | `(*, limit=…, scan=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L320) |
+| function | `build_perception_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L332) |
+| function | `_build_perception_surface_uncached` | `(*, limit)` | — | [src](../../../core/services/perceptual_event_engine.py#L347) |
+| function | `_record_perceptual_event` | `(percept, *, state)` | — | [src](../../../core/services/perceptual_event_engine.py#L369) |
+| function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | — | [src](../../../core/services/perceptual_event_engine.py#L435) |
+| function | `_learning_rule_for_percept` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L456) |
+| function | `_directive_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L486) |
+| function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L499) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L505) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L512) |
+
 ## `core/services/periodic_jobs_scheduler.py`
 _Periodic jobs scheduler — enqueues overdue background jobs._
 
@@ -673,20 +693,4 @@ _Vagten der gør et skifte til hovedbogen fortrydeligt._
 |---|---|---|---|---|
 | class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_guard.py#L28) |
 | function | `guard_direct_write` | `(session_id, *, projektion, tabel, conn=…)` | Afvis direkte skrivninger til `tabel` for en ledger-session. | [src](../../../core/services/projection_guard.py#L32) |
-
-## `core/services/projection_runtime.py`
-_Projektions-runtime — rene, versionerede folder over session-ledgeren._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Projection` | `` | — | [src](../../../core/services/projection_runtime.py#L52) |
-| function | `register` | `(navn, *, version, fold, start=…)` | Registrér en projektion. Samme navn to gange er en fejl, ikke en erstatning. | [src](../../../core/services/projection_runtime.py#L64) |
-| function | `registered` | `()` | — | [src](../../../core/services/projection_runtime.py#L80) |
-| function | `_unregister_all_for_tests` | `()` | — | [src](../../../core/services/projection_runtime.py#L84) |
-| function | `_ensure_checkpoint_table` | `(conn)` | — | [src](../../../core/services/projection_runtime.py#L90) |
-| function | `checkpoint` | `(session_id, navn)` | Hvor langt er denne projektion foldet for denne session? | [src](../../../core/services/projection_runtime.py#L105) |
-| function | `_gem_checkpoint` | `(session_id, navn, version, as_of_seq)` | — | [src](../../../core/services/projection_runtime.py#L126) |
-| function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
-| function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
-| function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
 

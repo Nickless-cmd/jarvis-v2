@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/network_health.py`
+_core/services/network_health.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `measure_api_latency` | `(url=…, timeout=…)` | (ok, latency_ms) for den lokale API. TCP+HTTP round-trip mod /health. Self-safe. | [src](../../../core/services/network_health.py#L55) |
+| function | `_latest` | `(cluster, nerve)` | Seneste tidsserie-værdi for en nerve (samme proces). None hvis tom. | [src](../../../core/services/network_health.py#L71) |
+| function | `_hosts_down` | `()` | Hosts hvis seneste reachability-sample er 'nede' (infra_sense skriver -1.0 ved nede). | [src](../../../core/services/network_health.py#L80) |
+| function | `run_network_health_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: fuse netværks-telemetri → ét signal. Bulletproof — kaster ALDRIG. | [src](../../../core/services/network_health.py#L95) |
+| function | `_reset_for_tests` | `()` | Testhjælper — nulstil debounce-state. Ikke til produktionsbrug. | [src](../../../core/services/network_health.py#L171) |
+| function | `register_network_health_producer` | `()` | Registrér netværks-helbred som cadence-producer (~hvert 2 min). Read-only, self-safe. | [src](../../../core/services/network_health.py#L179) |
+
 ## `core/services/non_visible_fallback.py`
 _Non-visible (autonomous) LLM fallback chain._
 
@@ -592,24 +604,4 @@ _core/services/peak_varsel_daemon.py_
 | function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L83) |
 | function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L96) |
 | function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L136) |
-
-## `core/services/perceptual_event_engine.py`
-_Perceptual event engine — eventful perception for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_rutine_gentagelse` | `(percept, set_foer, now)` | Er det her et værktøj der lige har kørt — altså ikke en ændring? | [src](../../../core/services/perceptual_event_engine.py#L37) |
-| function | `observe_recent_changes` | `(*, limit=…)` | Scan recent eventbus items and persist newly observed changes. | [src](../../../core/services/perceptual_event_engine.py#L95) |
-| function | `classify_event_change` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L146) |
-| function | `record_perceptual_event` | `(*, change_type, summary, salience=…, source_kind=…, source_event_id=…, evidence=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L296) |
-| function | `build_perception_surface` | `(*, limit=…, scan=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L320) |
-| function | `build_perception_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L332) |
-| function | `_build_perception_surface_uncached` | `(*, limit)` | — | [src](../../../core/services/perceptual_event_engine.py#L347) |
-| function | `_record_perceptual_event` | `(percept, *, state)` | — | [src](../../../core/services/perceptual_event_engine.py#L369) |
-| function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | — | [src](../../../core/services/perceptual_event_engine.py#L435) |
-| function | `_learning_rule_for_percept` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L456) |
-| function | `_directive_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L486) |
-| function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L499) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L505) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L512) |
 

@@ -2,6 +2,42 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_matrix_ensemble.py`
+_Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_unaddressed` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L23) |
+| function | `_save_unaddressed` | `(data)` | — | [src](../../../core/services/central_matrix_ensemble.py#L32) |
+| function | `get_unaddressed` | `(cid)` | — | [src](../../../core/services/central_matrix_ensemble.py#L43) |
+| function | `increment_unaddressed` | `(cid)` | — | [src](../../../core/services/central_matrix_ensemble.py#L47) |
+| function | `reset_unaddressed` | `(cid)` | — | [src](../../../core/services/central_matrix_ensemble.py#L54) |
+| function | `_escalated_message` | `(label, count, original_line)` | — | [src](../../../core/services/central_matrix_ensemble.py#L70) |
+| function | `extract_cid` | `(source)` | Extract karakter-ID fra en nudge source 'matrix/<cid>'. Return None hvis ikke matrix-nudge. | [src](../../../core/services/central_matrix_ensemble.py#L78) |
+| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L206) |
+| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L220) |
+| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L224) |
+| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L228) |
+| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L232) |
+| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L236) |
+| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L240) |
+| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L244) |
+| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L248) |
+| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L252) |
+| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L256) |
+| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L260) |
+| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L264) |
+| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L268) |
+| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L272) |
+| function | `_smith_surface` | `()` | Smith — mønster-detektor og forpligtelseshåndhæver. | [src](../../../core/services/central_matrix_ensemble.py#L276) |
+| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L300) |
+| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L304) |
+| function | `push_active_character_nudges` | `()` | Iterer alle Matrix-karakterer og post nudge for hver aktiv med rung_line. | [src](../../../core/services/central_matrix_ensemble.py#L331) |
+| function | `active_character_voices` | `(*, limit=…)` | De karakterer der har noget at sige LIGE NU. Ren læsning; ingen side-effekter. | [src](../../../core/services/central_matrix_ensemble.py#L405) |
+| function | `build_matrix_voices_section` | `()` | Awareness-sektion: de aktive karakterer, med deres egne ord. | [src](../../../core/services/central_matrix_ensemble.py#L438) |
+| function | `note_voices_shown` | `(cids)` | Tæl en visning op som ubesvaret. Kaldes EFTER en tur hvor de blev vist. | [src](../../../core/services/central_matrix_ensemble.py#L459) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L472) |
+
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._
 
@@ -570,21 +606,4 @@ _core/services/central_shadow.py_
 | function | `predict_trends` | `()` | Tidlig-varsel: nerver hvis trend forværres MOD tærsklen, før de bryder. Skygge. | [src](../../../core/services/central_shadow.py#L85) |
 | function | `run_shadow_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: beregn skygge-reaktioner + prædiktioner. ANVENDER ALDRIG. Self-safe. | [src](../../../core/services/central_shadow.py#L105) |
 | function | `register_shadow_producer` | `()` | Registrér skygge-laget som cadence-producer (~hvert 5 min). Observe-only, anvender aldrig. | [src](../../../core/services/central_shadow.py#L116) |
-
-## `core/services/central_signal_health.py`
-_core/services/central_signal_health.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_ts` | `(s)` | — | [src](../../../core/services/central_signal_health.py#L40) |
-| function | `_merged` | `()` | — | [src](../../../core/services/central_signal_health.py#L48) |
-| function | `_freshest_ts` | `(by_role)` | — | [src](../../../core/services/central_signal_health.py#L56) |
-| function | `hub_liveness` | `(*, max_age_s=…, merged=…)` | Meta-liveness: for hver af de 4 hubs, find friskeste sample på tværs af processer og | [src](../../../core/services/central_signal_health.py#L65) |
-| function | `nerves_observed_xproc` | `(*, merged=…)` | Distinkte nerver Centralen FAKTISK har samples for PÅ TVÆRS af processer (fikser 1c's | [src](../../../core/services/central_signal_health.py#L94) |
-| function | `signal_correctness` | `(*, merged=…)` | Verificér at mindst én sansning rapporterer VIRKELIGHEDEN, ikke bare fyrer. Sansernes Arkiv: | [src](../../../core/services/central_signal_health.py#L101) |
-| function | `measure` | `()` | Fuldt signal-sundheds-billede: hub-meta-liveness + cross-proces-nerver + signal-korrekthed. | [src](../../../core/services/central_signal_health.py#L132) |
-| function | `record_signal_health` | `()` | Mål + skriv nøgletal til tidsserien (cluster=system) + flag tavse hubs via central_watch. | [src](../../../core/services/central_signal_health.py#L140) |
-| function | `run_signal_health_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: mål + registrér signal-sundhed (~hvert 15 min). Self-safe. | [src](../../../core/services/central_signal_health.py#L167) |
-| function | `register_signal_health_producer` | `()` | Registrér signal-sundheds-målingen som cadence-producer (~hvert 15 min). | [src](../../../core/services/central_signal_health.py#L175) |
-| function | `build_central_signal_health_surface` | `()` | Mission Control surface — read-only hub-meta-liveness + signal-korrekthed. | [src](../../../core/services/central_signal_health.py#L187) |
 

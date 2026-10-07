@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8630/16338 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8639/16354 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8630/16338 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 773 | 1392 | 55% |
-| `core.services` | 5752 | 11106 | 51% |
+| `core.services` | 5761 | 11121 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 523 | 1058 | 49% |
+| `core.tools` | 523 | 1059 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8630/16338 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2292)
+## Undocumented public functions (2296)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -622,7 +622,7 @@ Generated from source. 8630/16338 functions/methods documented (52%). The list b
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_approval_notify.py` :: `wake_message` (L28)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L488)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L493)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L38)
@@ -668,13 +668,17 @@ Generated from source. 8630/16338 functions/methods documented (52%). The list b
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
 - `core/services/agent_worktree_git.py` :: `add_worktree` (L100)
 - `core/services/agent_worktree_git.py` :: `changed_files` (L120)
+- `core/services/agent_worktree_git.py` :: `commit_tree` (L210)
 - `core/services/agent_worktree_git.py` :: `commits_since` (L128)
+- `core/services/agent_worktree_git.py` :: `current_head` (L180)
 - `core/services/agent_worktree_git.py` :: `ensure_dir` (L168)
 - `core/services/agent_worktree_git.py` :: `path_is_inside` (L163)
+- `core/services/agent_worktree_git.py` :: `ref_exists` (L184)
 - `core/services/agent_worktree_git.py` :: `resolve_commit` (L82)
 - `core/services/agent_worktree_git.py` :: `run_git` (L39)
 - `core/services/agent_worktree_git.py` :: `safe_name` (L59)
 - `core/services/agent_worktree_git.py` :: `safe_ref` (L52)
+- `core/services/agent_worktree_git.py` :: `set_ref` (L222)
 - `core/services/agent_worktree_git.py` :: `stage_all` (L109)
 - `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L83)
 - `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L49)
@@ -2128,10 +2132,10 @@ Generated from source. 8630/16338 functions/methods documented (52%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L324)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L342)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L320)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L347)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L325)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L343)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L321)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L348)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

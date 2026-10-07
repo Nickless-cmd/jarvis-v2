@@ -419,9 +419,10 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L382) |
 | function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L432) |
 | function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L457) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L480) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L488) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L498) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L485) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L493) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L503) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L533) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -432,6 +433,19 @@ _Agent dispatch orchestrator for code mode (spec §19)._
 | function | `plan_dispatch` | `(task, *, executor_count=…)` | Byg rolle-planen for en dispatch (§19.3/§19.4). `executor_count` executors | [src](../../../core/services/agent_dispatch.py#L56) |
 | function | `scan_skills_before_dispatch` | `(skill_contents)` | Kør skill_scanner på hver skill der vil eksekvere lokalt (§19.8). Blokerer | [src](../../../core/services/agent_dispatch.py#L74) |
 | function | `dispatch_code_mode_task` | `(task, *, inline=…, executor_count=…, skill_contents=…, user_id=…, dry_run=…)` | Orchestrér en code-mode-opgave (§19.4). | [src](../../../core/services/agent_dispatch.py#L87) |
+
+## `core/services/agent_integration.py`
+_Integration af en kodeagents arbejde - foerste forbruger af approval-flowet (agent-contract-v1 F4d, spec 8.1/8.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_retained_worktree` | `(owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_integration.py#L35) |
+| function | `_snapshot` | `(wt)` | Hvad der staar i worktree'et NU: diff-hash + filer. Samme beregning ved anmodning og ved udfoerelse. | [src](../../../core/services/agent_integration.py#L44) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Opret (eller genfind) approvalen. Kaster ``ContractError`` ved ukendt/ugyldigt worktree. | [src](../../../core/services/agent_integration.py#L53) |
+| function | `_result_message` | `(approval, payload)` | Fortael parenten hvordan det gik, via den samme udbakke som agentresultater (ét svar pr. approval). | [src](../../../core/services/agent_integration.py#L67) |
+| function | `execute_approved` | `(approval)` | Udfoer en GODKENDT integration. Bruger approvalen foerst (hoejst én gang). | [src](../../../core/services/agent_integration.py#L85) |
+| function | `_merge` | `(wt, approval, args)` | — | [src](../../../core/services/agent_integration.py#L113) |
+| function | `run_pending` | `()` | Supervisor-tik: godkendte, ubrugte integrationer (f.eks. besluttet lige foer en genstart) udfoeres. | [src](../../../core/services/agent_integration.py#L135) |
 
 ## `core/services/agent_loop_core.py`
 _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1)._
@@ -616,39 +630,4 @@ _Agent runtime — council & swarm collective rounds._
 | function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L699) |
 | function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L710) |
 | function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L727) |
-
-## `core/services/agent_runtime_spawn.py`
-_Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_maybe_relay_watcher_signal` | `(*, agent_id, name, text)` | Emit watcher.signal event when output contains notable content. | [src](../../../core/services/agent_runtime_spawn.py#L54) |
-| function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L79) |
-| function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L112) |
-| function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…, contract=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L137) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L450) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L459) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L472) |
-| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L479) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L540) |
-| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L564) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L577) |
-| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L602) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1069) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1097) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1125) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1129) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1167) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1372) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1416) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1425) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1464) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1494) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1509) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1528) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1545) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1564) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1586) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1626) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1643) |
 

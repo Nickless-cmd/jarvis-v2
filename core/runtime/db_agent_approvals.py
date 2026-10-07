@@ -175,7 +175,7 @@ def request(*, owner_user_id: str, origin_session_id: str, assignment_id: str, t
                          (assignment_id,)).fetchone()
         if a is None or a["owner_user_id"] != owner or a["origin_session_id"] != session:
             raise ContractError("INVALID_SCOPE", "assignment tilhoerer ikke ejer/session")
-        if a["status"] in ("completed", "failed", "cancelled", "timed_out"):
+        if a["status"] in ("completed", "failed", "cancelled", "timed_out") and kind != "integration":
             raise ContractError("INVALID_TRANSITION", "assignmentet er afsluttet")
         digest = invocation_digest(tool_name=tool_name, arguments=arguments, target=a["target"],
                                    assignment_id=assignment_id)

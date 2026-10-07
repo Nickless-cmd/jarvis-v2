@@ -108,7 +108,7 @@ class _Broker:
     """Politik ved sømmen: hvad en worker maa faa serveren til at goere."""
 
     def __init__(self, *, agent: dict, run_id: str, prompt: str, tools_payload: list[dict],
-                 provider: str, model: str, max_tool_calls: int) -> None:
+                 provider: str, model: str, max_tool_calls: int, resume: dict | None = None) -> None:
         from core.services import agent_runtime_base as base
 
         self._base = base
@@ -118,7 +118,7 @@ class _Broker:
         self.max_tool_calls = max_tool_calls
         self.tool_calls = 0
         self._started: set[str] = set()
-        self._io = base._InProcessLoopIO(agent=agent, run_id=run_id)
+        self._io = base._InProcessLoopIO(agent=agent, run_id=run_id, resume=resume)
         self.last_text_result: dict[str, Any] | None = None
 
     def handle(self, msg: dict[str, Any]) -> Any:
@@ -171,7 +171,12 @@ class _Broker:
             raise WorkerError("CAPACITY", f"vaerktoejsloft {self.max_tool_calls} naaet")
         self.tool_calls += 1
         self._started.add(str(tc.get("id") or ""))
-        out = self._io.tool(tc)
+        from core.services.agent_loop_core import ApprovalPending
+        try:
+            out = self._io.tool(tc)
+        except ApprovalPending as ap:
+            # Workeren skal parkere: den faar approval-id'et og stopper sin loekke ved checkpointen.
+            raise WorkerError("APPROVAL_PENDING", f"{ap.approval_id}:{ap.tool_call_id}") from ap
         return out if len(out) <= MAX_TOOL_OUTPUT else out[:MAX_TOOL_OUTPUT] + "\n[afkortet af brokeren]"
 
 
@@ -207,6 +212,7 @@ def run_agent_in_worker(
     tools_payload: list[dict] | None = None, timeout_s: float = DEFAULT_TIMEOUT_S,
     max_tool_calls: int = MAX_TOOL_CALLS, address_space: int = 2 * 1024 ** 3,
     worker_files: dict[str, str] | None = None, worker_command: list[str] | None = None,
+    resume: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen."""
     from core.runtime.db_agent_lease import scope_is_current
@@ -219,7 +225,7 @@ def run_agent_in_worker(
     scout = (str(agent.get("role") or "") == "researcher"
              and str(agent.get("tool_policy") or "") in {"read-only-runtime", "read-only-workstation"})
     broker = _Broker(agent=agent, run_id=run_id, prompt=prompt, tools_payload=tools_payload,
-                     provider=provider, model=model, max_tool_calls=max_tool_calls)
+                     provider=provider, model=model, max_tool_calls=max_tool_calls, resume=resume)
     parent, child = socket.socketpair()
     os.set_inheritable(child.fileno(), True)
     out_f = tempfile.NamedTemporaryFile(prefix="agent-worker-out-", delete=False)
@@ -242,7 +248,7 @@ def run_agent_in_worker(
                             "provider": provider, "model": model, "scout": scout,
                             "max_rounds": base._AGENT_TOOL_LOOP_MAX_ROUNDS,
                             "synthesis_directive": base._AGENT_SYNTHESIS_DIRECTIVE,
-                            "limits": {"address_space": address_space}})
+                            "limits": {"address_space": address_space}, "resume": resume})
         started, last_cancel = time.monotonic(), 0.0
         outcome: dict[str, Any] | None = None
         while outcome is None:

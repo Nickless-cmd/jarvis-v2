@@ -80,6 +80,23 @@ def ensure_approval_tables(conn: sqlite3.Connection) -> None:
                  "ON agent_approvals(assignment_id, args_digest)")
     conn.execute(
         """
+        CREATE TABLE IF NOT EXISTS agent_checkpoints (
+            checkpoint_id TEXT PRIMARY KEY,
+            assignment_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            approval_id TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'parked',
+            created_at TEXT NOT NULL,
+            resumed_at TEXT NOT NULL DEFAULT ''
+        )
+        """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_checkpoints_assignment "
+                 "ON agent_checkpoints(assignment_id, status)")
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS agent_approval_audit (
             audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
             approval_id TEXT NOT NULL,
@@ -339,3 +356,66 @@ def audit_trail(*, approval_id: str) -> list[dict[str, Any]]:
     return [_row(r) for r in _conn().execute(
         "SELECT event, actor, detail, at FROM agent_approval_audit WHERE approval_id=? ORDER BY audit_id",
         (approval_id,)).fetchall()]
+
+
+# --- checkpoint: et parkeret barn kan genoptages praecis dér -------------------------------------------
+
+def save_checkpoint(*, assignment_id: str, run_id: str, approval_id: str, payload: dict[str, Any]) -> str:
+    """Gem barnets loekketilstand. Hoejst én parkeret checkpoint pr. assignment."""
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        a = conn.execute("SELECT agent_id, owner_user_id FROM agent_assignments WHERE assignment_id=?",
+                         (assignment_id,)).fetchone()
+        if a is None:
+            raise ContractError("INVALID_SCOPE", "ukendt assignment")
+        if conn.execute("SELECT 1 FROM agent_checkpoints WHERE assignment_id=? AND status='parked'",
+                        (assignment_id,)).fetchone():
+            raise ContractError("INVALID_TRANSITION", "assignmentet har allerede en parkeret checkpoint")
+        cid = f"ckpt-{uuid.uuid4().hex[:16]}"
+        conn.execute("INSERT INTO agent_checkpoints (checkpoint_id, assignment_id, agent_id, owner_user_id, "
+                     "run_id, approval_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                     (cid, assignment_id, a["agent_id"], a["owner_user_id"], run_id, approval_id,
+                      json.dumps(payload, ensure_ascii=False, default=str), _now_iso()))
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    return cid
+
+
+def parked_checkpoint(*, assignment_id: str) -> dict[str, Any] | None:
+    r = _conn().execute("SELECT * FROM agent_checkpoints WHERE assignment_id=? AND status='parked'",
+                        (assignment_id,)).fetchone()
+    return _row(r)
+
+
+def take_checkpoint(*, assignment_id: str) -> dict[str, Any] | None:
+    """Atomisk ``parked -> resumed``: HOEJST EN genoptagelse pr. checkpoint. Returnerer
+    ``{"payload", "approval_id", "run_id"}`` eller ``None``."""
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        r = conn.execute("SELECT * FROM agent_checkpoints WHERE assignment_id=? AND status='parked'",
+                         (assignment_id,)).fetchone()
+        if r is None:
+            conn.rollback()
+            return None
+        conn.execute("UPDATE agent_checkpoints SET status='resumed', resumed_at=? WHERE checkpoint_id=?",
+                     (_now_iso(), r["checkpoint_id"]))
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    return {"payload": json.loads(r["payload_json"]), "approval_id": r["approval_id"], "run_id": r["run_id"],
+            "checkpoint_id": r["checkpoint_id"]}
+
+
+def decided_parked() -> list[dict[str, Any]]:
+    """Parkerede checkpoints hvis approval er afgjort (godkendt, afslaaet, udloebet eller annulleret) -
+    de skal genoptages. Bruges af supervisoren, saa en beslutning ikke gaar tabt ved en genstart."""
+    rows = _conn().execute(
+        "SELECT c.assignment_id, c.agent_id, c.approval_id, a.status AS approval_status FROM agent_checkpoints c "
+        "JOIN agent_approvals a ON a.approval_id = c.approval_id WHERE c.status='parked' "
+        "AND a.status IN ('approved','denied','expired','cancelled')").fetchall()
+    return [dict(r) for r in rows]

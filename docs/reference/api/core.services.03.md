@@ -2,6 +2,65 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/attachment_service.py`
+_attachment_service — download, store, and read channel attachments._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_allowed_send_roots` | `()` | Rødder et fil-svar må sendes fra — beregnet ved KALD, ikke ved import. | [src](../../../core/services/attachment_service.py#L30) |
+| function | `_http_download` | `(url, headers)` | — | [src](../../../core/services/attachment_service.py#L66) |
+| function | `_db_store` | `(*, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | — | [src](../../../core/services/attachment_service.py#L75) |
+| function | `_db_get` | `(attachment_id)` | — | [src](../../../core/services/attachment_service.py#L107) |
+| function | `_db_list` | `(session_id, limit)` | — | [src](../../../core/services/attachment_service.py#L118) |
+| function | `list_image_attachments` | `(*, user_id=…, limit=…, session_id=…)` | List billed-attachments til galleriet (#6). | [src](../../../core/services/attachment_service.py#L129) |
+| function | `_send_generated_to_channel` | `(session_id, local_path)` | Send et NYLIGT genereret billede til den kanal sessionen hører til. | [src](../../../core/services/attachment_service.py#L188) |
+| function | `register_generated_media` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Gør en fil Jarvis LAVEDE synlig — returnerer attachment_id, ellers "". | [src](../../../core/services/attachment_service.py#L232) |
+| function | `register_generated_image` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Bagudkompatibelt navn. Se :func:`register_generated_media`. | [src](../../../core/services/attachment_service.py#L299) |
+| function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L310) |
+| function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L326) |
+| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L350) |
+| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L374) |
+| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L396) |
+| function | `resolve_attachment_id` | `(vaerdi)` | Oversæt det brugeren SKREV til et rigtigt `attachment_id`. | [src](../../../core/services/attachment_service.py#L461) |
+| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L519) |
+| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L527) |
+| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L538) |
+| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L564) |
+| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L662) |
+
+## `core/services/attachment_topology_signal_tracking.py`
+_Attachment-topology signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_attachment_topology_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L44) |
+| function | `refresh_runtime_attachment_topology_signal_statuses` | `()` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L81) |
+| function | `build_runtime_attachment_topology_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L85) |
+| function | `_extract_attachment_topology_candidates` | `(*, run_id)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L89) |
+| function | `_build_candidate` | `(*, domain_key, relation_continuity, meaning, witness, chronicle_brief, metabolism, self_narrative, temperament, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L181) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L283) |
+| function | `_attachment_topology_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L305) |
+| function | `_derive_attachment_weight` | `(*, relation_weight, meaning_weight, witness_status, witness_persistence, brief_weight, metabolism_weight, narrative_weight, temperament_weight, forgetting_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L327) |
+| function | `_derive_attachment_state` | `(*, weight, witness_status, metabolism_state)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L363) |
+| function | `_attachment_summary` | `(*, focus, attachment_state, attachment_weight, forgetting_candidate)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L371) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L399) |
+| function | `_humanize_focus` | `(value)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L406) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L411) |
+| function | `_find_support_value` | `(summary, key, default=…)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L419) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L431) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/attachment_topology_signal_tracking.py#L443) |
+
+## `core/services/attention_blink_test.py`
+_Attention Blink Test — capacity-limit measurement (Experiment 5: Serial consciousness)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_attention_blink_test_if_due` | `()` | Check cadence gate and launch test in background thread if due. | [src](../../../core/services/attention_blink_test.py#L33) |
+| function | `build_attention_profile_surface` | `()` | MC surface for attention blink experiment. | [src](../../../core/services/attention_blink_test.py#L52) |
+| function | `_run_test_body` | `()` | Full test: measure T1, inject T1 burst, wait 30s, inject T2, compare. | [src](../../../core/services/attention_blink_test.py#L87) |
+| function | `_compute_blink_ratio` | `(t1, t2)` | T2 total intensity / T1 total intensity. Clamped 0-2. | [src](../../../core/services/attention_blink_test.py#L142) |
+| function | `_interpret_blink_ratio` | `(ratio)` | < 0.7 → serial/blink-prone, >= 0.7 → parallel/blink-resistant. | [src](../../../core/services/attention_blink_test.py#L151) |
+
 ## `core/services/attention_budget.py`
 _Adaptive attention economy — bounded context budgeting for prompt assembly._
 
@@ -580,33 +639,4 @@ _Boundary Awareness — "Where do I end?"_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
-
-## `core/services/brain_edge_worker.py`
-_Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_arbejd` | `()` | — | [src](../../../core/services/brain_edge_worker.py#L58) |
-| function | `koesaet` | `(entry_id, now=…)` | Læg en post i kø til kant-udledning. `False` = køen er fuld. | [src](../../../core/services/brain_edge_worker.py#L74) |
-| function | `venter` | `()` | Hvor mange poster der står i kø. Til test og til at se hvor langt bagud. | [src](../../../core/services/brain_edge_worker.py#L100) |
-
-## `core/services/brain_vector_cache.py`
-_Embedding-matricen for `jarvis_brain`, holdt i hukommelsen mellem søgninger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ryd` | `()` | Smid alt væk. Bruges af tests og af en eksplicit genopbygning. | [src](../../../core/services/brain_vector_cache.py#L79) |
-| function | `status` | `()` | Hvad ligger der lige nu. Til diagnostik — ikke en del af søgevejen. | [src](../../../core/services/brain_vector_cache.py#L89) |
-| function | `cosinus` | `(noegler, qv)` | Cosinus mellem `qv` og hver nøgle, i samme rækkefølge som `noegler`. | [src](../../../core/services/brain_vector_cache.py#L100) |
-| function | `_nulstil_hvis_anden_db` | `()` | Kaldes under `_LAAS`. | [src](../../../core/services/brain_vector_cache.py#L145) |
-| function | `_hent_ind` | `(mangler, dim)` | Hent de manglende vektorer og udvid matricen. Kaldes under `_LAAS`. | [src](../../../core/services/brain_vector_cache.py#L158) |
-
-## `core/services/bridge_presence.py`
-_Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `publish` | `(bridges)` | Publicér denne proces' bro-registry-snapshot (kaldes ved register/unregister/dispatch). | [src](../../../core/services/bridge_presence.py#L25) |
-| function | `all_presence` | `()` | Bro-tilstedeværelse fra ALLE processer → {user_id: {process, client, capabilities, ...}}. | [src](../../../core/services/bridge_presence.py#L40) |
-| function | `process_for_user` | `(user_id)` | Hvilken proces holder en levende bro for user_id? None hvis ingen. | [src](../../../core/services/bridge_presence.py#L59) |
 

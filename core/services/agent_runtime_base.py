@@ -246,6 +246,7 @@ def _run_agent_tool_loop(
     prompt: str,
     requires_tools: bool,
     run_id: str = "",
+    resume: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Run an agent turn WITH a real tools array + tool-execution loop.
 
@@ -276,19 +277,24 @@ def _run_agent_tool_loop(
     # funktion koerer i den sandboxede worker med RPC-stubs i stedet (C6).
     from core.services.agent_loop_core import run_tool_loop
     outcome = run_tool_loop(
-        _InProcessLoopIO(agent=agent, run_id=run_id), prompt=prompt, tools_payload=tools_payload,
+        _InProcessLoopIO(agent=agent, run_id=run_id, resume=resume), prompt=prompt, tools_payload=tools_payload,
         requires_tools=requires_tools, provider=provider, model=model, scout=scout,
-        max_rounds=_AGENT_TOOL_LOOP_MAX_ROUNDS, synthesis_directive=_AGENT_SYNTHESIS_DIRECTIVE)
+        max_rounds=_AGENT_TOOL_LOOP_MAX_ROUNDS, synthesis_directive=_AGENT_SYNTHESIS_DIRECTIVE,
+        resume=resume)
     return _loop_result(outcome, scout=scout, provider=provider, model=model)
 
 
 class _InProcessLoopIO:
     """Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret)."""
 
-    def __init__(self, *, agent: dict, run_id: str) -> None:
+    def __init__(self, *, agent: dict, run_id: str, resume: dict | None = None) -> None:
         self._agent = agent
         self._run_id = run_id
         self._aid = str(agent.get("agent_id") or "")
+        # kaldet der ventede paa en approval -> den approval; kun DET kald genoptages via den
+        pend = (resume or {}).get("pending_calls") or []
+        self._resume_ids = ({str(pend[0].get("id") or ""): str(resume["approval_id"])}
+                            if pend and resume.get("approval_id") else {})
 
     def model(self, *, messages, tools, requires_tools, provider, model):
         return _facade().execute_with_role_or_fallback(
@@ -299,6 +305,13 @@ class _InProcessLoopIO:
         # Startposten skrives FOER udfoerelsen: et kald der er startet uden at vaere afsluttet kan
         # have skrevet noget, og er det leasen (C2) bruger til at vaelge outcome_unknown frem for
         # en blind genudfoerelse.
+        # Godkendelses-gaten FOER udfoerelsen (F4b): et kald der kraever en menneskelig godkendelse
+        # parkerer loekken (ApprovalPending) eller erstattes af en eksplicit afvisning - det udfoeres ikke.
+        from core.services.agent_approval_gate import gate
+        denied = gate(agent=self._agent, run_id=self._run_id, tc=tc,
+                      resume_approval_id=self._resume_ids.get(str(tc.get("id") or ""), ""))
+        if denied is not None:
+            return denied
         _bogfoer_start(self._agent, self._run_id, tc)
         return _execute_agent_tool_call(tc, agent_id=self._aid)
 
@@ -369,6 +382,13 @@ def _bogfoer_vaerktoejskald(agent: dict, run_id: str, tc: dict, tool_out: str) -
 
 
 def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str, object]:
+    if o.get("parked"):
+        # Parkeret ved en approval: IKKE et udfald. Taellerne bevares; checkpointen gemmes af kalderen.
+        return {"status": "parked", "parked": o["parked"], "text": o["final_text"],
+                "input_tokens": o["total_input"], "output_tokens": o["total_output"],
+                "cost_usd": o["total_cost"], "tool_rounds": o["rounds"], "tool_calls": o["total_tool_calls"],
+                "lane": "cheap", "provider": provider, "model": model,
+                "execution_mode": "role-primary-tool-loop", "source": "agent-tools"}
     final_text, error_str = o["final_text"], o["error_str"]
     total_tool_calls = o["total_tool_calls"]
     total_input, total_output, total_cost = o["total_input"], o["total_output"], o["total_cost"]

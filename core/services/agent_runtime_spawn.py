@@ -643,6 +643,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     # (Loftet bider ikke i dag — travleste aegte agent har 12 beskeder.)
     messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id,
                                    limit=40, tail=True)
+    # F4b: er agenten parkeret ved en afgjort approval, genoptages loekken fra sin checkpoint.
+    from core.services.agent_parking import take_resume
+    _resume = take_resume(agent_id)
     prompt = _build_agent_prompt(
         agent=agent,
         messages=messages,
@@ -696,14 +699,16 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
             result = run_agent_in_worker(
                 agent=agent, prompt=prompt, requires_tools=_needs_tools, run_id=run_id,
-                tools_payload=_snapshot_tools(agent))
+                tools_payload=_snapshot_tools(agent), resume=_resume)
         elif agent_tools_enabled():
             try:
                 result = _run_agent_tool_loop(
                     agent=agent, prompt=prompt, requires_tools=_needs_tools,
-                    run_id=run_id,
+                    run_id=run_id, resume=_resume,
                 )
             except Exception:
+                if _resume is not None:
+                    raise    # en genoptagelse maa aldrig falde tilbage til en frisk tekst-tur (tabt approval)
                 result = _facade().execute_with_role_or_fallback(
                     message=prompt,
                     provider=str(agent.get("provider") or ""),
@@ -712,6 +717,8 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                     lane="agent",
                 )
         else:
+            if _resume is not None:
+                raise RuntimeError("en parkeret agent kan ikke genoptages uden vaerktoejer")
             result = _facade().execute_with_role_or_fallback(
                 message=prompt,
                 provider=str(agent.get("provider") or ""),
@@ -719,6 +726,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                 requires_tools=_needs_tools,
                 lane="agent",
             )
+        if result.get("status") == "parked" and result.get("parked"):
+            # F4b: loekken er stoppet foer et godkendelseskraevende kald - ikke et udfald.
+            from core.services.agent_parking import park_run
+            return park_run(agent=agent, run_id=run_id, result=result, thread_id=resolved_thread_id)
         text = str(result.get("text") or "").strip()
         output_tokens = int(result.get("output_tokens") or 0)
         input_tokens = int(result.get("input_tokens") or 0)

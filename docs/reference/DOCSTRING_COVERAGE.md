@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8614/16309 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8625/16327 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8614/16309 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 770 | 1388 | 55% |
-| `core.services` | 5740 | 11085 | 51% |
+| `core.runtime` | 773 | 1392 | 55% |
+| `core.services` | 5748 | 11099 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8614/16309 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2288)
+## Undocumented public functions (2291)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -332,16 +332,17 @@ Generated from source. 8614/16309 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
-- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L338)
+- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L355)
 - `core/runtime/db_agent_approvals.py` :: `ensure_approval_tables` (L46)
-- `core/runtime/db_agent_approvals.py` :: `get` (L135)
-- `core/runtime/db_agent_approvals.py` :: `get_for_owner` (L139)
-- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L309)
+- `core/runtime/db_agent_approvals.py` :: `get` (L152)
+- `core/runtime/db_agent_approvals.py` :: `get_for_owner` (L156)
+- `core/runtime/db_agent_approvals.py` :: `parked_checkpoint` (L387)
+- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L326)
 - `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L139)
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L601)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L611)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
@@ -618,26 +619,28 @@ Generated from source. 8614/16309 functions/methods documented (52%). The list b
 - `core/services/agency_cartographer.py` :: `start_agency_cartographer_daemon` (L200)
 - `core/services/agency_cartographer.py` :: `stop_agency_cartographer_daemon` (L210)
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
+- `core/services/agent_approval_notify.py` :: `on_requested` (L5)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L36)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L34)
-- `core/services/agent_loop_core.py` :: `LoopIO.model` (L29)
-- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L32)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L483)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
+- `core/services/agent_loop_core.py` :: `LoopIO.model` (L38)
+- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L41)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L168)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L133)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1498)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1553)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1534)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1361)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1118)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1058)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1086)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1509)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1564)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1545)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1372)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1129)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1069)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1097)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1517)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1528)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
@@ -654,12 +657,12 @@ Generated from source. 8614/16309 functions/methods documented (52%). The list b
 - `core/services/agent_todos.py` :: `list_todos` (L68)
 - `core/services/agent_todos.py` :: `remove_todo` (L307)
 - `core/services/agent_todos.py` :: `update_todo_status` (L150)
-- `core/services/agent_worker_main.py` :: `RpcIO.after_round` (L59)
-- `core/services/agent_worker_main.py` :: `RpcIO.after_tool` (L56)
+- `core/services/agent_worker_main.py` :: `RpcIO.after_round` (L66)
+- `core/services/agent_worker_main.py` :: `RpcIO.after_tool` (L63)
 - `core/services/agent_worker_main.py` :: `RpcIO.call` (L34)
 - `core/services/agent_worker_main.py` :: `RpcIO.model` (L48)
 - `core/services/agent_worker_main.py` :: `RpcIO.tool` (L53)
-- `core/services/agent_worker_main.py` :: `main` (L74)
+- `core/services/agent_worker_main.py` :: `main` (L81)
 - `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
 - `core/services/agent_worktree_git.py` :: `add_worktree` (L100)

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16309 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16327 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,35 +29,35 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16309 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_emotional_memory`
 - [`core.runtime.02`](core.runtime.02.md) — `db_fts` … `db_view_requests`
 - [`core.runtime.03`](core.runtime.03.md) — `db_visible` … `ws_auth`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agent_self_evaluation`
-- [`core.services.02`](core.services.02.md) — `agent_skill_distiller` … `attention_blink_test`
-- [`core.services.03`](core.services.03.md) — `attention_budget` … `bridge_presence`
-- [`core.services.04`](core.services.04.md) — `bro_broker` … `central_coverage_action`
-- [`core.services.05`](core.services.05.md) — `central_dark_products_digest` … `central_model_meta`
-- [`core.services.06`](core.services.06.md) — `central_moltbook` … `central_stance`
-- [`core.services.07`](core.services.07.md) — `central_surgery` … `child_authority`
-- [`core.services.08`](core.services.08.md) — `child_failure_signal` … `consent_registry`
-- [`core.services.09`](core.services.09.md) — `consolidation_judge_daemon` … `current_pull`
-- [`core.services.10`](core.services.10.md) — `daemon_health` … `diagnosis_gate`
-- [`core.services.11`](core.services.11.md) — `diary_synthesis_signal_tracking` … `emergent_signal_tracking`
-- [`core.services.12`](core.services.12.md) — `emitted_prefix` … `finalize_tool_policy`
-- [`core.services.13`](core.services.13.md) — `finitude_runtime` … `google_login`
-- [`core.services.14`](core.services.14.md) — `governance_bootstrap` … `impulse_executor`
-- [`core.services.15`](core.services.15.md) — `in_flight_runs` … `ledger_canary`
-- [`core.services.16`](core.services.16.md) — `ledger_recovery` … `memory_recall_telemetry`
-- [`core.services.17`](core.services.17.md) — `memory_resurfacing` … `non_visible_rate_cap`
-- [`core.services.18`](core.services.18.md) — `notes_connector` … `permission_classifier`
-- [`core.services.19`](core.services.19.md) — `permission_engine` … `prompt_assembly_telemetri`
-- [`core.services.20`](core.services.20.md) — `prompt_cache_probe` … `reasoning_store`
-- [`core.services.21`](core.services.21.md) — `reboot_awareness_daemon` … `rule_definitions`
-- [`core.services.22`](core.services.22.md) — `rule_engine` … `selective_attention`
-- [`core.services.23`](core.services.23.md) — `selective_consolidation_daemon` … `session_distillation`
-- [`core.services.24`](core.services.24.md) — `session_inbox` … `skill_gate_guard`
-- [`core.services.25`](core.services.25.md) — `skill_relevance_surface` … `temporal_recurrence_signal_tracking`
-- [`core.services.26`](core.services.26.md) — `temporal_rhythm` … `truth_gate_v2`
-- [`core.services.27`](core.services.27.md) — `turens_vaerktoejer` … `visible_model_sse`
-- [`core.services.28`](core.services.28.md) — `visible_model_types` … `visual_memory`
-- [`core.services.29`](core.services.29.md) — `voice_anchor` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agent_runtime_spawn`
+- [`core.services.02`](core.services.02.md) — `agent_runtime_surfaces` … `attachment_blocks`
+- [`core.services.03`](core.services.03.md) — `attachment_service` … `bounded_workspace_write_runtime`
+- [`core.services.04`](core.services.04.md) — `brain_edge_worker` … `central_correlate`
+- [`core.services.05`](core.services.05.md) — `central_cost_surface` … `central_matrix_ensemble`
+- [`core.services.06`](core.services.06.md) — `central_membrane_watch` … `central_signal_health`
+- [`core.services.07`](core.services.07.md) — `central_soul_digest` … `cheap_provider_runtime_keys`
+- [`core.services.08`](core.services.08.md) — `cheap_provider_runtime_selection` … `conflict_resolution`
+- [`core.services.09`](core.services.09.md) — `connections` … `curiosity_consolidation`
+- [`core.services.10`](core.services.10.md) — `curiosity_daemon` … `device_pairing`
+- [`core.services.11`](core.services.11.md) — `device_presence` … `emergence`
+- [`core.services.12`](core.services.12.md) — `emergent_bridge` … `file_awareness_daemon`
+- [`core.services.13`](core.services.13.md) — `file_links` … `goal_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `good_enough_gate` … `identity_sketch`
+- [`core.services.15`](core.services.15.md) — `idle_consolidation` … `layer_tension_daemon`
+- [`core.services.16`](core.services.16.md) — `learning_pipeline_orchestrator` … `memory_md_update_proposal_tracking`
+- [`core.services.17`](core.services.17.md) — `memory_pruning_daemon` … `network_health`
+- [`core.services.18`](core.services.18.md) — `non_visible_fallback` … `perceptual_event_engine`
+- [`core.services.19`](core.services.19.md) — `periodic_jobs_scheduler` … `projection_runtime`
+- [`core.services.20`](core.services.20.md) — `projection_tool_router` … `reasoning_escalation`
+- [`core.services.21`](core.services.21.md) — `reasoning_interceptor` … `role_model_resolver`
+- [`core.services.22`](core.services.22.md) — `role_registry` … `secret_redaction`
+- [`core.services.23`](core.services.23.md) — `security_guard` … `session_boot_reconciler`
+- [`core.services.24`](core.services.24.md) — `session_context_resolve` … `skill_autosurface`
+- [`core.services.25`](core.services.25.md) — `skill_contract_registry` … `temporal_context`
+- [`core.services.26`](core.services.26.md) — `temporal_depth` … `tool_usage_store`
+- [`core.services.27`](core.services.27.md) — `tool_world_change` … `visible_model_observe`
+- [`core.services.28`](core.services.28.md) — `visible_model_ollama` … `visible_work_surfaces`
+- [`core.services.29`](core.services.29.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

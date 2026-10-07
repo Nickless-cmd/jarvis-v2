@@ -16,10 +16,10 @@ import traceback
 from typing import Any
 
 try:                                   # i repoet
-    from core.services.agent_loop_core import run_tool_loop
+    from core.services.agent_loop_core import ApprovalPending, run_tool_loop
     from core.services.agent_worker_protocol import FrameReader, send
 except ImportError:                    # i sandboxen: filerne ligger side om side i /worker
-    from agent_loop_core import run_tool_loop
+    from agent_loop_core import ApprovalPending, run_tool_loop
     from agent_worker_protocol import FrameReader, send
 
 REPLY_TIMEOUT_S = 6 * 3600.0
@@ -51,7 +51,14 @@ class RpcIO:
                          requires_tools=bool(requires_tools))
 
     def tool(self, tc):
-        return str(self.call("tool", tc=tc))
+        try:
+            return str(self.call("tool", tc=tc))
+        except RuntimeError as exc:
+            msg = str(exc)
+            if msg.startswith("APPROVAL_PENDING: "):               # brokeren: kaldet kraever en godkendelse
+                approval_id, _, tc_id = msg[len("APPROVAL_PENDING: "):].partition(":")
+                raise ApprovalPending(approval_id, tc_id) from exc
+            raise
 
     def after_tool(self, tc, tool_out):
         self.call("after_tool", tc=tc, tool_out=tool_out)
@@ -92,7 +99,8 @@ def main(argv: list[str]) -> int:
                 requires_tools=bool(job.get("requires_tools")), provider=job.get("provider", ""),
                 model=job.get("model", ""), scout=bool(job.get("scout")),
                 max_rounds=int(job.get("max_rounds") or 8),
-                synthesis_directive=str(job.get("synthesis_directive") or ""))
+                synthesis_directive=str(job.get("synthesis_directive") or ""),
+                resume=job.get("resume") or None)
         send(sock, {"op": "result", "outcome": outcome})
         return 0
     except BaseException as exc:                       # noqa: BLE001 - alt rapporteres til serveren

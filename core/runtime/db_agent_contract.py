@@ -375,6 +375,16 @@ def commit_terminal_outcome(
     # her registreres som hukommelsesfejl og aendrer aldrig udfaldet (§7.2).
     from core.runtime.db_agent_memory import project_summary
     project_summary(assignment_id)
+    # Et afsluttet assignment har ingen aabne approvals og intet at genoptage (F4b).
+    try:
+        from core.runtime.db_agent_approvals import cancel_for_assignment
+        cancel_for_assignment(assignment_id=assignment_id, reason=f"assignmentet blev {status}")
+        ck = _conn()          # ÉN forbindelse: et nyt _conn()-kald ruller en aaben transaktion tilbage
+        ck.execute("UPDATE agent_checkpoints SET status='discarded' WHERE assignment_id=? AND status='parked'",
+                   (assignment_id,))
+        ck.commit()
+    except Exception:
+        logger.warning("kunne ikke rydde approvals for %s", assignment_id, exc_info=True)
     if fired:
         from core.runtime.db_agent_wait import materialize_pending_wakes
         try:

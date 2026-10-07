@@ -455,12 +455,53 @@ def _attach_outputs(view: list[dict[str, Any]], owner_user_id: str, offset: int)
 
 
 def supervise() -> list[dict[str, Any]]:
-    """Supervisor-taek: overtag udloebne leases og genstart sikre forsoeg. Kan koeres fra
-    begge processer; ét atomisk DB-claim afgoer hvem der handler (§9, procesansvar)."""
+    """Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne
+    leases og genstart sikre forsoeg. Kan koeres fra begge processer; atomiske DB-claims afgoer hvem der handler."""
+    from core.runtime import db_agent_approvals as appr
     from core.runtime.db_agent_lease import reconcile_expired_leases
+    from core.services.agent_parking import resume_decided
 
+    appr.expire_due()
+    resumed = resume_decided(_start_execution)
     done = reconcile_expired_leases()
     for d in done:
         if d.get("action") == "retry":
             _start_execution(d["agent_id"])
-    return done
+    return done + [{"action": "resumed_after_approval", **r} for r in resumed]
+
+
+# --- approvals (F4) -----------------------------------------------------------------------------------
+
+def approval_view(r: dict[str, Any]) -> dict[str, Any]:
+    """Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter."""
+    keys = ("approval_id", "kind", "status", "agent_id", "assignment_id", "run_id", "parent_run_id",
+            "origin_session_id", "target", "tool_name", "safe_view", "args_digest", "risk_class",
+            "requested_by", "created_at", "expires_at", "decided_at", "decided_by", "decision_note")
+    return {k: r.get(k) for k in keys}
+
+
+def list_approvals(*, owner_user_id: str, status: str = "", origin_session_id: str = "") -> dict[str, Any]:
+    from core.runtime import db_agent_approvals as appr
+
+    if not (owner_user_id or "").strip():
+        return _err("INVALID_SCOPE", "ejer mangler")
+    rows = appr.list_for_owner(owner_user_id=owner_user_id, status=status, origin_session_id=origin_session_id)
+    return {"status": "ok", "approvals": [approval_view(r) for r in rows], "count": len(rows),
+            "contract_version": CONTRACT_VERSION}
+
+
+def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, actor_kind: str, digest: str,
+                    note: str = "") -> dict[str, Any]:
+    """Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede
+    barn. Virker ogsaa naar motoren er slukket: accepteret arbejde og dets approvals kan altid afgoeres."""
+    from core.runtime import db_agent_approvals as appr
+    from core.services.agent_parking import resume_decided
+
+    try:
+        r = appr.decide(approval_id=approval_id, decision=decision, actor_user_id=actor_user_id,
+                        actor_kind=actor_kind, digest=digest, note=note)
+    except ContractError as exc:
+        logger.info("approval %s: afgoerelsen blev afvist (%s)", approval_id, exc.code)
+        return _err(exc.code, exc.detail, "approval")
+    resume_decided(_start_execution)
+    return {"status": "ok", "approval": approval_view(r), "contract_version": CONTRACT_VERSION}

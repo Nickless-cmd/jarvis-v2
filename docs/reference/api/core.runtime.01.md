@@ -71,25 +71,29 @@ _Varige approvals til agenters handlinger (agent-contract-v1 F4a, spec 8.2)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `ensure_approval_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_approvals.py#L46) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_agent_approvals.py#L94) |
-| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_agent_approvals.py#L98) |
-| function | `_audit` | `(conn, approval_id, event, actor=…, detail=…)` | — | [src](../../../core/runtime/db_agent_approvals.py#L102) |
-| function | `normalize_arguments` | `(arguments)` | Kaldets argumenter UDEN serverens egne ``_runtime_*``-felter (de er ikke en del af handlingen). | [src](../../../core/runtime/db_agent_approvals.py#L107) |
-| function | `invocation_digest` | `(*, tool_name, arguments, target, assignment_id)` | Digest af netop dette kald: vaerktoej + normaliserede argumenter + target + assignment. | [src](../../../core/runtime/db_agent_approvals.py#L112) |
-| function | `safe_view` | `(tool_name, arguments)` | Hvad et menneske ser i kortet: redigerede (hemmeligheder) og afkortede argumenter. | [src](../../../core/runtime/db_agent_approvals.py#L120) |
-| function | `_row_or_none` | `(conn, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L131) |
-| function | `get` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L135) |
-| function | `get_for_owner` | `(*, owner_user_id, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L139) |
-| function | `request` | `(*, owner_user_id, origin_session_id, assignment_id, tool_name, arguments, run_id=…, risk_class=…, requested_by=…, kind=…, ttl=…, now=…)` | Opret (eller genfind) en ventende approval. Idempotent paa (assignment, digest): samme kald giver | [src](../../../core/runtime/db_agent_approvals.py#L144) |
-| function | `_authorized` | `(actor_user_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L194) |
-| function | `decide` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, now=…)` | Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder. | [src](../../../core/runtime/db_agent_approvals.py#L206) |
-| function | `consume` | `(*, approval_id, digest, now=…)` | Brug en godkendt approval. Atomisk ``approved -> consumed`` paa digest og foer udloeb - HOEJST EN | [src](../../../core/runtime/db_agent_approvals.py#L250) |
-| function | `expire_due` | `(*, now=…)` | Udloeb ventende og ubrugte godkendte approvals der har overskredet fristen. | [src](../../../core/runtime/db_agent_approvals.py#L264) |
-| function | `cancel_for_assignment` | `(*, assignment_id, reason)` | Annuller ventende/ubrugte approvals for et assignment der er endt. | [src](../../../core/runtime/db_agent_approvals.py#L279) |
-| function | `list_for_owner` | `(*, owner_user_id, status=…, origin_session_id=…, limit=…)` | Ejerens approvals (aldrig en andens). | [src](../../../core/runtime/db_agent_approvals.py#L293) |
-| function | `unannounced_pending` | `(*, owner_user_id, origin_session_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L309) |
-| function | `claim_announcements` | `(*, owner_user_id, origin_session_id)` | Atomisk: markér ventende, endnu ikke omtalte approvals som omtalt og returnér dem. Hver approval | [src](../../../core/runtime/db_agent_approvals.py#L317) |
-| function | `audit_trail` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L338) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_agent_approvals.py#L111) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_agent_approvals.py#L115) |
+| function | `_audit` | `(conn, approval_id, event, actor=…, detail=…)` | — | [src](../../../core/runtime/db_agent_approvals.py#L119) |
+| function | `normalize_arguments` | `(arguments)` | Kaldets argumenter UDEN serverens egne ``_runtime_*``-felter (de er ikke en del af handlingen). | [src](../../../core/runtime/db_agent_approvals.py#L124) |
+| function | `invocation_digest` | `(*, tool_name, arguments, target, assignment_id)` | Digest af netop dette kald: vaerktoej + normaliserede argumenter + target + assignment. | [src](../../../core/runtime/db_agent_approvals.py#L129) |
+| function | `safe_view` | `(tool_name, arguments)` | Hvad et menneske ser i kortet: redigerede (hemmeligheder) og afkortede argumenter. | [src](../../../core/runtime/db_agent_approvals.py#L137) |
+| function | `_row_or_none` | `(conn, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L148) |
+| function | `get` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L152) |
+| function | `get_for_owner` | `(*, owner_user_id, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L156) |
+| function | `request` | `(*, owner_user_id, origin_session_id, assignment_id, tool_name, arguments, run_id=…, risk_class=…, requested_by=…, kind=…, ttl=…, now=…)` | Opret (eller genfind) en ventende approval. Idempotent paa (assignment, digest): samme kald giver | [src](../../../core/runtime/db_agent_approvals.py#L161) |
+| function | `_authorized` | `(actor_user_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L211) |
+| function | `decide` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, now=…)` | Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder. | [src](../../../core/runtime/db_agent_approvals.py#L223) |
+| function | `consume` | `(*, approval_id, digest, now=…)` | Brug en godkendt approval. Atomisk ``approved -> consumed`` paa digest og foer udloeb - HOEJST EN | [src](../../../core/runtime/db_agent_approvals.py#L267) |
+| function | `expire_due` | `(*, now=…)` | Udloeb ventende og ubrugte godkendte approvals der har overskredet fristen. | [src](../../../core/runtime/db_agent_approvals.py#L281) |
+| function | `cancel_for_assignment` | `(*, assignment_id, reason)` | Annuller ventende/ubrugte approvals for et assignment der er endt. | [src](../../../core/runtime/db_agent_approvals.py#L296) |
+| function | `list_for_owner` | `(*, owner_user_id, status=…, origin_session_id=…, limit=…)` | Ejerens approvals (aldrig en andens). | [src](../../../core/runtime/db_agent_approvals.py#L310) |
+| function | `unannounced_pending` | `(*, owner_user_id, origin_session_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L326) |
+| function | `claim_announcements` | `(*, owner_user_id, origin_session_id)` | Atomisk: markér ventende, endnu ikke omtalte approvals som omtalt og returnér dem. Hver approval | [src](../../../core/runtime/db_agent_approvals.py#L334) |
+| function | `audit_trail` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L355) |
+| function | `save_checkpoint` | `(*, assignment_id, run_id, approval_id, payload)` | Gem barnets loekketilstand. Hoejst én parkeret checkpoint pr. assignment. | [src](../../../core/runtime/db_agent_approvals.py#L363) |
+| function | `parked_checkpoint` | `(*, assignment_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L387) |
+| function | `take_checkpoint` | `(*, assignment_id)` | Atomisk ``parked -> resumed``: HOEJST EN genoptagelse pr. checkpoint. Returnerer | [src](../../../core/runtime/db_agent_approvals.py#L393) |
+| function | `decided_parked` | `()` | Parkerede checkpoints hvis approval er afgjort (godkendt, afslaaet, udloebet eller annulleret) - | [src](../../../core/runtime/db_agent_approvals.py#L414) |
 
 ## `core/runtime/db_agent_artifacts.py`
 _Artefaktlager for agentkoersler (agent-contract-v1, leverance C1, spec 9 og 12.1)._
@@ -128,19 +132,19 @@ _Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
 | function | `mark_legacy_unscoped` | `()` | Gamle rækker uden ejer er allerede mærket via kolonne-default; denne | [src](../../../core/runtime/db_agent_contract.py#L195) |
 | function | `accept_assignment` | `(*, agent_id, owner_user_id, origin_session_id, goal, parent_agent_id=…, parent_run_id=…, input_refs=…, expected_result=…, target=…, deadline_at=…, budget=…, created_by=…, operation=…, idempotency_key=…, request_digest=…)` | Accepter ét assignment atomisk sammen med dets første run. | [src](../../../core/runtime/db_agent_contract.py#L208) |
 | function | `commit_terminal_outcome` | `(*, assignment_id, status, summary=…, error_code=…, error_phase=…, artifact_ref=…, last_run_id=…, artifact_error=…)` | Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME | [src](../../../core/runtime/db_agent_contract.py#L307) |
-| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L391) |
-| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L419) |
-| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L430) |
-| function | `bind_agent_owner` | `(*, agent_id, owner_user_id, owner_session_id)` | Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten | [src](../../../core/runtime/db_agent_contract.py#L449) |
-| function | `queued_contract_run` | `(agent_id)` | Id på det run accept_assignment forudoprettede og som endnu ikke er startet. | [src](../../../core/runtime/db_agent_contract.py#L461) |
-| function | `adopt_run` | `(*, agent_id, run_id)` | Bind et nyoprettet run til agentens åbne assignment som næste forsøg. | [src](../../../core/runtime/db_agent_contract.py#L470) |
-| function | `settle_agent_status` | `(*, agent_id, registry_status)` | Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne | [src](../../../core/runtime/db_agent_contract.py#L508) |
-| function | `claim_pending_results` | `(*, owner_user_id, origin_session_id)` | Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for | [src](../../../core/runtime/db_agent_contract.py#L558) |
-| function | `find_assignment_by_key` | `(*, owner_user_id, origin_session_id, operation, idempotency_key)` | Findes der allerede et assignment for netop denne ejer/session/operation/noegle? | [src](../../../core/runtime/db_agent_contract.py#L590) |
-| function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L601) |
-| function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L607) |
-| function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L620) |
-| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L633) |
+| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L401) |
+| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L429) |
+| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L440) |
+| function | `bind_agent_owner` | `(*, agent_id, owner_user_id, owner_session_id)` | Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten | [src](../../../core/runtime/db_agent_contract.py#L459) |
+| function | `queued_contract_run` | `(agent_id)` | Id på det run accept_assignment forudoprettede og som endnu ikke er startet. | [src](../../../core/runtime/db_agent_contract.py#L471) |
+| function | `adopt_run` | `(*, agent_id, run_id)` | Bind et nyoprettet run til agentens åbne assignment som næste forsøg. | [src](../../../core/runtime/db_agent_contract.py#L480) |
+| function | `settle_agent_status` | `(*, agent_id, registry_status)` | Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne | [src](../../../core/runtime/db_agent_contract.py#L518) |
+| function | `claim_pending_results` | `(*, owner_user_id, origin_session_id)` | Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for | [src](../../../core/runtime/db_agent_contract.py#L568) |
+| function | `find_assignment_by_key` | `(*, owner_user_id, origin_session_id, operation, idempotency_key)` | Findes der allerede et assignment for netop denne ejer/session/operation/noegle? | [src](../../../core/runtime/db_agent_contract.py#L600) |
+| function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L611) |
+| function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L617) |
+| function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L630) |
+| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L643) |
 
 ## `core/runtime/db_agent_lease.py`
 _Workerlease med stigende fencing-token + supervisor-genopretning (agent-contract-v1 C2)._

@@ -321,3 +321,60 @@ def test_announcement_claim_is_atomic_even_with_a_forced_window_between_select_a
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert errors == [] and len(got) == 3 and len({x["approval_id"] for x in got}) == 3
+
+
+# --- checkpoint --------------------------------------------------------------------------------------------
+
+def test_a_checkpoint_can_be_taken_exactly_once(ap):
+    acc = ap.task()
+    ap.A_.save_checkpoint(assignment_id=acc["assignment_id"], run_id=acc["run_id"], approval_id="appr-x",
+                          payload={"messages": [{"role": "user", "content": "æøå"}]})
+    assert ap.A_.parked_checkpoint(assignment_id=acc["assignment_id"])["approval_id"] == "appr-x"
+    first = ap.A_.take_checkpoint(assignment_id=acc["assignment_id"])
+    assert first["payload"] == {"messages": [{"role": "user", "content": "æøå"}]}
+    assert (first["approval_id"], first["run_id"]) == ("appr-x", acc["run_id"])
+    assert ap.A_.take_checkpoint(assignment_id=acc["assignment_id"]) is None
+    assert ap.A_.parked_checkpoint(assignment_id=acc["assignment_id"]) is None
+
+
+def test_only_one_parked_checkpoint_per_assignment(ap):
+    acc = ap.task()
+    ap.A_.save_checkpoint(assignment_id=acc["assignment_id"], run_id="r", approval_id="a", payload={})
+    with pytest.raises(ap.c_.ContractError) as e:
+        ap.A_.save_checkpoint(assignment_id=acc["assignment_id"], run_id="r", approval_id="b", payload={})
+    assert e.value.code == "INVALID_TRANSITION"
+    with pytest.raises(ap.c_.ContractError):
+        ap.A_.save_checkpoint(assignment_id="asg-findes-ikke", run_id="r", approval_id="a", payload={})
+
+
+def test_concurrent_takers_get_the_checkpoint_once_even_with_a_forced_window(ap, monkeypatch):
+    import time
+
+    acc = ap.task()
+    ap.A_.save_checkpoint(assignment_id=acc["assignment_id"], run_id="r", approval_id="a", payload={"x": 1})
+    real = ap.A_._now_iso
+    monkeypatch.setattr(ap.A_, "_now_iso", lambda: (time.sleep(0.2), real())[1])
+    got, errors = [], []
+
+    def go():
+        try:
+            got.append(ap.A_.take_checkpoint(assignment_id=acc["assignment_id"]))
+        except Exception as exc:
+            errors.append(type(exc).__name__)
+
+    ts = [threading.Thread(target=go) for _ in range(4)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert errors == [] and len([g for g in got if g]) == 1
+
+
+def test_decided_parked_lists_only_checkpoints_whose_approval_is_decided(ap):
+    acc = ap.task()
+    r = ap.req(acc)
+    ap.A_.save_checkpoint(assignment_id=acc["assignment_id"], run_id="r", approval_id=r["approval_id"], payload={})
+    assert ap.A_.decided_parked() == []                                          # pending -> nej
+    ap.human(r)
+    assert [(d["assignment_id"], d["approval_status"]) for d in ap.A_.decided_parked()] == [
+        (acc["assignment_id"], "approved")]
+    ap.A_.take_checkpoint(assignment_id=acc["assignment_id"])
+    assert ap.A_.decided_parked() == []                                          # taget -> ikke laengere parkeret

@@ -201,3 +201,77 @@ def test_an_interrupted_tool_call_stays_open_so_the_supervisor_sees_it(base):
         b._run_agent_tool_loop(agent=dict(AGENT), prompt="P", requires_tools=True, run_id="run-9")
     row = get_agent_tool_call("c1")
     assert row["status"] == "running" and row["started_at"] and not row["finished_at"]
+
+
+# --- F4b: parkering og genoptagelse ------------------------------------------------------------------------
+
+class ParkIO(FakeIO):
+    """Parkerer paa et bestemt kald, indtil `allow` indeholder dets id."""
+
+    def __init__(self, replies, park_on=("c2",), tool_out="ok"):
+        super().__init__(replies, tool_out)
+        self.park_on, self.allow = set(park_on), set()
+
+    def tool(self, tc):
+        if tc["id"] in self.park_on and tc["id"] not in self.allow:
+            raise core.ApprovalPending(f"appr-{tc['id']}", tc["id"])
+        return super().tool(tc)
+
+
+def test_a_call_that_needs_approval_parks_the_loop_with_a_complete_checkpoint():
+    io = ParkIO([{"text": "tænker", "tool_calls": [_tc(1), _tc(2), _tc(3)], "input_tokens": 4, "output_tokens": 1,
+                  "cost_usd": 0.5}])
+    out = _run(io)
+    assert io.tool_calls == ["c1"] and out["total_tool_calls"] == 1 and out["error_str"] == ""
+    p = out["parked"]
+    assert (p["approval_id"], p["tool_call_id"]) == ("appr-c2", "c2")
+    cp = p["checkpoint"]
+    assert [m["role"] for m in cp["messages"]] == ["user", "assistant", "tool"]
+    assert [c["id"] for c in cp["pending_calls"]] == ["c2", "c3"]
+    assert [c["id"] for c in cp["round_calls"]] == ["c1", "c2", "c3"]
+    assert (cp["rounds"], cp["total_input"], cp["total_cost"], cp["total_tool_calls"], cp["final_text"]) == (
+        1, 4, 0.5, 1, "tænker")
+    assert io.rounds == []                                              # runden er ikke faerdig
+    assert len(io.model_calls) == 1                                       # intet nyt modelkald er sket
+
+
+def test_resume_executes_the_pending_calls_then_continues_the_rounds_with_carried_totals():
+    first = ParkIO([{"text": "tænker", "tool_calls": [_tc(1), _tc(2), _tc(3)], "input_tokens": 4}])
+    cp = _run(first)["parked"]["checkpoint"]
+    io = ParkIO([{"text": "alt klaret", "input_tokens": 6}], park_on=("c2",), tool_out="R")
+    io.allow = {"c2"}
+    out = _run(io, resume=cp)
+    assert io.tool_calls == ["c2", "c3"] and io.after_tools == [("c2", "R"), ("c3", "R")]
+    assert io.rounds == [(1, ["c1", "c2", "c3"])]
+    assert (out["final_text"], out["rounds"], out["total_input"], out["total_tool_calls"]) == ("alt klaret", 2, 10, 3)
+    sent = io.model_calls[0]["messages"]
+    assert [m["role"] for m in sent] == ["user", "assistant", "tool", "tool", "tool"]
+    assert [m["tool_call_id"] for m in sent if m["role"] == "tool"] == ["c1", "c2", "c3"]
+    assert "parked" not in out
+
+
+def test_a_resumed_loop_can_park_again_on_the_next_gated_call():
+    first = ParkIO([{"text": "", "tool_calls": [_tc(1), _tc(2)]}], park_on=("c2", "c4"))
+    cp = _run(first)["parked"]["checkpoint"]
+    io = ParkIO([{"text": "", "tool_calls": [_tc(4)]}], park_on=("c2", "c4"))
+    io.allow = {"c2"}
+    out = _run(io, resume=cp)
+    assert out["parked"]["approval_id"] == "appr-c4" and out["parked"]["checkpoint"]["rounds"] == 2
+
+
+def test_the_round_budget_is_not_reset_by_a_resume():
+    first = ParkIO([{"text": "", "tool_calls": [_tc(1)]}], park_on=("c1",))
+    cp = _run(first, max_rounds=2)["parked"]["checkpoint"]
+    io = ParkIO([{"text": "", "tool_calls": [_tc(5)]}, {"text": "syntese"}], park_on=())
+    out = _run(io, resume=cp, max_rounds=2)
+    assert out["rounds"] == 2 and out["final_text"] == "syntese"        # runde 1 (foer parkering) + runde 2, saa syntese
+    assert io.model_calls[-1]["tools"] == [] and len(io.model_calls) == 2
+
+
+def test_other_tool_errors_still_become_error_str_and_do_not_park():
+    class Boom(FakeIO):
+        def tool(self, tc):
+            raise ValueError("almindelig fejl")
+
+    out = _run(Boom([{"text": "", "tool_calls": [_tc(1)]}]))
+    assert out["error_str"] == "almindelig fejl" and "parked" not in out

@@ -71,6 +71,17 @@ true;
  *  sin margen; 20 pr. side rammer den samme kant som teksten staar paa. */
 const SIDE_LUFT = 20
 
+/** Er adressen dokumentet selv — eller et forsoeg paa at navigere ud?
+ *
+ *  `source={{ html }}` indlaeses som `about:blank` (Android:
+ *  `loadDataWithBaseURL`) eller som en `data:`-URL. Begge ER widget'en. Alt
+ *  andet — http, https, intent:, file: — er et forsoeg paa at forlade
+ *  sandkassen og afvises. Eksporteret saa en test kan se den afvise. */
+export function dokumentets_egen(url: unknown): boolean {
+  const u = String(url ?? '').trim().toLowerCase()
+  return u === '' || u === 'about:blank' || u.startsWith('data:')
+}
+
 export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   const [hoejde, setHoejde] = useState(160)
   // EN DEFINIT BREDDE, IKKE EN PROCENT (Bjoern 6/10-2026: «Og saa virker
@@ -95,12 +106,10 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   // bredde at give en foraelder der selv skal maales af sine boern.
   const vindue = useWindowDimensions()
   const bredde = Math.max(240, Math.round(vindue.width) - 2 * SIDE_LUFT)
-  const foerste = useRef(true)
   // Teksten er FAERDIG-MAERKET naar den naar hertil.
   const onPrompt = useContext(WidgetPrompt)
   const sendte = useRef({ antal: 0, sidst: 0 })
 
-  useEffect(() => { foerste.current = true }, [html])
 
   if (!html) {
     return <Text style={styles.fejl}>Widget kunne ikke vises: tomt dokument</Text>
@@ -117,12 +126,25 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
         // INTET baseUrl — se komponentens docstring.
         source={{ html }}
         originWhitelist={[]}
-        // Den foerste indlaesning ER dokumentet selv; alt derefter er
-        // navigation og afvises.
-        onShouldStartLoadWithRequest={() => {
-          if (foerste.current) { foerste.current = false; return true }
-          return false
-        }}
+        // GATEN SER PAA ADRESSEN, IKKE PAA HVOR MANGE GANGE DEN ER KALDT.
+        //
+        // Foerste udgave talte: «foerste kald = dokumentet, alt derefter =
+        // navigation». Det var forkert. Android indlaeser `source={{html}}` med
+        // `loadDataWithBaseURL("about:blank", …)` og fyrer navigations-tjekket
+        // MERE END EN GANG for den ene indlaesning — saa taelleren slap den
+        // foerste igennem og blokerede selve dokumentet. Bjoern saa en tom
+        // ramme hvor widget'en skulle staa (6/10-2026).
+        //
+        // `about:blank` og `data:` ER dokumentet. Alt andet er navigation ud af
+        // sandkassen og afvises. Det er baade rigtigere og strammere end at
+        // taelle: en gate der siger HVAD den tillader kan ikke narres af
+        // hvor mange gange den bliver spurgt.
+        //
+        // Bemaerk at `originWhitelist` ikke daekker det: biblioteket laegger
+        // selv `about:blank` foerst i listen (`compileWhitelist` i
+        // WebViewShared), saa en tom liste tillader stadig dokumentet. Gaten
+        // her er den der afgoer sagen.
+        onShouldStartLoadWithRequest={(req) => dokumentets_egen(req?.url)}
         javaScriptEnabled
         injectedJavaScript={HOEJDE_SCRIPT}
         onMessage={(e) => {

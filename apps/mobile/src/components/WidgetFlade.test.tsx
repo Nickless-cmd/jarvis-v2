@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native'
-import { WidgetFlade, MAX_WIDGET_BYTES, WidgetPrompt } from './WidgetFlade'
+import { WidgetFlade, dokumentets_egen, MAX_WIDGET_BYTES, WidgetPrompt } from './WidgetFlade'
 
 /**
  * Mobilen har ingen `sandbox`-attribut, saa graensen er bygget af FLAG. Disse
@@ -24,13 +24,21 @@ describe('WidgetFlade', () => {
     expect((p.source as Record<string, unknown>).baseUrl).toBeUndefined()
   })
 
-  it('ingen origin er tilladt, og navigation efter foerste indlaesning afvises', async () => {
+  // DENNE TEST PINNEDE FEJLEN (6/10-2026). Foerste udgave kaldte `guard()` UDEN
+  // adresse og kraevede «foerst true, saa false» — altsaa taelleren, ikke
+  // adfaerden. Den bestod mens widget'en var usynlig paa telefonen, fordi
+  // Android fyrer tjekket flere gange for EN indlaesning og taelleren derfor
+  // blokerede selve dokumentet. En test der maaler sin egen opfindelse kan
+  // ikke se virkeligheden fejle.
+  it('slipper dokumentet igennem og afviser navigation — paa ADRESSEN', async () => {
     const p = await props()
-    expect(p.originWhitelist).toEqual([])
-    const guard = p.onShouldStartLoadWithRequest as () => boolean
-    expect(guard()).toBe(true)    // selve dokumentet
-    expect(guard()).toBe(false)   // alt derefter er navigation
-    expect(guard()).toBe(false)
+    const guard = p.onShouldStartLoadWithRequest as (r: { url: string }) => boolean
+    // Dokumentet, gentagne gange — Android spoerger mere end en gang.
+    expect(guard({ url: 'about:blank' })).toBe(true)
+    expect(guard({ url: 'about:blank' })).toBe(true)
+    // Og enhver vej ud, ogsaa som det FOERSTE kald.
+    expect(guard({ url: 'https://api.srvlab.dk/' })).toBe(false)
+    expect(guard({ url: 'intent://scan/#Intent;scheme=zxing;end' })).toBe(false)
   })
 
   it('fil-adgang, storage, cookies og flere vinduer er LUKKET eksplicit', async () => {
@@ -145,5 +153,39 @@ describe('widget-rammens bredde', () => {
     const screen = await render(<WidgetFlade html="<!doctype html><p>hej</p>" />)
     const ramme = (screen.getByTestId('widget-webview') as unknown as { parent: unknown }).parent
     expect(typeof flad(ramme).height).toBe('number')
+  })
+})
+
+// ── GATEN SKAL SE PAA ADRESSEN (Bjørn 6/10-2026) ───────────────────────────
+//
+// Foerste udgave talte kald: «foerste = dokumentet, resten = navigation».
+// Android fyrer tjekket flere gange for EN `loadDataWithBaseURL`, saa
+// taelleren blokerede selve dokumentet. Bjoern saa en tom ramme.
+describe('dokumentets_egen', () => {
+  it('slipper dokumentet igennem — uanset hvor mange gange den spoerges', () => {
+    for (let i = 0; i < 5; i++) {
+      expect(dokumentets_egen('about:blank')).toBe(true)
+    }
+    expect(dokumentets_egen('data:text/html;base64,PGh0bWw+')).toBe(true)
+    expect(dokumentets_egen('')).toBe(true)
+    expect(dokumentets_egen(undefined)).toBe(true)
+  })
+
+  it('afviser enhver vej UD af sandkassen', () => {
+    for (const u of [
+      'https://api.srvlab.dk/attachments/media/abc',
+      'http://10.0.0.39/',
+      'file:///data/data/dk.srvlab.jarvis.mobile/',
+      'intent://scan/#Intent;scheme=zxing;end',
+      'javascript:alert(1)',
+      'content://media/external/images/1',
+    ]) {
+      expect(dokumentets_egen(u)).toBe(false)
+    }
+  })
+
+  it('store bogstaver maa ikke smutte udenom', () => {
+    expect(dokumentets_egen('HTTPS://api.srvlab.dk/')).toBe(false)
+    expect(dokumentets_egen('About:Blank')).toBe(true)
   })
 })

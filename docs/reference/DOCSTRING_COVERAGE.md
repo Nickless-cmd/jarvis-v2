@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8657/16387 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8660/16392 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 774 | 1397 | 55% |
-| `core.services` | 5778 | 11149 | 51% |
+| `core.services` | 5781 | 11154 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2301)
+## Undocumented public functions (2302)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -651,8 +651,9 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
-- `core/services/agent_sandbox.py` :: `bwrap_path` (L31)
-- `core/services/agent_sandbox.py` :: `python_prefixes` (L38)
+- `core/services/agent_sandbox.py` :: `bwrap_path` (L49)
+- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L105)
+- `core/services/agent_sandbox.py` :: `python_prefixes` (L56)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)

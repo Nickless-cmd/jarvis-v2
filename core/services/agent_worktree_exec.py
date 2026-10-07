@@ -83,7 +83,7 @@ def _run(wt: dict[str, Any], command: list[str], *, timeout_s: float, stdin_byte
         command, stdin=subprocess.PIPE if stdin_bytes is not None else None,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, worker_files={}, rw_binds={wt["path"]: "/work"},
         chdir="/work", address_space=_ADDRESS_SPACE, cpu_seconds=int(timeout_s) + 5,
-        file_size=_FILE_SIZE_LIMIT, mounts=mounts, extra_env=agd.sandbox_env() if mounts else None)
+        file_size=_FILE_SIZE_LIMIT, pids_limit=sb.PIDS_COMMAND, mounts=mounts, extra_env=agd.sandbox_env() if mounts else None)
     timed_out = False
     try:
         out, err = proc.communicate(input=stdin_bytes, timeout=timeout_s)

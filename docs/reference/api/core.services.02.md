@@ -104,13 +104,18 @@ _bubblewrap-sandbox til en agent-worker (agent-contract-v1 C6b, spec 12.1)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `SandboxUnavailable` | `` | Sandboxen kan ikke etableres - agentens loekke maa ikke koere usandboxet. | [src](../../../core/services/agent_sandbox.py#L27) |
-| function | `bwrap_path` | `()` | — | [src](../../../core/services/agent_sandbox.py#L31) |
-| function | `python_prefixes` | `()` | — | [src](../../../core/services/agent_sandbox.py#L38) |
-| function | `build_bwrap_argv` | `(command, *, pass_fds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, mounts=…)` | Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen). | [src](../../../core/services/agent_sandbox.py#L46) |
-| function | `resource_prefix` | `(*, address_space, cpu_seconds, open_files=…, file_size=…)` | ``prlimit`` foer bwrap: graenserne arves af workeren og kan ikke haeves derinde. | [src](../../../core/services/agent_sandbox.py#L87) |
-| function | `spawn_in_sandbox` | `(command, *, pass_fds=…, stdout=…, stderr=…, address_space=…, cpu_seconds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, stdin=…, file_size=…, mounts=…)` | Start ``command`` i sandboxen. Egen processgruppe, saa den kan draebes samlet. | [src](../../../core/services/agent_sandbox.py#L99) |
-| function | `sandbox_usable` | `()` | Smoketest: kan et trivielt program koere i sandboxen? (ja/nej, grund) | [src](../../../core/services/agent_sandbox.py#L116) |
+| class | `SandboxUnavailable` | `` | Sandboxen kan ikke etableres - agentens loekke maa ikke koere usandboxet. | [src](../../../core/services/agent_sandbox.py#L45) |
+| function | `bwrap_path` | `()` | — | [src](../../../core/services/agent_sandbox.py#L49) |
+| function | `python_prefixes` | `()` | — | [src](../../../core/services/agent_sandbox.py#L56) |
+| function | `build_bwrap_argv` | `(command, *, pass_fds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, mounts=…)` | Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen). | [src](../../../core/services/agent_sandbox.py#L64) |
+| function | `pids_limit_disabled` | `()` | — | [src](../../../core/services/agent_sandbox.py#L105) |
+| function | `scope_env` | `()` | Miljoeet ``systemd-run --user`` skal bruge. En systemd-service har ofte ikke ``XDG_RUNTIME_DIR``. | [src](../../../core/services/agent_sandbox.py#L109) |
+| function | `_scope_argv` | `(limit)` | — | [src](../../../core/services/agent_sandbox.py#L118) |
+| function | `cgroup_pids_available` | `(*, force=…)` | Kan vi lave en cgroup-scope med ``TasksMax`` for den aktuelle bruger? Cachet i 30 s (brugerens | [src](../../../core/services/agent_sandbox.py#L125) |
+| function | `pids_prefix` | `(limit)` | ``systemd-run --user --scope -p TasksMax=N`` foer bwrap, eller ``[]`` hvis graensen er fravalgt. | [src](../../../core/services/agent_sandbox.py#L146) |
+| function | `resource_prefix` | `(*, address_space, cpu_seconds, open_files=…, file_size=…)` | ``prlimit`` foer bwrap: graenserne arves af workeren og kan ikke haeves derinde. | [src](../../../core/services/agent_sandbox.py#L158) |
+| function | `spawn_in_sandbox` | `(command, *, pass_fds=…, stdout=…, stderr=…, address_space=…, cpu_seconds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, stdin=…, file_size=…, mounts=…, pids_limit=…)` | Start ``command`` i sandboxen under en cgroup-scope med ``TasksMax=pids_limit`` (fork-bombe-vaern). | [src](../../../core/services/agent_sandbox.py#L170) |
+| function | `sandbox_usable` | `()` | Smoketest: kan et trivielt program koere i sandboxen? (ja/nej, grund) | [src](../../../core/services/agent_sandbox.py#L189) |
 
 ## `core/services/agent_self_evaluation.py`
 _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._

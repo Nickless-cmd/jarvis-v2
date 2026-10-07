@@ -2745,6 +2745,10 @@ async def _stream_visible_run(
                 # Skill-beslutning (2/10-2026): ét stærkt match = ét krav om
                 # svar. Cap 1, samme grund som hollow-promise-loftet.
                 _skill_gate_nudges = 0
+                # Stillingtagen til næste skridt (Bjørn 7/10-2026): noten der
+                # fyrer ved tur-afslutning når turen udførte arbejde og intet
+                # forslag blev lagt. Cap 1, samme grund som de to ovenfor.
+                _suggest_standing_nudges = 0
                 _hollow_force_next = False      # redesign 4/9: næste runde tvinges m. tool_choice=required
                 _hollow_await_outcome = False   # udfald af den tvungne runde skal persisteres
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
@@ -4409,6 +4413,57 @@ async def _stream_visible_run(
                                     continue
                         except Exception as _stop_exc:
                             logger.warning("Stop-hook fejlede: %r", _stop_exc)
+
+                        # ── Stillingtagen til næste skridt (Bjørn 7/10-2026) ──
+                        # Instruktionen fandtes allerede i `output_discipline`,
+                        # men som én linje blandt tyve langt oppe i prompten —
+                        # og den druknede (mål: forslag oprettet pr. dag faldt
+                        # fra 20-85 til under 10 efter 28/9, hvor Jarvis blev
+                        # eneste kilde). Vagten flytter den SAMME regel ned til
+                        # beslutningsøjeblikket.
+                        #
+                        # Formen er Bjørns: «tag stilling», ikke «kald
+                        # værktøjet». Et nej er et gyldigt svar.
+                        #
+                        # USYNLIG for Bjørn: noten går i halen, aldrig i
+                        # _a_parts. HØJST én gang pr. tur — en gate der altid
+                        # siger «bliv ved» må ikke kunne holde turen i live.
+                        # Ligger efter stop-hook med vilje: en hook der siger
+                        # «bliv ved» er en ordre, ikke en stillingtagen.
+                        if not _suggest_standing_nudges:
+                            try:
+                                from core.services.skill_gate_guard import (
+                                    samle_kaldte_navne as _ss_navne,
+                                )
+                                from core.services.suggest_standing_guard import (
+                                    build_nudge as _ss_nudge,
+                                    mangler_stilling as _ss_mangler,
+                                    suggest_standing_guard_enabled as _ss_enabled,
+                                )
+                                # Navnene samles med skill-gatens funktion — ÉN
+                                # definition af «hvilke værktøjer blev kaldt»,
+                                # udpakket gennem kaldt_vaerktoej.pak_ud. Læser
+                                # man kun _a_tool_calls, mangler man altid den
+                                # aktuelle runde; her er den per definition tom.
+                                _ss_kaldte = _ss_navne(_followup_exchanges, _a_tool_calls)
+                                if _ss_enabled() and _ss_mangler(
+                                    called_tool_names=_ss_kaldte,
+                                    nudged_already=bool(_suggest_standing_nudges),
+                                    final_text="".join(_a_parts),
+                                    is_last_round=bool(_is_last_round),
+                                ):
+                                    _suggest_standing_nudges += 1
+                                    _tur_hale.tilfoej_vedvarende(_ss_nudge())
+                                    _followup_exchanges.append(
+                                        _vf.ToolExchange(text=_exchange_text(),
+                                                         tool_calls=[], results=[]))
+                                    logger.info(
+                                        "suggest-standing run_id=%s — turen fortsaetter "
+                                        "for stillingtagen til naeste skridt",
+                                        run.run_id)
+                                    continue
+                            except Exception:
+                                pass  # fail-open → normal break nedenfor
 
                         # No more tool calls — this round produced the final response.
                         break

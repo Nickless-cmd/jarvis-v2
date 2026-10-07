@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_segment_settlement.py`
+_Ét sted hvor et unormalt segment-ophør bliver durabelt — før noget lukkes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `failure_class_for` | `(exit_reason)` | Grundens klasse. Ukendt → `RUNTIME`; vi gætter ikke på en udbyder. | [src](../../../core/services/visible_run_segment_settlement.py#L73) |
+| class | `SegmentUdfald` | `` | Dommen, den durable post, og hvad kalderen skal sende ud. | [src](../../../core/services/visible_run_segment_settlement.py#L90) |
+| function | `settle_user_stop` | `(*, run_id, session_id=…, task_id=…, reason=…)` | Brugeren trykkede stop. Det er endeligt — og skal skrives ned FØRST. | [src](../../../core/services/visible_run_segment_settlement.py#L106) |
+| function | `settle_segment_exit` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, explicit_user_cancel=…, waiting_for_user=…, recovery_attempt=…, recovery_limit=…, task_id=…, summary=…, checkpoint_ref=…, generation=…, owner=…, final_synthesis_attempted=…, failure_class=…)` | Gør segmentets ophør durabelt og sig hvad der skal sendes. | [src](../../../core/services/visible_run_segment_settlement.py#L123) |
+
 ## `core/services/visible_run_steers.py`
 _Keep real mid-flight user steers distinct from runtime turn notices._
 
@@ -62,31 +72,31 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1323) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1329) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1350) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6607) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6679) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6712) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6719) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6723) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6749) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6780) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6792) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6836) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6894) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6968) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7021) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7059) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7063) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7074) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7088) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7111) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7143) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7170) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7201) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7253) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7288) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7292) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7309) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7359) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6662) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6734) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6767) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6774) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6778) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6804) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6835) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6847) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6891) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6949) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7023) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7076) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7114) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7118) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7129) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7143) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7166) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7198) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7225) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7256) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7308) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7343) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7347) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7364) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7414) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._

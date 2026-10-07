@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16076 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16079 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,10 +53,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16076 functions/
 - [`core.services.22`](core.services.22.md) — `runtime_cognitive_conductor` … `self_model_signal_tracking`
 - [`core.services.23`](core.services.23.md) — `self_monitor` … `shadow_counters`
 - [`core.services.24`](core.services.24.md) — `shadow_experiment_registry` … `staged_edits`
-- [`core.services.25`](core.services.25.md) — `standing_orders_registry` … `thought_thread`
-- [`core.services.26`](core.services.26.md) — `tick_cache` … `user_emotional_resonance`
-- [`core.services.27`](core.services.27.md) — `user_md_update_proposal_tracking` … `visible_run_segment_settlement`
-- [`core.services.28`](core.services.28.md) — `visible_run_steers` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `standing_orders_registry` … `thought_stream_daemon`
+- [`core.services.26`](core.services.26.md) — `thought_thread` … `user_contradiction_tracker`
+- [`core.services.27`](core.services.27.md) — `user_emotional_resonance` … `visible_run_segment_exit`
+- [`core.services.28`](core.services.28.md) — `visible_run_segment_settlement` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

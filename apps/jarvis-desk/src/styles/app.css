@@ -5135,3 +5135,107 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   display: flex; align-items: center; gap: 8px;
   padding: 14px 12px; font-size: 13px; color: var(--fg-3);
 }
+
+/* ══ Notifikations-toasten (Bjørn 7/10-2026) ═══════════════════════════════
+   Klokken rystede og prikken lyste — men man skulle KIGGE paa klokken for at
+   opdage det, og man opdager det kun hvis man tilfaeldigvis er der. Toasten
+   er det manglende led: et felt der glider ind, kan AABNES eller AFVISES, og
+   som forsvinder af sig selv hvis man intet goer.
+
+   Maalene er Bjoerns eget valg fra udkastet 7/10 («lidt mindre … lidt
+   stoerre igen, men ikk saa hoeje»): 268 px bred og LAV. Derfor den lille
+   lodrette luft og teksten klippet ved to linjer — det er ikke tilfaeldige
+   tal, de er valgt ved at se paa den. */
+.notif-toast-lag {
+  position: fixed; z-index: 68;
+  right: 22px; bottom: 96px;
+  display: flex; flex-direction: column; gap: 8px;
+  /* Kun felterne selv fanger klik. Laget maa ikke ligge usynligt over
+     skrivefeltet og stjaele klik i det omraade hvor der ingen toast er. */
+  pointer-events: none;
+}
+.notif-toast {
+  pointer-events: auto;
+  position: relative; overflow: hidden;
+  width: 268px; max-width: calc(100vw - 44px);
+  display: flex; gap: 8px;
+  padding: 7px 11px 8px 11px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg-2);
+  box-shadow: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  cursor: pointer;
+  transform: translateX(130%); opacity: 0;
+  transition: transform .34s cubic-bezier(.16,.84,.44,1), opacity .34s ease;
+}
+.notif-toast.er-ind { transform: translateX(0); opacity: 1; }
+.notif-toast.er-ude { transform: translateX(0); opacity: 0; transition: opacity .5s ease; }
+.notif-toast.er-fejl { border-left-color: var(--error-fg); }
+.notif-toast.er-ok { border-left-color: var(--accent); }
+
+.notif-toast-ikon {
+  flex: none; width: 24px; height: 24px; border-radius: 6px;
+  display: grid; place-items: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.notif-toast.er-fejl .notif-toast-ikon {
+  color: var(--error-fg);
+  background: color-mix(in srgb, var(--error-fg) 15%, transparent);
+}
+.notif-toast-indhold { min-width: 0; flex: 1; }
+.notif-toast-slags {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--fg-3); font-weight: 600; margin-bottom: 1px;
+}
+.notif-toast-titel { font-size: 11.5px; font-weight: 600; color: var(--fg-1); margin: 0 0 2px; }
+.notif-toast-tekst {
+  margin: 0; font-size: 10.5px; color: var(--fg-2); line-height: 1.4;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.notif-toast-knapper { display: flex; gap: 7px; margin-top: 8px; }
+.notif-toast-knapper button {
+  font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  padding: 3px 9px; border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-3); color: var(--fg-2);
+  transition: background .15s, color .15s;
+}
+.notif-toast-knapper button:hover { background: var(--bg-4); color: var(--fg-1); }
+.notif-toast-knapper button.primaer {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent-text);
+}
+.notif-toast-knapper button.primaer:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.notif-toast-luk {
+  position: absolute; top: 6px; right: 6px;
+  width: 20px; height: 20px; padding: 0;
+  display: grid; place-items: center;
+  border: none; border-radius: 5px; background: transparent;
+  color: var(--fg-3); cursor: pointer;
+}
+.notif-toast-luk:hover { background: var(--bg-3); color: var(--fg-1); }
+
+/* Nedtaellingen er en CSS-animation, ikke en JS-taeler: hover-pause bliver da
+   ÉN regel, og `animationend` er det praecise signal om at tiden er loebet.
+   Uden `forwards` springer linjen tilbage til fuld bredde i det oejeblik
+   animationen slutter — praecis det modsatte af hvad den skal vise. */
+.notif-toast-nedtaelling {
+  position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+  background: var(--accent); transform-origin: left;
+  animation: notif-toast-ned linear forwards;
+}
+.notif-toast.er-fejl .notif-toast-nedtaelling { background: var(--error-fg); }
+.notif-toast:hover .notif-toast-nedtaelling { animation-play-state: paused; }
+@keyframes notif-toast-ned { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-toast { transition: none; }
+  /* Nedtaellingen STYRER hvornaar feltet forsvinder — slaas animationen helt
+     fra, bliver toasten staaende for evigt. Den gores derfor usynlig i
+     stedet for slukket. */
+  .notif-toast-nedtaelling { opacity: 0; }
+}

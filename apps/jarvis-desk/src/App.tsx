@@ -16,6 +16,7 @@ import { ViewRequestWatcher } from './components/ViewRequestWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
 import { ApprovalNotifier } from './components/ApprovalNotifier'
+import { NotifikationsToast } from './components/shell/NotifikationsToast'
 import { PresenceHost } from './components/PresenceHost'
 import { TakeoverHost } from './components/shell/TakeoverHost'
 import { SessionSearch } from './components/SessionSearch'
@@ -260,6 +261,15 @@ function Shell({
         {privacyOpen && <PrivacyDialog config={cfg} onClose={() => setPrivacyOpen(false)} />}
         {bugOpen && <BugRapport config={cfg} onClose={() => setBugOpen(false)} />}
         {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}
+        {/* Toasterne fra notifikations-feeden. De bor i Shell og ikke i en
+            enkelt flade, saa en godkendelse ogsaa naar frem naar man staar i
+            kode- eller arbejds-fladen — det er praecis dér man ikke kigger
+            paa klokken. */}
+        <NotifikationsToast
+          config={cfg ?? null}
+          aktivSession={activeId}
+          onAabenSession={(id) => { if (id) select(id); setSurface('chat') }}
+        />
       </main>
     </div>
   )

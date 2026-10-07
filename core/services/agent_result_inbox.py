@@ -53,7 +53,11 @@ def claim_for_model_step(*, owner_user_id: str, session_id: str) -> str:
         from core.runtime import db_agent_contract as c
 
         claimed = c.claim_pending_results(owner_user_id=owner, origin_session_id=session)
-        return _render(claimed) if claimed else ""
+        if not claimed:
+            return ""
+        from core.services.prompt_sections.agent_orchestration import orchestrator_state
+        state = orchestrator_state(owner_user_id=owner, session_id=session)
+        return _render(claimed) + (f"\n{state}" if state else "")
     except Exception:
         logger.warning("kunne ikke claime agent-resultater for session %s", session,
                        exc_info=True)

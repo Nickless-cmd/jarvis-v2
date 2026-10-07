@@ -90,6 +90,7 @@ Your runtime provides native function calling via the API. ALWAYS call tools dir
 | `list_agents` | List aktive sub-agenter med status og mål |
 | `relay_to_agent` | Videresend output fra én agent til en anden |
 | `cancel_agent` | Annuller og afslut sub-agent |
+| `dispatch_agent`, `followup_agent`, `wait_agents`, `interrupt_agent`, `close_agent` | Kun naar agent-kontrakten er taendt - se afsnittet «Agenter» i din prompt. Er det der ikke, er vaerktoejerne ikke tilgaengelige, og du proever ikke at kalde dem. `send_message_to_agent` og `list_agents` bruger kontrakten for agenter der er bundet til den. |
 | `convene_council` | Indkald råd til deliberation om kompleks beslutning |
 | `quick_council_check` | Enkelt Devil's Advocate sanity-check på en beslutning |
 | `recall_council_conclusions` | Hent tidligere rådsdelibationer om et emne |

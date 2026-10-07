@@ -26,6 +26,7 @@ global ville betyde at kanalen var åben i den ene og lukket i den anden.
 from __future__ import annotations
 
 import logging
+import json
 import shlex
 import time
 from typing import Any
@@ -45,20 +46,61 @@ _GENOPRET_FRIST_S = 24 * 3600
 
 
 def _load() -> dict[str, Any]:
-    try:
-        from core.runtime.db_core import get_runtime_state_value
-        v = get_runtime_state_value(_KEY, {})
-        return dict(v) if isinstance(v, dict) else {}
-    except Exception:
+    # Kanaltilstand er en routingbeslutning, ikke almindelig cachedata: en
+    # stale læsning kan sende en workstation-kommando til containeren.
+    from core.runtime.db_core import connect
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT value_json FROM runtime_state_kv WHERE key = ?", (_KEY,)
+        ).fetchone()
+    if row is None:
         return {}
+    value = json.loads(str(row["value_json"]))
+    if not isinstance(value, dict):
+        raise ValueError("operator-kanalens tilstand er ugyldig")
+    return value
 
 
-def _save(state: dict[str, Any]) -> None:
-    try:
-        from core.runtime.db_core import set_runtime_state_value
-        set_runtime_state_value(_KEY, state)
-    except Exception:
-        logger.warning("operator_channel: kunne ikke gemme tilstand", exc_info=True)
+def _opdater_post(session_id: str, post: dict[str, Any]) -> None:
+    """Skriv ÉN sessions post — atomisk.
+
+    Målt 7/10-2026: `open_channel`, `close_channel` og `_forny` læste HELE
+    ordbogen, satte én nøgle og skrev HELE ordbogen tilbage. Med to processer
+    (api + runtime) der hver har sin egen 2-sekunders læse-cache betød det, at
+    en frisk åbning kunne blive overskrevet af et forældet billede fra en anden
+    skriver — kanalen «glap» uden at nogen havde lukket den. Læs-gene-skriv
+    sker nu i én IMMEDIATE-transaktion, så kun denne nøgle ændres og ingen
+    andens arbejde tabes.
+
+    Fejler den, KASTER den. Kalderne fanger og svarer `status: error` — en
+    kvittering på noget der ikke blev gemt er præcis den tavse fejl kanalen
+    skal være fri for.
+    """
+    from datetime import UTC, datetime
+
+    from core.runtime.db_core import clear_runtime_state_cache, connect
+
+    key = str(session_id or "").strip()
+    if not key:
+        raise ValueError("session_id mangler")
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT value_json FROM runtime_state_kv WHERE key = ?", (_KEY,)
+        ).fetchone()
+        st = json.loads(str(row["value_json"])) if row is not None else {}
+        if not isinstance(st, dict):
+            raise ValueError("operator-kanalens tilstand er ugyldig")
+        st[key] = post
+        conn.execute(
+            "INSERT INTO runtime_state_kv (key, value_json, updated_at) "
+            "VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET "
+            "value_json = excluded.value_json, updated_at = excluded.updated_at",
+            (_KEY, json.dumps(st, ensure_ascii=False), datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+    # Egen proces skal se sin egen skrivning straks; læse-cachen er 2 s gammel.
+    clear_runtime_state_cache()
 
 
 def _aktiv(post: dict[str, Any]) -> bool:
@@ -83,7 +125,15 @@ def _udloebet(post: dict[str, Any]) -> bool:
 
 def status(session_id: str) -> dict[str, Any]:
     """Læse-kun. Ingen owner-gate — at spørge er harmløst."""
-    post = (_load().get(str(session_id or "").strip()) or {})
+    try:
+        post = (_load().get(str(session_id or "").strip()) or {})
+    except Exception:
+        # En læsefejl må ikke blive en 500 i UI'et — men den må heller ikke
+        # ligne «lukket, alt vel». Svaret siger eksplicit at det er ukendt;
+        # `open: False` betyder her «ikke bevist åben», aldrig «lukket med vilje».
+        logger.warning("operator_channel: status kunne ikke læses", exc_info=True)
+        return {"status": "error", "open": False, "ukendt": True,
+                "error": "kanalens tilstand kunne ikke læses"}
     aaben = _aktiv(post)
     ud: dict[str, Any] = {"status": "ok", "open": aaben}
     if aaben:
@@ -93,6 +143,13 @@ def status(session_id: str) -> dict[str, Any]:
 
 
 def is_open(session_id: str) -> bool:
+    """Er kanalen åben? KASTER ved læsefejl — med vilje.
+
+    Returnerede den ``False`` på en DB-fejl, ville `maybe_reroute_bash` svare
+    «kanalen er lukket» og køre Bjørns kommando på containeren i det stille.
+    Det er netop den fejl kanalen findes for at forhindre, så usikkerhed skal
+    op, ikke skjules. Kalderen (`_exec_bash`) fanger og afviser kommandoen.
+    """
     return bool(_aktiv((_load().get(str(session_id or "").strip()) or {})))
 
 
@@ -102,9 +159,11 @@ def open_channel(session_id: str, *, is_owner: bool) -> dict[str, Any]:
     sid = str(session_id or "").strip()
     if not sid:
         return {"status": "error", "error": "session_id mangler"}
-    st = _load()
-    st[sid] = {"open": True, "aabnet": time.time()}
-    _save(st)
+    try:
+        _opdater_post(sid, {"open": True, "aabnet": time.time()})
+    except Exception:
+        logger.warning("operator_channel: åbning kunne ikke gemmes", exc_info=True)
+        return {"status": "error", "error": "operator-kanalen kunne ikke åbnes: tilstanden er utilgængelig"}
     return {"status": "ok", "open": True,
             "text": ("Operator-kanalen er åben: bash kører nu på Bjørns maskine "
                      f"uden godkendelse pr. kald. Lukker af sig selv om {_TTL_S // 3600} timer.")}
@@ -114,13 +173,12 @@ def close_channel(session_id: str, *, is_owner: bool) -> dict[str, Any]:
     if not is_owner:
         return {"status": "error", "error": "operator-kanalen er kun for owner"}
     sid = str(session_id or "").strip()
-    st = _load()
-    # Posten BEVARES med open=False (5/10-2026). Før blev den fjernet, og så
-    # kunne «lukket af et menneske» ikke skelnes fra «aldrig åbnet» — og
-    # genopretningen nedenfor ville genåbne en kanal nogen havde lukket med
-    # vilje. Det er præcis den forskel Bjørn bad om at få respekteret.
-    st[sid] = {"open": False, "lukket": time.time()}
-    _save(st)
+    try:
+        # Bevar posten, så manuel lukning ikke forveksles med TTL-udløb.
+        _opdater_post(sid, {"open": False, "lukket": time.time()})
+    except Exception:
+        logger.warning("operator_channel: lukning kunne ikke gemmes", exc_info=True)
+        return {"status": "error", "error": "operator-kanalen kunne ikke lukkes: tilstanden er utilgængelig"}
     return {"status": "ok", "open": False, "text": "Operator-kanalen er lukket."}
 
 
@@ -223,9 +281,8 @@ def _naaede_frem(r: Any) -> bool:
 
 def _forny(session_id: str) -> None:
     """Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede."""
-    st = _load()
-    st[str(session_id)] = {"open": True, "aabnet": time.time(), "genaabnet": True}
-    _save(st)
+    _opdater_post(str(session_id),
+                  {"open": True, "aabnet": time.time(), "genaabnet": True})
 
 
 def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
@@ -252,9 +309,16 @@ def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
         return None
     r = _koer_over_broen(command, cwd)
     if _naaede_frem(r):
-        _forny(sid)
-        r["kanal"] = {"genaabnet": True, "udloebet_for_s": int(alder)}
-        logger.info("operator_channel: genåbnede en udløbet kanal (%ss)", int(alder))
+        try:
+            _forny(sid)
+        except Exception:
+            logger.warning("operator_channel: fjernkommando udført, men fornyelse fejlede",
+                           exc_info=True)
+            r["kanal"] = {"note": "[operator-kanal] Kommandoen blev udført på "
+                          "workstation, men kanalens fornyelse kunne ikke gemmes."}
+        else:
+            r["kanal"] = {"genaabnet": True, "udloebet_for_s": int(alder)}
+            logger.info("operator_channel: genåbnede en udløbet kanal (%ss)", int(alder))
     return r
 
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8501/16070 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8503/16070 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8501/16070 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 722 | 1301 | 55% |
-| `core.services` | 5687 | 10956 | 51% |
+| `core.services` | 5689 | 10956 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8501/16070 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2238)
+## Undocumented public functions (2237)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -124,7 +124,7 @@ Generated from source. 8501/16070 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
 - `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L104)
 - `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
-- `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L60)
+- `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L69)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.get_json` (L39)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.post_json` (L46)
@@ -1331,10 +1331,9 @@ Generated from source. 8501/16070 functions/methods documented (52%). The list b
 - `core/services/operator_allowlist.py` :: `remove_from_allowlist` (L53)
 - `core/services/operator_allowlist.py` :: `set_allowlist` (L39)
 - `core/services/operator_allowlist.py` :: `set_enforced` (L65)
-- `core/services/operator_channel.py` :: `close_channel` (L113)
-- `core/services/operator_channel.py` :: `is_open` (L95)
-- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L184)
-- `core/services/operator_channel.py` :: `open_channel` (L99)
+- `core/services/operator_channel.py` :: `close_channel` (L172)
+- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L242)
+- `core/services/operator_channel.py` :: `open_channel` (L156)
 - `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L189)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L198)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.outcome` (L195)

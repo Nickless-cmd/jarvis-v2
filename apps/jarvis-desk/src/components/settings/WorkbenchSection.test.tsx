@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WorkbenchSection } from './WorkbenchSection'
-import { getCheckpoints, rollbackCheckpoint } from '../../lib/coworkApi'
+import { getCheckpoints, rollbackCheckpoint, setOperatorChannel } from '../../lib/coworkApi'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
@@ -50,5 +50,15 @@ describe('WorkbenchSection · session', () => {
     const knap = await screen.findByRole('button', { name: /fortryd/i })
     fireEvent.click(knap)
     await waitFor(() => expect(vi.mocked(rollbackCheckpoint)).toHaveBeenCalledWith(cfg, 'visible-42'))
+  })
+
+  it('åbner og lukker den session bash faktisk bruger', async () => {
+    // Målt 7/10-2026: panelet sendte intet id, så det skrev nøglen `_default`
+    // — mens bash bruger `chat-<session>`. Panelet viste «Åben» om en kanal
+    // bash aldrig så, og «Luk» lukkede ingenting.
+    render(<WorkbenchSection config={cfg} sessionId="visible-42" />)
+    const knap = await screen.findByRole('button', { name: /luk/i })
+    fireEvent.click(knap)
+    await waitFor(() => expect(vi.mocked(setOperatorChannel)).toHaveBeenCalledWith(cfg, false, 'visible-42'))
   })
 })

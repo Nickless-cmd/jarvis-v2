@@ -22,7 +22,7 @@ import {
 export function WorkbenchSection(
   { config, sessionId }: { config: ApiConfig | undefined; sessionId?: string | null },
 ) {
-  const channel = useSettingsResource(config, getOperatorChannel)
+  const channel = useSettingsResource(config, cfg => getOperatorChannel(cfg, sessionId ?? undefined), sessionId ?? '')
   const checkpoints = useSettingsResource(config, cfg => getCheckpoints(cfg, sessionId ?? undefined), sessionId ?? '')
   const switches = useSettingsResource(config, getRuntimeSwitches)
   const kanal = channel.data
@@ -38,7 +38,9 @@ export function WorkbenchSection(
     catch { setActionError('Handlingen kunne ikke gennemføres. Prøv igen.') }
     finally { setBusy(false) }
   }
-  const skiftKanal = (aaben: boolean) => config && change(() => setOperatorChannel(config, aaben), channel.retry)
+  const skiftKanal = (aaben: boolean) => config && change(
+    () => setOperatorChannel(config, aaben, sessionId ?? undefined), channel.retry,
+  )
   const fortryd = () => config && change(async () => {
     const result = await rollbackCheckpoint(config, sessionId ?? undefined)
     if (result.status !== 'ok') throw new Error('rollback failed')

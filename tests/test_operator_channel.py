@@ -12,9 +12,19 @@ from core.services import operator_channel as oc
 
 @pytest.fixture(autouse=True)
 def _ren_tilstand(monkeypatch):
+    """Kanalens lager i hukommelsen.
+
+    `_opdater_post` skriver ÉN nøgle (målt og rettet 7/10-2026). Før skrev
+    `_save` HELE ordbogen tilbage, og netop det kunne slette en anden sessions
+    kanal. Stubben spejler derfor den atomare form — ikke den gamle.
+    """
     st: dict = {}
     monkeypatch.setattr(oc, "_load", lambda: dict(st))
-    monkeypatch.setattr(oc, "_save", lambda d: (st.clear(), st.update(d)))
+
+    def _gem(sid, post):
+        st[str(sid)] = dict(post)
+
+    monkeypatch.setattr(oc, "_opdater_post", _gem)
     yield st
 
 
@@ -93,6 +103,44 @@ def test_broen_nede_bliver_en_fejl_ikke_et_styrt(monkeypatch):
     r = oc.maybe_reroute_bash("ls", None, is_owner=True, session_id="s1")
     assert r["status"] == "error"
     assert "kunne ikke nå din maskine" in r["error"]
+
+
+def test_aabning_kvitterer_ikke_hvis_tilstanden_ikke_blev_gemt(monkeypatch):
+    def _db_nede(_sid, _post):
+        raise OSError("database unavailable")
+
+    monkeypatch.setattr(oc, "_opdater_post", _db_nede)
+    r = oc.open_channel("s1", is_owner=True)
+    assert r["status"] == "error"
+    assert r.get("open") is not True
+
+
+def test_tilstandslaesning_skjuler_ikke_db_fejl(monkeypatch):
+    monkeypatch.undo()
+    from core.runtime.db_core import clear_runtime_state_cache
+    clear_runtime_state_cache()
+
+    def _db_nede(*_args, **_kwargs):
+        raise OSError("database unavailable")
+
+    monkeypatch.setattr("core.runtime.db_core.connect", _db_nede)
+    with pytest.raises(OSError, match="database unavailable"):
+        oc._load()
+
+
+def test_bash_koerer_ikke_paa_server_naar_kanaltilstand_ikke_kan_laeses(monkeypatch):
+    from core.tools import simple_tools_web as web
+
+    def _db_nede():
+        raise OSError("database unavailable")
+
+    monkeypatch.setattr(oc, "_load", _db_nede)
+    monkeypatch.setattr(oc, "current_is_owner", lambda: True)
+    monkeypatch.setattr(web, "_get_or_open_default_bash_session",
+                        lambda: pytest.fail("bash må ikke køre på serveren"))
+    r = web._exec_bash({"command": "echo workstation", "_runtime_session_id": "s1"})
+    assert r["status"] == "error"
+    assert "operator-kanal" in r["error"]
 
 
 def test_hint_kun_naar_stien_peger_paa_hans_maskine():
@@ -176,6 +224,18 @@ def test_udloebet_kanal_genopstaar_naar_broen_svarer(_ren_tilstand, monkeypatch)
     assert r is not None, "en udloebet kanal skal forsoeges genoprettet"
     assert r["kanal"]["genaabnet"] is True
     assert oc.is_open("s1") is True, "broen svarede — kanalen skal staa aaben igen"
+
+
+def test_fejlet_fornyelse_skjuler_ikke_udfoert_fjernkommando(_ren_tilstand, monkeypatch):
+    _udloeb(_ren_tilstand)
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda n, a: {"status": "ok", "text": "udført på workstation"})
+    monkeypatch.setattr(oc, "_opdater_post",
+                        lambda _sid, _post: (_ for _ in ()).throw(OSError("DB nede")))
+    r = oc.maybe_reroute_bash("echo once", None, is_owner=True, session_id="s1")
+    assert r["status"] == "ok"
+    assert r["text"] == "udført på workstation"
+    assert "ikke gemmes" in r["kanal"]["note"]
 
 
 def test_udloebet_kanal_fornyes_IKKE_naar_broen_er_nede(_ren_tilstand, monkeypatch):
@@ -273,3 +333,91 @@ def test_udloebet_er_falsk_for_bevidst_lukket(_ren_tilstand):
     """
     _ren_tilstand["s1"] = {"open": False, "aabnet": time.time() - (oc._TTL_S + 60)}
     assert oc._udloebet(_ren_tilstand["s1"]) is False
+
+
+# ── «Kanalen glapper» — målt og rettet 7/10-2026 ────────────────────────────
+#
+# Bjørn: «operator kanalen.. den er virkelig ustabil og glipper ofte».
+# Målt: `_load()` læste gennem en 2-sekunders cache, og `_save()` skrev HELE
+# ordbogen tilbage. To processer (api + runtime) med hver sit forældede
+# billede kunne derfor skrive hinandens arbejde væk — en frisk åbning blev
+# slettet af en anden skrivers gamle kopi, uden at nogen havde lukket den.
+
+
+def test_aabning_sletter_ikke_en_anden_kanal(monkeypatch, tmp_path):
+    """Den maalte fejlform: hel-ordbog-skriv ovenpaa et foraeldet billede.
+
+    Testen maaler den RIGTIGE skrivning mod en isoleret DB — ikke hukommelses-
+    stubben fra `_ren_tilstand`. En stub der tilfaeldigtvis skriver atomart
+    ville bestaa uden at sige noget om den kode der korer i drift.
+    """
+    import json
+    import sqlite3
+
+    import core.runtime.db_core as dbc
+
+    monkeypatch.undo()          # drop hukommelses-stubben
+    p = tmp_path / "kanal.db"
+    c = sqlite3.connect(p)
+    c.execute("CREATE TABLE runtime_state_kv (key TEXT PRIMARY KEY, "
+              "value_json TEXT NOT NULL, updated_at TEXT NOT NULL)")
+    c.commit()
+    c.close()
+    monkeypatch.setattr(dbc, "DB_PATH", p)
+
+    oc.open_channel("s1", is_owner=True)
+
+    # En anden skriver (fx runtime-processen) har et billede fra FØR s1 blev
+    # åbnet. Skriver den sit billede tilbage, maa s1 ikke forsvinde.
+    monkeypatch.setattr(oc, "_load", lambda: {"s1": {"open": False, "lukket": 1.0}})
+    oc.open_channel("s2", is_owner=True)
+
+    conn = sqlite3.connect(p)
+    row = conn.execute("SELECT value_json FROM runtime_state_kv WHERE key = ?",
+                       (oc._KEY,)).fetchone()
+    conn.close()
+    st = json.loads(row[0])
+    assert st["s1"]["open"] is True, \
+        "s1 blev slettet af et forældet billede — det er «kanalen glapper»"
+    assert st["s2"]["open"] is True
+
+
+def test_note_fejl_blokerer_ikke_lokal_bash(monkeypatch):
+    """Noten er kosmetisk: fejler den, skal kommandoen stadig køre lokalt.
+
+    Den laa foer inde i fail-closed-blokken, saa et DB-hikke blokerede AL bash
+    — ogsaa naar kanalen med sikkerhed var lukket og kommandoen hoerte hjemme
+    her. Det er en spaerring af hans arbejdsredskab for en kommentars skyld.
+    """
+    from core.tools import simple_tools_web as web
+    from core.services import operator_channel as _oc
+
+    monkeypatch.setattr(_oc, "maybe_reroute_bash", lambda *a, **k: None)
+    monkeypatch.setattr(_oc, "kanal_note",
+                        lambda sid: (_ for _ in ()).throw(OSError("DB nede")))
+    monkeypatch.setattr(web, "_get_or_open_default_bash_session", lambda: "sess-1")
+    monkeypatch.setattr("core.tools.bash_session._exec_bash_session_run",
+                        lambda a: {"status": "ok", "exit_code": 0, "output": "lokal"})
+    r = web._exec_bash({"command": "echo lokal", "_runtime_session_id": "s1"})
+    assert r.get("status") == "ok", r
+    assert "lokal" in str(r)
+
+
+def test_open_uden_session_id_afvises(monkeypatch):
+    """Et kald uden id maa ikke skrive `_default` — bash bruger `chat-<session>`.
+
+    Maalt 7/10-2026: desk'ens kontakt og mobilens «Luk» sendte intet id, saa
+    panelet viste «Aaben» om en kanal bash aldrig saa. En tavs no-op er vaerre
+    end et afslag, fordi den ligner en kvittering.
+    """
+    from fastapi import HTTPException
+
+    from apps.api.jarvis_api.routes import workbench as wb
+
+    monkeypatch.setattr(oc, "current_session_id", lambda: "_default")
+    with pytest.raises(HTTPException) as e:
+        wb._session_id({}, kraev=True)
+    assert e.value.status_code == 400
+    # Med et id skal kaldet glide igennem — og en laesning uden krav maa ikke kaste.
+    assert wb._session_id({"session_id": "chat-1"}, kraev=True) == "chat-1"
+    assert wb._session_id({}) == "_default"

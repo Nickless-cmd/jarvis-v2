@@ -92,7 +92,7 @@ def hollow_promise_note(model: str = "") -> str:
     en forkert beskyldning ville sende Bjørn ud at skifte model uden grund.
     """
     return (
-        "\n\n_(Jeg sagde hvad jeg ville gøre og kaldte så ingen værktøjer — "
-        "heller ikke da jeg blev tvunget til det, to gange. Der blev altså "
-        "ikke udført noget. Sig til, så tager jeg den forfra.)_"
+        "\n\n_(Efter mit sidste løfte kom der ikke et nyt værktøjskald, heller "
+        "ikke efter et ekstra forsøg. Tidligere arbejde i dette run er stadig "
+        "udført; den annoncerede næste handling er ikke bekræftet.)_"
     )

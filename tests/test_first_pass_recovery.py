@@ -13,6 +13,20 @@ import core.services.first_pass_recovery as fpr
 from core.services.first_pass_recovery import first_pass_is_hollow, resend_target
 
 
+def test_tomt_loefte_note_paastaar_ikke_nul_tools_i_hele_runnet():
+    from core.services.hollow_promise_guard import is_hollow_promise, HOLLOW_PROMISE_NUDGE
+    from core.services.hollow_promise_round import hollow_promise_note
+
+    assert is_hollow_promise(
+        "Nu læser jeg den næste fil.", total_tool_calls=3,
+        last_round_tool_calls=0,
+    )
+    note = hollow_promise_note()
+    assert "efter mit sidste løfte" in note.lower()
+    assert "ingen værktøjer" not in note.lower()
+    assert "i denne tur" not in HOLLOW_PROMISE_NUDGE.lower()
+
+
 class TestResendTarget:
     def test_deepseek_beholder_modellen_men_taber_thinking(self):
         """Thinking-bug'en er STICKY — samme model med thinking igen bliver tom igen."""

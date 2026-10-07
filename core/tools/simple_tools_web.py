@@ -390,21 +390,36 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         _owner = _oc.current_is_owner()
         _via = _oc.maybe_reroute_bash(command, args.get("cwd"),
                                       is_owner=_owner, session_id=_sid)
-        if _via is not None:
-            # K10: DENNE gren er den Bjoerns egne kommandoer faktisk tager
-            # (`via: operator-kanal`), og den returnerede foer rapporten
-            # laengere nede. Den mest brugte shell-vej var altsaa den mest
-            # tavse. Fundet ved at koere en kommando paa produktionen og laese
-            # svaret — ikke ved at laese koden.
-            from core.services.shell_confinement_report import OPERATOR, vedhaeft
-            return vedhaeft(_via, OPERATOR)
+    except Exception:
+        # Ukendt kanaltilstand må aldrig betyde "kør samme kommando lokalt".
+        # Kommandoen kan være skrevet til workstation og have sideeffekter.
+        logger.warning("operator_channel: routing kunne ikke afgøres", exc_info=True)
+        return {"status": "error", "error":
+                "operator-kanalens tilstand kunne ikke afgøres; bash blev ikke kørt"}
+
+    if _via is not None:
+        # K10: DENNE gren er den Bjoerns egne kommandoer faktisk tager
+        # (`via: operator-kanal`), og den returnerede foer rapporten
+        # laengere nede. Den mest brugte shell-vej var altsaa den mest
+        # tavse. Fundet ved at koere en kommando paa produktionen og laese
+        # svaret — ikke ved at laese koden.
+        from core.services.shell_confinement_report import OPERATOR, vedhaeft
+        return vedhaeft(_via, OPERATOR)
+
+    # Kanalen er BEVISELIGT lukket eller for gammel til at genopstaa, så
+    # kommandoen hører til her. Noten nedenfor er kosmetisk: den forklarer
+    # hvorfor svaret kom fra serveren. Fejler den, kører kommandoen alligevel.
+    # (Den lå før inde i fail-closed-blokken, så et DB-hikke blokerede al bash
+    # — også når kanalen med sikkerhed var lukket. Bjørn 7/10-2026.)
+    try:
         # Kanalen faldt af sig selv og var for gammel til at genopstaa. Saa
         # skal svaret SIGE at denne kommando koerte paa serveren — ellers ser
         # et tomt eller fejlende svar ud som om filen ikke findes, naar den i
         # virkeligheden ligger et andet sted. (Bjørn 5/10-2026.)
         _kanal_note = _oc.kanal_note(_sid)
     except Exception:
-        logger.debug("operator_channel: sprunget over", exc_info=True)
+        logger.debug("operator_channel: note sprunget over", exc_info=True)
+        _kanal_note = ""
 
     # ── Egress-observation (6/9-2026) ────────────────────────────────────────
     # De eksisterende vaern fanger `curl | bash`. Det her fanger ENHVER udgaaende

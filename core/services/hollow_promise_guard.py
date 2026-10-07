@@ -22,10 +22,10 @@ _TRUTHY = {"1", "true", "yes", "on"}
 _FALSY = {"0", "false", "no", "off"}
 
 HOLLOW_PROMISE_NUDGE = (
-    "Du lovede lige at handle, men du kaldte INTET værktøj i denne tur. "
-    "Kald værktøjet NU for at gøre det du sagde — eller sig ærligt og konkret "
-    "hvorfor du ikke kan (hvad blokerer). Ingen flere tomme løfter om at "
-    "'gøre det nu' uden at gøre det."
+    "Dit sidste svar annoncerede en ny handling uden et efterfølgende værktøjskald. "
+    "Tidligere værktøjskald i samme run tæller stadig som udført arbejde. "
+    "Hvis der faktisk mangler en handling, kald det relevante værktøj; "
+    "ellers afslut uden at gentage arbejdet og forklar kort hvorfor."
 )
 
 # Løfte-om-imminent-handling (dansk + engelsk). Bevidst SNÆVERT: selv + handlings-verbum +
@@ -115,7 +115,7 @@ _SPEECH_ACT_VERB = (
 
 # «jeg» inden for få ord fra verbet — i begge retninger, så ordstillingen er fri.
 _FIRST_PERSON_ACTION = [
-    re.compile(rf"\bjeg\s+(?:\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
+    re.compile(rf"\bjeg\s+(?:(?!ikke\b)\w+\s+){{0,2}}{_ACTION_VERB}\b", re.IGNORECASE),
     re.compile(rf"\b{_ACTION_VERB}\s+jeg\b", re.IGNORECASE),
     # Konstruktionen baerer loeftet: «lad mig <hvadsomhelst>» — undtagen talehandlinger.
     # «lad me» er ikke en tastefejl fra Bjørn — det er MODELLEN. En svag model
@@ -130,6 +130,11 @@ _DEFERRED_TEXT_RE = [re.compile(p, re.IGNORECASE) for p in _DEFERRED_TEXT_PATTER
 
 # Billig negativ-guard: slutter svaret på et spørgsmål → afventer brugeren (ikke tom løfte).
 _QUESTION_TAIL = re.compile(r"[?]\s*$")
+_COMPLETED_TAIL = re.compile(
+    r"\b(?:er|blev|har)\s+(?:udført|gjort|rettet|løst|færdig|committet|pushet|testet)\b"
+    r"|\b(?:intet|ikke)\b[^.]{0,80}\bmere\b",
+    re.IGNORECASE,
+)
 
 
 def _last_sentence(text: str) -> str:
@@ -148,6 +153,13 @@ def is_promise_of_action(text: str) -> bool:
             return False
         if _QUESTION_TAIL.search(t):     # spørgsmål-hale = afventer bruger, ikke løfte
             return False
+        tail = _last_sentence(t)
+        # Et tidligere løfte er ikke stadig åbent, når den sidste sætning
+        # beskriver afsluttet arbejde. Bevar dog et NYT løfte i selve halen.
+        if (_COMPLETED_TAIL.search(tail)
+                and not any(rx.search(tail) for rx in _PROMISE_RE)
+                and not any(rx.search(tail) for rx in _FIRST_PERSON_ACTION)):
+            return False
         if any(rx.search(t) for rx in _PROMISE_RE):
             return True
         # Kun den SIDSTE sætning tæller. Et svar der undervejs siger «jeg
@@ -159,7 +171,6 @@ def is_promise_of_action(text: str) -> bool:
         # men «Jeg kigger på filen … alle tre er rettet» er også kort, og dét
         # ER en beretning. Reglen blev stående; det var den ØDELAGTE dansk i
         # sidste sætning der lukkede hullet (se `lad m(ig|e)` ovenfor).
-        tail = _last_sentence(t)
         return any(rx.search(tail) for rx in _FIRST_PERSON_ACTION)
     except Exception:
         return False

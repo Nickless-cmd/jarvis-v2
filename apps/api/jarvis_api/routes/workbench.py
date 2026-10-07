@@ -29,12 +29,21 @@ def _kraev_owner(hvad: str) -> None:
         raise HTTPException(status_code=403, detail=f"{hvad} kan kun styres af owner")
 
 
-def _session_id(payload: dict | None = None) -> str:
+def _session_id(payload: dict | None = None, *, kraev: bool = False) -> str:
     sid = str((payload or {}).get("session_id") or "").strip()
     if sid:
         return sid
     from core.services.operator_channel import current_session_id
-    return current_session_id()
+    sid = current_session_id()
+    if kraev and sid == "_default":
+        # Målt 7/10-2026: desk'ens kontakt og mobilens «Luk» sendte intet id,
+        # så de skrev nøglen `_default` — mens bash bruger `chat-<session>`.
+        # Panelet viste «Åben» om en kanal bash aldrig så. Et kald uden id må
+        # derfor afvises frem for at skrive en nøgle ingen bruger.
+        raise HTTPException(status_code=400, detail=(
+            "session_id mangler: kanalen er pr. session, og et kald uden id "
+            "ville ramme en anden nøgle end den bash bruger"))
+    return sid
 
 
 # ── Operator-kanal ──────────────────────────────────────────────────────────
@@ -52,7 +61,7 @@ async def operator_channel_open(payload: dict = Body(default={})) -> dict[str, A
     """Owner-only: åbn kanalen. Herefter kører bash på Bjørns maskine."""
     _kraev_owner("Operator-kanalen")
     from core.services.operator_channel import open_channel
-    sid = _session_id(payload)
+    sid = _session_id(payload, kraev=True)
     return await asyncio.to_thread(lambda: open_channel(sid, is_owner=True))
 
 
@@ -60,7 +69,7 @@ async def operator_channel_open(payload: dict = Body(default={})) -> dict[str, A
 async def operator_channel_close(payload: dict = Body(default={})) -> dict[str, Any]:
     _kraev_owner("Operator-kanalen")
     from core.services.operator_channel import close_channel
-    sid = _session_id(payload)
+    sid = _session_id(payload, kraev=True)
     return await asyncio.to_thread(lambda: close_channel(sid, is_owner=True))
 
 

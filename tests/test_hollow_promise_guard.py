@@ -212,6 +212,21 @@ def test_kun_sidste_saetning_taeller():
     assert is_promise_of_action(beretning) is False
 
 
+def test_staerkt_loefte_i_tidligere_saetning_er_afsluttet_i_halen():
+    """De stærke regexer må heller ikke genlæse et gammelt løfte som nyt."""
+    tekst = "Jeg kører det nu. Arbejdet er udført, testet og pushet."
+    assert hpg.is_hollow_promise(
+        tekst, total_tool_calls=6, last_round_tool_calls=0,
+    ) is False
+    assert hpg.is_promise_of_action(tekst) is False
+
+
+def test_bjoerns_aktuelle_falske_nudge_ikke_vendes_til_loefte():
+    tekst = ("Nudge'en er en falsk positiv — og jeg vil ikke kalde et "
+             "værktøj for at se travl ud.")
+    assert hpg.is_promise_of_action(tekst) is False
+
+
 def test_spoergsmaal_til_sidst_er_stadig_ikke_et_loefte():
     from core.services.hollow_promise_guard import is_promise_of_action
 

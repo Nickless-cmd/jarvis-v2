@@ -2,6 +2,37 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/semantic_memory.py`
+_Semantic memory — unified embedding + cosine search across memory surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_source` | `(table, *, resolver, lister)` | Register a source table so backfill + search can map IDs to rows. | [src](../../../core/services/semantic_memory.py#L56) |
+| function | `_default_sources_registered` | `()` | Register sensory_memories + private_brain_records if not already. | [src](../../../core/services/semantic_memory.py#L67) |
+| function | `embed_base_url` | `()` | Hvor embeddings skal hen. ÉN sandhed for alle embedding-kald. | [src](../../../core/services/semantic_memory.py#L98) |
+| function | `_ollama_base_url` | `()` | — | [src](../../../core/services/semantic_memory.py#L117) |
+| function | `_tt_embed` | `(label, dur_ms)` | — | [src](../../../core/services/semantic_memory.py#L165) |
+| function | `_fastembed_enabled` | `()` | Kill-switch: runtime-key `embed_backend`="ollama" tvinger den gamle HTTP-sti. | [src](../../../core/services/semantic_memory.py#L181) |
+| function | `_get_fastembed` | `()` | Lazy singleton. Returnerer TextEmbedding el. None (aldrig raise) → kaldere | [src](../../../core/services/semantic_memory.py#L190) |
+| function | `_embed_fastembed` | `(texts)` | Embed hele listen in-process. Returnerer None (ikke en liste) hvis backenden | [src](../../../core/services/semantic_memory.py#L223) |
+| function | `_embed_ollama` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L240) |
+| function | `_cache_hent` | `(tekster)` | (resultater_med_huller, indeks_der_mangler) — slår hver tekst op i cachen. | [src](../../../core/services/semantic_memory.py#L288) |
+| function | `_cache_gem` | `(par)` | Læg nye vektorer i cachen. FIFO-halvtøm ved loft, som i `_embed_ollama`. | [src](../../../core/services/semantic_memory.py#L306) |
+| function | `_embed_ollama_http` | `(bid)` | ÉT HTTP-kald til ollamas batch-endpoint. `None` = fejlede → kalderen falder | [src](../../../core/services/semantic_memory.py#L330) |
+| function | `_embed_ollama_batch` | `(texts)` | Batch-embed. Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). | [src](../../../core/services/semantic_memory.py#L360) |
+| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L446) |
+| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L450) |
+| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L454) |
+| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L458) |
+| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L467) |
+| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L502) |
+| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L566) |
+| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L581) |
+| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L589) |
+| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L666) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L675) |
+| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L688) |
+
 ## `core/services/sensory_archive.py`
 _Sansernes Arkiv — service layer for sensory memories._
 
@@ -551,12 +582,4 @@ _Spec-driven framework for the ``*_signal_tracking`` family._
 | function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L359) |
 | function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L413) |
 | function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L425) |
-
-## `core/services/silence_detector.py`
-_Silence Detector — what is the user NOT saying?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_silence_signals` | `(*, recent_topics, expected_topics, conversation_length=…, user_corrections=…)` | Detect what's missing from the conversation. | [src](../../../core/services/silence_detector.py#L17) |
-| function | `build_silence_surface` | `()` | — | [src](../../../core/services/silence_detector.py#L62) |
 

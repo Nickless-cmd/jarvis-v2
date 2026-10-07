@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16399 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16407 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,35 +29,35 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16399 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_embeddings`
 - [`core.runtime.02`](core.runtime.02.md) — `db_emotional_memory` … `db_users`
 - [`core.runtime.03`](core.runtime.03.md) — `db_view_requests` … `ws_auth`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agent_runtime`
-- [`core.services.02`](core.services.02.md) — `agent_runtime_base` … `arc_rule_extractor`
-- [`core.services.03`](core.services.03.md) — `assembly_load_probe` … `boundary_awareness`
-- [`core.services.04`](core.services.04.md) — `bounded_action_continuity_runtime` … `central_construct`
-- [`core.services.05`](core.services.05.md) — `central_continuity_healer` … `central_lexicon`
-- [`core.services.06`](core.services.06.md) — `central_llm_egress` … `central_sentinel`
-- [`core.services.07`](core.services.07.md) — `central_sequence` … `cheap_provider_catalogue`
-- [`core.services.08`](core.services.08.md) — `cheap_provider_reasoning_budget` … `concept_baseline_tracker`
-- [`core.services.09`](core.services.09.md) — `config_drift` … `cross_session_threads`
-- [`core.services.10`](core.services.10.md) — `cross_signal_analysis` … `development_narrative_daemon`
-- [`core.services.11`](core.services.11.md) — `development_ritual` … `egress_guard`
-- [`core.services.12`](core.services.12.md) — `egress_routing` … `fabricated_tool_result_gate`
-- [`core.services.13`](core.services.13.md) — `fact_gate` … `global_workspace`
-- [`core.services.14`](core.services.14.md) — `gmail_connector` … `identity_drift_guard`
-- [`core.services.15`](core.services.15.md) — `identity_drift_proposer` … `jobs_engine`
-- [`core.services.16`](core.services.16.md) — `kerne_curator` … `memory_emotional_context`
-- [`core.services.17`](core.services.17.md) — `memory_graph` … `narrative_summary_daemon`
-- [`core.services.18`](core.services.18.md) — `negotiation_engine` … `pattern_counterfactual_daemon`
-- [`core.services.19`](core.services.19.md) — `pdf_connector` … `producer_novelty`
-- [`core.services.20`](core.services.20.md) — `projection_chat_messages` … `raesonnering_eksperiment`
-- [`core.services.21`](core.services.21.md) — `read_before_write_guard` … `retention_coverage`
-- [`core.services.22`](core.services.22.md) — `retry_admissibility` … `scheduled_job_windows`
-- [`core.services.23`](core.services.23.md) — `scheduled_task_runner` … `semantic_memory`
-- [`core.services.24`](core.services.24.md) — `sensory_archive` … `silence_detector`
-- [`core.services.25`](core.services.25.md) — `silence_listener` … `telegram_gateway`
-- [`core.services.26`](core.services.26.md) — `telemetry_gate` … `tool_round_label`
-- [`core.services.27`](core.services.27.md) — `tool_router` … `visible_followup_results`
-- [`core.services.28`](core.services.28.md) — `visible_inner_life` … `visible_tool_exec`
-- [`core.services.29`](core.services.29.md) — `visible_tool_labels` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agent_retention`
+- [`core.services.02`](core.services.02.md) — `agent_runtime` … `approval_runtime`
+- [`core.services.03`](core.services.03.md) — `arc_rule_extractor` … `boredom_engine`
+- [`core.services.04`](core.services.04.md) — `boundary_awareness` … `central_causal_quality`
+- [`core.services.05`](core.services.05.md) — `central_construct` … `central_learning`
+- [`core.services.06`](core.services.06.md) — `central_lexicon` … `central_self_state`
+- [`core.services.07`](core.services.07.md) — `central_sentinel` … `cheap_provider_breaker_adapters`
+- [`core.services.08`](core.services.08.md) — `cheap_provider_catalogue` … `computer_use_samtykke`
+- [`core.services.09`](core.services.09.md) — `concept_baseline_tracker` … `cross_session_gate`
+- [`core.services.10`](core.services.10.md) — `cross_session_threads` … `development_focus_tracking`
+- [`core.services.11`](core.services.11.md) — `development_narrative_daemon` … `effective_policy`
+- [`core.services.12`](core.services.12.md) — `egress_guard` … `explore_claim_check`
+- [`core.services.13`](core.services.13.md) — `fabricated_tool_result_gate` … `github_connector`
+- [`core.services.14`](core.services.14.md) — `global_workspace` … `identity_drift_daemon`
+- [`core.services.15`](core.services.15.md) — `identity_drift_guard` … `jarvisx_bridge`
+- [`core.services.16`](core.services.16.md) — `jobs_engine` … `memory_density`
+- [`core.services.17`](core.services.17.md) — `memory_emotional_context` … `narrative_identity`
+- [`core.services.18`](core.services.18.md) — `narrative_summary_daemon` … `paste_store`
+- [`core.services.19`](core.services.19.md) — `pattern_counterfactual_daemon` … `process_watcher`
+- [`core.services.20`](core.services.20.md) — `producer_novelty` … `r2_5_haandhaevelse`
+- [`core.services.21`](core.services.21.md) — `raesonnering_eksperiment` … `retention`
+- [`core.services.22`](core.services.22.md) — `retention_coverage` … `rupture_repair`
+- [`core.services.23`](core.services.23.md) — `scheduled_job_windows` … `semantic_indexer`
+- [`core.services.24`](core.services.24.md) — `semantic_memory` … `signal_tracking_framework`
+- [`core.services.25`](core.services.25.md) — `silence_detector` … `taste_profile`
+- [`core.services.26`](core.services.26.md) — `telegram_gateway` … `tool_result_store`
+- [`core.services.27`](core.services.27.md) — `tool_round_label` … `visible_followup_lean`
+- [`core.services.28`](core.services.28.md) — `visible_followup_results` … `visible_thinking_trace`
+- [`core.services.29`](core.services.29.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

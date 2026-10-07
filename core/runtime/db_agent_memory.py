@@ -339,6 +339,10 @@ def recall(*, owner_user_id: str, agent_id: str, session_id: str,
             " ORDER BY created_at DESC, summary_id DESC LIMIT ?", args_s + [MAX_SUMMARIES]).fetchall()
         problems = conn.execute("SELECT COUNT(*) FROM agent_memory_errors WHERE agent_id=? AND "
                                 "resolved_at=''", (agent_id,)).fetchone()[0]
+        # Udloebne artefakter (retention 12.1) staar som synlige tombstones - ikke som verificerbar evidens.
+        expired = {f"{r['run_id']}/{r['name']}" for r in conn.execute(
+            "SELECT run_id, name FROM agent_artifacts WHERE agent_id=? AND owner_user_id=? AND status='expired'",
+            (agent_id, owner))}
     except Exception as exc:
         logger.warning("agentens erindring kunne ikke laeses (%s)", agent_id, exc_info=True)
         msg = f"{type(exc).__name__}: {exc}"[:200]
@@ -350,7 +354,7 @@ def recall(*, owner_user_id: str, agent_id: str, session_id: str,
                      f"{' · kilde ' + note['source_assignment_id'] if note['source_assignment_id'] else ''}]\n"
                      f"{note['content']}")
     for s in sums:
-        refs = json.loads(s["evidence_refs_json"] or "[]")
+        refs = [r + (" [udloebet]" if r in expired else "") for r in json.loads(s["evidence_refs_json"] or "[]")]
         lines.append(f"[resume · assignment {s['assignment_id']} · {s['status']} · {s['created_at']}] "
                      f"gjort: {s['gjort']} | besluttet: {s['besluttet']} | aabent: {s['aabent']}"
                      f"{' | evidens: ' + ', '.join(refs) if refs else ''}")

@@ -419,10 +419,10 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L402) |
 | function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L452) |
 | function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L477) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L505) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L513) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L523) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L553) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L510) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L518) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L528) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L558) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -611,8 +611,17 @@ _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 | function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L47) |
 | function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L57) |
 
-## `core/services/agent_runtime.py`
-_Agent runtime — sub-agents, councils, swarms (facade)._
+## `core/services/agent_retention.py`
+_Retention for agentartefakter og agentens hukommelse (agent-contract-v1 leverance C, hul 4; spec 12.1)._
 
-_(no top-level classes or functions)_
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_retention.py#L50) |
+| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_retention.py#L54) |
+| function | `_assignment_state` | `(conn, assignment_id, names_worktree)` | Hvorfor (``reason``) et assignments artefakter er beskyttet - eller hvornaar de udloeber (``expires``). | [src](../../../core/services/agent_retention.py#L62) |
+| function | `_expire` | `(conn, rec, now)` | Slet filen (kun hvis stien er den forventede) og goer posten til en tombstone. Idempotent. | [src](../../../core/services/agent_retention.py#L110) |
+| function | `sweep_artifacts` | `(*, now=…)` | — | [src](../../../core/services/agent_retention.py#L137) |
+| function | `sweep_memory` | `(*, now=…)` | Luk-retention for agentens egen hukommelse. Roerer aldrig en agent der ikke er ``closed``. | [src](../../../core/services/agent_retention.py#L165) |
+| function | `run` | `(*, now=…)` | Hele retentionrunden: worktrees (7/14/30 dage), artefakter, hukommelse. Hver del er uafhaengig. | [src](../../../core/services/agent_retention.py#L202) |
+| function | `run_if_due` | `()` | Throttlet til højst én runde i timen pr. proces (runden er idempotent, saa to processer er ufarligt). | [src](../../../core/services/agent_retention.py#L218) |
 

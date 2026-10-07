@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/arc_rule_extractor.py`
+_Arc rule extractor — turns narrative arcs into actionable rules._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rules_path` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L33) |
+| function | `_arcs_dir` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L39) |
+| function | `_build_extraction_prompt` | `(arc_text, period)` | — | [src](../../../core/services/arc_rule_extractor.py#L43) |
+| function | `_parse_rules` | `(text)` | — | [src](../../../core/services/arc_rule_extractor.py#L59) |
+| function | `extract_rules_from_arc` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L74) |
+| function | `_mark_processed` | `(arc_path)` | — | [src](../../../core/services/arc_rule_extractor.py#L138) |
+| function | `_is_processed` | `(arc_name)` | — | [src](../../../core/services/arc_rule_extractor.py#L151) |
+| function | `extract_rules_for_unprocessed_arcs` | `()` | — | [src](../../../core/services/arc_rule_extractor.py#L161) |
+| function | `arc_rules_section` | `(*, max_lines=…)` | Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only | [src](../../../core/services/arc_rule_extractor.py#L180) |
+| function | `_legacy_arc_rules_section` | `(*, max_lines=…)` | Pre-2026-09-04 renderer, kept for reference/tests of the file format. | [src](../../../core/services/arc_rule_extractor.py#L188) |
+
 ## `core/services/assembly_load_probe.py`
 _Hvad lavede maskinen MENS prompten blev samlet?_
 
@@ -647,13 +663,4 @@ _Boredom Engine — productive restlessness as first-class experience._
 | function | `update_boredom_state` | `(*, idle_hours=…, tick_monotony=…, novelty_score=…, open_loop_count=…)` | — | [src](../../../core/services/boredom_engine.py#L11) |
 | function | `get_boredom_state` | `()` | — | [src](../../../core/services/boredom_engine.py#L49) |
 | function | `build_boredom_surface` | `()` | — | [src](../../../core/services/boredom_engine.py#L53) |
-
-## `core/services/boundary_awareness.py`
-_Boundary Awareness — "Where do I end?"_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_boundary_model` | `()` | Build Jarvis' sense of his own boundaries. | [src](../../../core/services/boundary_awareness.py#L8) |
-| function | `format_boundary_for_prompt` | `()` | Compact boundary awareness for prompt injection. | [src](../../../core/services/boundary_awareness.py#L31) |
-| function | `build_boundary_awareness_surface` | `()` | — | [src](../../../core/services/boundary_awareness.py#L40) |
 

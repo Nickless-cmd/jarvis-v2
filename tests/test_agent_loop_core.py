@@ -134,7 +134,7 @@ def base(isolated_runtime, monkeypatch):
     monkeypatch.setattr(b, "_facade", lambda: _F())
     monkeypatch.setattr(b, "_build_agent_tools_payload",
                         lambda allowed, **k: [{"type": "function", "function": {"name": "read_file"}}])
-    return b, replies
+    return b, replies, monkeypatch
 
 
 AGENT = {"agent_id": "a1", "role": "researcher", "tool_policy": "read-only-runtime",
@@ -142,7 +142,7 @@ AGENT = {"agent_id": "a1", "role": "researcher", "tool_policy": "read-only-runti
 
 
 def test_the_wrapper_still_returns_the_old_envelope_shape(base, monkeypatch):
-    b, replies = base
+    b, replies, monkeypatch = base
     monkeypatch.setattr(b, "_execute_agent_tool_call", lambda tc, agent_id: "fil-indhold")
     replies += [{"text": "", "tool_calls": [_tc(1)], "input_tokens": 5},
                 {"text": "fandt det", "input_tokens": 7, "output_tokens": 3}]
@@ -153,8 +153,8 @@ def test_the_wrapper_still_returns_the_old_envelope_shape(base, monkeypatch):
         "role-primary-tool-loop", "agent-tools", "cheap", "p", "m")
 
 
-def test_the_wrapper_maps_error_scout_and_empty_outcomes_to_the_old_statuses(base, monkeypatch):
-    b, replies = base
+def test_the_wrapper_maps_error_scout_and_empty_outcomes_to_the_old_statuses(base):
+    b, replies, monkeypatch = base
     replies.append(RuntimeError("udbyder nede"))
 
     r = b._run_agent_tool_loop(agent=dict(AGENT), prompt="P", requires_tools=True, run_id="r")
@@ -168,7 +168,7 @@ def test_the_wrapper_maps_error_scout_and_empty_outcomes_to_the_old_statuses(bas
 
 
 def test_a_started_tool_call_is_recorded_before_it_runs_and_finished_after(base):
-    b, replies = base
+    b, replies, monkeypatch = base
     from core.runtime.db_agent_runtime import get_agent_tool_call
 
     seen = {}
@@ -177,7 +177,7 @@ def test_a_started_tool_call_is_recorded_before_it_runs_and_finished_after(base)
         seen["during"] = get_agent_tool_call("c1")
         return "klar"
 
-    b._execute_agent_tool_call = run_tool
+    monkeypatch.setattr(b, "_execute_agent_tool_call", run_tool)
     replies += [{"text": "", "tool_calls": [_tc(1)]}, {"text": "slut"}]
     b._run_agent_tool_loop(agent=dict(AGENT), prompt="P", requires_tools=True, run_id="run-9")
     d = seen["during"]
@@ -189,13 +189,13 @@ def test_a_started_tool_call_is_recorded_before_it_runs_and_finished_after(base)
 
 def test_an_interrupted_tool_call_stays_open_so_the_supervisor_sees_it(base):
     """Kobler C2: en vaerktoejskoersel der aldrig blev afsluttet maa vaere synlig som aaben."""
-    b, replies = base
+    b, replies, monkeypatch = base
     from core.runtime.db_agent_runtime import get_agent_tool_call
 
     def dies(tc, agent_id):
         raise SystemExit("proces doede")
 
-    b._execute_agent_tool_call = dies
+    monkeypatch.setattr(b, "_execute_agent_tool_call", dies)
     replies += [{"text": "", "tool_calls": [_tc(1)]}]
     with pytest.raises(SystemExit):
         b._run_agent_tool_loop(agent=dict(AGENT), prompt="P", requires_tools=True, run_id="run-9")

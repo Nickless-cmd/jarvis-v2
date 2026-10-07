@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/selective_consolidation_daemon.py`
+_Selective Consolidation Daemon — D1._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_last_tick` | `()` | Laes sidste koersel fra disk. Fejler bloedt — en manglende fil maa ikke | [src](../../../core/services/selective_consolidation_daemon.py#L62) |
+| function | `_save_last_tick` | `(at)` | Gem sidste koersel. Best-effort: fejler skrivningen, koerer daemonen igen | [src](../../../core/services/selective_consolidation_daemon.py#L79) |
+| function | `tick_selective_consolidation_daemon` | `()` | Run selective consolidation if cadence elapsed. | [src](../../../core/services/selective_consolidation_daemon.py#L91) |
+| function | `_consolidate_sensory` | `(today_start)` | Rangér IKKE dagens sanseindtryk — og slet dem i hvert fald ikke. | [src](../../../core/services/selective_consolidation_daemon.py#L164) |
+| function | `_score_brain` | `(entry)` | Score a brain entry 0.0-1.0 — KUN efter salience. | [src](../../../core/services/selective_consolidation_daemon.py#L208) |
+| function | `_consolidate_brain` | `(today_start)` | Score and archive bottom (100-K)% of today's brain entries. | [src](../../../core/services/selective_consolidation_daemon.py#L219) |
+| function | `_score_private` | `(record)` | Score a private brain record 0.0-1.0 — KUN efter salience. | [src](../../../core/services/selective_consolidation_daemon.py#L290) |
+| function | `_consolidate_private` | `(today_start)` | Score and archive bottom (100-K)% of today's private brain records. | [src](../../../core/services/selective_consolidation_daemon.py#L300) |
+| function | `build_selective_consolidation_surface` | `()` | Build surface data for mission control. | [src](../../../core/services/selective_consolidation_daemon.py#L362) |
+
 ## `core/services/selective_forgetting_candidate_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -792,21 +807,4 @@ _Session distillation and private brain continuity._
 | function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L885) |
 | function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…, human_user_message=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L905) |
 | function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1002) |
-
-## `core/services/session_inbox.py`
-_Session inbox — gates daemon notifications during active sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/session_inbox.py#L59) |
-| function | `_connect` | `()` | — | [src](../../../core/services/session_inbox.py#L90) |
-| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L100) |
-| function | `enqueue` | `(*, session_id, content, source, urgent=…, user_id=…, workspace_name=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L145) |
-| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L186) |
-| function | `_maerket` | `(indhold)` | Kilde-mærk en leveret notifikation. Fail mod at MÆRKE. | [src](../../../core/services/session_inbox.py#L205) |
-| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L225) |
-| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L344) |
-| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L369) |
-| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L453) |
-| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L470) |
 

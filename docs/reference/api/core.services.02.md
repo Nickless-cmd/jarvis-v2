@@ -141,6 +141,19 @@ _Server-siden af en sandboxet agent-worker: spawn, broker og draeb (agent-contra
 | function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L187) |
 | function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L205) |
 
+## `core/services/agent_worktree_exec.py`
+_Skrivning i et agent-worktree - KUN gennem en sandbox (agent-contract-v1 C5b, spec 8.1 og 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ExecError` | `` | Kommandoen blev afvist foer den koerte (stabil ``code``). | [src](../../../core/services/agent_worktree_exec.py#L48) |
+| method | `ExecError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L51) |
+| function | `_active_worktree` | `(worktree_id)` | — | [src](../../../core/services/agent_worktree_exec.py#L56) |
+| function | `_clip` | `(data)` | — | [src](../../../core/services/agent_worktree_exec.py#L69) |
+| function | `_run` | `(wt, command, *, timeout_s, stdin_bytes=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L74) |
+| function | `run_in_worktree` | `(*, worktree_id, command, timeout_s=…)` | Koer en shell-kommando med worktree'et som /work. Kaster ``ExecError`` hvis den afvises. | [src](../../../core/services/agent_worktree_exec.py#L108) |
+| function | `write_file_in_worktree` | `(*, worktree_id, path, content)` | Skriv en fil (relativ sti) i worktree'et. Stien loeses INDE i sandboxen og afvises hvis den | [src](../../../core/services/agent_worktree_exec.py#L116) |
+
 ## `core/services/agent_worktree_git.py`
 _Git-operationer for agent-worktrees (agent-contract-v1 C5a, spec 8.1)._
 
@@ -614,23 +627,4 @@ _Attention Blink Test — capacity-limit measurement (Experiment 5: Serial consc
 | function | `_run_test_body` | `()` | Full test: measure T1, inject T1 burst, wait 30s, inject T2, compare. | [src](../../../core/services/attention_blink_test.py#L87) |
 | function | `_compute_blink_ratio` | `(t1, t2)` | T2 total intensity / T1 total intensity. Clamped 0-2. | [src](../../../core/services/attention_blink_test.py#L142) |
 | function | `_interpret_blink_ratio` | `(ratio)` | < 0.7 → serial/blink-prone, >= 0.7 → parallel/blink-resistant. | [src](../../../core/services/attention_blink_test.py#L151) |
-
-## `core/services/attention_budget.py`
-_Adaptive attention economy — bounded context budgeting for prompt assembly._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SectionBudget` | `` | Budget for a single prompt section. | [src](../../../core/services/attention_budget.py#L23) |
-| class | `AttentionBudget` | `` | Complete attention budget for a prompt assembly path. | [src](../../../core/services/attention_budget.py#L32) |
-| function | `get_attention_budget` | `(profile)` | Get a named attention budget profile. | [src](../../../core/services/attention_budget.py#L105) |
-| class | `SectionResult` | `` | Result of attempting to include a section under budget. | [src](../../../core/services/attention_budget.py#L115) |
-| class | `AttentionTrace` | `` | Observable trace of what was included/omitted and why. | [src](../../../core/services/attention_budget.py#L126) |
-| method | `AttentionTrace.included_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L140) |
-| method | `AttentionTrace.omitted_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L144) |
-| method | `AttentionTrace.trimmed_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L148) |
-| method | `AttentionTrace.summary` | `(self)` | — | [src](../../../core/services/attention_budget.py#L151) |
-| function | `apply_section_budget` | `(*, name, content, budget)` | Apply a section budget to content. | [src](../../../core/services/attention_budget.py#L178) |
-| function | `build_micro_cognitive_frame` | `()` | Build a ~150 char micro cognitive frame for compact visible prompts. | [src](../../../core/services/attention_budget.py#L272) |
-| function | `select_sections_under_budget` | `(*, budget, sections)` | Select and trim sections to fit within the attention budget. | [src](../../../core/services/attention_budget.py#L316) |
-| function | `build_attention_budget_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/attention_budget.py#L398) |
 

@@ -170,3 +170,12 @@ def test_killing_the_group_kills_everything_inside():
     time.sleep(1.0)
     os.killpg(proc.pid, signal.SIGKILL)
     assert proc.wait(timeout=10) != 0
+
+
+def test_rw_binds_are_the_only_writable_mounts_and_set_the_working_directory():
+    a = sb.build_bwrap_argv(["ls"], rw_binds={"/host/wt": "/work"}, chdir="/work", worker_files={})
+    binds = [(a[i + 1], a[i + 2]) for i, x in enumerate(a) if x == "--bind"]
+    assert binds == [("/host/wt", "/work")]
+    assert a[a.index("--chdir") + 1] == "/work"
+    plain = sb.build_bwrap_argv(["ls"], worker_files={})
+    assert "--bind" not in plain and plain[plain.index("--chdir") + 1] == "/tmp"

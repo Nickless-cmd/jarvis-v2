@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_inbox.py`
+_Session inbox — gates daemon notifications during active sessions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/session_inbox.py#L59) |
+| function | `_connect` | `()` | — | [src](../../../core/services/session_inbox.py#L90) |
+| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L100) |
+| function | `enqueue` | `(*, session_id, content, source, urgent=…, user_id=…, workspace_name=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L145) |
+| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L186) |
+| function | `_maerket` | `(indhold)` | Kilde-mærk en leveret notifikation. Fail mod at MÆRKE. | [src](../../../core/services/session_inbox.py#L205) |
+| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L225) |
+| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L344) |
+| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L369) |
+| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L453) |
+| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L470) |
+
 ## `core/services/session_milestones.py`
 _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter._
 
@@ -538,21 +555,4 @@ _Skill-fladen nævner et skill — og intet kræver et svar (2/10-2026)._
 | function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
 | function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L94) |
 | function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L109) |
-
-## `core/services/skill_relevance_surface.py`
-_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L89) |
-| function | `matchede_skills` | `(user_message)` | Navnene paa de skills der matcher denne besked. Tom liste hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L119) |
-| function | `_navnet_staar_i` | `(skill_navn, besked)` | Staar skillets eget navn i beskeden? | [src](../../../core/services/skill_relevance_surface.py#L144) |
-| function | `_naevner_mekanismen` | `(besked)` | Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak. | [src](../../../core/services/skill_relevance_surface.py#L162) |
-| function | `skill_flade_event` | `(user_message)` | Det runtimen lagde i prompten, som et event klienterne kan vise. | [src](../../../core/services/skill_relevance_surface.py#L168) |
-| function | `sidst_foreslaaede` | `()` | Hvilke skills blev foreslaaet i den seneste prompt-bygning. | [src](../../../core/services/skill_relevance_surface.py#L214) |
-| function | `_er_selvstartet_tur` | `()` | Startede maskinen sig selv, uden nogen opgave fra ham? | [src](../../../core/services/skill_relevance_surface.py#L236) |
-| function | `_er_autonom_tur` | `()` | Koerer vi en autonom tur lige nu? | [src](../../../core/services/skill_relevance_surface.py#L257) |
-| function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L290) |
-| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L313) |
-| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L409) |
 

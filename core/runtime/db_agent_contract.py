@@ -625,3 +625,44 @@ def set_lifecycle(*, agent_id: str, owner_user_id: str, lifecycle_status: str) -
         "AND lifecycle_status != 'closed'", (lifecycle_status, agent_id, owner_user_id))
     conn.commit()
     return cur.rowcount == 1
+
+
+def discard_unstarted_assignment(*, agent_id: str, owner_user_id: str) -> bool:
+    """Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked,
+    intet run med ``started_at``. Bruges naar en admission fejler EFTER accept (f.eks. et worktree der ikke
+    kan reserveres), saa et afvist kald ikke efterlader et halvt barn (§11.1). Alt andet afvises."""
+    import shutil
+
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        a = conn.execute("SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND owner_user_id=? "
+                         "AND status='queued'", (agent_id, owner_user_id)).fetchall()
+        if len(a) != 1:
+            conn.rollback()
+            return False
+        aid = a[0]["assignment_id"]
+        started = conn.execute("SELECT 1 FROM agent_runs WHERE assignment_id=? AND started_at != ''",
+                               (aid,)).fetchone()
+        sent = conn.execute("SELECT 1 FROM agent_result_outbox WHERE assignment_id=?", (aid,)).fetchone()
+        others = conn.execute("SELECT 1 FROM agent_assignments WHERE agent_id=? AND assignment_id != ?",
+                              (agent_id, aid)).fetchone()
+        if started or sent or others:
+            conn.rollback()
+            return False
+        run_ids = [r["run_id"] for r in conn.execute("SELECT run_id FROM agent_runs WHERE assignment_id=?",
+                                                     (aid,)).fetchall()]
+        for rid in run_ids:
+            conn.execute("DELETE FROM agent_artifacts WHERE run_id=?", (rid,))
+        conn.execute("DELETE FROM agent_runs WHERE assignment_id=?", (aid,))
+        conn.execute("DELETE FROM agent_leases WHERE assignment_id=?", (aid,))
+        conn.execute("DELETE FROM agent_assignments WHERE assignment_id=?", (aid,))
+        conn.execute("DELETE FROM agent_messages WHERE agent_id=?", (agent_id,))
+        conn.execute("DELETE FROM agent_registry WHERE agent_id=? AND owner_user_id=?", (agent_id, owner_user_id))
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    from core.runtime.db_agent_artifacts import artifact_root
+    shutil.rmtree(artifact_root() / agent_id, ignore_errors=True)
+    return True

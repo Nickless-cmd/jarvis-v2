@@ -56,6 +56,9 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
          "budget_tokens": {"type": "integer", "description": "Token budget; 0 = role default."},
          "max_turns": {"type": "integer", "description": "Tool/model step limit; 0 = default."},
          "model": {"type": "string", "description": "Optional model preference."},
+         "writes": {"type": "boolean", "description": "Code agent: it gets its OWN git worktree of `workspace` "
+                    "and can write only there (sandboxed). The result is a diff; nothing is merged."},
+         "workspace": {"type": "string", "description": "Repository path (required when writes is true)."},
          "idempotency_key": _KEY},
         ["goal"]),
     _fn("followup_agent",
@@ -133,7 +136,8 @@ def _exec_dispatch_agent(args: dict[str, Any]) -> dict[str, Any]:
         target=str(args.get("target") or "runtime-container"),
         budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
         max_turns=max(0, int(args.get("max_turns") or 0)),
-        model=str(args.get("model") or ""), idempotency_key=str(args.get("idempotency_key") or ""))
+        model=str(args.get("model") or ""), idempotency_key=str(args.get("idempotency_key") or ""),
+        writes=bool(args.get("writes")), workspace=str(args.get("workspace") or ""))
 
 
 def _exec_followup_agent(args: dict[str, Any]) -> dict[str, Any]:

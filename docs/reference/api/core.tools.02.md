@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/jarvis_brain_tools.py`
+_Visible Jarvis' værktøjer til hjernen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/tools/jarvis_brain_tools.py#L131) |
+| function | `_day_key` | `(now)` | — | [src](../../../core/tools/jarvis_brain_tools.py#L135) |
+| function | `_get_caps` | `()` | Read caps from RuntimeSettings if available, else defaults. | [src](../../../core/tools/jarvis_brain_tools.py#L139) |
+| function | `_exec_remember_this` | `(args)` | Executor for remember_this tool. | [src](../../../core/tools/jarvis_brain_tools.py#L157) |
+| function | `_exec_search_jarvis_brain` | `(args)` | Executor for search_jarvis_brain tool. | [src](../../../core/tools/jarvis_brain_tools.py#L203) |
+| function | `_exec_read_brain_entry` | `(args)` | Executor for read_brain_entry tool. | [src](../../../core/tools/jarvis_brain_tools.py#L215) |
+| function | `_exec_archive_brain_entry` | `(args)` | Executor for archive_brain_entry tool. | [src](../../../core/tools/jarvis_brain_tools.py#L220) |
+| function | `_exec_adopt_brain_proposal` | `(args)` | Executor for adopt_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L228) |
+| function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L236) |
+| function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L249) |
+| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L336) |
+| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L416) |
+| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L443) |
+| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L455) |
+| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L531) |
+
 ## `core/tools/jc_tool_catalog.py`
 _Single source of truth for what jarvis-code (jc) presents as tools._
 
@@ -509,16 +530,4 @@ _Screen control — turn Bjørn's monitors on/off/standby, or read their state._
 | function | `_dpms_command` | `(action)` | Shell command that sets (or reads) DPMS on every connected DP output. | [src](../../../core/tools/screen_tool.py#L78) |
 | function | `_run_on_operator` | `(command, args)` | Run `command` on the operator's desktop via the bridge. | [src](../../../core/tools/screen_tool.py#L85) |
 | function | `_exec_screen_control` | `(args)` | Execute the screen control tool. | [src](../../../core/tools/screen_tool.py#L117) |
-
-## `core/tools/security_predicates.py`
-_Nummererede security-predikater (spec E, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SecurityPredicate` | `` | — | [src](../../../core/tools/security_predicates.py#L14) |
-| function | `evaluate_command` | `(command)` | Første matchende bash-predikat (blocked før destructive) på den normaliserede | [src](../../../core/tools/security_predicates.py#L57) |
-| function | `evaluate_write` | `(resolved_path)` | Første matchende write-predikat (substring) på stien, ellers None. | [src](../../../core/tools/security_predicates.py#L75) |
-| function | `all_predicates` | `()` | — | [src](../../../core/tools/security_predicates.py#L86) |
-| function | `build_security_predicates_surface` | `()` | Central-CLI read-surface: jc raw /central/security-predicates. | [src](../../../core/tools/security_predicates.py#L90) |
-| function | `render_predicates_md` | `()` | Genererer docs/security_predicates.md fra registry'en (kilde = koden). | [src](../../../core/tools/security_predicates.py#L104) |
 

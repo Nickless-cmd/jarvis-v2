@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/webhook_tools.py`
+_Webhook tools — send to and manage external HTTP endpoints._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/tools/webhook_tools.py#L16) |
+| function | `_save` | `(data)` | — | [src](../../../core/tools/webhook_tools.py#L23) |
+| function | `_sign_payload` | `(payload_bytes, secret)` | — | [src](../../../core/tools/webhook_tools.py#L28) |
+| function | `_do_post` | `(url, payload, secret=…)` | — | [src](../../../core/tools/webhook_tools.py#L32) |
+| function | `_exec_webhook_register` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L53) |
+| function | `_exec_webhook_send` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L76) |
+| function | `_exec_webhook_list` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L105) |
+| function | `_exec_webhook_test` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L121) |
+| function | `_exec_webhook_delete` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L142) |
+
 ## `core/tools/widget_tools.py`
 _`vis_widget` — en interaktiv flade i traaden, i en sandkasse._
 

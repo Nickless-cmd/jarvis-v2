@@ -141,20 +141,34 @@ def dispatch_agent(
     tool_policy: str = "", allowed_tools: list[str] | None = None,
     target: str = "runtime-container", budget_tokens: int = 0, max_turns: int = 0,
     expected_result: str = "", model: str = "", idempotency_key: str = "",
+    writes: bool = False, workspace: str = "",
 ) -> dict[str, Any]:
-    """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS."""
+    """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS.
+
+    ``writes=True`` + ``workspace`` giver en kodeagent: den faar sit eget git-worktree (reserveret FOER
+    den er accepteret) og kan kun skrive dér, gennem en sandbox (C5). Faar worktree'et ikke plads, er
+    intet oprettet."""
     if (bad := _guard(owner_user_id, origin_session_id)):
         return bad
     goal = (goal or "").strip()
     if not goal:
         return _err("INVALID_SCOPE", "goal mangler")
+    wt_tools = tool_policy == "worktree-write" or any(str(t).startswith("wt_") for t in (allowed_tools or []))
+    if writes:
+        if not (workspace or "").strip():
+            return _err("INVALID_SCOPE", "writes kraever et workspace (repo-sti)")
+        if allowed_tools or (tool_policy and tool_policy != "worktree-write"):
+            return _err("INVALID_SCOPE", "en kodeagent har den faste politik worktree-write")
+        tool_policy = "worktree-write"
+    elif wt_tools or (workspace or "").strip():
+        return _err("INVALID_SCOPE", "worktree-vaerktoejer og workspace kraever writes=true")
     if target not in _SUPPORTED_TARGETS:
         return _err("CLIENT_OFFLINE" if target.startswith("client:") else "INVALID_SCOPE",
                     f"target {target!r} understoettes ikke endnu (kun {_SUPPORTED_TARGETS})")
     digest = _digest(goal=goal, role=role, description=description, tool_policy=tool_policy,
                      allowed_tools=allowed_tools or [], target=target, budget=budget_tokens,
                      turns=max_turns, expected=expected_result, model=model,
-                     parent=parent_agent_id, parent_run=parent_run_id)
+                     parent=parent_agent_id, parent_run=parent_run_id, writes=writes, workspace=workspace)
     prior = c.find_assignment_by_key(owner_user_id=owner_user_id, origin_session_id=origin_session_id,
                                      operation="dispatch", idempotency_key=idempotency_key)
     if prior is not None:
@@ -183,11 +197,28 @@ def dispatch_agent(
     a = c.open_assignment_for_agent(agent_id)
     if a is None:
         return _err("INVALID_SCOPE", "agenten blev ikke bundet til kontrakten", "admission")
+    worktree: dict[str, Any] | None = None
+    if writes:
+        from core.services.agent_worktrees import provision
+        try:
+            worktree = provision(owner_user_id=owner_user_id, assignment_id=a["assignment_id"],
+                                 repo_path=workspace)
+        except ContractError as exc:
+            c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+            return _err(exc.code, exc.detail)
+        except Exception as exc:
+            logger.warning("worktree kunne ikke reserveres", exc_info=True)
+            c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+            return _err("INVALID_SCOPE", f"worktree: {type(exc).__name__}"[:120])
     _start_execution(agent_id)
     run = c._conn().execute("SELECT run_id FROM agent_runs WHERE assignment_id=? "
                             "ORDER BY attempt_no LIMIT 1", (a["assignment_id"],)).fetchone()
-    return _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
+    view = _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
                          "run_id": run["run_id"] if run else "", "status": a["status"]})
+    if worktree is not None:
+        view["worktree"] = {"worktree_id": worktree["worktree_id"], "branch": worktree["branch"],
+                            "base_commit": worktree["base_commit"]}
+    return view
 
 
 def followup_agent(

@@ -48,8 +48,8 @@ def test_every_tool_the_text_names_is_really_advertised_when_on(pr):
     from core.tools.simple_tools import get_tool_definitions
 
     pr.on()
-    # `wake_if_run_ends` og `include_output` er PARAMETERnavne, ikke vaerktoejer
-    named = set(re.findall(r"`([a-z_]+)`", ao.orchestrator_section())) - {"wake_if_run_ends", "include_output"}
+    # `wake_if_run_ends`, `include_output`, `writes` og `workspace` er PARAMETERnavne, ikke vaerktoejer
+    named = set(re.findall(r"`([a-z_]+)`", ao.orchestrator_section())) - {"wake_if_run_ends", "include_output", "writes", "workspace"}
     advertised = {d["function"]["name"] for d in get_tool_definitions(role="owner", scope="")}
     assert named == {"dispatch_agent", "wait_agents", "send_message_to_agent", "followup_agent",
                      "interrupt_agent", "close_agent", "list_agents"}

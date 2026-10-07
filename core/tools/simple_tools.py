@@ -100,6 +100,7 @@ from core.tools.restart_self_tools import (
     RESTART_SELF_TOOL_DEFINITIONS,
     _exec_restart_self,
 )
+from core.tools.agent_worktree_tools import _exec_wt_bash, _exec_wt_write_file  # C5b
 from core.tools.agent_contract_tools import (  # agent-contract-v1 (F2)
     _exec_close_agent,
     _exec_dispatch_agent,
@@ -1641,6 +1642,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "send_message_to_agent": _contract_exec_send_message_to_agent,
     "relay_to_agent": _exec_relay_to_agent,
     "list_agents": _contract_exec_list_agents,
+    "wt_bash": _exec_wt_bash,
+    "wt_write_file": _exec_wt_write_file,
     "dispatch_agent": _exec_dispatch_agent,
     "followup_agent": _exec_followup_agent,
     "wait_agents": _exec_wait_agents,

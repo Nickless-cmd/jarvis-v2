@@ -171,6 +171,10 @@ def _build_agent_tools_payload(
     except Exception:
         return []
     out: list[dict] = []
+    # Agent-kun-vaerktoejer (findes ikke i Jarvis' katalog): kun de navne agentens allowlist nævner.
+    from core.tools.agent_worktree_tools import WT_TOOL_DEFINITIONS
+    catalog = [*(catalog or []), *[d for d in WT_TOOL_DEFINITIONS
+                                    if d["function"]["name"] in names]]
     for tool in catalog or []:
         if not isinstance(tool, dict):
             continue
@@ -219,6 +223,11 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
             arguments["_runtime_session_id"] = str(context["session_id"])
         if context.get("workspace_root"):
             arguments["_operator_workspace_root"] = str(context["workspace_root"])
+    # Serverens egen identitet for kaldet. Et `_runtime_agent_id` modellen selv har skrevet fjernes ALTID;
+    # kun wt_*-vaerktoejerne (der slaar sit worktree op herfra) faar den rigtige sat ind.
+    arguments.pop("_runtime_agent_id", None)
+    if name in ("wt_bash", "wt_write_file"):
+        arguments["_runtime_agent_id"] = agent_id
     try:
         from core.tools.simple_tools import execute_tool
         result = execute_tool(name, arguments)
@@ -489,6 +498,9 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "read-only-runtime": list(_READ_ONLY_TOOLS),
     "read-only-workstation": list(_READ_ONLY_WORKSTATION_TOOLS),
     "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
+    # Kodeagent: laesevaerktoejer + skrivning i SIT EGET worktree (sandboxet). Gives kun af
+    # dispatch_agent(writes=true) sammen med et reserveret worktree (agent-contract-v1 C5).
+    "worktree-write": [*_READ_ONLY_TOOLS, "wt_bash", "wt_write_file"],
 }
 
 

@@ -281,7 +281,7 @@ def test_wait_with_timeout_returns_unsatisfied_when_nothing_finishes(sv, monkeyp
     assert out["satisfied"] is False and "wait_contract" not in out
 
 
-def test_wait_can_return_the_full_output_through_the_owner_checked_artifact(sv):
+def test_wait_can_return_the_full_output_through_the_owner_checked_artifact(sv, monkeypatch):
     sv.on()
     long = "x" * 30000
 
@@ -290,7 +290,7 @@ def test_wait_can_return_the_full_output_through_the_owner_checked_artifact(sv):
             return {"text": long, "input_tokens": 1, "output_tokens": 1, "status": "completed"}
 
     from core.services import agent_runtime_spawn as M
-    M._facade = lambda: _F()
+    monkeypatch.setattr(M, "_facade", lambda: _F())
     a = sv.d()
     sv.run_all()
     ids = [a["assignment_id"]]

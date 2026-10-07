@@ -3895,7 +3895,11 @@ async def _stream_visible_run(
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(
                                         text=_exchange_text(), tool_calls=[], results=[]))
-                                _tur_hale.tilfoej_vedvarende(HOLLOW_PROMISE_NUDGE)
+                                # 7/10-2026: noten gaelder KUN naeste runde. Foer
+                                # laa den i halen som «vedvarende» og blev sendt
+                                # igen i hver runde til turen sluttede — maalt op
+                                # til 40 gen-sendinger i én tur.
+                                _tur_hale.tilfoej_naeste(HOLLOW_PROMISE_NUDGE)
                                 # Redesign 4/9: næste runde tvinger et tool-kald og udfaldet
                                 # persisteres (runtime.hollow_promise_detected/outcome).
                                 _hollow_force_next = True
@@ -4018,7 +4022,7 @@ async def _stream_visible_run(
                                 ):
                                     _skill_gate_nudges += 1
                                     _sg_tekst = _sg_nudge(_sg_primaere)
-                                    _tur_hale.tilfoej_vedvarende(_sg_tekst)
+                                    _tur_hale.tilfoej_naeste(_sg_tekst)
                                     _followup_exchanges.append(
                                         _vf.ToolExchange(
                                             text=_exchange_text(),
@@ -4058,7 +4062,7 @@ async def _stream_visible_run(
                                 str(run.session_id or ""), str(force_user_id or ""))
                             if _bg_note and not _bg_resumed_this_turn:
                                 _bg_resumed_this_turn = True
-                                _tur_hale.tilfoej_vedvarende(_bg_note)
+                                _tur_hale.tilfoej_naeste(_bg_note)
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(text=_exchange_text(),
                                                      tool_calls=[], results=[]))
@@ -4091,7 +4095,7 @@ async def _stream_visible_run(
                                     user_id=str(force_user_id or ""))
                                 if _sd.get("action") == "block":
                                     _stop_hook_resumed = True
-                                    _tur_hale.tilfoej_vedvarende("[HOOK] " + str(
+                                    _tur_hale.tilfoej_naeste("[HOOK] " + str(
                                         _sd.get("message") or "Du er ikke faerdig endnu."))
                                     _followup_exchanges.append(
                                         _vf.ToolExchange(text=_exchange_text(),
@@ -4143,7 +4147,7 @@ async def _stream_visible_run(
                                     er_autonom=bool(getattr(run, "autonomous", False)),
                                 ):
                                     _suggest_standing_nudges += 1
-                                    _tur_hale.tilfoej_vedvarende(_ss_nudge())
+                                    _tur_hale.tilfoej_naeste(_ss_nudge())
                                     _followup_exchanges.append(
                                         _vf.ToolExchange(text=_exchange_text(),
                                                          tool_calls=[], results=[]))

@@ -65,6 +65,26 @@ _DB helpers for absence_traces (Lag 11 forgetting)._
 | function | `get_auto_counter` | `(*, workspace_id, month_key=…)` | Get the counter row for a given month (default: current month). | [src](../../../core/runtime/db_absence_traces.py#L135) |
 | function | `mark_self_released` | `(*, trace_id)` | Recursive release: mark an existing self-marker as released. | [src](../../../core/runtime/db_absence_traces.py#L157) |
 
+## `core/runtime/db_agent_contract.py`
+_Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ContractError` | `` | Afvist kald med stabil kode, så adaptere kan svare entydigt. | [src](../../../core/runtime/db_agent_contract.py#L31) |
+| method | `ContractError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/runtime/db_agent_contract.py#L34) |
+| function | `_add_columns` | `(conn, table, columns)` | — | [src](../../../core/runtime/db_agent_contract.py#L40) |
+| function | `ensure_agent_contract_tables` | `(conn)` | Idempotent skema. Kalder `_ensure_agent_runtime_tables` først, så de | [src](../../../core/runtime/db_agent_contract.py#L47) |
+| function | `_conn` | `()` | — | [src](../../../core/runtime/db_agent_contract.py#L134) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_agent_contract.py#L140) |
+| function | `_require` | `(value, name)` | — | [src](../../../core/runtime/db_agent_contract.py#L144) |
+| function | `_digest` | `(*parts)` | — | [src](../../../core/runtime/db_agent_contract.py#L151) |
+| function | `mark_legacy_unscoped` | `()` | Gamle rækker uden ejer er allerede mærket via kolonne-default; denne | [src](../../../core/runtime/db_agent_contract.py#L157) |
+| function | `accept_assignment` | `(*, agent_id, owner_user_id, origin_session_id, goal, parent_agent_id=…, parent_run_id=…, input_refs=…, expected_result=…, target=…, deadline_at=…, budget=…, created_by=…, operation=…, idempotency_key=…)` | Accepter ét assignment atomisk sammen med dets første run. | [src](../../../core/runtime/db_agent_contract.py#L170) |
+| function | `commit_terminal_outcome` | `(*, assignment_id, status, summary=…, error_code=…, error_phase=…, artifact_ref=…, last_run_id=…)` | Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME | [src](../../../core/runtime/db_agent_contract.py#L265) |
+| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L334) |
+| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L362) |
+| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L373) |
+
 ## `core/runtime/db_agent_runtime.py`
 _Persistence for Jarvis' agent + council runtime cluster._
 
@@ -655,20 +675,4 @@ _Governance-ledger — PERSISTENT log af governerede mutationer._
 | function | `record_mutation` | `(area, key, value)` | Skriv én række til governance_ledger. Self-safe — sluger fejl. | [src](../../../core/runtime/db_governance_ledger.py#L50) |
 | function | `read_ledger` | `(area=…, limit=…)` | Læs seneste mutationer. Filtrér på area hvis givet. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_governance_ledger.py#L73) |
 | function | `summary` | `()` | Aggregér pr. area: {area: {total, latest_ts, keys: [distinkte nøgler]}}. | [src](../../../core/runtime/db_governance_ledger.py#L110) |
-
-## `core/runtime/db_heartbeat.py`
-_Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_heartbeat_tables` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L17) |
-| function | `_ensure_heartbeat_runtime_state_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L102) |
-| function | `_ensure_heartbeat_runtime_tick_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L247) |
-| function | `_heartbeat_runtime_state_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L301) |
-| function | `_heartbeat_runtime_tick_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L340) |
-| function | `get_heartbeat_runtime_state` | `()` | — | [src](../../../core/runtime/db_heartbeat.py#L373) |
-| function | `upsert_heartbeat_runtime_state` | `(*, state_id, last_tick_id, last_tick_at, next_tick_at, schedule_state, due, last_decision_type, last_result, blocked_reason, currently_ticking, last_trigger_source, scheduler_active, scheduler_started_at, scheduler_stopped_at, scheduler_health, recovery_status, last_recovery_at, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, last_ping_eligible, last_ping_result, last_action_type, last_action_status, last_action_summary, last_action_artifact, updated_at, last_successful_ping_at=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L421) |
-| function | `record_heartbeat_runtime_tick` | `(*, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at)` | — | [src](../../../core/runtime/db_heartbeat.py#L598) |
-| function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
-| function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
 

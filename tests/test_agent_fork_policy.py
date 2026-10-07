@@ -323,3 +323,28 @@ def test_the_dispatch_tool_forwards_the_context_arguments(fk, monkeypatch):
                             "_runtime_session_id": "s", "_runtime_turn_id": "pr"})
     assert (seen["context_mode"], seen["context_excerpt"], seen["accept_fork_switch"],
             seen["reasoning_effort"], seen["owner_user_id"]) == ("fork", "x", True, "think", ANDEN)
+
+
+# --- samme serverede model: DeepSeeks to flash-navne er een model (live: parent deepseek-flash, fallback v4-flash) ---
+
+@pytest.mark.parametrize("a,b,expect", [
+    (("deepseek", "deepseek-flash"), ("deepseek", "deepseek-v4-flash"), True),
+    (("deepseek", "deepseek-v4-flash"), ("deepseek", "deepseek-flash"), True),
+    (("deepseek", "deepseek-flash"), ("deepseek", "deepseek-v4-pro"), False),
+    (("deepseek", "deepseek-flash"), ("ollama", "deepseek-flash"), False),
+    (("copilot-premium", "m1"), ("copilot-premium", "m1"), True),
+    (("copilot-premium", "m1"), ("copilot-premium", "m2"), False),
+    (("", ""), ("", ""), False),
+])
+def test_same_model_means_same_provider_and_same_served_model(fk, a, b, expect):
+    assert fk.P_.same_model(*a, *b) is expect
+
+
+def test_a_parent_on_the_canonical_flash_name_is_on_the_same_route_as_the_owners_fallback(fk):
+    _history_for = lambda owner: [fk.say("user", "B1", owner), fk.say("assistant", "B2", owner)]
+    _history_for(BJORN)
+    fk.parent("deepseek", "deepseek-flash", effort="deep")
+    route = _route({"route_source": "owner_deepseek_fallback", "provider": "deepseek", "model": "deepseek-v4-flash"})
+    plan, _ = fk.plan(route, owner=BJORN, context_mode="fork")
+    assert (plan["plan_path"], plan["cache_reuse_possible"]) == ("same_route", True)
+    assert (plan["reasoning_effort"], plan["effort_source"]) == ("deep", "inherited")

@@ -50,6 +50,19 @@ class InvalidContext(Exception):
 
 # --------------------------------------------------------------- parent og snapshot
 
+_FLASH_ALIASES = frozenset({"deepseek-flash", "deepseek-v4-flash"})     # DeepSeek serverer begge som flash
+
+
+def same_model(provider_a: str, model_a: str, provider_b: str, model_b: str) -> bool:
+    """Samme provider OG samme serverede model. DeepSeeks kanoniske og legacy flash-navn er den samme model
+    (``deepseek_modelnavne``): live er parentens rute ``deepseek/deepseek-flash`` mens agentens fallback hedder
+    ``deepseek/deepseek-v4-flash`` - to strenge, een cache."""
+    if not provider_a or provider_a != provider_b:
+        return False
+    if model_a == model_b:
+        return bool(model_a)
+    return provider_a == "deepseek" and model_a in _FLASH_ALIASES and model_b in _FLASH_ALIASES
+
 
 def parent_route(parent_run_id: str) -> dict[str, str]:
     """Parentens faktiske rute og effort fra dens varige run-post. Ukendt = tomme felter (aldrig gaettet)."""
@@ -142,7 +155,7 @@ def resolve_effort(*, parent: dict[str, str], provider: str, model: str, request
         if req not in options:
             raise InvalidContext(f"reasoning_effort {req!r} er ikke gyldig for {provider}/{model}")
         return {"reasoning_effort": req, "effort_source": "explicit"}
-    same = bool(parent.get("provider")) and (parent["provider"], parent["model"]) == (provider, model)
+    same = same_model(parent.get("provider", ""), parent.get("model", ""), provider, model)
     if same and parent.get("effort") in options:
         return {"reasoning_effort": parent["effort"], "effort_source": "inherited"}
     return {"reasoning_effort": "default", "effort_source": "model_default"}
@@ -172,7 +185,7 @@ def _promotable(route: dict[str, Any], parent: dict[str, str], owner: str) -> in
         return -1
     head_source = cands[0]["route_source"]
     for i, c in enumerate(cands):
-        if (c["provider"], c["model"]) != (parent["provider"], parent["model"]):
+        if not same_model(c["provider"], c["model"], parent["provider"], parent["model"]):
             continue
         if c["route_source"] != head_source or provider_denied_reason(owner, c["provider"]):
             return -1
@@ -210,7 +223,7 @@ def plan_context(*, owner_user_id: str, session_id: str, parent_run_id: str, rou
             path = "excerpt" if excerpt else "fresh"          # intet at kopiere: en fork af ingenting er fresh
             plan["excerpt"] = excerpt
             plan["extra_context_tokens"] = estimate_tokens(excerpt) if excerpt else 0
-        elif parent["provider"] and head == (parent["provider"], parent["model"]):
+        elif same_model(head[0], head[1], parent["provider"], parent["model"]):
             path, plan["use_snapshot"] = "same_route", True
         elif (idx := _promotable(route, parent, owner_user_id)) >= 0:
             cands = list(route["candidates"])

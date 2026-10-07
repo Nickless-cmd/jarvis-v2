@@ -453,17 +453,18 @@ _Kontekstvalg for en agent: fresh eller fork, og hvad et modelskift koster (agen
 | class | `ForkRefused` | `` | En fork der ville koste en ny behandling af hele konteksten og ikke er accepteret. | [src](../../../core/services/agent_fork_policy.py#L35) |
 | method | `ForkRefused.__init__` | `(self, detail, options)` | — | [src](../../../core/services/agent_fork_policy.py#L40) |
 | class | `InvalidContext` | `` | Ugyldigt kontekstvalg (ukendt mode, ugyldig effort). | [src](../../../core/services/agent_fork_policy.py#L45) |
-| function | `parent_route` | `(parent_run_id)` | Parentens faktiske rute og effort fra dens varige run-post. Ukendt = tomme felter (aldrig gaettet). | [src](../../../core/services/agent_fork_policy.py#L54) |
-| function | `snapshot_parent_turns` | `(*, owner_user_id, session_id)` | Tidspunktssnapshot af sessionens AFSLUTTEDE ture: alt til og med den sidste assistentbesked. Den | [src](../../../core/services/agent_fork_policy.py#L71) |
-| function | `_redact` | `(text)` | — | [src](../../../core/services/agent_fork_policy.py#L100) |
-| function | `context_cost` | `(provider, model, tokens, *, cached)` | Hvad ``tokens`` kontekst koster paa denne rute. ``cached`` = antaget cachetraef. | [src](../../../core/services/agent_fork_policy.py#L112) |
-| function | `effort_options` | `(provider, model)` | Hvilke effort-niveauer modellen faktisk kan styres paa. Tomt = ingen styrbar effort (modellens standard). | [src](../../../core/services/agent_fork_policy.py#L128) |
-| function | `resolve_effort` | `(*, parent, provider, model, requested=…)` | Agentens effektive reasoning effort. Arves fra parenten KUN naar den effektive rute er parentens egen; | [src](../../../core/services/agent_fork_policy.py#L134) |
-| function | `effort_after_failover` | `(decision, provider, model)` | Efter et failover er ruten en anden: en arvet effort falder tilbage til den nye models standard; et | [src](../../../core/services/agent_fork_policy.py#L151) |
-| function | `_promotable` | `(route, parent, owner)` | Indeks i kaeden for en kandidat der ER parentens model, ligger i hovedets eget lag og er tilladt for | [src](../../../core/services/agent_fork_policy.py#L166) |
-| function | `plan_context` | `(*, owner_user_id, session_id, parent_run_id, route, context_mode=…, context_excerpt=…, accept_fork_switch=…, reasoning_effort=…)` | Beslut konteksten. Returnerer ``(plan, route)``; ``route`` er den uaendrede eller - ved | [src](../../../core/services/agent_fork_policy.py#L183) |
-| function | `plan_view` | `(plan)` | Det kalderen ser: vejen, den ekstra kontekstomkostning og effort - aldrig selve snapshottet. | [src](../../../core/services/agent_fork_policy.py#L248) |
-| function | `prompt_block` | `(fork)` | Teksten til agentens opgavelag: parentens afsluttede ture (data) eller det udvalgte uddrag. | [src](../../../core/services/agent_fork_policy.py#L256) |
+| function | `same_model` | `(provider_a, model_a, provider_b, model_b)` | Samme provider OG samme serverede model. DeepSeeks kanoniske og legacy flash-navn er den samme model | [src](../../../core/services/agent_fork_policy.py#L56) |
+| function | `parent_route` | `(parent_run_id)` | Parentens faktiske rute og effort fra dens varige run-post. Ukendt = tomme felter (aldrig gaettet). | [src](../../../core/services/agent_fork_policy.py#L67) |
+| function | `snapshot_parent_turns` | `(*, owner_user_id, session_id)` | Tidspunktssnapshot af sessionens AFSLUTTEDE ture: alt til og med den sidste assistentbesked. Den | [src](../../../core/services/agent_fork_policy.py#L84) |
+| function | `_redact` | `(text)` | — | [src](../../../core/services/agent_fork_policy.py#L113) |
+| function | `context_cost` | `(provider, model, tokens, *, cached)` | Hvad ``tokens`` kontekst koster paa denne rute. ``cached`` = antaget cachetraef. | [src](../../../core/services/agent_fork_policy.py#L125) |
+| function | `effort_options` | `(provider, model)` | Hvilke effort-niveauer modellen faktisk kan styres paa. Tomt = ingen styrbar effort (modellens standard). | [src](../../../core/services/agent_fork_policy.py#L141) |
+| function | `resolve_effort` | `(*, parent, provider, model, requested=…)` | Agentens effektive reasoning effort. Arves fra parenten KUN naar den effektive rute er parentens egen; | [src](../../../core/services/agent_fork_policy.py#L147) |
+| function | `effort_after_failover` | `(decision, provider, model)` | Efter et failover er ruten en anden: en arvet effort falder tilbage til den nye models standard; et | [src](../../../core/services/agent_fork_policy.py#L164) |
+| function | `_promotable` | `(route, parent, owner)` | Indeks i kaeden for en kandidat der ER parentens model, ligger i hovedets eget lag og er tilladt for | [src](../../../core/services/agent_fork_policy.py#L179) |
+| function | `plan_context` | `(*, owner_user_id, session_id, parent_run_id, route, context_mode=…, context_excerpt=…, accept_fork_switch=…, reasoning_effort=…)` | Beslut konteksten. Returnerer ``(plan, route)``; ``route`` er den uaendrede eller - ved | [src](../../../core/services/agent_fork_policy.py#L196) |
+| function | `plan_view` | `(plan)` | Det kalderen ser: vejen, den ekstra kontekstomkostning og effort - aldrig selve snapshottet. | [src](../../../core/services/agent_fork_policy.py#L261) |
+| function | `prompt_block` | `(fork)` | Teksten til agentens opgavelag: parentens afsluttede ture (data) eller det udvalgte uddrag. | [src](../../../core/services/agent_fork_policy.py#L269) |
 
 ## `core/services/agent_integration.py`
 _Integration af en kodeagents arbejde - foerste forbruger af approval-flowet (agent-contract-v1 F4d, spec 8.1/8.2)._

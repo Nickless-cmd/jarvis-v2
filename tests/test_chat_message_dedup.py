@@ -69,3 +69,63 @@ def test_assistant_duplicates_not_deduped(isolated_runtime):
             (sid,),
         ).fetchone()["c"]
     assert n == 2
+
+
+# --- Ikke-svar mellem de to identiske beskeder (målt 7/10-2026) -------------
+#
+# De tre dublet-par Bjørn ramte 7/10 havde alle noget imellem sig der IKKE var
+# et svar: fire `tool`-rækker i det ene, `assistant: "Generation cancelled."` i
+# det andet. Den gamle regel krævede at den SENESTE række var den identiske
+# besked, så den var blind præcis når dubletten opstod.
+
+def test_dublet_med_tool_raekker_imellem_dedupes(isolated_runtime):
+    """Et afbrudt run skriver værktøjs-output mellem de to identiske beskeder."""
+    from core.services.chat_sessions import append_chat_message
+    sid = _mk_session()
+    first = append_chat_message(session_id=sid, role="user", content="send notifikation")
+    append_chat_message(session_id=sid, role="tool", content="[bash]: foerste output")
+    append_chat_message(session_id=sid, role="tool", content="[bash]: andet output")
+    second = append_chat_message(session_id=sid, role="user", content="send notifikation")
+    assert _count_user_rows(sid, "send notifikation") == 1
+    assert second["id"] == first["id"]
+
+
+def test_dublet_med_afbrydelses_markor_imellem_dedupes(isolated_runtime):
+    """«Generation cancelled.» er en syntetisk markør, ikke et svar."""
+    from core.services.chat_sessions import append_chat_message
+    sid = _mk_session()
+    first = append_chat_message(session_id=sid, role="user", content="men mente i cc desktop appen..")
+    append_chat_message(session_id=sid, role="assistant", content="Generation cancelled.")
+    second = append_chat_message(session_id=sid, role="user", content="men mente i cc desktop appen..")
+    assert _count_user_rows(sid, "men mente i cc desktop appen..") == 1
+    assert second["id"] == first["id"]
+
+
+def test_rigtigt_svar_bryder_stadig_kaeden(isolated_runtime):
+    """Værnet må ikke blive så bredt at ÆGTE gentagelser droppes."""
+    from core.services.chat_sessions import append_chat_message
+    sid = _mk_session()
+    append_chat_message(session_id=sid, role="user", content="proev igen")
+    append_chat_message(session_id=sid, role="assistant", content="her er svaret")
+    append_chat_message(session_id=sid, role="user", content="proev igen")
+    assert _count_user_rows(sid, "proev igen") == 2
+
+
+def test_anden_brugerbesked_bryder_kaeden(isolated_runtime):
+    """En ANDEN brugerbesked er ikke en dublet — heller ikke efter tool-rækker."""
+    from core.services.chat_sessions import append_chat_message
+    sid = _mk_session()
+    append_chat_message(session_id=sid, role="user", content="besked A")
+    append_chat_message(session_id=sid, role="tool", content="[bash]: output")
+    append_chat_message(session_id=sid, role="user", content="besked B")
+    assert _count_user_rows(sid, "besked A") == 1
+    assert _count_user_rows(sid, "besked B") == 1
+
+
+def test_fem_identiske_beskeder_bliver_til_en(isolated_runtime):
+    """Kæden holder også når retry rammer flere gange i træk."""
+    from core.services.chat_sessions import append_chat_message
+    sid = _mk_session()
+    for _ in range(5):
+        append_chat_message(session_id=sid, role="user", content="samme fem gange")
+    assert _count_user_rows(sid, "samme fem gange") == 1

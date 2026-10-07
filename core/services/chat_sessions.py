@@ -1110,39 +1110,62 @@ def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
 _DEDUP_WINDOW_SECONDS = 900  # 15 min: fanger mirror/retry + perceived-failure-resends
 
 
+#: Rækker der IKKE er et svar på brugerens besked, og som derfor ikke må bryde
+#: dedup-kæden. Målt 7/10-2026: dagens tre dublet-par havde alle ikke-svar
+#: imellem sig — fire `tool`-rækker i det ene, `assistant: "Generation
+#: cancelled."` i det andet — så den gamle «kun den SENESTE række»-regel var
+#: blind præcis når dubletten opstod.
+_DEDUP_SVAR_MARKOERER = ("Generation cancelled.",)
+_DEDUP_KIG = 8
+
+
 def _recent_duplicate_user_message(
     session_id: str, content: str, now_ts: str
 ) -> dict[str, object] | None:
-    """Returnér den seneste besked-række HVIS den er en identisk brugerbesked inden
-    for dedup-vinduet (intet assistent-svar imellem), ellers None. Self-safe."""
+    """Returnér en identisk brugerbesked-række inden for dedup-vinduet, HVIS der
+    ikke ligger et RIGTIGT assistent-svar imellem den og nu, ellers None.
+
+    `tool`-rækker og syntetiske afbrydelses-markører springes over: de er ikke
+    svar på beskeden, og et run der bliver afbrudt midt i en værktøjs-runde
+    skriver dem mellem de to identiske beskeder. Self-safe."""
     with connect() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT message_id, role, content, reasoning_content, content_json, created_at
             FROM chat_messages
             WHERE session_id = ? AND role != 'compact_marker'
-            ORDER BY id DESC LIMIT 1
+            ORDER BY id DESC LIMIT ?
             """,
-            (session_id,),
-        ).fetchone()
-    if row is None or str(row["role"]) != "user" or str(row["content"]) != content:
-        return None
-    try:
-        prev = datetime.fromisoformat(str(row["created_at"]).replace("Z", "+00:00"))
-        now = datetime.fromisoformat(str(now_ts).replace("Z", "+00:00"))
-        if (now - prev).total_seconds() > _DEDUP_WINDOW_SECONDS:
-            return None  # for gammel → behandl som ny (sikkerheds-ventil)
-    except Exception:
-        pass  # kan ikke parse tid → seneste er identisk user, dedup konservativt
-    return {
-        "id": str(row["message_id"]),
-        "role": "user",
-        "content": content,
-        "reasoning_content": str(row["reasoning_content"] or ""),
-        "content_json": row["content_json"],
-        "ts": _time_label(str(row["created_at"])),
-        "created_at": str(row["created_at"]),
-    }
+            (session_id, _DEDUP_KIG),
+        ).fetchall()
+    for row in rows:
+        rolle = str(row["role"])
+        tekst = str(row["content"])
+        if rolle == "user":
+            if tekst != content:
+                return None  # en ANDEN brugerbesked → ikke en dublet
+            try:
+                prev = datetime.fromisoformat(str(row["created_at"]).replace("Z", "+00:00"))
+                now = datetime.fromisoformat(str(now_ts).replace("Z", "+00:00"))
+                if (now - prev).total_seconds() > _DEDUP_WINDOW_SECONDS:
+                    return None  # for gammel → behandl som ny (sikkerheds-ventil)
+            except Exception:
+                pass  # kan ikke parse tid → seneste er identisk user, dedup konservativt
+            return {
+                "id": str(row["message_id"]),
+                "role": "user",
+                "content": content,
+                "reasoning_content": str(row["reasoning_content"] or ""),
+                "content_json": row["content_json"],
+                "ts": _time_label(str(row["created_at"])),
+                "created_at": str(row["created_at"]),
+            }
+        if rolle == "tool":
+            continue  # værktøjs-output er ikke et svar
+        if rolle == "assistant" and tekst.strip() in _DEDUP_SVAR_MARKOERER:
+            continue  # afbrydelses-markør, ikke et svar
+        return None  # et rigtigt assistent-svar imellem → ægte gentagelse
+    return None
 
 
 def _infer_tool_name_from_content(content: str) -> str:

@@ -15,12 +15,24 @@ import re
 
 import pytest
 
+from core.services.mermaid_render import find_chrome
 from core.tools.mermaid_tool import (
     BREDDE,
     MAKS_HOEJDE,
     MERMAID_TOOL_DEFINITIONS,
     _exec_render_mermaid,
     _svg_til_png,
+)
+
+#: Rasteriseringen gaar gennem Playwrights chromium, som kun findes paa den
+#: vaert der serverer mermaid. Se den fulde begrundelse i
+#: `tests/test_mermaid_render.py` — kort: otte roede i hver koersel goer suiten
+#: ubrugelig som vagt paa udviklermaskinen, og samme dag laa 16 aegte fejl
+#: usete blandt dem.
+KRAEVER_CHROMIUM = pytest.mark.skipif(
+    find_chrome() is None,
+    reason="Playwrights chromium findes ikke paa denne vaert "
+           "(se CHROME_STIER) — rasterisering kan ikke proeves her",
 )
 
 
@@ -45,6 +57,7 @@ def test_tom_kilde_giver_typet_fejl():
     assert "kilde" in r["error"]
 
 
+@KRAEVER_CHROMIUM
 def test_svg_uden_viewbox_skaleres_paa_bredden():
     """Uden en viewBox at måle på skal bredden styre — ikke et gæt."""
     svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
@@ -52,6 +65,7 @@ def test_svg_uden_viewbox_skaleres_paa_bredden():
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
 
 
+@KRAEVER_CHROMIUM
 def test_lodret_diagram_loftes_paa_hoejden():
     """`flowchart TD` er højere end bredt; højden skal styre skalaen.
 
@@ -72,6 +86,7 @@ def test_lodret_diagram_loftes_paa_hoejden():
     assert b < BREDDE, "bredden skal følge forholdet, ikke tvinges til BREDDE"
 
 
+@KRAEVER_CHROMIUM
 def test_bredt_diagram_loftes_paa_bredden():
     """Et bredt diagram skal fylde BREDDE og ikke ramme højde-loftet."""
     from PIL import Image
@@ -88,8 +103,14 @@ def test_bredt_diagram_loftes_paa_bredden():
     assert h < MAKS_HOEJDE
 
 
+@KRAEVER_CHROMIUM
 def test_ugyldig_mermaid_giver_laesbar_fejl():
-    """Dårlig syntaks er kalderens fejl og skal kunne rettes med det samme."""
+    """Dårlig syntaks er kalderens fejl og skal kunne rettes med det samme.
+
+    KRAEVER chromium selvom den «bestod» uden: uden binaeren fejler kaldet paa
+    «ingen chromium-binaer», og ordet «mermaid» staar i den besked ogsaa. Den
+    maalte altsaa sin egen forudsaetning.
+    """
     r = _exec_render_mermaid({"kilde": "flowchart TD\n  A[Start --> B"})
     assert r["status"] == "error"
     # Enten afviser mermaid den, eller også rendrer den — men den må ikke
@@ -97,6 +118,7 @@ def test_ugyldig_mermaid_giver_laesbar_fejl():
     assert "mermaid" in r["error"] or r.get("path")
 
 
+@KRAEVER_CHROMIUM
 def test_png_har_rigtige_dimensioner_efter_skalering():
     """Rasteriseringen skal give et ægte billede, ikke en tom fil."""
     from PIL import Image
@@ -115,6 +137,7 @@ def test_png_har_rigtige_dimensioner_efter_skalering():
     assert farver is not None and len(farver) > 1
 
 
+@KRAEVER_CHROMIUM
 def test_rasteriseringen_tegner_foreignobject():
     """Fejlen der fik ALLE kasser til at stå tomme (målt 7/10-2026).
 

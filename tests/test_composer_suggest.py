@@ -234,36 +234,41 @@ def test_forslaget_OVERLEVER_en_ny_hentning(isolated_runtime, monkeypatch):
     assert dj.kig_forslag(session_id="s1") is not None
 
 
-def _svar_med_tid(monkeypatch, *tider: str):
-    """En samtale med N assistent-svar, hver med sit `created_at`."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [
-        {"role": "assistant", "message_id": f"m{i}", "content": _ASSISTENT_SVAR,
-         "created_at": tid}
-        for i, tid in enumerate(tider)
-    ])
+def _svar_efter(monkeypatch, antal: int):
+    """Saet antallet af assistent-svar efter forslaget — reglen der proves.
+
+    Tællingen er sit eget søm efter 7/10-2026: den kom fra et vindue paa seks
+    raekker, og i en tool-tung session kunne vinduet kun se ÉT svar efter
+    forslaget (se den nederste test). Reglen kan derfor proves direkte her uden
+    at bygge en tool-tung samtale op først.
+    """
+    monkeypatch.setattr(cs, "_svar_efter", lambda sid, skrevet: antal)
 
 
 def test_ÉT_svar_efter_forslaget_er_AKTUELT(isolated_runtime, monkeypatch):
     """Forslaget skrives MENS turen koerer, saa dens eget svar lander bagefter.
     Ét svar efter betyder derfor «hoerer til det der staar nederst»."""
+    _med_svar(monkeypatch)
+    _svar_efter(monkeypatch, 1)
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
-    _svar_med_tid(monkeypatch, "2026-10-06T10:00:05")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
 
 
 def test_TO_svar_efter_forslaget_er_FORAELDET_og_ryddes(isolated_runtime, monkeypatch):
     """Samtalen er koert videre. Et bud skrevet til en anden tur er vaerre end
     ingenting — og raekken ryddes, saa den ikke bliver maalt igen."""
+    _med_svar(monkeypatch)
+    _svar_efter(monkeypatch, 2)
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
-    _svar_med_tid(monkeypatch, "2026-10-06T10:00:05", "2026-10-06T10:02:00")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
     assert dj.kig_forslag(session_id="s1") is None, "det foraeldede forslag skal ryddes"
 
 
 def test_INGEN_svar_efter_forslaget_lader_det_VENTE(isolated_runtime, monkeypatch):
     """Turen er ikke landet endnu. Forslaget er paa vej, ikke foraeldet."""
+    _med_svar(monkeypatch)
+    _svar_efter(monkeypatch, 0)
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:05:00")
-    _svar_med_tid(monkeypatch, "2026-10-06T10:00:00")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
 
 
@@ -282,3 +287,63 @@ def test_hans_forslag_bruges_ikke_paa_en_STUMP(isolated_runtime, monkeypatch):
     monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "OK.")))
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+
+
+# ─────────── tællingen maa ikke komme fra et vindue (maalt 7/10-2026) ───────────
+#
+# `_samtale` henter SEKS raekker, og de seks raekker blev brugt til at afgoere
+# foraeldelsen. I en tool-tung session er de seks nyeste raekker `tool`-raekker,
+# saa tællingen kunne kun se ÉT assistent-svar efter forslaget — og kaldte
+# derfor et foraeldet bud for aktuelt.
+#
+# Maalt i drift samme aften: et forslag skrevet 18:23 blev returneret som
+# «aktuelt» efter hver tur resten af aftenen, og raekken laa stadig i basen 3,5
+# time senere. Bjørn: «dine suggested next task skal altid nulstilles i composer
+# naar en ny tur starter, ellers haenger gamle ved over mange beskeder».
+#
+# Testen her bygger den praecise form op i en RIGTIG base. Den FEJLER paa den
+# gamle tælling: vinduet ser [assistent, tool, tool, tool, tool, tool] og tæller
+# ét svar, hvor der er to.
+
+
+def test_tool_raekker_skjuler_ikke_det_andet_svar(isolated_runtime):
+    """Fem `tool`-raekker mellem to svar maa ikke gøre et foraeldet forslag aktuelt."""
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+
+    sid = str(create_chat_session(title="tool-tung")["id"])
+    dj.gem_forslag(session_id=sid, forslag="fra Jarvis",
+                   nu="2026-10-07T18:23:52.809105Z")
+    append_chat_message(session_id=sid, role="assistant", content=_ASSISTENT_SVAR,
+                        created_at="2026-10-07T18:24:00+00:00")
+    for i in range(5):
+        append_chat_message(session_id=sid, role="tool",
+                            content=f"[tool_result:tool-result-abc{i}] svar {i}",
+                            created_at=f"2026-10-07T18:25:0{i}+00:00")
+    append_chat_message(session_id=sid, role="assistant", content=_ASSISTENT_SVAR,
+                        created_at="2026-10-07T18:26:00+00:00")
+
+    # To svar efter forslaget — og de seks nyeste raekker indeholder kun ét af
+    # dem. Tællingen skal stadig give to.
+    assert cs._svar_efter(sid, "2026-10-07T18:23:52.809105Z") == 2
+    assert cs.foreslaa_naeste_detaljer(sid)["forslag"] == ""
+    assert dj.kig_forslag(session_id=sid) is None, "det foraeldede forslag skal ryddes"
+
+
+def test_en_ny_tur_rydder_forslaget_ved_START(isolated_runtime):
+    """Bjoern 7/10-2026: «dine suggested next task skal altid nulstilles i
+    composer naar en ny tur starter».
+
+    Turen BEGYNDER naar hans besked lander. Det er et faktum — ikke et gaet paa
+    et tidsvindue — og derfor ryddes forslaget dér, i append-vejen. Begge flader
+    (desk og mobil) laeser samme raekke gennem `/composer/suggest`, saa rydningen
+    rammer dem begge uden at nogen af dem skal huske noget selv.
+    """
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+
+    sid = str(create_chat_session(title="ny tur")["id"])
+    dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
+    assert dj.kig_forslag(session_id=sid) is not None
+
+    append_chat_message(session_id=sid, role="user", content="naeste opgave, tak")
+
+    assert dj.kig_forslag(session_id=sid) is None, "en ny tur skal rydde forslaget"

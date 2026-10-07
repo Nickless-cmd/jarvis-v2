@@ -132,4 +132,29 @@ describe('Composer — forslag', () => {
     })
     expect(screen.queryByTestId('composer-forslag')).toBeNull()
   })
+
+  // ── en NY TUR rydder forslaget (Bjørn 7/10-2026) ────────────────────────
+  //
+  // «dine suggested next task skal altid nulstilles i composer når en ny tur
+  // starter, ellers hænger gamle ved over mange beskeder». Samme regel som i
+  // desk — den ene flade må ikke glemme hvad den anden husker.
+  //
+  // Feltet er TOMT hele vejen, så det er ikke tomheden der rydder: det er
+  // turen. Testen ville også have bestået før `working`-effekten kom til (den
+  // hentende effekt rydder selv når `working` er sand) — men garantien skal
+  // ikke hvile på hvordan den betingelse tilfældigvis er stablet sammen.
+
+  it('en NY TUR rydder forslaget — ogsaa naar feltet er tomt hele vejen', async () => {
+    global.fetch = svarMed({ forslag: 'Skal vi teste den?', forslag_id: 'cj-1' }) as unknown as typeof fetch
+    const vis = (working: boolean) => (
+      <Composer config={cfg} sessionId="s1" working={working} onSend={jest.fn()} onStop={jest.fn()} />
+    )
+    const screen = await render(vis(false))
+    await aabn(screen)
+    await waitFor(() => expect(screen.queryByTestId('composer-forslag')).toBeTruthy())
+
+    await act(async () => { screen.rerender(vis(true)) })
+
+    expect(screen.queryByTestId('composer-forslag')).toBeNull()
+  })
 })

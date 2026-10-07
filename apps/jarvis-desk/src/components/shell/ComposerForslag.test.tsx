@@ -223,4 +223,34 @@ describe('Composer · auto-forslag', () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 900)) })
     expect(meldteValg(kald)).toEqual([])
   })
+
+  // ── en NY TUR rydder forslaget (Bjørn 7/10-2026) ────────────────────────
+  //
+  // «dine suggested next task skal altid nulstilles i composer når en ny tur
+  // starter, ellers hænger gamle ved over mange beskeder».
+  //
+  // Testen holder garantien fast: feltet er TOMT hele vejen, så det er ikke
+  // tomheden der rydder — det er turen. Den ville også have bestået før
+  // `turAktiv` blev sit eget argument (dengang ryddede `aktiv`-effekten, fordi
+  // `!streaming` indgår i den) — men netop derfor står den her: garantien skal
+  // ikke hvile på hvordan `aktiv` tilfældigvis er stablet sammen.
+
+  it('en NY TUR rydder forslaget — også når feltet er tomt hele vejen', async () => {
+    serverForeslaar('deploy det til ct105')
+    const vis = (streaming: boolean) => (
+      <PermissionProvider>
+        <Composer
+          streaming={streaming} onSend={vi.fn()} onStop={vi.fn()} model="m"
+          config={cfg} showPermissions={false} getSessionId={async () => 's1'}
+          sessionId="s1"
+        />
+      </PermissionProvider>
+    )
+    const s = render(vis(false))
+    await screen.findByText('deploy det til ct105')
+
+    await act(async () => { s.rerender(vis(true)) })
+
+    expect(screen.queryByText('deploy det til ct105')).toBeNull()
+  })
 })

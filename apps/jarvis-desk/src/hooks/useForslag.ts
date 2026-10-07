@@ -30,6 +30,8 @@ export function useForslag(
   config: ApiConfig | undefined,
   sessionId: string | null | undefined,
   aktiv: boolean,
+  /** En tur koerer lige nu. Se hvorfor den er sit eget argument nedenfor. */
+  turAktiv = false,
 ): Forslag {
   // Siden 20/9-2026 bærer forslaget sit eget id med (fase 2): komponisten
   // skal kunne melde tilbage hvad der skete med NETOP dette forslag — Tab,
@@ -44,7 +46,6 @@ export function useForslag(
     // seneste svar — er ikke længere et bud på hvad der kunne skrives nu.
     setForslag(INTET_FORSLAG)
     if (!aktiv || !base || !sid) return
-
     const ctrl = new AbortController()
     const t = window.setTimeout(() => {
       void hentNaesteForslag({ apiBaseUrl: base, authToken: token }, sid, ctrl.signal)
@@ -56,6 +57,21 @@ export function useForslag(
       ctrl.abort()
     }
   }, [base, token, sid, aktiv])
+
+  // En NY TUR starter — og et forslag fra den forrige tur hører ikke til denne.
+  // Bjørn 7/10-2026: «dine suggested next task skal altid nulstilles i
+  // composer når en ny tur starter, ellers hænger gamle ved over mange
+  // beskeder».
+  //
+  // Effekten ovenfor rydder når `aktiv` falder — men `aktiv` er
+  // `tomtFelt && !compacting && !streaming`, altså tre ting stablet sammen.
+  // Turen er den ene af dem der betyder noget her, og den skal stå alene:
+  // ellers forsvinder garantien den dag nogen ændrer hvordan `aktiv` stilles
+  // sammen. `turAktiv` er derfor sit eget argument, og rydningen sker på
+  // selve turen — ikke på om feltet tilfældigvis er tomt.
+  useEffect(() => {
+    if (turAktiv) setForslag(INTET_FORSLAG)
+  }, [turAktiv])
 
   return forslag
 }

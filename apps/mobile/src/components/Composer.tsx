@@ -196,6 +196,20 @@ export function Composer({
     return () => { clearTimeout(id); c.abort() }
   }, [text, config, disabled, working, sessionId])
 
+  // En NY TUR starter når svaret går i gang — og et forslag fra den forrige tur
+  // hører ikke til denne. Bjørn 7/10-2026: «dine suggested next task skal altid
+  // nulstilles i composer når en ny tur starter, ellers hænger gamle ved over
+  // mange beskeder».
+  //
+  // Effekten ovenfor rydder når feltet ikke er tomt, eller når `working` er
+  // sand — men `working` er én af flere betingelser stablet sammen med `text`
+  // og `disabled`. Turen er den der betyder noget her, og den skal stå alene:
+  // ellers forsvinder garantien den dag nogen ændrer hvordan de stilles
+  // sammen. Rydningen sker derfor på selve turen, ikke på om feltet er tomt.
+  useEffect(() => {
+    if (working) setForslag(INTET_FORSLAG)
+  }, [working])
+
   // «Vist» er dét der opfylder kravet om at et forslag der ALDRIG kom på
   // skærmen ikke tælles med: blev det hentet og kasseret — feltet var ikke
   // tomt, sessionen skiftede — når vi aldrig hertil.

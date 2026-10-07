@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8506/16073 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8509/16076 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8506/16073 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 722 | 1301 | 55% |
-| `core.services` | 5692 | 10959 | 51% |
+| `core.services` | 5695 | 10962 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -816,12 +816,12 @@ Generated from source. 8506/16073 functions/methods documented (52%). The list b
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_crypto.py` :: `er_krypteret` (L150)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L781)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L793)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L66)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1575)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1208)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1529)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1561)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1604)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1237)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1558)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1590)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)

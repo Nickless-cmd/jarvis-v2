@@ -21,6 +21,7 @@ Et tomt felt er ærligere end et dårligt forslag.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Final
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,59 @@ def _samtale(session_id: str) -> list[dict[str, str]]:
     """De seneste beskeder. Egen funktion, så testene kan sætte dem."""
     from core.services.chat_sessions import recent_chat_session_messages
     return recent_chat_session_messages(session_id, limit=MAKS_HISTORIK)
+
+
+#: Hvor mange assistent-svar der hentes naar foraeldelsen afgoeres. Vi skal
+#: kun vide om der er 0, 1 eller 2+ — men tællingen maa ikke komme fra
+#: `_samtale`s vindue. I en tool-tung session fylder `tool`-raekker vinduet, og
+#: tællingen saa kun ÉT svar efter forslaget og kaldte et foraeldet bud for
+#: aktuelt. Maalt 7/10-2026: et forslag skrevet 18:23 blev returneret som
+#: «aktuelt» efter hver tur resten af aftenen, og raekken blev aldrig ryddet.
+_FORAELDELSE_VINDUE: Final[int] = 50
+
+
+def _til_tid(iso: str):
+    """ISO-tid → `datetime`, uanset om den slutter paa `Z` eller `+00:00`.
+
+    De to former blandes i huset: `composer_jarvis_forslag.skrevet_at` skrives
+    med `Z`, mens `chat_messages.created_at` skrives med `+00:00`. En ren
+    streng-sammenligning er derfor et gæt — `Z` sorterer EFTER `+`, saa en
+    besked skrevet i samme mikrosekund ville blive laest som ældre end
+    forslaget og talt med som «ikke efter».
+    """
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except ValueError:  # ikke en ISO-tid — vi VED det ikke, og gaetter ikke
+        return None
+
+
+def _svar_efter(session_id: str, skrevet_at: str) -> int:
+    """Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue.
+
+    Egen funktion, saa testene kan saette tallet direkte: reglen (0 = turen er
+    ikke landet, 1 = forslaget hoerer til svaret nederst, 2+ = samtalen er
+    koert videre) er dét der proves, og den skal ikke afhaenge af hvor mange
+    `tool`-raekker der tilfaeldigt ligger i et vindue.
+    """
+    from core.runtime.db import connect
+    graense = _til_tid(skrevet_at)
+    if graense is None:
+        return 0
+    with connect() as conn:
+        raekker = conn.execute(
+            "SELECT created_at FROM chat_messages "
+            "WHERE session_id = ? AND role = 'assistant' "
+            "ORDER BY id DESC LIMIT ?",
+            (session_id, _FORAELDELSE_VINDUE),
+        ).fetchall()
+    n = 0
+    for raekke in raekker:
+        tid = _til_tid(str(raekke["created_at"] or ""))
+        if tid is not None and tid > graense:
+            n += 1
+    return n
 
 
 def _tomt() -> dict[str, str]:
@@ -124,17 +178,11 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
         eget = kig_forslag(session_id=sid)
         if eget:
             skrevet = str(eget.get("skrevet_at") or "")
-            if skrevet:
-                efter = [
-                    b for b in beskeder
-                    if str(b.get("role") or "") == "assistant"
-                    and str(b.get("created_at") or "") > skrevet
-                ]
-                if len(efter) >= 2:
-                    # Foraeldet. Ryd raekken, saa den ikke bliver maalt igen og
-                    # ikke ligger og fylder.
-                    ryd_forslag(session_id=sid)
-                    eget = None
+            if skrevet and _svar_efter(sid, skrevet) >= 2:
+                # Foraeldet. Ryd raekken, saa den ikke bliver maalt igen og
+                # ikke ligger og fylder.
+                ryd_forslag(session_id=sid)
+                eget = None
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
         eget = None

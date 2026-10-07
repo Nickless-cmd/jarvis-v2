@@ -778,6 +778,18 @@ def set_session_workspace(session_id: str, *, kind: str | None, root: str | None
         conn.commit()
 
 
+def _ryd_komponist_forslag(session_id: str) -> None:
+    """Ryd komponistens forslag naar en NY TUR begynder.
+
+    Egen funktion, saa kaldestedet i `append_chat_message` kan holde sit `try`
+    til ÉN sætning (se `scripts/verify_silent_except.py`) — og saa den tunge
+    import bliver liggende hvor den hoerer: lokalt ved kaldet, ikke ved
+    modul-load.
+    """
+    from core.runtime.db_composer_jarvis import ryd_forslag
+    ryd_forslag(session_id=session_id)
+
+
 def append_chat_message(
     *,
     session_id: str,
@@ -823,6 +835,23 @@ def append_chat_message(
             print(f"[chat] dedup: droppede dublet-brugerbesked session={normalized_session[:20]} "
                   f"len={len(normalized_content)}", flush=True)
             return _dup
+
+        # En ny TUR starter her — og et forslag fra den forrige tur hoerer ikke
+        # til denne. Bjoern 7/10-2026: «dine suggested next task skal altid
+        # nulstilles i composer naar en ny tur starter, ellers haenger gamle ved
+        # over mange beskeder». Det blev maalt samme aften: et forslag skrevet
+        # 18:23 laa stadig i basen 3,5 time senere og blev returneret som
+        # «aktuelt» efter hver tur, fordi foraeldelses-tjekket kun saa ét svar ad
+        # gangen gennem et vindue paa seks raekker.
+        #
+        # Rydningen hoerer til HER, hvor turen BEGYNDER: det er et faktum og ikke
+        # et gaet paa et tidsvindue. Forslaget skrives MENS turen koerer, altsaa
+        # efter denne raekke — en frisk tur rammes derfor ikke af sin egen
+        # rydning. Fejler den, maa chat-persisteringen ikke maerke det.
+        try:
+            _ryd_komponist_forslag(normalized_session)
+        except Exception:  # en rydning maa ikke kunne vaelte chat-persisteringen
+            pass
 
     # Feel-layer: let incoming user text produce a micro-resonance signal
     # BEFORE meaning-making. Fire-and-forget — never break chat persistence.

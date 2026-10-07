@@ -523,7 +523,7 @@ export function Composer({
   // svar, og husets egen erfaring er at det køer bagved (recall-embeds ventede
   // 28–91 s). Og der er intet at foreslå før svaret er der.
   const tomtFelt = text === ''
-  const forslag = useForslag(config, sessionId, tomtFelt && !compacting && !streaming)
+  const forslag = useForslag(config, sessionId, tomtFelt && !compacting && !streaming, streaming)
   // Escape afviser forslaget — men kun DET forslag. Kommer der et nyt efter
   // næste svar, er det velkomment.
   const [afvistFor, setAfvistFor] = useState('')

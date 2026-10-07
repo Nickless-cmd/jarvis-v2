@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/habit_tracker.py`
+_Habit Tracker — detects recurring patterns and friction points._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_habit_from_run` | `(*, run_id, task_signature, outcome_status, attempt_count=…)` | Track habit pattern and friction from a visible run. | [src](../../../core/services/habit_tracker.py#L24) |
+| function | `build_habit_surface` | `()` | — | [src](../../../core/services/habit_tracker.py#L69) |
+| function | `_normalize_signature` | `(text)` | Create a stable signature from task description. | [src](../../../core/services/habit_tracker.py#L83) |
+
 ## `core/services/habits_pipeline.py`
 _Habits Pipeline — detect → track → suggest automation._
 
@@ -635,23 +644,9 @@ _Infra Weather Daemon — "The atmosphere of my system"._
 | function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L161) |
 | function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L178) |
 | function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L214) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L268) |
-| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L277) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L290) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L306) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L315) |
-
-## `core/services/inheritance_seed.py`
-_Inheritance seed — writes near-thoughts before version transition or shutdown._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `write_inheritance_seed` | `()` | Collect near-thoughts from active daemons and write to workspace. | [src](../../../core/services/inheritance_seed.py#L23) |
-| function | `read_inheritance_seed` | `()` | Read inheritance seed from workspace. Returns empty string if not found. | [src](../../../core/services/inheritance_seed.py#L67) |
-| function | `_collect_sections` | `()` | — | [src](../../../core/services/inheritance_seed.py#L84) |
-| function | `_collect_pending_proposals` | `()` | — | [src](../../../core/services/inheritance_seed.py#L94) |
-| function | `_collect_open_curiosity` | `()` | — | [src](../../../core/services/inheritance_seed.py#L104) |
-| function | `_collect_creative_drift` | `()` | — | [src](../../../core/services/inheritance_seed.py#L114) |
-| function | `_collect_unresolved_tensions` | `()` | — | [src](../../../core/services/inheritance_seed.py#L124) |
-| function | `_collect_thought_stream` | `()` | — | [src](../../../core/services/inheritance_seed.py#L135) |
+| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L269) |
+| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L278) |
+| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L291) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L307) |
+| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L316) |
 

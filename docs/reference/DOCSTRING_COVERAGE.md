@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8557/16146 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8560/16147 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8557/16146 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 724 | 1304 | 55% |
-| `core.services` | 5708 | 10987 | 51% |
+| `core.services` | 5710 | 10988 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 515 | 1043 | 49% |
+| `core.tools` | 516 | 1043 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -576,9 +576,9 @@ Generated from source. 8557/16146 functions/methods documented (52%). The list b
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
-- `core/services/action_router.py` :: `build_action_router_surface` (L617)
-- `core/services/action_router.py` :: `recent_actions` (L609)
-- `core/services/action_router.py` :: `recent_proactive` (L613)
+- `core/services/action_router.py` :: `build_action_router_surface` (L628)
+- `core/services/action_router.py` :: `recent_actions` (L620)
+- `core/services/action_router.py` :: `recent_proactive` (L624)
 - `core/services/active_file_store.py` :: `clear_active_file` (L43)
 - `core/services/adaptive_learning_runtime.py` :: `build_adaptive_learning_prompt_section` (L140)
 - `core/services/adaptive_learning_runtime.py` :: `build_adaptive_learning_runtime_from_sources` (L31)
@@ -1156,8 +1156,8 @@ Generated from source. 8557/16146 functions/methods documented (52%). The list b
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
 - `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L844)
-- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
-- `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
+- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L291)
+- `core/services/infra_weather_daemon.py` :: `get_weather` (L269)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
 - `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L535)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)

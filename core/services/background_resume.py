@@ -127,10 +127,9 @@ def _sig_til_hvis_lang(shell: dict[str, Any], sidste_output: str) -> None:
             f"Baggrundskoersel faerdig efter {int(varighed)} s"
             + (f": {hale}" if hale else ".")
         )
-        from core.services.ntfy_gateway import is_configured, send_notification
-        if not is_configured():
-            return
-        send_notification(besked, title="Jarvis", tags=["hourglass_done"])
+        from core.services.alarm_ud import send_alert
+        send_alert(titel="Jarvis", tekst=besked, slags="infra_security",
+                   importance="normal")
     except Exception:
         logger.debug("background_resume: kunne ikke sige til", exc_info=True)
 

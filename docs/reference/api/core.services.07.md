@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_white_rabbit.py`
+_Follow the White Rabbit — serendipitets-motoren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dark_doors` | `()` | Mørke/stille nerver ingen rører — de uåbnede døre. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L25) |
+| function | `follow_rabbit` | `(*, seed=…)` | Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L36) |
+| function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L49) |
+| function | `build_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_white_rabbit.py#L58) |
+| function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
+
 ## `core/services/central_xproc.py`
 _Cross-proces trace-tee for Den Intelligente Central._
 
@@ -774,21 +785,4 @@ _Cluster-daemon FAMILIES — the second file of consolidated nerve-families._
 | function | `_infra_feedback_review_live` | `(snap)` | Giv Jarvis månedens tommel-op/ned at tænke over. Rules-based, no LLM. | [src](../../../core/services/cluster_daemon_families.py#L1358) |
 | function | `_run_infra_unconditional` | `(snap, result)` | Run every infra member UNCONDITIONALLY (this family has no LLM/gated tier), | [src](../../../core/services/cluster_daemon_families.py#L1393) |
 | function | `tick_cluster_infra` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the infra/maintenance cluster-daemon family (#10). | [src](../../../core/services/cluster_daemon_families.py#L1410) |
-
-## `core/services/cluster_family_scheduler.py`
-_Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er det tid til?»_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_running` | `()` | Lever tråden? Siger intet om hvorvidt den udretter noget — se iterations(). | [src](../../../core/services/cluster_family_scheduler.py#L70) |
-| function | `iterations` | `()` | Gennemløb siden start. Står tallet stille, er løkken væk. | [src](../../../core/services/cluster_family_scheduler.py#L75) |
-| function | `stop_event` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L80) |
-| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, kører vi videre. | [src](../../../core/services/cluster_family_scheduler.py#L84) |
-| function | `_tick_functions` | `()` | Slå familiernes tick-funktioner op. De bor i to moduler efter en udskillelse. | [src](../../../core/services/cluster_family_scheduler.py#L93) |
-| function | `_is_due` | `(family, cadence_minutes, last_run_at)` | Er familien forfalden efter sin egen kadence? | [src](../../../core/services/cluster_family_scheduler.py#L114) |
-| function | `run_due_families` | `()` | Kør de familier der er forfaldne. Returnerer hvad der skete — også til test. | [src](../../../core/services/cluster_family_scheduler.py#L130) |
-| function | `_loop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L177) |
-| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L211) |
-| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L226) |
-| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L236) |
 

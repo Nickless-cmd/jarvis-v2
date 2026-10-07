@@ -88,20 +88,20 @@ _Action Router — close the loop: signal → handling._
 | function | `_proactive_messages_today` | `()` | — | [src](../../../core/services/action_router.py#L231) |
 | function | `_last_proactive_ts` | `()` | — | [src](../../../core/services/action_router.py#L240) |
 | function | `_within_cooldown` | `()` | — | [src](../../../core/services/action_router.py#L251) |
-| function | `_send_ntfy` | `(message, *, title=…, priority=…)` | — | [src](../../../core/services/action_router.py#L258) |
-| function | `_reach_out` | `(*, message, channel=…, importance=…, source=…, bypass_nudge=…)` | Send a proactive message. Routes through nudge-broend for Jarvis gatekeeping. | [src](../../../core/services/action_router.py#L268) |
-| function | `_append_proactive` | `(entry)` | — | [src](../../../core/services/action_router.py#L367) |
-| function | `_route_warning` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L377) |
-| function | `_route_mood` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L411) |
-| function | `_route_creative` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L419) |
-| function | `route` | `(event_kind, payload=…)` | Evaluate + execute. Returns decision record. | [src](../../../core/services/action_router.py#L439) |
-| function | `_drain_eventbus` | `(limit=…)` | Pull events from eventbus without blocking; route routable ones. | [src](../../../core/services/action_router.py#L492) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — drain eventbus + route + run generative autonomy chain. | [src](../../../core/services/action_router.py#L525) |
-| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L609) |
-| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L613) |
-| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L617) |
-| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L649) |
-| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L669) |
+| function | `_send_ntfy` | `(message, *, title=…, priority=…)` | Driftsbesked gennem routeren — device-aware, med ntfy som sidste udvej. | [src](../../../core/services/action_router.py#L258) |
+| function | `_reach_out` | `(*, message, channel=…, importance=…, source=…, bypass_nudge=…)` | Send a proactive message. Routes through nudge-broend for Jarvis gatekeeping. | [src](../../../core/services/action_router.py#L279) |
+| function | `_append_proactive` | `(entry)` | — | [src](../../../core/services/action_router.py#L378) |
+| function | `_route_warning` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L388) |
+| function | `_route_mood` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L422) |
+| function | `_route_creative` | `(kind, payload)` | — | [src](../../../core/services/action_router.py#L430) |
+| function | `route` | `(event_kind, payload=…)` | Evaluate + execute. Returns decision record. | [src](../../../core/services/action_router.py#L450) |
+| function | `_drain_eventbus` | `(limit=…)` | Pull events from eventbus without blocking; route routable ones. | [src](../../../core/services/action_router.py#L503) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — drain eventbus + route + run generative autonomy chain. | [src](../../../core/services/action_router.py#L536) |
+| function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L620) |
+| function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L624) |
+| function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L628) |
+| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L660) |
+| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L680) |
 
 ## `core/services/active_file_store.py`
 _Live "aktiv fil" — den sti Jarvis senest læste/skrev (file-tree-control-spec)._

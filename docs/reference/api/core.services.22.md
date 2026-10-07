@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_trailing.py`
+_Beskeder der hoerer EFTER historikken i en agentisk tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `runtime_instruction_message` | `(text)` | A model-facing runtime instruction with explicit non-user provenance. | [src](../../../core/services/run_trailing.py#L43) |
+| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de to slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L48) |
+| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L53) |
+| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L57) |
+| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L67) |
+| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne. De vedvarende bliver. | [src](../../../core/services/run_trailing.py#L76) |
+| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L80) |
+| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L90) |
+| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L93) |
+
 ## `core/services/runtime_action_executor.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -741,17 +756,4 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 | function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L507) |
 | function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L524) |
 | function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L528) |
-
-## `core/services/self_history_grounding.py`
-_Prompten maa ikke forveksle et rygte med en kendsgerning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `QueryProfile` | `` | — | [src](../../../core/services/self_history_grounding.py#L28) |
-| function | `classify_self_history_query` | `(text)` | Hvad spoerges der om? Deterministisk, uden model. | [src](../../../core/services/self_history_grounding.py#L59) |
-| function | `_verdens_fakta` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L74) |
-| function | `_emner` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L79) |
-| function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
-| function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
-| function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
 

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_run_digest.py`
+_Referat af en autonom koersel — kort, i hans egen samtale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slags_af` | `(session_id)` | — | [src](../../../core/services/autonomous_run_digest.py#L55) |
+| function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L63) |
+| function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L80) |
+| function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L84) |
+| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L121) |
+
 ## `core/services/autonomous_run_failures.py`
 _Fejlede autonome kørsler — set af Jarvis selv, ikke gemt i hans mund._
 
@@ -194,7 +205,7 @@ _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 | function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L85) |
 | function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L89) |
 | function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
-| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L138) |
+| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L137) |
 
 ## `core/services/baggrundsjob_vagt.py`
 _Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
@@ -586,22 +597,4 @@ _Causal graph query API._
 | function | `query_causal_neighbors` | `(*, event_id, direction=…, min_confidence=…)` | Direct neighbors only (depth=1) — convenience wrapper. | [src](../../../core/services/causal_graph.py#L149) |
 | function | `get_immediate_cause` | `(event_id)` | Return single highest-confidence direct parent, or None. | [src](../../../core/services/causal_graph.py#L170) |
 | function | `build_causal_graph_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/causal_graph.py#L179) |
-
-## `core/services/causal_inference_daemon.py`
-_Causal inference daemon — three-tier matching against event allowlist._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table_ready` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L72) |
-| function | `_now_iso` | `()` | Samme form som resten af bussen skriver: `...+00:00`. | [src](../../../core/services/causal_inference_daemon.py#L78) |
-| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/causal_inference_daemon.py#L98) |
-| function | `_record_edge` | `(*, child, parent, edge_kind, confidence, source, reasoning)` | INSERT or UPGRADE an edge. Returns 'created'|'upgraded'|'skipped'. | [src](../../../core/services/causal_inference_daemon.py#L108) |
-| function | `_payload` | `(event)` | — | [src](../../../core/services/causal_inference_daemon.py#L145) |
-| function | `_try_tier1_kind_rule` | `(child, candidates_by_kind)` | Match against hardcoded kind-rule with shared-id-preferred fallback. | [src](../../../core/services/causal_inference_daemon.py#L152) |
-| function | `_try_tier2_shared_id` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L214) |
-| function | `_try_tier3_temporal` | `(child, candidates)` | — | [src](../../../core/services/causal_inference_daemon.py#L237) |
-| function | `_fetch_allowlist_events` | `(*, since_minutes=…, limit=…)` | Fetch allowlist events for inference. | [src](../../../core/services/causal_inference_daemon.py#L267) |
-| function | `_prune_old_edges` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L299) |
-| function | `run_inference_cycle` | `(*, since_minutes=…)` | Run one inference tick. Returns stats dict. | [src](../../../core/services/causal_inference_daemon.py#L317) |
-| function | `tick_causal_inference_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/causal_inference_daemon.py#L408) |
 

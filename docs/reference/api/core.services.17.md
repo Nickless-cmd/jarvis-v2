@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/meta_cognition_daemon.py`
+_Meta-Cognition Daemon — first-person reflection on own state (Experiment 4: HOT)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_meta_cognition_daemon` | `()` | Run one meta-cognition pass. Returns generated/reason/meta_depth. | [src](../../../core/services/meta_cognition_daemon.py#L26) |
+| function | `build_meta_cognition_surface` | `()` | MC surface for meta-cognition experiment. | [src](../../../core/services/meta_cognition_daemon.py#L82) |
+| function | `_gather_state` | `()` | Collect cognitive + emotional state for meta-observation input. | [src](../../../core/services/meta_cognition_daemon.py#L108) |
+| function | `_call_meta_llm` | `(prompt)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/meta_cognition_daemon.py#L148) |
+| function | `_compute_meta_depth` | `(meta_obs, meta_meta_obs)` | Return 2 if meta_meta diverges >70% from meta_obs (Jaccard distance), else 1. | [src](../../../core/services/meta_cognition_daemon.py#L204) |
+
 ## `core/services/meta_learning_aggregator.py`
 _Meta-læring aggregator — Phase 1 (AGI track #3)._
 
@@ -614,14 +625,4 @@ _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `koer_ved_opstart` | `()` | — | [src](../../../core/services/notifikations_opstart.py#L13) |
-
-## `core/services/notifikations_valg.py`
-_Push-valg per slags (spec 2026-09-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `kanal_for` | `(user_id, slags)` | — | [src](../../../core/services/notifikations_valg.py#L115) |
-| function | `saet` | `(user_id, slags, kanal)` | — | [src](../../../core/services/notifikations_valg.py#L132) |
-| function | `alle` | `(user_id)` | Alle slags med brugerens valg lagt oven paa standarden. | [src](../../../core/services/notifikations_valg.py#L143) |
-| function | `migrer_kolonner` | `()` | Baer de gamle kolonner over som raekker. Idempotent. | [src](../../../core/services/notifikations_valg.py#L154) |
 

@@ -111,9 +111,25 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   // tavst». WebView'ens egne fejl-callbacks blev slet ikke lyttet paa, saa en
   // fejl forsvandt. Nu siger rammen hvad der skete — paa skaermen, hvor den
   // der ser problemet ogsaa kan laese svaret.
-  const [tilstand, setTilstand] = useState<'indlaeser' | 'klar' | string>('indlaeser')
+  //
+  // TREDJE GANG, 7/10-2026 — og denne gang var det MIN EGEN komponent der loej:
+  // `onLoadEnd` satte tilstanden til «klar» og SKJULTE dermed fejlbeskeden.
+  // Biblioteket kalder `onError` FOER `onLoadEnd` (se `onLoadingError` i
+  // `WebViewShared.tsx`), saa fejlen naaede at blive skrevet og blev derefter
+  // overskrevet i samme render. En hvilken som helst indlaesningsfejl var
+  // derfor usynlig — og det er praecis derfor tre runder gik med at gaette.
+  //
+  // Reglen er nu: en tilstand der beskriver noget GALT maa ikke kunne
+  // overskrives af en tilstand der beskriver noget godt. `onLoadEnd` maa kun
+  // loefte «indlaeser»/«starter», aldrig slette en fejl.
+  const [tilstand, setTilstand] = useState<string>('indlaeser')
+  // Dokumentet har RAPPORTERET sin hoejde = det koerer og kan maales. Foerst da
+  // forsvinder statuslinjen. En tom ramme kan derfor ikke laengere vaere tavs:
+  // staar der tekst, er der noget galt, og teksten siger hvad.
+  const [malet, setMalet] = useState(false)
   useEffect(() => {
     setTilstand('indlaeser')
+    setMalet(false)
     const t = setTimeout(() => {
       setTilstand((n) => (n === 'indlaeser' ? 'svarede ikke paa 6 sekunder' : n))
     }, 6000)
@@ -136,7 +152,7 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 
   return (
     <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
-      {tilstand !== 'klar' ? (
+      {!malet ? (
         <Text style={styles.tilstand} testID="widget-tilstand">
           {tilstand === 'indlaeser' ? 'Widget indlaeses…' : `Widget: ${tilstand}`}
         </Text>
@@ -165,12 +181,32 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
         // selv `about:blank` foerst i listen (`compileWhitelist` i
         // WebViewShared), saa en tom liste tillader stadig dokumentet. Gaten
         // her er den der afgoer sagen.
-        onShouldStartLoadWithRequest={(req) => dokumentets_egen(req?.url)}
+        onShouldStartLoadWithRequest={(req) => {
+          const ok = dokumentets_egen(req?.url)
+          // Afvises noget, SKAL det staa paa skaermen — ellers ligner en
+          // blokeret indlaesning en tom widget.
+          if (!ok) setTilstand(`blokeret: ${String(req?.url ?? '')}`)
+          return ok
+        }}
         // En WebView i en virtualiseret FlatList tegner blankt paa Android med
         // standardens `androidLayerType="none"`. `MessageList` ER en FlatList.
         androidLayerType="hardware"
-        onLoadEnd={() => setTilstand('klar')}
-        onError={(e) => setTilstand(String(e?.nativeEvent?.description || 'indlaesningsfejl'))}
+        // HVOR loadet STARTER. Kommer der aldrig en hoejde tilbage, siger
+        // linjen hvilken adresse der blev indlaest — det er den ene oplysning
+        // der afgoer om dokumentet overhovedet blev fundet.
+        onLoadStart={(e) =>
+          setTilstand((n) => (n === 'indlaeser' ? `starter: ${String(e?.nativeEvent?.url ?? '?')}` : n))
+        }
+        onLoadEnd={() =>
+          // MA A IKKE SLETTE EN FEJL. Biblioteket kalder onError FOER onLoadEnd,
+          // saa et ukritisk `setTilstand('klar')` her gjorde enhver fejl usynlig.
+          setTilstand((n) =>
+            n === 'indlaeser' || n.startsWith('starter')
+              ? 'loadet — men dokumentet svarede ikke'
+              : n,
+          )
+        }
+        onError={(e) => setTilstand(`fejl: ${String(e?.nativeEvent?.description || 'ukendt')}`)}
         onHttpError={(e) => setTilstand(`http ${e?.nativeEvent?.statusCode ?? '?'}`)}
         onRenderProcessGone={() => setTilstand('webview-processen doede')}
         javaScriptEnabled
@@ -182,6 +218,9 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
             if (d?.type === 'jarvis-widget-hoejde') {
               const h = Number(d.hoejde)
               if (!Number.isFinite(h) || h <= 0) return
+              // Dokumentet lever: det har koert JS og maalt sig selv. Nu — og
+              // foerst nu — maa statuslinjen forsvinde.
+              setMalet(true)
               setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
               return
             }
@@ -217,7 +256,7 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
         thirdPartyCookiesEnabled={false}
         scrollEnabled={false}
         // Gennemsigtig, saa dokumentets egen gennemsigtige baggrund lader
-        // trådens flade skinne igennem i baade lyst og moerkt tema.
+        // traadens flade skinne igennem i baade lyst og moerkt tema.
         style={styles.web}
         backgroundColor="transparent"
       />
@@ -226,7 +265,16 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 }
 
 const styles = StyleSheet.create({
-  ramme: { marginVertical: 4, overflow: 'hidden' },
+  // Kanten er ikke pynt: en tom ramme UDEN kant er usynlig, og saa kan ingen —
+  // heller ikke den der kigger paa skaermen — se forskel paa «widget'en er der
+  // ikke» og «widget'en er der og maler intet».
+  ramme: {
+    marginVertical: 4,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(128,128,128,0.45)',
+    borderRadius: 10,
+  },
   web: { flex: 1, backgroundColor: 'transparent' },
   tilstand: {
     position: 'absolute', top: 6, left: 10, zIndex: 1,

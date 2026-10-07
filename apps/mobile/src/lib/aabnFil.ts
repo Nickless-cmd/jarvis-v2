@@ -69,13 +69,20 @@ export function blokUrl(
   }
   const id = String(blok.attachment_id || '').trim()
   if (!id) return ''
-  // `/attachments/{id}` kender KUN denne sessions registry. `/image/` og
-  // `/media/` slaar op i DB'en og overlever reload; `/media/` er samme kode
-  // under et aerligt navn, saa en video ikke hentes fra «image».
+  // KUN `image` har sin egen rute. ALT andet — video, fil, widget — hentes over
+  // `/media/`, der slaar op i DB'en og overlever en genstart.
+  //
+  // `/attachments/{id}` er IKKE et alternativ (maalt 7/10-2026): den læser en
+  // in-memory registry OG kraever et `session_id`-parameter, som ingen klient
+  // sender. Mobilen hentede et widget-dokument 101 gange ad den vej og fik 422
+  // hver gang, mens desk hentede samme fil over `/media/` og fik 200. En
+  // `file`-blok uden `url` — altsaa enhver genereret fil — kunne derfor ikke
+  // hentes paa telefonen overhovedet.
+  //
+  // `/media/` saetter `media_type` fra raekkens egen mime, saa den er ikke
+  // billed-specifik trods navnet; den er den durable, user-scopede vej.
   const sti = blok.type === 'image'
     ? `/attachments/image/${encodeURIComponent(id)}`
-    : blok.type === 'video'
-      ? `/attachments/media/${encodeURIComponent(id)}`
-      : `/attachments/${encodeURIComponent(id)}`
+    : `/attachments/media/${encodeURIComponent(id)}`
   return new URL(sti, apiBaseUrl).toString()
 }

@@ -163,7 +163,7 @@ _Attachment upload and serve endpoints._
 | function | `list_images` | `(limit=…, session_id=…)` | Galleri-liste (#6): billed-attachments, user-scopet. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L329) |
 | function | `serve_media_from_db` | `(attachment_id)` | Samme fil, medie-agnostisk navn — til video og alt andet Jarvis laver. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L344) |
 | function | `serve_image_from_db` | `(attachment_id)` | Serve et billede fra DB'ens local_path (virker for historiske billeder | [src](../../../apps/api/jarvis_api/routes/attachments.py#L357) |
-| function | `serve_attachment` | `(attachment_id, session_id)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L382) |
+| function | `serve_attachment` | `(attachment_id, session_id=…)` | Serve an uploaded file for browser display. | [src](../../../apps/api/jarvis_api/routes/attachments.py#L382) |
 
 ## `apps/api/jarvis_api/routes/auth.py`
 _Auth-routes (spec 2026-06-15 §5): register / verify-email / login._

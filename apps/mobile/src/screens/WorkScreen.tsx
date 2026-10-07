@@ -343,7 +343,16 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
                 style={styles.kanalKnap}
                 onPress={() => {
                   if (!config) return
-                  void lukOperatorChannel(config, sessions.activeId ?? undefined).then(setKanal).catch(() => undefined)
+                  void lukOperatorChannel(config, sessions.activeId ?? undefined)
+                    .then(setKanal)
+                    // Fejlen blev slugt før (målt 7/10-2026): et afvist kald så
+                    // ud som om knappen virkede, mens kanalen stod åben på
+                    // Bjørns maskine. Den er en sikkerhedsflade — den skal sige
+                    // fra, ikke tie.
+                    .catch((e) => setError({
+                      titel: 'Kunne ikke lukke kanalen',
+                      detalje: e instanceof Error ? e.message : 'Ukendt fejl'
+                    }))
                 }}
               >
                 <Text style={styles.kanalKnapTekst}>Luk</Text>

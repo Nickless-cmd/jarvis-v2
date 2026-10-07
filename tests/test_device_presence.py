@@ -131,6 +131,41 @@ def test_location_stored_and_in_summary(monkeypatch):
     assert loc["lat"] == 55.86 and loc["source"] == "gps"
 
 
+def test_ip_gaet_markeres_som_upaalideligt(monkeypatch):
+    """Et IP-opslag må ikke læses som en by (målt 7/10-2026).
+
+    På mobildata går trafikken gennem operatørens carrier-grade NAT, hvis
+    udgang ligger i København/Taastrup — så linjen meldte København, mens Bjørn
+    stod i regn i Svendborg. Kilden står i lokationen; er den «ip», skal linjen
+    sige at stedet er et gæt.
+    """
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away",
+                   interaction=True,
+                   location={"lat": 55.675941, "lon": 12.5655349,
+                             "label": "Copenhagen, Region Hovedstaden",
+                             "source": "ip", "precision": "city"})
+    s = dp.summary("bjorn")
+    assert "Copenhagen" in s
+    assert "IP-gæt" in s
+
+
+def test_gps_lokation_markeres_ikke(monkeypatch):
+    """Modstykket: en rigtig GPS-lokation er ikke et gæt og skal stå rent."""
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away",
+                   interaction=True,
+                   location={"lat": 55.86, "lon": 10.39, "label": "Svendborg",
+                             "source": "gps", "precision": "precise"})
+    s = dp.summary("bjorn")
+    assert "Svendborg" in s
+    assert "IP-gæt" not in s
+
+
 def test_location_none_preserves_empty_clears(monkeypatch):
     box = {"t": 1000.0}
     monkeypatch.setattr(dp, "_now", lambda: box["t"])

@@ -167,6 +167,12 @@ _PROMPT_EKKO_MOENSTRE = (
     re.compile(r"\b(?:vi|jeg) skal beskrive\b", re.I),
     re.compile(r"\bsidste beskrivelse var\b", re.I),
     re.compile(r"\bbrugeren (?:vil|beder|spørger)\b", re.I),
+    # 2. person (målt 7/10-2026): modellen vender instruktionen mod sig selv i
+    # stedet for at beskrive — «… tidsstemplet siger 13:04, beder du om en
+    # beskrivelse af rummet som om, det er kl. 23:00». Familien ovenfor fanger
+    # kun 3. person («brugeren beder»), saa ekkoet gik fri.
+    re.compile(r"\bbeder du om\b", re.I),
+    re.compile(r"\bbeder om en beskrivelse\b", re.I),
     # Prompten selv, ordret indsat midt i teksten.
     re.compile(r"\bspørgsmålet\s*:", re.I),
     re.compile(r"\bsvar kun\b", re.I),

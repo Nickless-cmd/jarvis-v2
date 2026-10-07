@@ -337,7 +337,13 @@ def summary(user_id: str) -> str:
         net_short = ""
         if st and st.platform == "mobile":
             net_short = {"home": ", wifi", "away": ", mobildata"}.get(st.network, "")
-        return f"Bjørn er ved {loc['label']} ({where}{net_short})."
+        # Et IP-opslag kan ALDRIG finde byen (målt 7/10-2026): på mobildata går
+        # trafikken gennem operatørens carrier-grade NAT, hvis udgang ligger i
+        # København/Taastrup — så linjen meldte København, mens Bjørn stod i regn
+        # i Svendborg. Kilden står i lokationen; er den «ip», er stedet et gæt
+        # og skal læses som ét, ikke som et faktum.
+        usikker = " [IP-gæt — upålideligt]" if loc.get("source") == "ip" else ""
+        return f"Bjørn er ved {loc['label']} ({where}{net_short}){usikker}."
     return f"Bjørn er ved {where} ({fg}{net})."
 
 

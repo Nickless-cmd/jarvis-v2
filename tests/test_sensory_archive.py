@@ -239,6 +239,28 @@ def test_dansk_prompt_ekko_gemmes_ikke_som_indtryk(isolated_runtime) -> None:
         )
 
 
+def test_2_person_prompt_ekko_fanges(isolated_runtime) -> None:
+    """Modellen vendte instruktionen mod LÆSEREN (målt 7/10-2026).
+
+    Familien «brugeren vil/beder/spørger» dækkede kun 3. person. Posten fra
+    6/10 skrev «… siger 13:04, beder du om en beskrivelse af rummet som om,
+    det er kl. 23:00» og gik fri — ekkoet ligger MIDT i en ægte sætning.
+    """
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Billedet viser en stue i sort-hvide eller gråtoner, hvilket giver "
+        "rummet en steril, næsten overvågningsagtig karakter. Selvom "
+        "tidsstemplet øverst til venstre siger 13:04, beder du om en "
+        "beskrivelse af rummet som om, det er kl. 23:00.\n\n"
+        "**Lys og skygger:**\nRummet er præget af et fladt, diffust lys."
+    )
+
+    assert post["content"].startswith("Billedet viser en stue")
+    assert "beder du om" not in post["content"]
+    assert "23:00" not in post["content"]
+
+
 def test_indtrykket_FORAN_ekkoet_bevares(isolated_runtime) -> None:
     """Grænsen: et ægte indtryk foran ekkoet må ikke ryge med.
 

@@ -139,6 +139,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_wait import ensure_wait_tables
 
     ensure_wait_tables(conn)
+    from core.runtime.db_agent_artifacts import ensure_artifact_tables
+
+    ensure_artifact_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -295,6 +298,7 @@ def commit_terminal_outcome(
     error_phase: str = "",
     artifact_ref: str = "",
     last_run_id: str = "",
+    artifact_error: str = "",
 ) -> dict[str, Any]:
     """Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME
     transaktion. Et gentaget kald returnerer den eksisterende besked uden at
@@ -329,6 +333,7 @@ def commit_terminal_outcome(
             "status": status, "error_code": error_code, "error_phase": error_phase,
             "summary": summary, "agent_id": a["agent_id"], "assignment_id": assignment_id,
             "last_run_id": last, "attempt_run_ids": attempts, "artifact_ref": artifact_ref,
+            "artifact_error": artifact_error,
         }
         conn.execute(
             "UPDATE agent_assignments SET status=?, outcome_json=?, terminal_at=?, "
@@ -500,11 +505,20 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
     reply = conn.execute(
         "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
         "AND kind IN ('result','') ORDER BY created_at DESC LIMIT 1", (agent_id,)).fetchone()
+    full = reply["content"] if reply else ""
+    owner = conn.execute("SELECT owner_user_id FROM agent_assignments WHERE assignment_id=?",
+                         (a["assignment_id"],)).fetchone()["owner_user_id"]
+    # Resultatfilen faerdiggoeres FOER den terminale DB-transaktion (§9).
+    from core.runtime.db_agent_artifacts import write_terminal_artifacts
+    art = write_terminal_artifacts(
+        agent_id=agent_id, assignment_id=a["assignment_id"], owner_user_id=owner, status=target,
+        reply=full, summary=full[:500], error_code=_ERROR_CODE.get(registry_status, ""),
+        error_phase=_ERROR_PHASE.get(registry_status, ""))
     return commit_terminal_outcome(
-        assignment_id=a["assignment_id"], status=target,
-        summary=(reply["content"] if reply else "")[:500],
+        assignment_id=a["assignment_id"], status=target, summary=full[:500],
         error_code=_ERROR_CODE.get(registry_status, ""),
         error_phase=_ERROR_PHASE.get(registry_status, ""),
+        artifact_ref=art["artifact_ref"], artifact_error=art["artifact_error"],
     )
 
 

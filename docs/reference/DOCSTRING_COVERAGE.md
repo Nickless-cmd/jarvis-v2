@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8548/16144 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8556/16160 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8548/16144 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 742 | 1331 | 55% |
-| `core.services` | 5703 | 10981 | 51% |
+| `core.runtime` | 748 | 1345 | 55% |
+| `core.services` | 5705 | 10983 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8548/16144 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2242)
+## Undocumented public functions (2246)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -332,7 +332,11 @@ Generated from source. 8548/16144 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L554)
+- `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L138)
+- `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L46)
+- `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L133)
+- `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L87)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L568)
 - `core/runtime/db_agent_wait.py` :: `ensure_wait_tables` (L30)
 - `core/runtime/db_agent_wait.py` :: `get_contract` (L134)
 - `core/runtime/db_approval_bridge.py` :: `state` (L315)

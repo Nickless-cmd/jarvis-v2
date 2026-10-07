@@ -32,7 +32,9 @@ def _render(msgs: list[dict[str, Any]]) -> str:
         if p.get("error_code"):
             felter.append(f"fejl={p['error_code']} (fase: {p.get('error_phase') or 'ukendt'})")
         if p.get("artifact_ref"):
-            felter.append(f"artefakt={p['artifact_ref']}")
+            felter.append(f"artefakt={p['artifact_ref']} (fuldt output: wait_agents med include_output)")
+        elif p.get("artifact_error"):
+            felter.append(f"artefakt-fejl={p['artifact_error']}")
         resume = str(p.get("summary") or "").strip()[:_RESUME_MAX] or "(intet resume)"
         blokke.append(f"- {', '.join(felter)}\n  resume: {resume}")
     return (

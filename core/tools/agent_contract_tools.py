@@ -72,7 +72,10 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "depends on the result; results otherwise arrive in your inbox on their own.",
         {"assignment_ids": {"type": "array", "items": {"type": "string"}},
          "condition": {"type": "string", "enum": ["first_terminal", "all_terminal"]},
-         "timeout_seconds": {"type": "number"}, "wake_if_run_ends": {"type": "boolean"}},
+         "timeout_seconds": {"type": "number"}, "wake_if_run_ends": {"type": "boolean"},
+         "include_output": {"type": "boolean",
+                            "description": "Include each finished agent's full output (paged, 20000 chars)."},
+         "output_offset": {"type": "integer", "description": "Character offset for paged output."}},
         ["assignment_ids"]),
     _fn("interrupt_agent",
         "Request a stop of an agent's current task. Returns stop_requested; it is cancelled "
@@ -151,7 +154,9 @@ def _exec_wait_agents(args: dict[str, Any]) -> dict[str, Any]:
         assignment_ids=[str(x) for x in ids] if isinstance(ids, list) else [],
         condition=str(args.get("condition") or "all_terminal"),
         timeout_seconds=float(args.get("timeout_seconds") or 0),
-        wake_if_run_ends=bool(args.get("wake_if_run_ends")))
+        wake_if_run_ends=bool(args.get("wake_if_run_ends")),
+        include_output=bool(args.get("include_output")),
+        output_offset=max(0, int(args.get("output_offset") or 0)))
 
 
 def _exec_interrupt_agent(args: dict[str, Any]) -> dict[str, Any]:

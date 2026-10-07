@@ -352,6 +352,7 @@ def wait_agents(
     *, owner_user_id: str, origin_session_id: str, assignment_ids: list[str],
     condition: str = "all_terminal", timeout_seconds: float = 0.0,
     wake_if_run_ends: bool = False, parent_run_id: str = "",
+    include_output: bool = False, output_offset: int = 0,
 ) -> dict[str, Any]:
     """Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen
     stadig ikke opfyldt og `wake_if_run_ends` er sat, registreres en ventekontrakt (B2), saa et
@@ -382,6 +383,8 @@ def wait_agents(
     while not ok and time.monotonic() < deadline:
         time.sleep(_POLL_SECONDS)
         view, ok = snapshot()
+    if include_output:
+        _attach_outputs(view, owner_user_id, int(output_offset or 0))
     out: dict[str, Any] = {"status": "ok", "satisfied": ok, "condition": condition,
                            "assignments": view, "contract_version": CONTRACT_VERSION}
     if not ok and wake_if_run_ends:
@@ -393,3 +396,28 @@ def wait_agents(
         except ContractError as exc:
             out["wait_contract_error"] = {"code": exc.code, "detail": exc.detail}
     return out
+
+
+def _attach_outputs(view: list[dict[str, Any]], owner_user_id: str, offset: int) -> None:
+    """Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede
+    artefaktreference. En manglende/korrupt/udloebet artefakt faar en praecis status."""
+    from core.runtime import db_agent_artifacts as art
+
+    for v in view:
+        if not v["terminal"]:
+            continue
+        row = c._conn().execute("SELECT outcome_json FROM agent_assignments WHERE assignment_id=?",
+                                (v["assignment_id"],)).fetchone()
+        try:
+            payload = json.loads(row["outcome_json"] or "{}") if row else {}
+        except ValueError:
+            payload = {}
+        ref = str(payload.get("artifact_ref") or "")
+        v["summary"] = str(payload.get("summary") or "")
+        if not ref:
+            v["output"] = {"status": "NO_ARTIFACT", "detail": str(payload.get("artifact_error") or "")}
+            continue
+        run_id = ref.partition("/")[0]
+        v["output"] = art.read_artifact(owner_user_id=owner_user_id, ref=f"{run_id}/final.txt",
+                                        offset=offset)
+        v["result_ref"] = ref

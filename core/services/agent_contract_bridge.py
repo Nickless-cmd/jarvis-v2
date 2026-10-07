@@ -54,7 +54,29 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
             created_by=parent_agent_id, operation=operation,
             idempotency_key=idempotency_key or agent_id, request_digest=request_digest,
         )
+        _write_assignment_artifact(agent_id, owner, acc, goal, parent_agent_id, context, target)
         return {"bound": True, **acc}
     except Exception as exc:
         logger.warning("kunne ikke binde agent %s til kontrakten: %s", agent_id, exc, exc_info=True)
         return {"bound": False, "reason": "error", "error": str(exc)}
+
+
+def _write_assignment_artifact(agent_id: str, owner: str, acc: dict[str, Any], goal: str,
+                               parent_agent_id: str, context: dict[str, Any] | None,
+                               target: str) -> None:
+    """``assignment.json`` for foerste run (§9). Bedste-indsats: et manglende artefakt
+    maa aldrig vaelte et dispatch - den vises senere som en synlig mangel."""
+    import json
+
+    try:
+        from core.runtime import db_agent_artifacts as art
+        art.write_artifact(
+            agent_id=agent_id, run_id=acc["run_id"], name="assignment.json",
+            assignment_id=acc["assignment_id"], owner_user_id=owner,
+            data=json.dumps({"assignment_id": acc["assignment_id"], "agent_id": agent_id,
+                             "goal": goal, "parent_agent_id": parent_agent_id,
+                             "parent_run_id": str((context or {}).get("parent_run_id") or ""),
+                             "target": target, "contract_version": acc.get("contract_version", "")},
+                            ensure_ascii=False, indent=2))
+    except Exception:
+        logger.warning("assignment.json kunne ikke gemmes for %s", agent_id, exc_info=True)

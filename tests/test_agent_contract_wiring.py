@@ -184,3 +184,19 @@ def test_unbound_spawn_reports_why(env):
                           context={}) == {"bound": False, "reason": "no_owner_or_session"}
     assert bind_new_agent(agent_id="x", parent_agent_id="jarvis", goal="g", persistent=True,
                           context=dict(CTX)) == {"bound": False, "reason": "persistent"}
+
+
+def test_spawn_stores_assignment_json_for_the_first_run(env):
+    import json
+
+    from core.runtime import db_agent_artifacts as art
+
+    c, rt, spawn = env
+    agent = spawn(context=dict(CTX), goal="find X")
+    (a,) = _assignments(c)
+    run_id = c.queued_contract_run(agent["agent_id"])
+    out = art.read_artifact(owner_user_id="bjorn", ref=f"{run_id}/assignment.json")
+    doc = json.loads(out["content"])
+    assert (doc["assignment_id"], doc["goal"], doc["parent_run_id"], doc["target"]) == (
+        a["assignment_id"], "find X", "pr-1", "runtime-container")
+    assert art.read_artifact(owner_user_id="anden", ref=f"{run_id}/assignment.json")["status"] == "NOT_FOUND"

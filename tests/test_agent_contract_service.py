@@ -279,3 +279,50 @@ def test_wait_with_timeout_returns_unsatisfied_when_nothing_finishes(sv, monkeyp
     out = sv.svc_.wait_agents(owner_user_id=O, origin_session_id=S,
                               assignment_ids=[a["assignment_id"]], timeout_seconds=0.05)
     assert out["satisfied"] is False and "wait_contract" not in out
+
+
+def test_wait_can_return_the_full_output_through_the_owner_checked_artifact(sv):
+    sv.on()
+    long = "x" * 30000
+
+    class _F:
+        def execute_with_role_or_fallback(self, **kw):
+            return {"text": long, "input_tokens": 1, "output_tokens": 1, "status": "completed"}
+
+    from core.services import agent_runtime_spawn as M
+    M._facade = lambda: _F()
+    a = sv.d()
+    sv.run_all()
+    ids = [a["assignment_id"]]
+    svc = sv.svc_
+    plain = svc.wait_agents(owner_user_id=O, origin_session_id=S, assignment_ids=ids)
+    assert "output" not in plain["assignments"][0]
+    full = svc.wait_agents(owner_user_id=O, origin_session_id=S, assignment_ids=ids, include_output=True)
+    o = full["assignments"][0]["output"]
+    assert (o["status"], len(o["content"]), o["truncated"], o["size"]) == ("ok", 20000, True, 30000)
+    assert full["assignments"][0]["result_ref"].endswith("/result.json")
+    page2 = svc.wait_agents(owner_user_id=O, origin_session_id=S, assignment_ids=ids,
+                            include_output=True, output_offset=20000)
+    assert len(page2["assignments"][0]["output"]["content"]) == 10000
+    assert page2["assignments"][0]["output"]["truncated"] is False
+
+
+def test_output_is_reported_precisely_when_the_artifact_is_gone(sv):
+    import os
+
+    sv.on()
+    a = sv.d()
+    sv.run_all()
+    rec = sv.k._conn().execute("SELECT path FROM agent_artifacts WHERE name='final.txt'").fetchone()
+    os.unlink(rec["path"])
+    out = sv.svc_.wait_agents(owner_user_id=O, origin_session_id=S,
+                              assignment_ids=[a["assignment_id"]], include_output=True)
+    assert out["assignments"][0]["output"]["status"] == "MISSING"
+
+
+def test_output_of_a_running_assignment_is_not_attached(sv):
+    sv.on()
+    a = sv.d()
+    out = sv.svc_.wait_agents(owner_user_id=O, origin_session_id=S,
+                              assignment_ids=[a["assignment_id"]], include_output=True)
+    assert "output" not in out["assignments"][0]

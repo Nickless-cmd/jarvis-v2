@@ -25,9 +25,9 @@ Generated from source. 8679/16414 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 785 | 1411 | 55% |
-| `core.services` | 5789 | 11162 | 51% |
+| `core.services` | 5784 | 11157 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 118 | 193 | 61% |
+| `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
@@ -1499,7 +1499,7 @@ Generated from source. 8679/16414 functions/methods documented (52%). The list b
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L158)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L106)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L133)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4790)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4630)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)

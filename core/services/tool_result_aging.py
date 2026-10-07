@@ -186,6 +186,9 @@ def age_tool_results(
                 new_old.append(ToolExchange(
                     text=ex.text, tool_calls=list(ex.tool_calls),
                     results=new_results, reasoning_content=ex.reasoning_content,
+                    # Skal baeres igennem: ellers DROPPER aldringen bruger-
+                    # styringen naar den rydder i gamle resultater (7/10-2026).
+                    user_message=ex.user_message,
                 ))
             else:
                 new_old.append(ex)

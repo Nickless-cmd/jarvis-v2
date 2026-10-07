@@ -3958,20 +3958,27 @@ async def _stream_visible_run(
                     # abandoned mid-token; we'll re-enter the loop with the
                     # steer added so the next round picks up where we steered.
                     if _mid_round_steers:
-                        from core.services.visible_run_steers import append_real_user_steers
-                        _, _mid_steer_stop = append_real_user_steers(
-                            _tur_hale, _mid_round_steers)
-                        if _mid_steer_stop:
-                            _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
                         # Record the abandoned partial as an empty exchange so
                         # the next prompt has a clean slate (no half-tool-calls
-                        # leaked into the followup history).
+                        # leaked into the followup history). Den laegges FOER
+                        # styringen: partialen blev skrevet foer brugeren greb
+                        # ind. Laa styringen foerst, stod partialen som den
+                        # SIDSTE besked og modellen ville fortsaette den
+                        # afbrudte tekst i stedet for at foelge styringen.
                         _followup_exchanges.append(
                             _vf.ToolExchange(
                                 text=_exchange_text(),
                                 tool_calls=[], results=[],
                             )
                         )
+                        # Styringen gaar i HISTORIKKEN, ikke i halen
+                        # (7/10-2026): i halen blev den gensendt som frisk
+                        # brugerbesked i hver runde. Se ToolExchange.user_message.
+                        from core.services.visible_run_steers import append_real_user_steers
+                        _, _mid_steer_stop = append_real_user_steers(
+                            _followup_exchanges, _mid_round_steers)
+                        if _mid_steer_stop:
+                            _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
                         try:
                             _save_agentic_checkpoint(
                                 run_id=run.run_id,
@@ -5050,7 +5057,7 @@ async def _stream_visible_run(
                     if steers:
                         from core.services.visible_run_steers import append_real_user_steers
                         _accepted_steers, _steer_stop = append_real_user_steers(
-                            _tur_hale, steers)
+                            _followup_exchanges, steers)
                         for s in _accepted_steers:
                             content = s["content"]
                             yield _sse("steer_received", {

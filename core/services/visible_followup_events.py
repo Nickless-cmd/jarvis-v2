@@ -185,6 +185,14 @@ class ToolExchange:
     # Reasoning content from thinking-mode models — must be replayed in the
     # assistant message on followup turns (Deepseek requires this).
     reasoning_content: str = ""
+    # En ægte bruger-styring der landede MELLEM runder (Bjørn 7/10-2026).
+    # Den hører i historikken, ikke i halen. Halen genopbygges hver runde, saa
+    # en styring dér blev gensendt som en frisk brugerbesked i HVER runde —
+    # modellen svarede den 12 gange for én besked. Historikken vokser
+    # append-only: her staar styringen ÉN gang, i sin naturlige position, og
+    # bliver en del af det cachelagrede praefiks fra naeste runde. DeepSeeks
+    # praefiks-cache roeres derfor ikke.
+    user_message: str = ""
 
 
 # ── Adapter protocol ─────────────────────────────────────────────────────────

@@ -253,6 +253,10 @@ class OllamaFollowupAdapter:
                     tool_calls=list(exch.tool_calls),
                     results=results,
                     reasoning_content=exch.reasoning_content,
+                    # Skal baeres igennem: ombygningen skaber et NYT objekt, og
+                    # uden dette felt forsvandt bruger-styringen sporloest i
+                    # Ollama-lanen (maalt 7/10-2026 af steer-testen).
+                    user_message=exch.user_message,
                 )
             )
         return compacted
@@ -270,6 +274,15 @@ class OllamaFollowupAdapter:
         """
         messages: list[dict] = []
         for exch in self._compact_exchanges(exchanges):
+            # En bruger-styring der landede mellem runder: ÉN gang, i sin
+            # naturlige position — ikke i halen (se ToolExchange.user_message).
+            if exch.user_message:
+                messages.append({"role": "user", "content": exch.user_message})
+                # En ren styrings-baerer (ingen tekst, ingen kald, ingen svar)
+                # maa ikke efterlade et TOMT assistant-turn lige efter
+                # brugerens besked. Se ToolExchange.user_message.
+                if not exch.text and not exch.tool_calls and not exch.results:
+                    continue
             _asst: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,
@@ -858,6 +871,15 @@ class OpenAICompatFollowupAdapter:
         """
         messages: list[dict] = []
         for exch in exchanges:
+            # En bruger-styring der landede mellem runder: ÉN gang, i sin
+            # naturlige position — ikke i halen (se ToolExchange.user_message).
+            if exch.user_message:
+                messages.append({"role": "user", "content": exch.user_message})
+                # En ren styrings-baerer (ingen tekst, ingen kald, ingen svar)
+                # maa ikke efterlade et TOMT assistant-turn lige efter
+                # brugerens besked. Se ToolExchange.user_message.
+                if not exch.text and not exch.tool_calls and not exch.results:
+                    continue
             assistant_msg: dict[str, object] = {
                 "role": "assistant",
                 "content": exch.text,

@@ -133,9 +133,13 @@ def test_message_and_stop_return_accept_receipts_not_confirmation(rt):
     assert s["status"] == "stop_requested" and s["receipt"]["confirmed"] is False
 
 
-def test_the_engine_being_off_is_403_not_a_silent_success(rt):
+def test_the_engine_being_off_never_blocks_control_of_accepted_work(rt):
     rt.agent("a1")
-    assert rt.http(R.message, "a1", R.MessageBody(content="hej")) == 403
+    for fn, body in ((R.message, R.MessageBody(content="hej")),):
+        try:
+            rt.call(fn, "a1", body)
+        except HTTPException as e:
+            assert e.status_code != 403, "kill switchen maa kun blokere NYT arbejde (spec 12.4)"
     assert rt.call(R.overview)["capability"]["enabled"] is False                     # laesning virker stadig
 
 

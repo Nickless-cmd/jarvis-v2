@@ -49,7 +49,7 @@ def test_synthesizer_er_med_i_kilden():
     assert "synthesizer" in _TOOL_USING_ROLES
 
 
-def test_de_syv_tool_roller_er_intakte():
+def test_de_syv_tool_roller_plus_reviewer_er_intakte():
     """Rettelsen må ikke have tabt nogen undervejs.
 
     De syv roller er dem der faktisk kalder værktøjer; filosof/etiker er
@@ -60,6 +60,7 @@ def test_de_syv_tool_roller_er_intakte():
     ventet = {
         "researcher", "critic", "planner", "executor",
         "devils_advocate", "watcher", "synthesizer",
+        "reviewer",        # agent-contract-v1 F5: den uafhaengige, skrivebeskyttede reviewer (review_agent_work)
     }
     assert set(_TOOL_USING_ROLES) == ventet
     # Refleksions-rollerne skal IKKE være med — de kalder ikke værktøjer.

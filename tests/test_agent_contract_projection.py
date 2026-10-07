@@ -332,11 +332,14 @@ def test_a_foreign_owner_cannot_message_stop_follow_up_or_close_and_nothing_is_w
     assert (reg["status"], reg["lifecycle_status"]) == ("planned", "available")           # ikke stoppet, ikke lukket
 
 
-def test_actions_are_refused_with_a_stable_code_while_the_engine_is_off(pj):
-    pj.agent("a1")
-    out = pj.proj_.send_message(A, "a1", "hej")
+def test_new_work_is_refused_with_a_stable_code_while_the_engine_is_off_but_control_is_not(pj):
+    pj.agent("a1", run="completed", terminal="completed")
+    out = pj.proj_.followup(A, "a1", "gaa videre", idempotency_key="k0")        # nyt arbejde
     assert (out["status"], out["code"]) == ("error", "POLICY_DENIED")
     assert out["receipt"]["accepted"] is False
+    pj.agent("a2")                                                              # en agent med AKTIVT arbejde
+    msg = pj.proj_.send_message(A, "a2", "hej")                                  # styring af accepteret arbejde (spec 12.4)
+    assert msg.get("code") != "POLICY_DENIED", msg
 
 
 def test_follow_up_on_a_finished_agent_creates_a_new_assignment_with_the_same_agent_id(pj):

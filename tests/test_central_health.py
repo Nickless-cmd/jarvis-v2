@@ -50,8 +50,12 @@ def test_observe_and_escalate_self_safe(monkeypatch):
                                               "unresolved_severe": 9, "decide_ok": False,
                                               "observe_ok": True})
     sent = {}
-    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
-                        lambda msg, **k: sent.update({"msg": msg}))
+    # SOEMMEN FLYTTEDE 7/10-2026 (`b5c479d05`): modulet kaldte `ntfy_gateway`
+    # direkte; nu gaar alarmen gennem `alarm_ud.send_alert`, saa den kan rutes
+    # ét sted. Testen pinnede den GAMLE soem og saa derfor en tom besked —
+    # selvom eskaleringen fyrede.
+    monkeypatch.setattr("core.services.alarm_ud.send_alert",
+                        lambda **k: sent.update({"msg": k.get("tekst", "")}))
     monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
                         lambda **k: None)
     monkeypatch.setattr("core.runtime.db_central_incidents.has_open_incident",

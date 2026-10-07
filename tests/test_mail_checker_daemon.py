@@ -133,13 +133,22 @@ class _Recorder:
 @pytest.fixture()
 def sinks(monkeypatch: pytest.MonkeyPatch) -> _Recorder:
     rec = _Recorder()
-    import core.services.ntfy_gateway as ntfy
+    import core.services.alarm_ud as alarm
     import core.services.outbound_nudges as nudges
 
     monkeypatch.setattr(nudges, "push_nudge",
                         lambda **kw: rec.nudges.append(kw.get("message", "")), raising=False)
-    monkeypatch.setattr(ntfy, "send_notification",
-                        lambda **kw: rec.notifications.append(kw.get("title", "")), raising=False)
+    # SOEMMEN FLYTTEDE 7/10-2026 (`b5c479d05`): daemonen kaldte
+    # `ntfy_gateway.send_notification` direkte; nu gaar den gennem
+    # `alarm_ud.send_alert`, saa alarmer kan rutes ét sted. Testen pinnede den
+    # GAMLE soem og saa derfor nul notifikationer — selvom daemonen sendte dem.
+    # Patchen rammer `alarm_ud.send_alert` og virker, fordi daemonen importerer
+    # INDE i funktionen og derfor slaar navnet op paa kaldetidspunktet. Flyttes
+    # importen nogensinde op i toppen af modulet, binder `from X import Y` en
+    # KOPI, og denne patch holder op med at naa den — uden at fejle.
+    monkeypatch.setattr(alarm, "send_alert",
+                        lambda **kw: rec.notifications.append(kw.get("titel", "")),
+                        raising=False)
     monkeypatch.setattr(mcd, "_evaluate_mail",
                         lambda sender, subject, snippet: rec.llm_calls.append(subject) or
                         {"should_respond": False, "urgency": "low", "draft_reply": "", "reason": "test"})

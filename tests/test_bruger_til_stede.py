@@ -97,9 +97,11 @@ def test_den_autonome_koersel_SAETTER_sin_oprindelse():
     """
     import ast
     import pathlib
-    træ = ast.parse(pathlib.Path("core/services/visible_runs.py").read_text())
+    # starteren bor i visible_autonomous_run (Boy Scout 7/10-2026) og kalder klassen som _vr.VisibleRun
+    træ = ast.parse(pathlib.Path("core/services/visible_autonomous_run.py").read_text())
     for n in ast.walk(træ):
-        if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "VisibleRun":
+        if isinstance(n, ast.Call) and (getattr(n.func, "id", "") == "VisibleRun"
+                                        or getattr(n.func, "attr", "") == "VisibleRun"):
             nøgler = {k.arg: k.value for k in n.keywords}
             aut = nøgler.get("autonomous")
             if isinstance(aut, ast.Constant) and aut.value is True:

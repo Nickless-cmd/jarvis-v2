@@ -94,6 +94,17 @@ def test_baggrunden_er_gennemsigtig_saa_den_foelger_klientens_tema():
     assert "background:transparent" in d and "color-scheme: light dark" in d
 
 
+def test_dokumentet_kan_ikke_scrolle_internt():
+    """Widget'en maa ikke ende i en frame med sit eget rullepanel (7/10-2026).
+
+    Uden en overflow-regel kunne dokumentet scrolle internt, og `scrollHeight`
+    maalte saa kun det SYNLIGE — hoejden blev meldt for lavt til klienten, og
+    rammen fik scroll. Dokumentet skal vokse med sit indhold.
+    """
+    d = pak("<p>x</p>")
+    assert "overflow:hidden" in d, "dokumentet skal ikke kunne scrolle internt"
+
+
 def test_links_kan_ikke_klikkes():
     """Navigation ud af en widget er ikke en funktion vi har designet. CSP'en
     ville alligevel blokere hentningen, men en doed klik er aerligere end en

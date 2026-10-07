@@ -110,6 +110,13 @@ def pak(html: str, *, titel: str = "") -> str:
         "<style>\n"
         "  :root { color-scheme: light dark; }\n"
         "  html,body { margin:0; padding:0; background:transparent; }\n"
+        # 7/10-2026 (Bjoern): «widget i desk boer foelge stoerrelsen paa
+        # widget'et — det ender i en frame med scroll». Aarsagen var her:
+        # uden en overflow-regel kunne dokumentet selv scrolle internt, og
+        # `scrollHeight` maaler saa kun det SYNLIGE — hoejden blev meldt for
+        # lavt, og rammen fik sit eget rullepanel. Dokumentet skal vokse med
+        # sit indhold, ikke klippe det: klienten saetter hoejden.
+        "  html,body { overflow:hidden; }\n"
         "  body { font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;\n"
         "         color:#8a8a8a; padding:12px; }\n"
         "  a { pointer-events:none; text-decoration:none; color:inherit; }\n"

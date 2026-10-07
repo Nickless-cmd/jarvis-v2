@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_user_contradiction.py`
+_DB helpers for user_contradictions + user_statements tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_user_contradiction_tables` | `(conn)` | — | [src](../../../core/runtime/db_user_contradiction.py#L19) |
+| function | `upsert_user_statement` | `(*, statement_id, user_id, text, topic, session_id, source, created_at, updated_at)` | Gem eller opdater et user statement. | [src](../../../core/runtime/db_user_contradiction.py#L72) |
+| function | `get_user_statement_by_text` | `(*, text, user_id=…, topic=…)` | Find et eksisterende statement med samme tekst (case-insensitive). | [src](../../../core/runtime/db_user_contradiction.py#L148) |
+| function | `list_user_statements` | `(*, user_id=…, topic=…, limit=…)` | Hent statements for en bruger, filtreret på topic hvis angivet. | [src](../../../core/runtime/db_user_contradiction.py#L175) |
+| function | `insert_user_contradiction` | `(*, contradiction_id, user_id, statement_a_id, statement_a_text, statement_a_source, statement_a_created_at, statement_b_text, statement_b_source, statement_b_created_at, topic, overlap_tokens, created_at, updated_at)` | Gem en fundet bruger-modsigelse. | [src](../../../core/runtime/db_user_contradiction.py#L211) |
+| function | `list_user_contradictions` | `(*, user_id=…, topic=…, limit=…, status=…)` | Hent lagrede modsigelser for en bruger. | [src](../../../core/runtime/db_user_contradiction.py#L262) |
+| function | `update_user_contradiction_status` | `(*, contradiction_id, status, notes=…, updated_at=…)` | Opdater status på en modsigelse (fx 'resolved' eller 'dismissed'). | [src](../../../core/runtime/db_user_contradiction.py#L309) |
+
 ## `core/runtime/db_user_temperature.py`
 _DB helpers for user_temperature_active (Lag 10 user temperature field)._
 

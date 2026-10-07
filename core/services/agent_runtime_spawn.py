@@ -596,6 +596,15 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     """
     from core.runtime.db_agent_lease import agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
+    # agent-contract-v1 (G): et uafklaret udfald (outcome_unknown) kan have udfoert en skrivning - ingen
+    # automatisk genkoersel, hverken planlagt, besked-udloest eller supervisor-genstart, foer det er afgjort.
+    from core.runtime.db_agent_outcome_unknown import is_blocked
+    if is_blocked(agent_id):
+        surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
+        surface["blocked"] = {"code": "OUTCOME_UNKNOWN",
+                              "detail": "uafklaret udfald - kraever verificering eller menneskelig afgoerelse"}
+        logger.info("agent %s koeres ikke: uafklaret udfald", agent_id)
+        return surface
     # agent-contract-v1 (G): en persistent agent faar ét assignment + én rute pr. aktivering, FOER leasen.
     from core.services.agent_activation import ensure_activation
     activation = ensure_activation(agent_id, execution_mode=execution_mode)

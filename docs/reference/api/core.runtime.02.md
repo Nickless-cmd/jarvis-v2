@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_devices.py`
+_Enheder — hvem må styre denne computer, og hvem må bruge code mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L47) |
+| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L59) |
+| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L64) |
+| function | `registrer_computer` | `(user_id, app_id, *, navn=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L81) |
+| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L107) |
+| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L119) |
+| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L130) |
+| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
+| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
+| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
+
 ## `core/runtime/db_dream_bias.py`
 _DB helpers for dream_bias_active (Lag 2 dream-bias)._
 
@@ -931,17 +947,4 @@ _Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
 | function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L468) |
 | function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L480) |
 | function | `abandon_shadow` | `(session_id)` | Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`. | [src](../../../core/runtime/db_session_ledger.py#L507) |
-
-## `core/runtime/db_user_contradiction.py`
-_DB helpers for user_contradictions + user_statements tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_user_contradiction_tables` | `(conn)` | — | [src](../../../core/runtime/db_user_contradiction.py#L19) |
-| function | `upsert_user_statement` | `(*, statement_id, user_id, text, topic, session_id, source, created_at, updated_at)` | Gem eller opdater et user statement. | [src](../../../core/runtime/db_user_contradiction.py#L72) |
-| function | `get_user_statement_by_text` | `(*, text, user_id=…, topic=…)` | Find et eksisterende statement med samme tekst (case-insensitive). | [src](../../../core/runtime/db_user_contradiction.py#L148) |
-| function | `list_user_statements` | `(*, user_id=…, topic=…, limit=…)` | Hent statements for en bruger, filtreret på topic hvis angivet. | [src](../../../core/runtime/db_user_contradiction.py#L175) |
-| function | `insert_user_contradiction` | `(*, contradiction_id, user_id, statement_a_id, statement_a_text, statement_a_source, statement_a_created_at, statement_b_text, statement_b_source, statement_b_created_at, topic, overlap_tokens, created_at, updated_at)` | Gem en fundet bruger-modsigelse. | [src](../../../core/runtime/db_user_contradiction.py#L211) |
-| function | `list_user_contradictions` | `(*, user_id=…, topic=…, limit=…, status=…)` | Hent lagrede modsigelser for en bruger. | [src](../../../core/runtime/db_user_contradiction.py#L262) |
-| function | `update_user_contradiction_status` | `(*, contradiction_id, status, notes=…, updated_at=…)` | Opdater status på en modsigelse (fx 'resolved' eller 'dismissed'). | [src](../../../core/runtime/db_user_contradiction.py#L309) |
 

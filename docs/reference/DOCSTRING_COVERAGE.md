@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8673/16407 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8679/16414 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8673/16407 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 780 | 1405 | 55% |
-| `core.services` | 5788 | 11161 | 51% |
+| `core.runtime` | 785 | 1411 | 55% |
+| `core.services` | 5789 | 11162 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8673/16407 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2301)
+## Undocumented public functions (2302)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -344,13 +344,14 @@ Generated from source. 8673/16407 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
 - `core/runtime/db_agent_attempts.py` :: `attempts_for_assignment` (L149)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L628)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L637)
 - `core/runtime/db_agent_fork.py` :: `ensure_fork_tables` (L20)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
 - `core/runtime/db_agent_lease.py` :: `release` (L115)
 - `core/runtime/db_agent_memory.py` :: `ensure_memory_tables` (L39)
+- `core/runtime/db_agent_outcome_unknown.py` :: `ensure_outcome_unknown_columns` (L34)
 - `core/runtime/db_agent_route.py` :: `attempts_for_assignment` (L80)
 - `core/runtime/db_agent_route.py` :: `ensure_route_tables` (L25)
 - `core/runtime/db_agent_route.py` :: `record_decision` (L47)
@@ -638,15 +639,15 @@ Generated from source. 8673/16407 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1530)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1585)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1566)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1393)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1150)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1090)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1118)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1539)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1594)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1575)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1402)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1159)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1099)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1127)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1549)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1558)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)

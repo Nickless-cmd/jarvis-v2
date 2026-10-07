@@ -163,6 +163,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_fork import ensure_fork_tables
 
     ensure_fork_tables(conn)
+    from core.runtime.db_agent_outcome_unknown import ensure_outcome_unknown_columns
+
+    ensure_outcome_unknown_columns(conn)
 
 
 _ENSURED: set[str] = set()
@@ -539,6 +542,12 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
     agent = conn.execute("SELECT persistent, last_error FROM agent_registry WHERE agent_id=?",
                          (agent_id,)).fetchone()
     if agent is None or (registry_status == "failed" and agent["persistent"]):
+        return None
+    from core.runtime.db_agent_outcome_unknown import is_blocked
+    if is_blocked(agent_id):
+        # et uafklaret udfald afsluttes ALDRIG af en registry-status (timeout, annullering, sen succes): kun en
+        # verificering eller en menneskelig afgoerelse (``resolve_outcome_unknown``) kan (§9, §12.2)
+        logger.warning("settle_agent_status afvist for %s: uafklaret udfald", agent_id)
         return None
     if registry_status == "scheduled":
         # `scheduled` afslutter KUN en persistent aktivering hvis dens seneste run faktisk blev faerdigt;

@@ -5,6 +5,8 @@ import {
   type AgentDetail,
 } from '../../lib/agentPoolApi'
 import type { AgentReference } from '../../lib/environmentEvidence'
+import { bucketLabel, erKontraktAaben, getKontraktAgent, type ContractDetail } from '../../lib/agentContractApi'
+import { AgentContractSection } from './AgentContractSection'
 
 import { agentErAktiv } from '../../lib/agentSynlighed'
 
@@ -31,6 +33,11 @@ export function AgentInspector({
   onChanged?: () => void | Promise<void>
 }) {
   const [detail, setDetail] = useState<AgentDetail | null>(null)
+  // Kontrakt-projektionen (G). undefined = endnu ikke afgjort; null = agenten har ingen kontrakt for denne bruger
+  // (en gammel scout), og inspectoren viser så sin hidtidige visning uændret. De gamle STYRE-knapper vises kun
+  // ved null — aldrig mens det er uafgjort, så man ikke kan trykke en gammel Stop på en kontrakt-agent.
+  const [kontrakt, setKontrakt] = useState<ContractDetail | null | undefined>(undefined)
+  const [kontraktFejl, setKontraktFejl] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -49,9 +56,18 @@ export function AgentInspector({
     if (background) setRefreshing(true)
     else setLoading(true)
     try {
-      const value = await getAgentDetalje(config, bedtOm)
+      // Begge kilder ved siden af hinanden: den gamle MC-detalje (kun ejer) og kontrakt-projektionen (enhver
+      // bruger, for sine egne agenter). Fejler den ene, bærer den anden — men fejler BEGGE, er det en fejl.
+      const [gammel, ny] = await Promise.allSettled([
+        getAgentDetalje(config, bedtOm), getKontraktAgent(config, bedtOm),
+      ])
       if (aktuelRef.current !== bedtOm) return      // panelet er gaaet videre
-      setDetail(value)
+      const kontraktVaerdi = ny.status === 'fulfilled' ? ny.value : null
+      setKontrakt(kontraktVaerdi)
+      setKontraktFejl(ny.status === 'rejected'
+        ? (ny.reason instanceof Error ? ny.reason.message : 'Kontraktvisningen kunne ikke hentes') : '')
+      if (gammel.status === 'fulfilled') setDetail(gammel.value)
+      else if (!kontraktVaerdi) throw gammel.reason
       setError('')
     } catch (reason) {
       if (aktuelRef.current !== bedtOm) return
@@ -69,19 +85,25 @@ export function AgentInspector({
     // mens hentningen loeber.
     aktuelRef.current = agent.agentId
     setDetail(null)
+    setKontrakt(undefined)
+    setKontraktFejl('')
     setError('')
     setNotice('')
   }, [agent.agentId])
 
   useEffect(() => { void load() }, [load])
 
+  // Kontrakt-agenten er «aktiv» når dens assignment er åbent (kører ELLER venter) — en ventende agent skal
+  // også følges, ellers ser man aldrig at en approval er afgjort. Ellers gælder den gamle statusregel.
+  const pollAktiv = kontrakt ? erKontraktAaben(kontrakt.agent) : statusErAktiv(detail?.status)
+
   useEffect(() => {
-    if (!statusErAktiv(detail?.status)) return
+    if (!pollAktiv) return
     const interval = window.setInterval(() => {
       if (!document.hidden) void load(true)
     }, 3000)
     return () => window.clearInterval(interval)
-  }, [detail?.status, load])
+  }, [pollAktiv, load])
 
   const runAction = async (action: 'cancel' | 'suspend' | 'resume' | 'expire') => {
     setBusy(true)
@@ -121,9 +143,9 @@ export function AgentInspector({
     }
   }
 
-  const status = detail?.status ?? agent.status
-  const active = statusErAktiv(status)
-  const finished = !!detail && !active
+  const status = kontrakt ? bucketLabel(kontrakt.agent.bucket) : (detail?.status ?? agent.status)
+  const active = kontrakt ? erKontraktAaben(kontrakt.agent) : statusErAktiv(status)
+  const finished = !!detail && kontrakt === null && !active
   const runs = detail?.runs ?? []
   // Summér prisen fra koerslerne. null (ikke 0) naar INGEN koersel har et
   // beloeb — «ingen data» og «gratis» er ikke det samme.
@@ -135,11 +157,11 @@ export function AgentInspector({
     <div className="inspector-body agent-inspector">
       <section className="inspector-section">
         <div className="inspector-kicker">Agent</div>
-        <div className="agent-inspector-role">{detail?.role || agent.role || 'Agent'}</div>
-        <div className="agent-inspector-goal">{detail?.goal || agent.goal || 'Intet mål registreret'}</div>
+        <div className="agent-inspector-role">{detail?.role || kontrakt?.agent.role || agent.role || 'Agent'}</div>
+        <div className="agent-inspector-goal">{detail?.goal || kontrakt?.agent.goal || agent.goal || 'Intet mål registreret'}</div>
         <dl className="inspector-facts">
           <div><dt>ID</dt><dd className="inspector-mono">{agent.agentId}</dd></div>
-          <div><dt>Status</dt><dd className={status === 'failed' ? 'agent-status-error' : ''}>{status || 'ukendt'}</dd></div>
+          <div><dt>Status</dt><dd className={status === 'failed' || kontrakt?.agent.attention ? 'agent-status-error' : ''}>{status || 'ukendt'}</dd></div>
           {detail?.model && <div><dt>Model</dt><dd>{detail.model}</dd></div>}
           {/* Pris og antal koersler stod i Agent Pool-overlayet foer refaktoren
               og forsvandt med den. «Se alt» var hele pointen med den flade. */}
@@ -152,7 +174,7 @@ export function AgentInspector({
               nul ER aegte data naar det foerst er hentet. */}
           <div><dt>Tokens</dt><dd>{detail
             ? Number(detail.tokens_burned ?? detail.tokens ?? 0).toLocaleString('da-DK')
-            : '—'}</dd></div>
+            : kontrakt ? kontrakt.agent.tokens.toLocaleString('da-DK') : '—'}</dd></div>
         </dl>
         {detail?.last_error && (
           // Var med i Agent Pool-overlayet foer refaktoren og forsvandt uden
@@ -166,7 +188,13 @@ export function AgentInspector({
       {/* canMessage gater BEGGE dele. Composeren gjorde det allerede; knapperne
           gjorde ikke — og de er de farligste af de to: Stop og «Luk som
           udloebet» afbryder en koersel, mens en besked blot lander i en koe. */}
-      {active && canMessage && (
+      {kontraktFejl && <div className="agent-feedback is-error" role="alert">{kontraktFejl}</div>}
+      {kontrakt && (
+        <AgentContractSection config={config} detail={kontrakt} canMessage={canMessage}
+                              onChanged={async () => { await load(true); await onChanged?.() }} />
+      )}
+
+      {kontrakt === null && active && canMessage && (
         <section className="inspector-section">
           <div className="inspector-kicker">Kontrol</div>
           <div className="agent-actions">
@@ -178,7 +206,7 @@ export function AgentInspector({
         </section>
       )}
 
-      {canMessage && active && (
+      {kontrakt === null && canMessage && active && (
         <section className="inspector-section">
           <div className="inspector-kicker">Besked</div>
           <div className="agent-composer">
@@ -212,7 +240,7 @@ export function AgentInspector({
       )}
       {notice && <div className="agent-feedback">{notice}</div>}
 
-      <section className="inspector-section">
+      {!kontrakt && <section className="inspector-section">
         <div className="inspector-kicker">Kørsler</div>
         {loading && !detail ? <div className="inspector-empty">Henter…</div> : (
           <div className="agent-run-list">
@@ -232,9 +260,9 @@ export function AgentInspector({
             {!runs.length && <div className="inspector-empty">Ingen kørsler.</div>}
           </div>
         )}
-      </section>
+      </section>}
 
-      <section className="inspector-section">
+      {!kontrakt && <section className="inspector-section">
         <div className="inspector-kicker">Beskeder</div>
         <div className="agent-message-list">
           {messages.slice(-20).map((message, index) => (
@@ -245,7 +273,7 @@ export function AgentInspector({
           ))}
           {!messages.length && <div className="inspector-empty">Ingen beskeder.</div>}
         </div>
-      </section>
+      </section>}
     </div>
   )
 }

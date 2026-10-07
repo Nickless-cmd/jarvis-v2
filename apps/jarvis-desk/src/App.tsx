@@ -196,7 +196,15 @@ function Shell({
 }) {
   const { activeId, select } = useSessions()
   const { settings } = useSettings()
+  const panel = usePanel()
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // Inspektoren er en delt rude i højre side; sessionspanelet fra et notifikationskort er flydende og lå oven på
+  // den, så et agentkort (session + inspector) skjulte inspectoren. Bredden gives videre som CSS-variabel.
+  useEffect(() => {
+    const el = document.documentElement
+    el.style.setProperty('--inspektor-bredde', panel.open ? `${panel.width}px` : '0px')
+    return () => { el.style.removeProperty('--inspektor-bredde') }
+  }, [panel.open, panel.width])
   const [searchOpen, setSearchOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   // Fejl-rapporten bor her og ikke i Sidebar, af samme grund som
@@ -206,7 +214,8 @@ function Shell({
   return (
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)}
-               onOpenBug={() => setBugOpen(true)} />
+               onOpenBug={() => setBugOpen(true)}
+               onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
         <PresenceHost />

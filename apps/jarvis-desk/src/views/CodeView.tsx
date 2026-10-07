@@ -1131,6 +1131,7 @@ export function CodeView({
             config={config}
             isOwner={isOwner}
             onCount={setKoerendeJobs}
+            onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })}
             fuld={fuldRude === 'jobs'}
             onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
             onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}

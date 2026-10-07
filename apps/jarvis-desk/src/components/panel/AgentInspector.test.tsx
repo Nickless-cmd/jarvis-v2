@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentInspector } from './AgentInspector'
 import * as api from '../../lib/agentPoolApi'
+import * as kontrakt from '../../lib/agentContractApi'
 
 const config = { apiBaseUrl: 'http://x', authToken: 't' }
 const reference = {
@@ -19,6 +20,8 @@ const detail: api.AgentDetail = {
 beforeEach(() => {
   vi.restoreAllMocks()
   vi.spyOn(api, 'getAgentDetalje').mockResolvedValue(detail)
+  // En gammel agent har ingen kontrakt (404 -> null): inspectoren viser så sin hidtidige visning.
+  vi.spyOn(kontrakt, 'getKontraktAgent').mockResolvedValue(null)
 })
 
 describe('AgentInspector', () => {

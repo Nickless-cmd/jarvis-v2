@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPoolPanel } from './AgentPoolPanel'
 import * as api from '../../../lib/agentPoolApi'
+import * as kontrakt from '../../../lib/agentContractApi'
 
 /**
  * De tre ting der kan gå galt uden at nogen ser det:
@@ -21,6 +22,8 @@ const agent = {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  // En gammel pool-agent har ingen kontrakt (404 -> null); inspectoren viser så sin hidtidige visning.
+  vi.spyOn(kontrakt, 'getKontraktAgent').mockResolvedValue(null)
   vi.spyOn(api, 'getPoolListe').mockResolvedValue({
     agenter: [agent], vist: 1, i_alt: 306, offset: 0, limit: 50,
   })

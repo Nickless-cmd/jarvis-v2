@@ -73,8 +73,8 @@
 @keyframes notif-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 .notif-session-panel {
-  position: fixed; z-index: 65; top: 42px; right: 10px; bottom: 10px;
-  width: min(var(--skinne-bredde, 360px), calc(100vw - 320px));
+  position: fixed; z-index: 65; top: 42px; right: calc(10px + var(--inspektor-bredde, 0px)); bottom: 10px;
+  width: min(var(--skinne-bredde, 360px), calc(100vw - 320px - var(--inspektor-bredde, 0px)));
   display: flex; flex-direction: column; min-width: 290px; overflow: hidden;
   border: 1px solid var(--overlay-line); border-radius: 12px;
   background: var(--bg-2); color: var(--fg-1);

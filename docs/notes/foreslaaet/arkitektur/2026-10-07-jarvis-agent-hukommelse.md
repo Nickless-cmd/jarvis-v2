@@ -164,3 +164,18 @@ og 13/9 gav tre poster i træk, hvor den sidste citerede den forrige.
   efterfølgers rettigheder.
 - `agent_schedules` med 0 rækker betyder, at langtidsagenten først skal bevises
   på scheduler-niveau, før hukommelsen overhovedet får noget at bære over.
+
+## Opfølgning fra Codex 7/10-2026
+
+Knuden ovenfor er lukket i spec'ens §7.2: serveren danner resuméet
+deterministisk fra det gemte, strukturerede terminale resultat. Der er intet
+ekstra model- eller providerkald. Tidligere resuméer bruges ikke som kilde til
+projektionen, og en manglende resultatdel markeres ukendt. En fejl i projektion
+eller lagring registreres særskilt uden at ændre assignmentens udfald.
+
+§8.1 skelner nu mellem skrivende kodeassignments, som får hvert sit worktree,
+og rent læsende review, som kan bruge et uforanderligt snapshot. Runtime skal
+reservere og håndhæve grænser for antal worktrees og diskforbrug på både
+container og workstation; bevarede worktrees tæller med, indtil verificeret
+oprydning. §11.1 kræver test af disse grænser og af den deterministiske
+resumévej.

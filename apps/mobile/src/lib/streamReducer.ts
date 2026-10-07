@@ -252,6 +252,23 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           kilde: cb.kilde,
           tool_use_id: cb.tool_use_id,
         }
+      } else if (cb.type === 'file' || cb.type === 'video') {
+        // 7/10-2026: grenen fandtes ikke, og udsenderen sendte heller ikke
+        // blokken — se `_live_udgivne_blokke` i visible_runs_sse_v2.py. En
+        // widget er `text/html` → typen `file`, så fladen faldt til jorden
+        // her og dukkede først op når tråden blev genindlæst fra serveren.
+        blocks[event.index] = {
+          type: cb.type,
+          src: cb.src,
+          alt: cb.alt,
+          attachment_id: cb.attachment_id,
+          url: cb.url,
+          filename: cb.filename,
+          mime_type: cb.mime_type,
+          size_bytes: cb.size_bytes,
+          kilde: cb.kilde,
+          tool_use_id: cb.tool_use_id,
+        }
       } else if (cb.type === 'tool_result') {
         // Fold resultatet ind på sin matchende tool_use-blok (via tool_use_id) i
         // stedet for at fylde `blocks[event.index]`. Dette er MED VILJE — hvis vi

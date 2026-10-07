@@ -191,16 +191,26 @@ _IDLE_TICK_S = 20.0          # sekunder uden legacy-event før vi tjekker active
 _MAX_IDLE_TICKS = 9          # ~180s total stilhed → kilden er død uanset
 
 
-#: De tre værktøjer der producerer et billede. `openrouter_image_edit` er et
-#: tyndt lag over `generate_image` og deler hele kæden efter kaldet, så den er
-#: lige så ramt af et manglende live-billede som genereringen.
-_BILLEDVAERKTOEJER = frozenset({
-    "openrouter_image", "openrouter_image_edit", "pollinations_image",
-})
+#: (Fjernet 7/10-2026.) Konstanten `_BILLEDVAERKTOEJER` gatede den levende
+#: udgivelses-blok til billedværktøjerne alene. En widget udgives af
+#: `vis_widget`, som ikke er et billedværktøj — så fladen blev aldrig sendt.
+#: Udsenderen kalder nu `_live_udgivne_blokke` for ETHVERT værktøj;
+#: `peek_efter_tool_use` giver tom liste for alle andre, så det koster intet.
 
 
-def _live_billedblokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
-    """Billedblokke for turen der endnu ikke er sendt, klar til den levende stream.
+def _live_udgivne_blokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
+    """Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream.
+
+    ## Hvorfor navnet ikke længere er «billedblokke» (7/10-2026)
+
+    Funktionen hed `_live_billedblokke` og filtrerede hårdt:
+    `if b.get("type") != "image": continue`. Den gjorde præcis hvad navnet
+    sagde — men en widget er `text/html`, og `_bloktype` giver den typen
+    `file`. Så fladen blev droppet her og nåede aldrig nogen klient; den
+    dukkede først op når tråden blev genindlæst fra `content_json`.
+
+    Samme hul ramte `video` og `publish_file`. Fælles for dem alle: de er
+    udgivelser, ikke billeder, og strømmen skal sende dem alle.
 
     Noterne kommer fra `published_files` — dem værktøjet lagde fra sig under
     turen — og læses med `peek`, ikke `take`: den der persisterer svaret
@@ -233,8 +243,8 @@ def _live_billedblokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[
     poster = peek_efter_tool_use(tool_use_id)
     blokke = []
     for b in as_blocks(poster):
-        if b.get("type") != "image":
-            continue
+        # 7/10-2026: send ALT turen udgav, ikke kun billeder. En widget er
+        # `text/html` → typen `file`, og den blev droppet netop her.
         noegle = str(b.get("attachment_id") or b.get("url") or b.get("filename") or "")
         if not noegle or noegle in allerede_sendt:
             continue
@@ -244,6 +254,11 @@ def _live_billedblokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[
         return []
     from core.services.attachment_service import image_data_url
     for blok in blokke:
+        # Kun billeder og videoer får en data-URL. En `file` er en REFERENCE:
+        # at lægge et helt HTML-dokument ind i strømmen ville sende fladen som
+        # data i stedet for at lade klienten hente den med sit token.
+        if blok.get("type") not in ("image", "video"):
+            continue
         aid = str(blok.get("attachment_id") or "")
         if not aid:
             continue
@@ -639,18 +654,21 @@ async def translate_to_v2(
         # `pollinations_image`, og det ville ingen opdage, fordi man tester med
         # det værktøj man selv bruger.
         try:
-            if name in _BILLEDVAERKTOEJER:
-                for _blok in _live_billedblokke(tool_id, _sendte_billeder):
-                    _img_idx = _alloc_index()
-                    await queue.put(_sse_format("content_block_start", {
-                        "type": "content_block_start",
-                        "index": _img_idx,
-                        "content_block": _blok,
-                    }))
-                    await queue.put(_sse_format("content_block_stop", {
-                        "type": "content_block_stop",
-                        "index": _img_idx,
-                    }))
+            # 7/10-2026: kaldt for ETHVERT værktøj, ikke kun billedværktøjerne.
+            # En widget udgives af `vis_widget`, som ikke er et billedværktøj —
+            # så den levende blok blev aldrig sendt. `peek_efter_tool_use` giver
+            # tom liste for alle andre værktøjer, så kaldet koster intet.
+            for _blok in _live_udgivne_blokke(tool_id, _sendte_billeder):
+                _img_idx = _alloc_index()
+                await queue.put(_sse_format("content_block_start", {
+                    "type": "content_block_start",
+                    "index": _img_idx,
+                    "content_block": _blok,
+                }))
+                await queue.put(_sse_format("content_block_stop", {
+                    "type": "content_block_stop",
+                    "index": _img_idx,
+                }))
         except Exception as _img_exc:
             # Et billede der ikke kan sendes live må aldrig brække streamen —
             # den persisterede blok bygges stadig når svaret gemmes, så

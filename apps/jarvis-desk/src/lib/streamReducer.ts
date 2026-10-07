@@ -250,6 +250,37 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         kilde: cb.kilde,
         tool_use_id: cb.tool_use_id,
       }
+      // UDGIVET fil eller video UNDER kørslen (7/10-2026).
+      //
+      // Renderen har hele tiden kunnet vise dem (`BlocksRenderer`,
+      // `foldToolResults`), men grenen fandtes ikke her — og udsenderen
+      // sendte dem heller ikke. En widget er `text/html` → typen `file`, så
+      // fladen faldt til jorden i den levende strøm og dukkede først op når
+      // tråden blev genindlæst fra `content_json`.
+      else if (cb.type === 'file') blocks[event.index] = {
+        // Tilstandstypen `file` bærer KUN referencen — `src`/`alt`/
+        // `tool_use_id` findes ikke på den (kun på `image` og `video`).
+        // Udsenderen sender dem heller ikke for en fil.
+        type: 'file',
+        filename: cb.filename,
+        url: cb.url,
+        attachment_id: cb.attachment_id,
+        mime_type: cb.mime_type,
+        size_bytes: cb.size_bytes,
+        kilde: cb.kilde,
+      }
+      else if (cb.type === 'video') blocks[event.index] = {
+        type: 'video',
+        src: cb.src,
+        alt: cb.alt,
+        attachment_id: cb.attachment_id,
+        url: cb.url,
+        filename: cb.filename,
+        mime_type: cb.mime_type,
+        size_bytes: cb.size_bytes,
+        kilde: cb.kilde,
+        tool_use_id: cb.tool_use_id,
+      }
       else if (cb.type === 'tool_result') {
         const idx = blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === cb.tool_use_id)
         if (idx >= 0) {

@@ -372,3 +372,41 @@ describe('billedet i den levende stream (27/9-2026)', () => {
     expect(s.blocks[1]).toMatchObject({ type: 'image' })
   })
 })
+
+// ── Udgivet fil/video i den levende strøm (7/10-2026) ─────────────────────
+//
+// Grenen fandtes ikke, og udsenderen sendte heller ikke blokken. En widget er
+// `text/html` → typen `file`; den faldt derfor til jorden i den levende strøm
+// og dukkede først op når tråden blev genindlæst fra `content_json`.
+
+describe('udgivet fil i den levende strøm (7/10-2026)', () => {
+  const start = (cb: Record<string, unknown>) => reduce([
+    { type: 'content_block_start', index: 0, content_block: cb } as StreamEvent,
+  ])
+
+  it('en widget-blok (file + attachment_id + generated) lander i blocks', () => {
+    const s = start({
+      type: 'file', filename: 'widget-20261007T063003248515.html',
+      mime_type: 'text/html', attachment_id: 'att-w1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({
+      type: 'file', attachment_id: 'att-w1', kilde: 'generated',
+    })
+  })
+
+  it('en almindelig udgivet fil bevares ogsaa — den er ikke kun for widgets', () => {
+    const s = start({
+      type: 'file', filename: 'rapport.pdf', mime_type: 'application/pdf',
+      url: 'https://jarvis.srvlab.dk/rapport.pdf', kilde: 'published',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'file', kilde: 'published' })
+  })
+
+  it('en video-blok lander ogsaa — samme hul ramte den', () => {
+    const s = start({
+      type: 'video', filename: 'k.mp4', mime_type: 'video/mp4',
+      attachment_id: 'att-v1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'video', attachment_id: 'att-v1' })
+  })
+})

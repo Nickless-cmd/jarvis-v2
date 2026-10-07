@@ -604,6 +604,49 @@ describe('billedet i den levende stream (27/9-2026)', () => {
   })
 })
 
+// ── Udgivet fil/video i den levende strøm (7/10-2026) ─────────────────────
+//
+// Grenen fandtes ikke, og udsenderen sendte heller ikke blokken: en widget er
+// `text/html` → typen `file`, og `_live_billedblokke` droppede alt der ikke
+// var `image`. Fladen faldt derfor til jorden i den levende strøm og dukkede
+// først op når tråden blev genindlæst fra `content_json`.
+//
+// Testen fanger BEGGE led: at typen findes i protokollen, og at reduceren
+// lægger blokken på sit index med sin reference i behold.
+
+describe('udgivet fil i den levende strøm (7/10-2026)', () => {
+  const start = (cb: Record<string, unknown>) =>
+    streamReducer(initialStreamState(), {
+      type: 'content_block_start', index: 0, content_block: cb,
+    } as never)
+
+  it('en widget-blok (file + attachment_id + generated) lander i blocks', () => {
+    const s = start({
+      type: 'file', filename: 'widget-20261007T063003248515.html',
+      mime_type: 'text/html', attachment_id: 'att-w1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({
+      type: 'file', attachment_id: 'att-w1', kilde: 'generated',
+    })
+  })
+
+  it('en widget-blok uden attachment_id er IKKE en widget — men blokken bevares', () => {
+    const s = start({
+      type: 'file', filename: 'rapport.pdf', mime_type: 'application/pdf',
+      attachment_id: 'att-p1',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'file', attachment_id: 'att-p1' })
+  })
+
+  it('en video-blok lander ogsaa — samme hul ramte den', () => {
+    const s = start({
+      type: 'video', filename: 'k.mp4', mime_type: 'video/mp4',
+      attachment_id: 'att-v1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'video', attachment_id: 'att-v1' })
+  })
+})
+
 // ── Blinket: et tomt message_start-id maa ikke rydde blokke (1/10-2026) ────
 
 describe('blinket', () => {

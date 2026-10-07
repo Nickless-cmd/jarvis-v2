@@ -45,6 +45,39 @@ export interface ContentBlockStartEvent {
         kilde?: string
         tool_use_id?: string
       }
+    // UDGIVET fil eller video UNDER kørslen (7/10-2026). Samme konvolut og
+    // samme reference-felter som `image` — kun typen er forskellig.
+    //
+    // Uden dem her kunne reduceren ikke engang sammenligne på typen: en widget
+    // er `text/html` → `file`, og den faldt til jorden i den levende strøm.
+    // Den dukkede først op når tråden blev genindlæst fra `content_json`.
+    | {
+        type: 'file'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        // PÅKRÆVET, ikke valgfri: `as_blocks` springer poster uden filnavn over,
+        // og tilstandstypen `ContentBlock` kræver den. Gjorde jeg den valgfri
+        // her, kunne reduceren ikke tildele blokken til tilstanden.
+        filename: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
+    | {
+        type: 'video'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        size_bytes?: number
+        kilde?: string
+        tool_use_id?: string
+      }
 }
 
 export interface ContentBlockDeltaEvent {

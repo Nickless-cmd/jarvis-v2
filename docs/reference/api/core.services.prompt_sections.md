@@ -12,8 +12,8 @@ _Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L42) |
-| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Kort status for netop denne ejers og sessions aabne agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L54) |
+| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L43) |
+| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L58) |
 
 ## `core/services/prompt_sections/attention_frame.py`
 _Cognitive-frame cache + attention-budget selection for prompts._

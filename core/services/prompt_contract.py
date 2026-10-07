@@ -1575,6 +1575,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # agent-contract-v1 (F3): konstant orkestratorsektion, tom naar motoren er slukket.
     from core.services.prompt_sections.agent_orchestration import orchestrator_section
     _awareness_add(8, "agent orchestration", orchestrator_section())
+    # agent-contract-v1 (G5): LEVENDE agenttilstand ved turstart. Dynamisk (skifter fra tur til tur) =>
+    # kun i den uncachede hale via _tail_add - aldrig i det cachede praefiks (se section_placement).
+    try:
+        from core.identity.workspace_context import current_user_id as _ag_uid
+        from core.services.prompt_sections.agent_orchestration import orchestrator_state
+        _tail_add("agent status", orchestrator_state(owner_user_id=str(_ag_uid() or ""),
+                                                     session_id=session_id or ""))
+    except Exception as _e:
+        _sec_err("agent status", _e)
 
     _awareness_add(7, "no tool-result echo", (
         "Tool-resultater: efter et værktøjskald, sammenfat resultatet med dine EGNE "

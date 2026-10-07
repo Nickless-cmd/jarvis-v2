@@ -52,8 +52,6 @@ TILLADTE: dict[str, str] = {
         "svarvejen — beskeden er turens eget svar",
     "apps/api/jarvis_api/routes/chat_stream_v2.py":
         "den streamende svarvej — samme sag",
-    "core/services/client_turn_absorb.py":
-        "absorberer en tur en klient allerede har vist; ikke en indsprøjtning",
     # Vagten selv og køens udløb — de ER mekanismen.
     "core/services/notification_bridge.py":
         "vagten selv: den skriver først EFTER at have spurgt om sessionen er aktiv",

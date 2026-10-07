@@ -2,42 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/inheritance_seed.py`
-_Inheritance seed — writes near-thoughts before version transition or shutdown._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `write_inheritance_seed` | `()` | Collect near-thoughts from active daemons and write to workspace. | [src](../../../core/services/inheritance_seed.py#L23) |
-| function | `read_inheritance_seed` | `()` | Read inheritance seed from workspace. Returns empty string if not found. | [src](../../../core/services/inheritance_seed.py#L67) |
-| function | `_collect_sections` | `()` | — | [src](../../../core/services/inheritance_seed.py#L84) |
-| function | `_collect_pending_proposals` | `()` | — | [src](../../../core/services/inheritance_seed.py#L94) |
-| function | `_collect_open_curiosity` | `()` | — | [src](../../../core/services/inheritance_seed.py#L104) |
-| function | `_collect_creative_drift` | `()` | — | [src](../../../core/services/inheritance_seed.py#L114) |
-| function | `_collect_unresolved_tensions` | `()` | — | [src](../../../core/services/inheritance_seed.py#L124) |
-| function | `_collect_thought_stream` | `()` | — | [src](../../../core/services/inheritance_seed.py#L135) |
-
-## `core/services/initiative_accumulator.py`
-_Initiative Accumulator — proactive wants that accumulate between ticks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Want` | `` | A want that Jarvis develops between ticks. | [src](../../../core/services/initiative_accumulator.py#L24) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/initiative_accumulator.py#L52) |
-| function | `_fra_raa` | `(raa)` | — | [src](../../../core/services/initiative_accumulator.py#L56) |
-| function | `_alder_s` | `(want, nu)` | — | [src](../../../core/services/initiative_accumulator.py#L72) |
-| function | `_levende` | `(wants, nu=…)` | — | [src](../../../core/services/initiative_accumulator.py#L80) |
-| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/initiative_accumulator.py#L85) |
-| function | `_gem` | `()` | — | [src](../../../core/services/initiative_accumulator.py#L106) |
-| function | `accumulate_wants` | `(duration)` | Accumulate wants based on life phase and duration. | [src](../../../core/services/initiative_accumulator.py#L118) |
-| function | `get_top_want` | `()` | Get the strongest current want. | [src](../../../core/services/initiative_accumulator.py#L190) |
-| function | `get_wants_by_type` | `(want_type)` | Get all wants of a specific type. | [src](../../../core/services/initiative_accumulator.py#L200) |
-| function | `format_wants_for_prompt` | `()` | Format wants for prompt injection. | [src](../../../core/services/initiative_accumulator.py#L206) |
-| function | `clear_wants_by_type` | `(want_type)` | Clear wants of a specific type. | [src](../../../core/services/initiative_accumulator.py#L223) |
-| function | `reset_initiative_accumulator` | `()` | Reset initiative accumulator state (for testing). | [src](../../../core/services/initiative_accumulator.py#L232) |
-| function | `get_initiative_accumulator_state` | `()` | Get current state of initiative accumulator. | [src](../../../core/services/initiative_accumulator.py#L244) |
-| function | `build_initiative_accumulator_surface` | `()` | Build MC surface for initiative accumulator. | [src](../../../core/services/initiative_accumulator.py#L263) |
-| function | `_publish_initiative_accumulator_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/initiative_accumulator.py#L277) |
-
 ## `core/services/initiative_queue.py`
 _Persistent initiative queue — bridges inner voice thoughts to heartbeat actions._
 
@@ -464,14 +428,6 @@ _JarvisX tool-bridge — bidirectional dispatch over WebSocket._
 | function | `set_main_loop` | `(loop)` | Register the main uvicorn loop. Called from app startup. | [src](../../../core/services/jarvisx_bridge.py#L820) |
 | function | `get_main_loop` | `()` | Return the registered main loop, or None if not set yet. | [src](../../../core/services/jarvisx_bridge.py#L826) |
 
-## `core/services/jc_tool_telemetry.py`
-_jc_tool_telemetry.py — per-tool eventbus telemetry for jarvis-code's_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `publish_tool_step` | `(*, tool, status, duration_ms=…, bytes_=…, user_id=…, session_id=…)` | Publish one `tool.jc_step` eventbus event. Returns True on a | [src](../../../core/services/jc_tool_telemetry.py#L22) |
-| function | `publish_tool_steps` | `(steps, *, user_id=…, session_id=…)` | Publish a BATCH of per-tool steps (the client's step envelope may | [src](../../../core/services/jc_tool_telemetry.py#L44) |
-
 ## `core/services/jobs_engine.py`
 _Jobs Engine — proper async job queue with provider selection and cost tracking._
 
@@ -679,4 +635,58 @@ _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 | function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L360) |
 | function | `module_is_alive` | `(name)` | True naar modulet ikke er doedt. En `projektion` gemmer intet og lever. | [src](../../../core/services/liveness_registry.py#L365) |
 | function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L375) |
+
+## `core/services/living_executive.py`
+_Living Executive — Jarvis' active impulse/choice/action loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/living_executive.py#L64) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/living_executive.py#L68) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/living_executive.py#L79) |
+| function | `build_living_executive_surface` | `(*, limit=…)` | — | [src](../../../core/services/living_executive.py#L83) |
+| function | `choose_impulse` | `(events)` | — | [src](../../../core/services/living_executive.py#L108) |
+| function | `process_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L120) |
+| function | `run_once` | `(*, events=…)` | One non-daemon pass used by tests and manual MC experiments. | [src](../../../core/services/living_executive.py#L127) |
+| function | `execute_impulse` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L137) |
+| function | `_impulse_from_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L171) |
+| function | `_impulse` | `(*, source_event_id, source_kind, felt_signal, impulse, intensity, action_id, choice, payload, cooldown_key, cooldown_seconds=…)` | — | [src](../../../core/services/living_executive.py#L356) |
+| function | `_genoptag_loft_naaet` | `()` | Hvor mange genoptagelser er der fyret i det sidste vindue? | [src](../../../core/services/living_executive.py#L383) |
+| function | `_noter_genoptagelse` | `()` | — | [src](../../../core/services/living_executive.py#L397) |
+| function | `_action_schedule_self_wakeup` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L407) |
+| function | `_action_record_focus_intent` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L440) |
+| function | `_action_create_jarvis_brain_observation` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L459) |
+| function | `_action_propose_tool_plan` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L474) |
+| function | `_record_trace` | `(impulse, *, status, outcome, details=…)` | — | [src](../../../core/services/living_executive.py#L515) |
+| function | `_attach_memory_precedents` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L582) |
+| function | `_recent_memory_precedents` | `(*, action_hint=…, tool_hint=…, limit=…)` | — | [src](../../../core/services/living_executive.py#L596) |
+| function | `_choice_bias_from_precedents` | `(impulse, precedents)` | — | [src](../../../core/services/living_executive.py#L631) |
+| function | `_emotional_choice_precedents` | `(*, limit)` | — | [src](../../../core/services/living_executive.py#L651) |
+| function | `_tool_family` | `(tool_name)` | — | [src](../../../core/services/living_executive.py#L671) |
+| function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L679) |
+| function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L740) |
+| function | `_afbrudte_fra_db` | `(*, minutter=…, maks=…)` | Afbrydelses-events fra DB'en — delt paa tvaers af processer. | [src](../../../core/services/living_executive.py#L752) |
+| function | `_allerede_besvaret` | `(run_id)` | Er brugeren gaaet videre siden den her koersel doede? | [src](../../../core/services/living_executive.py#L795) |
+| function | `indhent_forsoemte_afbrydelser` | `(*, minutter=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L840) |
+| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L881) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L902) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L911) |
+
+## `core/services/living_heartbeat_cycle.py`
+_Living Heartbeat Cycle — Jarvis' inner life rhythm._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `determine_life_phase` | `(*, hour=…)` | Determine current life phase based on time of day. | [src](../../../core/services/living_heartbeat_cycle.py#L111) |
+| function | `_should_enter_play_mode` | `()` | Return True when internal state calls for unstructured exploration. | [src](../../../core/services/living_heartbeat_cycle.py#L156) |
+| function | `format_life_phase_for_prompt` | `(phase)` | Format life phase info for heartbeat prompt injection. | [src](../../../core/services/living_heartbeat_cycle.py#L176) |
+| function | `build_living_heartbeat_cycle_surface` | `()` | MC surface for living heartbeat cycle. | [src](../../../core/services/living_heartbeat_cycle.py#L193) |
+| function | `_emit_living_heartbeat_cycle_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/living_heartbeat_cycle.py#L204) |
+
+## `core/services/llm_json.py`
+_Traek et JSON-objekt ud af et LLM-svar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `udtraek_json` | `(raw)` | Foerste komplette JSON-objekt i `raw`, eller None. | [src](../../../core/services/llm_json.py#L33) |
 

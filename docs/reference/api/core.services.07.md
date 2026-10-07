@@ -621,23 +621,6 @@ _Clarification classifier — score user-message ambiguity._
 | function | `build_clarification_classifier_surface` | `()` | Mission Control surface — does not call the classifier (would need a | [src](../../../core/services/clarification_classifier.py#L116) |
 | function | `_emit_classifier_event` | `(verdict, score)` | — | [src](../../../core/services/clarification_classifier.py#L128) |
 
-## `core/services/client_turn_absorb.py`
-_client_turn_absorb.py — fyr den fulde post-tur-hjerne for en KLIENT-drevet tur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_do_absorb` | `(run, assistant_response, user_id)` | Synkron post-process-firing (testbar). Kører i user_context så memory/workspace | [src](../../../core/services/client_turn_absorb.py#L23) |
-| function | `persist_client_turn` | `(*, session_id, user_message, assistant_response, user_id=…)` | Fase C1 (delte sessioner): persistér en KLIENT-drevet turs beskeder til den DELTE | [src](../../../core/services/client_turn_absorb.py#L45) |
-| function | `absorb_client_turn` | `(*, session_id, run_id, user_message, assistant_response, provider=…, model=…, user_id=…, lane=…)` | Konstruér en VisibleRun fra klient-data og fyr post-process i en baggrundstråd | [src](../../../core/services/client_turn_absorb.py#L69) |
-
-## `core/services/client_turn_live.py`
-_client_turn_live.py — cross-device live-broadcast for en KLIENT-drevet tur (C2b)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `begin_live_turn` | `(*, session_id, run_id, user_message=…, provider=…, model=…, user_id=…)` | Registrér turen som det aktive visible run + åbn run_follow (kun for ægte | [src](../../../core/services/client_turn_live.py#L23) |
-| function | `end_live_turn` | `(*, session_id, run_id=…)` | Ryd active-run (kun hvis det stadig er DETTE run — undgå at rydde en efterfølger) | [src](../../../core/services/client_turn_live.py#L66) |
-
 ## `core/services/cluster_daemon.py`
 _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._
 
@@ -785,4 +768,33 @@ _Cluster-daemon FAMILIES — the second file of consolidated nerve-families._
 | function | `_infra_feedback_review_live` | `(snap)` | Giv Jarvis månedens tommel-op/ned at tænke over. Rules-based, no LLM. | [src](../../../core/services/cluster_daemon_families.py#L1358) |
 | function | `_run_infra_unconditional` | `(snap, result)` | Run every infra member UNCONDITIONALLY (this family has no LLM/gated tier), | [src](../../../core/services/cluster_daemon_families.py#L1393) |
 | function | `tick_cluster_infra` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the infra/maintenance cluster-daemon family (#10). | [src](../../../core/services/cluster_daemon_families.py#L1410) |
+
+## `core/services/cluster_family_scheduler.py`
+_Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er det tid til?»_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_running` | `()` | Lever tråden? Siger intet om hvorvidt den udretter noget — se iterations(). | [src](../../../core/services/cluster_family_scheduler.py#L70) |
+| function | `iterations` | `()` | Gennemløb siden start. Står tallet stille, er løkken væk. | [src](../../../core/services/cluster_family_scheduler.py#L75) |
+| function | `stop_event` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L80) |
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, kører vi videre. | [src](../../../core/services/cluster_family_scheduler.py#L84) |
+| function | `_tick_functions` | `()` | Slå familiernes tick-funktioner op. De bor i to moduler efter en udskillelse. | [src](../../../core/services/cluster_family_scheduler.py#L93) |
+| function | `_is_due` | `(family, cadence_minutes, last_run_at)` | Er familien forfalden efter sin egen kadence? | [src](../../../core/services/cluster_family_scheduler.py#L114) |
+| function | `run_due_families` | `()` | Kør de familier der er forfaldne. Returnerer hvad der skete — også til test. | [src](../../../core/services/cluster_family_scheduler.py#L130) |
+| function | `_loop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L177) |
+| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L211) |
+| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L226) |
+| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L236) |
+
+## `core/services/code_aesthetic_daemon.py`
+_Code aesthetic daemon — weekly aesthetic reflection on the codebase._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_code_aesthetic_daemon` | `()` | Run aesthetic analysis if cadence elapsed. Returns {generated, reflection}. | [src](../../../core/services/code_aesthetic_daemon.py#L39) |
+| function | `get_latest_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L64) |
+| function | `build_code_aesthetic_surface` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L68) |
+| function | `_get_recent_git_changes` | `()` | Get last 10 commit messages and changed file summary. | [src](../../../core/services/code_aesthetic_daemon.py#L81) |
+| function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
+| function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L119) |
 

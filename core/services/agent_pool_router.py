@@ -3,7 +3,33 @@ router gennem det Central-ejede beslutnings-punkt — kvote-bevidst allerede på
 den PRIMÆRE hop (i dag er kun fallback kvote-aware).
 
 Bærer også kvalitets-lærings-loopet (§4.4): task_scores opdateres fra rigtige
-agent-outcomes så poolen lærer hvilke modeller der er gode til hvad."""
+agent-outcomes så poolen lærer hvilke modeller der er gode til hvad.
+
+## Ejerparameteren (tilføjet 7/10-2026)
+
+Indtil i dag kunne `route_agent_task` ikke se hvem den arbejdede for. Spec'ens
+§7.1 hviler på præcis det ene argument: kun Bjørns opgaver må falde tilbage til
+hans DeepSeek-API, og ingen anden ejer må nå den. Uden ejeren i kaldet kan den
+regel ikke håndhæves nogen steder i kæden — den kan ikke engang formuleres.
+
+Parameteren er derfor en forudsætning, ikke en tilføjelse der kan vente: den
+skal ind FØR nogen anden leverance rører modelvalg, ellers bygges
+fallback-logikken oven på en funktion der ikke kan se hvem den arbejder for.
+
+Den lukker ikke grænsen alene. Spec'en kræver at rettigheden kontrolleres igen
+VED providerkaldet, ikke kun i routeren. Parameteren her er det input det
+værn skal bruge — ikke værnets afløser.
+
+## `route_source` og `fitness_ukendt`
+
+Spec'ens §7.1 gemmer beslutningen med `route_source` (`explicit`, `agent_pool`,
+`owner_deepseek_fallback`, `cheap_lane_fallback`). Denne funktion ER
+agent-pool-hoppet, så den sætter `agent_pool` — og kalderen kan se om svaret kom
+fra poolen eller fra et fitness-fald nedenfor.
+
+`fitness_ukendt=True` betyder at fitness-kontrollen FEJLEDE, ikke at modellen er
+godkendt. Se kommentaren i except-grenen.
+"""
 from __future__ import annotations
 
 import logging
@@ -14,19 +40,25 @@ logger = logging.getLogger(__name__)
 
 def route_agent_task(*, kind: str = "default", min_tokens: int = 0,
                      quality_threshold: float = 0.0, allow_paid: bool = False,
-                     exclude: frozenset[str] = frozenset()) -> dict[str, Any]:
+                     exclude: frozenset[str] = frozenset(),
+                     owner_user_id: str | None = None) -> dict[str, Any]:
     """Vælg (provider, model) for en agent-task via central_route. Aldrig tør.
 
     allow_paid=False (default): kun GRATIS modeller (Jarvis' frie valg). allow_paid=True
     ("rigtig opgave"): betalte Copilot-premium (Claude/GPT-5.6) bliver også kandidater,
-    scoret på kvalitet — de vælges først (høj prioritet) fordi de er bedst."""
+    scoret på kvalitet — de vælges først (høj prioritet) fordi de er bedst.
+
+    `owner_user_id` er den autentificerede ejer af opgaven. Den følger med ind i
+    rutebeslutningen, så §7.1's ejerafhængige fallback kan afgøres på fakta i
+    stedet for på et gæt om hvem der spørger."""
     from core.services import central_route
 
     def _rut(ekskl: frozenset[str]):
         return central_route.route(
             lane="agent",
             task={"kind": kind, "min_tokens": min_tokens,
-                  "quality_threshold": quality_threshold, "allow_paid": allow_paid},
+                  "quality_threshold": quality_threshold, "allow_paid": allow_paid,
+                  "owner_user_id": owner_user_id},
             exclude=ekskl,
         )
 
@@ -58,8 +90,24 @@ def route_agent_task(*, kind: str = "default", min_tokens: int = 0,
                 logger.info("agent-router: falder tilbage til målt bedste %s/%s", p2, m2)
                 r = dict(r); r["provider"], r["model"] = p2, m2
                 r["fitness_fallback"] = True
-    except Exception:
-        pass  # fitness må aldrig kunne blokere en agent i at blive født
+    except Exception as exc:
+        # MÅLT 7/10-2026: grenen hed `except Exception: pass`. Den kunne ikke
+        # skelne «fitness-tabellen er tom» (ukendt → tilladt, korrekt) fra
+        # «fitness-kontrollen er i stykker» (bør ses). Begge endte samme sted,
+        # så en måling der ALDRIG kørte så ud som et lovligt svar. Det er samme
+        # fejlform som `_BILLEDVAERKTOEJ`-sagen: tavs fejl bliver til en værdi
+        # man ikke kan skelne fra et gyldigt udfald.
+        #
+        # Værn: fejlen logges, og returværdien siger eksplicit at kontrollen
+        # ikke kørte — så kaldestedet kan se forskel på «ukendt» og «godkendt».
+        logger.warning("agent-router: fitness-kontrollen fejlede — ruten er "
+                       "ukontrolleret, ikke godkendt: %s", exc)
+        r = dict(r)
+        r["fitness_ukendt"] = True
+
+    # Denne funktion ER agent-pool-hoppet. Uden kilden på returværdien kan
+    # kalderen ikke se om svaret kom fra puljen eller fra et fald nedenfor.
+    r.setdefault("route_source", "agent_pool")
     return r
 
 

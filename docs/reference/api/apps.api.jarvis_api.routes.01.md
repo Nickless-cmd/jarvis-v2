@@ -45,60 +45,6 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L629) |
 | function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L642) |
 
-## `apps/api/jarvis_api/routes/agent_audit.py`
-_Agent-audit-trail route (Fase 5 Task 9) — GET /v1/agent/audit._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_flag` | `(name, default=…)` | Mirror agent_loop.py's `_flag` — fail-safe DB-backed runtime flag read. | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L20) |
-| function | `record_if_enabled` | `(*, user_id, role, tool, target_summary=…, decision=…)` | Write one audit row IFF `jc_audit_trail` is on. Inert (no-op, no DB | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L28) |
-| function | `agent_audit` | `(user_id=…, limit=…)` | Owner-only readback of the audit trail. Non-owner callers get 403. | [src](../../../apps/api/jarvis_api/routes/agent_audit.py#L42) |
-
-## `apps/api/jarvis_api/routes/agent_loop.py`
-_Client-owned agent loop: /v1/agent/step._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_role` | `()` | Caller role. Mirror /v1/tools/native (owner default). Owner token -> 'owner'. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L45) |
-| function | `_owner_scoped_user_id` | `(raw, role)` | jarvis-code (owner-authed) sender ofte TOMT user_id → uden det kan memory/ | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L54) |
-| function | `_parse_xml_tool_calls` | `(text)` | Extract <tool_call>{json}</tool_call> tags from `text` and normalise | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L79) |
-| function | `_strip_xml_tool_calls` | `(text)` | Remove <tool_call>...</tool_call> tags from `text` (used once they've | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L106) |
-| function | `_apply_xml_toolcall_fallback` | `(content, tool_calls)` | Behind jc_xml_toolcall_fallback: if native tool_calls is empty AND the | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L113) |
-| function | `_apply_privilege_enforcement` | `(role, requested_mode)` | Fase 5 Task 1 (server half): owner-only privilege gate for the | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L129) |
-| function | `_flag` | `(name, default=…)` | Read a runtime-state boolean flag. Fail-safe: any error/absence -> default. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L153) |
-| function | `_settings` | `()` | RuntimeSettings for the jarvis-code Fase 4 parity flags (config-file backed, | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L170) |
-| function | `_emit_agent_nerve` | `(*, status, provider, model, tokens_in, tokens_out, cost_usd, duration_ms, tool_calls, finish_reason, user_id, session_id)` | Make the client-owned agent lane visible in Den Intelligente Central. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L184) |
-| function | `_resolve_workspace_name` | `(user_id)` | Map an authenticated caller's user_id to their workspace name. Empty user_id | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L204) |
-| function | `_extract_text` | `(content)` | Extract plain text from a message `content` that may be a str OR an array of | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L220) |
-| function | `_sse` | `(event, data)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L236) |
-| function | `_system_prompt_intro` | `(name)` | Fase 6 Task 5: pick the caller-appropriate framing sentence. Owner | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L266) |
-| function | `_skill_catalog` | `()` | Owner-approved skill catalog for the system prompt (Fase 3, Task 3). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L314) |
-| function | `_identity_context` | `(name=…)` | Kompakt identitets-lag (SOUL + IDENTITY + USER) fra `name`-workspace — nok til at | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L355) |
-| function | `_full_context` | `(user_message, name=…)` | FULD Jarvis-kontekst (memory-recall + cognitive_state + indre liv + awareness) til | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L383) |
-| function | `_build_system_prompt` | `(context, user_message=…, name=…, env=…)` | context: 'none' (ren coding) | 'identity' (stemme + kender brugeren, default) | | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L422) |
-| function | `_apply_dynamic_tail_split` | `(chat_messages, enabled)` | Fase A1: honorér DYNAMIC_TAIL_SENTINEL i system-beskeden — klip systemet ved | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L472) |
-| function | `_apply_volatile_prepend` | `(chat_messages)` | Option B (frys-halen, 2026-07-19): klip system ved DYNAMIC_TAIL_SENTINEL og | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L501) |
-| function | `_normalize_reasoning_for_provider` | `(messages, provider)` | Fase 4 Task S: keep `reasoning_content` on assistant(+tool_calls) messages for | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L541) |
-| function | `_resolve_target` | `()` | (provider, model) for /v1/agent/step (jarvis-code klient-loop + subagenter). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L561) |
-| function | `_openai_compat_credentials` | `(provider)` | (auth_profile, base_url) for en openai-compatible provider (jf. visible-adapteren). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L588) |
-| function | `list_native_tools` | `()` | List Jarvis' native (server-side) tools + deres lås-status (owner-styring). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L617) |
-| function | `tools_catalog` | `(unlocked=…)` | Kurateret jc tool-katalog. Låst: companions + load_more. Åbnet: + runtime_-aliaser. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L636) |
-| class | `_ExecBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L651) |
-| function | `tools_execute` | `(body)` | Forwarded execution for jarvis-code (jc): jc forwards a non-local tool call | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L660) |
-| function | `toggle_native_tool` | `(request)` | Lås/lås-op et native tool. Body: {name: str, enabled: bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L790) |
-| function | `agent_step` | `(request)` | Ét client-owned model-tur. Body: {messages:[...], tools:[...], stream?:bool}. | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L807) |
-| function | `_stream_step` | `(*, provider, model, auth_profile, base_url, chat_messages, tools, session_id=…, user_id=…, extra_body=…, reasoning_replay_enabled=…, cache_contract_enabled=…, prefix_sha=…, prefix_len=…, follow_tee=…, volatile_block=…)` | Sync generator: stream ét model-tur som SSE. Bygger på det lav-niveau | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1165) |
-| class | `_AbsorbBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1317) |
-| function | `agent_turn_absorb` | `(body)` | Absorbér en klient-drevet tur i hjernen (post-process). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1328) |
-| class | `_TurnLiveBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1357) |
-| function | `_live_follow_active` | `(settings, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1372) |
-| function | `_follow_publish_line` | `(session_id, line)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1377) |
-| function | `_follow_begin_frames` | `(session_id, run_id, provider, model)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1385) |
-| function | `_follow_delta_frame` | `(session_id, text)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1397) |
-| function | `_follow_end_frames` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1406) |
-| function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1419) |
-| function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1442) |
-
 ## `apps/api/jarvis_api/routes/agent_pool.py`
 _Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._
 
@@ -631,4 +577,28 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 | function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
 | function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
 | function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
+
+## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
+_Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L20) |
+| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
+| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
+| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
+
+## `apps/api/jarvis_api/routes/cheap_balancer.py`
+_Mission Control endpoints for cheap_lane_balancer telemetry + controls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_state` | `()` | Return full snapshot: pool, slot states, recent calls. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L12) |
+| function | `reset` | `(slot_id)` | Clear breaker, cooldown, and consecutive_failures for a slot. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L19) |
+| function | `disable` | `(slot_id)` | Force a slot's weight to 0 (excluded from selection until enabled). | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L26) |
+| function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
+| function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
+| function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
+| function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
+| function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
 

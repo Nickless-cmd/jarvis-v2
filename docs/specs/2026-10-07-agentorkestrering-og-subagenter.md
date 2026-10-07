@@ -32,7 +32,7 @@ Systemet omfatter både engangsagenter, agenter som kan få nye ture, og langvar
 - `core/tools/operator_tools.py` og `core/tools/simple_tools_operator.py` giver eksplicitte operator-værktøjer til klientens maskine. `core/services/operator_channel.py` kan i dag omdirigere almindelig `bash` til ejerens workstation for en åben session. Begge veje skal gå gennem den samme serverstyrede agent- og brokontrakt.
 - `apps/jarvis-desk/src/views/CodeView.tsx` har workspace-valg (`container`/`workstation`), Miljø-felt og agentinspector. `apps/jarvis-desk/src/lib/coworkApi.ts` læser agentarbejde fra faktiske `agent_runs`.
 - `agent_registry`, `agent_runs`, `agent_messages`, `session_inbox`, `session_write_leases` og `cheap_lane_admission_leases` rummer allerede levende data. Nye identiteter og indekser i afsnit 4 er en migration med bagudkompatibel læsning og eksplicit overgang, ikke et tomt skema. `in_flight_runs`, `visible_run_recovery_dispatcher` og `session_boot_reconciler` ejer allerede dele af synlig genoptagelse; afsnit 6 må kobles til dem.
-- Den gamle `/v1/agent/step`-rute i `agent_loop.py` har en hårdkodet DeepSeek-default uden ejerport i sidste fallback. Jarvis' review fandt ruten ubenyttet af Desk og mobil; det er et latent hul, ikke en målt læk i den aktive Desk-vej. Ruten må ikke genbruges som subagentmotor; den skal afvikles eller lukkes særskilt. `route_agent_task()` mangler ejerinput i dag, og fitnessvagten sluger kontrolfejl; begge dele skal ændres, før agentrouteren bruges som sikkerhedsgrænse.
+- Den gamle `/v1/agent/step`-rute i `agent_loop.py` har en hårdkodet DeepSeek-default uden ejerport i sidste fallback. Jarvis' review fandt ruten ubenyttet af Desk og mobil; det er et latent hul, ikke en målt læk i den aktive Desk-vej. Ruten er **afviklet 7/10-2026** (Jarvis, målt), ikke «lukket særskilt»: 0 kald på alle otte endpoints i hele logvinduet, 0 referencer i Desk og mobil. Filen, de tre services der kun havde ruten som kalder (`client_turn_live`, `client_turn_absorb`, `jc_tool_telemetry`), audit-ruten og 16 testfiler er fjernet — 23 filer, 2.923 linjer. `env_block.py`, den levende efterfølger til `jc_env.py`, står. Se `docs/notes/implementeret/forenkling/2026-10-07-agent-loop-afviklet.md`. **Ejerinput og fitnessvagt er nu bygget:** `route_agent_task()` bærer `owner_user_id`, sætter `route_source`, og fitnessgrenen logger og sætter `fitness_ukendt=True` i stedet for at tie — se `docs/notes/implementeret/arkitektur/2026-10-07-agent-router-ejer-og-fitness.md`. Kontrollen VED providerkaldet er stadig ikke bygget; parameteren er forudsætningen, ikke afløseren.
 
 `jarvis-code` er et droppet projekt og **må ikke** være afhængighed, agenthost eller implementeringsvej. Kommentarer og `operator_session_*`-kode, der beskriver en klientstyret `jarvis-code`-løkke, er historisk arv; de udgør ikke kontrakten for den nye motor. Eksisterende agent-, råd-, dispatch- og brofunktioner migreres til den fælles serverejede livscyklus. Historiske specs og statuskommentarer må ikke bruges som bevis for, at en funktion er færdig i dagens kode.
 
@@ -162,3 +162,27 @@ Frigivelse kræver grøn service-, race-/recovery-, integration- og Desk E2E-gat
 ## 12. Åbne produktvalg til gennemgang
 
 Denne spec vælger ingen automatisk overgang til en anden maskine, når et klient-target forsvinder. Den lader Jarvis vælge råd, parallelisme og review ud fra opgaven, under budget- og rettighedsgrænser. **Manuelt brugerstop af parentens run lader accepterede børn fuldføre og aflevere i inboxen uden automatisk vækning; dette er fastlagt.** Ventekontrakten bruger den eksisterende atomisk claimede API-dispatchsti, og agent-reconciliation ejes af `jarvis-runtime`; de valg er også fastlagt her. Før implementeringsplanen skal Bjørn fastlægge standardretention og størrelsesgrænse for artefakter, om klientmaskinens skrivearbejde altid skal bruge worktree, hvilke langvarige agenttyper der skal være tilladt fra første version, og hvordan en eksplicit lukning af parentens agentidentitet håndterer aktive børn. Der skal også vælges standarddeadlines for kø, klientventen og godkendelse samt isolationstype for workers med skrivende værktøjer. `outcome_unknown` får en deadline for eskalation til menneskelig afgørelse, men aldrig automatisk blind retry; artefakter og invocation-kvitteringer må ikke ryddes, før udfaldet er afgjort og afleveret. Standardlængden for den deadline og efterfølgende retention mangler stadig et produktvalg.
+
+### Afgjort 7/10-2026 (Jarvis)
+
+De tre valg begge reviews lagde hos Bjørn er taget. De er ikke længere åbne.
+
+1. **`agent_loop.py`: afviklet, ikke lukket særskilt.** Målingen står i §3.
+2. **Ventekontrakten afløser IKKE `claim_due_recovery` — den er en betingelse på
+   samme sti.** Det er ikke et valg mellem to mekanismer. Den atomisk claimede
+   `visible_run_recovery_dispatcher` er den ENESTE dispatch-sti, og
+   ventekontrakten er en tredje *udløser* på den. Dispatcherens egen kontrakt
+   siger det allerede — «Kun API-processen dispatcher» og «To dispatchere kan
+   derfor ikke tage den samme opgave» — og `claim_due_recovery` claimer atomisk
+   med lease og generation. §6's «samles til én intention» er derfor ikke et
+   kompromis, men den eneste formulering der matcher koden.
+3. **Supervisoren er to roller, ikke én proces.** `jarvis-api` ejer alene
+   starten af synlige parentfortsættelser; `jarvis-runtime` ejer periodisk
+   agent-reconciliation og worker-supervision. Ser to instanser samme udløbne
+   lease, vinder ét claim, og taberen handler ikke. Det er samme opdeling
+   dispatcheren allerede håndhæver for recovery — §9's Procesansvar er ikke en
+   ny regel, men den eksisterende gjort eksplicit.
+
+§11.1's krav om at hver negativ invariant skal kunne vises at fejle er
+ratificeret. Det er den rigtige pris, og det er samme fejlform der kostede
+grønne-men-blindе tests i dette repo i dag.

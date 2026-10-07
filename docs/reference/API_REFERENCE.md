@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-04 from app.routes (live) — 622 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-07 from app.routes (live) — 613 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -604,17 +604,8 @@
 | POST | `/transcribe` | dict | transcribe |
 | GET | `/ui/view-requests/pending` | dict | ui_view_requests |
 | POST | `/ui/view-requests/{request_id}/svar` | dict | ui_view_requests |
-| GET | `/v1/agent/audit` | dict | agent_audit |
-| POST | `/v1/agent/step` |  | agent_loop |
-| POST | `/v1/agent/turn-absorb` |  | agent_loop |
-| POST | `/v1/agent/turn-begin` |  | agent_loop |
-| POST | `/v1/agent/turn-end` |  | agent_loop |
 | POST | `/v1/chat/completions` |  | openai_compat |
 | GET | `/v1/models` |  | openai_compat |
-| GET | `/v1/tools/catalog` |  | agent_loop |
-| POST | `/v1/tools/execute` |  | agent_loop |
-| GET | `/v1/tools/native` |  | agent_loop |
-| POST | `/v1/tools/native` |  | agent_loop |
 | GET | `/visning/billede` |  | visning |
 | POST | `/voice/samtale` | dict | voice_live |
 | GET | `/workbench/checkpoints` | dict | workbench |

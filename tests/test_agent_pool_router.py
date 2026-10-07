@@ -39,24 +39,75 @@ def test_update_task_score_seeds_at_half(monkeypatch):
     assert abs(store["reasoning"] - 0.55) < 1e-6   # seed 0.5 -> 0.55
 
 
-def test_resolve_target_routes_through_pool_when_flag_on(monkeypatch):
-    """Bjørn: agent:explore skal kalde fra agent-poolen. /v1/agent/step's
-    _resolve_target router gennem route_agent_task når flag'et er ON."""
-    from apps.api.jarvis_api.routes import agent_loop as al
-    monkeypatch.setattr(al, "_flag", lambda name, default=False: name == "agent_pool_router_enabled")
-    monkeypatch.setattr("core.services.agent_pool_router.route_agent_task",
-                        lambda **kw: {"provider": "cerebras", "model": "gemma-4-31b"})
-    assert al._resolve_target() == ("cerebras", "gemma-4-31b")
+# ── Ejerparameteren og fitnessvagten (7/10-2026) ────────────────────────────
+#
+# To garantier der ikke fandtes før i dag, og som begge skal kunne VISES at
+# fejle: uden ejeren i kaldet kan §7.1 ikke håndhæves, og en fitness-kontrol
+# der fejler må ikke se ud som en der godkendte.
 
 
-def test_resolve_target_uses_visible_when_flag_off(monkeypatch):
-    """Flag OFF → uændret visible-adfærd (route_agent_task kaldes ikke)."""
-    from apps.api.jarvis_api.routes import agent_loop as al
-    monkeypatch.setattr(al, "_flag", lambda name, default=False: False)
-    called = {"n": 0}
-    monkeypatch.setattr("core.services.agent_pool_router.route_agent_task",
-                        lambda **kw: called.__setitem__("n", called["n"] + 1) or {})
-    monkeypatch.setattr("core.services.central_router_adapt.resolve_visible_model",
-                        lambda **kw: ("deepseek", "deepseek-v4-flash"))
-    assert al._resolve_target() == ("deepseek", "deepseek-v4-flash")
-    assert called["n"] == 0
+def test_ejeren_baeres_med_ind_i_rutebeslutningen(monkeypatch):
+    """§7.1: kun Bjørns opgaver må nå hans DeepSeek-API.
+
+    Reglen kan ikke håndhæves hvis ejeren ikke følger med ind i beslutningen.
+    Testen fejler hvis parameteren falder ud af `task`-ordbogen — så måler den
+    den faktiske ledning og ikke sin egen opsætning.
+    """
+    seen = {}
+
+    def fake_route(*, lane, task, exclude):
+        seen.update(task)
+        return {"provider": "cerebras", "model": "gemma-4-31b"}
+
+    monkeypatch.setattr("core.services.central_route.route", fake_route)
+    r = apr.route_agent_task(kind="coding", owner_user_id="bjorn")
+    assert seen["owner_user_id"] == "bjorn"
+    assert r["route_source"] == "agent_pool"
+
+
+def test_uden_ejer_sendes_None_ikke_et_gaet(monkeypatch):
+    """En ukendt ejer må ikke blive til en tilfældig. `None` er ærligt."""
+    seen = {}
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda *, lane, task, exclude: seen.update(task) or
+                        {"provider": "p", "model": "m"})
+    apr.route_agent_task(kind="coding")
+    assert "owner_user_id" in seen
+    assert seen["owner_user_id"] is None
+
+
+def test_fitness_fejl_er_synlig_ikke_tav(monkeypatch, caplog):
+    """«Tom tabel» (ukendt → tilladt) og «kontrollen er i stykker» er to ting.
+
+    Indtil 7/10-2026 endte begge i `except Exception: pass`, så en måling der
+    ALDRIG kørte så ud som et lovligt svar. Testen fejler hvis grenen tier
+    igen — den lytter på både loggen og returværdien.
+    """
+    import core.services.agent_model_fitness as amf
+
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda *, lane, task, exclude: {"provider": "p", "model": "m"})
+
+    def bombe(*a, **kw):
+        raise RuntimeError("fitness-tabellen er nede")
+
+    monkeypatch.setattr(amf, "er_blokeret", bombe)
+    with caplog.at_level("WARNING"):
+        r = apr.route_agent_task(kind="coding")
+    assert r.get("fitness_ukendt") is True, "fejlet kontrol må ikke se godkendt ud"
+    assert any("fitness" in m.lower() for m in caplog.messages), \
+        "den tavse gren er tilbage — fejlen skal kunne ses"
+
+
+def test_fitness_ukendt_er_ikke_sat_naar_kontrollen_koerer(monkeypatch):
+    """Den positive nabohændelse gennem samme søm: kører kontrollen, er der
+    ingen `fitness_ukendt`. Uden den kunne flaget stå på i alle tilfælde."""
+    import core.services.agent_model_fitness as amf
+
+    monkeypatch.setattr("core.services.central_route.route",
+                        lambda *, lane, task, exclude: {"provider": "p", "model": "m"})
+    monkeypatch.setattr(amf, "er_blokeret", lambda p, m, rolle="": False)
+    r = apr.route_agent_task(kind="coding")
+    assert not r.get("fitness_ukendt")
+
+

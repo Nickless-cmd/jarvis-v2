@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8514/16089 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8514/16090 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8514/16089 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 734 | 1318 | 55% |
-| `core.services` | 5688 | 10958 | 51% |
+| `core.services` | 5688 | 10959 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1963,23 +1963,18 @@ Generated from source. 8514/16089 functions/methods documented (52%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
 - `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L51)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L544)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L550)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L547)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L557)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7054)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7079)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7283)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7279)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7050)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7192)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7244)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7161)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7102)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7134)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7012)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7300)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7065)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L542)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7052)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7077)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7115)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7111)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7048)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7010)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7132)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7063)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
@@ -1994,6 +1989,11 @@ Generated from source. 8514/16089 functions/methods documented (52%). The list b
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L160)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L80)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L84)
+- `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_item` (L111)
+- `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_note` (L163)
+- `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_surface` (L80)
+- `core/services/visible_work_surfaces.py` :: `get_visible_work` (L21)
+- `core/services/visible_work_surfaces.py` :: `get_visible_work_surface` (L53)
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L243)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)

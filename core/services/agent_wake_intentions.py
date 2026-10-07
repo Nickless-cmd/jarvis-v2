@@ -37,7 +37,7 @@ def wake_message(*, condition: str, assignment_ids: list[str]) -> str:
 
 
 def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: str,
-               parent_run_id: str = "") -> dict[str, Any]:
+               parent_run_id: str = "", wake_kind: str = WAKE_KIND) -> dict[str, Any]:
     """Skriv intentionen. Idempotent paa `task_id`. Findes der allerede en anden
     afventende fortsaettelse i samme session, SAMLES de til én (§6): returnerer
     da den eksisterendes task_id med `merged=True` og skriver intet nyt."""
@@ -53,7 +53,7 @@ def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: st
         now = ifr._iso()
         records[task_id] = {
             "task_id": task_id, "run_id": task_id, "session_id": session_id,
-            "status": "recovering", "kind": "visible", "wake_kind": WAKE_KIND,
+            "status": "recovering", "kind": "visible", "wake_kind": wake_kind,
             "approval_mode": "ask", "thinking_mode": "think", "tool_scope": "",
             "surface": "", "force_user_id": owner_user_id, "local_tool_exec": False,
             "excerpt": message[:240], "original_request": message,

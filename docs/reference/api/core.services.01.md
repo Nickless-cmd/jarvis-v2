@@ -372,11 +372,17 @@ _Gate i agentens vaerktoejsdispatch: en handling der kraever godkendelse STOPPER
 | function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L68) |
 
 ## `core/services/agent_approval_notify.py`
-_Hvem faar at vide at en approval venter (F4c). Stub indtil videre: loekken kalder ``on_requested``._
+_Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-contract-v1 F4c, spec 8.2)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `on_requested` | `(approval)` | — | [src](../../../core/services/agent_approval_notify.py#L5) |
+| function | `wake_message` | `(approval)` | — | [src](../../../core/services/agent_approval_notify.py#L28) |
+| function | `_stopped` | `(parent_run_id)` | — | [src](../../../core/services/agent_approval_notify.py#L34) |
+| function | `_session_busy` | `(session_id)` | — | [src](../../../core/services/agent_approval_notify.py#L41) |
+| function | `stage` | `(approval)` | Planlaeg vaekningen for en approval (idempotent: ét wake-task-id pr. approval). Returnerer task-id eller "". | [src](../../../core/services/agent_approval_notify.py#L50) |
+| function | `on_requested` | `(approval)` | Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent. | [src](../../../core/services/agent_approval_notify.py#L66) |
+| function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L73) |
+| function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L91) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
@@ -413,9 +419,9 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L382) |
 | function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L432) |
 | function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L457) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L475) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L483) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L493) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L480) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L488) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L498) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -554,7 +560,8 @@ _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_render` | `(msgs)` | — | [src](../../../core/services/agent_result_inbox.py#L23) |
-| function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater for (ejer, session) og returner teksten | [src](../../../core/services/agent_result_inbox.py#L47) |
+| function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L47) |
+| function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L57) |
 
 ## `core/services/agent_runtime.py`
 _Agent runtime — sub-agents, councils, swarms (facade)._

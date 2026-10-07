@@ -462,6 +462,11 @@ def supervise() -> list[dict[str, Any]]:
     from core.services.agent_parking import resume_decided
 
     appr.expire_due()
+    try:
+        from core.services.agent_approval_notify import ensure_wakes
+        ensure_wakes()
+    except Exception:
+        logger.warning("ensure_wakes fejlede", exc_info=True)
     resumed = resume_decided(_start_execution)
     done = reconcile_expired_leases()
     for d in done:
@@ -503,5 +508,10 @@ def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, acto
     except ContractError as exc:
         logger.info("approval %s: afgoerelsen blev afvist (%s)", approval_id, exc.code)
         return _err(exc.code, exc.detail, "approval")
+    try:
+        from core.services.agent_approval_notify import cancel_wake
+        cancel_wake(r, f"approvalen er {r['status']}")
+    except Exception:
+        logger.warning("kunne ikke aflyse vaekning for %s", approval_id, exc_info=True)
     resume_decided(_start_execution)
     return {"status": "ok", "approval": approval_view(r), "contract_version": CONTRACT_VERSION}

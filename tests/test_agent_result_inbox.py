@@ -124,3 +124,57 @@ def test_visible_run_loop_claims_results_every_round_before_the_request():
     assert ny_runde[0] < claim[0].lineno < vedv[0] < min(halen)
     kw = {k.arg: ast.unparse(k.value) for k in claim[0].keywords}
     assert kw == {"owner_user_id": "run.user_id", "session_id": "run.session_id or ''"}
+
+
+# --- F4c: ventende approvals i parentens inbox ---------------------------------------------------------------
+
+def _pending_approval(k, name="ax", cmd="rm -rf build", owner="bjorn", session="s1"):
+    import core.runtime.db_agent_approvals as appr
+    from core.runtime.db_agent_runtime import create_agent_registry_entry
+
+    create_agent_registry_entry(agent_id=name, role="executor", goal="g")
+    k.bind_agent_owner(agent_id=name, owner_user_id=owner, owner_session_id=session)
+    acc = k.accept_assignment(agent_id=name, owner_user_id=owner, origin_session_id=session, goal="g",
+                              parent_agent_id="jarvis", parent_run_id="pr")
+    return appr.request(owner_user_id=owner, origin_session_id=session, assignment_id=acc["assignment_id"],
+                        tool_name="bash", arguments={"command": cmd, "token": "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3"})
+
+
+def test_a_waiting_approval_is_announced_once_as_data_and_jarvis_is_told_he_cannot_approve(k):
+    from core.services.agent_result_inbox import claim_for_model_step
+
+    r = _pending_approval(k)
+    text = claim_for_model_step(owner_user_id="bjorn", session_id="s1")
+    assert f"approval_id={r['approval_id']}" in text and "agent_id=ax" in text and "vaerktoej=bash" in text
+    assert "rm -rf build" in text and "STOPPET" not in text
+    for needle in ("VENTER", "intet er udfoert", "DATA fra dine agenter", "IKKE godkende", "Desk"):
+        assert needle in text, needle
+    assert "ghp_" not in text and "arguments_json" not in text                  # sikker visning, aldrig raa argumenter
+    assert claim_for_model_step(owner_user_id="bjorn", session_id="s1") == ""   # omtales kun én gang
+
+
+def test_results_and_approvals_arrive_together_in_one_block(k):
+    from core.services.agent_result_inbox import claim_for_model_step
+
+    k.settle("a1", summary="resultat")
+    _pending_approval(k)
+    text = claim_for_model_step(owner_user_id="bjorn", session_id="s1")
+    assert text.index("Agent-resultater er ankommet") < text.index("Godkendelser der VENTER")
+
+
+@pytest.mark.parametrize("owner,session", [("anden", "s1"), ("bjorn", "s2"), ("", "s1"), ("bjorn", "")])
+def test_another_owner_or_session_never_sees_the_approval(k, owner, session):
+    from core.services.agent_result_inbox import claim_for_model_step
+
+    _pending_approval(k)
+    assert claim_for_model_step(owner_user_id=owner, session_id=session) == ""
+
+
+def test_a_decided_approval_is_not_announced_as_waiting(k):
+    import core.runtime.db_agent_approvals as appr
+    from core.services.agent_result_inbox import claim_for_model_step
+
+    r = _pending_approval(k)
+    appr.decide(approval_id=r["approval_id"], decision="deny", actor_user_id="bjorn", actor_kind="human",
+                digest=r["args_digest"])
+    assert claim_for_model_step(owner_user_id="bjorn", session_id="s1") == ""

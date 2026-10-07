@@ -33,7 +33,7 @@ _TEXT = (
     "derefter en uafhaengig reviewer; eller flere selvstaendige vurderinger af en beslutning "
     "med en syntese til sidst. Skal en agent SKRIVE kode, saa dispatch med `writes` og `workspace`: den faar sit eget worktree og kan kun skrive dér; resultatet er en diff, og intet merges uden godkendelse. Start aldrig samtidige skrivende agenter i de samme filer. "
     "Stopper brugeren dit run manuelt, arbejder allerede accepterede agenter faerdig, men "
-    "vaekker dig ikke - resultaterne ligger i inboxen til din naeste tur. Et fejlet barn "
+    "vaekker dig ikke - resultaterne ligger i inboxen til din naeste tur. Venter en agent paa en godkendelse, ligger anmodningen i din inbox: du kan IKKE godkende den, men skal forklare den for brugeren, som afgoer den i Desk. Et fejlet barn "
     "vurderes ud fra aarsag og deloutput, ikke automatisk erstattet. Brug IKKE vaerktoejet til "
     "en kort handling du kan afslutte direkte."
 )

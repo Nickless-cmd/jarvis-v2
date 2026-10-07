@@ -185,6 +185,10 @@ def block_wakes_for_run(*, run_id: str, reason: str = "user-cancelled") -> dict[
         tasks = [r["wake_task_id"] for r in conn.execute(
             "SELECT wake_task_id FROM agent_wait_contracts WHERE parent_run_id=? "
             "AND status='fired' AND wake_task_id!=''", (run_id,)).fetchall()]
+        # Ventende approvals: vaekningen aflyses, men approvalen BLIVER ventende og synlig for ejeren (§8.2).
+        tasks += [r["wake_task_id"] for r in conn.execute(
+            "SELECT wake_task_id FROM agent_approvals WHERE parent_run_id=? AND status='pending' "
+            "AND wake_task_id!=''", (run_id,)).fetchall()]
         conn.commit()
     except BaseException:
         conn.rollback()

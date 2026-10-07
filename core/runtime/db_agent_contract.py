@@ -160,6 +160,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_route import ensure_route_tables
 
     ensure_route_tables(conn)
+    from core.runtime.db_agent_bridge import ensure_bridge_tables
+
+    ensure_bridge_tables(conn)
 
 
 _ENSURED: set[str] = set()

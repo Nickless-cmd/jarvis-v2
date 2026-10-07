@@ -52,8 +52,10 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
          "role": {"type": "string", "description": "researcher, critic, planner, executor, watcher ..."},
          "expected_result": {"type": "string", "description": "What a usable answer contains."},
          "tool_policy": {"type": "string", "description": "e.g. read-only-runtime. Omit for the role default."},
-         "target": {"type": "string", "enum": ["runtime-container"],
-                    "description": "Where tools run. Only the runtime container is available now."},
+         "target": {"type": "string",
+                    "description": "Where tools run: 'runtime-container' (default) or 'client:<stable_client_id>' "
+                    "for ONE named connected client (operator_* tools only). The agent never falls back to "
+                    "the container or to another client if that client disconnects."},
          "budget_tokens": {"type": "integer", "description": "Token budget; 0 = role default."},
          "max_turns": {"type": "integer", "description": "Tool/model step limit; 0 = default."},
          "model": {"type": "string", "description": "Optional model preference (provider/model). "

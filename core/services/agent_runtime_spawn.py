@@ -707,8 +707,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                     run_id=run_id, resume=_resume,
                 )
             except Exception:
-                if _resume is not None:
-                    raise    # en genoptagelse maa aldrig falde tilbage til en frisk tekst-tur (tabt approval)
+                from core.services.agent_bridge import run_is_halted
+                if _resume is not None or run_is_halted(run_id):
+                    raise    # en genoptagelse (tabt approval) eller en halt (uafgjort bro-kald) maa aldrig falde til en tekst-tur
                 from core.services.agent_model_router import call_agent_model
                 result = call_agent_model(
                     agent=agent, facade=_facade(), message=prompt,
@@ -998,6 +999,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         except Exception:
             pass
     except Exception as exc:
+        from core.services.agent_bridge import run_is_halted
+        if run_is_halted(run_id):
+            logger.info("run %s staar i outcome_unknown (uafgjort bro-kald) - afsluttes ikke", run_id)
+            return build_agent_detail_surface(agent_id) or {"agent_id": agent_id, "status": "outcome_unknown"}
         message = str(exc)
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",

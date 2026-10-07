@@ -88,6 +88,15 @@ async def internal_dispatch(request: Request) -> JSONResponse:
     except (TypeError, ValueError):
         timeout_s = 30.0
 
+    client_id = str(body.get("client_id") or "").strip()
+    if client_id:
+        # Agent-kald (agent-contract-v1 E): netop denne klient, ingen failover, ingen videre-forward.
+        from core.services.agent_bridge_dispatch import dispatch_pinned
+        extra = body.get("extra") if isinstance(body.get("extra"), dict) else None
+        pinned = await dispatch_pinned(user_id=user_id, client_id=client_id, tool=tool, args=args,
+                                       timeout_s=timeout_s, extra=extra, allow_cross_process=False)
+        return JSONResponse(pinned, status_code=200)
+
     # allow_cross_process=False → ingen videre-forward (løkke-spærre).
     result = await bridge_registry.dispatch(
         user_id=user_id,
@@ -200,6 +209,14 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
     except Exception:
         bridge_registry.unregister(conn)
         return
+    # agent-contract-v1 E: bed klienten oplyse status for uafgjorte agent-kald ved HVER (gen)forbindelse.
+    try:
+        from core.services.agent_bridge import status_query_for
+        pending_ids = status_query_for(user_id, conn.client_id)
+        if pending_ids:
+            await ws.send_json({"type": "invocation_status_query", "invocation_ids": pending_ids})
+    except Exception:
+        logger.warning("jarvisx_bridge: invocation_status_query kunne ikke sendes", exc_info=True)
 
     # Main message loop — handle tool_result + pong + ping.
     async def _heartbeat() -> None:
@@ -252,6 +269,15 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
                     result=msg.get("result"),
                     error=msg.get("error"),
                 )
+            elif mtype == "invocation_status_report":
+                # Kun klientens EGNE kald for DENNE ejer afgoeres - bruger-id og klient-id kommer fra
+                # den autentificerede registrering, aldrig fra beskeden.
+                try:
+                    from core.services.agent_bridge import apply_client_report
+                    reports = [r for r in (msg.get("reports") or []) if isinstance(r, dict)]
+                    apply_client_report(owner_user_id=user_id, client_id=conn.client_id, reports=reports)
+                except Exception:
+                    logger.warning("jarvisx_bridge: invocation_status_report fejlede", exc_info=True)
             elif mtype == "ping":
                 try:
                     await ws.send_json({"type": "pong"})

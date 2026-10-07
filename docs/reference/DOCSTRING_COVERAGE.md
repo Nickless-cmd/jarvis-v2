@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8650/16378 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8671/16417 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 774 | 1397 | 55% |
-| `core.services` | 5771 | 11140 | 51% |
+| `core.runtime` | 780 | 1412 | 55% |
+| `core.services` | 5786 | 11164 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2299)
+## Undocumented public functions (2309)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -343,7 +343,14 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L614)
+- `core/runtime/db_agent_bridge.py` :: `args_digest` (L66)
+- `core/runtime/db_agent_bridge.py` :: `ensure_bridge_tables` (L35)
+- `core/runtime/db_agent_bridge.py` :: `get` (L75)
+- `core/runtime/db_agent_bridge.py` :: `mark_sent` (L102)
+- `core/runtime/db_agent_bridge.py` :: `mark_unknown` (L137)
+- `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
+- `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L617)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
@@ -624,8 +631,11 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 - `core/services/agency_cartographer.py` :: `stop_agency_cartographer_daemon` (L210)
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_approval_notify.py` :: `wake_message` (L28)
+- `core/services/agent_bridge.py` :: `human_resolve` (L356)
+- `core/services/agent_bridge.py` :: `idempotency_class` (L64)
+- `core/services/agent_bridge.py` :: `run_is_halted` (L319)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L513)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L525)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L38)
@@ -636,15 +646,15 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1511)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1566)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1547)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1374)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1131)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1071)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1099)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1516)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1571)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1552)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1379)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1136)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1076)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1104)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1530)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1535)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
@@ -1239,7 +1249,7 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 - `core/services/jarvis_brain.py` :: `connect_index` (L388)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L326)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
-- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L352)
+- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L357)
 - `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L558)
 - `core/services/jobs_engine.py` :: `list_jobs` (L551)
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)

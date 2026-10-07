@@ -64,7 +64,8 @@ def test_definitions_are_wellformed_and_required_fields_exist():
     by = {d["function"]["name"]: d["function"]["parameters"] for d in defs}
     assert by["dispatch_agent"]["required"] == ["goal"]
     assert by["wait_agents"]["properties"]["condition"]["enum"] == ["first_terminal", "all_terminal"]
-    assert by["dispatch_agent"]["properties"]["target"]["enum"] == ["runtime-container"]
+    tgt = by["dispatch_agent"]["properties"]["target"]
+    assert "enum" not in tgt and "client:<stable_client_id>" in tgt["description"] and "runtime-container" in tgt["description"]
 
 
 def test_new_tools_are_hidden_while_the_engine_is_off_and_shown_when_on(tl):

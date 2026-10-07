@@ -204,7 +204,7 @@ _WebSocket endpoint for JarvisX tool-bridge._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `internal_dispatch` | `(request)` | Intern cross-process dispatch (runtime-proces → api-proces). | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L35) |
-| function | `jarvisx_bridge_ws` | `(ws)` | Accept WS from JarvisX-app, route messages between bridge and runtime. | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L111) |
+| function | `jarvisx_bridge_ws` | `(ws)` | Accept WS from JarvisX-app, route messages between bridge and runtime. | [src](../../../apps/api/jarvis_api/routes/jarvisx_bridge.py#L120) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_channels.py`
 _JarvisX channels + scheduling state route group._

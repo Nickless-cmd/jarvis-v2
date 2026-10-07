@@ -166,8 +166,20 @@ def dispatch_agent(
     elif wt_tools or (workspace or "").strip():
         return _err("INVALID_SCOPE", "worktree-vaerktoejer og workspace kraever writes=true")
     if target not in _SUPPORTED_TARGETS:
-        return _err("CLIENT_OFFLINE" if target.startswith("client:") else "INVALID_SCOPE",
-                    f"target {target!r} understoettes ikke endnu (kun {_SUPPORTED_TARGETS})")
+        if not target.startswith("client:"):
+            return _err("INVALID_SCOPE", f"target {target!r} understoettes ikke ({_SUPPORTED_TARGETS} eller client:<id>)")
+        from core.services import agent_bridge
+        refusal = agent_bridge.check_client_target(owner_user_id=owner_user_id, target=target, writes=writes)
+        if refusal is not None:
+            return _err(refusal["code"], refusal["detail"])
+        # Paa et klient-target kan agenten KUN bruge de operator_*-vaerktoejer klienten annoncerer; ingen
+        # container-vaerktoejer. Uden eksplicit liste faar den de laesende (skrivende kraever bevidst valg
+        # og gaar stadig gennem approval-gaten).
+        allowed_tools = agent_bridge.allowed_tools_for_client(owner_user_id, target, allowed_tools)
+        if not allowed_tools:
+            return _err("INVALID_SCOPE", "klienten annoncerer ingen af de oensede operator-vaerktoejer")
+        tool_policy = tool_policy or ("client-operator" if any(t not in agent_bridge.READ_TOOLS for t in allowed_tools)
+                                      else "read-only-client")
     digest = _digest(goal=goal, role=role, description=description, tool_policy=tool_policy,
                      allowed_tools=allowed_tools or [], target=target, budget=budget_tokens,
                      turns=max_turns, expected=expected_result, model=model, model_required=model_required,

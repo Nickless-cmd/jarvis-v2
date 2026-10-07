@@ -37,6 +37,7 @@ import { promises as fsp } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { InvocationLedger } from './invocationLedger.js'
 import { platform as osPlatform } from 'node:os'
 import {
   dialog,
@@ -2543,6 +2544,15 @@ export class JarvisXBridge {
     setTimeout(() => this.connect(), wait)
   }
 
+  private _ledger: InvocationLedger | null = null
+
+  private invocationLedger(): InvocationLedger {
+    if (!this._ledger) {
+      this._ledger = new InvocationLedger(join(homedir(), '.config', 'jarvisx', 'agent-invocations.json'))
+    }
+    return this._ledger
+  }
+
   private send(msg: unknown): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
     try {
@@ -2587,6 +2597,28 @@ export class JarvisXBridge {
         })
         this.log(`  → replied unknown_tool`)
         return
+      }
+      // agent-contract-v1 E: et agent-kald bærer et stabilt invocation_id. Bogen skrives FØR handleren
+      // kører, og et id vi har set før køres aldrig igen — svaret genudleveres (også for en læsning).
+      const agentInv = (msg.agent_invocation as Record<string, unknown> | undefined) || undefined
+      const invId = agentInv ? String(agentInv.invocation_id ?? '') : ''
+      if (invId) {
+        const begun = this.invocationLedger().begin(invId, tool)
+        if (begun.kind === 'seen') {
+          const e = begun.entry
+          if (e.state === 'completed') {
+            let replay: unknown = e.result
+            try { replay = JSON.parse(String(e.result ?? 'null')) } catch { /* behold teksten */ }
+            this.send({ type: 'tool_result', correlation_id, status: 'ok', result: replay, error: null, replayed: true })
+          } else if (e.state === 'failed') {
+            this.send({ type: 'tool_result', correlation_id, status: 'error', result: null, error: String(e.error ?? 'failed') })
+          } else {
+            this.send({ type: 'tool_result', correlation_id, status: 'error', result: null,
+              error: `invocation_${e.state}: kaldet er set før og køres ikke igen` })
+          }
+          this.log(`  → invocation ${invId} set før (${e.state}) — ikke kørt igen`)
+          return
+        }
       }
       // Halo'en (21/9-2026): rører dette værktøj skærmen — mus, tastatur,
       // udklipsholder eller fokus — lyser kanten op, så Bjørn kan se at Jarvis
@@ -2642,6 +2674,7 @@ export class JarvisXBridge {
             ),
           ),
         ])
+        if (invId) this.invocationLedger().finish(invId, true, result)
         this.send({
           type: 'tool_result',
           correlation_id,
@@ -2655,6 +2688,7 @@ export class JarvisXBridge {
         this.log(`  → replied ok (${preview})`)
       } catch (e) {
         const err = e instanceof Error ? e.message : String(e)
+        if (invId) this.invocationLedger().finish(invId, false, err)
         this.send({
           type: 'tool_result',
           correlation_id,
@@ -2667,6 +2701,13 @@ export class JarvisXBridge {
       return
     }
 
+    if (mtype === 'invocation_status_query') {
+      // Serveren spørger efter reconnect: hvad skete der med disse agent-kald? Svaret kommer kun fra bogen.
+      const ids = Array.isArray(msg.invocation_ids) ? (msg.invocation_ids as unknown[]).map(String) : []
+      this.send({ type: 'invocation_status_report', reports: this.invocationLedger().report(ids) })
+      this.log(`recv invocation_status_query (${ids.length}) → sent report`)
+      return
+    }
     if (mtype === 'ping') {
       this.send({ type: 'pong' })
       this.log('recv ping → sent pong')

@@ -384,6 +384,43 @@ _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-cont
 | function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L73) |
 | function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L91) |
 
+## `core/services/agent_bridge.py`
+_Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract-v1 E, spec 8 + 8.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `BridgeHalt` | `` | Et skrivende kald har uafgjort udfald: agentens loop STOPPER og runnet staar i ``outcome_unknown``. | [src](../../../core/services/agent_bridge.py#L60) |
+| function | `idempotency_class` | `(tool)` | — | [src](../../../core/services/agent_bridge.py#L64) |
+| function | `parse_target` | `(target)` | ('container','') eller ('client', id). ``ValueError`` for alt andet. | [src](../../../core/services/agent_bridge.py#L71) |
+| function | `check_client_target` | `(*, owner_user_id, target, writes=…)` | Afvisning (``{"code","detail"}``) eller ``None`` hvis klienten kan tage opgaven NU. | [src](../../../core/services/agent_bridge.py#L83) |
+| function | `allowed_tools_for_client` | `(owner_user_id, target, requested)` | Agentens vaerktoejer paa et klient-target: kun ``operator_*`` som klienten faktisk annoncerer. | [src](../../../core/services/agent_bridge.py#L115) |
+| function | `_identity` | `(agent_id)` | Ejer, session, target og aktuelt run - fra DB. ``ContractError`` ved alt ufuldstaendigt. | [src](../../../core/services/agent_bridge.py#L127) |
+| function | `target_of` | `(agent_id)` | ('container','') / ('client', id) for agentens aabne assignment; ('container','') for en legacy-agent. | [src](../../../core/services/agent_bridge.py#L143) |
+| function | `_run` | `(coro, timeout_s)` | Koer en coroutine fra en vilkaarlig traad. Foretraekker serverens hovedloeb (hvor WS'en bor). | [src](../../../core/services/agent_bridge.py#L155) |
+| function | `_invocation_id` | `(run_id, call_id)` | — | [src](../../../core/services/agent_bridge.py#L173) |
+| function | `_clean_args` | `(arguments)` | Myndighed kommer fra serveren. Alt modellen har skrevet med foranstillet underscore fjernes. | [src](../../../core/services/agent_bridge.py#L179) |
+| function | `_tool_error` | `(code, detail, **extra)` | — | [src](../../../core/services/agent_bridge.py#L184) |
+| function | `invoke_tool_call` | `(*, agent, run_id, tc, dispatch=…, sleep=…)` | Udfoer ET agent-vaerktoejskald paa den bundne klient. ``None`` = agenten er ikke paa et klient-target | [src](../../../core/services/agent_bridge.py#L192) |
+| function | `_drive` | `(*, ident, agent_id, row, client_id, tool, args, klass, dispatch, sleep)` | — | [src](../../../core/services/agent_bridge.py#L249) |
+| function | `_loads` | `(text)` | — | [src](../../../core/services/agent_bridge.py#L292) |
+| function | `_halt` | `(ident, row)` | Sæt run + assignment i ``outcome_unknown``/``waiting`` (som lease-reconcileren gør) og returner halten. | [src](../../../core/services/agent_bridge.py#L300) |
+| function | `run_is_halted` | `(run_id)` | — | [src](../../../core/services/agent_bridge.py#L319) |
+| function | `_settle_resolved` | `(row, verdict)` | Et uafgjort kald er nu afgjort: assignmentet afsluttes med de verificerede fakta. Intet genudfoeres - | [src](../../../core/services/agent_bridge.py#L327) |
+| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status ved reconnect (kaldes af WS-ruten). | [src](../../../core/services/agent_bridge.py#L345) |
+| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | — | [src](../../../core/services/agent_bridge.py#L356) |
+| function | `status_query_for` | `(owner_user_id, client_id)` | Invocation-id'er klienten skal oplyse status for ved reconnect. | [src](../../../core/services/agent_bridge.py#L364) |
+
+## `core/services/agent_bridge_dispatch.py`
+_Fastlaast bro-dispatch til EN bestemt klient (agent-contract-v1 E, spec 8)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_err` | `(code, **extra)` | — | [src](../../../core/services/agent_bridge_dispatch.py#L29) |
+| function | `_local_conn` | `(user_id, client_id)` | — | [src](../../../core/services/agent_bridge_dispatch.py#L33) |
+| function | `client_info` | `(user_id, client_id)` | Klientens annoncerede tilstand (lokalt eller via presence fra den anden proces), eller None. | [src](../../../core/services/agent_bridge_dispatch.py#L38) |
+| function | `dispatch_pinned` | `(*, user_id, client_id, tool, args, timeout_s, extra=…, allow_cross_process=…)` | Send ``tool`` til netop ``client_id``. Aldrig failover til en anden klient. Rejser ikke. | [src](../../../core/services/agent_bridge_dispatch.py#L55) |
+| function | `_forward` | `(*, user_id, client_id, tool, args, timeout_s, extra)` | Til den proces presence siger holder KLIENTEN. Ingen presence -> klienten er ikke forbundet. | [src](../../../core/services/agent_bridge_dispatch.py#L91) |
+
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
 
@@ -410,19 +447,19 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `_accept_view` | `(acc)` | — | [src](../../../core/services/agent_contract_service.py#L120) |
 | function | `_capacity_error` | `(owner, parent)` | — | [src](../../../core/services/agent_contract_service.py#L126) |
 | function | `dispatch_agent` | `(*, owner_user_id, origin_session_id, goal, parent_run_id=…, parent_agent_id=…, role=…, description=…, tool_policy=…, allowed_tools=…, target=…, budget_tokens=…, max_turns=…, expected_result=…, model=…, idempotency_key=…, writes=…, workspace=…, model_required=…)` | Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS. | [src](../../../core/services/agent_contract_service.py#L138) |
-| function | `followup_agent` | `(*, owner_user_id, origin_session_id, agent_id, goal, parent_run_id=…, budget_tokens=…, expected_result=…, idempotency_key=…, operation=…)` | Ny opgave til SAMME agent-id: nyt assignment, nyt run. Ikke til en lukket agent. | [src](../../../core/services/agent_contract_service.py#L244) |
-| function | `send_message` | `(*, owner_user_id, origin_session_id, agent_id, content, sender=…, parent_run_id=…, idempotency_key=…)` | Information/styring til barnets aktuelle opgave, eller - er barnet ledigt - en | [src](../../../core/services/agent_contract_service.py#L291) |
-| function | `interrupt_agent` | `(*, owner_user_id, origin_session_id, agent_id, note=…)` | Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`. | [src](../../../core/services/agent_contract_service.py#L325) |
-| function | `close_agent` | `(*, owner_user_id, origin_session_id, agent_id)` | Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og | [src](../../../core/services/agent_contract_service.py#L342) |
-| function | `settle_closing` | `(agent_id, owner_user_id)` | `closing` -> `closed`, naar agentens eget assignment og alle boerns er terminale. | [src](../../../core/services/agent_contract_service.py#L355) |
-| function | `list_agents` | `(*, owner_user_id, origin_session_id=…, status=…, limit=…)` | Ejerens agenter (aldrig en andens): status, rolle, target, ubehandlede resultater. | [src](../../../core/services/agent_contract_service.py#L373) |
-| function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L402) |
-| function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L452) |
-| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L477) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L505) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L513) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L523) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L553) |
+| function | `followup_agent` | `(*, owner_user_id, origin_session_id, agent_id, goal, parent_run_id=…, budget_tokens=…, expected_result=…, idempotency_key=…, operation=…)` | Ny opgave til SAMME agent-id: nyt assignment, nyt run. Ikke til en lukket agent. | [src](../../../core/services/agent_contract_service.py#L256) |
+| function | `send_message` | `(*, owner_user_id, origin_session_id, agent_id, content, sender=…, parent_run_id=…, idempotency_key=…)` | Information/styring til barnets aktuelle opgave, eller - er barnet ledigt - en | [src](../../../core/services/agent_contract_service.py#L303) |
+| function | `interrupt_agent` | `(*, owner_user_id, origin_session_id, agent_id, note=…)` | Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`. | [src](../../../core/services/agent_contract_service.py#L337) |
+| function | `close_agent` | `(*, owner_user_id, origin_session_id, agent_id)` | Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og | [src](../../../core/services/agent_contract_service.py#L354) |
+| function | `settle_closing` | `(agent_id, owner_user_id)` | `closing` -> `closed`, naar agentens eget assignment og alle boerns er terminale. | [src](../../../core/services/agent_contract_service.py#L367) |
+| function | `list_agents` | `(*, owner_user_id, origin_session_id=…, status=…, limit=…)` | Ejerens agenter (aldrig en andens): status, rolle, target, ubehandlede resultater. | [src](../../../core/services/agent_contract_service.py#L385) |
+| function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L414) |
+| function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L464) |
+| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L489) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L517) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L525) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L535) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L565) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -601,18 +638,4 @@ _Agent relay — direct A→B messaging between sub-agents._
 | function | `relay_to_role` | `(*, from_agent_id, council_id, role, content, kind=…)` | Send to whoever in this council holds the given role. | [src](../../../core/services/agent_relay.py#L82) |
 | function | `_exec_relay_message` | `(args)` | — | [src](../../../core/services/agent_relay.py#L107) |
 | function | `_exec_relay_to_role` | `(args)` | — | [src](../../../core/services/agent_relay.py#L116) |
-
-## `core/services/agent_result_inbox.py`
-_Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_render` | `(msgs)` | — | [src](../../../core/services/agent_result_inbox.py#L23) |
-| function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L47) |
-| function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L57) |
-
-## `core/services/agent_runtime.py`
-_Agent runtime — sub-agents, councils, swarms (facade)._
-
-_(no top-level classes or functions)_
 

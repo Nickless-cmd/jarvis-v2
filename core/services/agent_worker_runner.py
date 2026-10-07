@@ -175,12 +175,16 @@ class _Broker:
             raise WorkerError("CAPACITY", f"vaerktoejsloft {self.max_tool_calls} naaet")
         self.tool_calls += 1
         self._started.add(str(tc.get("id") or ""))
+        from core.services.agent_bridge import BridgeHalt
         from core.services.agent_loop_core import ApprovalPending
         try:
             out = self._io.tool(tc)
         except ApprovalPending as ap:
             # Workeren skal parkere: den faar approval-id'et og stopper sin loekke ved checkpointen.
             raise WorkerError("APPROVAL_PENDING", f"{ap.approval_id}:{ap.tool_call_id}") from ap
+        except BridgeHalt as halt:
+            # Uafgjort bro-kald: workeren stoppes; runnet er sat i outcome_unknown af broen.
+            raise WorkerError("OUTCOME_UNKNOWN", str(halt)) from halt
         return out if len(out) <= MAX_TOOL_OUTPUT else out[:MAX_TOOL_OUTPUT] + "\n[afkortet af brokeren]"
 
 

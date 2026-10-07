@@ -320,6 +320,12 @@ class _InProcessLoopIO:
             return denied
         _bogfoer_start(self._agent, self._run_id, tc)
         self._tools_executed = True
+        # E: paa et klient-target gaar kaldet over broen til netop den bundne klient; en halt
+        # (BridgeHalt) stopper loekken uden at runnet afsluttes. ``None`` = containerstien som hidtil.
+        from core.services.agent_bridge import invoke_tool_call
+        via_bridge = invoke_tool_call(agent=self._agent, run_id=self._run_id, tc=tc)
+        if via_bridge is not None:
+            return via_bridge
         return _execute_agent_tool_call(tc, agent_id=self._aid)
 
     def after_tool(self, tc, tool_out):

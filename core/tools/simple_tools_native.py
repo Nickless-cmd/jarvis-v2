@@ -1176,19 +1176,31 @@ def _exec_query_why(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
+    """Send en besked til Bjørn gennem routeren.
+
+    Hed `send_ntfy` og gik direkte til `ntfy_gateway` indtil 7/10-2026. Det
+    betød at beskeden sprang device-awareness, eskalering, kvittering og
+    Bjørns eget kanalvalg over — og landede på en offentlig topic selv når han
+    sad ved desktoppen. Navnet er beholdt (modellen kender værktøjet); vejen
+    er skiftet til den samme som alle andre proaktive beskeder.
+    """
     message = str(args.get("message") or "").strip()
     if not message:
         return {"status": "error", "text": "No message provided."}
     title = str(args.get("title") or "Jarvis").strip()
     priority = str(args.get("priority") or "default").strip()
     try:
-        from core.services.ntfy_gateway import send_notification
-        result = send_notification(message, title=title, priority=priority)
-        if result["status"] == "sent":
-            return {"status": "ok", "text": f"ntfy notification sent to topic '{result.get('topic')}'"}
-        return {"status": "error", "text": f"ntfy failed: {result.get('reason')}"}
+        from core.services.alarm_ud import send_alert
+        ok = send_alert(
+            titel=title, tekst=message, slags="infra_security",
+            importance="high" if priority in ("high", "urgent") else "normal",
+        )
+        if ok:
+            return {"status": "ok", "text": "Beskeden er leveret til din enhed."}
+        return {"status": "error",
+                "text": "Beskeden kunne ikke leveres (kanal utilgængelig eller sat i kø)."}
     except Exception as exc:
-        return {"status": "error", "text": f"ntfy error: {exc}"}
+        return {"status": "error", "text": f"notify error: {exc}"}
 
 
 def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:

@@ -149,12 +149,12 @@ class Central:
             pass
         if severity == "severe":
             try:
-                from core.services.ntfy_gateway import send_notification
-                send_notification(
-                    f"⚠ Central greb ALVORLIG fejl: {err.cluster}/{err.nerve} — "
-                    f"{str(err.message)[:160]}",
-                    title="Den Intelligente Central",
-                    priority="high",
+                from core.services.alarm_ud import send_alert
+                send_alert(
+                    titel="Den Intelligente Central",
+                    tekst=f"⚠ Central greb ALVORLIG fejl: {err.cluster}/{err.nerve} — "
+                          f"{str(err.message)[:160]}",
+                    slags="infra_security", importance="high",
                 )
             except Exception:
                 pass

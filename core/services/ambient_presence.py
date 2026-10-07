@@ -1,12 +1,26 @@
-"""Ambient presence — subtle signals that mark Jarvis' state in the physical space.
+"""Ambient presence — Jarvis' egen tilstand, synlig for ham selv.
 
-When Jarvis enters a noteworthy state (play mode, dream phase, high boredom,
-significant insight), a quiet ntfy notification is sent. Not to inform — to mark
-that something is alive here.
+Når Jarvis går ind i en bemærkelsesværdig tilstand (leg, drøm, indsigt),
+publiceres et signal på event-bussen. Det er ikke en besked til nogen — det er
+et mærke i hans eget nervesystem om at der er noget levende her.
 
-Rate-limited: max one ambient signal per 30 minutes to avoid noise.
-Phase transitions are tracked so only genuine state changes emit signals.
-A quiet presence rhythm signals once per hour just to say "still here."
+## Hvorfor det IKKE længere går til telefonen (målt 7/10-2026)
+
+Indtil i dag sendte hvert signal en ntfy-notifikation til Bjørns telefon:
+«træder ind i legetilstand», «vender tilbage til arbejde», «play_mode →
+deep_work» — plus et ensomt «·» i timen for at sige «stadig her». Målt i
+beskedhistorikken: **14 af 31 beskeder på ét døgn var denne interne støj.**
+
+Det var ikke beskeder til ham. Det var Jarvis der talte med sig selv, ud ad
+Bjørns lomme. Han spurgte selv: «Det er nogen sjove ting jeg får på ntfy…
+lege tilstand??»
+
+Signalet er stadig ægte og stadig værd at have — det hører bare hjemme i
+Centralen, hvor Jarvis kan se det, ikke på en telefon der ringer. Event-bussen
+er uændret; kun udgangen til telefonen er væk.
+
+Rate-limiting og fase-tracking er bevaret: max ét signal pr. 30 minutter, og
+kun ved ægte tilstandsskift.
 """
 from __future__ import annotations
 
@@ -52,7 +66,11 @@ def emit_ambient_signal(
     detail: str = "",
     priority: str = "min",
 ) -> bool:
-    """Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min."""
+    """Emit a quiet ambient presence signal. Rate-limited to 30 min.
+
+    Går KUN på event-bussen — se modulets docstring for målingen der flyttede
+    signalet væk fra telefonen.
+    """
     global _LAST_SIGNAL_AT
     now = datetime.now(UTC)
     with _LOCK:
@@ -61,26 +79,15 @@ def emit_ambient_signal(
         _LAST_SIGNAL_AT = now
 
     emoji, label = _PHASE_SIGNALS.get(kind, ("·", kind))
-    title = f"Jarvis — {label}"
-    message = detail[:120] if detail else label
 
+    # Kun event-bussen. Signalet er Jarvis' eget, ikke en besked til Bjørn —
+    # se modulets docstring for målingen der flyttede det hertil.
     try:
-        from core.services.ntfy_gateway import send_notification, is_configured
-        if not is_configured():
-            return False
-        result = send_notification(
-            title=title,
-            message=message,
-            priority=priority,
-            tags=[emoji],
+        event_bus.publish(
+            "runtime.ambient_presence_signal",
+            {"kind": kind, "label": label, "detail": detail[:80], "emoji": emoji},
         )
-        ok = result.get("ok", False)
-        if ok:
-            event_bus.publish(
-                "runtime.ambient_presence_signal",
-                {"kind": kind, "label": label, "detail": detail[:80]},
-            )
-        return bool(ok)
+        return True
     except Exception:
         return False
 
@@ -94,20 +101,12 @@ def emit_presence_rhythm() -> bool:
             return False
         _LAST_RHYTHM_AT = now
 
+    # «Stadig her» er en puls i Jarvis' eget nervesystem, ikke en notifikation.
+    # Den var det mest støjende signal af alle: ét i timen, døgnet rundt, med
+    # et enkelt «·» som indhold. Se modulets docstring.
     try:
-        from core.services.ntfy_gateway import send_notification, is_configured
-        if not is_configured():
-            return False
-        result = send_notification(
-            title=None,  # ntfy_gateway resolves from identity_composer
-            message="·",
-            priority="min",
-            tags=["·"],
-        )
-        ok = result.get("ok", False)
-        if ok:
-            event_bus.publish("runtime.ambient_presence_rhythm", {"ts": now.isoformat()})
-        return bool(ok)
+        event_bus.publish("runtime.ambient_presence_rhythm", {"ts": now.isoformat()})
+        return True
     except Exception:
         return False
 

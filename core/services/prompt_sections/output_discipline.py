@@ -48,10 +48,12 @@ def _output_discipline_instruction(*, strength: str) -> str:
         #
         # Pinned sammen med vis_graf og vis_widget: pinned-filens eget _doc
         # siger at et vaerktoej den STAAENDE prompt beder om SKAL staa der.
-        "- Before you finish a turn that leaves an obvious next step, call suggest_next_message",
-        "  with the line Bjørn would plausibly write. It waits in his composer until he types,",
-        "  and it survives an app restart. One line, his voice, no question mark — skip it when",
-        "  the thread is genuinely done.",
+        "- Before you finish a turn that leaves a next step, call suggest_next_task with",
+        "  that step in Bjørn's own words: the instruction he would send to start it — not",
+        "  a reply, not a comment. One line, max ten words, Danish, an order he could send.",
+        "  It waits in his composer and survives an app restart. Since 28/9-2026 there is",
+        "  no local model behind it: skip it and the field stays EMPTY. Skip only when the",
+        "  thread is genuinely done.",
     ]
     if str(strength) == "strong":
         lines += [

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16147 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16148 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -30,34 +30,34 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16147 functions/
 - [`core.runtime.02`](core.runtime.02.md) — `db_heartbeat` … `ollamafreeapi_provider`
 - [`core.runtime.03`](core.runtime.03.md) — `operational_preference_alignment` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agentic_tool_cache`
-- [`core.services.02`](core.services.02.md) — `agentic_working_conclusions` … `autonomous_run_digest`
-- [`core.services.03`](core.services.03.md) — `autonomous_run_failures` … `causal_inference_daemon`
-- [`core.services.04`](core.services.04.md) — `central_absorb` … `central_gardener`
-- [`core.services.05`](core.services.05.md) — `central_ghost` … `central_private_reducer`
-- [`core.services.06`](core.services.06.md) — `central_profiles` … `central_white_rabbit`
-- [`core.services.07`](core.services.07.md) — `central_xproc` … `cluster_family_scheduler`
-- [`core.services.08`](core.services.08.md) — `code_aesthetic_daemon` … `conversation_topics`
-- [`core.services.09`](core.services.09.md) — `copilot_catalogue` … `decision_action_gate`
-- [`core.services.10`](core.services.10.md) — `decision_adherence_gate` … `doc_repair_agent`
-- [`core.services.11`](core.services.11.md) — `docs_drift_watchdog` … `emotional_memory_engine`
-- [`core.services.12`](core.services.12.md) — `encryption` … `forgetting_runtime`
-- [`core.services.13`](core.services.13.md) — `gate_adapters` … `habit_tracker`
-- [`core.services.14`](core.services.14.md) — `habits_pipeline` … `inheritance_seed`
-- [`core.services.15`](core.services.15.md) — `initiative_accumulator` … `living_executive`
-- [`core.services.16`](core.services.16.md) — `living_heartbeat_cycle` … `meta_cognition_daemon`
-- [`core.services.17`](core.services.17.md) — `meta_learning_aggregator` … `notifikations_valg`
-- [`core.services.18`](core.services.18.md) — `ntfy_gateway` … `plugin_ruleset`
-- [`core.services.19`](core.services.19.md) — `plugin_ruleset_store` … `prompt_mutation_loop`
-- [`core.services.20`](core.services.20.md) — `prompt_observer` … `reflection_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `reflection_to_plan` … `run_trailing`
-- [`core.services.22`](core.services.22.md) — `runtime_action_executor` … `self_history_grounding`
-- [`core.services.23`](core.services.23.md) — `self_model_blind_spots` … `session_tool_pin`
-- [`core.services.24`](core.services.24.md) — `session_topic_tracker` … `somatic_runtime_body`
-- [`core.services.25`](core.services.25.md) — `source_confidence_gate` … `theory_of_mind_engine`
-- [`core.services.26`](core.services.26.md) — `think_language` … `unfinished_intent`
-- [`core.services.27`](core.services.27.md) — `untrusted_fencing` … `visible_run_journal`
-- [`core.services.28`](core.services.28.md) — `visible_run_outcome_state` … `workspace_crypto`
-- [`core.services.29`](core.services.29.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agentic_working_conclusions` … `autonomous_outreach_daemon`
+- [`core.services.03`](core.services.03.md) — `autonomous_run_digest` … `causal_graph`
+- [`core.services.04`](core.services.04.md) — `causal_inference_daemon` … `central_form_judge`
+- [`core.services.05`](core.services.05.md) — `central_gardener` … `central_private_observe`
+- [`core.services.06`](core.services.06.md) — `central_private_reducer` … `central_watch`
+- [`core.services.07`](core.services.07.md) — `central_white_rabbit` … `cluster_daemon_families`
+- [`core.services.08`](core.services.08.md) — `cluster_family_scheduler` … `conversation_rhythm`
+- [`core.services.09`](core.services.09.md) — `conversation_topics` … `db_sentinel`
+- [`core.services.10`](core.services.10.md) — `decision_action_gate` … `dispatch_status`
+- [`core.services.11`](core.services.11.md) — `doc_repair_agent` … `emotional_controls`
+- [`core.services.12`](core.services.12.md) — `emotional_memory_engine` … `forgetting_engine`
+- [`core.services.13`](core.services.13.md) — `forgetting_runtime` … `gut_engine`
+- [`core.services.14`](core.services.14.md) — `habit_tracker` … `infra_weather_daemon`
+- [`core.services.15`](core.services.15.md) — `inheritance_seed` … `liveness_registry`
+- [`core.services.16`](core.services.16.md) — `living_executive` … `message_feedback`
+- [`core.services.17`](core.services.17.md) — `meta_cognition_daemon` … `notifikations_opstart`
+- [`core.services.18`](core.services.18.md) — `notifikations_valg` … `plan_proposals`
+- [`core.services.19`](core.services.19.md) — `plugin_ruleset` … `prompt_memory_recall`
+- [`core.services.20`](core.services.20.md) — `prompt_mutation_loop` … `reflection_cycle_daemon`
+- [`core.services.21`](core.services.21.md) — `reflection_signal_tracking` … `run_message_provenance`
+- [`core.services.22`](core.services.22.md) — `run_trailing` … `self_experiments`
+- [`core.services.23`](core.services.23.md) — `self_history_grounding` … `session_spawn`
+- [`core.services.24`](core.services.24.md) — `session_tool_pin` … `somatic_daemon`
+- [`core.services.25`](core.services.25.md) — `somatic_runtime_body` … `theory_of_mind`
+- [`core.services.26`](core.services.26.md) — `theory_of_mind_engine` … `unconscious_temperature_field`
+- [`core.services.27`](core.services.27.md) — `unfinished_intent` … `visible_run_interruption`
+- [`core.services.28`](core.services.28.md) — `visible_run_journal` … `witness_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

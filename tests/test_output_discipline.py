@@ -60,7 +60,7 @@ def test_de_tre_visuelle_vaerktoejer_er_alle_NAEVNT_og_pinned():
     af ~495, og et nyt uden kald-historik kommer ikke i always-core af sig selv.
     Reglen staar i pinned-filens eget `_doc`.
 
-    `suggest_next_message` er med fordi den var det tredje tilfaelde af samme
+    `suggest_next_task` er med fordi den var det tredje tilfaelde af samme
     moenster: maalt 6/10-2026 kaldt 281 gange af 96.399 vaerktoejskald (0,29 %)
     og naevnt NUL steder i prompten — mens de forslag han faktisk skrev blev
     accepteret 49 af 192 gange (25,5 %)."""
@@ -69,7 +69,7 @@ def test_de_tre_visuelle_vaerktoejer_er_alle_NAEVNT_og_pinned():
     invalidate_cache()
     pinned = get_pinned_set()
     tekst = _output_discipline_instruction(strength="strong")
-    for navn in ("vis_graf", "vis_widget", "suggest_next_message"):
+    for navn in ("vis_graf", "vis_widget", "suggest_next_task"):
         assert navn in tekst, f"{navn} naevnes ikke i prompten"
         assert navn in pinned, (
             f"prompten beder om {navn}, men det er ikke pinned — anvisningen "

@@ -256,11 +256,12 @@ def _maybe_emit_critical(report: dict[str, Any]) -> None:
         )
     except Exception:
         pass
-    # ntfy alert
+    # Alarm gennem routeren — device-aware, med ntfy som sidste udvej.
     try:
-        from core.services.ntfy_gateway import send_notification
+        from core.services.alarm_ud import send_alert
         msg = "⛈ System under kritisk pres: " + ", ".join(report.get("reasons") or [])
-        send_notification(msg, title="Jarvis infra_weather", priority="high")
+        send_alert(titel="Jarvis infra_weather", tekst=msg,
+                   slags="infra_security", importance="high")
     except Exception:
         pass
 

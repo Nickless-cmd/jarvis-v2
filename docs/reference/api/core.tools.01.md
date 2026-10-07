@@ -172,11 +172,11 @@ _Tool: send_push_notification — proaktiv push til brugerens companion (mobil/d
 | function | `_exec_send_push_notification` | `(args)` | — | [src](../../../core/tools/companion_push_tools.py#L41) |
 
 ## `core/tools/composer_suggest_tools.py`
-_Jarvis' eget forslag i komponisten — «hvad kunne Bjørn skrive nu?»._
+_Jarvis' eget forslag i komponisten — den næste OPGAVE, i Bjørns ord._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_suggest_next_message` | `(args)` | — | [src](../../../core/tools/composer_suggest_tools.py#L29) |
+| function | `_exec_suggest_next_task` | `(args)` | — | [src](../../../core/tools/composer_suggest_tools.py#L44) |
 
 ## `core/tools/composites_tools.py`
 _Composite tools interface — self-extension for Jarvis._

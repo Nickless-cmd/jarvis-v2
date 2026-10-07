@@ -3,7 +3,7 @@
 ## Hvem der foreslår (ændret 28/9-2026)
 
 Forslaget kommer udelukkende fra Jarvis selv, gennem værktøjet
-`suggest_next_message`. Den lokale model (qwen3:4b) skrev tidligere et bud når
+`suggest_next_task`. Den lokale model (qwen3:4b) skrev tidligere et bud når
 han ikke selv lagde et ned; den blev droppet efter Bjørns måling og dom: «drop
 den anden models forslag og kun bruge dine... den anden model viser lorte
 forslag». Af 428 viste forslag kom 411 fra modellen, og de blev valgt 2,9 % af

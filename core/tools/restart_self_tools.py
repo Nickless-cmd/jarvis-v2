@@ -325,22 +325,17 @@ def _try_fallback_channels(base_msg: str) -> bool:
     except Exception as exc:
         logger.info("restart confirmation: Telegram fallback exception: %s", exc)
 
-    # Forsøg ntfy push notifikation
+    # Sidste udvej: gennem routeren (device-aware, ntfy som bageste led)
     try:
-        from core.services.ntfy_gateway import send_notification as ntfy_send
-        result = ntfy_send(
-            message=base_msg,
-            title="Jarvis genstartet",
-            priority="high",
-            tags=["white_check_mark", "robot"],
-        )
-        if isinstance(result, dict) and result.get("status") == "ok":
-            logger.info("restart confirmation: sent via ntfy fallback")
+        from core.services.alarm_ud import send_alert
+        ok = send_alert(titel="Jarvis genstartet", tekst=base_msg,
+                        slags="infra_security", importance="high")
+        if ok:
+            logger.info("restart confirmation: sent via router")
             return True
-        reason = result.get("reason", "ukendt") if isinstance(result, dict) else str(result)
-        logger.info("restart confirmation: ntfy fallback failed: %s", reason)
+        logger.info("restart confirmation: router kunne ikke levere")
     except Exception as exc:
-        logger.info("restart confirmation: ntfy fallback exception: %s", exc)
+        logger.info("restart confirmation: router exception: %s", exc)
 
     return False
 

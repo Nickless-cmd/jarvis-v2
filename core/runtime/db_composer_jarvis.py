@@ -18,7 +18,7 @@ HANS linje står alene. Det er den asymmetri der mangler i komponisten.
 
 Jarvis kan ikke skrive i et felt der endnu ikke er tomt — forslaget hører til
 den NÆSTE besked, og den findes ikke mens han taler. Han lægger det derfor
-ned mens han er i turen (`suggest_next_message`), og komponisten henter det
+ned mens han er i turen (`suggest_next_task`), og komponisten henter det
 når feltet er tomt og svaret er færdigt.
 
 ## Hvorfor ÉN række pr. forslag — og hvorfor den IKKE længere forbruges

@@ -60,7 +60,7 @@ def suggest(krop: Udkast) -> dict[str, str]:
     """Et forslag, eller tom streng. Fejler aldrig.
 
     Ét spørgsmål: hvad kunne han skrive nu? Kilden er samtalen, og svaret
-    kommer fra Jarvis selv gennem `suggest_next_message`. Har han ikke lagt et
+    kommer fra Jarvis selv gennem `suggest_next_task`. Har han ikke lagt et
     forslag ned, er svaret tomt — et tomt felt er ærligere end et gæt.
 
     Fortsættelses-formen (et halvskrevet udkast) stod her indtil 28/9-2026.

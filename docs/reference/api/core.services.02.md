@@ -39,16 +39,23 @@ _Agreement-streak substrate trigger._
 | function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L61) |
 | function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L112) |
 
-## `core/services/ambient_presence.py`
-_Ambient presence — subtle signals that mark Jarvis' state in the physical space._
+## `core/services/alarm_ud.py`
+_Én vej ud for driftsalarmer — gennem routeren, ikke direkte til telefonen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal via ntfy. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L49) |
-| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L88) |
-| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L115) |
-| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L124) |
-| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L155) |
+| function | `send_alert` | `(*, titel, tekst, slags=…, importance=…, session_id=…)` | Send en driftsalarm gennem routeren. Returnerer True hvis den blev leveret. | [src](../../../core/services/alarm_ud.py#L42) |
+
+## `core/services/ambient_presence.py`
+_Ambient presence — Jarvis' egen tilstand, synlig for ham selv._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emit_ambient_signal` | `(*, kind, detail=…, priority=…)` | Emit a quiet ambient presence signal. Rate-limited to 30 min. | [src](../../../core/services/ambient_presence.py#L63) |
+| function | `emit_presence_rhythm` | `()` | Quiet hourly pulse — 'still here'. Separate rate limit from state signals. | [src](../../../core/services/ambient_presence.py#L95) |
+| function | `emit_state_shift` | `(from_phase, to_phase)` | Signal a genuine phase transition with a descriptive message. | [src](../../../core/services/ambient_presence.py#L114) |
+| function | `maybe_emit_phase_signal` | `(phase)` | Called from heartbeat when life phase is determined. | [src](../../../core/services/ambient_presence.py#L123) |
+| function | `emit_insight_signal` | `(insight)` | Called when a dream is confirmed or a value crystallizes. | [src](../../../core/services/ambient_presence.py#L154) |
 
 ## `core/services/ambient_sound_daemon.py`
 _Ambient Sound daemon — Layer 6½: background acoustic context._
@@ -595,15 +602,4 @@ _Autonomous Outreach Daemon — Jarvis reaches out on his own initiative._
 | function | `recent_log` | `(*, limit=…)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L356) |
 | function | `build_autonomous_outreach_surface` | `()` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L360) |
 | function | `_surface_summary` | `(sent, skipped, last)` | — | [src](../../../core/services/autonomous_outreach_daemon.py#L378) |
-
-## `core/services/autonomous_run_digest.py`
-_Referat af en autonom koersel — kort, i hans egen samtale._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_slags_af` | `(session_id)` | — | [src](../../../core/services/autonomous_run_digest.py#L55) |
-| function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L63) |
-| function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L80) |
-| function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L84) |
-| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L121) |
 

@@ -79,9 +79,9 @@ def observe_and_escalate() -> dict[str, Any]:
                 record_central_incident(cluster="system", nerve="central_health",
                                         kind="self_health", severity="severe", message=msg)
                 try:
-                    from core.services.ntfy_gateway import send_notification
-                    send_notification("⚠ " + msg, title="Central self-helbred",
-                                      priority="high")
+                    from core.services.alarm_ud import send_alert
+                    send_alert(titel="Central self-helbred", tekst=msg,
+                               slags="infra_security", importance="high")
                 except Exception:
                     pass
         except Exception:

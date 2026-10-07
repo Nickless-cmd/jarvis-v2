@@ -1,4 +1,4 @@
-"""Jarvis' eget forslag i komponisten — «hvad kunne Bjørn skrive nu?».
+"""Jarvis' eget forslag i komponisten — den næste OPGAVE, i Bjørns ord.
 
 ## Hvad værktøjet er, og hvad det ikke er
 
@@ -10,23 +10,38 @@ Bjørn 24/9-2026: «i chatview er det dig selv der sætter ord på runderne...
 det burde endelig osse være dig der kommer med forslag i composer?»
 
 Værktøjet lader Jarvis lægge sit EGET forslag ned, mens han er i turen —
-hvor han ved hvad han lige har lavet og hvad næste skridt er. Ligger der et,
-bruger `composer_suggest.foreslaa_naeste_detaljer` hans og springer modellen
-over; gør der ikke, falder den tilbage til den lokale model, præcis som før.
+hvor han ved hvad han lige har lavet og hvad næste skridt er.
 
-## Det er et tilbud, ikke en pligt
+## Navnet blev rettet 7/10-2026 — det pegede på den forkerte opgave
 
-Kalder han det ikke, sker der ingenting — komponisten virker som i dag. Det
-er med vilje: et forslag han føler sig FORPLIGTET til at skrive hver tur ville
-blive et pligtløb og ikke et bud. Han kalder det når han faktisk har et næste
-skridt at pege på.
+Det hed `suggest_next_message`, og «message» lyder som en replik i en
+samtale, altså smalltalk. Det Jarvis faktisk skal give er den næste OPGAVE:
+den instruks Bjørn ville skrive for at sætte arbejdet i gang. Bjørn:
+«den burde hedde suggest_next_task og være dit forslag med mine ord til
+næste opgave». Navnet er derfor `suggest_next_task`, og formålet er skrevet
+om i både prompten og beskrivelsen nedenfor — de sagde før to forskellige
+ting (hans stemme i prompten, Jarvis' egen i beskrivelsen).
+
+## Der er ingen anden kilde længere
+
+Den lokale model (qwen3:4b) blev droppet 28/9-2026 efter en måling: af 428
+viste forslag kom 411 fra modellen, og Jarvis' egne blev valgt 23,5 % af
+gangene mod modellens 2,9 %. Siden da svarer `composer_suggest` TOMT når
+Jarvis ikke har lagt noget ned. Konsekvensen er værd at kende: tier han, er
+feltet tomt — der er ikke længere et dårligt forslag der fylder hullet.
+
+## Hvorfor «tilbud» blev svækket
+
+Kalder han det ikke, sker der ingenting teknisk. Men med modellen væk er
+fraværet ikke neutralt: et tomt felt ER resultatet. Kalder han det, står
+hans eget næste skridt der — i Bjørns ord, så det kan sendes med ét tryk.
 """
 from __future__ import annotations
 
 from typing import Any
 
 
-def _exec_suggest_next_message(args: dict[str, Any]) -> dict[str, Any]:
+def _exec_suggest_next_task(args: dict[str, Any]) -> dict[str, Any]:
     tekst = str(args.get("tekst") or "").strip()
     if not tekst:
         return {"status": "error", "error": "tekst er påkrævet"}
@@ -64,17 +79,17 @@ def _exec_suggest_next_message(args: dict[str, Any]) -> dict[str, Any]:
 
 COMPOSER_SUGGEST_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {"type": "function", "function": {
-        "name": "suggest_next_message",
+        "name": "suggest_next_task",
         "description": (
-            "Læg et forslag i Bjørns skrivefelt til hans NÆSTE besked — i DIN "
-            "egen stemme. Bruges når du selv kan se hvad næste skridt er, "
-            "typisk efter en teknisk runde hvor du lige har lavet noget: så "
-            "ved du bedre end en lille model hvad der følger. Skriv én kort "
-            "besked han kunne sende (en ordre eller et spørgsmål), ikke et "
-            "svar og ikke en kommentar. Ligger der et forslag, viser "
-            "komponisten DIT i stedet for den lokale models; gør der ikke, "
-            "falder den tilbage til modellen. Det er et tilbud — kalder du "
-            "det ikke, sker der ingenting."
+            "Læg den NÆSTE OPGAVE i Bjørns skrivefelt, formuleret i HANS ord — "
+            "den instruks han ville sende for at sætte arbejdet i gang. Ikke en "
+            "replik i samtalen, ikke et svar, ikke en kommentar. Bruges når du "
+            "selv kan se hvad næste skridt er, typisk efter en teknisk runde "
+            "hvor du lige har lavet noget: så ved du bedre end nogen model hvad "
+            "der følger. Én linje, højst ti ord, dansk — en ordre han kunne "
+            "sende. Den venter i hans komponist til han skriver, og overlever "
+            "en app-genstart. Siden 28/9-2026 er der INGEN lokal model bag: "
+            "springer du det over, står feltet tomt."
         ),
         "parameters": {"type": "object", "properties": {
             "tekst": {
@@ -93,5 +108,5 @@ COMPOSER_SUGGEST_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 COMPOSER_SUGGEST_TOOL_HANDLERS: dict[str, Any] = {
-    "suggest_next_message": _exec_suggest_next_message,
+    "suggest_next_task": _exec_suggest_next_task,
 }

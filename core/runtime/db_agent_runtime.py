@@ -387,6 +387,14 @@ def update_agent_registry_entry(
             tuple(values),
         )
         conn.commit()
+    if status is not None:
+        try:  # agent-contract-v1 (A2): terminal status fastlægger assignmentets udfald
+            from core.runtime.db_agent_contract import settle_agent_status
+            settle_agent_status(agent_id=agent_id, registry_status=status)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "settle_agent_status fejlede for %s", agent_id, exc_info=True)
     return get_agent_registry_entry(agent_id)
 
 
@@ -466,6 +474,13 @@ def create_agent_run(
                 policy_hash, policy_json
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                status=excluded.status, execution_mode=excluded.execution_mode,
+                provider=excluded.provider, model=excluded.model,
+                input_summary=excluded.input_summary,
+                input_payload_json=excluded.input_payload_json,
+                started_at=excluded.started_at, updated_at=excluded.updated_at,
+                policy_hash=excluded.policy_hash, policy_json=excluded.policy_json
             """,
             (
                 run_id,
@@ -492,6 +507,12 @@ def create_agent_run(
             ),
         )
         conn.commit()
+    try:  # agent-contract-v1 (A2): bind runnet til agentens åbne assignment
+        from core.runtime.db_agent_contract import adopt_run
+        adopt_run(agent_id=agent_id, run_id=run_id)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning("adopt_run fejlede for %s", run_id, exc_info=True)
     return get_agent_run(run_id) or {}
 
 
@@ -1141,6 +1162,11 @@ def _agent_registry_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         # Uden denne linje findes kolonnen, men INGEN kan laese den —
         # samme fejl som `kind` i godkendelses-broen.
         "runtime_owner": str(row["runtime_owner"] or ""),
+        # agent-contract-v1: kolonnerne findes først når kontrakt-skemaet er sikret.
+        "owner_user_id": (str(row["owner_user_id"]) if "owner_user_id" in row.keys()
+                          else "legacy_unscoped"),
+        "owner_session_id": (str(row["owner_session_id"])
+                             if "owner_session_id" in row.keys() else ""),
         "failure_count": int(row["failure_count"]),
         "last_error": str(row["last_error"]),
         "context_json": str(row["context_json"]),

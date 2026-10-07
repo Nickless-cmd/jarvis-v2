@@ -374,6 +374,11 @@ def spawn_agent_task(
         context_json=json.dumps(context),
         result_contract_json=json.dumps(result_contract),
     )
+    # agent-contract-v1 (A2): ejer + oprindelsessession fra den autentificerede kontekst.
+    from core.services.agent_contract_bridge import bind_new_agent
+    bind_new_agent(agent_id=agent_id, parent_agent_id=str(parent_agent_id or ""), goal=goal,
+                   persistent=persistent, context=context, budget_tokens=budget_tokens,
+                   max_turns=max_turns, result_contract=result_contract)
     # Per-agent transcript: metadata sidecar + lifecycle event + sidechain
     try:
         from core.services.agent_transcript import write_meta, write_lifecycle, write_sidechain
@@ -614,7 +619,8 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         execution_mode=execution_mode,
         extra_instruction="Respond to Jarvis directly. Keep the answer compact and action-oriented.",
     )
-    run_id = f"agent-run-{uuid4().hex}"
+    from core.runtime.db_agent_contract import queued_contract_run
+    run_id = queued_contract_run(agent_id) or f"agent-run-{uuid4().hex}"
     update_agent_registry_entry(agent_id, status="starting", last_error="")
     create_agent_run(
         run_id=run_id,

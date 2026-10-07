@@ -41,7 +41,11 @@ def _add_columns(conn: sqlite3.Connection, table: str, columns: list[tuple[str, 
     have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
     for name, decl in columns:
         if name not in have:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+            except sqlite3.OperationalError as exc:  # begge units migrerer samme DB
+                if "duplicate column" not in str(exc).lower():
+                    raise
 
 
 def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
@@ -131,9 +135,19 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+_ENSURED: set[str] = set()
+
+
 def _conn() -> sqlite3.Connection:
+    """Ensure-én-gang-per-proces-og-DB: ellers koster hvert statusskifte 8 DDL-kald."""
+    from core.runtime import db_core
+
     conn = connect()
-    ensure_agent_contract_tables(conn)
+    key = str(db_core.DB_PATH)
+    if key not in _ENSURED:
+        ensure_agent_contract_tables(conn)
+        conn.commit()
+        _ENSURED.add(key)
     return conn
 
 
@@ -376,3 +390,100 @@ def get_assignment(*, assignment_id: str, owner_user_id: str) -> dict[str, Any] 
         "SELECT * FROM agent_assignments WHERE assignment_id=? AND owner_user_id=?",
         (assignment_id, owner_user_id),
     ).fetchone())
+
+
+# --- A2: kobling til den eksisterende agent-livscyklus -----------------------
+
+# Registry-status -> assignmentets terminale status. `failed` for en
+# PERSISTENT agent er et forsoeg, der genplanlaegges med backoff, ikke et
+# slutresultat (§6), og saettes derfor ikke her.
+_SETTLING = {"completed": "completed", "failed": "failed",
+             "cancelled": "cancelled", "expired": "timed_out"}
+_ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget"}
+_ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT"}
+
+
+def bind_agent_owner(*, agent_id: str, owner_user_id: str, owner_session_id: str) -> None:
+    """Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten
+    endnu er `legacy_unscoped`; en eksisterende ejer ændres aldrig (§4)."""
+    owner = _require(owner_user_id, "owner_user_id")
+    session = _require(owner_session_id, "owner_session_id")
+    conn = _conn()
+    conn.execute(
+        "UPDATE agent_registry SET owner_user_id=?, owner_session_id=? "
+        "WHERE agent_id=? AND owner_user_id=?", (owner, session, agent_id, LEGACY_UNSCOPED))
+    conn.commit()
+
+
+def queued_contract_run(agent_id: str) -> str:
+    """Id på det run accept_assignment forudoprettede og som endnu ikke er startet."""
+    r = _conn().execute(
+        "SELECT run_id FROM agent_runs WHERE agent_id=? AND assignment_id != '' "
+        "AND status='queued' AND started_at='' ORDER BY attempt_no LIMIT 1", (agent_id,),
+    ).fetchone()
+    return r["run_id"] if r else ""
+
+
+def adopt_run(*, agent_id: str, run_id: str) -> str:
+    """Bind et nyoprettet run til agentens åbne assignment som næste forsøg.
+    Returnerer assignment_id, eller "" når agenten ikke har et (legacy-vej)."""
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        run = conn.execute("SELECT assignment_id FROM agent_runs WHERE run_id=?",
+                           (run_id,)).fetchone()
+        if run is None:
+            conn.rollback()
+            return ""
+        if run["assignment_id"]:
+            conn.execute("UPDATE agent_assignments SET status='active', updated_at=? "
+                         "WHERE assignment_id=? AND status='queued'",
+                         (_now_iso(), run["assignment_id"]))
+            conn.commit()
+            return run["assignment_id"]
+        a = conn.execute(
+            "SELECT assignment_id, owner_user_id FROM agent_assignments WHERE agent_id=? "
+            "AND status IN ('queued','active','waiting') ORDER BY created_at DESC LIMIT 1",
+            (agent_id,)).fetchone()
+        if a is None:
+            conn.rollback()
+            return ""
+        n = conn.execute("SELECT COALESCE(MAX(attempt_no),0)+1 FROM agent_runs "
+                         "WHERE assignment_id=?", (a["assignment_id"],)).fetchone()[0]
+        conn.execute("UPDATE agent_runs SET assignment_id=?, owner_user_id=?, attempt_no=? "
+                     "WHERE run_id=?", (a["assignment_id"], a["owner_user_id"], n, run_id))
+        conn.execute("UPDATE agent_assignments SET status='active', updated_at=? "
+                     "WHERE assignment_id=? AND status='queued'",
+                     (_now_iso(), a["assignment_id"]))
+        conn.commit()
+        return a["assignment_id"]
+    except BaseException:
+        conn.rollback()
+        raise
+
+
+def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any] | None:
+    """Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne
+    assignments udfald og den ene terminalbesked. `None` når intet skal ske."""
+    target = _SETTLING.get(registry_status)
+    if target is None:
+        return None
+    conn = _conn()
+    agent = conn.execute("SELECT persistent, last_error FROM agent_registry WHERE agent_id=?",
+                         (agent_id,)).fetchone()
+    if agent is None or (registry_status == "failed" and agent["persistent"]):
+        return None
+    a = conn.execute("SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND "
+                     "status IN ('queued','active','waiting') ORDER BY created_at DESC LIMIT 1",
+                     (agent_id,)).fetchone()
+    if a is None:
+        return None
+    reply = conn.execute(
+        "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
+        "AND kind IN ('result','') ORDER BY created_at DESC LIMIT 1", (agent_id,)).fetchone()
+    return commit_terminal_outcome(
+        assignment_id=a["assignment_id"], status=target,
+        summary=(reply["content"] if reply else "")[:500],
+        error_code=_ERROR_CODE.get(registry_status, ""),
+        error_phase=_ERROR_PHASE.get(registry_status, ""),
+    )

@@ -557,8 +557,10 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     handling, ikke til alt hvad den maatte finde paa at starte. Se
     `child_authority` for hvad der bevares og hvorfor.
     """
+    from core.runtime.db_agent_lease import agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
-    with uden_foraeldrens_godkendelse():
+    # agent-contract-v1 (C2): leasen holdes mens barnet koerer; en gammel worker kan ikke skrive.
+    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
                                            execution_mode=execution_mode)
     try:

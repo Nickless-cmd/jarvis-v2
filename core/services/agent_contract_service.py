@@ -421,3 +421,15 @@ def _attach_outputs(view: list[dict[str, Any]], owner_user_id: str, offset: int)
         v["output"] = art.read_artifact(owner_user_id=owner_user_id, ref=f"{run_id}/final.txt",
                                         offset=offset)
         v["result_ref"] = ref
+
+
+def supervise() -> list[dict[str, Any]]:
+    """Supervisor-taek: overtag udloebne leases og genstart sikre forsoeg. Kan koeres fra
+    begge processer; ét atomisk DB-claim afgoer hvem der handler (§9, procesansvar)."""
+    from core.runtime.db_agent_lease import reconcile_expired_leases
+
+    done = reconcile_expired_leases()
+    for d in done:
+        if d.get("action") == "retry":
+            _start_execution(d["agent_id"])
+    return done

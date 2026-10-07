@@ -202,6 +202,11 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
         arguments = {}
     if not name:
         return json.dumps({"status": "error", "error": "missing tool name"})
+    from core.runtime.db_agent_lease import scope_is_current
+    if not scope_is_current():
+        # Workerens lease er udloebet eller overtaget: intet nyt vaerktoejskald (§9).
+        return json.dumps({"status": "error", "code": "LEASE_LOST",
+                           "error": "workerens lease er ikke laengere gaeldende"})
     try:
         agent = get_agent_registry_entry(agent_id) or {}
         context = json.loads(str(agent.get("context_json") or "{}"))

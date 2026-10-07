@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16160 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16175 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -26,9 +26,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16160 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_goals`
-- [`core.runtime.02`](core.runtime.02.md) — `db_governance` … `heartbeat_triggers`
-- [`core.runtime.03`](core.runtime.03.md) — `jarvisx_auth` … `ws_auth`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_gate_verdicts`
+- [`core.runtime.02`](core.runtime.02.md) — `db_goals` … `db_world_self_truth`
+- [`core.runtime.03`](core.runtime.03.md) — `heartbeat_triggers` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_todos`
 - [`core.services.02`](core.services.02.md) — `agent_transcript` … `automation_dsl`
 - [`core.services.03`](core.services.03.md) — `autonomous_goals` … `candidate_hygiene`

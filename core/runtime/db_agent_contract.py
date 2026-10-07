@@ -142,6 +142,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_artifacts import ensure_artifact_tables
 
     ensure_artifact_tables(conn)
+    from core.runtime.db_agent_lease import ensure_lease_tables
+
+    ensure_lease_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -491,6 +494,12 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
     assignments udfald og den ene terminalbesked. `None` når intet skal ske."""
     target = _SETTLING.get(registry_status)
     if target is None:
+        return None
+    from core.runtime.db_agent_lease import scope_is_current
+    if not scope_is_current():
+        # En worker med udloebet/overtaget lease maa ikke skrive terminal status (§9).
+        logger.warning("settle_agent_status afvist for %s: workerens lease er ikke laengere gaeldende",
+                       agent_id)
         return None
     conn = _conn()
     agent = conn.execute("SELECT persistent, last_error FROM agent_registry WHERE agent_id=?",

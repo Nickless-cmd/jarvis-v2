@@ -3670,17 +3670,23 @@ p.central-flag { margin: 0 0 6px; }
  * under markøren fremhæves, og det aktuelle (nederste) anker står fedt med en
  * længere/lysere dash. Klik scroller til beskeden. */
 .msg-rail { position: absolute; left: 4px; top: 14px; z-index: 20; }
-/* Cap til ~12 dashes ad gangen (scroll for resten) + tæt afstand, så rail'en
- * ikke fylder hele chatview-højden (Bjørn 2026-06-17). Scrollbar skjult. */
+/* 7/10-2026 (Bjørn): «rail i chatview bliver afkortet efter x antal streger —
+   det skal den ikke». Den faste cap paa 150px (~12 streger) blev sat 17/6 for
+   at railen ikke skulle fylde hele hoejden; den viste sig at klippe en lang
+   samtale midt i listen, saa man ikke kunne se hvor man var henne. Loftet er
+   nu den plads der FAKTISK er: hele chatfladen minus lidt luft i top og bund.
+   Der rulles stadig naar samtalen er laengere end skaermen — men der klippes
+   ikke laengere ved 12 streger. Scrollbar skjult. */
 .msg-rail-panel { display: flex; flex-direction: column; gap: 0; padding: 4px;
-  border: 1px solid transparent; border-radius: 10px; max-height: 150px; overflow-y: auto;
+  border: 1px solid transparent; border-radius: 10px; max-height: calc(100vh - 200px);
+  overflow-y: auto;
   scrollbar-width: none; transition: background .12s ease, border-color .12s ease; }
 .msg-rail-panel::-webkit-scrollbar { display: none; }
 /* 4/10-2026: panelet faar INGEN ramme, baggrund eller skygge ved hover. Det
    gjorde railen til en aabnet boks oven paa samtalen. I mockup'en (og i Codex)
-   er der kun streger, ogsaa naar musen er der. Kun rulle-hoejden udvides, saa
-   en lang session stadig kan naas. */
-.msg-rail:hover .msg-rail-panel { max-height: calc(100vh - 200px); }
+   er der kun streger, ogsaa naar musen er der. Hoejden er nu den samme i hvile
+   og ved hover (7/10-2026) — der er ikke laengere noget at udvide TIL, fordi
+   hvile-hoejden allerede er hele den tilgaengelige plads. */
 /* Rækkehøjden — sidste ord 4/10-2026. Den har været 13px (10 min-height +
    2 padding + 1 gap), 6px, 3px og 2px, mens Bjørn bad om «mindre» seks gange.
    Facit er mockup'ens 8px: 2px streg og 6px luft. Rækken bærer ingen tekst —

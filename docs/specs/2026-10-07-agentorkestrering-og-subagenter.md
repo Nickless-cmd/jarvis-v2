@@ -1,9 +1,10 @@
 ---
-status: klar til implementering
+status: udkast til gennemgang
 dato: 2026-10-07
 ejer: bjorn
 implementering: ikke startet
 gennemgået: 2026-10-07 — Jarvis (review), Opus (review), Codex (DSH-gennemgang + produktionsprofil)
+arkitektur: produktionsprofil besluttet; samlet spec afventer gennemgang
 note: ../notes/foreslaaet/arkitektur/2026-10-07-agentlevering-og-genopretning.md
 dsh-gennemgang: ../notes/foreslaaet/arkitektur/2026-10-07-dsh-agentlaering.md
 review-jarvis: ../notes/foreslaaet/arkitektur/2026-10-07-jarvis-review-af-agentorkestrering.md
@@ -25,11 +26,12 @@ Jarvis er orkestrator og ejer det endelige svar og handlingerne over for brugere
 
 Agentstatus, beskeder, værktøjskald, resultat og fejl vises i **Jarvis Desk, arbejdsmodus/Code-visningen**, gennem det eksisterende Miljø-felt og agentinspector. Desk læser projektioner af DB- og run-hændelser; den holder ikke en selvstændig sandhed om agenter. Mission Control er ikke mål-UI for denne funktion. Eksisterende API-ruter kan fortsat være backend-adaptere, indtil de ændres naturligt.
 
-Systemet omfatter både engangsagenter, agenter som kan få nye ture, og langvarige agenter med et varigt mål og planlagte aktiveringer. Et råd og en review-kæde er orkestreringsmønstre over den samme motor, ikke separate LLM-runtimes. Et agentrun er som standard en **baggrundsopgave** i produktet: dispatch returnerer accept og id hurtigt, mens Jarvis og brugeren kan fortsætte. En eventuel synkron `wait` er kun en måde at afvente samme baggrundsopgave på. `agent_id` er en varig logisk identitet, ikke et operativsystemproces-id. En serverworker kan køre i en delt runtimeproces eller en isoleret serverproces; klienten kører kun de værktøjshandlinger, serveren har sendt gennem broen. Klienten ejer aldrig agentens modelkald, plan, inbox, lease eller fortsættelse. En serverworkerproces kan dø uden at agentidentiteten forsvinder.
+Systemet omfatter både engangsagenter, agenter som kan få nye ture, og langvarige agenter med et varigt mål og planlagte aktiveringer. Et råd og en review-kæde er orkestreringsmønstre over den samme motor, ikke separate LLM-runtimes. Et agentrun er som standard en **baggrundsopgave** i produktet: dispatch returnerer accept og id hurtigt, mens Jarvis og brugeren kan fortsætte. En eventuel synkron `wait` er kun en måde at afvente samme baggrundsopgave på. `agent_id` er en varig logisk identitet, ikke et operativsystemproces-id. I første produktion kører hvert aktivt run sin egen serverstyrede workerproces efter §12.1; hverken API-processen, en delt runtimeproces eller Desk kører barnets model- og værktøjsløkke. Klienten udfører kun de værktøjshandlinger, serveren har sendt gennem broen. Klienten ejer aldrig agentens modelkald, plan, inbox, lease eller fortsættelse. En workerproces kan dø uden at agentidentiteten forsvinder.
 
 ## 3. Eksisterende udgangspunkt
 
 - `core/services/agent_runtime_spawn.py` opretter agenter med rolle, model, værktøjer, budget, parent og status; `agent_runtime_base.py` har en værktøjsløkke bag et runtimeflag. Disse dele genbruges.
+- Det nuværende råd kaldes fra `mission_control_agents.py` i API-processen og bruger `ThreadPoolExecutor` i `agent_runtime_council.py`. Det er migrationsudgangspunkt, ikke en tilladt produktionsworker efter §12.1; rådets medlemmer skal over på samme isolerede runmotor som øvrige agenter.
 - `core/services/agent_message_receipt.py` kan give en kvittering og vække Jarvis ved et sent svar. Returvejen skal samles med hans aktive runs inbox og gøres varig.
 - `core/services/agent_transcript.py` skriver per-agent JSONL med flush og fsync. Den nuværende læsevenlige værktøjsresultatpost er afkortet; fuldt output kræver særskilte artefakter.
 - `core/services/jarvisx_bridge.py` ruter til klienter via WebSocket og korrelations-id og har cross-process forwarding. Agentkørsler skal eje forbindelsestab, ukendt udfald og genforbindelse over denne transport.
@@ -185,6 +187,8 @@ Acceptscenarier omfatter: resultat under aktivt run; resultat efter normal runsl
 ### 11.1 Testlag og frigivelsesværn
 
 Testene bygges med kontrollerbar modeladapter, worker-ur, DB og bro, så race og crash kan gentages. **Servicekontrakt:** dispatch/followup/besked/stop, rettighedssnit, modelvalg, budgetreservation, promptversion, tool-filter og tilstandsovergange testes som observerbare input/output; et afvist kald må ikke oprette halvt barn eller trække budget. Forsøg også at læse, styre og hente en anden ejers agent eller artefakt, inklusive efter en genoptaget session. Ejergrænse, `route_source` og `MODEL_UNAVAILABLE` har ingen eksisterende testdækning og skal bygges fra nul. **Persistens og konkurrence:** to workers og dernæst to supervisorinstanser forsøger samme run; lease udløber midt i et toolkald; DB-commit fejler før/efter artefaktomdøbning; to børn afslutter samtidig; og normal recovery samt agentvækning ser samme inaktive parent. Invarianterne er ét gyldigt lease-ejerskab, ét terminalt assignment-udfald og én terminal outboxbesked pr. assignment, ingen tavst tabt accepteret besked og ingen dobbelt fjernskrivning. Et retry bevarer hvert forsøgs fejl og artefakt uden at sende et ekstra terminalt resultat. Ukendt modelrequest-eksponering registreres som sådan.
+
+**Procesgrænse:** Integrationstesten kontrollerer, at to samtidige assignments har forskellige worker-PID'er, at hverken API- eller runtimeprocessen udfører deres model-/toolløkke, og at et dræbt barn kan genoptages fra DB og artefakter uden at tage søskenderun eller parentens synlige run ned. Samme test køres for rådets medlemmer og syntese. Forsøg på at læse en anden ejers filer eller bruge rå providercredentials inde i workerprocessen skal afvises ved den faktiske proces- og sandboxgrænse.
 
 Hver test af en **negativ invariant** skal vise, at den lytter på den virkelige ledning: indfør en målrettet fejl i testen eller en testfixture og se testen fejle, når idempotensnøglen fjernes, dispatch-kaldet kobles fra, lease-claimet omgås eller en anden session får beskeden. Bekræft også den positive nabohændelse gennem samme søm. En grøn test, der kun konstaterer fravær, eller som matcher en setup-/miljøfejl, er ikke evidens for værnet.
 

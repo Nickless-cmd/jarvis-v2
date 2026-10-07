@@ -160,6 +160,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_route import ensure_route_tables
 
     ensure_route_tables(conn)
+    from core.runtime.db_agent_feed import ensure_feed_tables
+
+    ensure_feed_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -388,6 +391,7 @@ def commit_terminal_outcome(
         ck.commit()
     except Exception:
         logger.warning("kunne ikke rydde approvals for %s", assignment_id, exc_info=True)
+    _signal_feed(assignment_id)
     if fired:
         from core.runtime.db_agent_wait import materialize_pending_wakes
         try:
@@ -399,6 +403,17 @@ def commit_terminal_outcome(
             "message": _row(conn.execute(
                 "SELECT * FROM agent_result_outbox WHERE message_id=?", (message_id,)
             ).fetchone())}
+
+
+def _signal_feed(assignment_id: str) -> None:
+    """Meld terminaludfaldet til Desks feed straks (G). Fejler det, tager supervisor-tikket det op -
+    udfaldet og dets outbox-besked er allerede committet, saa intet kan gaa tabt."""
+    try:
+        from core.runtime.db_agent_feed import signal_changes
+        signal_changes()
+    except Exception:
+        logger.warning("feed-signal for %s kunne ikke udsendes nu; tages op af supervisor-tikket",
+                       assignment_id, exc_info=True)
 
 
 def advance_delivery(*, message_id: str, owner_user_id: str, to_status: str) -> dict[str, Any]:

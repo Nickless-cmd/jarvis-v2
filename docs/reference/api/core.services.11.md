@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/development_ritual.py`
+_Ugentligt udviklings-ritual — Jarvis' egen vej til at ændre sig (blok D, 4/9)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/development_ritual.py#L43) |
+| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/development_ritual.py#L52) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/development_ritual.py#L60) |
+| function | `_due` | `(last_run, now)` | — | [src](../../../core/services/development_ritual.py#L68) |
+| function | `gather_material` | `(*, limit=…)` | Hvad har han lært om sig selv og om arbejdet den seneste uge? | [src](../../../core/services/development_ritual.py#L73) |
+| function | `build_paragraph` | `(material)` | Ét afsnit om ugen. Tom streng når der ikke er noget at sige. | [src](../../../core/services/development_ritual.py#L97) |
+| function | `current_focus` | `(workspace_dir)` | Den nyeste `## Udvikling`-linje — hans aktive udviklingsfokus. | [src](../../../core/services/development_ritual.py#L108) |
+| function | `propose` | `(*, now=…)` | Stil ugens udviklings-forslag. Ét ad gangen — aldrig to i kø. | [src](../../../core/services/development_ritual.py#L125) |
+| function | `veto` | `(*, reason=…)` | Bjørn sagde fra. Forslaget droppes, intet skrives. | [src](../../../core/services/development_ritual.py#L153) |
+| function | `apply_if_due` | `(*, now=…)` | Skriv forslaget når vetoperioden er udløbet. Tavshed er et ja. | [src](../../../core/services/development_ritual.py#L163) |
+| function | `run_development_ritual` | `(*, force=…, now=…)` | Ugentligt: stil forslaget. Dagligt: skriv det der har ligget 24 timer. | [src](../../../core/services/development_ritual.py#L192) |
+| function | `build_development_ritual_surface` | `()` | — | [src](../../../core/services/development_ritual.py#L214) |
+
 ## `core/services/development_sense.py`
 _Development senses — realtime felt-sense of growth, stuck, appetite, resistance._
 
@@ -695,16 +713,4 @@ _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 | function | `classify_egress` | `(command)` | {"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren. | [src](../../../core/services/egress_guard.py#L119) |
 | function | `urls_in_command` | `(command)` | URL'er i en kommando, saa de kan klassificeres hver for sig. Ren. | [src](../../../core/services/egress_guard.py#L141) |
 | function | `internal_targets_in_command` | `(command)` | De URL'er i kommandoen der peger INDAD. Ren. | [src](../../../core/services/egress_guard.py#L149) |
-
-## `core/services/egress_routing.py`
-_Egress routing — which network egress a (provider, auth_profile) slot uses._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_egress` | `(provider, auth_profile)` | Which egress a slot uses. default profile -> 'home'; other profiles -> | [src](../../../core/services/egress_routing.py#L84) |
-| function | `resolve_v6bind_source` | `(provider, auth_profile)` | Native-IPv6 account2 egress: bind the outbound socket to a distinct v6 | [src](../../../core/services/egress_routing.py#L97) |
-| function | `_source_addr_usable` | `(addr)` | True if ``addr`` can be bound as an IPv6 source on this host (cheap check). | [src](../../../core/services/egress_routing.py#L132) |
-| function | `resolve_nat64` | `(provider, auth_profile)` | True if this (provider, auth_profile) slot should egress via NAT64 instead | [src](../../../core/services/egress_routing.py#L157) |
-| function | `nat64_synthesize` | `(host)` | Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server. | [src](../../../core/services/egress_routing.py#L182) |
-| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L223) |
 

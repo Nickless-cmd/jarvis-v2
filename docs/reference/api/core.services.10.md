@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cross_signal_analysis.py`
+_Cross-Signal Analysis — find patterns across cognitive signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L20) |
+| function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L84) |
+
 ## `core/services/cross_user_share_guard.py`
 _Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._
 
@@ -556,22 +564,4 @@ _Development narrative daemon — daily LLM narrative about how Jarvis has chang
 | function | `_store_narrative` | `(narrative)` | — | [src](../../../core/services/development_narrative_daemon.py#L71) |
 | function | `get_latest_development_narrative` | `()` | — | [src](../../../core/services/development_narrative_daemon.py#L100) |
 | function | `build_development_narrative_surface` | `()` | — | [src](../../../core/services/development_narrative_daemon.py#L104) |
-
-## `core/services/development_ritual.py`
-_Ugentligt udviklings-ritual — Jarvis' egen vej til at ændre sig (blok D, 4/9)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/development_ritual.py#L43) |
-| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/development_ritual.py#L52) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/development_ritual.py#L60) |
-| function | `_due` | `(last_run, now)` | — | [src](../../../core/services/development_ritual.py#L68) |
-| function | `gather_material` | `(*, limit=…)` | Hvad har han lært om sig selv og om arbejdet den seneste uge? | [src](../../../core/services/development_ritual.py#L73) |
-| function | `build_paragraph` | `(material)` | Ét afsnit om ugen. Tom streng når der ikke er noget at sige. | [src](../../../core/services/development_ritual.py#L97) |
-| function | `current_focus` | `(workspace_dir)` | Den nyeste `## Udvikling`-linje — hans aktive udviklingsfokus. | [src](../../../core/services/development_ritual.py#L108) |
-| function | `propose` | `(*, now=…)` | Stil ugens udviklings-forslag. Ét ad gangen — aldrig to i kø. | [src](../../../core/services/development_ritual.py#L125) |
-| function | `veto` | `(*, reason=…)` | Bjørn sagde fra. Forslaget droppes, intet skrives. | [src](../../../core/services/development_ritual.py#L153) |
-| function | `apply_if_due` | `(*, now=…)` | Skriv forslaget når vetoperioden er udløbet. Tavshed er et ja. | [src](../../../core/services/development_ritual.py#L163) |
-| function | `run_development_ritual` | `(*, force=…, now=…)` | Ugentligt: stil forslaget. Dagligt: skriv det der har ligget 24 timer. | [src](../../../core/services/development_ritual.py#L192) |
-| function | `build_development_ritual_surface` | `()` | — | [src](../../../core/services/development_ritual.py#L214) |
 

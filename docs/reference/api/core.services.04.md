@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bounded_action_continuity_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_bounded_action_continuity_surface` | `(tool_intent_surface, *, awareness_surface=…)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L12) |
+| function | `_derive_current_action_continuity_surface` | `(tool_intent_surface, *, awareness_surface)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L40) |
+| function | `_derive_followup_from_awareness` | `(*, execution_state, action_type, action_target, awareness_surface)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L143) |
+| function | `_derive_continuity_state` | `(*, execution_state, followup_state)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L243) |
+| function | `_continuity_id` | `(*, action_type, action_target, action_summary, action_outcome, approval_resolved_at, approval_source)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L267) |
+| function | `_default_action_continuity_surface` | `()` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L291) |
+| function | `_normalize_action_continuity_surface` | `(surface)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L323) |
+| function | `_merge_unique` | `(left, right)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L337) |
+
 ## `core/services/bounded_mutation_intent_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -587,22 +600,4 @@ _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenk
 | function | `simulate_silence` | `(nerve)` | Projicér effekten af at SLUKKE én nerve i 24t — udelukkende fra optaget data. READ-ONLY. | [src](../../../core/services/central_construct.py#L32) |
 | function | `build_construct_surface` | `()` | Sandbox-oversigt: hvilke nerver kunne jeg slukke uden tab (safe) vs hvilke ser noget (risky). | [src](../../../core/services/central_construct.py#L67) |
 | function | `record_construct` | `()` | Cadence: observér sandbox-fundet til nerve system/construct (metadata-only). Self-safe. | [src](../../../core/services/central_construct.py#L92) |
-
-## `core/services/central_continuity_healer.py`
-_Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_continuity_healer.py#L40) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_continuity_healer.py#L49) |
-| function | `_now` | `()` | — | [src](../../../core/services/central_continuity_healer.py#L57) |
-| function | `_present` | `(state, dim)` | Er dimensionen faktisk til stede (ikke tom) i en selv-tilstand? | [src](../../../core/services/central_continuity_healer.py#L61) |
-| function | `_present_dims` | `(state)` | — | [src](../../../core/services/central_continuity_healer.py#L81) |
-| function | `_snapshot_age_h` | `(snap)` | — | [src](../../../core/services/central_continuity_healer.py#L85) |
-| function | `measure_fidelity` | `()` | continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY. | [src](../../../core/services/central_continuity_healer.py#L98) |
-| function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L114) |
-| function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L127) |
-| function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L155) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L173) |
-| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L181) |
 

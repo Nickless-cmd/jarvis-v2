@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_llm_egress.py`
+_Samlet LLM-egress-observation — "har vi styr på ALLE udgående kald?" (Bjørn 4. jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_cheap_eligible` | `(*, lane, purpose, autonomous)` | Rolle-bevidst: kunne dette kald have taget en billigere model uden kvalitetstab? | [src](../../../core/services/central_llm_egress.py#L28) |
+| function | `observe` | `(*, lane, provider, model, purpose=…, input_tokens=…, output_tokens=…, cost_usd=…, autonomous=…, source=…)` | Rapportér ét udgående LLM-kald til Centralens samlede egress-billede. Kald fra | [src](../../../core/services/central_llm_egress.py#L46) |
+| function | `build_llm_egress_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_llm_egress.py#L91) |
+
 ## `core/services/central_loop_lag.py`
 _Event-loop-lag-monitor — "uret" bag cutoff-spøgelset (Bjørn 4. jul)._
 
@@ -583,22 +592,4 @@ _The Sentinel — en ægte modstander._
 | function | `list_attacks` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_sentinel.py#L140) |
 | function | `build_sentinel_surface` | `()` | Aktive angreb (contested hypoteser der venter på forsvar) + følt linje. Self-safe. | [src](../../../core/services/central_sentinel.py#L151) |
 | function | `run_sentinel` | `(*, trigger=…, last_visible_at=…)` | Prime-cadence (73 min): ét angreb på den stærkeste antagelse (shadow — foreslår kun). Self-safe. | [src](../../../core/services/central_sentinel.py#L160) |
-
-## `core/services/central_sequence.py`
-_core/services/central_sequence.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_sequence.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_sequence.py#L39) |
-| function | `ensure_schema` | `()` | — | [src](../../../core/services/central_sequence.py#L47) |
-| function | `_fam` | `(kind)` | — | [src](../../../core/services/central_sequence.py#L67) |
-| function | `learn_from_stream` | `(*, window=…)` | Lær transition-tællinger fra NYE events siden cursor (tæller hver overgang ÉN gang). Aggregatet | [src](../../../core/services/central_sequence.py#L71) |
-| function | `_from_total` | `(c, from_fam)` | — | [src](../../../core/services/central_sequence.py#L116) |
-| function | `transition_prob` | `(from_fam, to_fam)` | P(to | from) fra de lærte tællinger. 0.0 hvis aldrig set. Self-safe. | [src](../../../core/services/central_sequence.py#L122) |
-| function | `predict_next` | `(from_fam, *, top=…)` | Hvad forudsiger modellen følger efter from_fam? (top mest sandsynlige). Self-safe. | [src](../../../core/services/central_sequence.py#L137) |
-| function | `detect_surprises` | `(*, window=…, min_from_total=…, threshold=…)` | Overraskelser: overgange der FAKTISK skete i det seneste vindue, men som modellen forudsagde | [src](../../../core/services/central_sequence.py#L152) |
-| function | `run_sequence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: lær fra strømmen + detektér overraskelser. Egress-fri observe. Self-safe. | [src](../../../core/services/central_sequence.py#L189) |
-| function | `register_sequence_producer` | `()` | Registrér selv-træningen som cadence-producer (~hvert 15 min). | [src](../../../core/services/central_sequence.py#L204) |
-| function | `build_central_sequence_surface` | `()` | Mission Control surface — read-only: model-størrelse + aktuelle overraskelser. | [src](../../../core/services/central_sequence.py#L216) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pdf_connector.py`
+_PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_bytes` | `(source)` | → (bytes, None) ved succes, ellers (None, fejlkode). | [src](../../../core/services/pdf_connector.py#L34) |
+| function | `read_pdf` | `(source, *, max_pages=…)` | — | [src](../../../core/services/pdf_connector.py#L58) |
+
 ## `core/services/peak_hours.py`
 _core/services/peak_hours.py_
 
@@ -681,20 +689,4 @@ _core/services/producer_novelty.py_
 | function | `record_output` | `(producer, text)` | Registrér en producers LLM-output + mål nyhed = 1 - (max-lighed vs dens seneste N). | [src](../../../core/services/producer_novelty.py#L84) |
 | function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
 | function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
-
-## `core/services/projection_chat_messages.py`
-_Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L69) |
-| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L81) |
-| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L95) |
-| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L108) |
-| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L129) |
-| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L170) |
-| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L179) |
-| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L198) |
-| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L203) |
-| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L232) |
 

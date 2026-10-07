@@ -113,6 +113,15 @@ def _start_execution(agent_id: str) -> None:
     _run_in_background(_go)
 
 
+def _signal_feed() -> None:
+    """Meld nye/aendrede agentreferencer til Desk. Best effort: supervisor-tikket gensender (G)."""
+    try:
+        from core.runtime.db_agent_feed import signal_changes
+        signal_changes()
+    except Exception:
+        logger.warning("feed-signal kunne ikke udsendes nu", exc_info=True)
+
+
 def _digest(**parts: Any) -> str:
     return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
 
@@ -229,6 +238,7 @@ def dispatch_agent(
             c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
             return _err("INVALID_SCOPE", f"worktree: {type(exc).__name__}"[:120])
     _start_execution(agent_id)
+    _signal_feed()
     run = c._conn().execute("SELECT run_id FROM agent_runs WHERE assignment_id=? "
                             "ORDER BY attempt_no LIMIT 1", (a["assignment_id"],)).fetchone()
     view = _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
@@ -285,6 +295,7 @@ def followup_agent(
                          kind="task-brief", content=goal)
     update_agent_registry_entry(agent_id, status="queued", last_error="")
     _start_execution(agent_id)
+    _signal_feed()
     return _accept_view(acc)
 
 
@@ -494,6 +505,11 @@ def supervise() -> list[dict[str, Any]]:
     except Exception:
         logger.warning("godkendte integrationer kunne ikke udfoeres", exc_info=True)
     done = reconcile_expired_leases()
+    try:
+        from core.runtime.db_agent_feed import signal_changes
+        signal_changes()      # G: crash mellem commit og push taber ikke notifikationen
+    except Exception:
+        logger.warning("feed-signaler kunne ikke udsendes", exc_info=True)
     for d in done:
         if d.get("action") == "retry":
             _start_execution(d["agent_id"])

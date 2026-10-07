@@ -135,6 +135,7 @@ from apps.api.jarvis_api.routes.provider_registry import router as provider_regi
 from apps.api.jarvis_api.routes.cheap_lane_control import router as cheap_lane_control_router
 from apps.api.jarvis_api.routes.agent_pool import router as agent_pool_router
 from apps.api.jarvis_api.routes.agent_approvals import router as agent_approvals_router
+from apps.api.jarvis_api.routes.agent_contract_view import router as agent_contract_view_router
 from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_router
 from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
 from apps.api.jarvis_api.routes.anthropic_compat import router as anthropic_compat_router
@@ -1006,6 +1007,7 @@ def create_app() -> FastAPI:
     app.include_router(cheap_lane_control_router)
     app.include_router(agent_pool_router)
     app.include_router(agent_approvals_router)
+    app.include_router(agent_contract_view_router)
     app.include_router(agentic_guards_router)
     app.include_router(tool_router_router)
     app.include_router(anthropic_compat_router)

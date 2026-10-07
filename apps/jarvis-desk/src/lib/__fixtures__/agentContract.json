@@ -1,0 +1,454 @@
+{
+  "artifact": {
+    "content": "halvvejs",
+    "offset": 0,
+    "partial": false,
+    "ref": "run-7cd834f0718c4e62/final.txt",
+    "size": 8,
+    "status": "ok",
+    "truncated": false
+  },
+  "detail": {
+    "agent": {
+      "acknowledged": false,
+      "agent_id": "agent-a",
+      "assignment_id": "asg-5107871b4d1849a1",
+      "assignment_status": "active",
+      "attempts": 1,
+      "attention": false,
+      "bucket": "active",
+      "children": 1,
+      "cost_usd": null,
+      "council_id": "raad-1",
+      "duration_s": 0,
+      "error": null,
+      "finished_at": "",
+      "goal": "find X",
+      "heartbeat": {
+        "at": "2026-10-07T21:29:27.138262Z",
+        "state": "ok"
+      },
+      "last_message": {
+        "at": "2026-10-07T21:29:27.138302Z",
+        "direction": "agent->jarvis",
+        "kind": "result",
+        "text": "halvvejs"
+      },
+      "lifecycle_status": "available",
+      "model_claim": "",
+      "origin_session_id": "sess-1",
+      "parent_agent_id": "",
+      "pending_approvals": 1,
+      "read": false,
+      "reason": "",
+      "role": "researcher",
+      "route": {
+        "model": "m",
+        "provider": "p",
+        "route_source": "agent_pool"
+      },
+      "run_id": "run-7cd834f0718c4e62",
+      "run_status": "running",
+      "started_at": "2026-10-07T21:29:27.137366Z",
+      "summary": "",
+      "target": "runtime-container",
+      "tokens": 0,
+      "updated_at": "2026-10-07T21:29:27.137366Z"
+    },
+    "approvals": [
+      {
+        "agent_id": "agent-a",
+        "approval_id": "appr-c3d3dc5d507040e2",
+        "args_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "assignment_id": "asg-5107871b4d1849a1",
+        "created_at": "2026-10-07T21:29:27.138873Z",
+        "decided_at": "",
+        "decided_by": "",
+        "decision_note": "",
+        "expires_at": "2026-10-09T21:29:27.138873Z",
+        "kind": "tool_call",
+        "origin_session_id": "sess-1",
+        "parent_run_id": "pr",
+        "requested_by": "agent",
+        "risk_class": "write",
+        "run_id": "run-7cd834f0718c4e62",
+        "safe_view": "bash({\"command\": \"make\"})",
+        "status": "pending",
+        "target": "runtime-container",
+        "tool_name": "bash"
+      }
+    ],
+    "artifacts": [
+      {
+        "assignment_id": "asg-5107871b4d1849a1",
+        "attempt_no": 1,
+        "name": "final.txt",
+        "run_id": "run-7cd834f0718c4e62",
+        "size": 4,
+        "status": "complete"
+      }
+    ],
+    "assignments": [
+      {
+        "assignment_id": "asg-5107871b4d1849a1",
+        "budget": {},
+        "created_at": "2026-10-07T21:29:27.137366Z",
+        "created_by": "",
+        "deadline_at": "",
+        "expected_result": "",
+        "goal": "find X",
+        "operation": "dispatch",
+        "outcome": {
+          "artifact_error": "",
+          "artifact_ref": "",
+          "error_code": "",
+          "error_phase": "",
+          "status": "",
+          "summary": ""
+        },
+        "routes": [
+          {
+            "attempt": 1,
+            "created_at": "2026-10-07T21:29:27.138219Z",
+            "model": "m",
+            "provider": "p",
+            "route_source": "agent_pool"
+          }
+        ],
+        "status": "active",
+        "target": "runtime-container",
+        "terminal_at": "",
+        "updated_at": "2026-10-07T21:29:27.137366Z"
+      }
+    ],
+    "capability": {
+      "contract_version": "agent-contract-v1",
+      "enabled": true,
+      "reason": ""
+    },
+    "children": [
+      "agent-kid"
+    ],
+    "contract_version": "agent-contract-v1",
+    "messages": [
+      {
+        "content": "halvvejs",
+        "created_at": "2026-10-07T21:29:27.138302Z",
+        "direction": "agent->jarvis",
+        "kind": "result",
+        "message_id": "m1",
+        "role": "assistant"
+      }
+    ],
+    "runs": [
+      {
+        "assignment_id": "asg-5107871b4d1849a1",
+        "attempt_no": 1,
+        "cost_usd": 0.0,
+        "error_code": "",
+        "error_phase": "",
+        "failure_reason": "",
+        "finished_at": "",
+        "input_tokens": 0,
+        "model": "",
+        "output_tokens": 0,
+        "provider": "",
+        "run_id": "run-7cd834f0718c4e62",
+        "started_at": "",
+        "status": "running"
+      }
+    ],
+    "status": "ok",
+    "tool_calls": [
+      {
+        "finished_at": "",
+        "run_id": "run-7cd834f0718c4e62",
+        "started_at": "2026-10-07T10:00:01Z",
+        "status": "completed",
+        "tool_call_id": "tc1",
+        "tool_name": "read_file"
+      }
+    ]
+  },
+  "feed": {
+    "approval_card": {
+      "agent_id": "agent-a",
+      "approval": {
+        "approval_id": "appr-c3d3dc5d507040e2",
+        "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "expires_at": "2026-10-09T21:29:27.138873Z",
+        "risk_class": "write",
+        "status": "pending",
+        "tool_name": "bash"
+      },
+      "assignment_id": "asg-5107871b4d1849a1",
+      "bucket": "approval",
+      "can_acknowledge": false,
+      "created_at": "2026-10-07T21:29:27.138873Z",
+      "error": null,
+      "origin_session_id": "sess-1",
+      "reason": "Venter på din godkendelse",
+      "ref_id": "appr-c3d3dc5d507040e2",
+      "ref_kind": "approval",
+      "section": "venter",
+      "state": {
+        "acknowledged": false,
+        "assignment_status": "",
+        "model_claim": "",
+        "read": false
+      },
+      "summary": "bash({\"command\": \"make\"})",
+      "title": "Godkend: bash",
+      "updated_at": "2026-10-07T21:29:27.138873Z"
+    },
+    "cards": [
+      {
+        "agent_id": "agent-a",
+        "assignment_id": "asg-5107871b4d1849a1",
+        "bucket": "active",
+        "can_acknowledge": false,
+        "created_at": "2026-10-07T21:29:27.137366Z",
+        "error": null,
+        "origin_session_id": "sess-1",
+        "reason": "",
+        "ref_id": "asg-5107871b4d1849a1",
+        "ref_kind": "agent",
+        "section": "aktiv",
+        "state": {
+          "acknowledged": false,
+          "assignment_status": "active",
+          "model_claim": "",
+          "read": false
+        },
+        "summary": "",
+        "title": "researcher: find X",
+        "updated_at": "2026-10-07T21:29:27.137366Z"
+      },
+      {
+        "agent_id": "agent-kid",
+        "assignment_id": "asg-d87c2bf03a944171",
+        "bucket": "failed",
+        "can_acknowledge": true,
+        "created_at": "2026-10-07T10:00:00Z",
+        "error": {
+          "code": "AGENT_FAILED",
+          "phase": "model",
+          "reason": ""
+        },
+        "origin_session_id": "sess-1",
+        "reason": "Fejlede (AGENT_FAILED, fase model)",
+        "ref_id": "asg-d87c2bf03a944171",
+        "ref_kind": "agent",
+        "section": "venter",
+        "state": {
+          "acknowledged": false,
+          "assignment_status": "failed",
+          "model_claim": "accepted",
+          "read": false
+        },
+        "summary": "",
+        "title": "researcher: del-opgave",
+        "updated_at": "2026-10-07T21:29:27.137792Z"
+      },
+      {
+        "agent_id": "agent-a",
+        "approval": {
+          "approval_id": "appr-c3d3dc5d507040e2",
+          "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+          "expires_at": "2026-10-09T21:29:27.138873Z",
+          "risk_class": "write",
+          "status": "pending",
+          "tool_name": "bash"
+        },
+        "assignment_id": "asg-5107871b4d1849a1",
+        "bucket": "approval",
+        "can_acknowledge": false,
+        "created_at": "2026-10-07T21:29:27.138873Z",
+        "error": null,
+        "origin_session_id": "sess-1",
+        "reason": "Venter på din godkendelse",
+        "ref_id": "appr-c3d3dc5d507040e2",
+        "ref_kind": "approval",
+        "section": "venter",
+        "state": {
+          "acknowledged": false,
+          "assignment_status": "",
+          "model_claim": "",
+          "read": false
+        },
+        "summary": "bash({\"command\": \"make\"})",
+        "title": "Godkend: bash",
+        "updated_at": "2026-10-07T21:29:27.138873Z"
+      }
+    ],
+    "contract_version": "agent-contract-v1",
+    "counts": {
+      "aktiv": 1,
+      "svar": 0,
+      "unread": 3,
+      "venter": 2
+    },
+    "status": "ok"
+  },
+  "message": {
+    "agent_id": "agent-a",
+    "assignment_id": "asg-5107871b4d1849a1",
+    "audit_id": "desk-77b665d82ef2",
+    "contract_version": "agent-contract-v1",
+    "delivery": "accepted",
+    "message_id": "agent-msg-841c026573f44b1fbc5f2ccce6e3e11b",
+    "note": "gemt til agentens naeste tur; levering til en igangvaerende tur er ikke bevist",
+    "receipt": {
+      "accepted": true,
+      "code": "",
+      "confirmed": false,
+      "delivered": false,
+      "kind": "message",
+      "state": "accepted"
+    },
+    "status": "accepted"
+  },
+  "overview": {
+    "agents": [
+      {
+        "acknowledged": false,
+        "agent_id": "agent-a",
+        "assignment_id": "asg-5107871b4d1849a1",
+        "assignment_status": "active",
+        "attempts": 1,
+        "attention": false,
+        "bucket": "active",
+        "children": 1,
+        "cost_usd": null,
+        "council_id": "raad-1",
+        "duration_s": 0,
+        "error": null,
+        "finished_at": "",
+        "goal": "find X",
+        "heartbeat": {
+          "at": "2026-10-07T21:29:27.138262Z",
+          "state": "ok"
+        },
+        "last_message": {
+          "at": "2026-10-07T21:29:27.138302Z",
+          "direction": "agent->jarvis",
+          "kind": "result",
+          "text": "halvvejs"
+        },
+        "lifecycle_status": "available",
+        "model_claim": "",
+        "origin_session_id": "sess-1",
+        "parent_agent_id": "",
+        "pending_approvals": 1,
+        "read": false,
+        "reason": "",
+        "role": "researcher",
+        "route": {
+          "model": "m",
+          "provider": "p",
+          "route_source": "agent_pool"
+        },
+        "run_id": "run-7cd834f0718c4e62",
+        "run_status": "running",
+        "started_at": "2026-10-07T21:29:27.137366Z",
+        "summary": "",
+        "target": "runtime-container",
+        "tokens": 0,
+        "updated_at": "2026-10-07T21:29:27.137366Z"
+      },
+      {
+        "acknowledged": false,
+        "agent_id": "agent-kid",
+        "assignment_id": "asg-d87c2bf03a944171",
+        "assignment_status": "failed",
+        "attempts": 1,
+        "attention": true,
+        "bucket": "failed",
+        "children": 0,
+        "cost_usd": 0.001,
+        "council_id": "raad-1",
+        "duration_s": 41367,
+        "error": {
+          "code": "AGENT_FAILED",
+          "phase": "model",
+          "reason": ""
+        },
+        "finished_at": "2026-10-07T21:29:27.137792Z",
+        "goal": "del-opgave",
+        "heartbeat": null,
+        "last_message": null,
+        "lifecycle_status": "available",
+        "model_claim": "accepted",
+        "origin_session_id": "sess-1",
+        "parent_agent_id": "agent-a",
+        "pending_approvals": 0,
+        "read": false,
+        "reason": "Fejlede (AGENT_FAILED, fase model)",
+        "role": "researcher",
+        "route": null,
+        "run_id": "run-2beb5ddeb11a4ed7",
+        "run_status": "failed",
+        "started_at": "2026-10-07T10:00:00Z",
+        "summary": "gik galt",
+        "target": "runtime-container",
+        "tokens": 15,
+        "updated_at": "2026-10-07T21:29:27.137792Z"
+      }
+    ],
+    "capability": {
+      "contract_version": "agent-contract-v1",
+      "enabled": true,
+      "reason": ""
+    },
+    "contract_version": "agent-contract-v1",
+    "counts": {
+      "active": 1,
+      "attention": 1,
+      "blocked": 0,
+      "open": 1,
+      "queued": 0,
+      "waiting": 0
+    },
+    "groups": [
+      {
+        "council_id": "raad-1",
+        "counts": {
+          "active": 1,
+          "attention": 1,
+          "blocked": 0,
+          "open": 1,
+          "queued": 0,
+          "waiting": 0
+        },
+        "members": [
+          {
+            "agent_id": "agent-kid",
+            "bucket": "failed",
+            "role": "researcher"
+          },
+          {
+            "agent_id": "agent-a",
+            "bucket": "active",
+            "role": "researcher"
+          }
+        ],
+        "synthesis": null
+      }
+    ],
+    "status": "ok"
+  },
+  "stop": {
+    "agent_id": "agent-a",
+    "assignment_id": "asg-5107871b4d1849a1",
+    "contract_version": "agent-contract-v1",
+    "receipt": {
+      "accepted": true,
+      "code": "",
+      "confirmed": false,
+      "delivered": null,
+      "kind": "stop",
+      "state": "stop_requested"
+    },
+    "status": "stop_requested"
+  }
+}

@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/automation_dsl.py`
+_Automation DSL — declarative triggers → actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TriggerSpec` | `` | — | [src](../../../core/services/automation_dsl.py#L33) |
+| class | `ActionSpec` | `` | — | [src](../../../core/services/automation_dsl.py#L39) |
+| class | `AutomationDSL` | `` | — | [src](../../../core/services/automation_dsl.py#L47) |
+| class | `AutomationDSLValidationError` | `` | — | [src](../../../core/services/automation_dsl.py#L56) |
+| function | `_storage_path` | `()` | — | [src](../../../core/services/automation_dsl.py#L67) |
+| function | `_load` | `()` | — | [src](../../../core/services/automation_dsl.py#L71) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/automation_dsl.py#L85) |
+| function | `validate_automation` | `(raw)` | Validate and construct an AutomationDSL from a raw dict. | [src](../../../core/services/automation_dsl.py#L97) |
+| function | `register_automation` | `(dsl)` | Persist an AutomationDSL. Returns automation_id. | [src](../../../core/services/automation_dsl.py#L154) |
+| function | `deactivate_automation` | `(automation_id)` | — | [src](../../../core/services/automation_dsl.py#L180) |
+| function | `list_automations` | `(*, status=…)` | — | [src](../../../core/services/automation_dsl.py#L190) |
+| function | `_expire_due` | `()` | Mark expired automations as inactive. Returns count of newly expired. | [src](../../../core/services/automation_dsl.py#L197) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — expire due automations, no other side-effects here. | [src](../../../core/services/automation_dsl.py#L222) |
+| function | `build_automation_dsl_surface` | `()` | — | [src](../../../core/services/automation_dsl.py#L228) |
+| function | `_emit_automation_dsl_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/automation_dsl.py#L257) |
+
 ## `core/services/autonomous_goals.py`
 _Autonomous goals — persistent top-level goals with decomposition._
 
@@ -581,13 +602,4 @@ _Calm Anchor — baseline reference state Jarvis can return to._
 | function | `_surface_summary` | `(state)` | — | [src](../../../core/services/calm_anchor.py#L228) |
 | function | `build_calm_anchor_prompt_section` | `()` | Surfaces a grounding line when distance is significant. | [src](../../../core/services/calm_anchor.py#L241) |
 | function | `reset_calm_anchor` | `()` | Reset state (for testing). | [src](../../../core/services/calm_anchor.py#L261) |
-
-## `core/services/candidate_hygiene.py`
-_Hygiejne for runtime-contract-kandidater — stabil nøgle + flygtigheds-filter._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `candidate_domain_tokens` | `(value)` | Split en fri-tekst-streng i rene tokens (lowercase, alfanumerisk). | [src](../../../core/services/candidate_hygiene.py#L62) |
-| function | `normalize_candidate_domain` | `(value, *, max_tokens=…)` | Fold et fri-tekst-domæne til en ren, stabil nøgle-del. | [src](../../../core/services/candidate_hygiene.py#L67) |
-| function | `is_transient_line` | `(value)` | True når en linje beskriver en flygtig hændelse frem for varig viden. | [src](../../../core/services/candidate_hygiene.py#L139) |
 

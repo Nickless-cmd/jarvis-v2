@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/meta_learning_aggregator.py`
+_Meta-læring aggregator — Phase 1 (AGI track #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_in_window` | `(ts_iso, since, until)` | Defensive: parse ts and check if it's within [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L18) |
+| function | `_bucket_confidence` | `(c)` | — | [src](../../../core/services/meta_learning_aggregator.py#L31) |
+| function | `_confidence_score` | `(value, *, default=…)` | Normalize numeric and world-model textual confidence to 0..1. | [src](../../../core/services/meta_learning_aggregator.py#L39) |
+| function | `_prediction_id` | `(prediction)` | — | [src](../../../core/services/meta_learning_aggregator.py#L52) |
+| function | `aggregate_world_model` | `(*, since, until)` | Aggregate world-model prediction activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L60) |
+| function | `_completion_seconds` | `(rec)` | Seconds between created_at and updated_at; None if either missing. | [src](../../../core/services/meta_learning_aggregator.py#L136) |
+| function | `aggregate_plan_revision` | `(*, since, until)` | Aggregate plan-proposal activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L150) |
+| function | `aggregate_curiosity` | `(*, since, until)` | Aggregate curiosity-tool activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L222) |
+| function | `aggregate_skill_chain_phase2` | `(*, since, until)` | Aggregate skill_chain Phase 2 events in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L282) |
+| function | `aggregate_tool_invention` | `(*, since, until)` | Aggregate tool-invention activity in [since, until]. | [src](../../../core/services/meta_learning_aggregator.py#L361) |
+
 ## `core/services/meta_learning_hypotheses.py`
 _Meta-læring Phase 2: hypothesis registration + sample tracking._
 
@@ -608,15 +624,4 @@ _Push-valg per slags (spec 2026-09-21)._
 | function | `saet` | `(user_id, slags, kanal)` | — | [src](../../../core/services/notifikations_valg.py#L132) |
 | function | `alle` | `(user_id)` | Alle slags med brugerens valg lagt oven paa standarden. | [src](../../../core/services/notifikations_valg.py#L143) |
 | function | `migrer_kolonner` | `()` | Baer de gamle kolonner over som raekker. Idempotent. | [src](../../../core/services/notifikations_valg.py#L154) |
-
-## `core/services/ntfy_gateway.py`
-_Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_config` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L13) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L26) |
-| function | `_default_title` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L30) |
-| function | `_header_safe` | `(value)` | Goer en tekst sikker som HTTP-header (urllib koder headere som latin-1). | [src](../../../core/services/ntfy_gateway.py#L41) |
-| function | `send_notification` | `(message, title=…, priority=…, tags=…)` | Send a push notification via ntfy. Returns status dict. | [src](../../../core/services/ntfy_gateway.py#L78) |
 

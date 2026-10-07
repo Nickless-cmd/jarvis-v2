@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/source_confidence_gate.py`
+_Source-confidence gate (epistemisk gate, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
+| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
+| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
+
 ## `core/services/spaced_repetition.py`
 _Spaced Repetition — schedule reviews for things Jarvis learned._
 
@@ -629,14 +638,4 @@ _Active theory-of-mind engine for Jarvis._
 | function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
 | function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
 | function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
-
-## `core/services/think_language.py`
-_Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current` | `()` | Aktivt tænke-sprog. Ukendt værdi eller fejl → 'da' (fail-soft). | [src](../../../core/services/think_language.py#L53) |
-| function | `is_english` | `()` | True når tænkningen skal føres på engelsk. | [src](../../../core/services/think_language.py#L63) |
-| function | `set_language` | `(lang)` | Sæt tænke-sprog. Ukendt værdi afvises — returnerer det aktive sprog. | [src](../../../core/services/think_language.py#L68) |
-| function | `directive` | `()` | Instruktionen til prompt-halen — tom streng når dansk er aktivt. | [src](../../../core/services/think_language.py#L77) |
 

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/contradiction_resolver.py`
+_Contradiction resolver (spec 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_meaningful_overlap` | `(finding)` | Overlap-tokens uden stopord og rene tal — kun disse tæller som ægte signal. | [src](../../../core/services/contradiction_resolver.py#L44) |
+| function | `_confidence` | `(finding)` | — | [src](../../../core/services/contradiction_resolver.py#L55) |
+| function | `pick_survivor` | `(finding)` | Authority-first, recency-tiebreak. Decision og self-review-critique er begge | [src](../../../core/services/contradiction_resolver.py#L64) |
+| function | `classify_tier` | `(finding)` | 'auto' | 'escalate'. Escalate naar den tabende beslutning roerer identitet/ | [src](../../../core/services/contradiction_resolver.py#L79) |
+| function | `_apply_supersede` | `(decision_id, *, review_id, rule)` | Marker den tabende decision superseded (status-flip, reversibel, aldrig slettet). | [src](../../../core/services/contradiction_resolver.py#L92) |
+| function | `revert_supersede` | `(decision_id)` | Owner-reversal (Central-CLI): superseded → active igen. | [src](../../../core/services/contradiction_resolver.py#L121) |
+| function | `_write_escalation_proposal` | `(finding, *, rule, seen)` | Escalate-tier: publicer et resolution-FORSLAG (muterer intet). Deduppet pr. | [src](../../../core/services/contradiction_resolver.py#L140) |
+| function | `resolve_contradictions` | `(*, live)` | Resolve modsigelser. ``live=True`` muterer (supersede); ``live=False`` er | [src](../../../core/services/contradiction_resolver.py#L162) |
+| function | `run_resolver_tick` | `()` | Cadence-indgang. Kaldes gennem central().decide saa Centralen ER aktoeren; gate_enforcement | [src](../../../core/services/contradiction_resolver.py#L200) |
+| function | `build_contradiction_resolver_surface` | `(*, limit=…)` | Side-effect-fri read-surface til Central-CLI (jc raw /central/contradictions). | [src](../../../core/services/contradiction_resolver.py#L226) |
+
 ## `core/services/conversation_rhythm.py`
 _Conversation Rhythm — tracks conversation signature patterns._
 
@@ -600,20 +616,4 @@ _DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerend
 | function | `scan` | `()` | Census + vækst-delta vs forrige snapshot + flag egregious vækst. Returnér rapport. | [src](../../../core/services/db_sentinel.py#L81) |
 | function | `observe` | `()` | Kør scan + central.observe(summary) + flag egregious vækst som incident (review). | [src](../../../core/services/db_sentinel.py#L105) |
 | function | `build_db_health_surface` | `()` | MC-surface — read-only meta-projektion af DB-helbred + kandidat-død-liste til review. | [src](../../../core/services/db_sentinel.py#L131) |
-
-## `core/services/decision_action_gate.py`
-_Current-turn opportunities for three low-adherence behavioral decisions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_turn_text` | `(user_message)` | Discard the transport's attachment instructions before classifying words. | [src](../../../core/services/decision_action_gate.py#L59) |
-| function | `_correction_excerpt` | `(user_message)` | Use the challenged claim, not a long paste's unrelated opening words. | [src](../../../core/services/decision_action_gate.py#L67) |
-| function | `opportunities` | `(user_message)` | Return only triggers with a concrete observable opportunity. | [src](../../../core/services/decision_action_gate.py#L77) |
-| function | `query_current_memory` | `(user_message, session_id)` | Read current-turn memory; the caller gives this a bounded future. | [src](../../../core/services/decision_action_gate.py#L98) |
-| function | `action_section` | `(user_message, *, recall_text)` | A short volatile prompt tail, immediately before the current answer. | [src](../../../core/services/decision_action_gate.py#L108) |
-| function | `evaluate_turn` | `(*, user_message, answer_text, memory_recalled, tool_names)` | Count proven actions; absence of proof stays unconfirmed. | [src](../../../core/services/decision_action_gate.py#L131) |
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/decision_action_gate.py#L154) |
-| function | `record_opportunities` | `(run_id, user_message, *, memory_recalled)` | Persist each actual trigger once, without storing conversation text. | [src](../../../core/services/decision_action_gate.py#L171) |
-| function | `record_outcomes` | `(run_id, user_message, answer_text, *, tool_names)` | Finalize observations at the persisted assistant message boundary. | [src](../../../core/services/decision_action_gate.py#L196) |
-| function | `opportunity_summary` | `(*, days=…)` | Observed kept / all triggered opportunities, with uncertainty explicit. | [src](../../../core/services/decision_action_gate.py#L225) |
 

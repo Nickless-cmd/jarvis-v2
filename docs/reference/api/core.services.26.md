@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/think_language.py`
+_Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current` | `()` | Aktivt tænke-sprog. Ukendt værdi eller fejl → 'da' (fail-soft). | [src](../../../core/services/think_language.py#L53) |
+| function | `is_english` | `()` | True når tænkningen skal føres på engelsk. | [src](../../../core/services/think_language.py#L63) |
+| function | `set_language` | `(lang)` | Sæt tænke-sprog. Ukendt værdi afvises — returnerer det aktive sprog. | [src](../../../core/services/think_language.py#L68) |
+| function | `directive` | `()` | Instruktionen til prompt-halen — tom streng når dansk er aktivt. | [src](../../../core/services/think_language.py#L77) |
+
 ## `core/services/thought_action_proposal_daemon.py`
 _Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
 
@@ -504,16 +514,4 @@ _Unfinished-intent detector for visible-run output._
 | function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L264) |
 | function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L273) |
 | function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L281) |
-
-## `core/services/untrusted_fencing.py`
-_Indhegning af utroet indhold — porteret fra jarvis-code._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_neutralisér` | `(tekst)` | Afvaebn hegn-markoerer INDE i nyttelasten. | [src](../../../core/services/untrusted_fencing.py#L46) |
-| function | `fence` | `(kilde, indhold)` | Pak indhold ind som utroet data. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L63) |
-| function | `kilde_for_tool` | `(navn)` | Hvilken slags kilde er dette vaerktoejs resultat? Ren. | [src](../../../core/services/untrusted_fencing.py#L71) |
-| function | `should_fence` | `(navn)` | Skal dette vaerktoejs resultat hegnes ind? Ren. | [src](../../../core/services/untrusted_fencing.py#L88) |
-| function | `_hegn_blok` | `(kilde, blok)` | Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke. | [src](../../../core/services/untrusted_fencing.py#L101) |
-| function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L112) |
 

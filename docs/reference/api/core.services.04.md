@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/candidate_hygiene.py`
+_Hygiejne for runtime-contract-kandidater — stabil nøgle + flygtigheds-filter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `candidate_domain_tokens` | `(value)` | Split en fri-tekst-streng i rene tokens (lowercase, alfanumerisk). | [src](../../../core/services/candidate_hygiene.py#L62) |
+| function | `normalize_candidate_domain` | `(value, *, max_tokens=…)` | Fold et fri-tekst-domæne til en ren, stabil nøgle-del. | [src](../../../core/services/candidate_hygiene.py#L67) |
+| function | `is_transient_line` | `(value)` | True når en linje beskriver en flygtig hændelse frem for varig viden. | [src](../../../core/services/candidate_hygiene.py#L139) |
+
 ## `core/services/candidate_review_digest.py`
 _Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed._
 
@@ -588,16 +597,4 @@ _Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget
 | function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L206) |
 | function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L299) |
 | function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L332) |
-
-## `core/services/central_excess.py`
-_Sense of Excess — Centralens gartner-muskel._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_own_py_files` | `()` | — | [src](../../../core/services/central_excess.py#L33) |
-| function | `_line_count` | `(path)` | — | [src](../../../core/services/central_excess.py#L47) |
-| function | `build_excess_surface` | `()` | MÆRK vægten: samlet linjer, service-antal, oversized filer → ét pres (0-100) + somatisk linje. | [src](../../../core/services/central_excess.py#L55) |
-| function | `_felt_line` | `(pressure, hard, worst, worst_file)` | — | [src](../../../core/services/central_excess.py#L95) |
-| function | `record_excess_pressure` | `()` | Observér pressets tyngde til Centralen (nerve system/excess) så Jarvis MÆRKER det over tid. | [src](../../../core/services/central_excess.py#L106) |
-| function | `propose_cuts` | `(*, max_files=…)` | FORESLÅ konkrete snit: døde module-level funktioner (0 referencer udenfor def) + oversized | [src](../../../core/services/central_excess.py#L124) |
 

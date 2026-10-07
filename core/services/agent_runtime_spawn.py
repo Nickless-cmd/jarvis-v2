@@ -547,6 +547,19 @@ def _build_agent_prompt(
     )
 
 
+def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
+    """Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender)."""
+    try:
+        if not agent_tools_enabled():
+            return []
+        from core.services.agent_runtime_base import _build_agent_tools_payload
+        allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
+        return _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
+    except Exception:
+        logger.warning("kunne ikke bygge vaerktoejsskema til promptsnapshot", exc_info=True)
+        return []
+
+
 def execute_agent_task(*, agent_id: str, thread_id: str = "",
                        execution_mode: str = "solo-task") -> dict[str, object]:
     """Koer et barns arbejde.
@@ -622,6 +635,13 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         execution_mode=execution_mode,
         extra_instruction="Respond to Jarvis directly. Keep the answer compact and action-oriented.",
     )
+    # agent-contract-v1 (C3): kontrakt-bundne agenter faar de tre versionsmaerkede lag.
+    from core.services.agent_prompt_layers import build_layered_prompt
+    _layers = build_layered_prompt(
+        agent=agent, messages_text=_format_messages(messages), execution_mode=execution_mode,
+        extra_instruction="Respond to Jarvis directly. Keep the answer compact and action-oriented.")
+    if _layers is not None:
+        prompt = _layers["text"]
     from core.runtime.db_agent_contract import queued_contract_run
     run_id = queued_contract_run(agent_id) or f"agent-run-{uuid4().hex}"
     update_agent_registry_entry(agent_id, status="starting", last_error="")
@@ -636,6 +656,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         input_payload_json=json.dumps({"prompt": prompt}),
         started_at=_now_iso(),
     )
+    if _layers is not None:  # gemmes FOER det foerste modelkald (§7)
+        from core.services.agent_prompt_layers import snapshot_prompt
+        snapshot_prompt(run_id=run_id, agent=agent, layers=_layers,
+                        tools_payload=_snapshot_tools(agent))
     # Per-agent transcript: log prompt before model call
     try:
         from core.services.agent_transcript import write_prompt, write_lifecycle

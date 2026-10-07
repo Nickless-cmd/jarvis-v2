@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_todos.py`
+_Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `effective_status` | `(todo, now_iso)` | Udledt status: 'expired' hvis expires_at er passeret og todo'en ikke er | [src](../../../core/services/agent_todos.py#L38) |
+| function | `_load_all` | `()` | — | [src](../../../core/services/agent_todos.py#L49) |
+| function | `_save_all` | `(data)` | — | [src](../../../core/services/agent_todos.py#L60) |
+| function | `_session_key` | `(session_id)` | — | [src](../../../core/services/agent_todos.py#L64) |
+| function | `list_todos` | `(session_id)` | — | [src](../../../core/services/agent_todos.py#L68) |
+| function | `set_todos` | `(session_id, items)` | Replace the entire todo list for this session. | [src](../../../core/services/agent_todos.py#L72) |
+| function | `update_todo_status` | `(session_id, todo_id, new_status)` | — | [src](../../../core/services/agent_todos.py#L150) |
+| function | `add_todo` | `(session_id, content)` | — | [src](../../../core/services/agent_todos.py#L196) |
+| function | `create_from_plan` | `(*, plan_id, session_id, steps)` | Append pending todos for each plan step. Idempotent. | [src](../../../core/services/agent_todos.py#L215) |
+| function | `_maybe_dismiss_orphaned_plan` | `(session_id, old_plan_ids, new_todos)` | Dismiss any awaiting_approval plan that no longer has linked todos. | [src](../../../core/services/agent_todos.py#L261) |
+| function | `remove_todo` | `(session_id, todo_id)` | — | [src](../../../core/services/agent_todos.py#L307) |
+| function | `add_cowork_todo` | `(content)` | Opret en todo i den delte cowork-session (Mission Control UI). | [src](../../../core/services/agent_todos.py#L333) |
+| function | `_find_session_for_todo` | `(todo_id)` | — | [src](../../../core/services/agent_todos.py#L338) |
+| function | `update_todo_status_anywhere` | `(todo_id, new_status)` | Skift status på en todo uanset hvilken session den lever i (cowork kender | [src](../../../core/services/agent_todos.py#L345) |
+| function | `remove_todo_anywhere` | `(todo_id)` | Slet en todo uanset hvilken session den lever i. | [src](../../../core/services/agent_todos.py#L354) |
+| function | `set_todo_expiry_anywhere` | `(todo_id, expires_at)` | Sæt/ryd udløbstidspunkt (ISO) på en todo uanset session. None = intet udløb. | [src](../../../core/services/agent_todos.py#L362) |
+| function | `clear_session_todos` | `(session_id)` | — | [src](../../../core/services/agent_todos.py#L379) |
+| function | `todos_prompt_section` | `(session_id)` | Format the active todo list as a prompt block, or None if empty. | [src](../../../core/services/agent_todos.py#L394) |
+
 ## `core/services/agent_transcript.py`
 _Per-agent JSONL transcript persistence._
 
@@ -566,25 +590,4 @@ _Auto-remember subscriber — closes cross-session memory loop._
 | function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — samme pattern som metacognition_signal_tracker. | [src](../../../core/services/auto_remember_subscriber.py#L398) |
 | function | `start_auto_remember_subscriber` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/auto_remember_subscriber.py#L440) |
 | function | `stop_auto_remember_subscriber` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L457) |
-
-## `core/services/automation_dsl.py`
-_Automation DSL — declarative triggers → actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerSpec` | `` | — | [src](../../../core/services/automation_dsl.py#L33) |
-| class | `ActionSpec` | `` | — | [src](../../../core/services/automation_dsl.py#L39) |
-| class | `AutomationDSL` | `` | — | [src](../../../core/services/automation_dsl.py#L47) |
-| class | `AutomationDSLValidationError` | `` | — | [src](../../../core/services/automation_dsl.py#L56) |
-| function | `_storage_path` | `()` | — | [src](../../../core/services/automation_dsl.py#L67) |
-| function | `_load` | `()` | — | [src](../../../core/services/automation_dsl.py#L71) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/automation_dsl.py#L85) |
-| function | `validate_automation` | `(raw)` | Validate and construct an AutomationDSL from a raw dict. | [src](../../../core/services/automation_dsl.py#L97) |
-| function | `register_automation` | `(dsl)` | Persist an AutomationDSL. Returns automation_id. | [src](../../../core/services/automation_dsl.py#L154) |
-| function | `deactivate_automation` | `(automation_id)` | — | [src](../../../core/services/automation_dsl.py#L180) |
-| function | `list_automations` | `(*, status=…)` | — | [src](../../../core/services/automation_dsl.py#L190) |
-| function | `_expire_due` | `()` | Mark expired automations as inactive. Returns count of newly expired. | [src](../../../core/services/automation_dsl.py#L197) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — expire due automations, no other side-effects here. | [src](../../../core/services/automation_dsl.py#L222) |
-| function | `build_automation_dsl_surface` | `()` | — | [src](../../../core/services/automation_dsl.py#L228) |
-| function | `_emit_automation_dsl_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/automation_dsl.py#L257) |
 

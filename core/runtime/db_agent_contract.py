@@ -145,6 +145,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_lease import ensure_lease_tables
 
     ensure_lease_tables(conn)
+    from core.services.agent_prompt_layers import ensure_prompt_tables
+
+    ensure_prompt_tables(conn)
 
 
 _ENSURED: set[str] = set()

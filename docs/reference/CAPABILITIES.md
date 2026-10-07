@@ -391,7 +391,7 @@
 | `stripe_create_issuing_card` | native | no |
 | `stripe_payouts` | native | no |
 | `stripe_transactions` | native | no |
-| `suggest_next_message` | native | no |
+| `suggest_next_task` | native | no |
 | `surface_nudge` | native | no |
 | `synthesize_arc` | native | no |
 | `tail_log` | native | no |

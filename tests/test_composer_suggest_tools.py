@@ -1,4 +1,4 @@
-"""Værktøjet Jarvis selv kalder: `suggest_next_message`.
+"""Værktøjet Jarvis selv kalder: `suggest_next_task`.
 
 ## Hvad det er
 
@@ -22,9 +22,9 @@ from core.runtime import db_composer_jarvis as dj
 
 
 def test_vaerktoejet_gemmer_og_BEKRAEFTER_ved_at_laese_tilbage(isolated_runtime):
-    from core.tools.composer_suggest_tools import _exec_suggest_next_message
+    from core.tools.composer_suggest_tools import _exec_suggest_next_task
 
-    ud = _exec_suggest_next_message({
+    ud = _exec_suggest_next_task({
         "tekst": "Vis mig de to i karantaene", "_runtime_session_id": "s1"})
     assert ud["status"] == "ok" and ud["confirmed"] is True
     # ... og bekræftelsen spiste ikke forslaget.
@@ -32,16 +32,16 @@ def test_vaerktoejet_gemmer_og_BEKRAEFTER_ved_at_laese_tilbage(isolated_runtime)
 
 
 def test_vaerktoejet_uden_session_fejler_aabent(isolated_runtime):
-    from core.tools.composer_suggest_tools import _exec_suggest_next_message
+    from core.tools.composer_suggest_tools import _exec_suggest_next_task
 
-    ud = _exec_suggest_next_message({"tekst": "x"})
+    ud = _exec_suggest_next_task({"tekst": "x"})
     assert ud["status"] == "error" and "session" in ud["error"]
 
 
 def test_vaerktoejet_uden_tekst_fejler_aabent(isolated_runtime):
-    from core.tools.composer_suggest_tools import _exec_suggest_next_message
+    from core.tools.composer_suggest_tools import _exec_suggest_next_task
 
-    ud = _exec_suggest_next_message({"tekst": "  ", "_runtime_session_id": "s1"})
+    ud = _exec_suggest_next_task({"tekst": "  ", "_runtime_session_id": "s1"})
     assert ud["status"] == "error" and "tekst" in ud["error"]
 
 
@@ -52,5 +52,5 @@ def test_vaerktoejet_er_registreret_og_kaldbart():
     from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
 
     navne = [(t.get("function") or {}).get("name") for t in TOOL_DEFINITIONS]
-    assert navne.count("suggest_next_message") == 1
-    assert "suggest_next_message" in _TOOL_HANDLERS
+    assert navne.count("suggest_next_task") == 1
+    assert "suggest_next_task" in _TOOL_HANDLERS

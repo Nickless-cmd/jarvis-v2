@@ -179,3 +179,33 @@ reservere og håndhæve grænser for antal worktrees og diskforbrug på både
 container og workstation; bevarede worktrees tæller med, indtil verificeret
 oprydning. §11.1 kræver test af disse grænser og af den deterministiske
 resumévej.
+
+## Fund mod §12 (Jarvis, 7/10-2026, efter `bdf60437f`)
+
+Codex' produktionsprofil er grundig, og alle otte tabeller den henviser til
+findes i DB (`session_inbox` 70 rækker, `cheap_lane_admission_leases` 2,
+`council_sessions` 600, `agent_schedules` 0). `agent_tools_enabled` findes som
+DB-flag i `core/services/agent_runtime_base.py:97/110/125`, default OFF og
+owner-gated — henvisningen i §12.4 er ikke fantasi.
+
+**Én uafklaret knude: hvilken proces kører barnets løkke?**
+
+§12.1 kræver at *«hvert aktivt run får en særskilt, serverstyret workerproces
+… API-processen og Desk kører ikke barnets model-/toolløkke»*. §2 siger
+samtidig at *«en serverworker kan køre i en delt runtimeproces eller en
+isoleret serverproces»*. De to kan læses som samme svar (hvis «delt
+runtimeproces» betyder `jarvis-runtime`, ikke `jarvis-api`) — men de kan også
+læses som to forskellige krav, og så er §12.1's isolation ikke bundet.
+
+Målt i dag: `run_council_round` kaldes fra
+`apps/api/jarvis_api/routes/mission_control_agents.py:427`, altså **API-processen**,
+og rådets medlemmer kører som `ThreadPoolExecutor`-tråde
+(`core/services/agent_runtime_base.py:27`, `MAX_SWARM_WORKERS = 8`). Der er
+ingen særskilt workerproces pr. run. Det er en spec-til-implementering-afstand
+og ikke i sig selv en fejl — men §2 og §12.1 bør give **ét** svar på hvilken
+proces der ejer barnets løkke, ellers arver implementeringen en tvetydighed om
+netop den grænse der bærer ressource- og credential-isolationen.
+
+**Anbefaling:** lad §2's sætning pege på §12.1 eksplicit, så «delt
+runtimeproces» betyder `jarvis-runtime` — eller stram §12.1 til at tillade
+delt proces med samme isolation. Valget er arkitektur, ikke tekst.

@@ -504,6 +504,14 @@ _Adaptive veto gate — pre-execution hook that pauses tool calls when pushback 
 | function | `record_jarvis_override` | `(tool_name, feeling)` | Registrér at JARVIS — ikke brugeren — overstyrede en gate for dette (tool, feeling). | [src](../../../core/services/veto_gate.py#L913) |
 | function | `_emit_veto_gate_event` | `(kind, payload=…)` | Emit a scoped event — defensive, never blocks caller. | [src](../../../core/services/veto_gate.py#L943) |
 
+## `core/services/visible_autonomous_run.py`
+_Autonome (heartbeat-startede) synlige runs: starter og observation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L21) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L79) |
+
 ## `core/services/visible_first_pass_pump.py`
 _Worker-thread pump for the first visible model stream._
 
@@ -584,14 +592,4 @@ _Follow-up event/carrier types + the adapter protocol (split from_
 | class | `ToolExchange` | `` | One round of tool-calling: the assistant's tool_calls + the executed results. | [src](../../../core/services/visible_followup_events.py#L171) |
 | class | `FollowupAdapter` | `` | — | [src](../../../core/services/visible_followup_events.py#L194) |
 | method | `FollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…)` | — | [src](../../../core/services/visible_followup_events.py#L197) |
-
-## `core/services/visible_followup_lean.py`
-_Lean agentic-round-prompt transform + kill-switch (split from_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_split_on_double_newline` | `(text)` | Split en sammensat besked i blokke på ``\n\n`` (assembly-join-grænsen). | [src](../../../core/services/visible_followup_lean.py#L66) |
-| function | `_lean_strip_user_message` | `(text)` | Skær den tunge per-turn-hale af ÉN bruger-besked, men bevar de load-bearing | [src](../../../core/services/visible_followup_lean.py#L71) |
-| function | `build_lean_base_messages` | `(base_messages)` | Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2. | [src](../../../core/services/visible_followup_lean.py#L113) |
-| function | `agentic_lean_prompt_enabled` | `()` | Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True. | [src](../../../core/services/visible_followup_lean.py#L224) |
 

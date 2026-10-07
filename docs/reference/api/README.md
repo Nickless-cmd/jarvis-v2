@@ -55,9 +55,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16414 functions/
 - [`core.services.24`](core.services.24.md) — `semantic_memory` … `signal_tracking_framework`
 - [`core.services.25`](core.services.25.md) — `silence_detector` … `taste_profile`
 - [`core.services.26`](core.services.26.md) — `telegram_gateway` … `tool_result_store`
-- [`core.services.27`](core.services.27.md) — `tool_round_label` … `visible_followup_lean`
-- [`core.services.28`](core.services.28.md) — `visible_followup_results` … `visible_thinking_trace`
-- [`core.services.29`](core.services.29.md) — `visible_tool_exec` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `tool_round_label` … `visible_followup_events`
+- [`core.services.28`](core.services.28.md) — `visible_followup_lean` … `visible_text_scrub`
+- [`core.services.29`](core.services.29.md) — `visible_thinking_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -368,6 +368,15 @@ _Compare the live SQLite schema with its reviewed, per-table snapshot._
 | function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L162) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L201) |
 
+## `scripts/verify_vaert_evner.py`
+_Vagt: de evner den SERVERENDE vært skal have, skal faktisk være der._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_mermaid` | `()` | — | [src](../../../scripts/verify_vaert_evner.py#L59) |
+| function | `tjek` | `()` | Kør alle evne-tjek. Returnér (navn, ok, grund, konsekvens) for hver. | [src](../../../scripts/verify_vaert_evner.py#L72) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vaert_evner.py#L88) |
+
 ## `scripts/verify_vagt_graenser.py`
 _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
 

@@ -59,6 +59,20 @@ repos:
         stages: [pre-commit]
 
       # CT105 is the canonical runtime DB. Other hosts have divergent local DBs.
+      # Pre-commit: de evner den SERVERENDE vaert skal have, skal vaere der.
+      # `assert find_chrome() is not None` laa i en unittest og fejlede i hver
+      # koersel paa udviklermaskinen; otte faste roede gjorde suiten ubrugelig
+      # som vagt dér, og 16 aegte fejl laa usete blandt dem. Testene springer
+      # nu over hvor binaeren mangler — kravet bor her, hvor det kun haandhaeves
+      # paa den vaert der faktisk serverer. Samme `--only-host` som skema-vagten.
+      - id: verify-vaert-evner
+        name: Den serverende vaert skal kunne det den serverer
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_vaert_evner.py --only-host Jarvis
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: verify-sqlite-schema
         name: SQLite schema og tidsformater må ikke drive på CT105
         entry: /opt/conda/envs/ai/bin/python scripts/verify_sqlite_schema.py --only-host Jarvis --require-db

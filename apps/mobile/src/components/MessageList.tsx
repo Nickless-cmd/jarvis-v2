@@ -442,6 +442,37 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         side: 'left',
       })
     }
+    else if (b.type === 'file') {
+      // UDGIVET fil eller WIDGET midt i streamen (7/10-2026).
+      //
+      // Grenen manglede. Serveren sender nu alt turen udgav live — ogsaa
+      // `file` — men her faldt den igennem uden at tegne noget. Bjoern saa
+      // foelgen som et tomt hul mellem tur-hovedet og svaret: fladen dukkede
+      // foerst op naar turen var faerdig og beskeden blev laest fra disken.
+      //
+      // `MessageAttachments` afgoer selv om det er en widget (genereret
+      // `text/html`) eller et download-kort — SAMME renderer som den gemte
+      // vej, saa de to flader ikke kan drive fra hinanden.
+      //
+      // `src` med, som i billed-grenen: en fil baerer normalt kun en
+      // reference, men feltet findes paa blokken og maa ikke tabe i vasken.
+      flush()
+      rows.push({
+        kind: 'attachments',
+        key: `stream-udgivet-${rows.length}`,
+        items: [{
+          type: 'file',
+          src: b.src,
+          attachment_id: b.attachment_id,
+          url: b.url,
+          filename: b.filename,
+          mime_type: b.mime_type,
+          kilde: b.kilde,
+          tool_use_id: b.tool_use_id,
+        }],
+        side: 'left',
+      })
+    }
     else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(b.name)) {
       // Skill-kald står på deres EGEN linje (som desk): i runden ville
       // «hvilken skill, og blev den indlæst» forsvinde i «Brugte et værktøj».

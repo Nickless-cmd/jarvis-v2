@@ -44,26 +44,48 @@ api-processen der bygger snapshottet.
 Rækkefølgen holder: `session_version()` rykker når rækken indsættes, og
 `cached_by_version` bygger derfor payloadet EFTER at `noter()` har kørt.
 
-**Degraderingen er bevidst.** Efter en genstart er kortet tomt, og en bro-kopi
-klienten stadig holder får intet run-id. Så falder den tilbage på tekst-matchet
-— altså på dagens opførsel, ikke på noget værre. Derfor må klientens gamle
-fallback IKKE fjernes.
+## Hvorfor det ligger på disk og ikke i hukommelsen (7/10-2026)
 
-Kortet er BUNDET. Et ubundet kort i en proces med `OLLAMA_KEEP_ALIVE=-1`-levetid
-er en lækage der ikke viser sig før den gør.
+Første udgave var en in-process dict, med den begrundelse at begge ender er i
+api-processen. Det holdt ikke: **autonome runs persisteres i `jarvis-runtime`**,
+mens snapshottet bygges i `jarvis-api`. Målt via api'ets eget historik-kald på
+`auto-dream-20261007`: assistent-beskeden bar intet `run_id`, fordi den proces
+der skrev koblingen ikke er den der læser den. Og mobilen følger netop autonome
+runs live, så den bro-kopi var den eneste der ALDRIG kunne afdubleres præcist.
+
+`state_store` deler filen mellem processerne, og `med_laas` serialiserer
+læs-ændr-gem — dens egen docstring er skrevet om nøjagtig dette: «jarvis-api og
+jarvis-runtime kører samme kode i hver sin proces og deler disse filer».
+
+En genstart koster nu heller ikke koblingen. Klientens tekst-fallback bliver
+alligevel stående: en besked skrevet FØR denne fil fandtes har ingen kobling,
+og "" skal fortsat betyde «uvist».
+
+Kortet er BUNDET. Et ubundet kort er en lækage der ikke viser sig før den gør,
+og her ville den også gøre filen større for hver besked der nogensinde er skrevet.
 """
 from __future__ import annotations
 
-import threading
-from collections import OrderedDict
+import logging
+
+from core.runtime import state_store
+
+logger = logging.getLogger(__name__)
+
+#: Navnet i `state_store`. Står i `docs/persistens/register.json`.
+NOEGLE = "besked_run_kobling"
 
 #: Hvor mange koblinger der huskes. Klienten spørger kun om beskeder den lige
 #: har set streame, så vinduet skal dække en håndfuld ture — ikke en historik.
 #: 512 er rigeligt og koster nogle få kilobytes.
 MAKS = 512
 
-_laas = threading.Lock()
-_kort: OrderedDict[str, str] = OrderedDict()
+
+def _laes() -> dict[str, str]:
+    raa = state_store.load_json(NOEGLE, {})
+    if not isinstance(raa, dict):
+        return {}
+    return {str(k): str(v) for k, v in raa.items() if isinstance(v, (str, int))}
 
 
 def noter(message_id: str, run_id: str) -> None:
@@ -76,12 +98,21 @@ def noter(message_id: str, run_id: str) -> None:
     rid = str(run_id or "").strip()
     if not mid or not rid:
         return
-    with _laas:
-        if mid in _kort:
-            _kort.move_to_end(mid)
-        _kort[mid] = rid
-        while len(_kort) > MAKS:
-            _kort.popitem(last=False)
+    try:
+        # Laas om HELE laes-aendr-gem: hver gemning skriver filen HEL, saa uden
+        # den forsvinder den anden proces' kobling sporloest.
+        with state_store.med_laas(NOEGLE):
+            kort = _laes()
+            kort.pop(mid, None)      # indsaettelses-orden = aeldst foerst
+            kort[mid] = rid
+            while len(kort) > MAKS:
+                kort.pop(next(iter(kort)))
+            state_store.save_json(NOEGLE, kort)
+    except Exception:
+        # IKKE tavs: fejler den her, falder klienten tilbage paa tekst-matchet
+        # uden at nogen kan se hvorfor afdubleringen pludselig blev upraecis.
+        logger.warning("kunne ikke notere besked-run-kobling for %s", mid[:28],
+                       exc_info=True)
 
 
 def run_for(message_id: str) -> str:
@@ -93,17 +124,25 @@ def run_for(message_id: str) -> str:
     mid = str(message_id or "").strip()
     if not mid:
         return ""
-    with _laas:
-        return _kort.get(mid, "")
+    try:
+        return _laes().get(mid, "")
+    except Exception:
+        logger.warning("kunne ikke laese besked-run-koblinger", exc_info=True)
+        return ""
 
 
 def antal() -> int:
     """Hvor mange koblinger der huskes nu. Til test og diagnostik."""
-    with _laas:
-        return len(_kort)
+    try:
+        return len(_laes())
+    except Exception:  # kun til test og diagnostik — et tal her maa aldrig
+        return 0       # vaelte en kalder, og `run_for` logger allerede fejlen
 
 
 def ryd() -> None:
     """Tøm kortet. Kun til test — ingen produktionsvej rydder det."""
-    with _laas:
-        _kort.clear()
+    try:
+        with state_store.med_laas(NOEGLE):
+            state_store.save_json(NOEGLE, {})
+    except Exception:
+        logger.warning("kunne ikke rydde besked-run-koblinger", exc_info=True)

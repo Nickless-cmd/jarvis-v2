@@ -24,7 +24,13 @@ from core.services import besked_run_kobling as K
 
 
 @pytest.fixture(autouse=True)
-def _tomt_kort():
+def _tomt_kort(tmp_path, monkeypatch):
+    # `_STATE_DIR` bindes ved import, saa uden dette skriver testene i
+    # produktionens state-mappe (maalt foer, samme faelde som state_store's
+    # oevrige brugere).
+    from core.runtime import state_store
+
+    monkeypatch.setattr(state_store, "_STATE_DIR", tmp_path / "state")
     K.ryd()
     yield
     K.ryd()
@@ -141,3 +147,33 @@ def test_persist_stien_noterer_run_id(isolated_runtime, monkeypatch):
 
     vro._persist_session_assistant_message(_Run(), "et svar der er langt nok")
     assert K.run_for("message-fra-persist") == "visible-3433cf05"
+
+
+# ── den krydser processer (7/10-2026) ──────────────────────────────────────
+
+def test_koblingen_overlever_at_modulet_genindlaeses():
+    """DET er hele grunden til at den ligger paa disk.
+
+    Foerste udgave var en in-process dict. Autonome runs persisteres i
+    `jarvis-runtime`, mens snapshottet bygges i `jarvis-api` — saa den proces
+    der SKREV koblingen var ikke den der LAESTE den. Maalt paa
+    `auto-dream-20261007`: assistent-beskeden bar intet run_id.
+
+    En genindlaesning af modulet er den naermeste test paa «en anden proces»:
+    enhver modul-global er vaek, og kun filen er tilbage.
+    """
+    import importlib
+
+    K.noter("message-paa-tvaers", "autonomous-7b176d58")
+    genindlaest = importlib.reload(K)
+    assert genindlaest.run_for("message-paa-tvaers") == "autonomous-7b176d58"
+
+
+def test_en_skrivning_fjerner_ikke_den_andens(tmp_path):
+    """Hver gemning skriver filen HEL. Uden laasen om laes-aendr-gem ville den
+    ene proces' kobling forsvinde sporloest."""
+    K.noter("message-a", "visible-1")
+    K.noter("message-b", "autonomous-2")
+    assert K.run_for("message-a") == "visible-1"
+    assert K.run_for("message-b") == "autonomous-2"
+    assert K.antal() == 2

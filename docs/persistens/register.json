@@ -365,6 +365,11 @@
       "ejer": "core/services/agent_self_evaluation.py",
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
+    },
+    "besked_run_kobling": {
+      "ejer": "core/services/besked_run_kobling.py",
+      "beskrivelse": "Hvilket run der skrev en given assistent-besked (message_id -> run_id). Bundet til 512 poster, aeldst falder ud. Deles mellem jarvis-api og jarvis-runtime, fordi autonome runs persisteres i den ene og snapshottet bygges i den anden. Klienten bruger den til at droppe sin bro-kopi praecist i stedet for at sammenligne prosa serveren selv har skrevet om.",
+      "registreret": "2026-10-07"
     }
   }
 }

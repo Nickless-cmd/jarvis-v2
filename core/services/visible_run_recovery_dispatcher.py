@@ -161,6 +161,16 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     «ingenting forfaldt», «startet» og «kunne ikke startes».
     """
     ejer = str(owner or in_flight_runs.current_owner())
+    try:  # agent-contract-v1 (B2): en vaekning der blev fastlagt men ikke skrevet
+        from core.runtime.db_agent_wait import materialize_pending_wakes
+        materialize_pending_wakes()
+    except Exception:
+        logger.warning("recovery-dispatcher: kunne ikke tage agent-vaekninger op", exc_info=True)
+    try:  # agent-contract-v1 (C2): udloebne worker-leases (atomisk claim; ufarligt at koere to steder)
+        from core.services.agent_contract_service import supervise
+        supervise()   # uafhaengigt af kapabilitets-flaget: accepteret arbejde supervisereres altid
+    except Exception:
+        logger.warning("recovery-dispatcher: agent-supervisor fejlede", exc_info=True)
     try:
         krav = in_flight_runs.claim_due_recovery(owner=ejer, lease_seconds=LEASE_SECONDS)
     except Exception:

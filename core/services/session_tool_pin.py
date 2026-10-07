@@ -141,7 +141,13 @@ def _med_garanterede(navne: list[str]) -> list[str]:
     except Exception as exc:  # en forening maa ikke braekke tool-stien
         logger.debug("session_tool_pin: kunne ikke hente de garanterede: %s", exc)
         return sorted(set(navne))
-    return sorted(set(navne) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR))
+    try:
+        from core.tools.copilot_tool_pruning import agent_contract_pinned
+        agent = set(agent_contract_pinned())
+    except Exception as exc:  # samme regel: en forening maa ikke braekke tool-stien
+        logger.debug("session_tool_pin: kunne ikke hente agent-vaerktoejerne: %s", exc)
+        agent = set()
+    return sorted(set(navne) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR) | agent)
 
 
 def resolve(

@@ -7,6 +7,14 @@ _Prompt-sections udskilt fra prompt_contract.py for læselighed._
 
 _(no top-level classes or functions)_
 
+## `core/services/prompt_sections/agent_orchestration.py`
+_Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L43) |
+| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Kort status for netop denne ejers og sessions aabne agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L55) |
+
 ## `core/services/prompt_sections/attention_frame.py`
 _Cognitive-frame cache + attention-budget selection for prompts._
 
@@ -87,6 +95,14 @@ _Dead-skill detector: installed skills never invoked._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `dead_skills_section` | `()` | — | [src](../../../core/services/prompt_sections/dead_skills.py#L23) |
+
+## `core/services/prompt_sections/emotion_sections.py`
+_Prompt-sektioner for foelelses-signaler: emotion-koncept-tone og emotion-signal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_emotion_concept_tone_section` | `()` | Affect-relevant runtime substrate (replaces tone-hint injection). | [src](../../../core/services/prompt_sections/emotion_sections.py#L15) |
+| function | `_emotion_signal_section` | `()` | Aktive emotion concepts som data — giver Jarvis sit eget følelsespanel. | [src](../../../core/services/prompt_sections/emotion_sections.py#L64) |
 
 ## `core/services/prompt_sections/forgetting_nudge.py`
 _Forgetting nudge — reminds Jarvis to consider transience during conversation._

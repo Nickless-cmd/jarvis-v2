@@ -154,6 +154,7 @@ def spawn_agent_task(
     provider: str = "",
     respekter_model: bool = False,
     model: str = "",
+    contract: dict[str, object] | None = None,
 ) -> dict[str, object]:
     _check_spawn_limits()
     if max_turns <= 0:
@@ -228,8 +229,20 @@ def spawn_agent_task(
         "confidence": True,
         "blockers": True,
     }
+    # De kollektive lag (skills.md pr. rollenavn, tvaer-agent-observationer) har INGEN ejer- eller
+    # sessionsfilter; de maa derfor ikke ind i en ANDEN brugers agent (spec 7.2). Uden en kendt
+    # bruger i konteksten (legacy) er adfaerden uaendret.
+    _anden_bruger = False
+    try:
+        from core.identity.owner_resolver import owner_user_id as _platform_owner
+        _cu = str((context or {}).get("user_id") or "").strip()
+        _anden_bruger = bool(_cu) and _cu != str(_platform_owner() or "").strip()
+    except Exception:
+        logger.warning("kunne ikke afgoere om agentens ejer er platformens ejer", exc_info=True)
     # Layer 2 (Scout Memory): inject role's learned skills.md if present
     try:
+        if _anden_bruger:
+            raise LookupError("kollektivt lag springes over for en anden brugers agent")
         from core.services.agent_skill_library import get_skills
         skills_info = get_skills(role)
         if skills_info.get("exists") and skills_info.get("content"):
@@ -246,6 +259,8 @@ def spawn_agent_task(
 
     # Layer 3 (Scout Memory): inject relevant cross-agent observations
     try:
+        if _anden_bruger:
+            raise LookupError("kollektivt lag springes over for en anden brugers agent")
         from core.services.cross_agent_memory import cross_agent_recall_section
         cross_agent_text = cross_agent_recall_section(role=role, query=goal)
         if cross_agent_text:
@@ -374,6 +389,11 @@ def spawn_agent_task(
         context_json=json.dumps(context),
         result_contract_json=json.dumps(result_contract),
     )
+    # agent-contract-v1 (A2): ejer + oprindelsessession fra den autentificerede kontekst.
+    from core.services.agent_contract_bridge import bind_new_agent
+    bind_new_agent(agent_id=agent_id, parent_agent_id=str(parent_agent_id or ""), goal=goal,
+                   persistent=persistent, context=context, budget_tokens=budget_tokens,
+                   max_turns=max_turns, result_contract=result_contract, **(contract or {}))
     # Per-agent transcript: metadata sidecar + lifecycle event + sidechain
     try:
         from core.services.agent_transcript import write_meta, write_lifecycle, write_sidechain
@@ -541,6 +561,19 @@ def _build_agent_prompt(
     )
 
 
+def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
+    """Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender)."""
+    try:
+        if not agent_tools_enabled():
+            return []
+        from core.services.agent_runtime_base import _build_agent_tools_payload
+        allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
+        return _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
+    except Exception:
+        logger.warning("kunne ikke bygge vaerktoejsskema til promptsnapshot", exc_info=True)
+        return []
+
+
 def execute_agent_task(*, agent_id: str, thread_id: str = "",
                        execution_mode: str = "solo-task") -> dict[str, object]:
     """Koer et barns arbejde.
@@ -551,8 +584,10 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     handling, ikke til alt hvad den maatte finde paa at starte. Se
     `child_authority` for hvad der bevares og hvorfor.
     """
+    from core.runtime.db_agent_lease import agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
-    with uden_foraeldrens_godkendelse():
+    # agent-contract-v1 (C2): leasen holdes mens barnet koerer; en gammel worker kan ikke skrive.
+    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
                                            execution_mode=execution_mode)
     try:
@@ -608,13 +643,24 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     # (Loftet bider ikke i dag — travleste aegte agent har 12 beskeder.)
     messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id,
                                    limit=40, tail=True)
+    # F4b: er agenten parkeret ved en afgjort approval, genoptages loekken fra sin checkpoint.
+    from core.services.agent_parking import take_resume
+    _resume = take_resume(agent_id)
     prompt = _build_agent_prompt(
         agent=agent,
         messages=messages,
         execution_mode=execution_mode,
         extra_instruction="Respond to Jarvis directly. Keep the answer compact and action-oriented.",
     )
-    run_id = f"agent-run-{uuid4().hex}"
+    # agent-contract-v1 (C3): kontrakt-bundne agenter faar de tre versionsmaerkede lag.
+    from core.services.agent_prompt_layers import build_layered_prompt
+    _layers = build_layered_prompt(
+        agent=agent, messages_text=_format_messages(messages), execution_mode=execution_mode,
+        extra_instruction="Respond to Jarvis directly. Keep the answer compact and action-oriented.")
+    if _layers is not None:
+        prompt = _layers["text"]
+    from core.runtime.db_agent_contract import queued_contract_run
+    run_id = queued_contract_run(agent_id) or f"agent-run-{uuid4().hex}"
     update_agent_registry_entry(agent_id, status="starting", last_error="")
     create_agent_run(
         run_id=run_id,
@@ -627,6 +673,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         input_payload_json=json.dumps({"prompt": prompt}),
         started_at=_now_iso(),
     )
+    if _layers is not None:  # gemmes FOER det foerste modelkald (§7)
+        from core.services.agent_prompt_layers import snapshot_prompt
+        snapshot_prompt(run_id=run_id, agent=agent, layers=_layers,
+                        tools_payload=_snapshot_tools(agent))
     # Per-agent transcript: log prompt before model call
     try:
         from core.services.agent_transcript import write_prompt, write_lifecycle
@@ -643,28 +693,46 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # Axis 3: give the agent hands only when the reversible flag is ON.
         # OFF (default) → unchanged text-only path. Self-safe: any failure in
         # the tool-loop dispatch degrades to the legacy call.
-        if agent_tools_enabled():
+        from core.services.agent_worker_runner import run_agent_in_worker, worker_mode_enabled
+        if _layers is not None and worker_mode_enabled():
+            # agent-contract-v1 (C6): loekken koerer i en sandboxet workerproces; serveren er broker.
+            # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
+            result = run_agent_in_worker(
+                agent=agent, prompt=prompt, requires_tools=_needs_tools, run_id=run_id,
+                tools_payload=_snapshot_tools(agent), resume=_resume)
+        elif agent_tools_enabled():
             try:
                 result = _run_agent_tool_loop(
                     agent=agent, prompt=prompt, requires_tools=_needs_tools,
-                    run_id=run_id,
+                    run_id=run_id, resume=_resume,
                 )
             except Exception:
-                result = _facade().execute_with_role_or_fallback(
-                    message=prompt,
+                from core.services.agent_bridge import run_is_halted
+                if _resume is not None or run_is_halted(run_id):
+                    raise    # en genoptagelse (tabt approval) eller en halt (uafgjort bro-kald) maa aldrig falde til en tekst-tur
+                from core.services.agent_model_router import call_agent_model
+                result = call_agent_model(
+                    agent=agent, facade=_facade(), message=prompt,
                     provider=str(agent.get("provider") or ""),
                     model=str(agent.get("model") or ""),
                     requires_tools=_needs_tools,
                     lane="agent",
                 )
         else:
-            result = _facade().execute_with_role_or_fallback(
-                message=prompt,
+            if _resume is not None:
+                raise RuntimeError("en parkeret agent kan ikke genoptages uden vaerktoejer")
+            from core.services.agent_model_router import call_agent_model
+            result = call_agent_model(
+                agent=agent, facade=_facade(), message=prompt,
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_needs_tools,
                 lane="agent",
             )
+        if result.get("status") == "parked" and result.get("parked"):
+            # F4b: loekken er stoppet foer et godkendelseskraevende kald - ikke et udfald.
+            from core.services.agent_parking import park_run
+            return park_run(agent=agent, run_id=run_id, result=result, thread_id=resolved_thread_id)
         text = str(result.get("text") or "").strip()
         output_tokens = int(result.get("output_tokens") or 0)
         input_tokens = int(result.get("input_tokens") or 0)
@@ -931,6 +999,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         except Exception:
             pass
     except Exception as exc:
+        from core.services.agent_bridge import run_is_halted
+        if run_is_halted(run_id):
+            logger.info("run %s staar i outcome_unknown (uafgjort bro-kald) - afsluttes ikke", run_id)
+            return build_agent_detail_surface(agent_id) or {"agent_id": agent_id, "status": "outcome_unknown"}
         message = str(exc)
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",

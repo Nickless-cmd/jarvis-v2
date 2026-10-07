@@ -1622,3 +1622,27 @@ def ejeren_er_bjorn(monkeypatch):
     from core.services import inbox_state as _is
     _is._HAR_ADVARET[0] = False
     return "bjorn"
+
+
+_ROUTE_TEST_MODULES = {"tests.test_agent_model_policy", "tests.test_agent_model_router"}
+
+
+@pytest.fixture(autouse=True)
+def _agent_ruten_er_fastlaast(request, monkeypatch):
+    """Gør agentens modelvalg uafhængigt af maskinen (agent-contract-v1 D).
+
+    ``decide_route`` læser den RIGTIGE udbyderkonfiguration: på CT105 findes der kandidater, på en
+    ren CI-maskine ingen, og en dispatch-test ville måle hvilken maskine den kørte på. De to
+    ruttefiler styrer selv deres kandidater (på sømmen under ``_agent_candidates``) og er undtaget;
+    alle andre får én fast pulje- og én fast cheap-lane-kandidat."""
+    if request.module.__name__ in _ROUTE_TEST_MODULES:
+        yield
+        return
+    from core.services import agent_model_policy as pol
+
+    def _fast(*, role, min_tokens, exclude, allow_paid):
+        pool = [("copilot-premium", "claude-sonnet-5")] if allow_paid else []
+        return pool + [("kilo", "test/fri-model-120b")]
+
+    monkeypatch.setattr(pol, "_agent_candidates", _fast)
+    yield

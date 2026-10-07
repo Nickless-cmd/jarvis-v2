@@ -65,6 +65,168 @@ _DB helpers for absence_traces (Lag 11 forgetting)._
 | function | `get_auto_counter` | `(*, workspace_id, month_key=…)` | Get the counter row for a given month (default: current month). | [src](../../../core/runtime/db_absence_traces.py#L135) |
 | function | `mark_self_released` | `(*, trace_id)` | Recursive release: mark an existing self-marker as released. | [src](../../../core/runtime/db_absence_traces.py#L157) |
 
+## `core/runtime/db_agent_approvals.py`
+_Varige approvals til agenters handlinger (agent-contract-v1 F4a, spec 8.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_approval_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_approvals.py#L46) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_agent_approvals.py#L111) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_agent_approvals.py#L115) |
+| function | `_audit` | `(conn, approval_id, event, actor=…, detail=…)` | — | [src](../../../core/runtime/db_agent_approvals.py#L119) |
+| function | `normalize_arguments` | `(arguments)` | Kaldets argumenter UDEN serverens egne ``_runtime_*``-felter (de er ikke en del af handlingen). | [src](../../../core/runtime/db_agent_approvals.py#L124) |
+| function | `invocation_digest` | `(*, tool_name, arguments, target, assignment_id)` | Digest af netop dette kald: vaerktoej + normaliserede argumenter + target + assignment. | [src](../../../core/runtime/db_agent_approvals.py#L129) |
+| function | `safe_view` | `(tool_name, arguments)` | Hvad et menneske ser i kortet: redigerede (hemmeligheder) og afkortede argumenter. | [src](../../../core/runtime/db_agent_approvals.py#L137) |
+| function | `_row_or_none` | `(conn, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L148) |
+| function | `get` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L152) |
+| function | `get_for_owner` | `(*, owner_user_id, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L156) |
+| function | `request` | `(*, owner_user_id, origin_session_id, assignment_id, tool_name, arguments, run_id=…, risk_class=…, requested_by=…, kind=…, ttl=…, now=…)` | Opret (eller genfind) en ventende approval. Idempotent paa (assignment, digest): samme kald giver | [src](../../../core/runtime/db_agent_approvals.py#L161) |
+| function | `_authorized` | `(actor_user_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L211) |
+| function | `decide` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, now=…)` | Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder. | [src](../../../core/runtime/db_agent_approvals.py#L223) |
+| function | `consume` | `(*, approval_id, digest, now=…)` | Brug en godkendt approval. Atomisk ``approved -> consumed`` paa digest og foer udloeb - HOEJST EN | [src](../../../core/runtime/db_agent_approvals.py#L267) |
+| function | `expire_due` | `(*, now=…)` | Udloeb ventende og ubrugte godkendte approvals der har overskredet fristen. | [src](../../../core/runtime/db_agent_approvals.py#L281) |
+| function | `cancel_for_assignment` | `(*, assignment_id, reason)` | Annuller ventende/ubrugte approvals for et assignment der er endt. | [src](../../../core/runtime/db_agent_approvals.py#L296) |
+| function | `list_for_owner` | `(*, owner_user_id, status=…, origin_session_id=…, limit=…)` | Ejerens approvals (aldrig en andens). | [src](../../../core/runtime/db_agent_approvals.py#L310) |
+| function | `unannounced_pending` | `(*, owner_user_id, origin_session_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L326) |
+| function | `claim_announcements` | `(*, owner_user_id, origin_session_id)` | Atomisk: markér ventende, endnu ikke omtalte approvals som omtalt og returnér dem. Hver approval | [src](../../../core/runtime/db_agent_approvals.py#L334) |
+| function | `audit_trail` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L355) |
+| function | `save_checkpoint` | `(*, assignment_id, run_id, approval_id, payload)` | Gem barnets loekketilstand. Hoejst én parkeret checkpoint pr. assignment. | [src](../../../core/runtime/db_agent_approvals.py#L363) |
+| function | `parked_checkpoint` | `(*, assignment_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L387) |
+| function | `take_checkpoint` | `(*, assignment_id)` | Atomisk ``parked -> resumed``: HOEJST EN genoptagelse pr. checkpoint. Returnerer | [src](../../../core/runtime/db_agent_approvals.py#L393) |
+| function | `decided_parked` | `()` | Parkerede checkpoints hvis approval er afgjort (godkendt, afslaaet, udloebet eller annulleret) - | [src](../../../core/runtime/db_agent_approvals.py#L414) |
+
+## `core/runtime/db_agent_artifacts.py`
+_Artefaktlager for agentkoersler (agent-contract-v1, leverance C1, spec 9 og 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ArtifactTooLarge` | `` | — | [src](../../../core/runtime/db_agent_artifacts.py#L37) |
+| method | `ArtifactTooLarge.__init__` | `(self, detail=…)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L38) |
+| function | `artifact_root` | `()` | Beregnes ved kald (ikke ved import), saa HOME-omdirigering i tests virker. | [src](../../../core/runtime/db_agent_artifacts.py#L42) |
+| function | `ensure_artifact_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L47) |
+| function | `_safe_id` | `(value, what)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L69) |
+| function | `_run_dir` | `(agent_id, run_id)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L76) |
+| function | `_fsync_dir` | `(path)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L80) |
+| function | `run_bytes` | `(run_id)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L88) |
+| function | `write_artifact` | `(*, agent_id, run_id, name, data, assignment_id, owner_user_id, status=…)` | Skriv én artefakt atomisk og registrer den. Erstatter en tidligere version af samme navn. | [src](../../../core/runtime/db_agent_artifacts.py#L93) |
+| function | `get_artifact_record` | `(*, run_id, name)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L134) |
+| function | `artifact_ref` | `(run_id, name)` | — | [src](../../../core/runtime/db_agent_artifacts.py#L139) |
+| function | `read_artifact` | `(*, owner_user_id, ref, offset=…, limit=…)` | Adgangskontrolleret laesning via en reference ``<run_id>/<navn>``. | [src](../../../core/runtime/db_agent_artifacts.py#L143) |
+| function | `manifest` | `(*, owner_user_id, assignment_id)` | Alle forsoegs' artefakter for ét assignment (et fejlet foerste forsoeg forsvinder ikke). | [src](../../../core/runtime/db_agent_artifacts.py#L170) |
+| function | `reconcile` | `()` | Afstem DB mod disk. Markerer poster med manglende/korrupt fil, finder foraeldreloese | [src](../../../core/runtime/db_agent_artifacts.py#L179) |
+| function | `write_terminal_artifacts` | `(*, agent_id, assignment_id, owner_user_id, status, reply, summary, error_code=…, error_phase=…, worktree=…)` | Skriv ``result.json`` (+ ``final.txt`` og ``events.jsonl``) for assignmentets SIDSTE run | [src](../../../core/runtime/db_agent_artifacts.py#L212) |
+
+## `core/runtime/db_agent_bridge.py`
+_Varige bro-invocations for agenter paa et klient-target (agent-contract-v1 E, spec 8 + 8.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_bridge_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_bridge.py#L35) |
+| function | `args_digest` | `(tool, args)` | — | [src](../../../core/runtime/db_agent_bridge.py#L66) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_agent_bridge.py#L71) |
+| function | `get` | `(invocation_id)` | — | [src](../../../core/runtime/db_agent_bridge.py#L75) |
+| function | `begin` | `(*, invocation_id, owner_user_id, origin_session_id, agent_id, assignment_id, run_id, client_id, tool, idem_class, args)` | Opret raekken i ``pending``. Samme id med samme argumenter returnerer den eksisterende; | [src](../../../core/runtime/db_agent_bridge.py#L80) |
+| function | `mark_sent` | `(invocation_id)` | — | [src](../../../core/runtime/db_agent_bridge.py#L102) |
+| function | `unmark_sent` | `(invocation_id)` | Sendingen lykkedes IKKE (intet forlod serveren): tilbage til ``pending`` og taellerne stemmer igen, | [src](../../../core/runtime/db_agent_bridge.py#L109) |
+| function | `_clip` | `(value)` | — | [src](../../../core/runtime/db_agent_bridge.py#L118) |
+| function | `finish` | `(invocation_id, *, ok, result=…, error=…)` | Klienten SVAREDE: udfaldet er kendt. Kun fra pending/sent/outcome_unknown (et sent svar efter | [src](../../../core/runtime/db_agent_bridge.py#L123) |
+| function | `mark_unknown` | `(invocation_id, why)` | — | [src](../../../core/runtime/db_agent_bridge.py#L137) |
+| function | `abort_unsent` | `(invocation_id, why)` | Intet forlod serveren (klienten var offline foer afsendelse): sikkert at afvise som fejlet. | [src](../../../core/runtime/db_agent_bridge.py#L146) |
+| function | `unresolved_for_client` | `(owner_user_id, client_id)` | — | [src](../../../core/runtime/db_agent_bridge.py#L156) |
+| function | `unknown_for_assignment` | `(assignment_id)` | — | [src](../../../core/runtime/db_agent_bridge.py#L163) |
+| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status for kendte invocation-id'er ved reconnect. Kun raekker der hoerer til | [src](../../../core/runtime/db_agent_bridge.py#L169) |
+| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | Menneskelig afgoerelse af et uafgjort skrivende kald. Kun raekkens ejer. | [src](../../../core/runtime/db_agent_bridge.py#L207) |
+
+## `core/runtime/db_agent_contract.py`
+_Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ContractError` | `` | Afvist kald med stabil kode, så adaptere kan svare entydigt. | [src](../../../core/runtime/db_agent_contract.py#L34) |
+| method | `ContractError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/runtime/db_agent_contract.py#L37) |
+| function | `_add_columns` | `(conn, table, columns)` | — | [src](../../../core/runtime/db_agent_contract.py#L43) |
+| function | `ensure_agent_contract_tables` | `(conn)` | Idempotent skema. Kalder `_ensure_agent_runtime_tables` først, så de | [src](../../../core/runtime/db_agent_contract.py#L54) |
+| function | `_conn` | `()` | Ensure-én-gang-per-proces-og-DB: ellers koster hvert statusskifte 8 DDL-kald. | [src](../../../core/runtime/db_agent_contract.py#L174) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_agent_contract.py#L187) |
+| function | `_require` | `(value, name)` | — | [src](../../../core/runtime/db_agent_contract.py#L191) |
+| function | `_digest` | `(*parts)` | — | [src](../../../core/runtime/db_agent_contract.py#L198) |
+| function | `mark_legacy_unscoped` | `()` | Gamle rækker uden ejer er allerede mærket via kolonne-default; denne | [src](../../../core/runtime/db_agent_contract.py#L204) |
+| function | `accept_assignment` | `(*, agent_id, owner_user_id, origin_session_id, goal, parent_agent_id=…, parent_run_id=…, input_refs=…, expected_result=…, target=…, deadline_at=…, budget=…, created_by=…, operation=…, idempotency_key=…, request_digest=…)` | Accepter ét assignment atomisk sammen med dets første run. | [src](../../../core/runtime/db_agent_contract.py#L217) |
+| function | `commit_terminal_outcome` | `(*, assignment_id, status, summary=…, error_code=…, error_phase=…, artifact_ref=…, last_run_id=…, artifact_error=…)` | Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME | [src](../../../core/runtime/db_agent_contract.py#L316) |
+| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L410) |
+| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L438) |
+| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L449) |
+| function | `bind_agent_owner` | `(*, agent_id, owner_user_id, owner_session_id)` | Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten | [src](../../../core/runtime/db_agent_contract.py#L468) |
+| function | `queued_contract_run` | `(agent_id)` | Id på det run accept_assignment forudoprettede og som endnu ikke er startet. | [src](../../../core/runtime/db_agent_contract.py#L480) |
+| function | `adopt_run` | `(*, agent_id, run_id)` | Bind et nyoprettet run til agentens åbne assignment som næste forsøg. | [src](../../../core/runtime/db_agent_contract.py#L489) |
+| function | `settle_agent_status` | `(*, agent_id, registry_status)` | Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne | [src](../../../core/runtime/db_agent_contract.py#L527) |
+| function | `claim_pending_results` | `(*, owner_user_id, origin_session_id)` | Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for | [src](../../../core/runtime/db_agent_contract.py#L577) |
+| function | `find_assignment_by_key` | `(*, owner_user_id, origin_session_id, operation, idempotency_key)` | Findes der allerede et assignment for netop denne ejer/session/operation/noegle? | [src](../../../core/runtime/db_agent_contract.py#L609) |
+| function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L620) |
+| function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L626) |
+| function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L639) |
+| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L652) |
+
+## `core/runtime/db_agent_council.py`
+_Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_council_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_council.py#L27) |
+| function | `_view` | `(r)` | — | [src](../../../core/runtime/db_agent_council.py#L54) |
+| function | `create` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, topic, facts, synthesis_role, budget_tokens, idempotency_key, council_id=…)` | — | [src](../../../core/runtime/db_agent_council.py#L62) |
+| function | `get` | `(council_id, owner_user_id)` | Ejerfiltreret: et andet raad end ejerens er ``None``. | [src](../../../core/runtime/db_agent_council.py#L78) |
+| function | `find_by_key` | `(owner_user_id, origin_session_id, key)` | — | [src](../../../core/runtime/db_agent_council.py#L84) |
+| function | `set_members` | `(council_id, members)` | — | [src](../../../core/runtime/db_agent_council.py#L92) |
+| function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L99) |
+| function | `open_councils` | `()` | — | [src](../../../core/runtime/db_agent_council.py#L109) |
+| function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L115) |
+
+## `core/runtime/db_agent_lease.py`
+_Workerlease med stigende fencing-token + supervisor-genopretning (agent-contract-v1 C2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_lease_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_lease.py#L35) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_agent_lease.py#L50) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_agent_lease.py#L54) |
+| function | `_now` | `(now)` | — | [src](../../../core/runtime/db_agent_lease.py#L58) |
+| function | `holder_identity` | `()` | — | [src](../../../core/runtime/db_agent_lease.py#L62) |
+| function | `acquire` | `(*, assignment_id, holder, lease_seconds=…, now=…)` | Erhverv leasen og returner det nye fencing-token. ``LEASE_HELD`` hvis en anden har en levende. | [src](../../../core/runtime/db_agent_lease.py#L66) |
+| function | `renew` | `(*, assignment_id, holder, token, lease_seconds=…, now=…)` | Forny. Kun den nuvaerende holder med det nuvaerende token, og kun foer udloeb: en worker | [src](../../../core/runtime/db_agent_lease.py#L93) |
+| function | `is_current` | `(*, assignment_id, token, now=…)` | — | [src](../../../core/runtime/db_agent_lease.py#L107) |
+| function | `release` | `(*, assignment_id, holder, token)` | — | [src](../../../core/runtime/db_agent_lease.py#L115) |
+| function | `scope_is_current` | `()` | Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun | [src](../../../core/runtime/db_agent_lease.py#L129) |
+| function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L149) |
+| function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L193) |
+| function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L203) |
+| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L225) |
+
+## `core/runtime/db_agent_memory.py`
+_Agentens EGEN erindring paa tvaers af assignments (agent-contract-v1 C4, spec 7.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_memory_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_memory.py#L39) |
+| function | `_clip` | `(value, limit)` | — | [src](../../../core/runtime/db_agent_memory.py#L98) |
+| function | `project_summary` | `(assignment_id)` | Skriv resumeet for ét TERMINALT assignment. Idempotent (UNIQUE paa assignment). | [src](../../../core/runtime/db_agent_memory.py#L105) |
+| function | `_agent_of` | `(conn, assignment_id)` | — | [src](../../../core/runtime/db_agent_memory.py#L150) |
+| function | `retry_failed_projections` | `()` | Genopret: projicer igen for assignments hvor en fejl er registreret og stadig er aaben. | [src](../../../core/runtime/db_agent_memory.py#L160) |
+| function | `write_note` | `(*, owner_user_id, agent_id, content, author, source_assignment_id=…)` | Skriv en NY version af agentens noter (den gamle bevares med aendringsspor). | [src](../../../core/runtime/db_agent_memory.py#L176) |
+| function | `grant_session_relation` | `(*, owner_user_id, agent_id, session_id, granted_by)` | Giv en anden session adgang til agentens gamle erindring. Kun agentens ejer, og kun | [src](../../../core/runtime/db_agent_memory.py#L208) |
+| function | `recall` | `(*, owner_user_id, agent_id, session_id, budget_chars=…)` | Begraenset, kildeangivet uddrag af agentens EGEN erindring til netop denne session. | [src](../../../core/runtime/db_agent_memory.py#L232) |
+
+## `core/runtime/db_agent_route.py`
+_Varig rute-proveniens for agenter (agent-contract-v1 D, spec 7.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_route_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_route.py#L25) |
+| function | `record_decision` | `(*, assignment_id, agent_id, owner_user_id, decision, attempt=…, conn=…)` | — | [src](../../../core/runtime/db_agent_route.py#L47) |
+| function | `_view` | `(r)` | — | [src](../../../core/runtime/db_agent_route.py#L70) |
+| function | `attempts_for_assignment` | `(assignment_id)` | — | [src](../../../core/runtime/db_agent_route.py#L80) |
+| function | `latest_for_agent` | `(agent_id)` | Det SENESTE forsoeg for agentens senest oprettede assignment (None for en legacy-agent). | [src](../../../core/runtime/db_agent_route.py#L86) |
+
 ## `core/runtime/db_agent_runtime.py`
 _Persistence for Jarvis' agent + council runtime cluster._
 
@@ -74,37 +236,51 @@ _Persistence for Jarvis' agent + council runtime cluster._
 | function | `create_agent_registry_entry` | `(*, agent_id, parent_agent_id=…, owner_agent_id=…, council_id=…, kind=…, role=…, goal=…, status=…, lane=…, provider=…, model=…, system_prompt=…, system_prompt_version=…, tool_policy=…, allowed_tools_json=…, persistent=…, ttl_seconds=…, schedule_json=…, next_wake_at=…, budget_tokens=…, tokens_burned=…, max_turns=…, turns_completed=…, failure_count=…, last_error=…, context_json=…, result_contract_json=…)` | Insert a new row into agent_registry and return the stored entry as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L219) |
 | function | `get_agent_registry_entry` | `(agent_id)` | Return the agent_registry row for agent_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L305) |
 | function | `update_agent_registry_entry` | `(agent_id, *, status=…, next_wake_at=…, schedule_json=…, tokens_burned_delta=…, max_turns=…, turns_completed_delta=…, failure_increment=…, last_error=…, completed_at=…, expired_at=…)` | Patch selected columns of one agent_registry row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L318) |
-| function | `list_agent_registry_entries` | `(*, status=…, include_completed=…, limit=…)` | Return agent_registry rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L393) |
-| function | `create_agent_run` | `(*, run_id, agent_id, status=…, execution_mode=…, provider=…, model=…, input_summary=…, output_summary=…, input_payload_json=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Insert a new row into agent_runs and return the stored run as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L419) |
-| function | `get_agent_run` | `(run_id)` | Return the agent_runs row for run_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L498) |
-| function | `update_agent_run` | `(run_id, *, status=…, output_summary=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Patch selected columns of one agent_runs row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L511) |
-| function | `list_agent_runs` | `(*, agent_id=…, limit=…)` | Return agent_runs rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L559) |
-| function | `create_agent_message` | `(*, message_id, thread_id, run_id=…, council_id=…, agent_id=…, peer_agent_id=…, direction=…, role=…, content=…, kind=…)` | Insert a new row into agent_messages and return the stored message as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L577) |
-| function | `get_agent_message` | `(message_id)` | Return the agent_messages row for message_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L624) |
-| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…, tail=…)` | Return agent_messages rows as dicts, oldest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L637) |
-| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | Insert a new row into agent_tool_calls and return the stored call as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L682) |
-| function | `get_agent_tool_call` | `(tool_call_id)` | Return the agent_tool_calls row for tool_call_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L727) |
-| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | Return agent_tool_calls rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L740) |
-| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | Upsert a row in agent_schedules by schedule_id and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L762) |
-| function | `get_agent_schedule` | `(schedule_id)` | Return the agent_schedules row for schedule_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L816) |
-| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | Patch selected columns of one agent_schedules row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L829) |
-| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | Return agent_schedules rows as dicts, ordered by next_fire_at then created_at. | [src](../../../core/runtime/db_agent_runtime.py#L868) |
-| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L893) |
-| function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L925) |
-| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L944) |
-| function | `list_council_sessions` | `(limit=…, *, statuses=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L988) |
-| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L1015) |
-| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1051) |
-| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1089) |
-| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1102) |
-| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1116) |
-| function | `_json_or_empty` | `(raa)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1155) |
-| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1164) |
-| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1192) |
-| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1208) |
-| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1223) |
-| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1238) |
-| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1255) |
+| function | `list_agent_registry_entries` | `(*, status=…, include_completed=…, limit=…)` | Return agent_registry rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L401) |
+| function | `create_agent_run` | `(*, run_id, agent_id, status=…, execution_mode=…, provider=…, model=…, input_summary=…, output_summary=…, input_payload_json=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Insert a new row into agent_runs and return the stored run as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L427) |
+| function | `get_agent_run` | `(run_id)` | Return the agent_runs row for run_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L519) |
+| function | `update_agent_run` | `(run_id, *, status=…, output_summary=…, output_payload_json=…, started_at=…, finished_at=…, input_tokens=…, output_tokens=…, cost_usd=…, provider_status=…, failure_reason=…)` | Patch selected columns of one agent_runs row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L532) |
+| function | `list_agent_runs` | `(*, agent_id=…, limit=…)` | Return agent_runs rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L580) |
+| function | `create_agent_message` | `(*, message_id, thread_id, run_id=…, council_id=…, agent_id=…, peer_agent_id=…, direction=…, role=…, content=…, kind=…)` | Insert a new row into agent_messages and return the stored message as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L598) |
+| function | `get_agent_message` | `(message_id)` | Return the agent_messages row for message_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L645) |
+| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…, tail=…)` | Return agent_messages rows as dicts, oldest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L658) |
+| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | Insert a new row into agent_tool_calls and return the stored call as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L703) |
+| function | `get_agent_tool_call` | `(tool_call_id)` | Return the agent_tool_calls row for tool_call_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L751) |
+| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | Return agent_tool_calls rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L764) |
+| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | Upsert a row in agent_schedules by schedule_id and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L786) |
+| function | `get_agent_schedule` | `(schedule_id)` | Return the agent_schedules row for schedule_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L840) |
+| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | Patch selected columns of one agent_schedules row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L853) |
+| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | Return agent_schedules rows as dicts, ordered by next_fire_at then created_at. | [src](../../../core/runtime/db_agent_runtime.py#L892) |
+| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L917) |
+| function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L949) |
+| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L968) |
+| function | `list_council_sessions` | `(limit=…, *, statuses=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L1012) |
+| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L1039) |
+| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1075) |
+| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1113) |
+| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1126) |
+| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1140) |
+| function | `_json_or_empty` | `(raa)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1184) |
+| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1193) |
+| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1221) |
+| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1237) |
+| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1252) |
+| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1267) |
+| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1284) |
+
+## `core/runtime/db_agent_wait.py`
+_Ventekontrakter og brugerstop-spaerre for agent-contract-v1 (B2, §6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_wait_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_wait.py#L30) |
+| function | `_satisfied` | `(conn, ids, condition)` | — | [src](../../../core/runtime/db_agent_wait.py#L60) |
+| function | `_fire_if_satisfied` | `(conn, c)` | — | [src](../../../core/runtime/db_agent_wait.py#L69) |
+| function | `evaluate_in_tx` | `(conn, assignment_id)` | Koeres i terminalcommittets transaktion. Returnerer de kontrakter der blev | [src](../../../core/runtime/db_agent_wait.py#L80) |
+| function | `register_wait` | `(*, owner_user_id, origin_session_id, parent_run_id, assignment_ids, condition=…)` | Registrer hvad parenten venter paa. Hver assignment skal tilhoere samme | [src](../../../core/runtime/db_agent_wait.py#L91) |
+| function | `get_contract` | `(contract_id)` | — | [src](../../../core/runtime/db_agent_wait.py#L134) |
+| function | `materialize_pending_wakes` | `()` | Skriv vaekke-intentionen for hver `fired` kontrakt uden en. Idempotent og | [src](../../../core/runtime/db_agent_wait.py#L139) |
+| function | `block_wakes_for_run` | `(*, run_id, reason=…)` | Manuelt brugerstop af parentens run: skriv markoeren FOER afbrydelsen, | [src](../../../core/runtime/db_agent_wait.py#L167) |
 
 ## `core/runtime/db_anomalies.py`
 _Central-anomalier — persistent register over UDEFINEREDE fejl Centralen ikke selv har_
@@ -542,133 +718,4 @@ _Enheder — hvem må styre denne computer, og hvem må bruge code mode._
 | function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
 | function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
 | function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
-
-## `core/runtime/db_dream_bias.py`
-_DB helpers for dream_bias_active (Lag 2 dream-bias)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/runtime/db_dream_bias.py#L17) |
-| function | `_future_iso` | `(*, hours)` | — | [src](../../../core/runtime/db_dream_bias.py#L21) |
-| function | `insert_new_bias` | `(*, workspace_id, attention_bias, threshold_bias, intensity, ttl_hours, dream_text, source_event_ids, source_kinds)` | INSERT a fresh bias row for a workspace. | [src](../../../core/runtime/db_dream_bias.py#L25) |
-| function | `update_existing_bias` | `(*, workspace_id, attention_bias, threshold_bias, intensity, ttl_hours, dream_text, accumulated_count, source_event_ids, source_kinds)` | Update existing row in place. Returns True if a row was updated. | [src](../../../core/runtime/db_dream_bias.py#L76) |
-| function | `get_active_bias_raw` | `(*, workspace_id)` | Read the single active bias row for a workspace. | [src](../../../core/runtime/db_dream_bias.py#L112) |
-| function | `delete_expired_bias_rows` | `()` | Hard-delete rows whose TTL has passed. Returns count. | [src](../../../core/runtime/db_dream_bias.py#L149) |
-
-## `core/runtime/db_embeddings.py`
-_Embeddings store — unified vector index across all memory surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_memory_embeddings_table` | `(conn)` | — | [src](../../../core/runtime/db_embeddings.py#L18) |
-| function | `upsert_embedding` | `(*, source_table, source_id, modality, content_hash, embedding_bytes, model_version)` | Insert or overwrite the embedding for a given source row. | [src](../../../core/runtime/db_embeddings.py#L39) |
-| function | `get_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L78) |
-| function | `delete_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L93) |
-| function | `list_embeddings` | `(*, modalities=…, source_tables=…, limit=…)` | Return raw embedding rows (including blobs). Caller decodes. | [src](../../../core/runtime/db_embeddings.py#L104) |
-| function | `count_embeddings` | `(*, modality=…, source_table=…)` | — | [src](../../../core/runtime/db_embeddings.py#L133) |
-| function | `list_indexed_source_ids` | `(source_table)` | Return the set of source_ids already indexed for a given table. | [src](../../../core/runtime/db_embeddings.py#L156) |
-
-## `core/runtime/db_emotional_memory.py`
-_DB helpers for emotional_memory_anchors table._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_emotional_memory_anchors_table` | `(conn)` | — | [src](../../../core/runtime/db_emotional_memory.py#L15) |
-| function | `insert_emotional_memory_anchor` | `(*, anchor_type, anchor_id, captured_at, mood, intensity, confidence=…, curiosity=…, frustration=…, fatigue=…, trust=…, outcome_score=…, outcome_source=…, context_features_json=…, source=…, notes=…)` | UPSERT an emotional memory anchor. Idempotent on (anchor_type, anchor_id). | [src](../../../core/runtime/db_emotional_memory.py#L54) |
-| function | `get_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L141) |
-| function | `list_emotional_memory_anchors` | `(*, anchor_type=…, since=…, min_intensity=…, outcome=…, limit=…)` | Return anchors filtered and ordered by captured_at DESC. | [src](../../../core/runtime/db_emotional_memory.py#L153) |
-| function | `update_emotional_memory_outcome` | `(*, anchor_type, anchor_id, score, source, force=…)` | Update outcome score. Returns True if updated, False if blocked. | [src](../../../core/runtime/db_emotional_memory.py#L190) |
-| function | `delete_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L234) |
-| function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
-| function | `aggregate_emotional_memory_anchors` | `()` | Tællinger over HELE tabellen — ikke over de seneste N rækker. | [src](../../../core/runtime/db_emotional_memory.py#L265) |
-
-## `core/runtime/db_fts.py`
-_FTS5 full-text search over session summaries and chat messages._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `fts5_available` | `(conn)` | — | [src](../../../core/runtime/db_fts.py#L34) |
-| function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L43) |
-| function | `ensure_fts_tables` | `(conn)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L50) |
-| function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L96) |
-| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
-| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
-| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L136) |
-| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L196) |
-
-## `core/runtime/db_gate_verdicts.py`
-_Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/runtime/db_gate_verdicts.py#L28) |
-| function | `apply_deltas` | `(deltas)` | UPSERT en batch af akkumulerede tæller-deltas. Returnerer antal rækker rørt. | [src](../../../core/runtime/db_gate_verdicts.py#L48) |
-| function | `read_counts` | `(nerve=…)` | Læs aggregerede tællere. Filtrér på nerve hvis givet. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_gate_verdicts.py#L91) |
-| function | `summary` | `()` | Aggregér pr. nerve: {nerve: {cluster, total, green, yellow, red, skip, | [src](../../../core/runtime/db_gate_verdicts.py#L112) |
-
-## `core/runtime/db_goals.py`
-_Long-horizon goals store — persistent objectives Jarvis carries across sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_goals.py#L24) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_goals.py#L67) |
-| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_goals.py#L71) |
-| function | `create_goal` | `(*, title, description=…, priority=…, target_date=…, tags=…, created_by=…)` | — | [src](../../../core/runtime/db_goals.py#L75) |
-| function | `append_goal_update` | `(*, goal_id, note, progress_delta=…, source=…, new_status=…)` | Append a progress note and optionally bump progress/status. | [src](../../../core/runtime/db_goals.py#L112) |
-| function | `get_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L180) |
-| function | `list_goals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L192) |
-| function | `list_goal_updates` | `(goal_id, *, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L213) |
-| function | `update_goal_fields` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/runtime/db_goals.py#L224) |
-| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L268) |
-| function | `count_goals` | `(*, status=…)` | — | [src](../../../core/runtime/db_goals.py#L281) |
-| function | `_row_to_goal` | `(row)` | — | [src](../../../core/runtime/db_goals.py#L296) |
-
-## `core/runtime/db_governance.py`
-_Persistence for governance-adjacent CRUD domains._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `recent_tool_intent_approval_requests` | `(limit=…, *, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_governance.py#L32) |
-| function | `create_tool_intent_approval_request` | `(*, intent_key, intent_type, intent_target, approval_scope, approval_required, approval_reason, requested_at, expires_at, execution_state=…)` | — | [src](../../../core/runtime/db_governance.py#L80) |
-| function | `get_tool_intent_approval_request` | `(intent_key)` | — | [src](../../../core/runtime/db_governance.py#L148) |
-| function | `resolve_tool_intent_approval_request` | `(intent_key, *, approval_state, approval_source, resolved_at, resolution_reason, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_governance.py#L183) |
-| function | `expire_tool_intent_approval_request` | `(intent_key, *, expired_at, resolution_reason)` | — | [src](../../../core/runtime/db_governance.py#L223) |
-| function | `_tool_intent_approval_request_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L255) |
-| function | `record_runtime_contract_file_write` | `(*, write_id, candidate_id, target_file, canonical_key, write_status, actor, summary, content_line, created_at)` | — | [src](../../../core/runtime/db_governance.py#L289) |
-| function | `get_runtime_contract_file_write` | `(write_id)` | — | [src](../../../core/runtime/db_governance.py#L337) |
-| function | `recent_runtime_contract_file_writes` | `(limit=…)` | — | [src](../../../core/runtime/db_governance.py#L363) |
-| function | `runtime_contract_file_write_counts` | `()` | — | [src](../../../core/runtime/db_governance.py#L387) |
-| function | `_ensure_runtime_contract_file_write_table` | `(conn)` | — | [src](../../../core/runtime/db_governance.py#L404) |
-| function | `_runtime_contract_file_write_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L429) |
-| function | `record_runtime_webchat_execution_pilot` | `(*, pilot_id, canonical_key, status, execution_type, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, delivery_channel=…, delivery_state=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_governance.py#L452) |
-| function | `list_runtime_webchat_execution_pilots` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_governance.py#L534) |
-| function | `get_runtime_webchat_execution_pilot` | `(pilot_id)` | — | [src](../../../core/runtime/db_governance.py#L581) |
-| function | `_runtime_webchat_execution_pilot_from_row` | `(row)` | — | [src](../../../core/runtime/db_governance.py#L619) |
-
-## `core/runtime/db_governance_ledger.py`
-_Governance-ledger — PERSISTENT log af governerede mutationer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `()` | Opret governance_ledger-tabellen hvis den ikke findes. Idempotent. | [src](../../../core/runtime/db_governance_ledger.py#L23) |
-| function | `record_mutation` | `(area, key, value)` | Skriv én række til governance_ledger. Self-safe — sluger fejl. | [src](../../../core/runtime/db_governance_ledger.py#L50) |
-| function | `read_ledger` | `(area=…, limit=…)` | Læs seneste mutationer. Filtrér på area hvis givet. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_governance_ledger.py#L73) |
-| function | `summary` | `()` | Aggregér pr. area: {area: {total, latest_ts, keys: [distinkte nøgler]}}. | [src](../../../core/runtime/db_governance_ledger.py#L110) |
-
-## `core/runtime/db_heartbeat.py`
-_Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_heartbeat_tables` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L17) |
-| function | `_ensure_heartbeat_runtime_state_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L102) |
-| function | `_ensure_heartbeat_runtime_tick_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L247) |
-| function | `_heartbeat_runtime_state_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L301) |
-| function | `_heartbeat_runtime_tick_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L340) |
-| function | `get_heartbeat_runtime_state` | `()` | — | [src](../../../core/runtime/db_heartbeat.py#L373) |
-| function | `upsert_heartbeat_runtime_state` | `(*, state_id, last_tick_id, last_tick_at, next_tick_at, schedule_state, due, last_decision_type, last_result, blocked_reason, currently_ticking, last_trigger_source, scheduler_active, scheduler_started_at, scheduler_stopped_at, scheduler_health, recovery_status, last_recovery_at, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, last_ping_eligible, last_ping_result, last_action_type, last_action_status, last_action_summary, last_action_artifact, updated_at, last_successful_ping_at=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L421) |
-| function | `record_heartbeat_runtime_tick` | `(*, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at)` | — | [src](../../../core/runtime/db_heartbeat.py#L598) |
-| function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
-| function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
 

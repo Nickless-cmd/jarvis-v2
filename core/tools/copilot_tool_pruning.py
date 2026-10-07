@@ -492,6 +492,16 @@ def select_tools_for_copilot(
     return [by_name[n] for n in selected_names if n in by_name]
 
 
+def agent_contract_pinned() -> tuple[str, ...]:
+    """De syv agent-vaerktoejer, FASTE i Jarvis' flade naar motoren er taendt (§7.3).
+
+    En konstant funktion af ét flag - ikke af beskeden - saa arrayet er byte-stabilt
+    fra tur til tur og kun skifter naar flaget skifter. Tom naar motoren er slukket.
+    """
+    from core.tools.agent_contract_tools import contract_tool_names_advertised
+    return contract_tool_names_advertised()
+
+
 def _faestn_kraevede(
     selected_names: list[str], seen: set[str], by_name: dict[str, dict],
     max_tools: int, user_message: str,
@@ -509,7 +519,8 @@ def _faestn_kraevede(
     # Sikkerhedsgulvet faestnes SAMMEN med de kraevede (30/9-2026). Det stod
     # skrevet som «must always be available regardless of past usage» og var
     # ikke haandhaevet nogen steder — se kommentaren over `SAFETY_FLOOR`.
-    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
+    kraevede = (tuple(REQUIRED_LAZY_TOOL_NAMES) + tuple(SAFETY_FLOOR)
+                + agent_contract_pinned())
     # Intet pinnes BETINGET laengere (3/10-2026): et besked-afhaengigt array
     # koster hele praefikset, og `skill_invoke` staar nu fast ovenfor. Kaldet
     # her er KUN sporet matched -> surfaced -> tilgaengelig -> invoked; det

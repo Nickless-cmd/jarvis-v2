@@ -45,6 +45,17 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L629) |
 | function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L642) |
 
+## `apps/api/jarvis_api/routes/agent_approvals.py`
+_Agent-approvals: list og afgoer (agent-contract-v1 F4c, spec 8.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DecisionRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L25) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L32) |
+| function | `_kraev_totrin_ved_godkendelse` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L40) |
+| function | `list_approvals` | `(status=…, session=…)` | Brugerens egne approvals med sikker visning og digest (aldrig raa argumenter). | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L54) |
+| function | `decide` | `(approval_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L65) |
+
 ## `apps/api/jarvis_api/routes/agent_pool.py`
 _Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._
 
@@ -587,18 +598,4 @@ _Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
 | function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
 | function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
 | function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
-
-## `apps/api/jarvis_api/routes/cheap_balancer.py`
-_Mission Control endpoints for cheap_lane_balancer telemetry + controls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_state` | `()` | Return full snapshot: pool, slot states, recent calls. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L12) |
-| function | `reset` | `(slot_id)` | Clear breaker, cooldown, and consecutive_failures for a slot. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L19) |
-| function | `disable` | `(slot_id)` | Force a slot's weight to 0 (excluded from selection until enabled). | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L26) |
-| function | `enable` | `(slot_id)` | Restore a manually-disabled slot to selection eligibility. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L33) |
-| function | `refresh` | `()` | Rebuild slot pool from provider_router.json. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L40) |
-| function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
-| function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
-| function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
 

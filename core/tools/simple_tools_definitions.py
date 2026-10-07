@@ -27,6 +27,7 @@ from core.tools.screen_tool import (SCREEN_TOOL_DEFINITIONS)
 from core.tools.voice_journal_tool import (VOICE_JOURNAL_TOOL_DEFINITIONS)
 from core.tools.wake_word_tool import (WAKE_WORD_TOOL_DEFINITIONS)
 from core.tools.restart_self_tools import (RESTART_SELF_TOOL_DEFINITIONS)
+from core.tools.agent_contract_tools import AGENT_CONTRACT_TOOL_DEFINITIONS
 from core.tools.mail_tools import (MAIL_TOOL_DEFINITIONS)
 from core.tools.github_tools import (GITHUB_TOOL_DEFINITIONS)
 from core.services.github_connector import (GITHUB_CONNECTOR_TOOL_DEFINITIONS)
@@ -3319,6 +3320,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *VOICE_JOURNAL_TOOL_DEFINITIONS,
     *WAKE_WORD_TOOL_DEFINITIONS,
     *RESTART_SELF_TOOL_DEFINITIONS,
+    *AGENT_CONTRACT_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
     *JARVIS_BRAIN_TOOL_DEFINITIONS,

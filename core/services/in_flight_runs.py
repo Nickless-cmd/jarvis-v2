@@ -442,6 +442,7 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
         rec for rec in _load().values()
         if str(rec.get("session_id") or "") == sid
         and str(rec.get("kind") or "visible") == "visible"
+        and not rec.get("wake_kind")   # en agent-vaekning er ikke en afbrudt opgave
         and (
             str(rec.get("status") or "") in {"recovering", "running"}
             or (str(rec.get("status") or "") == "failed_terminal"

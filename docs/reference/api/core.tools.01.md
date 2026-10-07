@@ -6,6 +6,28 @@
 
 _(no top-level classes or functions)_
 
+## `core/tools/agent_contract_tools.py`
+_Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fn` | `(name, description, properties, required)` | — | [src](../../../core/tools/agent_contract_tools.py#L34) |
+| function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L131) |
+| function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L142) |
+| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L150) |
+| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L161) |
+| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L166) |
+| function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L182) |
+| function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L192) |
+| function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L205) |
+| function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L212) |
+| function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L218) |
+| function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L226) |
+| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L238) |
+| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L251) |
+| function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L257) |
+| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L267) |
+
 ## `core/tools/agent_todo_tools.py`
 _Tool wrappers for the per-session todo tracker (agent_todos)._
 
@@ -17,6 +39,16 @@ _Tool wrappers for the per-session todo tracker (agent_todos)._
 | function | `_exec_todo_add` | `(args)` | — | [src](../../../core/tools/agent_todo_tools.py#L32) |
 | function | `_exec_todo_update_status` | `(args)` | — | [src](../../../core/tools/agent_todo_tools.py#L36) |
 | function | `_exec_todo_remove` | `(args)` | — | [src](../../../core/tools/agent_todo_tools.py#L44) |
+
+## `core/tools/agent_worktree_tools.py`
+_Agent-kun-vaerktoejer til at skrive i agentens EGET worktree (agent-contract-v1 C5b)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_worktree_for` | `(args)` | (worktree, fejl). Agenten og dens assignment slaas op af serveren. | [src](../../../core/tools/agent_worktree_tools.py#L44) |
+| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_worktree_tools.py#L61) |
+| function | `_exec_wt_bash` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L67) |
+| function | `_exec_wt_write_file` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L80) |
 
 ## `core/tools/app_control_tool.py`
 _request_app_action tool (spec 2026-06-15) — Jarvis foreslår mode/permission-skift._
@@ -199,10 +231,11 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 | function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L374) |
 | function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L384) |
 | function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L400) |
-| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L495) |
-| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L530) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L584) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L589) |
+| function | `agent_contract_pinned` | `()` | De syv agent-vaerktoejer, FASTE i Jarvis' flade naar motoren er taendt (§7.3). | [src](../../../core/tools/copilot_tool_pruning.py#L495) |
+| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L505) |
+| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L541) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L595) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L600) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._
@@ -497,40 +530,4 @@ _De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
 | function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L170) |
 | function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L193) |
 | function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L213) |
-
-## `core/tools/jarvis_brain_tools.py`
-_Visible Jarvis' værktøjer til hjernen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/tools/jarvis_brain_tools.py#L131) |
-| function | `_day_key` | `(now)` | — | [src](../../../core/tools/jarvis_brain_tools.py#L135) |
-| function | `_get_caps` | `()` | Read caps from RuntimeSettings if available, else defaults. | [src](../../../core/tools/jarvis_brain_tools.py#L139) |
-| function | `_exec_remember_this` | `(args)` | Executor for remember_this tool. | [src](../../../core/tools/jarvis_brain_tools.py#L157) |
-| function | `_exec_search_jarvis_brain` | `(args)` | Executor for search_jarvis_brain tool. | [src](../../../core/tools/jarvis_brain_tools.py#L203) |
-| function | `_exec_read_brain_entry` | `(args)` | Executor for read_brain_entry tool. | [src](../../../core/tools/jarvis_brain_tools.py#L215) |
-| function | `_exec_archive_brain_entry` | `(args)` | Executor for archive_brain_entry tool. | [src](../../../core/tools/jarvis_brain_tools.py#L220) |
-| function | `_exec_adopt_brain_proposal` | `(args)` | Executor for adopt_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L228) |
-| function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L236) |
-| function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L249) |
-| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L336) |
-| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L416) |
-| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L443) |
-| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L455) |
-| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L531) |
-
-## `core/tools/jc_tool_catalog.py`
-_Single source of truth for what jarvis-code (jc) presents as tools._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `alias_for` | `(name)` | runtime_ alias for a colliding tool name. | [src](../../../core/tools/jc_tool_catalog.py#L30) |
-| function | `unalias` | `(name)` | Strip the runtime_ prefix iff it maps to a colliding tool; else unchanged. | [src](../../../core/tools/jc_tool_catalog.py#L35) |
-| function | `is_runtime_alias` | `(name)` | True only for runtime_<one-of-the-four-colliding-tools>. | [src](../../../core/tools/jc_tool_catalog.py#L42) |
-| function | `execution_location` | `(name)` | Hvor et tool med DETTE præsenterede navn eksekverer: | [src](../../../core/tools/jc_tool_catalog.py#L59) |
-| function | `execution_map` | `(defs)` | Kortlæg en liste af tool-defs → {navn: execution_location}. Muterer IKKE | [src](../../../core/tools/jc_tool_catalog.py#L74) |
-| function | `build_jc_catalog_text` | `()` | Jarvis-code-SPECIFIK toolbox-forklaring til prompten (Bjørn: der manglede en | [src](../../../core/tools/jc_tool_catalog.py#L95) |
-| function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L120) |
-| function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
-| function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
 

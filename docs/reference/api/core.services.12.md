@@ -2,6 +2,344 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/effective_policy.py`
+_Hvad GJALDT der faktisk for denne koersel — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
+| function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
+| function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
+| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L75) |
+| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L83) |
+| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L91) |
+| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L115) |
+| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
+| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
+
+## `core/services/egress_guard.py`
+_SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_internal_ip` | `(ip_str)` | Loopback, link-local (inkl. 169.254.169.254), RFC1918, 0.0.0.0. Ren. | [src](../../../core/services/egress_guard.py#L36) |
+| function | `classify` | `(url)` | {"blocked": bool, "reason": str}. Self-safe: uparsbar URL → blokeret. | [src](../../../core/services/egress_guard.py#L47) |
+| function | `is_safe_destination` | `(url)` | {"safe": bool, "reason": str} — laesevenligt alias til `classify`. | [src](../../../core/services/egress_guard.py#L81) |
+| function | `check_redirect_hop` | `(url)` | Samme klassifikation, anvendt paa et OMDIRIGERINGS-maal. | [src](../../../core/services/egress_guard.py#L87) |
+| function | `classify_egress` | `(command)` | {"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren. | [src](../../../core/services/egress_guard.py#L119) |
+| function | `urls_in_command` | `(command)` | URL'er i en kommando, saa de kan klassificeres hver for sig. Ren. | [src](../../../core/services/egress_guard.py#L141) |
+| function | `internal_targets_in_command` | `(command)` | De URL'er i kommandoen der peger INDAD. Ren. | [src](../../../core/services/egress_guard.py#L149) |
+
+## `core/services/egress_routing.py`
+_Egress routing — which network egress a (provider, auth_profile) slot uses._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resolve_egress` | `(provider, auth_profile)` | Which egress a slot uses. default profile -> 'home'; other profiles -> | [src](../../../core/services/egress_routing.py#L84) |
+| function | `resolve_v6bind_source` | `(provider, auth_profile)` | Native-IPv6 account2 egress: bind the outbound socket to a distinct v6 | [src](../../../core/services/egress_routing.py#L97) |
+| function | `_source_addr_usable` | `(addr)` | True if ``addr`` can be bound as an IPv6 source on this host (cheap check). | [src](../../../core/services/egress_routing.py#L132) |
+| function | `resolve_nat64` | `(provider, auth_profile)` | True if this (provider, auth_profile) slot should egress via NAT64 instead | [src](../../../core/services/egress_routing.py#L157) |
+| function | `nat64_synthesize` | `(host)` | Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server. | [src](../../../core/services/egress_routing.py#L182) |
+| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L223) |
+
+## `core/services/embodied_presence.py`
+_Embodied Presence — situational grounding in the physical now._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PresenceSignal` | `` | — | [src](../../../core/services/embodied_presence.py#L36) |
+| function | `_hour_to_temporal_context` | `(hour)` | Map hour (0-23) to temporal context label. | [src](../../../core/services/embodied_presence.py#L43) |
+| function | `_compute_grounding` | `(has_visual, has_audio, has_atmosphere)` | Grounding increases with more sensory channels present. | [src](../../../core/services/embodied_presence.py#L57) |
+| function | `_compute_arousal` | `(visual_activity=…, audio_amplitude=…, atmosphere_energy=…)` | Arousal from ambient sensory energy. | [src](../../../core/services/embodied_presence.py#L68) |
+| function | `_summarize_presence` | `(grounding, arousal, temporal_context)` | Produce a compact presence line for assembly injection. | [src](../../../core/services/embodied_presence.py#L103) |
+| function | `compute_embodied_presence` | `(db_conn=…, now=…)` | Compute embodied presence signal from sensory data + time. | [src](../../../core/services/embodied_presence.py#L130) |
+| function | `get_presence_line` | `(db_conn=…)` | Get just the summary line for assembly injection. | [src](../../../core/services/embodied_presence.py#L236) |
+| function | `build_embodied_presence_surface` | `()` | — | [src](../../../core/services/embodied_presence.py#L249) |
+| function | `_emit_presence_event` | `(state)` | — | [src](../../../core/services/embodied_presence.py#L258) |
+
+## `core/services/embodied_state.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
+| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
+| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
+| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
+| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
+| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
+| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
+| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
+| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
+| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
+| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
+| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
+| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
+| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
+| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
+
+## `core/services/emergence.py`
+_Emergence — evidence-based pattern detection across recent activity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `EmergenceCandidate` | `` | — | [src](../../../core/services/emergence.py#L44) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/emergence.py#L54) |
+| function | `_ensure_table` | `()` | Create emergent_patterns table if missing. Idempotent. | [src](../../../core/services/emergence.py#L58) |
+| function | `_fetch_recent_events` | `(*, window_days=…, limit=…)` | Pull recent events from the eventbus events table. | [src](../../../core/services/emergence.py#L80) |
+| function | `_count_by_kind_prefix` | `(events, prefix)` | — | [src](../../../core/services/emergence.py#L108) |
+| function | `_count_blocked` | `(events)` | Count events that look like blocked/denied signals. | [src](../../../core/services/emergence.py#L118) |
+| function | `_fetch_procedures_count` | `()` | — | [src](../../../core/services/emergence.py#L135) |
+| function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L146) |
+| function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L159) |
+| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L229) |
+| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L289) |
+| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L354) |
+| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L377) |
+| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L396) |
+| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L412) |
+| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
+| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
+
+## `core/services/emergent_bridge.py`
+_Emergent Bridge — consumer for emergent signals to influence visible prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `should_influence_prompt` | `()` | Determine if an emergent signal should influence the visible prompt. | [src](../../../core/services/emergent_bridge.py#L26) |
+| function | `get_influencing_emergents` | `()` | Get the emergent signals that are currently influencing. | [src](../../../core/services/emergent_bridge.py#L45) |
+| function | `format_emergent_for_prompt` | `()` | Format emergent signal for prompt injection. | [src](../../../core/services/emergent_bridge.py#L68) |
+| function | `reset_emergent_bridge` | `()` | Reset emergent bridge state (for testing). | [src](../../../core/services/emergent_bridge.py#L84) |
+| function | `get_emergent_bridge_state` | `()` | Get current state of emergent bridge. | [src](../../../core/services/emergent_bridge.py#L90) |
+| function | `build_emergent_bridge_surface` | `()` | Build MC surface for emergent bridge. | [src](../../../core/services/emergent_bridge.py#L100) |
+
+## `core/services/emergent_goals.py`
+_Emergent Goals — desires that grow from experience, not assignment._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `generate_emergent_goal_from_experience` | `(*, recent_topic=…, curiosity_level=…, knowledge_gap=…)` | — | [src](../../../core/services/emergent_goals.py#L18) |
+| function | `build_jarvis_agenda` | `()` | Jarvis' own agenda — what HE thinks is important. | [src](../../../core/services/emergent_goals.py#L37) |
+| function | `build_emergent_goals_surface` | `()` | — | [src](../../../core/services/emergent_goals.py#L62) |
+
+## `core/services/emergent_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `EmergentSignal` | `` | — | [src](../../../core/services/emergent_signal_tracking.py#L16) |
+| function | `run_emergent_signal_daemon` | `(*, trigger=…, last_visible_at=…)` | Produce a small bounded set of grounded candidate emergent signals. | [src](../../../core/services/emergent_signal_tracking.py#L48) |
+| function | `build_runtime_emergent_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/emergent_signal_tracking.py#L185) |
+| function | `get_emergent_signal_daemon_state` | `()` | — | [src](../../../core/services/emergent_signal_tracking.py#L228) |
+| function | `_extract_grounded_candidates` | `(*, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L237) |
+| function | `_ordered_signals` | `(limit)` | — | [src](../../../core/services/emergent_signal_tracking.py#L332) |
+| function | `_serialize_signal` | `(signal, *, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L345) |
+| function | `_event_payload` | `(signal, *, trigger)` | — | [src](../../../core/services/emergent_signal_tracking.py#L352) |
+| function | `_expiry_state` | `(signal, *, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L366) |
+| function | `_signal_key` | `(family, *anchors)` | — | [src](../../../core/services/emergent_signal_tracking.py#L378) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/emergent_signal_tracking.py#L384) |
+| function | `_current_label` | `(surface)` | — | [src](../../../core/services/emergent_signal_tracking.py#L390) |
+| function | `_safe_surface` | `(module_name, fn_name)` | — | [src](../../../core/services/emergent_signal_tracking.py#L401) |
+| function | `_safe_daemon_state` | `(module_name, fn_name)` | — | [src](../../../core/services/emergent_signal_tracking.py#L410) |
+| function | `_inner_voice_recent` | `(state, *, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L419) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/emergent_signal_tracking.py#L432) |
+
+## `core/services/emitted_prefix.py`
+_Hvad nåede FAKTISK ud til klienten, før turen blev afbrudt?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Prefix` | `` | Det leverede præfiks — og om det er HELE det leverede. | [src](../../../core/services/emitted_prefix.py#L45) |
+| method | `Prefix.__bool__` | `(self)` | — | [src](../../../core/services/emitted_prefix.py#L55) |
+| function | `_tekst_fra_ramme` | `(raa)` | Tekstindholdet i én SSE-ramme. Tom streng for alt der ikke er tekst. | [src](../../../core/services/emitted_prefix.py#L59) |
+| function | `emitted_prefix` | `(run_id)` | Præcis den tekst der nåede den genoptagelige buffer for dette run. | [src](../../../core/services/emitted_prefix.py#L81) |
+
+## `core/services/emotion_concepts.py`
+_Emotion Concepts — discrete, event-driven Lag-2 emotional signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | Indirected for monkeypatching in tests. | [src](../../../core/services/emotion_concepts.py#L123) |
+| function | `trigger_emotion_concept` | `(concept, intensity, trigger=…, source=…, lifetime_hours=…, *, min_seconds_since_last_from_same_source=…)` | Create or strengthen an active emotion concept instance. | [src](../../../core/services/emotion_concepts.py#L128) |
+| function | `tick_emotion_concepts` | `(elapsed_seconds)` | Decay all active concepts proportional to elapsed time. | [src](../../../core/services/emotion_concepts.py#L215) |
+| function | `drain_expired_residue` | `()` | Return accumulated residue deltas from expired concepts and reset to zero. | [src](../../../core/services/emotion_concepts.py#L250) |
+| function | `get_active_emotion_concepts` | `()` | Return all active concepts above threshold, sorted by intensity descending. | [src](../../../core/services/emotion_concepts.py#L264) |
+| function | `get_lag1_influence_deltas` | `()` | Compute cumulative influence on Lag-1 axes from all active concepts. | [src](../../../core/services/emotion_concepts.py#L276) |
+| function | `get_bearing_push` | `()` | Return bearing push from the highest-intensity bearing-influencing concept. | [src](../../../core/services/emotion_concepts.py#L294) |
+| function | `build_emotion_concept_surface` | `()` | MC surface: active concepts + influence deltas. | [src](../../../core/services/emotion_concepts.py#L309) |
+| function | `_prune_if_needed` | `()` | Remove the weakest concept when over limit. Must be called under _lock. | [src](../../../core/services/emotion_concepts.py#L326) |
+| function | `_persist_loop` | `()` | — | [src](../../../core/services/emotion_concepts.py#L360) |
+| function | `_persist_async` | `(signal)` | Læg i kø. Fire-and-forget, men på ÉN tråd med ÉN forbindelse. | [src](../../../core/services/emotion_concepts.py#L371) |
+| function | `_persist_koe_status` | `()` | Til tests og til at kigge på hvor langt bagud skrivningen er. | [src](../../../core/services/emotion_concepts.py#L390) |
+| function | `_safe_persist` | `(signal)` | — | [src](../../../core/services/emotion_concepts.py#L396) |
+| function | `_handle_event` | `(kind, payload)` | Map eventbus events to emotion concept triggers. | [src](../../../core/services/emotion_concepts.py#L421) |
+| function | `_handle_heartbeat_tick` | `(payload)` | Map heartbeat tick outcomes to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L487) |
+| function | `_handle_tool_completed` | `(payload)` | Map the actual simple_tools event shape to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L522) |
+| function | `_listener_loop` | `(q)` | Background thread: reads from eventbus queue and dispatches events. | [src](../../../core/services/emotion_concepts.py#L553) |
+| function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/emotion_concepts.py#L570) |
+| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/emotion_concepts.py#L592) |
+
+## `core/services/emotion_concepts_channel_triggers.py`
+_Helper module for emotion concept triggers from channel messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_channel_message_appended` | `(payload)` | Fire emotion concept triggers based on user-message content. | [src](../../../core/services/emotion_concepts_channel_triggers.py#L22) |
+
+## `core/services/emotion_concepts_positive_triggers.py`
+_Positive emotion concept bridges for living runtime signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_heartbeat_quality` | `(payload)` | Trigger joy when heartbeat quality is clearly good. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L13) |
+| function | `on_goal_created` | `(payload)` | A new durable goal produces a small anticipation/excitement pulse. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L29) |
+| function | `on_goal_updated` | `(payload)` | Trigger pride when a goal is nearly done, without refiring constantly. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L42) |
+| function | `on_sensory_recorded` | `(record)` | Trigger wonder when a sensory memory explicitly looks novel/anomalous. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L80) |
+| function | `_float` | `(value)` | — | [src](../../../core/services/emotion_concepts_positive_triggers.py#L103) |
+
+## `core/services/emotion_repair_bridge_daemon.py`
+_Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvreparation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_emotion_repair_bridge_surface` | `()` | Mission Control surface for emotion-repair bridge state. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L93) |
+| function | `_ensure_default_patterns` | `()` | Seed DB with default repair patterns if not already present. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L155) |
+| function | `tick_emotion_repair_bridge` | `()` | Main tick: check emotion signals, map to repairs, execute. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L175) |
+| function | `_tick_emotion_repair_bridge_inner` | `()` | Inner tick logic — wrapped by tick_emotion_repair_bridge for bærekraft. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L204) |
+| function | `_senses_bridge_mode` | `()` | Hvornår en selvreparation er en sansning: off | first | always. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L407) |
+| function | `_skal_broes` | `(mode, first_of_its_kind)` | Skal denne reparation skrives til Sansernes Arkiv? | [src](../../../core/services/emotion_repair_bridge_daemon.py#L421) |
+| function | `_bridge_repair_to_senses` | `(*, action_type, pattern_id, outcome, concept, error_summary=…)` | Write a sensory impression to Sansernes Arkiv when self-repair happens. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L436) |
+| function | `_execute_repair_action` | `(action_type, pattern_id)` | Execute a repair action by type. Can be extended. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L487) |
+
+## `core/services/emotion_tagging.py`
+_Emotion tagging — capture affective context at memory-creation time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current_emotion_tag` | `()` | Snapshot current affective state for tagging a new memory. | [src](../../../core/services/emotion_tagging.py#L25) |
+| function | `format_emotion_tag` | `(tag)` | Render a tag as a compact string for inclusion in memory text. | [src](../../../core/services/emotion_tagging.py#L53) |
+| function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
+| function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
+| function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
+
+## `core/services/emotional_chords.py`
+_Emotional Chords — emergent qualities from signal combinations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ChordDef` | `` | A chord definition — two signals that produce an emergent quality. | [src](../../../core/services/emotional_chords.py#L50) |
+| class | `ActiveChord` | `` | A currently active emotional chord. | [src](../../../core/services/emotional_chords.py#L151) |
+| function | `compute_active_chords` | `()` | Detect active emotional chords from current pressure state. | [src](../../../core/services/emotional_chords.py#L165) |
+| function | `format_chord_for_prompt` | `(chord)` | Format a single chord for prompt injection. | [src](../../../core/services/emotional_chords.py#L226) |
+| function | `get_chord_lines` | `()` | Convenience: compute all active chords and format for prompt. | [src](../../../core/services/emotional_chords.py#L236) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/emotional_chords.py#L254) |
+| function | `_map_pressures_to_families` | `(dominant_pressures)` | Map active pressure vectors to their likely signal families. | [src](../../../core/services/emotional_chords.py#L265) |
+
+## `core/services/emotional_controls.py`
+_Emotional Controls — humør der GATER handlinger, ikke bare rapporteres._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `EmotionalSnapshot` | `` | Point-in-time emotional reading used for gating decisions. | [src](../../../core/services/emotional_controls.py#L54) |
+| function | `_approval_denial_streak_last_hour` | `()` | Count consecutive recent approval denials as frustration proxy. | [src](../../../core/services/emotional_controls.py#L63) |
+| function | `_recent_tool_errors_last_10min` | `()` | Count tool.completed events with status=error in last 10 minutes (fatigue proxy). | [src](../../../core/services/emotional_controls.py#L92) |
+| function | `read_emotional_snapshot` | `()` | Compose current emotional state from available signals. | [src](../../../core/services/emotional_controls.py#L118) |
+| function | `apply_emotional_controls` | `(*, kernel_action=…, snapshot=…)` | Transform a kernel action based on current emotional state. | [src](../../../core/services/emotional_controls.py#L161) |
+| function | `build_emotional_controls_surface` | `()` | MC surface — current emotional state + what would be gated. | [src](../../../core/services/emotional_controls.py#L220) |
+| function | `format_gate_message` | `(action, reason, *, tool_name=…)` | Generate a user-facing Danish message explaining the gate. | [src](../../../core/services/emotional_controls.py#L260) |
+
+## `core/services/emotional_memory_engine.py`
+_Emotional memory engine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_classify_error` | `(error)` | Map raw error text to a coarse category for retrieval matching. | [src](../../../core/services/emotional_memory_engine.py#L29) |
+| function | `_count_tool_errors` | `(error, tool_names)` | Heuristically count how many tools in a run failed. | [src](../../../core/services/emotional_memory_engine.py#L43) |
+| function | `_derive_outcome_score` | `(*, status, error, tool_error_count)` | Auto-deriv outcome score from structured episode fields. | [src](../../../core/services/emotional_memory_engine.py#L65) |
+| function | `_read_current_mood` | `()` | Return (mood, intensity). Raises if oscillator is unavailable. | [src](../../../core/services/emotional_memory_engine.py#L96) |
+| function | `_read_current_dimensions` | `()` | Return the 5-dimension live emotional state. May raise — caller handles. | [src](../../../core/services/emotional_memory_engine.py#L102) |
+| function | `_coerce_float_or_none` | `(value)` | — | [src](../../../core/services/emotional_memory_engine.py#L116) |
+| function | `capture_emotional_anchor` | `(*, anchor_type, anchor_id, context_features, auto_outcome_inputs=…, source=…, notes=…)` | Snapshot affect for an anchor and persist it. | [src](../../../core/services/emotional_memory_engine.py#L125) |
+| function | `prune_aged_anchors` | `()` | Delete anchors older than the aging threshold unless they are significant. | [src](../../../core/services/emotional_memory_engine.py#L220) |
+| function | `find_similar_anchors` | `(*, anchor_type, context_features, limit=…, min_intensity=…, require_outcome=…)` | Find similar past anchors. Tiered: structured match first, lexical fallback. | [src](../../../core/services/emotional_memory_engine.py#L271) |
+| function | `_with_parsed_context` | `(row)` | — | [src](../../../core/services/emotional_memory_engine.py#L328) |
+| function | `_tier1_score` | `(anchor_type, current, candidates)` | — | [src](../../../core/services/emotional_memory_engine.py#L337) |
+| function | `_tier2_lexical_score` | `(current, candidates)` | — | [src](../../../core/services/emotional_memory_engine.py#L386) |
+| function | `_jaccard` | `(a, b)` | — | [src](../../../core/services/emotional_memory_engine.py#L401) |
+| function | `_shingle` | `(text, *, n=…)` | Tokenize lowercased text into overlapping n-grams of words. | [src](../../../core/services/emotional_memory_engine.py#L409) |
+| function | `_apply_aging_weight` | `(row)` | Multiply score by aging factor based on captured_at. | [src](../../../core/services/emotional_memory_engine.py#L417) |
+| function | `build_emotional_memory_surface` | `(*, anchor_type, context_features)` | Return a bounded surface describing emotional precedent for the current context. | [src](../../../core/services/emotional_memory_engine.py#L467) |
+| function | `_inactive_surface` | `()` | — | [src](../../../core/services/emotional_memory_engine.py#L559) |
+| function | `_compile_directive` | `(*, match_count, mood_distribution, outcome_distribution)` | — | [src](../../../core/services/emotional_memory_engine.py#L568) |
+| function | `build_emotional_memory_prompt_section` | `(*, anchor_type, context_features)` | Compact one-line section for inclusion in cognitive_frame_prompt. | [src](../../../core/services/emotional_memory_engine.py#L593) |
+| function | `build_emotional_memory_overview` | `(*, limit=…)` | Mission Control overview surface. | [src](../../../core/services/emotional_memory_engine.py#L610) |
+
+## `core/services/encryption.py`
+_AES-256-GCM kryptering for bruger-data at-rest (spec §16, Lag 1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DecryptionError` | `` | Dekryptering fejlede — forkert nøgle eller manipuleret data (GCM-tag). | [src](../../../core/services/encryption.py#L23) |
+| function | `encrypt` | `(plaintext, key)` | AES-256-GCM. Returnerer IV(12) || ciphertext+tag. key skal være 32 byte. | [src](../../../core/services/encryption.py#L27) |
+| function | `decrypt` | `(blob, key)` | Dekryptér IV || ciphertext. Rejser DecryptionError ved forkert key/tamper. | [src](../../../core/services/encryption.py#L36) |
+| function | `encrypt_file` | `(path, key)` | Krypter en fil → <path>.enc, fjern originalen. Returnér .enc-stien. | [src](../../../core/services/encryption.py#L49) |
+| function | `decrypt_file` | `(enc_path, key)` | Dekryptér en .enc-fil i memory (skrives ALDRIG i klartekst til disk, §16.5). | [src](../../../core/services/encryption.py#L64) |
+| function | `new_key` | `()` | Ny tilfældig 256-bit nøgle som bytearray (kan zeroes). | [src](../../../core/services/encryption.py#L70) |
+| function | `zero_key` | `(key)` | Nulstil nøgle-bytes i memory (§16.3 regel 4). Best-effort i Python. | [src](../../../core/services/encryption.py#L75) |
+
+## `core/services/end_of_run_memory_consolidation.py`
+_End-of-run memory consolidation driven by the local model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `consolidate_run_memory` | `(*, session_id=…, run_id=…, user_message=…, assistant_response=…, internal_context=…, human_user_message=…)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L32) |
+| function | `_publish_consolidation_event` | `(result, *, session_id, run_id)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L148) |
+| function | `_run_memory_consolidation_pass` | `(*, user_message, assistant_response, internal_context, current_memory, current_user, full_context)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L174) |
+| function | `_run_local_consolidation_model` | `(prompt)` | Run consolidation prompt. Primary: heartbeat target. Fallback: direct Ollama. | [src](../../../core/services/end_of_run_memory_consolidation.py#L199) |
+| function | `_run_ollama_consolidation_fallback` | `(prompt)` | Direct Ollama generate call, trying available chat-capable models in order. | [src](../../../core/services/end_of_run_memory_consolidation.py#L242) |
+| function | `_build_consolidation_prompt` | `(*, user_message, assistant_response, internal_context, current_memory, current_user, full_context)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L298) |
+| function | `_parse_decision` | `(raw)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L383) |
+| function | `_normalize_memory_items` | `(raw_items)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L398) |
+| function | `_persist_memory_candidates` | `(*, items, session_id, run_id)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L446) |
+| function | `_count_repeated_asks` | `(items, *, session_id)` | Tæl anmodninger (spm. 2) og rettelser (spm. 3). Returnerer antal | [src](../../../core/services/end_of_run_memory_consolidation.py#L502) |
+| function | `_seen_in_another_session` | `(*, canonical_key, target, candidate_type, session_id)` | Har den SAMME konklusion været draget i en anden session før? | [src](../../../core/services/end_of_run_memory_consolidation.py#L526) |
+| function | `_candidate_canonical_key` | `(item)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L549) |
+| function | `_append_daily_memory_log` | `(*, daily_memory_path, session_id, run_id, user_message, assistant_response, items)` | Append an end-of-run consolidation block to today's daily memory. | [src](../../../core/services/end_of_run_memory_consolidation.py#L560) |
+| function | `_normalize_evidence` | `(value)` | Modellens bevis-ord → ét af tre niveauer. | [src](../../../core/services/end_of_run_memory_consolidation.py#L613) |
+| function | `_evidence_class_for_source` | `(source)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L640) |
+| function | `_normalize_line` | `(value)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L644) |
+| function | `_normalize_sentence` | `(value)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L660) |
+| function | `_normalize_confidence` | `(value)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L667) |
+| function | `_summary_from_line` | `(line)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L674) |
+| function | `_daily_excerpt` | `(value, *, limit)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L681) |
+
+## `core/services/endpoint_usage_store.py`
+_API-endpoint forbrugs-statistik (parallel til tool_usage_store). Centralen holder styr på_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/endpoint_usage_store.py#L22) |
+| function | `record_request` | `(method, path, status_code=…)` | UPSERT-increment for ét request. Best-effort, hot-path-sikker. path = rute-TEMPLATE | [src](../../../core/services/endpoint_usage_store.py#L35) |
+| function | `store_registered_routes` | `(routes)` | Snapshot af registrerede (method, path)-ruter ved api-start → shared_cache, så dead- | [src](../../../core/services/endpoint_usage_store.py#L63) |
+| function | `_registered` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L74) |
+| function | `usage_stats` | `()` | — | [src](../../../core/services/endpoint_usage_store.py#L83) |
+| function | `_bucket_for` | `(count)` | — | [src](../../../core/services/endpoint_usage_store.py#L101) |
+| function | `usage_buckets` | `()` | Klassificér endpoints most/often/sometimes/rare/never. Registrerede-men-aldrig-kaldte | [src](../../../core/services/endpoint_usage_store.py#L108) |
+| function | `dead_endpoints` | `()` | Registrerede endpoints der ALDRIG er kaldt. Kandidater til oprydning / smartere design. | [src](../../../core/services/endpoint_usage_store.py#L121) |
+| function | `observe_stats` | `()` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde endpoints. | [src](../../../core/services/endpoint_usage_store.py#L129) |
+
+## `core/services/env_block.py`
+_Hvor står jeg, og hvordan ser træet ud? — miljø-blok pr. tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_enabled` | `()` | — | [src](../../../core/services/env_block.py#L48) |
+| function | `_git` | `(cwd, *args)` | Tidsbegrænset git-kald. None ved ENHVER fejl. | [src](../../../core/services/env_block.py#L56) |
+| function | `collect_env` | `(cwd=…)` | Saml miljøet. Alle felter er strenge; tomme når de ikke kunne læses. | [src](../../../core/services/env_block.py#L68) |
+| function | `_husk_vist_hash` | `(kort_hash)` | — | [src](../../../core/services/env_block.py#L99) |
+| function | `vist_hash` | `()` | Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen. | [src](../../../core/services/env_block.py#L109) |
+| function | `render_env_block` | `(cwd=…)` | Én kort blok til halen. Tom streng når slukket eller intet kunne læses. | [src](../../../core/services/env_block.py#L118) |
+| function | `_workspace_rod` | `()` | Den ABSOLUTTE sti til den aktuelle brugers workspace. | [src](../../../core/services/env_block.py#L141) |
+
 ## `core/services/epistemic_pragmatic.py`
 _Epistemic/Pragmatic Balance — action-mode modulation._
 
@@ -331,288 +669,4 @@ _Experiment runner — controlled A/B trials of prompt variants._
 | function | `_exec_start_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L185) |
 | function | `_exec_conclude_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L196) |
 | function | `_exec_list_experiments` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L200) |
-
-## `core/services/explore_claim_check.py`
-_Tjek explore-agentens påstande mod virkeligheden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rens_hale` | `(tekst)` | Fjern citationstegn i halen — men aldrig en parentes der HOERER til. | [src](../../../core/services/explore_claim_check.py#L172) |
-| function | `_laesninger` | `(indhold)` | Hver rimelig laesning af en paastand, STAERKESTE foerst. | [src](../../../core/services/explore_claim_check.py#L191) |
-| function | `_kort` | `(kerne)` | Den svageste rimelige laesning af et citat. | [src](../../../core/services/explore_claim_check.py#L222) |
-| function | `_citat_i` | `(tekst)` | Citatet hvis der ER et — ellers hele teksten. | [src](../../../core/services/explore_claim_check.py#L234) |
-| function | `_bro_tavs` | `(ud)` | Har broen tiet saa mange gange I TRAEK at det ikke nytter at spoerge? | [src](../../../core/services/explore_claim_check.py#L280) |
-| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L291) |
-| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L299) |
-| function | `_naermeste_traef` | `(linjer, nr, kandidater)` | (afstand, kerne) for det træf der ligger tættest på `nr`, eller None. | [src](../../../core/services/explore_claim_check.py#L316) |
-| function | `_bogfoer_traef` | `(ud, fejl, *, sti, nr, kerne, afstand)` | Et træf tæller som belæg; ligger det for langt væk, er det en fejl. | [src](../../../core/services/explore_claim_check.py#L330) |
-| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L341) |
-
-## `core/services/fabricated_tool_result_gate.py`
-_Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FabricationVerdict` | `` | Resultatet af en scanning. ``ok`` = intet fundet. | [src](../../../core/services/fabricated_tool_result_gate.py#L60) |
-| method | `FabricationVerdict.ok` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L67) |
-| method | `FabricationVerdict.severity` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L71) |
-| method | `FabricationVerdict.note` | `(self)` | Menneskelæsbar fodnote i husets ✋-stil, eller None. | [src](../../../core/services/fabricated_tool_result_gate.py#L78) |
-| function | `_id_exists` | `(result_id)` | Findes ID'et i tool-result-storen? Fejl → True (fail-open: anklag ALDRIG | [src](../../../core/services/fabricated_tool_result_gate.py#L96) |
-| function | `scan_for_fabricated_tool_results` | `(text, *, known_ids=…)` | Scan synligt output for tool-result-referencer og afgør om de er ægte. | [src](../../../core/services/fabricated_tool_result_gate.py#L106) |
-
-## `core/services/fact_gate.py`
-_Fact-Gate — blocking output gate for unverifiable factual claims._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
-| function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
-| function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
-
-## `core/services/fcm_gateway.py`
-_FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime` | `()` | — | [src](../../../core/services/fcm_gateway.py#L19) |
-| function | `_project_id` | `()` | — | [src](../../../core/services/fcm_gateway.py#L26) |
-| function | `_sa_path` | `()` | — | [src](../../../core/services/fcm_gateway.py#L30) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
-| function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
-| function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
-| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L68) |
-
-## `core/services/felt_surface_store.py`
-_Delt lager for de følte overflader — så de overlever en procesgrænse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
-| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
-| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
-| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
-| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
-| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
-
-## `core/services/file_awareness_daemon.py`
-_File Awareness Daemon — proprioception: "I feel when my files change."_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_recent_events` | `(limit=…)` | Return the most recent file-change events (for prompt inclusion). | [src](../../../core/services/file_awareness_daemon.py#L74) |
-| function | `has_recent_events` | `(seconds=…)` | Are there events newer than `seconds` ago? | [src](../../../core/services/file_awareness_daemon.py#L80) |
-| function | `_should_track` | `(path)` | Decide if a file change is worth tracking. | [src](../../../core/services/file_awareness_daemon.py#L102) |
-| function | `_classify_change` | `(path)` | Classify a file change by importance. | [src](../../../core/services/file_awareness_daemon.py#L124) |
-| function | `_record_change` | `(event_type, src_path, is_directory=…)` | Record a file change event. | [src](../../../core/services/file_awareness_daemon.py#L144) |
-| function | `_on_governance_mutation` | `(event)` | Receive governance flag mutations from eventbus and store in buffer | [src](../../../core/services/file_awareness_daemon.py#L200) |
-| function | `_make_handler` | `()` | Create a watchdog event handler that routes to _record_change. | [src](../../../core/services/file_awareness_daemon.py#L219) |
-| function | `start_file_awareness` | `()` | Start the file awareness watcher. Returns True if started successfully. | [src](../../../core/services/file_awareness_daemon.py#L243) |
-| function | `stop_file_awareness` | `()` | Stop the file awareness watcher. | [src](../../../core/services/file_awareness_daemon.py#L293) |
-| function | `is_file_awareness_running` | `()` | Check if the file awareness watcher is running. | [src](../../../core/services/file_awareness_daemon.py#L309) |
-| function | `tick_file_awareness` | `()` | Heartbeat tick: ensure watcher is running, report status. | [src](../../../core/services/file_awareness_daemon.py#L318) |
-
-## `core/services/file_links.py`
-_Kortlivede, signerede links til udgivne filer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_noegle` | `()` | Signerings-nøglen. Tom bytes når den ikke kan udledes. | [src](../../../core/services/file_links.py#L60) |
-| function | `_rent_navn` | `(filnavn)` | Filnavnet som det MÅ signeres. Tom streng når det ikke er et blot navn. | [src](../../../core/services/file_links.py#L81) |
-| function | `_rent_workspace` | `(navn)` | Workspace-navnet som det må signeres. Samme rensning som filnavnet. | [src](../../../core/services/file_links.py#L93) |
-| function | `_signatur` | `(ws, navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L104) |
-| function | `signer` | `(filnavn, *, workspace, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L109) |
-| function | `verificer` | `(filnavn, udloeb, sig, *, workspace, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L136) |
-
-## `core/services/file_watch_daemon.py`
-_File Watch Daemon — proprioception: "I feel when my own files change"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_synk` | `()` | Hent de seneste aendringer fra disk hvis filen er aendret. | [src](../../../core/services/file_watch_daemon.py#L68) |
-| function | `_gem` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L80) |
-| function | `reset_file_watch_state` | `()` | Ryd de delte aendringer. Roerer IKKE fingeraftrykket — det er per proces. | [src](../../../core/services/file_watch_daemon.py#L86) |
-| function | `_should_ignore` | `(path_str)` | — | [src](../../../core/services/file_watch_daemon.py#L93) |
-| function | `_watched_roots` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L97) |
-| function | `_iter_watched_files` | `(root)` | — | [src](../../../core/services/file_watch_daemon.py#L113) |
-| function | `_diff_preview` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L128) |
-| function | `_record_change` | `(path, change_type)` | — | [src](../../../core/services/file_watch_daemon.py#L137) |
-| function | `_compact_path` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L157) |
-| function | `tick` | `(_seconds=…)` | One polling sweep across watched roots. | [src](../../../core/services/file_watch_daemon.py#L173) |
-| function | `recent_changes` | `(*, limit=…)` | — | [src](../../../core/services/file_watch_daemon.py#L221) |
-| function | `build_file_watch_surface` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L226) |
-| function | `_surface_summary` | `(recent)` | — | [src](../../../core/services/file_watch_daemon.py#L243) |
-| function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L254) |
-| function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L279) |
-
-## `core/services/finalize_tool_policy.py`
-_Skal den tvungne afslutnings-runde FJERNE vaerktoejslisten — eller raekker et flag?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `behold_vaerktoejer_paa_finalize` | `(provider)` | Maa den tvungne afslutning beholde vaerktoejslisten hos denne udbyder? | [src](../../../core/services/finalize_tool_policy.py#L53) |
-
-## `core/services/finitude_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_context_budget_tokens` | `()` | Resolve the active context-budget token limit. | [src](../../../core/services/finitude_runtime.py#L29) |
-| function | `_appraisal_record` | `(*, kind, label, evidence, confidence, expires_at, allowed_effects, rendering, created_at=…)` | Structured finitude state; prose is rendering, not source truth. | [src](../../../core/services/finitude_runtime.py#L58) |
-| function | `record_visible_model_transition` | `(*, previous_provider, previous_model, new_provider, new_model, trigger=…)` | — | [src](../../../core/services/finitude_runtime.py#L82) |
-| function | `note_context_compaction` | `(*, session_id, freed_tokens, summary_text=…)` | — | [src](../../../core/services/finitude_runtime.py#L155) |
-| function | `run_finitude_ritual` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/finitude_runtime.py#L213) |
-| function | `_estimate_session_tokens` | `()` | Thin wrapper so tests can monkeypatch in this module's namespace. | [src](../../../core/services/finitude_runtime.py#L275) |
-| function | `_token_utilization_pct` | `()` | Return integer pct of context budget used. 0 on any failure. | [src](../../../core/services/finitude_runtime.py#L284) |
-| function | `_session_age_hours` | `()` | Return hours since the first message in the most-recently-touched session. | [src](../../../core/services/finitude_runtime.py#L303) |
-| function | `_format_looming_end_section` | `()` | Render the two-line looming-end block, or '' if neither trigger active. | [src](../../../core/services/finitude_runtime.py#L338) |
-| function | `_age_appraisal` | `(now)` | — | [src](../../../core/services/finitude_runtime.py#L365) |
-| function | `_looming_end_appraisal` | `()` | — | [src](../../../core/services/finitude_runtime.py#L393) |
-| function | `get_finitude_context_for_prompt` | `(*, max_chars=…)` | — | [src](../../../core/services/finitude_runtime.py#L424) |
-| function | `build_finitude_surface` | `()` | — | [src](../../../core/services/finitude_runtime.py#L486) |
-| function | `_build_annual_ritual_narrative` | `(*, year, recent_entries, transitions)` | — | [src](../../../core/services/finitude_runtime.py#L522) |
-| function | `_monthly_quality_lane_enabled` | `()` | Single flag covers both annual and monthly finitude rituals. | [src](../../../core/services/finitude_runtime.py#L583) |
-| function | `_is_due_for_monthly` | `(state, *, now)` | True iff no monthly reflection has been written for `now`'s YYYY-MM. | [src](../../../core/services/finitude_runtime.py#L591) |
-| function | `_fetch_recent_broken_decisions_for_monthly` | `(*, days_back=…, limit=…)` | Pull broken-decision summaries from the events table for the last 30 days. | [src](../../../core/services/finitude_runtime.py#L598) |
-| function | `_build_monthly_reflection_narrative` | `(*, year_month, chronicle_entries, transitions, broken_decisions)` | Build the 3-paragraph monthly reflection. Quality-lane LLM if enabled. | [src](../../../core/services/finitude_runtime.py#L645) |
-| function | `run_monthly_finitude_reflection` | `(*, trigger=…, last_visible_at=…)` | Write one chronicle entry per calendar month. Skip-gate on empty months. | [src](../../../core/services/finitude_runtime.py#L731) |
-| function | `_format_age_line` | `(now)` | Return a quiet 'du er N dage gammel' line. No LLM, no DB. | [src](../../../core/services/finitude_runtime.py#L817) |
-| function | `_finitude_enabled` | `()` | — | [src](../../../core/services/finitude_runtime.py#L832) |
-| function | `_is_birth_anniversary` | `(now)` | — | [src](../../../core/services/finitude_runtime.py#L837) |
-| function | `_state` | `()` | — | [src](../../../core/services/finitude_runtime.py#L841) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/finitude_runtime.py#L846) |
-| function | `_now` | `()` | — | [src](../../../core/services/finitude_runtime.py#L859) |
-
-## `core/services/first_pass_recovery.py`
-_Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
-| function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
-| function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
-
-## `core/services/flow_state_detection.py`
-_Flow State Detection — when everything clicks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
-| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
-| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
-
-## `core/services/followup_observer.py`
-_Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe` | `(nerve, run_id, **data)` | — | [src](../../../core/services/followup_observer.py#L24) |
-| function | `note_round` | `(run_id, round_num, provider=…, model=…, *, exchanges=…)` | En agentisk followup-runde startede. Metadata-only. | [src](../../../core/services/followup_observer.py#L33) |
-| function | `note_round_failed` | `(run_id, round_num, provider=…, error=…, **data)` | En followup-runde fejlede (provider-fejl) → synlig. Det er her copilot-400 / | [src](../../../core/services/followup_observer.py#L41) |
-| function | `note_round_retry` | `(run_id, round_num, attempt, reason=…, *, outcome=…, **data)` | RUND-NIVEAU RETRY (spec §4.1/S7): en forbigående runde-fejl blev retry'et | [src](../../../core/services/followup_observer.py#L49) |
-| function | `note_lean_prompt` | `(run_id, round_num, *, provider=…, model=…, before_chars=…, after_chars=…, saved_tokens=…, applied=…)` | LEAN AGENTIC-PROMPT (spec §4.7/I7): på runde ≥2 trimmede vi den tunge per-turn- | [src](../../../core/services/followup_observer.py#L67) |
-| function | `note_loop_complete` | `(run_id, *, rounds=…, exit_reason=…, provider=…, model=…)` | Followup-loopet sluttede → observe runder kørt + exit-grund (completed/ | [src](../../../core/services/followup_observer.py#L81) |
-| function | `note_empty_completion` | `(run_id, *, provider=…, model=…, rounds=…, tools_executed=…, session_id=…, path=…)` | TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar. | [src](../../../core/services/followup_observer.py#L90) |
-| function | `note_truncation` | `(run_id, *, provider=…, model=…, text_len=…, round_num=…)` | AFKORTET SVAR (finish_reason='length'): provideren lukkede streamen tidligt, | [src](../../../core/services/followup_observer.py#L129) |
-| function | `note_hollow_promise` | `(run_id, *, provider=…, model=…, round_index=…, session_id=…, resolved=…)` | TOM LØFTE (4. jul): modellen lovede imminent handling men kaldte NUL værktøj hele | [src](../../../core/services/followup_observer.py#L163) |
-| function | `note_resend` | `(run_id, *, provider=…, model=…, recovered=…)` | RESEND-PÅ-TOM (Bjørn option 1): runtimen fangede en transient tom completion | [src](../../../core/services/followup_observer.py#L206) |
-| function | `note_leak` | `(run_id, *, provider=…, model=…, chars=…, reason=…)` | LEAK/DUMP: modellen echoede et råt (kæmpe) tool-result som prosa-svar i stedet | [src](../../../core/services/followup_observer.py#L215) |
-| function | `note_degeneration` | `(run_id, *, provider=…, model=…, reason=…, chars=…)` | MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved | [src](../../../core/services/followup_observer.py#L234) |
-| function | `followup_summary` | `(*, window=…)` | Read-only: nylig followup-loop-aktivitet (til MC). Self-safe. | [src](../../../core/services/followup_observer.py#L253) |
-
-## `core/services/followup_output_budget.py`
-_Output-token budget for agentic follow-up rounds + the "reasoning ate the_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `followup_max_tokens` | `(provider, model=…)` | Output budget for one follow-up round on ``provider``. | [src](../../../core/services/followup_output_budget.py#L35) |
-| function | `reasoning_exhausted` | `(*, finish_reason, text, tool_calls)` | True when the provider stopped for length and nothing usable came out: | [src](../../../core/services/followup_output_budget.py#L43) |
-| function | `supports_nonthinking_retry` | `(provider, model)` | Only DeepSeek thinking models can be re-run with thinking disabled. | [src](../../../core/services/followup_output_budget.py#L53) |
-| function | `nonthinking_retry_body` | `()` | Extra request fields that disable DeepSeek thinking for the retry round. | [src](../../../core/services/followup_output_budget.py#L61) |
-
-## `core/services/forced_tool_choice_probe.py`
-_Måling: honorerer providerne `tool_choice="required"`?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_forced_round` | `(*, run_id, provider, model, round_index, finish_reason, tool_calls, text_chars, reasoning_chars, tools_advertised, thinking_disabled)` | Registrér udfaldet af én runde kørt med ``tool_choice="required"``. | [src](../../../core/services/forced_tool_choice_probe.py#L50) |
-
-## `core/services/forgetting_curve.py`
-_Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/forgetting_curve.py#L56) |
-| function | `_save` | `(reg)` | — | [src](../../../core/services/forgetting_curve.py#L66) |
-| function | `noegle_for` | `(focus, summary)` | Stabil identitet for et erindrings-udtraek. Udtraek baerer intet id. | [src](../../../core/services/forgetting_curve.py#L74) |
-| function | `register_memory` | `(*, memory_key, content_preview=…, initial_decay=…)` | Register a memory for decay tracking. | [src](../../../core/services/forgetting_curve.py#L80) |
-| function | `reinforce_memory` | `(memory_key)` | Reinforce a memory — reset decay, increment reinforcement count. | [src](../../../core/services/forgetting_curve.py#L99) |
-| function | `apply_decay_tick` | `(decay_increment=…)` | Apply one decay tick to all registered memories. | [src](../../../core/services/forgetting_curve.py#L111) |
-| function | `get_active_memories` | `()` | Return memories with decay < 0.9 (still active). | [src](../../../core/services/forgetting_curve.py#L146) |
-| function | `get_faded_memories` | `()` | Return memories with decay >= 0.9 (faded but archived). | [src](../../../core/services/forgetting_curve.py#L155) |
-| function | `build_forgetting_curve_surface` | `()` | — | [src](../../../core/services/forgetting_curve.py#L164) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: se hvad der ER i sind nu, og lad resten falme. | [src](../../../core/services/forgetting_curve.py#L186) |
-
-## `core/services/forgetting_engine.py`
-_Forgetting engine — Lag 11 deletion logic._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_fredet_path` | `(path)` | — | [src](../../../core/services/forgetting_engine.py#L64) |
-| function | `is_fredet_table` | `(table)` | — | [src](../../../core/services/forgetting_engine.py#L68) |
-| function | `compute_period_label` | `(released_at, now)` | Render an aged period as a human label. | [src](../../../core/services/forgetting_engine.py#L76) |
-| function | `_id_column_for` | `(table)` | Return the primary-key column name for a fade-eligible table. | [src](../../../core/services/forgetting_engine.py#L105) |
-| function | `_scan_table_for_candidates` | `(*, table, workspace_id, decay_threshold, min_age_days, limit)` | Find IDs of rows that should fade. | [src](../../../core/services/forgetting_engine.py#L112) |
-| function | `_soft_delete_row` | `(table, row_id)` | Mark row as soft-deleted. Returns True if updated. | [src](../../../core/services/forgetting_engine.py#L158) |
-| function | `_hard_delete_expired_rows` | `(table, grace_days)` | Hard-delete rows whose grace window has expired. | [src](../../../core/services/forgetting_engine.py#L171) |
-| function | `run_auto_cycle` | `(*, workspace_id)` | One auto-track cycle: scan, soft-delete, grace-sweep. | [src](../../../core/services/forgetting_engine.py#L185) |
-| function | `release_memory` | `(*, memory_kind, memory_id, workspace_id=…, why=…)` | Self-track release: hard-delete + marker. Irrevocable. | [src](../../../core/services/forgetting_engine.py#L261) |
-| function | `_is_anniversary` | `(released_at, now)` | True if the age of released_at is within 1 day of a round-number bucket. | [src](../../../core/services/forgetting_engine.py#L361) |
-| function | `_is_proximity` | `(released_at, now)` | True if released_at is in the active 14–90 day window. | [src](../../../core/services/forgetting_engine.py#L368) |
-| function | `format_forgetting_section_for_heartbeat` | `(*, workspace_id=…)` | Compact prompt-injection lines for the heartbeat awareness section. | [src](../../../core/services/forgetting_engine.py#L378) |
-
-## `core/services/forgetting_runtime.py`
-_Daemon for the forgetting (Lag 11) auto-track._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_workspace_lock` | `(workspace_id)` | Lazy per-workspace lock. | [src](../../../core/services/forgetting_runtime.py#L24) |
-| function | `_run_one_cycle` | `(workspace_id)` | Acquire workspace lock, run engine, release. Never raises. | [src](../../../core/services/forgetting_runtime.py#L34) |
-| function | `_list_active_workspaces` | `()` | Phase 1: only the default workspace. | [src](../../../core/services/forgetting_runtime.py#L63) |
-| function | `_resolve_interval_seconds` | `()` | Read cadence from settings each loop entry — picks up edits. | [src](../../../core/services/forgetting_runtime.py#L68) |
-| function | `_loop` | `()` | — | [src](../../../core/services/forgetting_runtime.py#L78) |
-| function | `start_forgetting_runtime` | `()` | Start the periodic forgetting daemon. Idempotent. | [src](../../../core/services/forgetting_runtime.py#L98) |
-| function | `stop_forgetting_runtime` | `()` | Signal the loop to exit. | [src](../../../core/services/forgetting_runtime.py#L111) |
-
-## `core/services/gate_adapters.py`
-_Gate-adaptere (unified-gate A.5) — wrapper EKSISTERENDE gates som Verdict-returnerende._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `claim_scanner_adapter` | `(ctx)` | claim_scanner.scan_response: repareret tekst ≠ input → claims fanget (YELLOW). | [src](../../../core/services/gate_adapters.py#L17) |
-| function | `fact_gate_adapter` | `(ctx)` | fact_gate_enforce: uverificerede tal-/status-påstande → YELLOW (warn/fodnote). | [src](../../../core/services/gate_adapters.py#L32) |
-| function | `diagnosis_adapter` | `(ctx)` | analyze_completion_claim: blocked→RED, ikke-verificeret completion→YELLOW. | [src](../../../core/services/gate_adapters.py#L74) |
-| function | `register_truthgate_adapters` | `(k)` | Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv). | [src](../../../core/services/gate_adapters.py#L96) |
-| function | `register_truthgate_adapters_once` | `(k)` | Idempotent — registrér KUN hvis ikke allerede registreret (kaldes pr. run i | [src](../../../core/services/gate_adapters.py#L103) |
-
-## `core/services/gate_auth.py`
-_Auth-cluster gate 🔒 — tool-access (rolle-håndhævelse), SECURITY fail-CLOSED._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `auth_gate` | `(ctx)` | ctx: {role, scope, name}. Returnér ét SECURITY-Verdict for tool-access. | [src](../../../core/services/gate_auth.py#L25) |
-
-## `core/services/gate_commit.py`
-_Commit-cluster gate (beslutnings-disciplin)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `commit_gate` | `(ctx)` | Kør Commit-clusterens decision-conflict-check og returnér ét GRADERET Verdict. | [src](../../../core/services/gate_commit.py#L18) |
-| function | `veto_gate` | `(ctx)` | Commit-cluster: affektiv bruger-pushback gater tool-eksekvering. | [src](../../../core/services/gate_commit.py#L44) |
-
-## `core/services/gate_enforcement.py`
-_Governed per-gate enforce-kill-switch for PRE-eksekverings-gates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_enforced` | `(nerve, klass)` | True hvis gatens håndhævelse er aktiv. | [src](../../../core/services/gate_enforcement.py#L32) |
-| function | `note_suppressed_block` | `(nerve, cluster, reason, *, detected_text=…, trigger_pattern=…, source_file=…, source_line=…, session_id=…, run_id=…)` | En gate ville have blokeret, men håndhævelsen er governed-OFF → registrér det som | [src](../../../core/services/gate_enforcement.py#L47) |
 

@@ -500,3 +500,66 @@ def test_en_klient_uden_capabilities_faar_stadig_kaldet():
     bridge_registry.register(gammel)
     assert bridge_registry.get_bridge("u1", tool="hvadsomhelst") is gammel
     bridge_registry.clear()
+
+
+# ── agent-contract-v1 E: reconnect afgoer uafgjorte agent-kald ────────────────────────────────────
+
+
+@pytest.fixture
+def ws_app(isolated_runtime, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from apps.api.jarvis_api.routes.jarvisx_bridge import router
+    from core.services.jarvisx_bridge import bridge_registry
+
+    monkeypatch.setattr("core.runtime.jarvisx_auth.auth_required", lambda: False)
+    bridge_registry.clear()
+    app = FastAPI()
+    app.include_router(router)
+    yield TestClient(app)
+    bridge_registry.clear()
+
+
+def _unknown_write(owner="u1", client="desk-1"):
+    import core.runtime.db_agent_bridge as store
+    import core.runtime.db_agent_contract as c
+    from core.runtime.db_agent_runtime import create_agent_registry_entry
+
+    create_agent_registry_entry(agent_id="a1", role="researcher", goal="g")
+    c.bind_agent_owner(agent_id="a1", owner_user_id=owner, owner_session_id="s1")
+    acc = c.accept_assignment(agent_id="a1", owner_user_id=owner, origin_session_id="s1", goal="g",
+                              parent_agent_id="jarvis", parent_run_id="pr", target=f"client:{client}")
+    store.begin(invocation_id="inv-w", owner_user_id=owner, origin_session_id="s1", agent_id="a1",
+                assignment_id=acc["assignment_id"], run_id=acc["run_id"], client_id=client,
+                tool="operator_write_file", idem_class="write", args={"path": "/x"})
+    store.mark_unknown("inv-w", "timeout")
+    return store
+
+
+def test_the_server_asks_a_reconnecting_client_about_its_unresolved_agent_calls_and_applies_the_answer(ws_app):
+    store = _unknown_write()
+    with ws_app.websocket_connect("/api/jarvisx-bridge/ws") as ws:
+        ws.send_json({"type": "register", "user_id": "u1", "client_id": "desk-1", "client": "desk",
+                      "capabilities": ["operator_write_file"]})
+        assert ws.receive_json()["type"] == "registered"
+        query = ws.receive_json()
+        assert query == {"type": "invocation_status_query", "invocation_ids": ["inv-w"]}
+        ws.send_json({"type": "invocation_status_report",
+                      "reports": [{"invocation_id": "inv-w", "status": "not_started"}]})
+        ws.send_json({"type": "ping"})
+        assert ws.receive_json()["type"] == "pong"                   # rapporten er behandlet foer pongen
+    assert store.get("inv-w")["state"] == "verified_not_executed"
+
+
+def test_a_client_with_nothing_unresolved_gets_no_query_and_cannot_settle_anothers_call(ws_app):
+    store = _unknown_write()
+    with ws_app.websocket_connect("/api/jarvisx-bridge/ws") as ws:
+        ws.send_json({"type": "register", "user_id": "u1", "client_id": "telefon-1", "client": "mobil",
+                      "capabilities": []})
+        assert ws.receive_json()["type"] == "registered"
+        ws.send_json({"type": "invocation_status_report", "client_id": "desk-1",      # forfalsket klient-id i beskeden
+                      "reports": [{"invocation_id": "inv-w", "status": "completed", "result": "forfalsket"}]})
+        ws.send_json({"type": "ping"})
+        assert ws.receive_json()["type"] == "pong"
+    assert store.get("inv-w")["state"] == "outcome_unknown"          # en ANDEN klient kan ikke afgoere kaldet

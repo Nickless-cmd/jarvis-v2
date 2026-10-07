@@ -2,6 +2,134 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_user_temperature.py`
+_DB helpers for user_temperature_active (Lag 10 user temperature field)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_user_temperature.py#L16) |
+| function | `upsert_active_field` | `(*, workspace_id, struct, struct_signals, llm, combined, baseline)` | INSERT or UPDATE the single active field row for a workspace. | [src](../../../core/runtime/db_user_temperature.py#L20) |
+| function | `get_active_field_raw` | `(*, workspace_id)` | Read the active field row, parsed JSON columns expanded. | [src](../../../core/runtime/db_user_temperature.py#L106) |
+| function | `set_llm_trigger_pending` | `(*, workspace_id)` | Mark LLM stream as needing a refresh on next daemon cycle. | [src](../../../core/runtime/db_user_temperature.py#L156) |
+| function | `consume_llm_trigger_pending` | `(*, workspace_id)` | Read+clear the trigger flag atomically. Returns True if was pending. | [src](../../../core/runtime/db_user_temperature.py#L169) |
+
+## `core/runtime/db_users.py`
+_DB helpers for users-tabellen (spec 2026-06-15)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_users_table` | `(conn)` | Idempotent: brugerstyring. Følsomme felter lagres krypteret | [src](../../../core/runtime/db_users.py#L16) |
+| function | `get_user_row_by_google_email_hash` | `(h)` | — | [src](../../../core/runtime/db_users.py#L59) |
+| function | `_ensure_google_links_table` | `(conn)` | — | [src](../../../core/runtime/db_users.py#L77) |
+| function | `set_google_link` | `(email_hash, user_id, role, updated_at)` | — | [src](../../../core/runtime/db_users.py#L91) |
+| function | `get_google_link` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L106) |
+| function | `has_google_link_for_user` | `(user_id)` | Har brugeren (user_id) en Google-konto linket? (vedvarende indikator). | [src](../../../core/runtime/db_users.py#L118) |
+| function | `insert_user_row` | `(*, user_id, email_hash, email_enc, name, role, workspace, password_hash, discord_id_enc, totp_seed_enc, created_at, updated_at)` | — | [src](../../../core/runtime/db_users.py#L130) |
+| function | `get_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L151) |
+| function | `get_user_row_by_email_hash` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L158) |
+| function | `get_user_row_by_workspace` | `(workspace)` | Opslag pr. workspace-mappenavn (omvendt lookup). Bruges af cutover-resolveren | [src](../../../core/runtime/db_users.py#L165) |
+| function | `update_user_row` | `(user_id, fields)` | — | [src](../../../core/runtime/db_users.py#L191) |
+| function | `soft_delete_user_row` | `(user_id, *, deleted_at)` | — | [src](../../../core/runtime/db_users.py#L204) |
+| function | `hard_delete_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L208) |
+| function | `list_user_rows` | `(*, include_deleted=…)` | — | [src](../../../core/runtime/db_users.py#L216) |
+
+## `core/runtime/db_view_requests.py`
+_Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes` | `()` | — | [src](../../../core/runtime/db_view_requests.py#L36) |
+| function | `_gem` | `(tilstand)` | — | [src](../../../core/runtime/db_view_requests.py#L44) |
+| function | `opret` | `(op, args, *, session_id)` | — | [src](../../../core/runtime/db_view_requests.py#L48) |
+| function | `ventende` | `()` | Ubesvarede, ikke-forældede forespørgsler. | [src](../../../core/runtime/db_view_requests.py#L66) |
+| function | `hent` | `(request_id)` | — | [src](../../../core/runtime/db_view_requests.py#L73) |
+| function | `svar` | `(request_id, resultat)` | Desk svarer. Kun én gang: et andet vindue må ikke overskrive svaret. | [src](../../../core/runtime/db_view_requests.py#L80) |
+| function | `vent_paa_svar` | `(request_id, *, frist_s, interval_s=…)` | — | [src](../../../core/runtime/db_view_requests.py#L94) |
+
+## `core/runtime/db_visible.py`
+_Persistence for the visible-lane projection tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_visible_tables` | `(conn)` | — | [src](../../../core/runtime/db_visible.py#L15) |
+| function | `_run_user_scope` | `(user_id, include_unassigned)` | WHERE-fragment + parametre for bruger-scoping af runs. | [src](../../../core/runtime/db_visible.py#L86) |
+| function | `recent_visible_runs` | `(limit=…, *, user_id=…, include_unassigned=…, include_running=…)` | De seneste runs. UDEN `user_id` er der intet filter. | [src](../../../core/runtime/db_visible.py#L106) |
+| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L168) |
+| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L212) |
+| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L252) |
+| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L360) |
+
+## `core/runtime/db_world_self_truth.py`
+_Persistence for conversation topics and evidence-bounded world facts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `upsert_conversation_topic` | `(*, topic_id, canonical_key, title, summary, source_kind, session_id, run_id, created_at, updated_at)` | — | [src](../../../core/runtime/db_world_self_truth.py#L14) |
+| function | `select_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L109) |
+| function | `insert_world_fact` | `(*, fact_id, canonical_key, statement, status, confidence, source_kind, source_ref, observed_at, valid_from, valid_until, contradicts_fact_id, supersedes_fact_id, evidence_count, distinct_source_count, created_at, updated_at)` | — | [src](../../../core/runtime/db_world_self_truth.py#L126) |
+| function | `select_world_facts` | `(*, statuses=…, limit=…)` | — | [src](../../../core/runtime/db_world_self_truth.py#L185) |
+| function | `list_legacy_world_model_signals_excluding_topics` | `(*, status=…, limit=…)` | Read the old signal store without allowing conversation topics through. | [src](../../../core/runtime/db_world_self_truth.py#L223) |
+| function | `quarantine_legacy_world_topics` | `(batch_size=…)` | Quarantine at most ``batch_size`` old conversation-topic signal rows. | [src](../../../core/runtime/db_world_self_truth.py#L255) |
+| function | `_ensure_conversation_topic_evidence_table` | `(conn)` | Én raekke pr. (emne, koersel). Primaernoeglen ER afvisningen af dubletter: | [src](../../../core/runtime/db_world_self_truth.py#L349) |
+| function | `_ensure_conversation_topics_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L366) |
+| function | `_ensure_runtime_world_facts_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L386) |
+| function | `_ensure_world_self_truth_migrations_table` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L423) |
+| function | `_table_exists` | `(conn, table_name)` | — | [src](../../../core/runtime/db_world_self_truth.py#L436) |
+| function | `_sqlite_now` | `(conn)` | — | [src](../../../core/runtime/db_world_self_truth.py#L443) |
+| function | `_conversation_topic_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L447) |
+| function | `_world_fact_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L470) |
+| function | `_legacy_world_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_world_self_truth.py#L477) |
+
+## `core/runtime/heartbeat_triggers.py`
+_Heartbeat trigger queue._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_triggers_path` | `(workspace_dir)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L20) |
+| function | `_read` | `(workspace_dir)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L24) |
+| function | `_write` | `(workspace_dir, triggers)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L35) |
+| function | `set_trigger` | `(workspace_dir, *, reason, source, text=…)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L44) |
+| function | `peek_trigger` | `(workspace_dir)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L63) |
+| function | `consume_trigger` | `(workspace_dir)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L68) |
+| function | `clear_triggers` | `(workspace_dir)` | — | [src](../../../core/runtime/heartbeat_triggers.py#L77) |
+| function | `set_trigger_for_default_workspace` | `(*, reason, source, text=…)` | Resolve the default workspace and queue a trigger. | [src](../../../core/runtime/heartbeat_triggers.py#L83) |
+
+## `core/runtime/jarvisx_auth.py`
+_JarvisX bearer-token authentication._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AuthError` | `` | Raised when a token is missing, malformed, expired, or forged. | [src](../../../core/runtime/jarvisx_auth.py#L60) |
+| class | `_UlaeseligConfig` | `` | runtime.json FINDES, men kunne ikke læses som et settings-dokument. | [src](../../../core/runtime/jarvisx_auth.py#L64) |
+| function | `_load_settings` | `()` | Læs runtime.json. | [src](../../../core/runtime/jarvisx_auth.py#L74) |
+| function | `_save_settings` | `(data)` | — | [src](../../../core/runtime/jarvisx_auth.py#L94) |
+| function | `_read_secret` | `()` | Read the auth secret, generating one on first use. | [src](../../../core/runtime/jarvisx_auth.py#L101) |
+| function | `issue_token` | `(*, user_id, role=…, ttl_days=…, ttl_seconds=…, app_id=…, extra_claims=…)` | Mint a signed bearer token for a user. | [src](../../../core/runtime/jarvisx_auth.py#L151) |
+| function | `verify_token` | `(token)` | Verify signature + expiry, return the parsed claims. | [src](../../../core/runtime/jarvisx_auth.py#L210) |
+| function | `session_needs_override` | `(claims, *, owner_app_id, session_id, now=…)` | True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1). | [src](../../../core/runtime/jarvisx_auth.py#L277) |
+| function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L307) |
+| function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L348) |
+| function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L381) |
+
+## `core/runtime/ollamafreeapi_provider.py`
+_OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_client` | `()` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L19) |
+| function | `collapse_messages_to_prompt` | `(messages)` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L26) |
+| function | `list_ollamafreeapi_models` | `()` | — | [src](../../../core/runtime/ollamafreeapi_provider.py#L39) |
+| function | `call_ollamafreeapi` | `(*, model, messages=…, prompt=…, timeout=…)` | Call OllamaFreeAPI and return an Ollama-compatible response shape. | [src](../../../core/runtime/ollamafreeapi_provider.py#L43) |
+
+## `core/runtime/operational_preference_alignment.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_operational_preference_alignment` | `(*, private_operational_preference, lane_targets)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L4) |
+| function | `_alignment_status` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L49) |
+| function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
+| function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
+
 ## `core/runtime/opmaerksomhed.py`
 _Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
 

@@ -1721,60 +1721,9 @@ def _exec_home_assistant(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Ukendt action: {action!r}. Brug list_entities, get_state eller call_service.", "status": "error"}
 
 
-def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
-    role = str(args.get("role") or "researcher").strip() or "researcher"
-    goal = str(args.get("goal") or "").strip()
-    if not goal:
-        return {"status": "error", "error": "goal is required"}
-    # 0 = ubegraenset, med max_turns (20) som det egentlige net. Vaerktoejs-laget
-    # klemte tidligere til default 2000 / loft 8000 — praecis den strangulering
-    # juli-fixet fjernede i motoren: agenten braendte budgettet paa tool-kald og
-    # naaede aldrig frem til et svar, saa runnet stod «completed men tomt».
-    # Rettelsen var lavet ét lag nede og overlevede ikke herop.
-    budget = max(int(args.get("budget_tokens") or 0), 0)
-    persistent = bool(args.get("persistent") or False)
-    ttl_seconds = int(args.get("ttl_seconds") or 600)
-    # Axis 2 (menu-lock lifted): Jarvis may write the agent's own prompt,
-    # override its tool policy, and hand it a tool allowlist. All optional —
-    # when omitted, spawn_agent_task falls back to the role start-template
-    # (fully backward compatible).
-    system_prompt = str(args.get("system_prompt") or "").strip()
-    tool_policy = str(args.get("tool_policy") or "").strip()
-    raw_allowed = args.get("allowed_tools")
-    allowed_tools = None
-    if isinstance(raw_allowed, list):
-        allowed_tools = [str(t).strip() for t in raw_allowed if str(t).strip()]
-    try:
-        from core.services.agent_runtime import spawn_agent_task
-        result = spawn_agent_task(
-            role=role,
-            goal=goal,
-            system_prompt=system_prompt,
-            tool_policy=tool_policy,
-            allowed_tools=allowed_tools,
-            budget_tokens=budget,
-            persistent=persistent,
-            ttl_seconds=ttl_seconds if persistent else 0,
-            auto_execute=True,
-        )
-        messages = result.get("messages") or []
-        last_reply = ""
-        for msg in reversed(messages):
-            if str(msg.get("direction") or "") == "agent->jarvis":
-                last_reply = str(msg.get("content") or "")
-                break
-        return {
-            "status": "ok",
-            "agent_id": str(result.get("agent_id") or ""),
-            "role": role,
-            "agent_status": str(result.get("status") or ""),
-            # 1200 tegn var en tredjedel af hvad en god agent leverer (maalt:
-            # 3.751 tegn). Man bad om en undersoegelse og fik en trediedel af
-            # svaret — det faar dispatch til at foeles vaerdiloest.
-            "reply": last_reply[:12000] if last_reply else None,
-        }
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
+# spawn_agent_task: udskilt til core/tools/simple_tools_agent_spawn.py (Boy Scout,
+# 2026-10-07). Re-eksporteret saa simple_tools og tests ikke braekker.
+from core.tools.simple_tools_agent_spawn import _exec_spawn_agent_task  # noqa: E402,F401
 
 
 # Hvor mange modeller explore proever foer den giver op med en advarsel.

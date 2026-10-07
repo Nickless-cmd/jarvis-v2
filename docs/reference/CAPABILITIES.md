@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-07 — 491 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-07 — 501 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -47,6 +47,7 @@
 | `checkpoint` | native | no |
 | `classify_clarification` | native | no |
 | `clear_flag` | native | no |
+| `close_agent` | native | no |
 | `comfyui_history` | native | no |
 | `comfyui_objects` | native | no |
 | `comfyui_status` | native | no |
@@ -64,6 +65,7 @@
 | `context_pressure` | native | no |
 | `context_size_check` | native | no |
 | `control_daemon` | native | no |
+| `convene_agent_council` | native | no |
 | `counterfactual_summary` | native | no |
 | `create_event` | native | no |
 | `cross_agent_recall` | native | no |
@@ -102,6 +104,7 @@
 | `dismiss_nudge` | native | no |
 | `dismiss_plan` | native | no |
 | `dismiss_side_task` | native | no |
+| `dispatch_agent` | native | no |
 | `dispatch_cancel` | native | no |
 | `dispatch_code_mode_task` | native | no |
 | `dispatch_due_wakeups` | native | no |
@@ -118,6 +121,7 @@
 | `find_symbol` | native | no |
 | `find_usages` | native | no |
 | `flag_side_task` | native | no |
+| `followup_agent` | native | no |
 | `gate_override_status` | native | no |
 | `generate_improvement_proposals` | native | no |
 | `geocode` | native | no |
@@ -164,8 +168,10 @@
 | `inbox` | native | no |
 | `inbox_done` | native | no |
 | `inbox_drop` | native | no |
+| `integrate_agent_work` | native | no |
 | `interlanguage_protocol` | native | no |
 | `internal_api` | native | no |
+| `interrupt_agent` | native | no |
 | `jarvis_browser_click` | native | no |
 | `jarvis_browser_close` | native | no |
 | `jarvis_browser_navigate` | native | no |
@@ -329,6 +335,7 @@
 | `restart_self` | native | no |
 | `resurface_old_memory` | native | no |
 | `reverse_geocode` | native | no |
+| `review_agent_work` | native | no |
 | `revise_plan` | native | no |
 | `revise_skill_chain` | native | no |
 | `rollback_identity_mutation` | native | no |
@@ -414,6 +421,7 @@
 | `vis_graf` | native | no |
 | `vis_widget` | native | no |
 | `voice_journal` | native | no |
+| `wait_agents` | native | no |
 | `wake_word` | native | no |
 | `web_fetch` | native | no |
 | `web_scrape` | native | no |
@@ -431,6 +439,8 @@
 | `write_file` | native | yes |
 | `write_handover` | native | no |
 | `write_memory_topic` | native | no |
+| `wt_bash` | native | no |
+| `wt_write_file` | native | no |
 | `operator_bash` | operator | yes |
 | `operator_bash_output` | operator | no |
 | `operator_bash_session_close` | operator | no |

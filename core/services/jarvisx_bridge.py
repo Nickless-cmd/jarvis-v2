@@ -210,8 +210,12 @@ class BridgeConnection:
         tool: str,
         args: dict[str, Any],
         timeout_ms: int,
+        extra: dict[str, Any] | None = None,
     ) -> None:
-        """Send tool_invoke over WS and register the pending future."""
+        """Send tool_invoke over WS and register the pending future.
+
+        ``extra`` (agent-contract-v1 E): felter der foelger kaldet (``invocation_id``, ``run_id``,
+        ``idempotency_class``, ``assignment_id``), saa klienten kan kvittere for netop dette kald."""
         # §17.6.1: medsend nuværende mode så broen kun eksekverer operator tools
         # lokalt i code mode. Tom scope → broen behandler det som legacy (tillader).
         try:
@@ -248,6 +252,7 @@ class BridgeConnection:
             "args": args,
             "timeout_ms": timeout_ms,
             "mode": mode,
+            **({"agent_invocation": dict(extra)} if extra else {}),
         })
 
     async def deliver_result(

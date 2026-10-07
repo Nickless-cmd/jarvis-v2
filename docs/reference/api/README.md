@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16079 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16449 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16079 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `cheap_balancer`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `cheap_lane_control` … `openai_auth`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `openai_compat` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_workspace_trust`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `cheap_balancer` … `oauth`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `openai_auth` … `workbench`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -26,47 +26,48 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16079 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_heartbeat`
-- [`core.runtime.02`](core.runtime.02.md) — `db_inbox` … `operational_preference_alignment`
-- [`core.runtime.03`](core.runtime.03.md) — `opmaerksomhed` … `ws_auth`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agentic_tool_cache`
-- [`core.services.02`](core.services.02.md) — `agentic_working_conclusions` … `autonomous_run_digest`
-- [`core.services.03`](core.services.03.md) — `autonomous_run_failures` … `causal_inference_daemon`
-- [`core.services.04`](core.services.04.md) — `central_absorb` … `central_gardener`
-- [`core.services.05`](core.services.05.md) — `central_ghost` … `central_private_reducer`
-- [`core.services.06`](core.services.06.md) — `central_profiles` … `central_white_rabbit`
-- [`core.services.07`](core.services.07.md) — `central_xproc` … `cognitive_architecture_surface`
-- [`core.services.08`](core.services.08.md) — `cognitive_chronicle` … `cost_optimization_daemon`
-- [`core.services.09`](core.services.09.md) — `council_deliberation_controller` … `decision_gate`
-- [`core.services.10`](core.services.10.md) — `decision_ghosts` … `dream_articulation`
-- [`core.services.11`](core.services.11.md) — `dream_bias_engine` … `env_block`
-- [`core.services.12`](core.services.12.md) — `epistemic_pragmatic` … `gate_enforcement`
-- [`core.services.13`](core.services.13.md) — `gate_eval` … `hardware_body`
-- [`core.services.14`](core.services.14.md) — `heartbeat_action_hints` … `inner_visible_support_signal_tracking`
-- [`core.services.15`](core.services.15.md) — `inner_voice_daemon` … `local_small_model`
-- [`core.services.16`](core.services.16.md) — `local_tool_broker` … `metabolism_state_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `metacognition_signal_tracker` … `offline_recomposition_engine`
-- [`core.services.18`](core.services.18.md) — `ollama_model_names` … `prepared_request`
-- [`core.services.19`](core.services.19.md) — `pressure_threshold_gate` … `prompt_support_signals`
-- [`core.services.20`](core.services.20.md) — `prompt_variant_tracker` … `relation_continuity_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `relation_dynamics` … `runtime_browser_body`
-- [`core.services.22`](core.services.22.md) — `runtime_cognitive_conductor` … `self_model_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `self_monitor` … `shadow_counters`
-- [`core.services.24`](core.services.24.md) — `shadow_experiment_registry` … `staged_edits`
-- [`core.services.25`](core.services.25.md) — `standing_orders_registry` … `thought_stream_daemon`
-- [`core.services.26`](core.services.26.md) — `thought_thread` … `user_contradiction_tracker`
-- [`core.services.27`](core.services.27.md) — `user_emotional_resonance` … `visible_run_segment_exit`
-- [`core.services.28`](core.services.28.md) — `visible_run_segment_settlement` … `world_model_signal_tracking`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_devices`
+- [`core.runtime.02`](core.runtime.02.md) — `db_dream_bias` … `db_user_contradiction`
+- [`core.runtime.03`](core.runtime.03.md) — `db_user_temperature` … `ws_auth`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agent_prompt_layers`
+- [`core.services.02`](core.services.02.md) — `agent_relay` … `approval_outbox`
+- [`core.services.03`](core.services.03.md) — `approval_runtime` … `boredom_curiosity_bridge`
+- [`core.services.04`](core.services.04.md) — `boredom_engine` … `central_catalog`
+- [`core.services.05`](core.services.05.md) — `central_causal_quality` … `central_layer_contract`
+- [`core.services.06`](core.services.06.md) — `central_learning` … `central_self_observe`
+- [`core.services.07`](core.services.07.md) — `central_self_state` … `cheap_lane_trace_context`
+- [`core.services.08`](core.services.08.md) — `cheap_provider_breaker_adapters` … `computer_use_policy`
+- [`core.services.09`](core.services.09.md) — `computer_use_samtykke` … `cross_agent_memory`
+- [`core.services.10`](core.services.10.md) — `cross_session_gate` … `desperation_awareness`
+- [`core.services.11`](core.services.11.md) — `development_focus_tracking` … `edit_checkpoint`
+- [`core.services.12`](core.services.12.md) — `effective_policy` … `experiment_runner`
+- [`core.services.13`](core.services.13.md) — `explore_claim_check` … `git_workspace_actions`
+- [`core.services.14`](core.services.14.md) — `github_connector` … `identity_composer`
+- [`core.services.15`](core.services.15.md) — `identity_drift_daemon` … `jarvis_brain_visibility`
+- [`core.services.16`](core.services.16.md) — `jarvisx_bridge` … `memory_decay_daemon`
+- [`core.services.17`](core.services.17.md) — `memory_density` … `my_projects`
+- [`core.services.18`](core.services.18.md) — `narrative_identity` … `past_context_router`
+- [`core.services.19`](core.services.19.md) — `paste_store` … `process_supervisor`
+- [`core.services.20`](core.services.20.md) — `process_watcher` … `r2_5_blocking_gate`
+- [`core.services.21`](core.services.21.md) — `r2_5_haandhaevelse` … `resonance_decay`
+- [`core.services.22`](core.services.22.md) — `retention` … `runtime_tasks`
+- [`core.services.23`](core.services.23.md) — `rupture_repair` … `selvmodel_kobling`
+- [`core.services.24`](core.services.24.md) — `semantic_indexer` … `signal_surface_router`
+- [`core.services.25`](core.services.25.md) — `signal_tracking_framework` … `tanke_resume`
+- [`core.services.26`](core.services.26.md) — `task_worker` … `tool_pattern_miner`
+- [`core.services.27`](core.services.27.md) — `tool_result_aging` … `visible_followup_adapters`
+- [`core.services.28`](core.services.28.md) — `visible_followup_events` … `visible_terminal_policy`
+- [`core.services.29`](core.services.29.md) — `visible_text_scrub` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `jc_tool_catalog`
-- [`core.tools.02`](core.tools.02.md) — `kaldt_vaerktoej` … `semantic_search_tools`
-- [`core.tools.03`](core.tools.03.md) — `sensory_tools` … `workspace_capabilities_approval`
-- [`core.tools.04`](core.tools.04.md) — `workspace_capabilities_const` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `inbox_tools`
+- [`core.tools.02`](core.tools.02.md) — `jarvis_brain_tools` … `screen_tool`
+- [`core.tools.03`](core.tools.03.md) — `security_predicates` … `web_scrape_tool`
+- [`core.tools.04`](core.tools.04.md) — `webhook_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

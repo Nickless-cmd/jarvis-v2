@@ -12,8 +12,8 @@ _Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L43) |
-| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Kort status for netop denne ejers og sessions aabne agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L55) |
+| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L44) |
+| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L59) |
 
 ## `core/services/prompt_sections/attention_frame.py`
 _Cognitive-frame cache + attention-budget selection for prompts._
@@ -334,6 +334,17 @@ _Support-signalernes indhold — forbeholdet hoistet, kroppen samlet._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `byg_support_indhold` | `(support_raw)` | Saml support-blokkene til ÉN sektion med forbeholdet øverst. | [src](../../../core/services/prompt_sections/support_signals_section.py#L33) |
+
+## `core/services/prompt_sections/tail_section_builders.py`
+_Smaa, selvstaendige sektionsbyggere til promptens dynamiske hale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_central_notices_section` | `()` | Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem | [src](../../../core/services/prompt_sections/tail_section_builders.py#L12) |
+| function | `_pending_promises_section` | `(session_id)` | Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så | [src](../../../core/services/prompt_sections/tail_section_builders.py#L43) |
+| function | `_connected_connectors_section` | `()` | Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L72) |
+| function | `_open_questions_section` | `(*, limit=…)` | Surface curiosity_daemon._open_questions into the visible prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L117) |
+| function | `_time_pin_section` | `()` | Prominent, unmissable time indicator — placed high in every system prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L146) |
 
 ## `core/services/prompt_sections/tool_discovery_nudge.py`
 _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikke ved findes._

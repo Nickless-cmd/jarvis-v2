@@ -4,8 +4,8 @@ Ejer og oprindelsessession tages fra den autentificerede anmodningskontekst
 (eller den eksplicitte `context`), aldrig fra et tomt felt. Mangler en af dem,
 bindes agenten IKKE: den forbliver `legacy_unscoped` og kører som hidtil, så
 det er en synlig mangel i stedet for en opdigtet ejer (§4, §12.2).
-Persistente agenter bindes ikke endnu: de får ét assignment pr. aktivering
-(§12.1), som hører til en senere leverance.
+Persistente agenter får ejer og session ved spawn (når motoren er tændt), men
+ét assignment pr. aktivering (§12.1, `agent_activation`).
 """
 from __future__ import annotations
 
@@ -36,9 +36,9 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
                    target: str = "runtime-container", operation: str = "dispatch",
                    expected_result: str = "") -> dict[str, Any]:
     """Opret agentens første assignment. Kaster aldrig: dispatch må ikke dø af bindingen."""
-    if persistent:
-        return {"bound": False, "reason": "persistent"}
     owner, session = resolve_owner_and_session(context)
+    if persistent:
+        return _bind_persistent(agent_id, owner, session)
     if not owner or not session:
         logger.warning("agent %s bundet uden ejer/session — forbliver legacy_unscoped", agent_id)
         return {"bound": False, "reason": "no_owner_or_session"}
@@ -58,6 +58,25 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
         return {"bound": True, **acc}
     except Exception as exc:
         logger.warning("kunne ikke binde agent %s til kontrakten: %s", agent_id, exc, exc_info=True)
+        return {"bound": False, "reason": "error", "error": str(exc)}
+
+
+def _bind_persistent(agent_id: str, owner: str, session: str) -> dict[str, Any]:
+    """En persistent agent faar sin autentificerede ejer og oprindelsessession, men INTET assignment: de
+    oprettes pr. aktivering (``agent_activation``, §12.1). Kun naar motoren er taendt - slukket forbliver
+    den som hidtil (``legacy_unscoped``), saa dark launch ikke aendrer en eksisterende vagts adfaerd."""
+    if not owner or not session:
+        logger.warning("persistent agent %s bundet uden ejer/session - forbliver legacy_unscoped", agent_id)
+        return {"bound": False, "reason": "no_owner_or_session"}
+    try:
+        from core.services.agent_contract_service import capability_enabled
+        if not capability_enabled():
+            return {"bound": False, "reason": "engine_off"}
+        from core.runtime import db_agent_contract as c
+        c.bind_agent_owner(agent_id=agent_id, owner_user_id=owner, owner_session_id=session)
+        return {"bound": True, "persistent": True, "owner_user_id": owner}
+    except Exception as exc:
+        logger.warning("kunne ikke binde persistent agent %s: %s", agent_id, exc, exc_info=True)
         return {"bound": False, "reason": "error", "error": str(exc)}
 
 

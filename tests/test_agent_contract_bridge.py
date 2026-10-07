@@ -35,7 +35,7 @@ def test_bind_returns_a_reason_when_it_does_not_bind():
         "bound": False, "reason": "no_owner_or_session"}
     assert bind_new_agent(**base, persistent=True,
                           context={"user_id": "b", "parent_session_id": "s"}) == {
-        "bound": False, "reason": "persistent"}
+        "bound": False, "reason": "engine_off"}
 
 
 def test_bind_never_raises_even_when_the_agent_is_unknown(isolated_runtime):

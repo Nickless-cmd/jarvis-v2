@@ -2,6 +2,59 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_credit_assignment.py`
+_Credit assignment — schema migration, choice recording, and outcome querying._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_credit_assignment.py#L24) |
+| function | `ensure_credit_assignment_tables` | `(conn=…)` | Add credit-assignment columns to existing tables + pending index. | [src](../../../core/runtime/db_credit_assignment.py#L30) |
+| function | `_migrate_table` | `(conn, table, columns)` | Add columns to *table* if they don't already exist. | [src](../../../core/runtime/db_credit_assignment.py#L74) |
+| function | `record_choice` | `(*, kind=…, title, options, decision, why=…, context=…)` | Record a choice in cognitive_decisions with a kind tag. | [src](../../../core/runtime/db_credit_assignment.py#L105) |
+| function | `list_unreviewed_decisions` | `(*, kind=…, limit=…)` | Find decisions of a given *kind* that have no linked outcome yet. | [src](../../../core/runtime/db_credit_assignment.py#L160) |
+| function | `link_outcome_to_decision` | `(*, decision_id, credit_score, rationale, evidence_summary=…, run_id=…)` | Link a self-review outcome to a decision and update outcome_aggregate. | [src](../../../core/runtime/db_credit_assignment.py#L188) |
+| function | `score_provider_outcome` | `(decision_id, result)` | Score a provider_routing decision based on actual call result. | [src](../../../core/runtime/db_credit_assignment.py#L303) |
+| function | `score_tier_outcome` | `(decision_id, tier_used, next_turns)` | Score a model_tier decision after observing subsequent turns. | [src](../../../core/runtime/db_credit_assignment.py#L363) |
+| function | `score_response_outcome` | `(decision_id, style_used, user_reply)` | Score a response_style decision based on user engagement. | [src](../../../core/runtime/db_credit_assignment.py#L436) |
+| function | `_get_median_provider_cost` | `()` | Approximate median cost-per-token across recent cheap-lane calls. | [src](../../../core/runtime/db_credit_assignment.py#L514) |
+| function | `get_credit_trend` | `(*, kind=…, limit=…)` | Show decisions with their outcomes for oversight. | [src](../../../core/runtime/db_credit_assignment.py#L539) |
+
+## `core/runtime/db_decisions.py`
+_Behavioral decisions store — commitments Jarvis makes to himself._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_decisions.py#L28) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L72) |
+| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
+| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
+| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
+| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L176) |
+| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L211) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L232) |
+| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L294) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L311) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L323) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L354) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L365) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L380) |
+
+## `core/runtime/db_devices.py`
+_Enheder — hvem må styre denne computer, og hvem må bruge code mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L47) |
+| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L59) |
+| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L64) |
+| function | `registrer_computer` | `(user_id, app_id, *, navn=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L81) |
+| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L107) |
+| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L119) |
+| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L130) |
+| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
+| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
+| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
+
 ## `core/runtime/db_dream_bias.py`
 _DB helpers for dream_bias_active (Lag 2 dream-bias)._
 
@@ -892,56 +945,4 @@ _DB helpers for self_repair_patterns + self_repair_attempts tables._
 | function | `count_recent_attempts` | `(*, pattern_id, since_iso, outcome=…)` | — | [src](../../../core/runtime/db_self_repair.py#L287) |
 | function | `list_recent_self_repair_attempts` | `(*, pattern_id=…, limit=…)` | — | [src](../../../core/runtime/db_self_repair.py#L305) |
 | function | `_pattern_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_self_repair.py#L336) |
-
-## `core/runtime/db_sensory.py`
-_Sensory memories — persistent archive of Jarvis's sensory experiences._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/runtime/db_sensory.py#L23) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_sensory.py#L29) |
-| function | `_ensure_sensory_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_sensory.py#L33) |
-| function | `insert_sensory_memory` | `(*, modality, content, mood_tone=…, metadata=…, embedding=…, timestamp=…)` | — | [src](../../../core/runtime/db_sensory.py#L58) |
-| function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_sensory.py#L93) |
-| function | `list_sensory_memories` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/runtime/db_sensory.py#L108) |
-| function | `search_sensory_memories` | `(*, query, modality=…, limit=…)` | Simple LIKE-based substring search over content and mood_tone. | [src](../../../core/runtime/db_sensory.py#L139) |
-| function | `count_sensory_memories` | `(*, modality=…)` | — | [src](../../../core/runtime/db_sensory.py#L172) |
-| function | `get_sensory_memory` | `(memory_id)` | — | [src](../../../core/runtime/db_sensory.py#L189) |
-
-## `core/runtime/db_session_ledger.py`
-_Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L59) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L63) |
-| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L67) |
-| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L102) |
-| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L144) |
-| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L159) |
-| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L178) |
-| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L182) |
-| function | `_annoncer` | `(session_id, skrevet, seq)` | Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt. | [src](../../../core/runtime/db_session_ledger.py#L255) |
-| function | `append_unowned` | `(session_id, *, events, now=…)` | Tilføj hændelser i ÉN transaktion, uden lease. Kun for skygge-sessioner. | [src](../../../core/runtime/db_session_ledger.py#L279) |
-| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L368) |
-| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L401) |
-| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L412) |
-| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L438) |
-| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L447) |
-| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L468) |
-| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L480) |
-| function | `abandon_shadow` | `(session_id)` | Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`. | [src](../../../core/runtime/db_session_ledger.py#L507) |
-
-## `core/runtime/db_user_contradiction.py`
-_DB helpers for user_contradictions + user_statements tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_user_contradiction_tables` | `(conn)` | — | [src](../../../core/runtime/db_user_contradiction.py#L19) |
-| function | `upsert_user_statement` | `(*, statement_id, user_id, text, topic, session_id, source, created_at, updated_at)` | Gem eller opdater et user statement. | [src](../../../core/runtime/db_user_contradiction.py#L72) |
-| function | `get_user_statement_by_text` | `(*, text, user_id=…, topic=…)` | Find et eksisterende statement med samme tekst (case-insensitive). | [src](../../../core/runtime/db_user_contradiction.py#L148) |
-| function | `list_user_statements` | `(*, user_id=…, topic=…, limit=…)` | Hent statements for en bruger, filtreret på topic hvis angivet. | [src](../../../core/runtime/db_user_contradiction.py#L175) |
-| function | `insert_user_contradiction` | `(*, contradiction_id, user_id, statement_a_id, statement_a_text, statement_a_source, statement_a_created_at, statement_b_text, statement_b_source, statement_b_created_at, topic, overlap_tokens, created_at, updated_at)` | Gem en fundet bruger-modsigelse. | [src](../../../core/runtime/db_user_contradiction.py#L211) |
-| function | `list_user_contradictions` | `(*, user_id=…, topic=…, limit=…, status=…)` | Hent lagrede modsigelser for en bruger. | [src](../../../core/runtime/db_user_contradiction.py#L262) |
-| function | `update_user_contradiction_status` | `(*, contradiction_id, status, notes=…, updated_at=…)` | Opdater status på en modsigelse (fx 'resolved' eller 'dismissed'). | [src](../../../core/runtime/db_user_contradiction.py#L309) |
 

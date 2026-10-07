@@ -574,6 +574,16 @@ def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
         return []
 
 
+def _live_run(run_id: str) -> str:
+    """Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse."""
+    try:
+        from core.runtime.db_agent_attempts import live_run_id
+        return live_run_id(run_id)
+    except Exception:
+        logger.warning("kunne ikke afgoere det levende runforsoeg for %s", run_id, exc_info=True)
+        return run_id
+
+
 def execute_agent_task(*, agent_id: str, thread_id: str = "",
                        execution_mode: str = "solo-task") -> dict[str, object]:
     """Koer et barns arbejde.
@@ -586,6 +596,22 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     """
     from core.runtime.db_agent_lease import agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
+    # agent-contract-v1 (G): et uafklaret udfald (outcome_unknown) kan have udfoert en skrivning - ingen
+    # automatisk genkoersel, hverken planlagt, besked-udloest eller supervisor-genstart, foer det er afgjort.
+    from core.runtime.db_agent_outcome_unknown import is_blocked
+    if is_blocked(agent_id):
+        surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
+        surface["blocked"] = {"code": "OUTCOME_UNKNOWN",
+                              "detail": "uafklaret udfald - kraever verificering eller menneskelig afgoerelse"}
+        logger.info("agent %s koeres ikke: uafklaret udfald", agent_id)
+        return surface
+    # agent-contract-v1 (G): en persistent agent faar ét assignment + én rute pr. aktivering, FOER leasen.
+    from core.services.agent_activation import ensure_activation
+    activation = ensure_activation(agent_id, execution_mode=execution_mode)
+    if activation["status"] == "refused":
+        surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
+        surface["activation"] = {k: activation[k] for k in ("status", "code", "detail")}
+        return surface
     # agent-contract-v1 (C2): leasen holdes mens barnet koerer; en gammel worker kan ikke skrive.
     with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
@@ -716,7 +742,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                     provider=str(agent.get("provider") or ""),
                     model=str(agent.get("model") or ""),
                     requires_tools=_needs_tools,
-                    lane="agent",
+                    lane="agent", run_id=run_id,
                 )
         else:
             if _resume is not None:
@@ -727,8 +753,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_needs_tools,
-                lane="agent",
+                lane="agent", run_id=run_id,
             )
+        run_id = _live_run(run_id)      # G: et failover har muligvis afloest runnet - alt herunder foelger det
         if result.get("status") == "parked" and result.get("parked"):
             # F4b: loekken er stoppet foer et godkendelseskraevende kald - ikke et udfald.
             from core.services.agent_parking import park_run
@@ -1004,6 +1031,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             logger.info("run %s staar i outcome_unknown (uafgjort bro-kald) - afsluttes ikke", run_id)
             return build_agent_detail_surface(agent_id) or {"agent_id": agent_id, "status": "outcome_unknown"}
         message = str(exc)
+        run_id = _live_run(run_id)      # G: fejlen rammer det forsoeg der koerte til sidst, ikke et afloest
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",
             thread_id=resolved_thread_id,

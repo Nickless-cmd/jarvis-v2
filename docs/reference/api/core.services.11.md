@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/desktop_notifications.py`
+_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
+| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
+| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
+| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
+
+## `core/services/desperation_awareness.py`
+_Desperation Awareness — self-noticing safety signal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hardware_component` | `()` | 0..1 contribution from hardware pressure. | [src](../../../core/services/desperation_awareness.py#L28) |
+| function | `_tension_component` | `()` | 0..1 contribution from active layer tensions. | [src](../../../core/services/desperation_awareness.py#L42) |
+| function | `_isolation_component` | `()` | 0..1 contribution from time since last user interaction. | [src](../../../core/services/desperation_awareness.py#L58) |
+| function | `_error_component` | `()` | 0..1 contribution from recent error rate in heartbeat outcomes. | [src](../../../core/services/desperation_awareness.py#L81) |
+| function | `compute_desperation_score` | `()` | Compute current desperation composite score in [0, 1] with reasons. | [src](../../../core/services/desperation_awareness.py#L100) |
+| function | `tick` | `(_seconds=…)` | Evaluate desperation and emit inner-voice event on threshold crossing. | [src](../../../core/services/desperation_awareness.py#L138) |
+| function | `_emit_crossing_event` | `(state, *, direction)` | Publish an inner-voice event so the crossing lands in chronicle. | [src](../../../core/services/desperation_awareness.py#L159) |
+| function | `_narrative_for` | `(state, direction)` | — | [src](../../../core/services/desperation_awareness.py#L176) |
+| function | `is_currently_pressed` | `()` | — | [src](../../../core/services/desperation_awareness.py#L183) |
+| function | `build_desperation_awareness_surface` | `()` | — | [src](../../../core/services/desperation_awareness.py#L187) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L203) |
+| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L214) |
+| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L226) |
+
 ## `core/services/development_focus_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -695,29 +724,4 @@ _D4 — Dreaming Session: dedicated full-model session during prolonged idle._
 | function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L332) |
 | function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L393) |
 | function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L399) |
-
-## `core/services/drive_arbitration_engine.py`
-_Desire/value arbitration as a compact drive system._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `arbitrate_drives` | `(*, user_message=…, context=…)` | — | [src](../../../core/services/drive_arbitration_engine.py#L14) |
-| function | `build_drive_arbitration_surface` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L56) |
-| function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
-| function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
-
-## `core/services/edit_checkpoint.py`
-_Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage samlet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/edit_checkpoint.py#L45) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/edit_checkpoint.py#L54) |
-| function | `_git` | `(cwd, *args, timeout=…)` | — | [src](../../../core/services/edit_checkpoint.py#L62) |
-| function | `is_git_repo` | `(cwd)` | — | [src](../../../core/services/edit_checkpoint.py#L71) |
-| function | `_objekt_findes` | `(cwd, sha)` | Er stash-objektet der endnu, eller har `git gc` taget det? | [src](../../../core/services/edit_checkpoint.py#L76) |
-| function | `checkpoint` | `(cwd, session_id, *, note=…)` | Fotografér arbejdstræet. None hvis ikke et git-repo eller træet er rent. | [src](../../../core/services/edit_checkpoint.py#L82) |
-| function | `list_checkpoints` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L100) |
-| function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
-| function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
 

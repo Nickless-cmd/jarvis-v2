@@ -2,6 +2,50 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_keymaker.py`
+_The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_never` | `(nerve)` | True hvis <nerve> ALDRIG må optjene/godkende en decentraliserings-nøgle: enten katalog- | [src](../../../core/services/central_keymaker.py#L40) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/central_keymaker.py#L53) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_keymaker.py#L72) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_keymaker.py#L76) |
+| function | `evaluate_keys` | `()` | Find dimensioner der har OPTJENT en nøgle (track-record over tærskel) og udsted en PENDING | [src](../../../core/services/central_keymaker.py#L84) |
+| function | `_ejer_uid` | `()` | — | [src](../../../core/services/central_keymaker.py#L128) |
+| function | `_varsl_ejer` | `(domain, track)` | Sig til naar en noegle er OPTJENT — den kan ikke bruges foer ejeren godkender. | [src](../../../core/services/central_keymaker.py#L136) |
+| function | `_adfaerds_track_record` | `()` | Hans egen efterlevelse af sine forpligtelser. ``None`` hvis den ikke kan maales. | [src](../../../core/services/central_keymaker.py#L193) |
+| function | `evaluate_behaviour_key` | `()` | Udsted en PENDING adfaerds-noegle naar HAN har fortjent den. Self-safe. | [src](../../../core/services/central_keymaker.py#L208) |
+| function | `har_adfaerds_noegle` | `()` | True hvis han har en GYLDIG (godkendt + ikke udloebet) adfaerds-noegle. | [src](../../../core/services/central_keymaker.py#L247) |
+| function | `list_keys` | `(*, include_expired=…)` | — | [src](../../../core/services/central_keymaker.py#L256) |
+| function | `is_decentralized` | `(nerve)` | True hvis <nerve> har en GYLDIG optjent decentraliserings-nøgle: status='approved' OG endnu | [src](../../../core/services/central_keymaker.py#L267) |
+| function | `approve_key` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL. Auto-reverterer ved udløb. | [src](../../../core/services/central_keymaker.py#L289) |
+| function | `expire_due` | `()` | Cadence: reverter flag for udløbne nøgler (tilladelse mistes hvis ikke fornyet). Self-safe. | [src](../../../core/services/central_keymaker.py#L323) |
+| function | `_mind_om_ventende` | `()` | Mind om noegler der har ventet paa godkendelse i mere end tre dage. | [src](../../../core/services/central_keymaker.py#L354) |
+| function | `build_keymaker_surface` | `()` | Owner-view: aktive/afventende nøgler + fortjente dimensioner. Self-safe. | [src](../../../core/services/central_keymaker.py#L404) |
+
+## `core/services/central_layer_contract.py`
+_core/services/central_layer_contract.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Egress` | `` | — | [src](../../../core/services/central_layer_contract.py#L30) |
+| class | `DecideMode` | `` | — | [src](../../../core/services/central_layer_contract.py#L35) |
+| class | `LayerContract` | `` | — | [src](../../../core/services/central_layer_contract.py#L42) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_layer_contract.py#L61) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_layer_contract.py#L70) |
+| function | `_scalars` | `(meta)` | Privatlags-membran ÉT sted (§24.4): kun tal/bool/str krydser — aldrig lister/nested/blobs. | [src](../../../core/services/central_layer_contract.py#L78) |
+| function | `_mode` | `(name)` | — | [src](../../../core/services/central_layer_contract.py#L83) |
+| function | `_sink` | `(c, value, meta, reason=…)` | — | [src](../../../core/services/central_layer_contract.py#L89) |
+| function | `_run_contract_tick` | `(c)` | — | [src](../../../core/services/central_layer_contract.py#L104) |
+| function | `_held_get` | `(name, held_key)` | — | [src](../../../core/services/central_layer_contract.py#L123) |
+| function | `note_held` | `(name, held_key, *, key, value)` | Fodr det friske selv TILBAGE i Centralen (NED-holdet) efter en ægte genudledning. Self-safe. | [src](../../../core/services/central_layer_contract.py#L131) |
+| function | `get_held` | `(name, held_key=…)` | NED-læser for forbrugere (prompt/voice). Ren KV-read (ingen syntese på læse-tid → hot-path-sikker). | [src](../../../core/services/central_layer_contract.py#L146) |
+| function | `get_held_age` | `(name, held_key=…)` | Alder (sekunder) siden den holdte aflæsning blev skrevet, eller None hvis fraværende/ukendt. | [src](../../../core/services/central_layer_contract.py#L151) |
+| function | `decide` | `(name, *, key, held_key=…)` | Centralen BESTEMMER: genudled via LLM, eller genbrug holdt selv? off/shadow/on. Self-safe. | [src](../../../core/services/central_layer_contract.py#L163) |
+| function | `register_layer` | `(c)` | Deklarativ binding: registrér laget på cadence-motoren via en genereret run_fn. Idempotent, self-safe. | [src](../../../core/services/central_layer_contract.py#L184) |
+| function | `build_layer_surface` | `(name)` | Generisk MC-projektion (read-only): mode + holdt selv pr. held_key. | [src](../../../core/services/central_layer_contract.py#L201) |
+
 ## `core/services/central_learning.py`
 _#4 Adaptiv læring — DETERMINISTISK, for ALLE clusters. Centralen læser de signaler clusterne_
 
@@ -558,32 +602,4 @@ _Central runtime proxy — read runtime-process-only surfaces from anywhere._
 | function | `_runtime_services_enabled` | `()` | True when this process runs the runtime services (state is local here). | [src](../../../core/services/central_runtime_proxy.py#L36) |
 | function | `_http_get` | `(name)` | HTTP-GET a runtime surface from jarvis-runtime. Returns a parsed dict. | [src](../../../core/services/central_runtime_proxy.py#L42) |
 | function | `proxy_or_local` | `(builder_name, local_fn)` | Return a runtime surface, in-process or via HTTP-proxy to port 8011. | [src](../../../core/services/central_runtime_proxy.py#L54) |
-
-## `core/services/central_self_model.py`
-_core/services/central_self_model.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_self_model.py#L24) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_self_model.py#L33) |
-| function | `_populated` | `(v)` | — | [src](../../../core/services/central_self_model.py#L41) |
-| function | `_extract_structure` | `(model)` | Uddrag KUN struktur fra selv-modellen: hvilke lag findes/er udfyldt (labels), tællinger, | [src](../../../core/services/central_self_model.py#L49) |
-| function | `snapshot_self_model` | `()` | Byg selv-modellen og uddrag dens STRUKTUR (ikke indhold). Self-safe → {} ved fejl. | [src](../../../core/services/central_self_model.py#L60) |
-| function | `get_self_model_snapshot` | `()` | Centralens DURABLE selv-model-struktur (senest optagne). Overlever genstart (kv). Self-safe. | [src](../../../core/services/central_self_model.py#L72) |
-| function | `run_self_model_mirror_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: snapshot selv-modellens struktur → gem durabelt (kv) + egress-fri observe (kun skalarer). | [src](../../../core/services/central_self_model.py#L78) |
-| function | `register_self_model_mirror_producer` | `()` | Registrér spejlet som cadence-producer (~hvert 30 min). Egress-frit, observe-only. | [src](../../../core/services/central_self_model.py#L102) |
-| function | `build_self_model_mirror_surface` | `()` | Mission Control — read-only: Centralens billede af sig selv (struktur, ikke indhold). | [src](../../../core/services/central_self_model.py#L114) |
-
-## `core/services/central_self_observe.py`
-_core/services/central_self_observe.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_percentile` | `(sorted_vals, pct)` | — | [src](../../../core/services/central_self_observe.py#L38) |
-| function | `_get_baseline` | `()` | — | [src](../../../core/services/central_self_observe.py#L50) |
-| function | `_set_baseline` | `(p95)` | — | [src](../../../core/services/central_self_observe.py#L62) |
-| function | `_open_breaker_count` | `()` | — | [src](../../../core/services/central_self_observe.py#L69) |
-| function | `sample_self_metrics` | `()` | Læs Centralens egen trace + breaker-state og beregn helbreds-metrikker. | [src](../../../core/services/central_self_observe.py#L76) |
-| function | `run_self_observe_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: mål Centralens egne helbreds-metrikker og OBSERVE dem. | [src](../../../core/services/central_self_observe.py#L140) |
-| function | `register_self_observe_producer` | `()` | Registrér selv-observationen som cadence-producer. Observe-only → ingen visible-grace. | [src](../../../core/services/central_self_observe.py#L172) |
 

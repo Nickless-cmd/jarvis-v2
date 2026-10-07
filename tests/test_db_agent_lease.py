@@ -220,7 +220,9 @@ def test_an_open_tool_call_means_outcome_unknown_and_no_blind_retry(ls):
                      "open_tool_calls": 1}]
     assert ls.run_row(acc["run_id"])["status"] == "outcome_unknown"
     assert ls.c_.get_assignment(assignment_id=acc["assignment_id"], owner_user_id="bjorn")["status"] == "waiting"
-    assert ls.c_.list_pending_results(owner_user_id="bjorn", origin_session_id="s1") == []
+    pending = ls.c_.list_pending_results(owner_user_id="bjorn", origin_session_id="s1")
+    assert [m for m in pending if m["message_kind"] == "terminal"] == []      # ingen terminalbesked...
+    assert [(m["message_kind"], m["state_code"]) for m in pending] == [("state", "outcome_unknown")]   # ...kun tilstanden
 
 
 def test_a_finished_tool_call_does_not_block_a_safe_retry(ls):

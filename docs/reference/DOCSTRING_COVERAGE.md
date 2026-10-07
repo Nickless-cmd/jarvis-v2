@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8689/16449 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8719/16486 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,10 +24,10 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 782 | 1421 | 55% |
-| `core.services` | 5802 | 11185 | 51% |
+| `core.runtime` | 793 | 1435 | 55% |
+| `core.services` | 5816 | 11203 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 118 | 193 | 61% |
+| `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
@@ -42,7 +42,7 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2315)
+## Undocumented public functions (2318)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -343,6 +343,7 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
+- `core/runtime/db_agent_attempts.py` :: `attempts_for_assignment` (L149)
 - `core/runtime/db_agent_bridge.py` :: `args_digest` (L66)
 - `core/runtime/db_agent_bridge.py` :: `ensure_bridge_tables` (L35)
 - `core/runtime/db_agent_bridge.py` :: `get` (L75)
@@ -350,18 +351,20 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `mark_unknown` (L137)
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L620)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L644)
 - `core/runtime/db_agent_council.py` :: `create` (L62)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L84)
 - `core/runtime/db_agent_council.py` :: `open_councils` (L109)
 - `core/runtime/db_agent_council.py` :: `require` (L115)
 - `core/runtime/db_agent_council.py` :: `set_members` (L92)
+- `core/runtime/db_agent_fork.py` :: `ensure_fork_tables` (L20)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
 - `core/runtime/db_agent_lease.py` :: `release` (L115)
 - `core/runtime/db_agent_memory.py` :: `ensure_memory_tables` (L39)
+- `core/runtime/db_agent_outcome_unknown.py` :: `ensure_outcome_unknown_columns` (L34)
 - `core/runtime/db_agent_route.py` :: `attempts_for_assignment` (L80)
 - `core/runtime/db_agent_route.py` :: `ensure_route_tables` (L25)
 - `core/runtime/db_agent_route.py` :: `record_decision` (L47)
@@ -641,7 +644,7 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L319)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L530)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L567)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
@@ -653,15 +656,15 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1516)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1571)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1552)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1379)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1136)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1076)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1104)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1544)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1599)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1580)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1407)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1164)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1104)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1132)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1535)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1563)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
@@ -1506,13 +1509,13 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3539)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3387)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3676)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3548)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3396)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3685)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L158)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L106)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L133)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4790)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4639)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -2043,14 +2046,14 @@ Generated from source. 8689/16449 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7125)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7150)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7188)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7184)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7121)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7083)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7205)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7136)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6808)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6833)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6871)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6867)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6804)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6766)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6888)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6819)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)

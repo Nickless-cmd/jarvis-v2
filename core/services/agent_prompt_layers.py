@@ -89,6 +89,14 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
     from core.runtime.db_agent_memory import recall
     memory = recall(owner_user_id=a["owner_user_id"], agent_id=str(agent.get("agent_id") or ""),
                     session_id=a["origin_session_id"])["text"]
+    fork_text = ""
+    try:
+        from core.runtime.db_agent_fork import get_fork
+        from core.services.agent_fork_policy import prompt_block
+        fork_text = prompt_block(get_fork(assignment_id=a["assignment_id"], owner_user_id=a["owner_user_id"]))
+    except Exception:
+        # et manglende kontekstblok maa ikke vaelte promptbygningen; agenten kører så fresh (synligt i loggen)
+        logger.warning("fork-kontekst kunne ikke laeses for %s", a["assignment_id"], exc_info=True)
     layer1 = DELEGATION_TEXT.format(assignment_id=a["assignment_id"])
     layer2 = str(agent.get("system_prompt") or "")
     layer3 = "\n".join([
@@ -101,6 +109,7 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
         f"Kontekst: {json.dumps(context, ensure_ascii=False)}",
         "",
         *([memory, ""] if memory else []),
+        *([fork_text, ""] if fork_text else []),
         f"Samtalen hidtil:\n{messages_text}",
         "",
         extra_instruction,

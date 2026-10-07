@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/crisis_marker_detector.py`
+_Crisis marker detector — flag identity-forming friction moments._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_detect_sustained_failure` | `(events)` | ≥5 consecutive errors of the same tool. | [src](../../../core/services/crisis_marker_detector.py#L43) |
+| function | `_detect_unexpected_success` | `(events)` | Tick quality summary that jumped sharply. | [src](../../../core/services/crisis_marker_detector.py#L74) |
+| function | `_detect_existential_moment` | `(events)` | Explicit identity-formation statements in recent messages. | [src](../../../core/services/crisis_marker_detector.py#L95) |
+| function | `_detect_high_volatility` | `(events)` | Rapid mood shifts in recent personality snapshots. | [src](../../../core/services/crisis_marker_detector.py#L157) |
+| function | `_recent_events` | `(hours=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L196) |
+| function | `scan_for_crisis_markers` | `()` | Run all detectors. Persist any new markers found. | [src](../../../core/services/crisis_marker_detector.py#L206) |
+| function | `list_crisis_markers` | `(*, days_back=…, limit=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L270) |
+| function | `crisis_marker_section` | `()` | Awareness section showing recent crisis markers (last 7 days). | [src](../../../core/services/crisis_marker_detector.py#L283) |
+| function | `_exec_scan_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L301) |
+| function | `_exec_list_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L305) |
+
+## `core/services/cross_agent_memory.py`
+_Cross-agent memory — shared observations queryable across agents._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_all_observations` | `()` | Read full observation log from Layer 1 storage. | [src](../../../core/services/cross_agent_memory.py#L37) |
+| function | `_filter_by_freshness` | `(records, days)` | — | [src](../../../core/services/cross_agent_memory.py#L49) |
+| function | `_keyword_score` | `(text, query)` | Cheap relevance score: count of query keywords in text, normalised. | [src](../../../core/services/cross_agent_memory.py#L56) |
+| function | `cross_agent_recall` | `(*, query, requesting_role=…, exclude_roles=…, days_back=…, limit=…, min_score=…)` | Find relevant observations from OTHER agents matching the query. | [src](../../../core/services/cross_agent_memory.py#L68) |
+| function | `cross_agent_recall_section` | `(role, query)` | Format cross-agent recall as text for sub-agent system_prompt injection. | [src](../../../core/services/cross_agent_memory.py#L130) |
+| function | `_exec_cross_agent_recall` | `(args)` | — | [src](../../../core/services/cross_agent_memory.py#L146) |
+
 ## `core/services/cross_session_gate.py`
 _Kontekst fra ANDRE sessioner — Fase 10, kriterium 1._
 
@@ -530,33 +558,4 @@ _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 | function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/desire_daemon.py#L228) |
 | function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L242) |
 | function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L260) |
-
-## `core/services/desktop_notifications.py`
-_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
-| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
-| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
-| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
-
-## `core/services/desperation_awareness.py`
-_Desperation Awareness — self-noticing safety signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hardware_component` | `()` | 0..1 contribution from hardware pressure. | [src](../../../core/services/desperation_awareness.py#L28) |
-| function | `_tension_component` | `()` | 0..1 contribution from active layer tensions. | [src](../../../core/services/desperation_awareness.py#L42) |
-| function | `_isolation_component` | `()` | 0..1 contribution from time since last user interaction. | [src](../../../core/services/desperation_awareness.py#L58) |
-| function | `_error_component` | `()` | 0..1 contribution from recent error rate in heartbeat outcomes. | [src](../../../core/services/desperation_awareness.py#L81) |
-| function | `compute_desperation_score` | `()` | Compute current desperation composite score in [0, 1] with reasons. | [src](../../../core/services/desperation_awareness.py#L100) |
-| function | `tick` | `(_seconds=…)` | Evaluate desperation and emit inner-voice event on threshold crossing. | [src](../../../core/services/desperation_awareness.py#L138) |
-| function | `_emit_crossing_event` | `(state, *, direction)` | Publish an inner-voice event so the crossing lands in chronicle. | [src](../../../core/services/desperation_awareness.py#L159) |
-| function | `_narrative_for` | `(state, direction)` | — | [src](../../../core/services/desperation_awareness.py#L176) |
-| function | `is_currently_pressed` | `()` | — | [src](../../../core/services/desperation_awareness.py#L183) |
-| function | `build_desperation_awareness_surface` | `()` | — | [src](../../../core/services/desperation_awareness.py#L187) |
-| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L203) |
-| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L214) |
-| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L226) |
 

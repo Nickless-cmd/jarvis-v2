@@ -2,6 +2,56 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/selvmodel.py`
+_Den levende selvmodel — hvem Jarvis er, som noget der kan udvikle sig._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `(nu)` | — | [src](../../../core/services/selvmodel.py#L64) |
+| function | `_norm` | `(tekst)` | — | [src](../../../core/services/selvmodel.py#L68) |
+| function | `handler_om_ham` | `(udsagn)` | Handler udsagnet om ham — ikke om driften omkring ham? | [src](../../../core/services/selvmodel.py#L72) |
+| function | `_conn` | `()` | — | [src](../../../core/services/selvmodel.py#L78) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/selvmodel.py#L98) |
+| function | `_log` | `(conn, t, handling, *, foer=…, hvorfor=…, kilde=…, nu)` | — | [src](../../../core/services/selvmodel.py#L106) |
+| function | `_save` | `(conn, t)` | — | [src](../../../core/services/selvmodel.py#L115) |
+| function | `effektiv_styrke` | `(t, nu)` | — | [src](../../../core/services/selvmodel.py#L124) |
+| function | `_kildenoegle` | `(k)` | — | [src](../../../core/services/selvmodel.py#L132) |
+| function | `_krav_opfyldt` | `(grad, kilder)` | Bevis-kravet følger graden (Jarvis' ændring 3). | [src](../../../core/services/selvmodel.py#L138) |
+| function | `_find` | `(conn, art, emne, status)` | — | [src](../../../core/services/selvmodel.py#L150) |
+| function | `_antal` | `(conn, sql, args)` | — | [src](../../../core/services/selvmodel.py#L157) |
+| function | `_svar` | `(status, t=…, grund=…, grad=…)` | — | [src](../../../core/services/selvmodel.py#L161) |
+| function | `udtryk` | `(art, emne, udsagn, *, kilde, bevis, samtale_id=…, hvorfor=…, nu=…)` | Et udsagn om hvem han er, fra én kilde. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/selvmodel.py#L166) |
+| function | `_nyt` | `(art, emne, udsagn, grad, status, kilder, kilde, nu)` | — | [src](../../../core/services/selvmodel.py#L238) |
+| function | `_skift` | `(traek_id, status, handling, *, hvorfor=…, af=…, nu=…)` | — | [src](../../../core/services/selvmodel.py#L246) |
+| function | `godkend` | `(traek_id, *, nu=…)` | Bjørns ja til et forslag på godkendelses-graden (fx navnet). | [src](../../../core/services/selvmodel.py#L262) |
+| function | `afvis` | `(traek_id, *, af, hvorfor, nu=…)` | Afvis et træk med en grund — Bjørn et forslag, eller Jarvis et træk Bjørn fremsatte. | [src](../../../core/services/selvmodel.py#L267) |
+| function | `rul_tilbage` | `(traek_id, *, hvorfor=…, nu=…)` | Bjørns tilbagerulning. En ny række i historikken, aldrig en sletning. | [src](../../../core/services/selvmodel.py#L272) |
+| function | `hent` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L277) |
+| function | `historik` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L283) |
+| function | `aktive` | `(*, nu=…, limit=…)` | De levende træk: aktive og ikke falmet under tærsklen, stærkest først. | [src](../../../core/services/selvmodel.py#L289) |
+| function | `ugens_opsummering` | `(*, nu=…)` | Ugens ændringer på opsummerings-graden — det Bjørn ser og kan rulle tilbage. | [src](../../../core/services/selvmodel.py#L302) |
+| function | `_kilde_tekst` | `(t)` | — | [src](../../../core/services/selvmodel.py#L313) |
+| function | `prompt_sektion` | `(*, nu=…, limit=…)` | «Hvem jeg er lige nu» — hvert træk med dato og kilde (Jarvis' ændring 4). | [src](../../../core/services/selvmodel.py#L326) |
+
+## `core/services/selvmodel_kobling.py`
+_Selvmodellens første lodrette skive: fra hans svar til hans prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_taendt` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L51) |
+| function | `selvmodel_sektion` | `()` | Prompt-sektionen — kun når flaget er tændt og kun i ejerens samtaler. | [src](../../../core/services/selvmodel_kobling.py#L59) |
+| function | `_ejer_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L73) |
+| function | `samtalens_kilde` | `(session_id)` | «nominering» for ejerens samtaler, «anden_bruger» for andres, None for autonome. | [src](../../../core/services/selvmodel_kobling.py#L79) |
+| function | `parse_nomineringer` | `(tekst)` | — | [src](../../../core/services/selvmodel_kobling.py#L94) |
+| function | `_maa_kalde` | `(nu)` | — | [src](../../../core/services/selvmodel_kobling.py#L109) |
+| function | `_kald_billig_model` | `(prompt)` | — | [src](../../../core/services/selvmodel_kobling.py#L119) |
+| function | `behandl_svar` | `(session_id, besked)` | Nominér holdninger fra ét af hans svar. Returnerer selvmodellens udfald. | [src](../../../core/services/selvmodel_kobling.py#L124) |
+| function | `_sidste_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L148) |
+| function | `_gem_sidste_id` | `(event_id)` | — | [src](../../../core/services/selvmodel_kobling.py#L156) |
+| function | `poll_en_gang` | `(*, limit=…)` | Behandl nye assistant-svar fra eventbussens tabel. Returnerer antal svar set. | [src](../../../core/services/selvmodel_kobling.py#L161) |
+| function | `_loop` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L194) |
+| function | `start_lytter` | `()` | Idempotent. Startes KUN i runtime-processen (én poller, ingen dobbelt-behandling). | [src](../../../core/services/selvmodel_kobling.py#L208) |
+
 ## `core/services/semantic_indexer.py`
 _Semantic indexer — auto-embedding of new memory records._
 
@@ -554,24 +604,4 @@ _Signal Pressure Accumulator — generativ autonomi: fra signal til presning._
 | function | `get_dominant_pressures` | `(min_accumulated=…)` | Return pressures above a minimum threshold — these are the ones that matter. | [src](../../../core/services/signal_pressure_accumulator.py#L197) |
 | function | `snapshot` | `()` | Return a serializable snapshot of current pressure state. | [src](../../../core/services/signal_pressure_accumulator.py#L202) |
 | function | `run_pressure_accumulator_tick` | `()` | Run one tick of the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L219) |
-
-## `core/services/signal_surface_gc.py`
-_Garbage collector for runtime signal-surface trackers._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_force_archive` | `(*, items, id_field, update_fn, label)` | — | [src](../../../core/services/signal_surface_gc.py#L33) |
-| function | `collect` | `()` | Run a full GC pass across the three signal-surface trackers. | [src](../../../core/services/signal_surface_gc.py#L75) |
-
-## `core/services/signal_surface_router.py`
-_Signal Surface Router — maps surface names to build functions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_build_router` | `()` | Build name → function mapping. Local imports stay lazy. | [src](../../../core/services/signal_surface_router.py#L11) |
-| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L261) |
-| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L268) |
-| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L272) |
-| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L276) |
-| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L301) |
 

@@ -126,3 +126,98 @@ def test_tools_md_never_claims_the_new_tools_are_available():
     md = pathlib.Path("workspace/default/TOOLS.md").read_text(encoding="utf-8")
     line = next(l for l in md.splitlines() if "`dispatch_agent`" in l)
     assert "Kun naar agent-kontrakten er taendt" in line and "ikke tilgaengelige" in line
+
+
+# --- G5: levende agenttilstand ved turstart, kun i den uncachede hale ------------------------------------
+
+def _assembly_as(user, session):
+    from core.identity import workspace_context as w
+    from core.services.prompt_contract import build_visible_chat_prompt_assembly
+    tok = w.set_context(workspace_name="bjorn", user_id=user, session_id=session)
+    try:
+        return build_visible_chat_prompt_assembly(
+            provider="deepseek", model="deepseek-v4-flash", user_message="hej", session_id=session).text
+    finally:
+        w.reset_context(tok)
+
+
+def test_turn_start_shows_live_agent_state_in_the_tail_and_the_cached_prefix_is_byte_identical(pr):
+    from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
+
+    before = _assembly_as("bjorn", "s1")
+    assert "Agenter i gang i denne session" not in before
+    a = pr.assignment("a1")
+    after = _assembly_as("bjorn", "s1")
+    prefix, tail = after.split(DYNAMIC_TAIL_SENTINEL)
+    assert "Agenter i gang i denne session" not in prefix
+    assert f"- a1 / {a}: queued" in tail
+    assert prefix == before.split(DYNAMIC_TAIL_SENTINEL)[0]                  # praefikset roeres ikke
+    assert _assembly_as("bjorn", "s1").split(DYNAMIC_TAIL_SENTINEL)[1] != "" and \
+        _assembly_as("bjorn", "s1").split(DYNAMIC_TAIL_SENTINEL)[0] == prefix
+
+
+def test_turn_start_state_is_scoped_to_the_authenticated_owner_and_session(pr):
+    pr.assignment("a1")
+    for user, session in (("anden", "s1"), ("bjorn", "s9")):
+        assert "Agenter i gang i denne session" not in _assembly_as(user, session)
+
+
+def test_accepted_work_stays_visible_when_the_kill_switch_is_off(pr):
+    pr.assignment("a1")
+    assert pr.svc_.capability_enabled() is False
+    text = _assembly_as("bjorn", "s1")
+    assert "Agenter i gang i denne session" in text and "Agenter (orchestrator-v1)" not in text
+
+
+def test_state_lists_models_attempts_unread_results_approvals_and_unresolved_outcomes(pr):
+    from core.runtime import db_agent_approvals as appr
+    a1, a2 = pr.assignment("a1"), pr.assignment("a2")
+    cn = pr.c_._conn()
+    cn.execute("UPDATE agent_registry SET provider='copilot-premium', model='m1' WHERE agent_id='a1'")
+    cn.execute("UPDATE agent_runs SET status='outcome_unknown' WHERE assignment_id=?", (a2,))
+    cn.execute("UPDATE agent_assignments SET status='waiting' WHERE assignment_id=?", (a2,))
+    cn.commit()
+    done = pr.assignment("a3")
+    pr.c_.commit_terminal_outcome(assignment_id=done, status="completed", summary="klar")
+    appr.request(owner_user_id="bjorn", origin_session_id="s1", assignment_id=a1, tool_name="write_file",
+                 arguments={"path": "x"}, kind="tool", requested_by="a1", risk_class="write")
+    out = ao.orchestrator_state(owner_user_id="bjorn", session_id="s1")
+    assert f"- a1 / {a1}: queued (copilot-premium/m1, forsoeg 1)" in out
+    assert f"- a2 / {a2}: waiting" in out and "UAFKLARET UDFALD" in out
+    assert "a3" not in out.split("Ulaeste")[0]                             # a3 er faerdig - ikke aktivt
+    assert f"Ulaeste i din inbox: 1 resultat(er), 0 tilstandsbesked(er) ({done})" in out
+    assert "Afventende godkendelser: 1" in out and "IKKE godkende" in out
+
+
+def test_state_is_read_only_and_deterministic(pr):
+    pr.assignment("a1")
+    pr.assignment("a2")
+    cn = pr.c_._conn()
+    before = [tuple(r) for r in cn.execute("SELECT assignment_id, status, updated_at FROM agent_assignments")]
+    outs = {ao.orchestrator_state(owner_user_id="bjorn", session_id="s1") for _ in range(3)}
+    assert len(outs) == 1                                                  # samme tilstand => byte-ens tekst
+    assert [tuple(r) for r in pr.c_._conn().execute(
+        "SELECT assignment_id, status, updated_at FROM agent_assignments")] == before
+
+
+def test_state_is_capped_and_says_so(pr):
+    for i in range(ao.MAX_STATE_ROWS + 3):
+        pr.assignment(f"b{i:02d}")
+    out = ao.orchestrator_state(owner_user_id="bjorn", session_id="s1")
+    assert out.count("\n- b") == ao.MAX_STATE_ROWS and "og flere" in out
+
+
+def test_the_model_request_carries_the_state_in_the_tail_item_not_in_the_system_instruction(pr):
+    """Hele vejen til beskedlisten: tilstanden staar i halen foer den aktuelle bruger-besked, ikke i instruktionen."""
+    from core.identity import workspace_context as w
+    from core.services.visible_model import _build_visible_chat_messages_for_github
+    pr.assignment("a1")
+    tok = w.set_context(workspace_name="bjorn", user_id="bjorn", session_id="s1")
+    try:
+        msgs = _build_visible_chat_messages_for_github("hej", session_id="s1", provider="deepseek",
+                                                       model="deepseek-v4-flash")
+    finally:
+        w.reset_context(tok)
+    hits = [i for i, m in enumerate(msgs) if "Agenter i gang i denne session" in str(m.get("content"))]
+    assert hits and 0 not in hits and msgs[hits[0]]["role"] == "system"
+    assert msgs[-1]["role"] == "user" and hits[0] < len(msgs) - 1

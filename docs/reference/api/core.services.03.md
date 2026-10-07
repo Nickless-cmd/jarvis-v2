@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/approval_feedback_subscriber.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_approval_feedback_subscriber` | `()` | — | [src](../../../core/services/approval_feedback_subscriber.py#L19) |
+| function | `stop_approval_feedback_subscriber` | `()` | — | [src](../../../core/services/approval_feedback_subscriber.py#L36) |
+| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/approval_feedback_subscriber.py#L49) |
+
+## `core/services/approval_outbox.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/approval_outbox.py#L19) |
+| function | `ensure_approval_outbox_table` | `(conn)` | — | [src](../../../core/services/approval_outbox.py#L23) |
+| function | `enqueue_approval_notification` | `(conn, *, request_id, user_id, envelope)` | — | [src](../../../core/services/approval_outbox.py#L48) |
+| function | `pending_approval_notifications` | `(limit=…)` | — | [src](../../../core/services/approval_outbox.py#L68) |
+| function | `make_approval_notification_due` | `(request_id)` | — | [src](../../../core/services/approval_outbox.py#L93) |
+| function | `dispatch_pending_approval_notifications` | `(*, limit=…, deliver=…)` | — | [src](../../../core/services/approval_outbox.py#L106) |
+| function | `_worker` | `()` | — | [src](../../../core/services/approval_outbox.py#L155) |
+| function | `start_approval_outbox_dispatcher` | `()` | — | [src](../../../core/services/approval_outbox.py#L164) |
+
 ## `core/services/approval_runtime.py`
 _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 
@@ -631,41 +652,4 @@ _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa.
 | function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L118) |
 | function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L134) |
 | function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L142) |
-
-## `core/services/body_memory.py`
-_Body Memory — Jarvis' kropslige erindringer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/body_memory.py#L51) |
-| function | `_save` | `(snapshots)` | — | [src](../../../core/services/body_memory.py#L61) |
-| function | `_fornemmelse` | `(fakta, belastning)` | Giver (ord, styrke, begrundelse) ud fra kroppens faktiske tal. | [src](../../../core/services/body_memory.py#L70) |
-| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | Gem en kropslig erindring. Kaster aldrig. | [src](../../../core/services/body_memory.py#L88) |
-| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L124) |
-| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L133) |
-| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L138) |
-| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L142) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: gem en erindring naar kroppen SKIFTER. | [src](../../../core/services/body_memory.py#L152) |
-
-## `core/services/boredom_curiosity_bridge.py`
-_Boredom to Curiosity Bridge — transforms boredom into curiosity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Curiosity` | `` | A curiosity that emerges from boredom. | [src](../../../core/services/boredom_curiosity_bridge.py#L23) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L49) |
-| function | `_fra_raa` | `(raa)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L53) |
-| function | `_alder_s` | `(c, nu)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L68) |
-| function | `_levende` | `(cs, nu=…)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L76) |
-| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/boredom_curiosity_bridge.py#L81) |
-| function | `_gem` | `()` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L111) |
-| function | `add_boredom` | `(duration)` | Add boredom based on elapsed duration. | [src](../../../core/services/boredom_curiosity_bridge.py#L124) |
-| function | `_spawn_curiosity` | `()` | Spawn a curiosity when boredom is high enough. | [src](../../../core/services/boredom_curiosity_bridge.py#L185) |
-| function | `should_spawn_curiosity` | `()` | Check if curiosity should spawn based on boredom level. | [src](../../../core/services/boredom_curiosity_bridge.py#L225) |
-| function | `get_curiosity_prompt` | `()` | Get the most relevant curiosity prompt. | [src](../../../core/services/boredom_curiosity_bridge.py#L231) |
-| function | `get_active_curiosities` | `()` | Get all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L242) |
-| function | `clear_curiosities` | `()` | Clear all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L257) |
-| function | `reset_boredom_curiosity_bridge` | `()` | Reset boredom curiosity bridge state (for testing). | [src](../../../core/services/boredom_curiosity_bridge.py#L266) |
-| function | `get_boredom_curiosity_state` | `()` | Get current state of boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L279) |
-| function | `build_boredom_curiosity_bridge_surface` | `()` | Build MC surface for boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L290) |
 

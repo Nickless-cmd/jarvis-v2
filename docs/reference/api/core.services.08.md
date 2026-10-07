@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_selfheal.py`
+_cheap_lane_selfheal — cheap-lane maa ALDRIG stale eller doe (Bjoern 16.jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slukket` | `()` | Udbydere og (udbyder, model) der er slået fra i registret. | [src](../../../core/services/cheap_lane_selfheal.py#L32) |
+| function | `_stale_targets` | `(limit)` | (provider, model) der skal re-probes. To kilder: | [src](../../../core/services/cheap_lane_selfheal.py#L50) |
+| function | `reprobe` | `(provider, model)` | Minimalt sundheds-probe. Healer state ved succes, saetter frisk cooldown ved fejl. | [src](../../../core/services/cheap_lane_selfheal.py#L116) |
+| function | `run_selfheal` | `(*, max_probes=…)` | Re-probe op til max_probes fastlaaste providere. Returnér {healed, still_down}. | [src](../../../core/services/cheap_lane_selfheal.py#L159) |
+
+## `core/services/cheap_lane_trace_context.py`
+_Stable identity carried across Cheap Lane attempts and fallbacks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CheapLaneTraceContext` | `` | — | [src](../../../core/services/cheap_lane_trace_context.py#L9) |
+| method | `CheapLaneTraceContext.create` | `(cls, *, correlation_id=…, daemon=…, task_kind=…, attempt=…, retry_parent_id=…, fallback_parent_id=…)` | — | [src](../../../core/services/cheap_lane_trace_context.py#L18) |
+| method | `CheapLaneTraceContext.next_fallback` | `(self, parent_id)` | — | [src](../../../core/services/cheap_lane_trace_context.py#L37) |
+| function | `candidate_slot_id` | `(candidate)` | — | [src](../../../core/services/cheap_lane_trace_context.py#L46) |
+
 ## `core/services/cheap_provider_breaker_adapters.py`
 _Per-provider circuit-breaker adaptere for OllamaFreeAPI og Arko._
 
@@ -722,31 +742,4 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 | function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L111) |
 | function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L116) |
 | function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L125) |
-
-## `core/services/composite_tools.py`
-_Composite tools — safe self-extension through composition only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
-| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
-| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
-| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
-| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
-| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
-| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
-| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
-| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
-| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
-
-## `core/services/computer_use_policy.py`
-_Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_computer_use_tool` | `(name)` | — | [src](../../../core/services/computer_use_policy.py#L25) |
-| function | `_load` | `()` | — | [src](../../../core/services/computer_use_policy.py#L30) |
-| function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
-| function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
 

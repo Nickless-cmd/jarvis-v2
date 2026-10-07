@@ -67,6 +67,18 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
          "writes": {"type": "boolean", "description": "Code agent: it gets its OWN git worktree of `workspace` "
                     "and can write only there (sandboxed). The result is a diff; nothing is merged."},
          "workspace": {"type": "string", "description": "Repository path (required when writes is true)."},
+         "context_mode": {"type": "string", "enum": ["fresh", "fork"],
+                          "description": "fresh (default): the agent gets only the context you give it. fork: "
+                          "also a snapshot of your finished turns. If the agent will run on another model than "
+                          "you, the runtime computes the extra context cost and refuses unless you give "
+                          "context_excerpt or accept_fork_switch."},
+         "context_excerpt": {"type": "string", "description": "Explicit context excerpt for the agent (instead "
+                             "of copying your history)."},
+         "accept_fork_switch": {"type": "boolean", "description": "Accept a paid fork onto a different model "
+                                "(whole context is processed again). Never implied."},
+         "reasoning_effort": {"type": "string", "enum": ["fast", "think", "deep"],
+                              "description": "Explicit effort; your own effort is inherited only when the agent "
+                              "runs on exactly your model."},
          "idempotency_key": _KEY},
         ["goal"]),
     _fn("followup_agent",
@@ -176,7 +188,11 @@ def _exec_dispatch_agent(args: dict[str, Any]) -> dict[str, Any]:
         max_turns=max(0, int(args.get("max_turns") or 0)),
         model=str(args.get("model") or ""), idempotency_key=str(args.get("idempotency_key") or ""),
         writes=bool(args.get("writes")), workspace=str(args.get("workspace") or ""),
-        model_required=bool(args.get("model_required")))
+        model_required=bool(args.get("model_required")),
+        context_mode=str(args.get("context_mode") or "fresh"),
+        context_excerpt=str(args.get("context_excerpt") or ""),
+        accept_fork_switch=bool(args.get("accept_fork_switch")),
+        reasoning_effort=str(args.get("reasoning_effort") or ""))
 
 
 def _exec_followup_agent(args: dict[str, Any]) -> dict[str, Any]:

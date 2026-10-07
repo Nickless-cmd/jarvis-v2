@@ -116,6 +116,17 @@ _Artefaktlager for agentkoersler (agent-contract-v1, leverance C1, spec 9 og 12.
 | function | `reconcile` | `()` | Afstem DB mod disk. Markerer poster med manglende/korrupt fil, finder foraeldreloese | [src](../../../core/runtime/db_agent_artifacts.py#L179) |
 | function | `write_terminal_artifacts` | `(*, agent_id, assignment_id, owner_user_id, status, reply, summary, error_code=…, error_phase=…, worktree=…)` | Skriv ``result.json`` (+ ``final.txt`` og ``events.jsonl``) for assignmentets SIDSTE run | [src](../../../core/runtime/db_agent_artifacts.py#L212) |
 
+## `core/runtime/db_agent_attempts.py`
+_Failover som nyt synligt runforsoeg (agent-contract-v1 G, spec 7.1 og 6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fence` | `(conn, assignment_id)` | Den koerende traads lease skal stadig vaere den gaeldende - tjekket INDE i transaktionen. | [src](../../../core/runtime/db_agent_attempts.py#L30) |
+| function | `begin_failover_attempt` | `(*, from_run_id, decision, reason)` | Luk det svigtede forsoeg med en fejlpost og aabn det naeste (nyt ``run_id``, ``attempt_no`` + 1). | [src](../../../core/runtime/db_agent_attempts.py#L47) |
+| function | `_write_failed_attempt_artifact` | `(*, agent_id, run_id, assignment_id, owner, reason, successor, attempt_no)` | ``result.json`` for det svigtede forsoeg, saa manifestet viser det. Bedste indsats: en manglende | [src](../../../core/runtime/db_agent_attempts.py#L110) |
+| function | `live_run_id` | `(run_id)` | Foelg failover-kaeden fra ``run_id`` til det forsoeg der koerer nu. Et run der ikke er afloest af et | [src](../../../core/runtime/db_agent_attempts.py#L129) |
+| function | `attempts_for_assignment` | `(assignment_id)` | — | [src](../../../core/runtime/db_agent_attempts.py#L149) |
+
 ## `core/runtime/db_agent_bridge.py`
 _Varige bro-invocations for agenter paa et klient-target (agent-contract-v1 E, spec 8 + 8.1)._
 
@@ -146,26 +157,26 @@ _Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
 | method | `ContractError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/runtime/db_agent_contract.py#L37) |
 | function | `_add_columns` | `(conn, table, columns)` | — | [src](../../../core/runtime/db_agent_contract.py#L43) |
 | function | `ensure_agent_contract_tables` | `(conn)` | Idempotent skema. Kalder `_ensure_agent_runtime_tables` først, så de | [src](../../../core/runtime/db_agent_contract.py#L54) |
-| function | `_conn` | `()` | Ensure-én-gang-per-proces-og-DB: ellers koster hvert statusskifte 8 DDL-kald. | [src](../../../core/runtime/db_agent_contract.py#L174) |
-| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_agent_contract.py#L187) |
-| function | `_require` | `(value, name)` | — | [src](../../../core/runtime/db_agent_contract.py#L191) |
-| function | `_digest` | `(*parts)` | — | [src](../../../core/runtime/db_agent_contract.py#L198) |
-| function | `mark_legacy_unscoped` | `()` | Gamle rækker uden ejer er allerede mærket via kolonne-default; denne | [src](../../../core/runtime/db_agent_contract.py#L204) |
-| function | `accept_assignment` | `(*, agent_id, owner_user_id, origin_session_id, goal, parent_agent_id=…, parent_run_id=…, input_refs=…, expected_result=…, target=…, deadline_at=…, budget=…, created_by=…, operation=…, idempotency_key=…, request_digest=…)` | Accepter ét assignment atomisk sammen med dets første run. | [src](../../../core/runtime/db_agent_contract.py#L217) |
-| function | `commit_terminal_outcome` | `(*, assignment_id, status, summary=…, error_code=…, error_phase=…, artifact_ref=…, last_run_id=…, artifact_error=…)` | Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME | [src](../../../core/runtime/db_agent_contract.py#L316) |
-| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L410) |
-| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L438) |
-| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L449) |
-| function | `bind_agent_owner` | `(*, agent_id, owner_user_id, owner_session_id)` | Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten | [src](../../../core/runtime/db_agent_contract.py#L468) |
-| function | `queued_contract_run` | `(agent_id)` | Id på det run accept_assignment forudoprettede og som endnu ikke er startet. | [src](../../../core/runtime/db_agent_contract.py#L480) |
-| function | `adopt_run` | `(*, agent_id, run_id)` | Bind et nyoprettet run til agentens åbne assignment som næste forsøg. | [src](../../../core/runtime/db_agent_contract.py#L489) |
-| function | `settle_agent_status` | `(*, agent_id, registry_status)` | Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne | [src](../../../core/runtime/db_agent_contract.py#L527) |
-| function | `claim_pending_results` | `(*, owner_user_id, origin_session_id)` | Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for | [src](../../../core/runtime/db_agent_contract.py#L577) |
-| function | `find_assignment_by_key` | `(*, owner_user_id, origin_session_id, operation, idempotency_key)` | Findes der allerede et assignment for netop denne ejer/session/operation/noegle? | [src](../../../core/runtime/db_agent_contract.py#L609) |
-| function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L620) |
-| function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L626) |
-| function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L639) |
-| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L652) |
+| function | `_conn` | `()` | Ensure-én-gang-per-proces-og-DB: ellers koster hvert statusskifte 8 DDL-kald. | [src](../../../core/runtime/db_agent_contract.py#L181) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_agent_contract.py#L194) |
+| function | `_require` | `(value, name)` | — | [src](../../../core/runtime/db_agent_contract.py#L198) |
+| function | `_digest` | `(*parts)` | — | [src](../../../core/runtime/db_agent_contract.py#L205) |
+| function | `mark_legacy_unscoped` | `()` | Gamle rækker uden ejer er allerede mærket via kolonne-default; denne | [src](../../../core/runtime/db_agent_contract.py#L211) |
+| function | `accept_assignment` | `(*, agent_id, owner_user_id, origin_session_id, goal, parent_agent_id=…, parent_run_id=…, input_refs=…, expected_result=…, target=…, deadline_at=…, budget=…, created_by=…, operation=…, idempotency_key=…, request_digest=…)` | Accepter ét assignment atomisk sammen med dets første run. | [src](../../../core/runtime/db_agent_contract.py#L224) |
+| function | `commit_terminal_outcome` | `(*, assignment_id, status, summary=…, error_code=…, error_phase=…, artifact_ref=…, last_run_id=…, artifact_error=…)` | Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME | [src](../../../core/runtime/db_agent_contract.py#L323) |
+| function | `advance_delivery` | `(*, message_id, owner_user_id, to_status)` | Flyt en terminalbesked fremad i leveringskæden. Kun fremad, kun ejeren. | [src](../../../core/runtime/db_agent_contract.py#L417) |
+| function | `list_pending_results` | `(*, owner_user_id, origin_session_id)` | Ubehandlede terminalbeskeder for NETOP denne ejer og session. | [src](../../../core/runtime/db_agent_contract.py#L445) |
+| function | `get_assignment` | `(*, assignment_id, owner_user_id)` | Ejerfiltreret opslag; en anden ejers assignment er `None`, ikke 403. | [src](../../../core/runtime/db_agent_contract.py#L456) |
+| function | `bind_agent_owner` | `(*, agent_id, owner_user_id, owner_session_id)` | Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten | [src](../../../core/runtime/db_agent_contract.py#L477) |
+| function | `queued_contract_run` | `(agent_id)` | Id på det run accept_assignment forudoprettede og som endnu ikke er startet. | [src](../../../core/runtime/db_agent_contract.py#L489) |
+| function | `adopt_run` | `(*, agent_id, run_id)` | Bind et nyoprettet run til agentens åbne assignment som næste forsøg. | [src](../../../core/runtime/db_agent_contract.py#L498) |
+| function | `settle_agent_status` | `(*, agent_id, registry_status)` | Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne | [src](../../../core/runtime/db_agent_contract.py#L536) |
+| function | `claim_pending_results` | `(*, owner_user_id, origin_session_id)` | Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for | [src](../../../core/runtime/db_agent_contract.py#L601) |
+| function | `find_assignment_by_key` | `(*, owner_user_id, origin_session_id, operation, idempotency_key)` | Findes der allerede et assignment for netop denne ejer/session/operation/noegle? | [src](../../../core/runtime/db_agent_contract.py#L633) |
+| function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L644) |
+| function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L650) |
+| function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L663) |
+| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L676) |
 
 ## `core/runtime/db_agent_council.py`
 _Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._
@@ -181,6 +192,15 @@ _Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._
 | function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L99) |
 | function | `open_councils` | `()` | — | [src](../../../core/runtime/db_agent_council.py#L109) |
 | function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L115) |
+
+## `core/runtime/db_agent_fork.py`
+_Varig kontekstbeslutning for et assignment: fresh/fork, valgt vej og omkostning (agent-contract-v1 G, spec 7.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_fork_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_fork.py#L20) |
+| function | `record_fork` | `(*, assignment_id, agent_id, owner_user_id, origin_session_id, plan, conn=…)` | Gem planen (``agent_fork_policy.plan_context``) for assignmentet. | [src](../../../core/runtime/db_agent_fork.py#L56) |
+| function | `get_fork` | `(*, assignment_id, owner_user_id, conn=…)` | Ejer-afgraenset opslag; en andens assignment er ``None``. | [src](../../../core/runtime/db_agent_fork.py#L88) |
 
 ## `core/runtime/db_agent_lease.py`
 _Workerlease med stigende fencing-token + supervisor-genopretning (agent-contract-v1 C2)._
@@ -215,6 +235,18 @@ _Agentens EGEN erindring paa tvaers af assignments (agent-contract-v1 C4, spec 7
 | function | `write_note` | `(*, owner_user_id, agent_id, content, author, source_assignment_id=…)` | Skriv en NY version af agentens noter (den gamle bevares med aendringsspor). | [src](../../../core/runtime/db_agent_memory.py#L176) |
 | function | `grant_session_relation` | `(*, owner_user_id, agent_id, session_id, granted_by)` | Giv en anden session adgang til agentens gamle erindring. Kun agentens ejer, og kun | [src](../../../core/runtime/db_agent_memory.py#L208) |
 | function | `recall` | `(*, owner_user_id, agent_id, session_id, budget_chars=…)` | Begraenset, kildeangivet uddrag af agentens EGEN erindring til netop denne session. | [src](../../../core/runtime/db_agent_memory.py#L232) |
+
+## `core/runtime/db_agent_outcome_unknown.py`
+_Tilstandsbesked ved ``outcome_unknown`` og dens afgoerelse (agent-contract-v1 G, spec 6, 9 og 12.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_outcome_unknown_columns` | `(conn)` | — | [src](../../../core/runtime/db_agent_outcome_unknown.py#L34) |
+| function | `notify_outcome_unknown` | `(conn, *, assignment_id, run_id, reason, open_tool_calls=…)` | Skriv tilstandsbeskeden i kalderens transaktion (samme commit som runnets skift til ``outcome_unknown``). | [src](../../../core/runtime/db_agent_outcome_unknown.py#L44) |
+| function | `publish_outcome_unknown` | `(*, assignment_id, run_id, agent_id, owner_user_id)` | Live-signal til Desk (efter committet). Bedste indsats: DB-markeringen er sandheden. | [src](../../../core/runtime/db_agent_outcome_unknown.py#L72) |
+| function | `is_blocked` | `(agent_id)` | Har agentens aabne assignment et uafklaret udfald? Saa maa den IKKE koeres igen (ingen automatisk retry af | [src](../../../core/runtime/db_agent_outcome_unknown.py#L83) |
+| function | `list_unresolved` | `(*, owner_user_id)` | Ejerens uafgjorte ``outcome_unknown``-tilstande (Desk-projektion). Aldrig en andens. | [src](../../../core/runtime/db_agent_outcome_unknown.py#L94) |
+| function | `resolve_outcome_unknown` | `(*, owner_user_id, assignment_id, outcome, decided_by, actor_kind, note=…)` | Afgoer et uafklaret udfald. Kun et menneske eller en verificering (``actor_kind``) og kun for ejerens egen | [src](../../../core/runtime/db_agent_outcome_unknown.py#L102) |
 
 ## `core/runtime/db_agent_route.py`
 _Varig rute-proveniens for agenter (agent-contract-v1 D, spec 7.1)._
@@ -665,57 +697,4 @@ _Core infrastructure for core.runtime.db modulet._
 | function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L558) |
 | function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L568) |
 | function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L586) |
-
-## `core/runtime/db_credit_assignment.py`
-_Credit assignment — schema migration, choice recording, and outcome querying._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_credit_assignment.py#L24) |
-| function | `ensure_credit_assignment_tables` | `(conn=…)` | Add credit-assignment columns to existing tables + pending index. | [src](../../../core/runtime/db_credit_assignment.py#L30) |
-| function | `_migrate_table` | `(conn, table, columns)` | Add columns to *table* if they don't already exist. | [src](../../../core/runtime/db_credit_assignment.py#L74) |
-| function | `record_choice` | `(*, kind=…, title, options, decision, why=…, context=…)` | Record a choice in cognitive_decisions with a kind tag. | [src](../../../core/runtime/db_credit_assignment.py#L105) |
-| function | `list_unreviewed_decisions` | `(*, kind=…, limit=…)` | Find decisions of a given *kind* that have no linked outcome yet. | [src](../../../core/runtime/db_credit_assignment.py#L160) |
-| function | `link_outcome_to_decision` | `(*, decision_id, credit_score, rationale, evidence_summary=…, run_id=…)` | Link a self-review outcome to a decision and update outcome_aggregate. | [src](../../../core/runtime/db_credit_assignment.py#L188) |
-| function | `score_provider_outcome` | `(decision_id, result)` | Score a provider_routing decision based on actual call result. | [src](../../../core/runtime/db_credit_assignment.py#L303) |
-| function | `score_tier_outcome` | `(decision_id, tier_used, next_turns)` | Score a model_tier decision after observing subsequent turns. | [src](../../../core/runtime/db_credit_assignment.py#L363) |
-| function | `score_response_outcome` | `(decision_id, style_used, user_reply)` | Score a response_style decision based on user engagement. | [src](../../../core/runtime/db_credit_assignment.py#L436) |
-| function | `_get_median_provider_cost` | `()` | Approximate median cost-per-token across recent cheap-lane calls. | [src](../../../core/runtime/db_credit_assignment.py#L514) |
-| function | `get_credit_trend` | `(*, kind=…, limit=…)` | Show decisions with their outcomes for oversight. | [src](../../../core/runtime/db_credit_assignment.py#L539) |
-
-## `core/runtime/db_decisions.py`
-_Behavioral decisions store — commitments Jarvis makes to himself._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_decisions.py#L28) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L72) |
-| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
-| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
-| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L176) |
-| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L211) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L232) |
-| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L294) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L311) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L323) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L354) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L365) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L380) |
-
-## `core/runtime/db_devices.py`
-_Enheder — hvem må styre denne computer, og hvem må bruge code mode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L47) |
-| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L59) |
-| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L64) |
-| function | `registrer_computer` | `(user_id, app_id, *, navn=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L81) |
-| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L107) |
-| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L119) |
-| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L130) |
-| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
-| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
-| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
 

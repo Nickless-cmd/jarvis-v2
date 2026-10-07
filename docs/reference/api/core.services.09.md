@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/composite_tools.py`
+_Composite tools — safe self-extension through composition only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
+| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
+| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
+| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
+| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
+| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
+| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
+| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
+| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
+| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
+
+## `core/services/computer_use_policy.py`
+_Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_computer_use_tool` | `(name)` | — | [src](../../../core/services/computer_use_policy.py#L25) |
+| function | `_load` | `()` | — | [src](../../../core/services/computer_use_policy.py#L30) |
+| function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
+| function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
+
 ## `core/services/computer_use_samtykke.py`
 _Samtykke til at røre Bjørns mus og tastatur — én gang pr. samtale._
 
@@ -603,32 +630,4 @@ _Creative Projects — multi-week persistent creative impulse._
 | function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
 | function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L169) |
 | function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L189) |
-
-## `core/services/crisis_marker_detector.py`
-_Crisis marker detector — flag identity-forming friction moments._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_detect_sustained_failure` | `(events)` | ≥5 consecutive errors of the same tool. | [src](../../../core/services/crisis_marker_detector.py#L43) |
-| function | `_detect_unexpected_success` | `(events)` | Tick quality summary that jumped sharply. | [src](../../../core/services/crisis_marker_detector.py#L74) |
-| function | `_detect_existential_moment` | `(events)` | Explicit identity-formation statements in recent messages. | [src](../../../core/services/crisis_marker_detector.py#L95) |
-| function | `_detect_high_volatility` | `(events)` | Rapid mood shifts in recent personality snapshots. | [src](../../../core/services/crisis_marker_detector.py#L157) |
-| function | `_recent_events` | `(hours=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L196) |
-| function | `scan_for_crisis_markers` | `()` | Run all detectors. Persist any new markers found. | [src](../../../core/services/crisis_marker_detector.py#L206) |
-| function | `list_crisis_markers` | `(*, days_back=…, limit=…)` | — | [src](../../../core/services/crisis_marker_detector.py#L270) |
-| function | `crisis_marker_section` | `()` | Awareness section showing recent crisis markers (last 7 days). | [src](../../../core/services/crisis_marker_detector.py#L283) |
-| function | `_exec_scan_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L301) |
-| function | `_exec_list_crisis_markers` | `(args)` | — | [src](../../../core/services/crisis_marker_detector.py#L305) |
-
-## `core/services/cross_agent_memory.py`
-_Cross-agent memory — shared observations queryable across agents._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_all_observations` | `()` | Read full observation log from Layer 1 storage. | [src](../../../core/services/cross_agent_memory.py#L37) |
-| function | `_filter_by_freshness` | `(records, days)` | — | [src](../../../core/services/cross_agent_memory.py#L49) |
-| function | `_keyword_score` | `(text, query)` | Cheap relevance score: count of query keywords in text, normalised. | [src](../../../core/services/cross_agent_memory.py#L56) |
-| function | `cross_agent_recall` | `(*, query, requesting_role=…, exclude_roles=…, days_back=…, limit=…, min_score=…)` | Find relevant observations from OTHER agents matching the query. | [src](../../../core/services/cross_agent_memory.py#L68) |
-| function | `cross_agent_recall_section` | `(role, query)` | Format cross-agent recall as text for sub-agent system_prompt injection. | [src](../../../core/services/cross_agent_memory.py#L130) |
-| function | `_exec_cross_agent_recall` | `(args)` | — | [src](../../../core/services/cross_agent_memory.py#L146) |
 

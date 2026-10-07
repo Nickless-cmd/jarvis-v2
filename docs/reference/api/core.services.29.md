@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_stream_gate.py`
+_In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `visible_streaming` | `()` | True hvis mindst én synlig tur i øjeblikket assembler/streamer i denne proces. | [src](../../../core/services/visible_stream_gate.py#L27) |
+| function | `enter_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L38) |
+| function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
+| function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
+
+## `core/services/visible_synthesis_stream.py`
+_Den streamede syntese, skrubbet — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SyntesStykke` | `` | Ét renset stykke på vej til skærmen. | [src](../../../core/services/visible_synthesis_stream.py#L39) |
+| class | `SyntesFacit` | `` | Den færdige, skrubbede tekst. Kommer sidst, præcis én gang. | [src](../../../core/services/visible_synthesis_stream.py#L45) |
+| function | `skrubbet_syntese` | `(stroem, *, delta_klasse)` | Kør en syntese-strøm igennem `StroemSkrubber` og giv rensede stykker. | [src](../../../core/services/visible_synthesis_stream.py#L50) |
+
+## `core/services/visible_terminal_policy.py`
+_Single source of truth for visible task terminal decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TerminalState` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L14) |
+| class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L23) |
+| class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L36) |
+| function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L51) |
+| function | `is_non_retryable_recovery_reason` | `(reason)` | Reject retries for deterministic request and local-code failures. | [src](../../../core/services/visible_terminal_policy.py#L55) |
+| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L64) |
+| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L103) |
+| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L142) |
+
 ## `core/services/visible_text_scrub.py`
 _Fjern runtime'ens interne markører fra den tekst brugeren ser._
 

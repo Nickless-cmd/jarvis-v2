@@ -142,11 +142,19 @@ def dispatch_agent(
     target: str = "runtime-container", budget_tokens: int = 0, max_turns: int = 0,
     expected_result: str = "", model: str = "", idempotency_key: str = "",
     writes: bool = False, workspace: str = "", model_required: bool = False,
+    context_mode: str = "fresh", context_excerpt: str = "", accept_fork_switch: bool = False,
+    reasoning_effort: str = "",
 ) -> dict[str, Any]:
     """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS.
 
     ``model`` er en praeference, ``model_required=True`` et haardt krav (D, spec 7.1). Ruten fastlaegges
     FOER agenten oprettes; findes ingen tilladt rute, svares ``MODEL_UNAVAILABLE`` og intet er oprettet.
+
+    ``context_mode='fork'`` kopierer parentens afsluttede ture (tidspunktssnapshot). Er agentens rute en anden
+    model end parentens, beregner runtime den ekstra kontekstomkostning og vaelger: samme model inden for
+    laget, eksplicit ``context_excerpt``, eller - kun med ``accept_fork_switch=True`` - en betalt fork. Ellers
+    ``FORK_COST_UNACCEPTED`` og intet er oprettet (``agent_fork_policy``). Parentens ``reasoning_effort`` arves
+    kun ved samme rute.
 
     ``writes=True`` + ``workspace`` giver en kodeagent: den faar sit eget git-worktree (reserveret FOER
     den er accepteret) og kan kun skrive dér, gennem en sandbox (C5). Faar worktree'et ikke plads, er
@@ -183,7 +191,11 @@ def dispatch_agent(
     digest = _digest(goal=goal, role=role, description=description, tool_policy=tool_policy,
                      allowed_tools=allowed_tools or [], target=target, budget=budget_tokens,
                      turns=max_turns, expected=expected_result, model=model, model_required=model_required,
-                     parent=parent_agent_id, parent_run=parent_run_id, writes=writes, workspace=workspace)
+                     parent=parent_agent_id, parent_run=parent_run_id, writes=writes, workspace=workspace,
+                     # kun naar de afviger fra standarden: en gammel noegle skal stadig matche efter opgradering
+                     **({"context": [context_mode, context_excerpt, accept_fork_switch, reasoning_effort]}
+                        if (context_mode, context_excerpt, accept_fork_switch, reasoning_effort)
+                        != ("fresh", "", False, "") else {}))
     prior = c.find_assignment_by_key(owner_user_id=owner_user_id, origin_session_id=origin_session_id,
                                      operation="dispatch", idempotency_key=idempotency_key)
     if prior is not None:
@@ -200,6 +212,22 @@ def dispatch_agent(
     except ModelUnavailable as exc:
         logger.info("dispatch afvist: ingen tilladt model (%s)", exc.detail)
         return {**_err("MODEL_UNAVAILABLE", exc.detail, "admission"), "reasons": exc.reasons}
+    from core.services import agent_fork_policy as fork
+    try:
+        plan, route = fork.plan_context(
+            owner_user_id=owner_user_id, session_id=origin_session_id, parent_run_id=parent_run_id,
+            route=route, context_mode=context_mode, context_excerpt=context_excerpt,
+            accept_fork_switch=accept_fork_switch, reasoning_effort=reasoning_effort)
+    except fork.ForkRefused as exc:
+        logger.info("dispatch afvist: fork-skift ikke accepteret (%s)", exc.detail)
+        return {**_err(exc.code, exc.detail, "admission"), **exc.options}
+    except fork.InvalidContext as exc:
+        logger.info("dispatch afvist: ugyldigt kontekstvalg (%s)", exc)
+        return _err(exc.code, str(exc), "admission")
+    route = dict(route, context_mode=plan["context_mode"], context_path=plan["plan_path"],
+                 reasoning_effort=plan["reasoning_effort"], effort_source=plan["effort_source"],
+                 parent_provider=plan["parent_provider"], parent_model=plan["parent_model"],
+                 parent_effort=plan["parent_effort"])
     from core.services.agent_runtime_spawn import spawn_agent_task
     try:
         spawned = spawn_agent_task(
@@ -227,6 +255,14 @@ def dispatch_agent(
         logger.warning("rute-proveniens kunne ikke gemmes - agenten afvises", exc_info=True)
         c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
         return _err("INVALID_SCOPE", f"rute kunne ikke gemmes: {type(exc).__name__}"[:120])
+    try:
+        from core.runtime import db_agent_fork
+        db_agent_fork.record_fork(assignment_id=a["assignment_id"], agent_id=agent_id,
+                                  owner_user_id=owner_user_id, origin_session_id=origin_session_id, plan=plan)
+    except Exception as exc:
+        logger.warning("kontekstvalget kunne ikke gemmes - agenten afvises", exc_info=True)
+        c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+        return _err("INVALID_SCOPE", f"kontekstvalg kunne ikke gemmes: {type(exc).__name__}"[:120])
     worktree: dict[str, Any] | None = None
     if writes:
         from core.services.agent_worktrees import provision
@@ -247,6 +283,7 @@ def dispatch_agent(
                          "run_id": run["run_id"] if run else "", "status": a["status"]})
     view["route"] = {"route_source": route["route_source"], "provider": route["provider"],
                      "model": route["model"]}
+    view["context"] = fork.plan_view(plan)
     if worktree is not None:
         view["worktree"] = {"worktree_id": worktree["worktree_id"], "branch": worktree["branch"],
                             "base_commit": worktree["base_commit"]}

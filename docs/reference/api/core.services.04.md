@@ -2,6 +2,43 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/body_memory.py`
+_Body Memory — Jarvis' kropslige erindringer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/body_memory.py#L51) |
+| function | `_save` | `(snapshots)` | — | [src](../../../core/services/body_memory.py#L61) |
+| function | `_fornemmelse` | `(fakta, belastning)` | Giver (ord, styrke, begrundelse) ud fra kroppens faktiske tal. | [src](../../../core/services/body_memory.py#L70) |
+| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | Gem en kropslig erindring. Kaster aldrig. | [src](../../../core/services/body_memory.py#L88) |
+| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L124) |
+| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L133) |
+| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L138) |
+| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L142) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: gem en erindring naar kroppen SKIFTER. | [src](../../../core/services/body_memory.py#L152) |
+
+## `core/services/boredom_curiosity_bridge.py`
+_Boredom to Curiosity Bridge — transforms boredom into curiosity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Curiosity` | `` | A curiosity that emerges from boredom. | [src](../../../core/services/boredom_curiosity_bridge.py#L23) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L49) |
+| function | `_fra_raa` | `(raa)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L53) |
+| function | `_alder_s` | `(c, nu)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L68) |
+| function | `_levende` | `(cs, nu=…)` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L76) |
+| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/boredom_curiosity_bridge.py#L81) |
+| function | `_gem` | `()` | — | [src](../../../core/services/boredom_curiosity_bridge.py#L111) |
+| function | `add_boredom` | `(duration)` | Add boredom based on elapsed duration. | [src](../../../core/services/boredom_curiosity_bridge.py#L124) |
+| function | `_spawn_curiosity` | `()` | Spawn a curiosity when boredom is high enough. | [src](../../../core/services/boredom_curiosity_bridge.py#L185) |
+| function | `should_spawn_curiosity` | `()` | Check if curiosity should spawn based on boredom level. | [src](../../../core/services/boredom_curiosity_bridge.py#L225) |
+| function | `get_curiosity_prompt` | `()` | Get the most relevant curiosity prompt. | [src](../../../core/services/boredom_curiosity_bridge.py#L231) |
+| function | `get_active_curiosities` | `()` | Get all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L242) |
+| function | `clear_curiosities` | `()` | Clear all active curiosities. | [src](../../../core/services/boredom_curiosity_bridge.py#L257) |
+| function | `reset_boredom_curiosity_bridge` | `()` | Reset boredom curiosity bridge state (for testing). | [src](../../../core/services/boredom_curiosity_bridge.py#L266) |
+| function | `get_boredom_curiosity_state` | `()` | Get current state of boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L279) |
+| function | `build_boredom_curiosity_bridge_surface` | `()` | Build MC surface for boredom curiosity bridge. | [src](../../../core/services/boredom_curiosity_bridge.py#L290) |
+
 ## `core/services/boredom_engine.py`
 _Boredom Engine — productive restlessness as first-class experience._
 
@@ -569,29 +606,4 @@ _DIASTOLE — det følte åndedræt (LivingNeuron-council, 4. jul)._
 | function | `_observe_tempo_burn` | `(tempo, *, consuming)` | §28 burn-watch: gør tempo-drevet omkostning synlig. Da DIASTOLE kan fordoble LLM- | [src](../../../core/services/central_cadence_conductor.py#L219) |
 | function | `register_cadence_tempo_producer` | `()` | Cadence-producer ~hver 2. minut — tæt nok til en meningsfuld shadow-kurve, billig | [src](../../../core/services/central_cadence_conductor.py#L241) |
 | function | `build_cadence_tempo_surface` | `()` | Mission Control — read-only: det SHADOW-observerede tempo (ingen modulation aktiv). | [src](../../../core/services/central_cadence_conductor.py#L254) |
-
-## `core/services/central_capture.py`
-_Boundary-capture for Centralen (§10). Kør en nerve bag en grænse: enhver_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ErrorRecord` | `` | — | [src](../../../core/services/central_capture.py#L15) |
-| function | `safe_call` | `(fn, ctx, *, nerve=…, cluster=…, klass=…)` | Returnér (resultat, None) ved succes, ellers (None, ErrorRecord). Kaster aldrig. | [src](../../../core/services/central_capture.py#L26) |
-
-## `core/services/central_catalog.py`
-_Fit-pass-katalog (§13.2): det maskinlæsbare resultat af kortlægningen af hver nerve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `NerveSpec` | `` | — | [src](../../../core/services/central_catalog.py#L16) |
-| function | `nerve_location` | `(name)` | Fil:linje for en nerve (til cross-cluster korrelation: hvilke filer relaterer til et run). | [src](../../../core/services/central_catalog.py#L483) |
-| function | `nerve_cluster` | `(name)` | — | [src](../../../core/services/central_catalog.py#L488) |
-| function | `nerve_klass` | `(name)` | Katalog-klasse for en nerve, eller None hvis nerven ikke er kortlagt. | [src](../../../core/services/central_catalog.py#L492) |
-| function | `is_security_nerve` | `(name)` | True hvis nerven er katalog-klassificeret SECURITY (§11.3: må ALDRIG decentraliseres). | [src](../../../core/services/central_catalog.py#L501) |
-| function | `cluster_rank` | `(cluster)` | Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet). | [src](../../../core/services/central_catalog.py#L509) |
-| function | `clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L517) |
-| function | `is_security_cluster` | `(cluster)` | True hvis clusteret har mindst én SECURITY-nerve (→ kan ikke slås fra). | [src](../../../core/services/central_catalog.py#L527) |
-| function | `security_clusters` | `()` | — | [src](../../../core/services/central_catalog.py#L532) |
-| function | `by_cluster` | `(cluster)` | — | [src](../../../core/services/central_catalog.py#L536) |
-| function | `validate` | `()` | Returnér liste af problemer (tom = grøn). | [src](../../../core/services/central_catalog.py#L540) |
 

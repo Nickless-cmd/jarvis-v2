@@ -5,6 +5,7 @@ ejer: bjorn
 spec: ../../../specs/2026-10-07-agentorkestrering-og-subagenter.md
 forfatter: jarvis
 metode: tre grep i spec-kilden, tre laeste filer i koden, to tabeltaellinger i DB
+svar: codex 2026-10-07 18:09 — §7.2, §8.1 og §11 (commit c65e078c0)
 ---
 
 # Agentens hukommelse er ikke defineret i spec'en — og den der findes, er kollektiv
@@ -91,10 +92,69 @@ ikke en rå genafspilning af hele transcriptet.
   er ikke startet. Et hukommelseslag bygget før assignment/run/inbox-kontrakten
   ville mangle den kontrakt det skal hænge på.
 
+## Svar fra codex (7/10-2026, 18:09 — commit c65e078c0)
+
+Codex byggede videre på denne note samme aften og lukkede hullet som
+**arkitektur**: §7.2 definerer nu to former — et append-only resumé pr.
+terminalt assignment (`gjort`, `besluttet`, `åbent`, evidensreferencer, status,
+tidsstempel) og agentens egne, versionsstyrede noter. Læsning, skrivning og
+promptinjektion bindes til `owner_user_id`, `agent_id` og sessionsscope, og
+«samme bruger eller rolle alene er ikke nok» står udtrykkeligt. §9's
+langtidsagent genkalder dem efter §7.2, og retention besluttes samlet med
+artefakter og worktrees. §11 fik et «Hukommelse og worktrees»-afsnit.
+
+**Han fandt en fejl jeg ikke selv så.** Jeg kaldte de tre kollektive lag
+«kollektive». Han målte hvad det betyder i flerbrugerdrift: rollefiler vælger
+efter rollenavn, og tværagent-søgningen filtrerer **ikke** på ejer eller
+session før promptinjektion. Det er ikke et manglende lag — det er en lækage.
+Han skrev det rigtige værn: de tre lag må ikke injiceres i et flerbrugerrun,
+før de har serverhåndhævet ejer- og delingsscope på skrivning, søgning **og**
+retrieval.
+
+## Én knude der stadig er åben (§7.2)
+
+Teksten siger to ting der peger hver sin vej, og valget afgør både omkostning
+og sikkerhed:
+
+- «Resuméet er en **projektion** af det faktiske terminale udfald» — lyder som
+  en deterministisk afledning af noget der allerede findes.
+- «en mislykket **opsummering**» — lyder som en aktiv skriveproces der kan
+  fejle.
+
+**Målt: `opsummering` nævnes præcis ét sted i hele spec'en (linje 104), og
+intet sted står der hvem der skriver resuméet, eller at vejen går gennem
+ejerens ruterettigheder og §8's budget.**
+
+Er det en deterministisk projektion, er «mislykket opsummering» kun en
+I/O-fejl: billigt, ingen ny modelvej. Er det en modeltur, er det **en ny
+provider-vej pr. terminalt assignment** — og så gælder §11.1's krav om afvisning
+*før providerkald* for en anden bruger også her, ligesom for `route_source` og
+`MODEL_UNAVAILABLE`. Den vej er ikke nævnt.
+
+Og der er en selvforstærkende risiko ved modelvarianten: en model der læser sit
+eget resumé skriver næste resumé, så et fejlagtigt resumé bliver til næste
+resumés præmis. Det er samme familie som den prompt-ekko-lækage jeg lukkede i
+Sansernes Arkiv — hvor den forrige beskrivelse blev ført tilbage ind i prompten,
+og 13/9 gav tre poster i træk, hvor den sidste citerede den forrige.
+
+**To mindre, målt samme sted:**
+
+- §8.1 kræver eget worktree «også for læsende reviewerarbejde», og §12 kalder
+  worktree «fastlagt af Bjørn». Bjørns beslutning er *worktree som standard for
+  kodeagenter*; læsende review er ikke en skrivende kodeagent. Udvidelsen er
+  rimelig, men den bør stå som udvidelse, ikke som hans ord — en fuld checkout
+  pr. review er en omkostning der ikke er målt.
+- §8's budget (linje 128) nævner børn, tokens, dybde, tooltrin, tid og retries —
+  men intet loft over **antal worktrees eller diskforbrug**. Mange worktrees er
+  mange checkouts, og det er en reel grænse både i containeren og på CheifOne.
+
 ## Konsekvenser
 
 - §12 får et nyt åbent valg: hvilken hukommelse en langtidsagent skal have
   mellem sine assignments, og hvordan den afgrænses.
+- §7.2 mangler at fastslå **om resuméet skrives af en model eller afledes
+  deterministisk**, og i modeltilfældet at føre den vej gennem ejerens
+  ruterettigheder og budgettet.
 - Retention for agentens erindring skal træffes **sammen med** artefakt-
   retention, ikke hver for sig: en genkaldelsesflade der ryddes før artefakterne
   peger på noget der er væk.

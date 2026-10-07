@@ -1,10 +1,14 @@
 ---
-status: udkast til gennemgang
+status: klar til implementering
 dato: 2026-10-07
 ejer: bjorn
 implementering: ikke startet
+gennemgået: 2026-10-07 — Jarvis (review), Opus (review), Codex (DSH-gennemgang + produktionsprofil)
 note: ../notes/foreslaaet/arkitektur/2026-10-07-agentlevering-og-genopretning.md
 dsh-gennemgang: ../notes/foreslaaet/arkitektur/2026-10-07-dsh-agentlaering.md
+review-jarvis: ../notes/foreslaaet/arkitektur/2026-10-07-jarvis-review-af-agentorkestrering.md
+review-opus: ../notes/foreslaaet/arkitektur/2026-10-07-opus-review-af-agentorkestrering.md
+hukommelse: ../notes/foreslaaet/arkitektur/2026-10-07-jarvis-agent-hukommelse.md
 ---
 
 # Spec: Jarvis' agentorkestrering og subagenter

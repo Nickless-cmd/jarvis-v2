@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { act, render } from '@testing-library/react-native'
 import { WidgetFlade, dokumentets_egen, MAX_WIDGET_BYTES, WidgetPrompt } from './WidgetFlade'
 
 /**
@@ -187,5 +187,42 @@ describe('dokumentets_egen', () => {
   it('store bogstaver maa ikke smutte udenom', () => {
     expect(dokumentets_egen('HTTPS://api.srvlab.dk/')).toBe(false)
     expect(dokumentets_egen('About:Blank')).toBe(true)
+  })
+})
+
+// ── RAMMEN SKAL SIGE HVAD DER SKETE (Bjørn 6/10-2026) ──────────────────────
+//
+// To rettelser i traek ramte ved siden af, fordi en blank flade ikke kan
+// skelne «indlaeste aldrig» fra «indlaeste og malede intet» fra «fejlede
+// tavst». WebView'ens fejl-callbacks blev slet ikke lyttet paa.
+describe('widget-rammens tilstand', () => {
+  const props = async (html = '<p>hej</p>') => {
+    const screen = await render(<WidgetFlade html={html} />)
+    return screen.getByTestId('widget-webview').props as Record<string, never>
+  }
+
+  it('siger «indlaeses» indtil WebView melder klar', async () => {
+    const screen = await render(<WidgetFlade html="<p>hej</p>" />)
+    expect(screen.getByTestId('widget-tilstand')).toBeTruthy()
+  })
+
+  it('forsvinder naar indlaesningen er faerdig', async () => {
+    const screen = await render(<WidgetFlade html="<p>hej</p>" />)
+    const p = screen.getByTestId('widget-webview').props as Record<string, never>
+    await act(async () => { (p.onLoadEnd as unknown as () => void)() })
+    expect(screen.queryByTestId('widget-tilstand')).toBeNull()
+  })
+
+  it('NAVNGIVER en fejl i stedet for at staa tom', async () => {
+    const screen = await render(<WidgetFlade html="<p>hej</p>" />)
+    const p = screen.getByTestId('widget-webview').props as Record<string, never>
+    await act(async () => {
+      (p.onError as unknown as (e: unknown) => void)({ nativeEvent: { description: 'net::ERR_FOO' } })
+    })
+    expect(JSON.stringify(screen.getByTestId('widget-tilstand').props.children)).toContain('net::ERR_FOO')
+  })
+
+  it('bruger hardware-lag — en WebView i en FlatList tegner ellers blankt', async () => {
+    expect((await props()).androidLayerType).toBe('hardware')
   })
 })

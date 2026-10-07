@@ -104,6 +104,22 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   //
   // `alignSelf: 'stretch'` loeser det ikke: et straakt barn har ingen egen
   // bredde at give en foraelder der selv skal maales af sine boern.
+  // EN TOM RAMME MAA IKKE KUNNE FORBLIVE TVETYDIG (6/10-2026).
+  //
+  // To rettelser i traek ramte ved siden af, fordi en blank flade ikke kan
+  // skelne «indlaeste aldrig» fra «indlaeste og malede intet» fra «fejlede
+  // tavst». WebView'ens egne fejl-callbacks blev slet ikke lyttet paa, saa en
+  // fejl forsvandt. Nu siger rammen hvad der skete — paa skaermen, hvor den
+  // der ser problemet ogsaa kan laese svaret.
+  const [tilstand, setTilstand] = useState<'indlaeser' | 'klar' | string>('indlaeser')
+  useEffect(() => {
+    setTilstand('indlaeser')
+    const t = setTimeout(() => {
+      setTilstand((n) => (n === 'indlaeser' ? 'svarede ikke paa 6 sekunder' : n))
+    }, 6000)
+    return () => clearTimeout(t)
+  }, [html])
+
   const vindue = useWindowDimensions()
   const bredde = Math.max(240, Math.round(vindue.width) - 2 * SIDE_LUFT)
   // Teksten er FAERDIG-MAERKET naar den naar hertil.
@@ -120,6 +136,11 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 
   return (
     <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
+      {tilstand !== 'klar' ? (
+        <Text style={styles.tilstand} testID="widget-tilstand">
+          {tilstand === 'indlaeser' ? 'Widget indlaeses…' : `Widget: ${tilstand}`}
+        </Text>
+      ) : null}
       <WebView
         testID="widget-webview"
         accessibilityLabel={titel || 'widget'}
@@ -145,6 +166,13 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
         // WebViewShared), saa en tom liste tillader stadig dokumentet. Gaten
         // her er den der afgoer sagen.
         onShouldStartLoadWithRequest={(req) => dokumentets_egen(req?.url)}
+        // En WebView i en virtualiseret FlatList tegner blankt paa Android med
+        // standardens `androidLayerType="none"`. `MessageList` ER en FlatList.
+        androidLayerType="hardware"
+        onLoadEnd={() => setTilstand('klar')}
+        onError={(e) => setTilstand(String(e?.nativeEvent?.description || 'indlaesningsfejl'))}
+        onHttpError={(e) => setTilstand(`http ${e?.nativeEvent?.statusCode ?? '?'}`)}
+        onRenderProcessGone={() => setTilstand('webview-processen doede')}
         javaScriptEnabled
         injectedJavaScript={HOEJDE_SCRIPT}
         onMessage={(e) => {
@@ -200,5 +228,9 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 const styles = StyleSheet.create({
   ramme: { marginVertical: 4, overflow: 'hidden' },
   web: { flex: 1, backgroundColor: 'transparent' },
+  tilstand: {
+    position: 'absolute', top: 6, left: 10, zIndex: 1,
+    fontSize: 12, opacity: 0.75,
+  },
   fejl: { fontSize: 13, opacity: 0.8, paddingVertical: 8, paddingHorizontal: 10 },
 })

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { WebView } from 'react-native-webview'
 
 /**
@@ -67,8 +67,34 @@ const HOEJDE_SCRIPT = `
 true;
 `
 
+/** Luft ud til skaermkanten. Boblen og vedhaeftnings-wrapperen tager hver
+ *  sin margen; 20 pr. side rammer den samme kant som teksten staar paa. */
+const SIDE_LUFT = 20
+
 export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   const [hoejde, setHoejde] = useState(160)
+  // EN DEFINIT BREDDE, IKKE EN PROCENT (Bjoern 6/10-2026: «Og saa virker
+  // widget ikk i mobilen» — og paa spoergsmaalet om hvad der stod paa
+  // skaermen: «Ingenting»).
+  //
+  // Rammen havde `width: '100%'`. Foraelderen er `MessageAttachments`'
+  // `venstre`-stil, som saetter `alignSelf: 'flex-start'` OG
+  // `alignItems: 'flex-start'` — altsaa en bredde der kommer FRA indholdet, og
+  // boern der ikke straekkes. En procent resolver mod foraelderens definite
+  // bredde; har foraelderen ingen, bliver den nul. Med `overflow: 'hidden'`
+  // og en hoejde paa 160 giver det praecis det Bjoern saa: ingenting.
+  //
+  // Det er ogsaa hvorfor BILLEDER virker i samme wrapper: de har fast
+  // `width: 240`. Widget'en var det eneste barn med en procent.
+  //
+  // Maalt foerst: blokken NAAR frem (se MessageAttachments.test), telefonen
+  // koerer 282, og APK'en har baade det native modul og JS-koden. Alt andet
+  // var udelukket foer denne linje blev roert.
+  //
+  // `alignSelf: 'stretch'` loeser det ikke: et straakt barn har ingen egen
+  // bredde at give en foraelder der selv skal maales af sine boern.
+  const vindue = useWindowDimensions()
+  const bredde = Math.max(240, Math.round(vindue.width) - 2 * SIDE_LUFT)
   const foerste = useRef(true)
   // Teksten er FAERDIG-MAERKET naar den naar hertil.
   const onPrompt = useContext(WidgetPrompt)
@@ -84,7 +110,7 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   }
 
   return (
-    <View style={[styles.ramme, { height: hoejde }]}>
+    <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
       <WebView
         testID="widget-webview"
         accessibilityLabel={titel || 'widget'}
@@ -150,7 +176,7 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 }
 
 const styles = StyleSheet.create({
-  ramme: { width: '100%', marginVertical: 4, overflow: 'hidden' },
+  ramme: { marginVertical: 4, overflow: 'hidden' },
   web: { flex: 1, backgroundColor: 'transparent' },
   fejl: { fontSize: 13, opacity: 0.8, paddingVertical: 8, paddingHorizontal: 10 },
 })

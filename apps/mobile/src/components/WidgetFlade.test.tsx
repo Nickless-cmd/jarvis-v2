@@ -118,3 +118,32 @@ describe('WidgetFlade sendPrompt-kanalen', () => {
     expect(() => send({ type: 'jarvis-widget-prompt', tekst: 'x', maerke: '[fra widget]' })).not.toThrow()
   })
 })
+
+// ── BREDDEN SKAL VAERE ET TAL (Bjørn 6/10-2026) ────────────────────────────
+//
+// Rammen havde `width: '100%'` inde i en wrapper med `alignSelf: 'flex-start'`
+// og `alignItems: 'flex-start'`. En procent resolver mod foraelderens definite
+// bredde; har foraelderen ingen — fordi den selv maales af sine boern — bliver
+// den nul. Med `overflow: 'hidden'` saa Bjørn «ingenting».
+describe('widget-rammens bredde', () => {
+  const flad = (node: unknown): Record<string, unknown> => {
+    const s = (node as { props?: { style?: unknown } })?.props?.style
+    const dele = Array.isArray(s) ? s : [s]
+    return Object.assign({}, ...dele.filter((d) => d && typeof d === 'object'))
+  }
+
+  it('er et TAL, ikke en procent', async () => {
+    const screen = await render(<WidgetFlade html="<!doctype html><p>hej</p>" />)
+    const web = screen.getByTestId('widget-webview')
+    const ramme = (web as unknown as { parent: unknown }).parent
+    const style = flad(ramme)
+    expect(typeof style.width).toBe('number')
+    expect(style.width as number).toBeGreaterThan(0)
+  })
+
+  it('har stadig en hoejde, saa den ikke kollapser den anden vej', async () => {
+    const screen = await render(<WidgetFlade html="<!doctype html><p>hej</p>" />)
+    const ramme = (screen.getByTestId('widget-webview') as unknown as { parent: unknown }).parent
+    expect(typeof flad(ramme).height).toBe('number')
+  })
+})

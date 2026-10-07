@@ -594,23 +594,23 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L564) |
 | function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L577) |
 | function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L602) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1051) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1079) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1107) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1111) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1149) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1354) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1398) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1407) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1446) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1476) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1491) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1510) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1527) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1546) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1568) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1608) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1625) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1058) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1086) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1114) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1118) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1156) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1361) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1405) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1414) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1453) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1483) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1498) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1517) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1534) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1553) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1575) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1615) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1632) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -624,6 +624,19 @@ _Agent runtime — read surfaces (agent + council/swarm projections)._
 | function | `enrich_council_surface` | `(session)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L130) |
 | function | `build_council_detail_surface` | `(council_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L143) |
 | function | `_progress_label` | `(*, agent, latest_run)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L150) |
+
+## `core/services/agent_sandbox.py`
+_bubblewrap-sandbox til en agent-worker (agent-contract-v1 C6b, spec 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SandboxUnavailable` | `` | Sandboxen kan ikke etableres - agentens loekke maa ikke koere usandboxet. | [src](../../../core/services/agent_sandbox.py#L27) |
+| function | `bwrap_path` | `()` | — | [src](../../../core/services/agent_sandbox.py#L31) |
+| function | `python_prefixes` | `()` | — | [src](../../../core/services/agent_sandbox.py#L38) |
+| function | `build_bwrap_argv` | `(command, *, pass_fds=…, extra_env=…, worker_files=…)` | Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen). | [src](../../../core/services/agent_sandbox.py#L46) |
+| function | `resource_prefix` | `(*, address_space, cpu_seconds, open_files=…, file_size=…)` | ``prlimit`` foer bwrap: graenserne arves af workeren og kan ikke haeves derinde. | [src](../../../core/services/agent_sandbox.py#L70) |
+| function | `spawn_in_sandbox` | `(command, *, pass_fds=…, stdout=…, stderr=…, address_space=…, cpu_seconds=…, extra_env=…, worker_files=…)` | Start ``command`` i sandboxen. Egen processgruppe, saa den kan draebes samlet. | [src](../../../core/services/agent_sandbox.py#L82) |
+| function | `sandbox_usable` | `()` | Smoketest: kan et trivielt program koere i sandboxen? (ja/nej, grund) | [src](../../../core/services/agent_sandbox.py#L93) |
 
 ## `core/services/agent_self_evaluation.py`
 _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
@@ -646,15 +659,4 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 | function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L546) |
 | function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L550) |
 | function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L555) |
-
-## `core/services/agent_skill_distiller.py`
-_Agent skill distillation — turns observed outcomes into principles._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gather_recent_outcomes` | `(role, days=…)` | Pull recent runs/outcomes for this role from agent observations. | [src](../../../core/services/agent_skill_distiller.py#L24) |
-| function | `_build_distill_prompt` | `(role, outcomes)` | — | [src](../../../core/services/agent_skill_distiller.py#L50) |
-| function | `_parse_distillation` | `(text)` | — | [src](../../../core/services/agent_skill_distiller.py#L72) |
-| function | `distill_skills_for_role` | `(role, *, days=…)` | Distill recent outcomes for a role into principles. Appends to skills.md. | [src](../../../core/services/agent_skill_distiller.py#L96) |
-| function | `distill_all_known_roles` | `(*, days=…)` | — | [src](../../../core/services/agent_skill_distiller.py#L133) |
 

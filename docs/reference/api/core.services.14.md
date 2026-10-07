@@ -2,6 +2,76 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ground_truth_registry.py`
+_Ground Truth Registry — Layer 3 of the Lying Engine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_detect_host` | `()` | Detect which machine Jarvis runs on — hostname + primary IP. | [src](../../../core/services/ground_truth_registry.py#L146) |
+| function | `_read_config_provider` | `()` | Read the current provider name from runtime.json. | [src](../../../core/services/ground_truth_registry.py#L169) |
+| function | `_read_config_model` | `()` | Read the current model name from runtime.json. | [src](../../../core/services/ground_truth_registry.py#L186) |
+| function | `_query_expression_count` | `()` | Count expressions from the DB. Returns None on failure. | [src](../../../core/services/ground_truth_registry.py#L204) |
+| function | `_query_commit_count` | `()` | Count total commits in the repo. | [src](../../../core/services/ground_truth_registry.py#L218) |
+| function | `_query_recent_commit_sha` | `()` | Get the current HEAD SHA (short). | [src](../../../core/services/ground_truth_registry.py#L232) |
+| function | `_query_daemon_count` | `()` | Count active (enabled) daemons via daemon manager. | [src](../../../core/services/ground_truth_registry.py#L244) |
+| function | `_query_gpu_info` | `()` | Quick GPU summary if available. | [src](../../../core/services/ground_truth_registry.py#L254) |
+| function | `_query_uname` | `()` | Kernel/OS info. | [src](../../../core/services/ground_truth_registry.py#L269) |
+| function | `collect_ground_truth` | `()` | Collect all available ground truth about Jarvis. Slow — call rarely. | [src](../../../core/services/ground_truth_registry.py#L282) |
+| function | `refresh_ground_truth` | `()` | Force refresh the ground truth cache. Returns the fresh registry. | [src](../../../core/services/ground_truth_registry.py#L300) |
+| function | `get_ground_truth` | `(key=…, force_refresh=…)` | Get ground truth from cache, auto-refreshing if stale. | [src](../../../core/services/ground_truth_registry.py#L315) |
+| function | `ground_truth_summary` | `()` | Return a human-readable summary block for injection or repair. | [src](../../../core/services/ground_truth_registry.py#L343) |
+| function | `verify_system_claim` | `(claim_text)` | Verify a system claim (IP, host, path) against ground truth. | [src](../../../core/services/ground_truth_registry.py#L370) |
+| function | `lookup_infrastructure_fact` | `(key)` | Look up a known infrastructure fact (host/path/port) for ground-truth | [src](../../../core/services/ground_truth_registry.py#L438) |
+| function | `verify_stats_claim` | `(claim_text)` | Verify a statistic claim (counts of expressions, daemons, commits) | [src](../../../core/services/ground_truth_registry.py#L455) |
+| function | `ground_truth_daemon_tick` | `()` | Called by heartbeat daemon — refreshes cache and returns summary. | [src](../../../core/services/ground_truth_registry.py#L506) |
+
+## `core/services/grounded_capability_followup.py`
+_Grounded capability follow-up — det andet pas efter en udført evne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_visible_runs` | `()` | Doven import. På modulniveau ville det være en cyklus — visible_runs | [src](../../../core/services/grounded_capability_followup.py#L30) |
+| function | `_run_grounded_capability_followup` | `(run, *, capability_id, invocation, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L36) |
+| function | `_build_grounded_capability_followup_message` | `(run, *, capability_id, invocation, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L71) |
+| function | `_run_grounded_multi_capability_followup` | `(run, *, capability_results, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L113) |
+| function | `_build_grounded_multi_capability_followup_message` | `(run, *, capability_results, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L146) |
+| function | `_is_code_analysis_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L191) |
+| function | `_is_memory_commit_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L210) |
+
+## `core/services/guided_learning_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_guided_learning_runtime_surface` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L11) |
+| function | `_build_guided_learning_runtime_surface_uncached` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L19) |
+| function | `build_guided_learning_runtime_from_sources` | `(*, adaptive_planner, adaptive_reasoning, epistemic_runtime_state, prompt_evolution, dream_articulation, dream_influence, loop_runtime, council_runtime)` | — | [src](../../../core/services/guided_learning_runtime.py#L32) |
+| function | `build_guided_learning_prompt_section` | `(surface=…)` | — | [src](../../../core/services/guided_learning_runtime.py#L150) |
+| function | `_derive_learning_focus` | `(*, planner, reasoning, epistemic, prompt_summary, dream_summary, dream_influence, loop_summary, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L177) |
+| function | `_derive_learning_mode` | `(*, learning_focus, planner, reasoning, epistemic, prompt_summary, dream_summary, dream_influence, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L214) |
+| function | `_derive_learning_posture` | `(*, learning_mode, council, reasoning, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L247) |
+| function | `_derive_next_learning_bias` | `(*, learning_mode, learning_focus, planner, reasoning, epistemic, prompt_summary, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L265) |
+| function | `_derive_learning_pressure` | `(*, learning_mode, planner, epistemic, council, prompt_summary, dream_summary, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L296) |
+| function | `_derive_confidence` | `(*, learning_mode, learning_focus, learning_pressure, council, epistemic)` | — | [src](../../../core/services/guided_learning_runtime.py#L321) |
+| function | `_source_contributors` | `(*, adaptive_planner, adaptive_reasoning, epistemic, prompt_summary, dream_summary, dream_influence, loop_summary, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L340) |
+| function | `_guidance_for_learning` | `(state)` | — | [src](../../../core/services/guided_learning_runtime.py#L427) |
+| function | `_safe_adaptive_planner` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L442) |
+| function | `_safe_adaptive_reasoning` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L450) |
+| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L458) |
+| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L466) |
+| function | `_safe_dream_articulation` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L474) |
+| function | `_safe_dream_influence` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L482) |
+| function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L489) |
+| function | `_safe_council_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L497) |
+
+## `core/services/gut_calibration.py`
+_Gut-calibration wiring — fodrer cognitive_gut_state fra run-livscyklussen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `observe_run_event` | `(kind, payload)` | Dispatch fra run_closure_gate's listener. Kaster aldrig. | [src](../../../core/services/gut_calibration.py#L29) |
+| function | `_on_started` | `(payload)` | — | [src](../../../core/services/gut_calibration.py#L40) |
+| function | `_on_outcome` | `(payload, actual_outcome)` | — | [src](../../../core/services/gut_calibration.py#L70) |
+
 ## `core/services/gut_engine.py`
 _Gut Engine — intuition and calibration tracking._
 
@@ -547,98 +617,4 @@ _Indbakken i prompten — læseren hele kæden manglede._
 |---|---|---|---|---|
 | function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L92) |
 | function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L112) |
-
-## `core/services/inbox_state.py`
-_Proveniens og bogføring for indbakken._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig — se `inbox_gate._spor`. | [src](../../../core/services/inbox_state.py#L68) |
-| function | `_autentificeret_bruger_matcher` | `(bruger_id)` | Er den autentificerede principal netop `bruger_id`? | [src](../../../core/services/inbox_state.py#L92) |
-| function | `_ejer_workspace` | `()` | Ejerens workspace-navn — `workspace_context`'s EGEN standard. | [src](../../../core/services/inbox_state.py#L131) |
-| function | `_ejer_id` | `()` | Ejerens rigtige bruger-id, med workspace-navnet som sidste udvej. | [src](../../../core/services/inbox_state.py#L146) |
-| function | `_advar_om_ubundet_fald` | `(rolle)` | Sig ÉN gang at læsningen kørte uden bundet bruger. | [src](../../../core/services/inbox_state.py#L170) |
-| function | `bruger_for_workspace` | `(navn)` | Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går. | [src](../../../core/services/inbox_state.py#L189) |
-| function | `laese_bruger` | `()` | HVIS indbakke skal læses? Tom streng når det ikke kan afgøres. | [src](../../../core/services/inbox_state.py#L222) |
-| function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L312) |
-| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L336) |
-| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L351) |
-| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L475) |
-| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L558) |
-| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L587) |
-| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L638) |
-| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L667) |
-| function | `done` | `(bruger_id, post_id)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L696) |
-| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L728) |
-
-## `core/services/inbox_view.py`
-_Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kort` | `(tekst, loft)` | Afkort på et ordskel. Den GEMTE post afkortes aldrig — kun linjen. | [src](../../../core/services/inbox_view.py#L76) |
-| function | `_bytes_tekst` | `(b)` | `None` ⇒ «stoerrelse ukendt», aldrig «0 B». | [src](../../../core/services/inbox_view.py#L85) |
-| function | `_alder_dage` | `(fra_iso, nu_ts)` | Hele dage siden `fra_iso`. `None` når tidsstemplet ikke kan læses. | [src](../../../core/services/inbox_view.py#L103) |
-| function | `_aegte_poster` | `(bruger_id)` | Åbne poster PLUS de nyligt afgjorte. | [src](../../../core/services/inbox_view.py#L127) |
-| function | `_aegte_side_opgaver` | `(bruger_id)` | Kun ejerens åbne sideopgaver; status bliver i side_tasks-lageret. | [src](../../../core/services/inbox_view.py#L141) |
-| function | `_aegte_vaekninger` | `(bruger_id)` | `list_wakeups()` er GLOBAL — den har intet brugerfilter. | [src](../../../core/services/inbox_view.py#L149) |
-| function | `planlagte_vaekning_ids` | `(bruger_id, kilder=…)` | Vækninger der er PLANLAGT (`pending`) — de venter ikke på nogen. | [src](../../../core/services/inbox_view.py#L171) |
-| function | `afgjorte_vaekning_ids` | `(bruger_id, kilder=…)` | Vækninger KILDEN selv har afgjort — deres post skal ikke staa aaben. | [src](../../../core/services/inbox_view.py#L214) |
-| function | `_aegte_jobs` | `(bruger_id)` | De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne. | [src](../../../core/services/inbox_view.py#L255) |
-| function | `_aegte_godkendelser` | `(bruger_id)` | `recent_tool_intent_approval_requests` med EKSPLICIT bruger. | [src](../../../core/services/inbox_view.py#L272) |
-| function | `_aegte_backlog_tal` | `()` | Hvor mange står i backloggen — ÉT tal, med en adresse. | [src](../../../core/services/inbox_view.py#L288) |
-| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L320) |
-| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L346) |
-| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…, bloker=…, udloebet=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L386) |
-| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L462) |
-| function | `_ejer_id` | `()` | Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her. | [src](../../../core/services/inbox_view.py#L487) |
-| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L500) |
-| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L529) |
-| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L607) |
-| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L621) |
-| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L631) |
-
-## `core/services/indre_puls.py`
-_Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Puls` | `` | En tilstand der skal slå i en kendt takt. | [src](../../../core/services/indre_puls.py#L51) |
-| class | `Afstemning` | `` | To bøger over det samme arbejde. De skal stemme. | [src](../../../core/services/indre_puls.py#L76) |
-| class | `Haendelsesdrevet` | `` | En tilstand der skrives NÅR noget sker — ikke på et ur. | [src](../../../core/services/indre_puls.py#L94) |
-| function | `_nu` | `()` | — | [src](../../../core/services/indre_puls.py#L164) |
-| function | `_alder_af_kv` | `(noegle)` | Sekunder siden nøglen sidst blev skrevet. `None` = kan ikke aflæses. | [src](../../../core/services/indre_puls.py#L168) |
-| function | `_antal` | `(tabel, tidskolonne, siden, hvor=…)` | Rækker i et vindue. `None` = kan ikke tælles (tabellen findes måske ikke). | [src](../../../core/services/indre_puls.py#L185) |
-| function | `maal_puls` | `(p, *, vindue_s=…)` | Mål én puls. ``tilstand`` er "frisk", "stille", "loebsk" eller "ukendt". | [src](../../../core/services/indre_puls.py#L202) |
-| function | `maal_afstemning` | `(a, *, vindue_s=…)` | Sammenlign to bøger over det samme arbejde. | [src](../../../core/services/indre_puls.py#L243) |
-| function | `maal_haendelsesdrevet` | `(h)` | Fyrede driveren uden at tilstanden fulgte med? | [src](../../../core/services/indre_puls.py#L269) |
-| function | `_kvitterede` | `()` | Hvad har vi allerede meldt om? | [src](../../../core/services/indre_puls.py#L315) |
-| function | `_gem_kvitterede` | `(navne)` | — | [src](../../../core/services/indre_puls.py#L334) |
-| function | `tjek` | `(*, meld=…, foerste_koersel=…)` | Mål alt, og meld det der er nyt galt. | [src](../../../core/services/indre_puls.py#L342) |
-| function | `_meld` | `(m)` | Send én melding gennem feeden. | [src](../../../core/services/indre_puls.py#L379) |
-| function | `build_indre_puls_surface` | `()` | Centralens flade. Læser kun — den melder ikke. | [src](../../../core/services/indre_puls.py#L417) |
-
-## `core/services/infra_sense.py`
-_core/services/infra_sense.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tcp_probe` | `(host, port, timeout=…)` | (oppe, latency_ms) — TCP-connect. Undgår ICMP-privilegier; åben port = servicen lever. | [src](../../../core/services/infra_sense.py#L52) |
-| function | `poll_reachability` | `()` | Puls på huset: op/ned + latency for hver host → observe(cluster=infra). Self-safe. | [src](../../../core/services/infra_sense.py#L62) |
-| function | `_http_json` | `(url, *, headers=…, method=…, body=…, timeout=…)` | — | [src](../../../core/services/infra_sense.py#L83) |
-| function | `poll_pihole` | `()` | PiHole DNS-helbred: blok-rate + klienter (spike = mulig malware). Self-safe. | [src](../../../core/services/infra_sense.py#L96) |
-| function | `poll_pfsense` | `()` | pfSense gateway-liveness + uptime via REST API (X-API-Key). Read-only. Self-safe. | [src](../../../core/services/infra_sense.py#L128) |
-| function | `_ssh_run` | `(target, remote_cmd, timeout=…)` | — | [src](../../../core/services/infra_sense.py#L210) |
-| function | `_parse_kv` | `(s)` | — | [src](../../../core/services/infra_sense.py#L221) |
-| function | `_check_host_vitals` | `(name, kv)` | Flag ÉN gang pr. tilstand naar en vaerts vitals gaar ud af normalen. Self-safe. | [src](../../../core/services/infra_sense.py#L255) |
-| function | `poll_ssh_hosts` | `()` | Dyb health (disk/services/guests) via read-only SSH. Self-safe pr. host. | [src](../../../core/services/infra_sense.py#L282) |
-| function | `poll_ha` | `()` | Home Assistant: tilstedeværelse + enheder offline (netværks-/device-signal). Self-safe. | [src](../../../core/services/infra_sense.py#L318) |
-| function | `_notify_owner_security` | `(title, message)` | — | [src](../../../core/services/infra_sense.py#L344) |
-| function | `_pfsense_syslogd_running` | `()` | Lever syslogd-PROCESSEN på pfSense? Via REST-API command_prompt (root-shell, read-only ps). | [src](../../../core/services/infra_sense.py#L375) |
-| function | `_pfsense_restart_syslogd` | `()` | AUTO-HEAL: genstart syslogd på pfSense via REST-API command_prompt (root) og bekræft | [src](../../../core/services/infra_sense.py#L398) |
-| function | `_syslogd_doedsattest` | `()` | Hvad var der sket lige foer syslogd doede? Samles FOER genstarten. | [src](../../../core/services/infra_sense.py#L415) |
-| function | `poll_syslog` | `()` | Dræn pfSense-syslog-detektioner (port-scan/brute-force) → Centralen: observe + incident | [src](../../../core/services/infra_sense.py#L463) |
-| function | `_safe` | `(fn)` | — | [src](../../../core/services/infra_sense.py#L563) |
-| function | `run_infra_sense_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sans huset read-only. Bulletproof — kaster ALDRIG. | [src](../../../core/services/infra_sense.py#L570) |
-| function | `register_infra_sense_producer` | `()` | Registrér infra-sansningen som cadence-producer (~hvert 3 min). Read-only. | [src](../../../core/services/infra_sense.py#L586) |
 

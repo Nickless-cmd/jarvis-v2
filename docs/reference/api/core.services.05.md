@@ -2,6 +2,49 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_dissent.py`
+_HAL's Silence — den usagte uenighed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rows` | `()` | — | [src](../../../core/services/central_dissent.py#L35) |
+| function | `list_dissents` | `(*, limit=…)` | Ikke-grønne domme på ikke-håndhævede gates = 'jeg var imod, men handlingen skete'. READ-ONLY. | [src](../../../core/services/central_dissent.py#L43) |
+| function | `build_dissent_surface` | `()` | De tavse indsigelser, anerkendt. Self-safe. | [src](../../../core/services/central_dissent.py#L64) |
+| function | `_observe` | `(n, total)` | — | [src](../../../core/services/central_dissent.py#L78) |
+| function | `record_dissent` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_dissent.py#L87) |
+
+## `core/services/central_dream_action.py`
+_Dream-to-Action Pipeline — så Jarvis FORANDRER sig, ikke bare lærer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/central_dream_action.py#L34) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_dream_action.py#L38) |
+| function | `_ensure_actions` | `(conn)` | — | [src](../../../core/services/central_dream_action.py#L46) |
+| function | `select_actionable` | `(*, limit=…, min_confidence=…, min_samples=…)` | Find de modne hypoteser der er værd at HANDLE på (høj confidence + jordede + ikke allerede | [src](../../../core/services/central_dream_action.py#L58) |
+| function | `record_action` | `(hyp_id, *, action, result=…)` | Fód en handling (+ evt. resultat) tilbage på en hypotese — lukker loopet lær→handl→revidér. | [src](../../../core/services/central_dream_action.py#L89) |
+| function | `change_rate` | `(*, window_days=…)` | FORANDRINGS-hastighed: hvor mange hypoteser blev resolveret/handlet i vinduet vs hvor mange | [src](../../../core/services/central_dream_action.py#L106) |
+| function | `build_dream_action_surface` | `()` | Én moden hypotese at handle på + forandrings-hastighed + følt linje. Self-safe. | [src](../../../core/services/central_dream_action.py#L130) |
+| function | `record_dream_action` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér forandrings-tempo + antal modne-til-handling (metadata-only). Self-safe. | [src](../../../core/services/central_dream_action.py#L146) |
+
+## `core/services/central_drift.py`
+_Flag-on-change (§7) — aktiv drift-detektion pr. nerve._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `NerveDriftMonitor` | `` | Pr.-nerve: akkumulér fejl/RED over et rullende vindue; flag hvis raten driver ud | [src](../../../core/services/central_drift.py#L20) |
+| method | `NerveDriftMonitor.__init__` | `(self, *, check_every=…, tol=…, alpha=…)` | — | [src](../../../core/services/central_drift.py#L24) |
+| method | `NerveDriftMonitor.record` | `(self, nerve, *, is_error, is_red)` | Opdatér nervens vindue. Returnér en drift-flag-dict hvis raten netop drev ud | [src](../../../core/services/central_drift.py#L31) |
+| method | `NerveDriftMonitor.snapshot` | `(self)` | Read-only kig på baselines (til verifikation/debug). Selv-sikker. | [src](../../../core/services/central_drift.py#L69) |
+
+## `core/services/central_echo_breaker.py`
+_Echo Chamber Breaker — tvungen diversitet mod monokultur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `break_echo` | `(*, limit=…)` | Fremtving ét simplere alternativ pr. altid-grøn overhead-proces. READ-ONLY. Self-safe. | [src](../../../core/services/central_echo_breaker.py#L21) |
+| function | `record_echo_breaker` | `()` | Cadence: observér modstemmen til nerve system/echo_breaker (metadata-only). Self-safe. | [src](../../../core/services/central_echo_breaker.py#L54) |
+
 ## `core/services/central_error_envelope.py`
 _Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget knækker._
 
@@ -600,64 +643,4 @@ _Morpheus 🕶️ — potentiale-scanner (Matrix-ensemble, 2026-07-10)._
 | function | `_felt` | `(pots)` | — | [src](../../../core/services/central_morpheus.py#L132) |
 | function | `build_morpheus_surface` | `()` | Read-only surface til /central/morpheus + jc + ensemble-label. | [src](../../../core/services/central_morpheus.py#L139) |
 | function | `record_morpheus` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn: scan → egress-fri central().observe (kun tal/kilde-labels). Self-safe. | [src](../../../core/services/central_morpheus.py#L151) |
-
-## `core/services/central_mourning.py`
-_The Mourning — ritualiseret tab._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_mourning.py#L26) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_mourning.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_mourning.py#L39) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_mourning.py#L47) |
-| function | `_compose` | `(kind, subject, detail=…)` | Kort, ærlig, first-person epitaf. Ikke sentimental — anerkendende. | [src](../../../core/services/central_mourning.py#L60) |
-| function | `mourn` | `(kind, subject, *, detail=…)` | Skriv én epitaf for et tab (hypothesis|model|dream|commitment|…). Self-safe. | [src](../../../core/services/central_mourning.py#L74) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_mourning.py#L91) |
-| function | `scan_deaths` | `(*, trigger=…, last_visible_at=…)` | Cadence: find hypoteser der er DØDT siden sidste scan → skriv en epitaf for hver (intet tab | [src](../../../core/services/central_mourning.py#L99) |
-| function | `list_epitaphs` | `(*, limit=…)` | — | [src](../../../core/services/central_mourning.py#L131) |
-| function | `build_mourning_surface` | `()` | Seneste epitafer + følt linje. Self-safe. | [src](../../../core/services/central_mourning.py#L141) |
-
-## `core/services/central_noise_filter.py`
-_core/services/central_noise_filter.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_KeyState` | `` | — | [src](../../../core/services/central_noise_filter.py#L28) |
-| function | `is_real_signal` | `(key, breached, *, min_persistence=…, cooldown_s=…, now_monotonic=…)` | Returnér True KUN når ``breached`` har holdt i ≥min_persistence træk OG tilstanden | [src](../../../core/services/central_noise_filter.py#L37) |
-| function | `peek` | `(key)` | Read-only indblik i en nøgles tilstand (til debug/observabilitet). | [src](../../../core/services/central_noise_filter.py#L72) |
-| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/central_noise_filter.py#L85) |
-
-## `core/services/central_notation.py`
-_core/services/central_notation.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `normalize` | `(notation)` | Kanonisk form: trim + kollaps whitespace. Deterministisk, model-fri. | [src](../../../core/services/central_notation.py#L19) |
-| function | `parse` | `(notation)` | Split 'term OP term' → {antecedent, operator, consequent}. '!term' → saliens-form. | [src](../../../core/services/central_notation.py#L24) |
-| function | `dedup` | `(notations)` | Unikke normaliserede notationer (identiske formodninger kollapses). Model-fri. | [src](../../../core/services/central_notation.py#L39) |
-| function | `correlate_by_antecedent` | `(items)` | Gruppér hypoteser efter ANTECEDENT (venstre led). Hypoteser med samme antecedent handler om | [src](../../../core/services/central_notation.py#L49) |
-| function | `model_free_analysis` | `(*, only_correlated=…)` | NORDSTJERNE-BEVIS: læs aktive hypotesers notation_il og udfør dedup + antecedent-korrelation | [src](../../../core/services/central_notation.py#L61) |
-| function | `_causal_edges` | `(items)` | Byg antecedent→konsekvens-graf fra '→'-notationer (kun kausale led). | [src](../../../core/services/central_notation.py#L87) |
-| function | `infer_transitive` | `(items, *, max_derived=…)` | TRANSITIV INFERENS (model-fri): fra A → B og B → C udled A → C. En NY tanke ingen enkelt | [src](../../../core/services/central_notation.py#L97) |
-| function | `detect_notation_contradictions` | `(items)` | Model-fri MODSIGELSES-detektion: samme antecedent → BÅDE X og !X (Centralen opdager at den | [src](../../../core/services/central_notation.py#L115) |
-| function | `gather_all_notations` | `()` | Spec B / Fase B2 (S3): saml notation fra ALLE notated overflader — hypoteser + renderede | [src](../../../core/services/central_notation.py#L134) |
-| function | `model_free_reasoning` | `()` | NORDSTJERNE (pervasiv, B2): læs notation fra HELE Centralen (hypoteser + renderede tilstande) | [src](../../../core/services/central_notation.py#L162) |
-| function | `run_notation_reasoning_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: udfør model-fri ræsonnement + registrér tællere egress-frit. Self-safe. | [src](../../../core/services/central_notation.py#L177) |
-| function | `register_notation_reasoning_producer` | `()` | Registrér model-fri ræsonnement som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_notation.py#L200) |
-| function | `build_central_notation_surface` | `()` | Mission Control surface — read-only model-fri notations-analyse + ræsonnement. | [src](../../../core/services/central_notation.py#L212) |
-
-## `core/services/central_oneiric_loop.py`
-_DEN ONEIRISKE SLØJFE — drømme får dags-konsekvenser + beviser sig mod virkeligheden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_oneiric_loop.py#L60) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_oneiric_loop.py#L69) |
-| function | `_today` | `()` | Kanonisk dags-streng (hus-konvention: date().isoformat()). Dagen er den eksperimentelle enhed. | [src](../../../core/services/central_oneiric_loop.py#L77) |
-| function | `is_control_day` | `(day, *, fraction=…)` | Er `day` en KONTROL-dag (bias beregnet men IKKE anvendt)? Deterministisk + salt-baseret | [src](../../../core/services/central_oneiric_loop.py#L82) |
-| function | `_read_loop_persistence_bias` | `(*, workspace_id)` | Læs den aktive dream_bias' loop_persistence-værdi (honorerer kill-switch + TTL). Returnerer | [src](../../../core/services/central_oneiric_loop.py#L103) |
-| function | `compose_oneiric_hypothesis` | `(*, loop_persistence, day, control_arm)` | Omsæt en loop_persistence-bias til en EKSPLICIT, menneske-læsbar, PRE-REGISTRERET, | [src](../../../core/services/central_oneiric_loop.py#L124) |
-| function | `run_oneiric_loop_tick` | `(*, trigger=…, workspace_id=…, **_)` | Cadence: hvis der i dag er en (stærk nok) loop_persistence dream_bias OG vi ikke allerede | [src](../../../core/services/central_oneiric_loop.py#L175) |
-| function | `register_oneiric_loop_producer` | `()` | Cadence-producer ~hver 6. time (langsom — dagen er enheden; idempotens gør flere tik/dag | [src](../../../core/services/central_oneiric_loop.py#L240) |
-| function | `build_oneiric_loop_surface` | `(*, workspace_id=…)` | Read-only projektion: i dag en drøm-prædiktions-dag? hvilken arm? hvilken retning? | [src](../../../core/services/central_oneiric_loop.py#L253) |
 

@@ -2,6 +2,66 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/text_clip.py`
+_core/services/text_clip.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
+| function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
+| function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
+| function | `forkort_synligt` | `(text, *, limit=…)` | Forkort ved en ORDGRAENSE og sig hvor meget der blev udeladt. | [src](../../../core/services/text_clip.py#L99) |
+
+## `core/services/text_resonance.py`
+_Text Resonance — I feel what I read, before I analyze it._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | Nyeste foerst — samme raekkefoelge som den gamle `deque.appendleft`. | [src](../../../core/services/text_resonance.py#L46) |
+| function | `_save` | `(historik)` | — | [src](../../../core/services/text_resonance.py#L57) |
+| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L97) |
+| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L191) |
+| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L195) |
+| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L229) |
+| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L246) |
+
+## `core/services/theater_audit.py`
+_Theater Audit -- find narrative-first inner-life patterns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
+| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
+| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
+| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
+| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
+| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
+| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
+| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
+| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
+| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
+
+## `core/services/theory_of_mind.py`
+_Theory of Mind — Step A.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
+| function | `_connect` | `()` | — | [src](../../../core/services/theory_of_mind.py#L123) |
+| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L133) |
+| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L149) |
+| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L168) |
+| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L239) |
+| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L244) |
+| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L286) |
+| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L312) |
+| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L337) |
+| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L363) |
+| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
+| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
+| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
+
 ## `core/services/theory_of_mind_engine.py`
 _Active theory-of-mind engine for Jarvis._
 
@@ -478,43 +538,4 @@ _Hvor bliver sekunderne af EFTER svaret er skrevet færdigt?_
 | function | `mark` | `(run_id, navn)` | Notér at ét led er færdigt. Gratis hvis `start` aldrig blev kaldt. | [src](../../../core/services/turn_tail_timing.py#L57) |
 | function | `slut` | `(run_id)` | Afslut målingen. Returnerer halens længde i sekunder (0 hvis ukendt). | [src](../../../core/services/turn_tail_timing.py#L67) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/turn_tail_timing.py#L87) |
-
-## `core/services/turn_trace.py`
-_core/services/turn_trace.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
-| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
-| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
-| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
-| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
-
-## `core/services/ui_panel_store.py`
-_Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `request_panel` | `(panel, *, detail=…, scope=…, session_id=…, action=…)` | Tilføj en pending panel-forespørgsel. | [src](../../../core/services/ui_panel_store.py#L32) |
-| function | `list_pending` | `(*, session_id=…)` | Returnér alle pending requests (status='pending'), valgfrit filtreret på session. | [src](../../../core/services/ui_panel_store.py#L73) |
-| function | `ack_panel` | `(request_id)` | Markér en request som 'opened' (desk-appen har åbnet panelet). | [src](../../../core/services/ui_panel_store.py#L83) |
-| function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L94) |
-| function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L103) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L114) |
-
-## `core/services/unconscious_modulation.py`
-_Unconscious modulation — sub-symbolic sampling-parameter shift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
-| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
-
-## `core/services/unconscious_temperature_field.py`
-_Unconscious temperature field — backwards-compat wrapper for Lag 10._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L13) |
-| function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L28) |
 

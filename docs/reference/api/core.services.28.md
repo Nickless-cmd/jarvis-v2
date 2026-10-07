@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_cost.py`
+_Bogfoer en koersels omkostning — ét sted._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `bogfoer_koerslens_omkostning` | `(run, *, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, cost_usd=…)` | Skriv koerslens raekke i hovedbogen. | [src](../../../core/services/visible_run_cost.py#L37) |
+
+## `core/services/visible_run_firstpass.py`
+_Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
+| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
+| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
+
+## `core/services/visible_run_guard_notices.py`
+_Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `forbindelsen_glippede` | `()` | P6 graceful-degrade: forbindelsen svigtede gentagne gange. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L85) |
+| function | `loekken_tvang_en_afslutning` | `()` | Løkken tvang en afslutning med et ventende tool-intent. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L94) |
+| function | `tool_call_loekke` | `(runder)` | Flere runder med værktøjskald og intet synligt svar. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L103) |
+| function | `ingen_tekst_i_runder` | `(runder)` | Runder uden tekst overhovedet — KLASSE 1, den holder runnet i gang. | [src](../../../core/services/visible_run_guard_notices.py#L112) |
+| function | `tomt_loefte_advarsel` | `()` | Advarslen til NÆSTE runde om et tomt løfte. Klasse 2 — MÆRKET. | [src](../../../core/services/visible_run_guard_notices.py#L128) |
+| function | `systemmaerket` | `(tekst)` | Mærk en vilkårlig runtime-besked som fra systemet. Klasse 1 og 2. | [src](../../../core/services/visible_run_guard_notices.py#L151) |
+| function | `er_menneske_note` | `(tekst)` | Er dette en klasse-3-note — altså til Bjørn og ikke til modellen? | [src](../../../core/services/visible_run_guard_notices.py#L183) |
+| function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
+| function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
+| function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
+
+## `core/services/visible_run_interruption.py`
+_Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_visible_run_interruption` | `(error_message)` | — | [src](../../../core/services/visible_run_interruption.py#L17) |
+
 ## `core/services/visible_run_journal.py`
 _Persist the visible run and its composer context for durable recovery._
 
@@ -491,54 +530,4 @@ _Voice daemon — runs the Hey Jarvis voice loop as a background thread._
 | function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
 | function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
 | function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
-
-## `core/services/wakeup_dispatcher.py`
-_Wakeup dispatcher — autonomous fire of self-wakeups._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L52) |
-| function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L80) |
-| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L153) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L184) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L377) |
-
-## `core/services/weekly_manifest.py`
-_Weekly manifest — Jarvis' running self-reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_weekly_manifest_path` | `()` | — | [src](../../../core/services/weekly_manifest.py#L32) |
-| function | `_gather_context` | `()` | Pull recent self-state to ground the reflection. | [src](../../../core/services/weekly_manifest.py#L36) |
-| function | `_build_prompt` | `(ctx)` | — | [src](../../../core/services/weekly_manifest.py#L58) |
-| function | `build_weekly_manifest` | `()` | Generate weekly manifest, write to WEEKLY_MANIFEST.md, return summary. | [src](../../../core/services/weekly_manifest.py#L73) |
-
-## `core/services/weighted_slot_health.py`
-_Quota and adaptive health calculations for cheap-lane candidates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_account_block_key` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L13) |
-| function | `record_account_block` | `(provider, auth_profile, code, retry_after_seconds)` | Pause every model on a profile when the provider rejects that account. | [src](../../../core/services/weighted_slot_health.py#L17) |
-| function | `clear_account_block` | `(provider, auth_profile)` | A real success proves that the account can be used again. | [src](../../../core/services/weighted_slot_health.py#L32) |
-| function | `_account_block_record` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L39) |
-| function | `_account_block_until` | `(provider, auth_profile)` | — | [src](../../../core/services/weighted_slot_health.py#L46) |
-| function | `active_account_block` | `(provider, auth_profile, now_epoch)` | Return the active account cooldown and its cause for telemetry. | [src](../../../core/services/weighted_slot_health.py#L50) |
-| function | `account_block_active` | `(provider, auth_profile, now_epoch)` | Whether this provider account is in its temporary shared cooldown. | [src](../../../core/services/weighted_slot_health.py#L64) |
-| function | `quota_snapshot` | `(candidate, *, get_state, count_invocations, decode_metadata, cache_prefix, cache_ttl_seconds, reset_hours)` | — | [src](../../../core/services/weighted_slot_health.py#L69) |
-| function | `adaptive_snapshot` | `(candidate, *, state, get_state, decode_metadata)` | — | [src](../../../core/services/weighted_slot_health.py#L145) |
-| function | `latency_rank_multiplier` | `(avg_latency_ms, success_count)` | Bias small cheap tasks toward proven fast models without excluding slow ones. | [src](../../../core/services/weighted_slot_health.py#L186) |
-| function | `decode_state_metadata` | `(state)` | — | [src](../../../core/services/weighted_slot_health.py#L193) |
-| function | `rolling_average` | `(*, current_avg, current_count, new_value)` | — | [src](../../../core/services/weighted_slot_health.py#L204) |
-| function | `normalize_probe_text` | `(value)` | — | [src](../../../core/services/weighted_slot_health.py#L210) |
-| function | `smoke_quality_score` | `(*, expected, actual)` | — | [src](../../../core/services/weighted_slot_health.py#L215) |
-
-## `core/services/widget_dokument.py`
-_Pak model-skrevet HTML i et dokument der ikke kan naa noget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maerke` | `(titel=…)` | — | [src](../../../core/services/widget_dokument.py#L70) |
-| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L78) |
-| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L82) |
 

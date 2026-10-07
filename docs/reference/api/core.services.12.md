@@ -2,6 +2,55 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_concepts_positive_triggers.py`
+_Positive emotion concept bridges for living runtime signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_heartbeat_quality` | `(payload)` | Trigger joy when heartbeat quality is clearly good. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L13) |
+| function | `on_goal_created` | `(payload)` | A new durable goal produces a small anticipation/excitement pulse. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L29) |
+| function | `on_goal_updated` | `(payload)` | Trigger pride when a goal is nearly done, without refiring constantly. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L42) |
+| function | `on_sensory_recorded` | `(record)` | Trigger wonder when a sensory memory explicitly looks novel/anomalous. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L80) |
+| function | `_float` | `(value)` | — | [src](../../../core/services/emotion_concepts_positive_triggers.py#L103) |
+
+## `core/services/emotion_repair_bridge_daemon.py`
+_Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvreparation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_emotion_repair_bridge_surface` | `()` | Mission Control surface for emotion-repair bridge state. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L93) |
+| function | `_ensure_default_patterns` | `()` | Seed DB with default repair patterns if not already present. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L155) |
+| function | `tick_emotion_repair_bridge` | `()` | Main tick: check emotion signals, map to repairs, execute. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L175) |
+| function | `_tick_emotion_repair_bridge_inner` | `()` | Inner tick logic — wrapped by tick_emotion_repair_bridge for bærekraft. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L204) |
+| function | `_senses_bridge_mode` | `()` | Hvornår en selvreparation er en sansning: off | first | always. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L407) |
+| function | `_skal_broes` | `(mode, first_of_its_kind)` | Skal denne reparation skrives til Sansernes Arkiv? | [src](../../../core/services/emotion_repair_bridge_daemon.py#L421) |
+| function | `_bridge_repair_to_senses` | `(*, action_type, pattern_id, outcome, concept, error_summary=…)` | Write a sensory impression to Sansernes Arkiv when self-repair happens. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L436) |
+| function | `_execute_repair_action` | `(action_type, pattern_id)` | Execute a repair action by type. Can be extended. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L487) |
+
+## `core/services/emotion_tagging.py`
+_Emotion tagging — capture affective context at memory-creation time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current_emotion_tag` | `()` | Snapshot current affective state for tagging a new memory. | [src](../../../core/services/emotion_tagging.py#L25) |
+| function | `format_emotion_tag` | `(tag)` | Render a tag as a compact string for inclusion in memory text. | [src](../../../core/services/emotion_tagging.py#L53) |
+| function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
+| function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
+| function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
+
+## `core/services/emotional_chords.py`
+_Emotional Chords — emergent qualities from signal combinations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ChordDef` | `` | A chord definition — two signals that produce an emergent quality. | [src](../../../core/services/emotional_chords.py#L50) |
+| class | `ActiveChord` | `` | A currently active emotional chord. | [src](../../../core/services/emotional_chords.py#L151) |
+| function | `compute_active_chords` | `()` | Detect active emotional chords from current pressure state. | [src](../../../core/services/emotional_chords.py#L165) |
+| function | `format_chord_for_prompt` | `(chord)` | Format a single chord for prompt injection. | [src](../../../core/services/emotional_chords.py#L226) |
+| function | `get_chord_lines` | `()` | Convenience: compute all active chords and format for prompt. | [src](../../../core/services/emotional_chords.py#L236) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/emotional_chords.py#L254) |
+| function | `_map_pressures_to_families` | `(dominant_pressures)` | Map active pressure vectors to their likely signal families. | [src](../../../core/services/emotional_chords.py#L265) |
+
 ## `core/services/emotional_controls.py`
 _Emotional Controls — humør der GATER handlinger, ikke bare rapporteres._
 
@@ -604,56 +653,4 @@ _Flow State Detection — when everything clicks._
 | function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
 | function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
 | function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
-
-## `core/services/followup_observer.py`
-_Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe` | `(nerve, run_id, **data)` | — | [src](../../../core/services/followup_observer.py#L24) |
-| function | `note_round` | `(run_id, round_num, provider=…, model=…, *, exchanges=…)` | En agentisk followup-runde startede. Metadata-only. | [src](../../../core/services/followup_observer.py#L33) |
-| function | `note_round_failed` | `(run_id, round_num, provider=…, error=…, **data)` | En followup-runde fejlede (provider-fejl) → synlig. Det er her copilot-400 / | [src](../../../core/services/followup_observer.py#L41) |
-| function | `note_round_retry` | `(run_id, round_num, attempt, reason=…, *, outcome=…, **data)` | RUND-NIVEAU RETRY (spec §4.1/S7): en forbigående runde-fejl blev retry'et | [src](../../../core/services/followup_observer.py#L49) |
-| function | `note_lean_prompt` | `(run_id, round_num, *, provider=…, model=…, before_chars=…, after_chars=…, saved_tokens=…, applied=…)` | LEAN AGENTIC-PROMPT (spec §4.7/I7): på runde ≥2 trimmede vi den tunge per-turn- | [src](../../../core/services/followup_observer.py#L67) |
-| function | `note_loop_complete` | `(run_id, *, rounds=…, exit_reason=…, provider=…, model=…)` | Followup-loopet sluttede → observe runder kørt + exit-grund (completed/ | [src](../../../core/services/followup_observer.py#L81) |
-| function | `note_empty_completion` | `(run_id, *, provider=…, model=…, rounds=…, tools_executed=…, session_id=…, path=…)` | TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar. | [src](../../../core/services/followup_observer.py#L90) |
-| function | `note_truncation` | `(run_id, *, provider=…, model=…, text_len=…, round_num=…)` | AFKORTET SVAR (finish_reason='length'): provideren lukkede streamen tidligt, | [src](../../../core/services/followup_observer.py#L129) |
-| function | `note_hollow_promise` | `(run_id, *, provider=…, model=…, round_index=…, session_id=…, resolved=…)` | TOM LØFTE (4. jul): modellen lovede imminent handling men kaldte NUL værktøj hele | [src](../../../core/services/followup_observer.py#L163) |
-| function | `note_resend` | `(run_id, *, provider=…, model=…, recovered=…)` | RESEND-PÅ-TOM (Bjørn option 1): runtimen fangede en transient tom completion | [src](../../../core/services/followup_observer.py#L206) |
-| function | `note_leak` | `(run_id, *, provider=…, model=…, chars=…, reason=…)` | LEAK/DUMP: modellen echoede et råt (kæmpe) tool-result som prosa-svar i stedet | [src](../../../core/services/followup_observer.py#L215) |
-| function | `note_degeneration` | `(run_id, *, provider=…, model=…, reason=…, chars=…)` | MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved | [src](../../../core/services/followup_observer.py#L234) |
-| function | `followup_summary` | `(*, window=…)` | Read-only: nylig followup-loop-aktivitet (til MC). Self-safe. | [src](../../../core/services/followup_observer.py#L253) |
-
-## `core/services/followup_output_budget.py`
-_Output-token budget for agentic follow-up rounds + the "reasoning ate the_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `followup_max_tokens` | `(provider, model=…)` | Output budget for one follow-up round on ``provider``. | [src](../../../core/services/followup_output_budget.py#L35) |
-| function | `reasoning_exhausted` | `(*, finish_reason, text, tool_calls)` | True when the provider stopped for length and nothing usable came out: | [src](../../../core/services/followup_output_budget.py#L43) |
-| function | `supports_nonthinking_retry` | `(provider, model)` | Only DeepSeek thinking models can be re-run with thinking disabled. | [src](../../../core/services/followup_output_budget.py#L53) |
-| function | `nonthinking_retry_body` | `()` | Extra request fields that disable DeepSeek thinking for the retry round. | [src](../../../core/services/followup_output_budget.py#L61) |
-
-## `core/services/forced_tool_choice_probe.py`
-_Måling: honorerer providerne `tool_choice="required"`?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_forced_round` | `(*, run_id, provider, model, round_index, finish_reason, tool_calls, text_chars, reasoning_chars, tools_advertised, thinking_disabled)` | Registrér udfaldet af én runde kørt med ``tool_choice="required"``. | [src](../../../core/services/forced_tool_choice_probe.py#L50) |
-
-## `core/services/forgetting_curve.py`
-_Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/forgetting_curve.py#L56) |
-| function | `_save` | `(reg)` | — | [src](../../../core/services/forgetting_curve.py#L66) |
-| function | `noegle_for` | `(focus, summary)` | Stabil identitet for et erindrings-udtraek. Udtraek baerer intet id. | [src](../../../core/services/forgetting_curve.py#L74) |
-| function | `register_memory` | `(*, memory_key, content_preview=…, initial_decay=…)` | Register a memory for decay tracking. | [src](../../../core/services/forgetting_curve.py#L80) |
-| function | `reinforce_memory` | `(memory_key)` | Reinforce a memory — reset decay, increment reinforcement count. | [src](../../../core/services/forgetting_curve.py#L99) |
-| function | `apply_decay_tick` | `(decay_increment=…)` | Apply one decay tick to all registered memories. | [src](../../../core/services/forgetting_curve.py#L111) |
-| function | `get_active_memories` | `()` | Return memories with decay < 0.9 (still active). | [src](../../../core/services/forgetting_curve.py#L146) |
-| function | `get_faded_memories` | `()` | Return memories with decay >= 0.9 (faded but archived). | [src](../../../core/services/forgetting_curve.py#L155) |
-| function | `build_forgetting_curve_surface` | `()` | — | [src](../../../core/services/forgetting_curve.py#L164) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: se hvad der ER i sind nu, og lad resten falme. | [src](../../../core/services/forgetting_curve.py#L186) |
 

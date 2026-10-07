@@ -2,6 +2,46 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_permission.py`
+_Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L52) |
+| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L61) |
+| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L79) |
+| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L96) |
+
+## `core/services/session_persistence_flag.py`
+_Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
+| function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
+
+## `core/services/session_prewarm.py`
+_Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `session_prewarm_enabled` | `()` | Kill-switch via runtime-state (default True). Self-safe. | [src](../../../core/services/session_prewarm.py#L45) |
+| function | `_should_warm` | `(session_id)` | Throttle pr. session: skip hvis varmet < _COOLDOWN_S siden. | [src](../../../core/services/session_prewarm.py#L55) |
+| function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L70) |
+| function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L79) |
+| function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L98) |
+| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en daemon-tråd. Blokerer aldrig | [src](../../../core/services/session_prewarm.py#L249) |
+
+## `core/services/session_spawn.py`
+_start_session — Jarvis starter selv et run i en session der er Bjørns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ryd_gamle` | `(now)` | Drop tidsstempler ældre end en time — rullende vindue. | [src](../../../core/services/session_spawn.py#L37) |
+| function | `antal_sidste_time` | `()` | Hvor mange selv-startede runs ligger i det rullende vindue lige nu. | [src](../../../core/services/session_spawn.py#L44) |
+| function | `start_session` | `(prompt, *, session_id=…, title=…, origin=…)` | Start et autonomt run i en session der tilhører Bjørn. | [src](../../../core/services/session_spawn.py#L50) |
+| function | `_exec_start_session` | `(args)` | — | [src](../../../core/services/session_spawn.py#L141) |
+
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 
@@ -528,60 +568,4 @@ _Skill Security Scanner — single canonical scanner for SKILL.md + scripts/._
 | function | `scan_skill_directory_gated` | `(path)` | Som scan_skill_directory, men beslutningen GOVERNES af Centralen (SECURITY, | [src](../../../core/services/skill_security_scanner.py#L558) |
 | function | `scan_skill_content` | `(content, name=…)` | Scan raw SKILL.md content (e.g. fetched from URL) before writing to disk. | [src](../../../core/services/skill_security_scanner.py#L594) |
 | function | `is_skill_safe` | `(name, raise_on_critical=…)` | Check if a skill is safe to import. Returns True if clean. | [src](../../../core/services/skill_security_scanner.py#L609) |
-
-## `core/services/smith_confrontation.py`
-_Trin 3: Smith standser handlingen i realtid og tvinger et nyt valg._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ord_i` | `(tekst)` | — | [src](../../../core/services/smith_confrontation.py#L79) |
-| function | `_er_fritaget` | `(navn)` | — | [src](../../../core/services/smith_confrontation.py#L83) |
-| function | `_rammer` | `(label, tool_navn, argumenter=…)` | Peger dette tool-kald paa moensteret? | [src](../../../core/services/smith_confrontation.py#L88) |
-| function | `_hold_taeller` | `(run_id, noegle, *, laes_kun=…)` | Hvor mange gange har vi holdt dette moenster i dette run? | [src](../../../core/services/smith_confrontation.py#L106) |
-| function | `_har_adfaerds_noegle` | `()` | Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags- | [src](../../../core/services/smith_confrontation.py#L123) |
-| function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L134) |
-| function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L151) |
-
-## `core/services/smith_noise_veto.py`
-_Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
-| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
-
-## `core/services/social_labilizer.py`
-_Social labilizer — Fase 2 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
-| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
-| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
-| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
-| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
-| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
-
-## `core/services/somatic_daemon.py`
-_Somatic daemon — LLM-generated body-state description from structured metrics._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_request_start` | `()` | — | [src](../../../core/services/somatic_daemon.py#L42) |
-| function | `record_request_end` | `()` | — | [src](../../../core/services/somatic_daemon.py#L47) |
-| function | `record_latency_sample` | `(ms)` | — | [src](../../../core/services/somatic_daemon.py#L52) |
-| function | `get_latest_somatic_phrase` | `()` | — | [src](../../../core/services/somatic_daemon.py#L59) |
-| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/somatic_daemon.py#L63) |
-| function | `build_body_state_surface` | `()` | Returns body state for Mission Control surface. | [src](../../../core/services/somatic_daemon.py#L77) |
-| function | `tick_somatic_daemon` | `(energy_level=…)` | Called each heartbeat. May trigger a new somatic phrase generation. | [src](../../../core/services/somatic_daemon.py#L104) |
-| function | `_collect_snapshot` | `(energy_level)` | — | [src](../../../core/services/somatic_daemon.py#L132) |
-| function | `_should_generate` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L172) |
-| function | `_read_cpu_temp_c` | `()` | Læs CPU-temp fra hardware_body. None hvis utilgængelig (graceful omit). | [src](../../../core/services/somatic_daemon.py#L188) |
-| function | `_read_loadavg` | `()` | 1-minut system load average. Self-safe → 0.0. | [src](../../../core/services/somatic_daemon.py#L201) |
-| function | `_build_raw_phrase` | `(snapshot)` | Byg frasen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/somatic_daemon.py#L210) |
-| function | `_generate_phrase` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L231) |
-| function | `_pressure_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L276) |
-| function | `_load_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L286) |
-| function | `_latency_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L299) |
-| function | `_store_phrase` | `(phrase, snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L308) |
 

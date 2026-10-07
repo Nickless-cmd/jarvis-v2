@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_skill_distiller.py`
+_Agent skill distillation — turns observed outcomes into principles._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gather_recent_outcomes` | `(role, days=…)` | Pull recent runs/outcomes for this role from agent observations. | [src](../../../core/services/agent_skill_distiller.py#L24) |
+| function | `_build_distill_prompt` | `(role, outcomes)` | — | [src](../../../core/services/agent_skill_distiller.py#L50) |
+| function | `_parse_distillation` | `(text)` | — | [src](../../../core/services/agent_skill_distiller.py#L72) |
+| function | `distill_skills_for_role` | `(role, *, days=…)` | Distill recent outcomes for a role into principles. Appends to skills.md. | [src](../../../core/services/agent_skill_distiller.py#L96) |
+| function | `distill_all_known_roles` | `(*, days=…)` | — | [src](../../../core/services/agent_skill_distiller.py#L133) |
+
 ## `core/services/agent_skill_library.py`
 _Agent Skill Library — per-role learned patterns + workflows._
 
@@ -80,6 +91,55 @@ _Varig fortsaettelsesintention for en parent der venter paa agenter (B2, §6)._
 | function | `wake_message` | `(*, condition, assignment_ids)` | Teksten der starter det vaagnede run. Maerket som fra systemet (staaende | [src](../../../core/services/agent_wake_intentions.py#L26) |
 | function | `stage_wake` | `(*, task_id, session_id, owner_user_id, message, parent_run_id=…)` | Skriv intentionen. Idempotent paa `task_id`. Findes der allerede en anden | [src](../../../core/services/agent_wake_intentions.py#L39) |
 | function | `cancel_pending_wake` | `(task_id, *, reason)` | Aflys en vaekning der endnu IKKE er startet. En allerede claimet (`running`) | [src](../../../core/services/agent_wake_intentions.py#L79) |
+
+## `core/services/agent_worker_main.py`
+_Entry for en sandboxet agent-worker (agent-contract-v1 C6b)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RpcIO` | `` | LoopIO der sender hvert kald til brokeren og venter paa svaret. | [src](../../../core/services/agent_worker_main.py#L28) |
+| method | `RpcIO.__init__` | `(self, sock, reader)` | — | [src](../../../core/services/agent_worker_main.py#L31) |
+| method | `RpcIO.call` | `(self, op, **payload)` | — | [src](../../../core/services/agent_worker_main.py#L34) |
+| method | `RpcIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_worker_main.py#L48) |
+| method | `RpcIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_worker_main.py#L53) |
+| method | `RpcIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_worker_main.py#L56) |
+| method | `RpcIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_worker_main.py#L59) |
+| function | `_apply_limits` | `(limits)` | Kun stramninger (en soft-graense under den arvede hard-graense); aldrig en haevning. | [src](../../../core/services/agent_worker_main.py#L64) |
+| function | `main` | `(argv)` | — | [src](../../../core/services/agent_worker_main.py#L74) |
+
+## `core/services/agent_worker_protocol.py`
+_Wire-protokollen mellem serverens broker og en sandboxet agent-worker (C6b)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ProtocolError` | `` | Misdannet eller for stor ramme. | [src](../../../core/services/agent_worker_protocol.py#L19) |
+| class | `FrameTooLarge` | `` | — | [src](../../../core/services/agent_worker_protocol.py#L23) |
+| function | `send` | `(sock, obj)` | — | [src](../../../core/services/agent_worker_protocol.py#L27) |
+| class | `FrameReader` | `` | Laeser rammer ét ad gangen. ``read(timeout)`` giver ``None`` ved timeout, hæver ``EOFError`` | [src](../../../core/services/agent_worker_protocol.py#L34) |
+| method | `FrameReader.__init__` | `(self, sock)` | — | [src](../../../core/services/agent_worker_protocol.py#L38) |
+| method | `FrameReader.read` | `(self, timeout=…)` | — | [src](../../../core/services/agent_worker_protocol.py#L42) |
+
+## `core/services/agent_worker_runner.py`
+_Server-siden af en sandboxet agent-worker: spawn, broker og draeb (agent-contract-v1 C6b)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `WorkerError` | `` | Workeren fejlede eller blev draebt. ``code`` er stabil. | [src](../../../core/services/agent_worker_runner.py#L50) |
+| method | `WorkerError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worker_runner.py#L53) |
+| function | `worker_mode_enabled` | `()` | Fail-closed: enhver laesefejl er ``False`` (= den eksisterende in-process-vej). | [src](../../../core/services/agent_worker_runner.py#L58) |
+| function | `set_worker_mode` | `(enabled, *, role=…)` | At TAENDE er en ejerbeslutning; at slukke er altid tilladt. | [src](../../../core/services/agent_worker_runner.py#L68) |
+| function | `_require_sandbox` | `()` | — | [src](../../../core/services/agent_worker_runner.py#L77) |
+| function | `_kill_group` | `(proc)` | — | [src](../../../core/services/agent_worker_runner.py#L87) |
+| function | `_safe` | `(obj)` | — | [src](../../../core/services/agent_worker_runner.py#L103) |
+| class | `_Broker` | `` | Politik ved sømmen: hvad en worker maa faa serveren til at goere. | [src](../../../core/services/agent_worker_runner.py#L107) |
+| method | `_Broker.__init__` | `(self, *, agent, run_id, prompt, tools_payload, provider, model, max_tool_calls)` | — | [src](../../../core/services/agent_worker_runner.py#L110) |
+| method | `_Broker.handle` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L124) |
+| method | `_Broker._model` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L144) |
+| method | `_Broker._model_text` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L157) |
+| method | `_Broker._tool` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L165) |
+| function | `_agent_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_worker_runner.py#L178) |
+| function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L187) |
+| function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L205) |
 
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._
@@ -540,56 +600,4 @@ _Execute Git commits with canonical attribution and no staging side effects._
 | function | `_besked_afveg` | `(root, *, sendt, timeout)` | Staar der i repoet det vi bad om? Tom streng = ingen afvigelse fundet. | [src](../../../core/services/attributed_git_commit.py#L53) |
 | function | `_verify_staged_paths` | `(repo, paths, *, timeout)` | — | [src](../../../core/services/attributed_git_commit.py#L97) |
 | function | `commit_with_attribution` | `(*, repo, message, attribution, paths=…, author=…, timeout=…, amend=…)` | Commit already-staged content with canonical audit trailers. | [src](../../../core/services/attributed_git_commit.py#L120) |
-
-## `core/services/auth_profile_scan.py`
-_Shared scanner for multi-profile provider auth slots._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_account_profile` | `(profile)` | True only for real account profiles (default, account2, account3, …). | [src](../../../core/services/auth_profile_scan.py#L41) |
-| function | `clear_cache` | `()` | Drop all cached scan results (test helper / manual invalidation). | [src](../../../core/services/auth_profile_scan.py#L51) |
-| function | `_profiles_root` | `()` | Return the auth/profiles directory (honoring JARVIS_CONFIG_DIR). | [src](../../../core/services/auth_profile_scan.py#L56) |
-| function | `_is_keyless` | `(provider)` | True if the provider needs no per-profile credentials. | [src](../../../core/services/auth_profile_scan.py#L63) |
-| function | `_sort_default_first` | `(profiles)` | — | [src](../../../core/services/auth_profile_scan.py#L83) |
-| function | `ready_profiles_for` | `(provider)` | Return profiles with ready credentials for ``provider``. | [src](../../../core/services/auth_profile_scan.py#L88) |
-
-## `core/services/auto_code_review.py`
-_Auto code-review heuristic for git-commit proposals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git_diff_stats` | `(repo, files)` | Return per-file added/removed line counts for the staged or unstaged diff. | [src](../../../core/services/auto_code_review.py#L36) |
-| function | `_scope_for_path` | `(p)` | — | [src](../../../core/services/auto_code_review.py#L72) |
-| function | `review_pending_commit` | `(*, repo_root, files, message, rationale)` | — | [src](../../../core/services/auto_code_review.py#L77) |
-| function | `review_pending_commit_gated` | `(**kwargs)` | Som review_pending_commit, men GOVERNET af Centralen (COGNITIVE, cluster='commit') | [src](../../../core/services/auto_code_review.py#L168) |
-
-## `core/services/auto_continuation.py`
-_Fortsæt automatisk når et synligt run-segment sluttede før opgaven._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L62) |
-| function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L70) |
-| function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…, *, reason=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L103) |
-| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L140) |
-| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L167) |
-| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L184) |
-| function | `kaede_nr` | `(session_id)` | Hvor mange gange er DENNE samtale allerede genoptaget? | [src](../../../core/services/auto_continuation.py#L203) |
-| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til at afgøre om han tog over MENS et run | [src](../../../core/services/auto_continuation.py#L231) |
-| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L246) |
-
-## `core/services/auto_improvement_proposer.py`
-_Auto improvement proposer — close the self-improvement loop SAFELY._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_iso` | `(value)` | Parse an ISO-8601 timestamp leniently; None on garbage. | [src](../../../core/services/auto_improvement_proposer.py#L39) |
-| function | `_is_safe_target` | `(target)` | Reject only infrastructure-protected modules. Identity files now allowed | [src](../../../core/services/auto_improvement_proposer.py#L58) |
-| function | `_check_tick_quality_degraded` | `()` | Returns proposal payload if tick quality is degrading. | [src](../../../core/services/auto_improvement_proposer.py#L69) |
-| function | `_check_stale_goals` | `()` | Returns proposal payload if stale goals exist. | [src](../../../core/services/auto_improvement_proposer.py#L101) |
-| function | `_check_decision_adherence` | `()` | — | [src](../../../core/services/auto_improvement_proposer.py#L131) |
-| function | `_already_disabled_providers` | `()` | Providers der eksplicit er slaaet fra paa provider-niveau. | [src](../../../core/services/auto_improvement_proposer.py#L160) |
-| function | `_check_provider_health_chronic` | `()` | If a provider is chronically down (>30 min), propose explicit demotion. | [src](../../../core/services/auto_improvement_proposer.py#L184) |
-| function | `generate_improvement_proposals` | `(*, session_id=…)` | Run all checks, file plans for any that fire. | [src](../../../core/services/auto_improvement_proposer.py#L239) |
-| function | `_exec_generate_improvement_proposals` | `(args)` | — | [src](../../../core/services/auto_improvement_proposer.py#L302) |
 

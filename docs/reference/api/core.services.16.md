@@ -2,6 +2,61 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/life_milestones.py`
+_Life milestones — identity-defining moments surfaced in the prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_milestones_file` | `()` | — | [src](../../../core/services/life_milestones.py#L17) |
+| function | `_manifest_file` | `()` | — | [src](../../../core/services/life_milestones.py#L21) |
+| function | `get_milestones_for_prompt` | `(max_chars=…)` | Return a formatted milestones block for prompt injection, or None. | [src](../../../core/services/life_milestones.py#L25) |
+| function | `get_manifest_excerpt` | `(max_chars=…)` | Return first ~600 chars of MANIFEST.md as a first-principles reminder. | [src](../../../core/services/life_milestones.py#L47) |
+| function | `build_life_history_prompt_section` | `()` | Combine milestones + manifest excerpt into a prompt section. | [src](../../../core/services/life_milestones.py#L63) |
+| function | `append_milestone` | `(text)` | Append a new milestone entry to MILESTONES.md. Returns True on success. | [src](../../../core/services/life_milestones.py#L71) |
+| function | `build_life_milestones_surface` | `()` | — | [src](../../../core/services/life_milestones.py#L88) |
+| function | `_emit_life_milestones_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/life_milestones.py#L103) |
+
+## `core/services/life_projects.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `create_life_project` | `(*, title, why, source=…, source_id=…, priority=…)` | — | [src](../../../core/services/life_projects.py#L12) |
+| function | `build_life_projects_surface` | `()` | — | [src](../../../core/services/life_projects.py#L36) |
+| function | `abandon_life_project` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/life_projects.py#L50) |
+| function | `endorse_life_project` | `(initiative_id, *, note=…)` | «Det er i orden» — projektet lever videre, nu med et menneskes ja bag sig. | [src](../../../core/services/life_projects.py#L57) |
+| function | `tick_life_projects_reassessment` | `(*, trigger=…, last_visible_at=…)` | Periodisk re-vurdering af aktive life projects. | [src](../../../core/services/life_projects.py#L66) |
+
+## `core/services/lifecycle_hooks.py`
+_Livscyklus-hooks server-side — paritet med jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_allow` | `(context=…)` | — | [src](../../../core/services/lifecycle_hooks.py#L85) |
+| function | `matcher_matches` | `(matcher, tool_name, command=…)` | Rammer et matcher-moenster dette tool-kald? Ren. | [src](../../../core/services/lifecycle_hooks.py#L91) |
+| function | `decide` | `(results)` | Saml flere hook-svar til ét. Ren. | [src](../../../core/services/lifecycle_hooks.py#L129) |
+| function | `config_path` | `()` | `~/.jarvis-v2/config/hooks.json` — config er runtimens sandhed for | [src](../../../core/services/lifecycle_hooks.py#L161) |
+| function | `load_hooks` | `()` | {haendelse: [hook, ...]}. Self-safe → tomt. | [src](../../../core/services/lifecycle_hooks.py#L168) |
+| function | `hooks_for` | `(event)` | Konfigurerede hooks for én haendelse. Self-safe → tom liste. | [src](../../../core/services/lifecycle_hooks.py#L184) |
+| function | `_run_command_hook` | `(hook, context, user_id=…)` | Koer et shell-script med kontekst paa stdin. Exit 2 = block (jarvis-codes | [src](../../../core/services/lifecycle_hooks.py#L192) |
+| function | `_run_http_hook` | `(hook, context)` | POST konteksten; svarets `action`/`message` gaelder. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L233) |
+| function | `_run_command_hook_async` | `(hook, context, user_id=…)` | Operator-grenen, kaldt fra det loop broen selv lever paa. | [src](../../../core/services/lifecycle_hooks.py#L256) |
+| function | `fire_async` | `(event, context, user_id=…)` | Som `fire`, men kan koere operator-hooks. Brug denne fra async-kode. | [src](../../../core/services/lifecycle_hooks.py#L282) |
+| function | `run_hook` | `(event, hook, context, user_id=…)` | Koer ÉN hook. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L313) |
+| function | `_advar_om_uvirksom_dom` | `(event, dom)` | Sig det hoejt naar en hook doemmer paa en haendelse der ikke kan handle. | [src](../../../core/services/lifecycle_hooks.py#L332) |
+| function | `fire` | `(event, context, user_id=…)` | Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L345) |
+
+## `core/services/liveness_registry.py`
+_Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L335) |
+| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L343) |
+| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L348) |
+| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L360) |
+| function | `module_is_alive` | `(name)` | True naar modulet ikke er doedt. En `projektion` gemmer intet og lever. | [src](../../../core/services/liveness_registry.py#L365) |
+| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L375) |
+
 ## `core/services/living_executive.py`
 _Living Executive — Jarvis' active impulse/choice/action loop._
 
@@ -569,73 +624,4 @@ _Memory Tattoos — de mærker der bliver siddende._
 | function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L164) |
 | function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L169) |
 | function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L173) |
-
-## `core/services/memory_write_policy.py`
-_Memory Write Policy — gating + review queue for inferred memory writes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
-| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
-| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
-| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
-| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
-| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
-| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
-| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
-| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
-| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
-| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
-| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
-| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
-| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
-| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
-
-## `core/services/memory_write_queue.py`
-_Memory Write Queue — async write queue for sensory/brain memories._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/memory_write_queue.py#L52) |
-| function | `enqueue_write` | `(queue_type, payload, priority=…)` | Enqueue a memory write for async processing. | [src](../../../core/services/memory_write_queue.py#L77) |
-| function | `process_queue` | `(batch_size=…)` | Process pending write queue items. Called by the daemon tick. | [src](../../../core/services/memory_write_queue.py#L119) |
-| function | `queue_size` | `()` | Return counts by status. | [src](../../../core/services/memory_write_queue.py#L218) |
-| function | `build_memory_write_queue_surface` | `()` | Mission Control surface. | [src](../../../core/services/memory_write_queue.py#L240) |
-| function | `tick_memory_write_queue_daemon` | `(now=…)` | Daemon tick: process pending writes every 120s. | [src](../../../core/services/memory_write_queue.py#L263) |
-| function | `_max_retries_for` | `(queue_type)` | — | [src](../../../core/services/memory_write_queue.py#L303) |
-| function | `_process_item` | `(queue_type, payload, retry_count)` | Execute one write. Returns (ok, error_message). | [src](../../../core/services/memory_write_queue.py#L311) |
-| function | `_process_sensory` | `(payload, retry_count)` | Process a sensory memory write. | [src](../../../core/services/memory_write_queue.py#L333) |
-| function | `_process_brain` | `(payload, retry_count)` | Process a brain entry write. | [src](../../../core/services/memory_write_queue.py#L352) |
-| function | `_process_sidecar` | `(payload, retry_count)` | Process a MEMORY.md sidecar: mood capture + graph ingestion. | [src](../../../core/services/memory_write_queue.py#L385) |
-| function | `retry_failed` | `(limit=…)` | Reset failed items back to pending for retry. | [src](../../../core/services/memory_write_queue.py#L422) |
-| function | `clean_old_done` | `(hours=…)` | Delete 'done' items older than N hours. | [src](../../../core/services/memory_write_queue.py#L446) |
-
-## `core/services/mermaid_render.py`
-_Mermaid → SVG, server-side. Så diagrammer også når mobilen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MermaidFejl` | `` | Kunne ikke rende diagrammet — med en årsag der kan handles på. | [src](../../../core/services/mermaid_render.py#L74) |
-| function | `find_chrome` | `()` | Første kørende chromium-binær, eller None. | [src](../../../core/services/mermaid_render.py#L78) |
-| function | `find_mermaid` | `()` | — | [src](../../../core/services/mermaid_render.py#L86) |
-| function | `tilgaengelig` | `()` | Kan serveren rende mermaid lige nu? (ja/nej, grund). | [src](../../../core/services/mermaid_render.py#L93) |
-| function | `_side` | `(kilde, mermaid_js)` | HTML-siden der rendrer diagrammet og lægger SVG'en i titlen. | [src](../../../core/services/mermaid_render.py#L102) |
-| function | `render` | `(kilde, *, timeout=…)` | Mermaid-kilde → SVG. Rejser `MermaidFejl` hvis det ikke kan lade sig gøre. | [src](../../../core/services/mermaid_render.py#L122) |
-| function | `_svg_side` | `(svg)` | En side der viser en faerdig SVG — klar til screenshot. | [src](../../../core/services/mermaid_render.py#L193) |
-| function | `_maal` | `(svg)` | SVG'ens sande forhold. | [src](../../../core/services/mermaid_render.py#L206) |
-| function | `rasteriser` | `(svg, *, bredde, maks_hoejde, timeout=…)` | SVG → PNG, tegnet af chromium. | [src](../../../core/services/mermaid_render.py#L223) |
-
-## `core/services/message_feedback.py`
-_Ros og ris på Jarvis' svar — og hvad de bliver til._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/services/message_feedback.py#L42) |
-| function | `sæt_stemme` | `(*, message_id, session_id=…, user_id=…, vote)` | Gem (eller fjern) en stemme. `vote=''` fortryder. | [src](../../../core/services/message_feedback.py#L64) |
-| function | `ugennemgåede` | `(limit=…)` | Stemmer der endnu ikke er set på, ældste først. | [src](../../../core/services/message_feedback.py#L102) |
-| function | `markér_gennemgået` | `(message_ids)` | — | [src](../../../core/services/message_feedback.py#L122) |
-| function | `byg_review_prompt` | `(poster)` | Den tekst Jarvis vågner op til. | [src](../../../core/services/message_feedback.py#L138) |
-| function | `tick_feedback_review` | `(now=…)` | Én gang om måneden: giv Jarvis månedens stemmer at tænke over. | [src](../../../core/services/message_feedback.py#L167) |
-| function | `_nu` | `()` | — | [src](../../../core/services/message_feedback.py#L210) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/message_feedback.py#L214) |
 

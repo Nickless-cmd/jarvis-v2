@@ -2,6 +2,77 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recurrence_loop_daemon.py`
+_Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_recurrence_loop_daemon` | `()` | Run one recurrence iteration. Returns dict with generated/reason/stability. | [src](../../../core/services/recurrence_loop_daemon.py#L23) |
+| function | `build_recurrence_surface` | `()` | MC surface for recurrence loop experiment. | [src](../../../core/services/recurrence_loop_daemon.py#L94) |
+| function | `_call_recurrence_llm` | `(content)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/recurrence_loop_daemon.py#L135) |
+| function | `_extract_keywords` | `(text)` | Extract meaningful keywords from text (words >= 4 chars, deduped, max 20). | [src](../../../core/services/recurrence_loop_daemon.py#L195) |
+| function | `_jaccard_similarity` | `(a, b)` | Jaccard similarity between two keyword sets. Returns 1.0 if both empty. | [src](../../../core/services/recurrence_loop_daemon.py#L201) |
+
+## `core/services/recurring_tasks.py`
+_Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/recurring_tasks.py#L26) |
+| function | `set_channel` | `(task_id, channel)` | Sæt leverings-kanal på en recurring task. Returnerer True hvis opdateret. | [src](../../../core/services/recurring_tasks.py#L67) |
+| function | `set_weekdays` | `(task_id, weekdays)` | Sæt hvilke ugedage en task må fyre på. ``''`` = alle dage (uændret). | [src](../../../core/services/recurring_tasks.py#L83) |
+| function | `_row_to_dict` | `(row)` | — | [src](../../../core/services/recurring_tasks.py#L105) |
+| function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/services/recurring_tasks.py#L124) |
+| function | `_create` | `(*, task_id, focus, source, interval_minutes, next_fire_at, now, weekdays=…)` | — | [src](../../../core/services/recurring_tasks.py#L130) |
+| function | `_get_due` | `(now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L144) |
+| function | `parse_weekdays` | `(raw)` | Normalisér ugedage til ``'1,2,3,4,5'`` (ISO: mandag = 1). ``''`` = alle. | [src](../../../core/services/recurring_tasks.py#L168) |
+| function | `_ugedage` | `(raw)` | Ugedagene som et sæt ISO-tal (mandag = 1). Tomt sæt = alle dage. | [src](../../../core/services/recurring_tasks.py#L209) |
+| function | `_ryk_til_ugedag` | `(tid, trin, ugedage)` | Ryk frem i hele INTERVALLER til en dag brugeren har valgt. | [src](../../../core/services/recurring_tasks.py#L229) |
+| function | `_naeste_tid` | `(planlagt_iso, interval_minutes, now, ugedage=…)` | Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske. | [src](../../../core/services/recurring_tasks.py#L245) |
+| function | `_advance` | `(task_id, interval_minutes, now, planlagt_iso=…, ugedage=…)` | — | [src](../../../core/services/recurring_tasks.py#L285) |
+| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L301) |
+| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L321) |
+| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L337) |
+| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…, weekdays=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L354) |
+| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L418) |
+| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L426) |
+| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L431) |
+| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L446) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L502) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L516) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L526) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L545) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L554) |
+
+## `core/services/recursion_guard.py`
+_Recursion guard for autonomous agent dispatch._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tunable_int` | `(key, default)` | Read an int threshold from runtime-state; fall back to ``default``. | [src](../../../core/services/recursion_guard.py#L43) |
+| function | `_tunable_float` | `(key, default)` | — | [src](../../../core/services/recursion_guard.py#L53) |
+| function | `can_spawn` | `(current_depth, max_depth=…)` | True while a spawn chain still has depth budget. | [src](../../../core/services/recursion_guard.py#L63) |
+| function | `fanout_allowed` | `(requested, max_fanout=…)` | True when a single dispatch's requested child count is within budget. | [src](../../../core/services/recursion_guard.py#L77) |
+| function | `_load_entries` | `()` | — | [src](../../../core/services/recursion_guard.py#L91) |
+| function | `_save_entries` | `(entries)` | — | [src](../../../core/services/recursion_guard.py#L107) |
+| function | `_fresh_entries` | `(entries, now_ts, ttl)` | Drop entries older than ``ttl`` — reclaims slots left by crashed runs. | [src](../../../core/services/recursion_guard.py#L114) |
+| function | `try_enter` | `(now_ts=…)` | Claim a concurrency slot. | [src](../../../core/services/recursion_guard.py#L119) |
+| function | `exit` | `(now_ts=…)` | Release one concurrency slot (also reclaims stale entries). | [src](../../../core/services/recursion_guard.py#L142) |
+| function | `effective_max_fanout` | `()` | The live fan-out ceiling (runtime-state override or default). Callers use it | [src](../../../core/services/recursion_guard.py#L154) |
+| function | `active_count` | `(now_ts=…)` | Number of live (non-stale) concurrency slots currently held. | [src](../../../core/services/recursion_guard.py#L160) |
+
+## `core/services/reflection_cycle_daemon.py`
+_Reflection cycle daemon — pure experience without action, every 10 minutes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/reflection_cycle_daemon.py#L19) |
+| function | `tick_reflection_cycle_daemon` | `(snapshot, *, skip_event_gate=…)` | Generate a pure experience reflection if cadence allows. | [src](../../../core/services/reflection_cycle_daemon.py#L27) |
+| function | `_generate_reflection` | `(snapshot)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L71) |
+| function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
+| function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
+| function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
+
 ## `core/services/reflection_signal_tracking.py`
 _Reflection signal tracking — migrated onto signal_tracking_framework._
 
@@ -629,73 +700,4 @@ _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs.
 | function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L689) |
 | function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L717) |
 | function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L742) |
-
-## `core/services/run_event_log.py`
-_In-memory, append-only, offset-indekseret event-log PR. RUN._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_terminal_frame` | `(frame)` | Er denne SSE-frame en TERMINAL-frame (message_stop)? Klienterne forlader kun | [src](../../../core/services/run_event_log.py#L34) |
-| function | `_is_ephemeral_frame` | `(frame)` | ping/retry-frames er KEEPALIVE-støj på den direkte stream — de er irrelevante | [src](../../../core/services/run_event_log.py#L41) |
-| function | `synthetic_terminal_frame` | `(run_id=…, session_id=…, reason=…)` | H1/G6: byg en syntetisk terminal-SSE-frame til en subscriber der GIVER OP uden | [src](../../../core/services/run_event_log.py#L66) |
-| function | `create` | `(run_id, session_id, surface=…)` | — | [src](../../../core/services/run_event_log.py#L102) |
-| function | `_hent` | `(run_id)` | Loggens tilstand for et id — log-id'et selv eller et alias. Kaldes UNDER _lock. | [src](../../../core/services/run_event_log.py#L139) |
-| function | `alias` | `(extern_id, log_id)` | Lad `extern_id` (runnets eget id) pege paa loggen `log_id`. | [src](../../../core/services/run_event_log.py#L148) |
-| function | `klient_run_id` | `(run_id)` | Det id KLIENTEN kender for dette run — aliaset hvis der findes et. | [src](../../../core/services/run_event_log.py#L160) |
-| function | `run_id_fra_ramme` | `(frame)` | run_id fra en system_event(kind=run)-ramme, ellers None. Kaster aldrig. | [src](../../../core/services/run_event_log.py#L174) |
-| function | `append` | `(run_id, frame)` | — | [src](../../../core/services/run_event_log.py#L189) |
-| function | `_emit_cap_nerve` | `(run_id)` | Observe (cluster='stream', nerve='relay_frame_cap') at ring-vinduet begyndte | [src](../../../core/services/run_event_log.py#L221) |
-| function | `touch_liveness` | `(run_id)` | Opdatér et runs liveness (last_append_at) UDEN at persistere en frame. | [src](../../../core/services/run_event_log.py#L236) |
-| function | `mark_done` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L251) |
-| function | `gap_frame` | `(resume_idx)` | Gap-markoeren MED den globale position rammerne efter den starter ved. | [src](../../../core/services/run_event_log.py#L268) |
-| function | `er_gap_frame` | `(frame)` | Er rammen en gap-markoer (med eller uden position)? | [src](../../../core/services/run_event_log.py#L284) |
-| function | `read` | `(run_id, from_idx)` | Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0) | [src](../../../core/services/run_event_log.py#L289) |
-| function | `read_from` | `(run_id, from_idx)` | Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det | [src](../../../core/services/run_event_log.py#L301) |
-| function | `active_run_for_session` | `(session_id)` | — | [src](../../../core/services/run_event_log.py#L320) |
-| function | `is_live` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L331) |
-| function | `is_open` | `(run_id)` | True while the detached producer still owns an unfinished run. | [src](../../../core/services/run_event_log.py#L342) |
-| function | `live_run_ids` | `()` | — | [src](../../../core/services/run_event_log.py#L354) |
-| function | `hale` | `(run_id, n=…)` | De seneste `n` frames for et run (tom liste hvis ukendt). Til | [src](../../../core/services/run_event_log.py#L366) |
-| function | `aabne_run_ids` | `(max_alder_s=…)` | Runs der stadig er ÅBNE (ikke markeret færdige), og yngre end | [src](../../../core/services/run_event_log.py#L374) |
-| function | `set_surface` | `(run_id, surface)` | Notér hvilken flade turen blev skrevet fra. Tom streng roerer intet. | [src](../../../core/services/run_event_log.py#L390) |
-| function | `surface_for_run` | `(run_id)` | Fladen turen blev skrevet fra, eller "" naar den ikke er kendt. | [src](../../../core/services/run_event_log.py#L406) |
-| function | `session_for_run` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L413) |
-| function | `prune` | `()` | Behold alle ikke-done runs + de seneste _KEEP_DONE_PER_SESSION done-runs | [src](../../../core/services/run_event_log.py#L419) |
-| function | `subscriber_opened` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L440) |
-| function | `subscriber_closed` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L447) |
-| function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L454) |
-| function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L462) |
-| function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L471) |
-
-## `core/services/run_finding_accounting.py`
-_Structured end-of-run findings and a conservative admission fallback._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(kind, path, behavior)` | — | [src](../../../core/services/run_finding_accounting.py#L27) |
-| function | `_ledger` | `()` | — | [src](../../../core/services/run_finding_accounting.py#L32) |
-| function | `record_finding` | `(*, kind, disposition, path, behavior, evidence, title, next_step=…, reason=…, run_id=…, session_id=…, finding_key=…, existing_side_task_id=…)` | Account for one concrete finding; only deferred gaps create tasks. | [src](../../../core/services/run_finding_accounting.py#L37) |
-| function | `audit_final_response` | `(*, run_id, session_id, text)` | Catch only explicit self-admissions with one identifiable code file. | [src](../../../core/services/run_finding_accounting.py#L99) |
-
-## `core/services/run_follow.py`
-_Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `begin_follow` | `(session_id, run_id=…)` | Nulstil buffer for en NY run i sessionen (catch-up starter forfra). | [src](../../../core/services/run_follow.py#L39) |
-| function | `publish_follow_frame` | `(session_id, frame)` | Append en v2-SSE-frame til sessionens buffer (kaldt fra run-tråden). | [src](../../../core/services/run_follow.py#L54) |
-| function | `end_follow` | `(session_id)` | Markér sessionens follow-stream som færdig → pollende endpoint stopper | [src](../../../core/services/run_follow.py#L73) |
-| function | `_snapshot` | `(session_id, from_idx)` | Returnér (nye frames fra from_idx, done). | [src](../../../core/services/run_follow.py#L85) |
-| function | `snapshot_from` | `(session_id, from_idx)` | Ring-aware snapshot with a monotonic global continuation offset. | [src](../../../core/services/run_follow.py#L91) |
-| function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L108) |
-| function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
-| function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
-
-## `core/services/run_message_provenance.py`
-_Name the source of model input without changing the user's stored text._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
-| function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
 

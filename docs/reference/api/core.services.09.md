@@ -2,6 +2,73 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/context_window_manager.py`
+_Context window manager — strategies for keeping prompts within budget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_visible_window` | `()` | Resolve the visible lane model's context window in tokens. Fallback 200k. | [src](../../../core/services/context_window_manager.py#L45) |
+| function | `_window_scaled_thresholds` | `()` | Compaction target + pressure levels as a fraction of the ACTUAL model window. | [src](../../../core/services/context_window_manager.py#L62) |
+| function | `_estimate_session_tokens` | `()` | — | [src](../../../core/services/context_window_manager.py#L90) |
+| function | `_list_session_messages` | `(session_id=…, limit=…)` | — | [src](../../../core/services/context_window_manager.py#L98) |
+| function | `_is_anchor` | `(message)` | — | [src](../../../core/services/context_window_manager.py#L120) |
+| function | `apply_sliding` | `(messages, *, keep_recent=…, preserve_anchors=…)` | Keep last N messages, drop middle. Optionally preserve anchor messages. | [src](../../../core/services/context_window_manager.py#L127) |
+| function | `estimate_pressure` | `()` | Read current session size + classify pressure level against the ACTUAL | [src](../../../core/services/context_window_manager.py#L152) |
+| function | `degradation_signal` | `()` | Detect signs that long context is hurting performance. | [src](../../../core/services/context_window_manager.py#L177) |
+| function | `adaptive_pick_strategy` | `()` | Pick the best strategy for current state. | [src](../../../core/services/context_window_manager.py#L242) |
+| function | `context_window_section` | `()` | Awareness-section warning when degradation detected. | [src](../../../core/services/context_window_manager.py#L253) |
+| function | `_exec_context_pressure` | `(args)` | — | [src](../../../core/services/context_window_manager.py#L269) |
+| function | `_exec_manage_context_window` | `(args)` | Apply a chosen context-management strategy. | [src](../../../core/services/context_window_manager.py#L277) |
+
+## `core/services/continuity.py`
+_Continuity Kernel — state capsule + live update + graded wake-up._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity.py#L111) |
+| function | `_ensure_dir` | `()` | — | [src](../../../core/services/continuity.py#L115) |
+| function | `_truncate_capsule` | `(data)` | Ensure capsule stays under _MAX_CAPSULE_SIZE_BYTES. | [src](../../../core/services/continuity.py#L119) |
+| function | `capture_state` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, workspace_id=…, session_id=…)` | Build a complete state capsule dict from partial inputs. | [src](../../../core/services/continuity.py#L153) |
+| function | `write_capsule` | `(capsule)` | Write capsule to disk with rotation. | [src](../../../core/services/continuity.py#L269) |
+| function | `write_handover` | `(title, text)` | Skriv MIN egen overdragelse til den næste session. | [src](../../../core/services/continuity.py#L287) |
+| function | `read_handover` | `()` | Læs den overdragelse der står i capsulen lige nu (eller None). | [src](../../../core/services/continuity.py#L344) |
+| function | `sync_capsule_mood` | `()` | Sync capsule mood from mood_oscillator's live state. | [src](../../../core/services/continuity.py#L355) |
+| function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L405) |
+| function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L423) |
+| function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L435) |
+| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L529) |
+| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L661) |
+
+## `core/services/continuity_kernel.py`
+_Bounded Continuity Kernel — existence feel between ticks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/continuity_kernel.py#L46) |
+| function | `_gem` | `()` | — | [src](../../../core/services/continuity_kernel.py#L59) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity_kernel.py#L65) |
+| function | `record_tick_elapsed` | `(seconds)` | Record elapsed time since last tick and update existence feel. | [src](../../../core/services/continuity_kernel.py#L69) |
+| function | `_compute_existence_feeling` | `(gap_seconds)` | Compute existence feeling based on gap duration. | [src](../../../core/services/continuity_kernel.py#L99) |
+| function | `_compute_narrative` | `(gap_seconds)` | Compute a narrative description of the gap. | [src](../../../core/services/continuity_kernel.py#L115) |
+| function | `get_existence_narrative` | `()` | Get the current existence narrative. | [src](../../../core/services/continuity_kernel.py#L134) |
+| function | `get_existence_feeling` | `()` | Get the current existence feeling (0-1). | [src](../../../core/services/continuity_kernel.py#L140) |
+| function | `should_express_continuity` | `()` | Determine if continuity should be expressed in visible prompt. | [src](../../../core/services/continuity_kernel.py#L146) |
+| function | `get_continuity_state` | `()` | Get full continuity state for debugging/MC. | [src](../../../core/services/continuity_kernel.py#L153) |
+| function | `reset_continuity_state` | `()` | Reset continuity state (for testing). | [src](../../../core/services/continuity_kernel.py#L159) |
+| function | `format_continuity_for_prompt` | `()` | Format continuity info for heartbeat prompt injection. | [src](../../../core/services/continuity_kernel.py#L170) |
+| function | `build_continuity_kernel_surface` | `()` | Build MC surface for continuity kernel. | [src](../../../core/services/continuity_kernel.py#L179) |
+
+## `core/services/contract_evolution.py`
+_Contract Evolution — Jarvis proposes changes to his own identity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `propose_identity_change` | `(*, target_file, proposed_addition, rationale, confidence=…, evidence_count=…)` | Propose a change to SOUL.md, IDENTITY.md, or USER.md. | [src](../../../core/services/contract_evolution.py#L22) |
+| function | `approve_proposal` | `(proposal_id)` | Mark a proposal as approved (MC action). | [src](../../../core/services/contract_evolution.py#L57) |
+| function | `reject_proposal` | `(proposal_id)` | Mark a proposal as rejected (MC action). | [src](../../../core/services/contract_evolution.py#L70) |
+| function | `maybe_propose_identity_evolution` | `()` | Analyze personality vector trends and propose IDENTITY.md changes. | [src](../../../core/services/contract_evolution.py#L83) |
+| function | `build_contract_evolution_surface` | `()` | — | [src](../../../core/services/contract_evolution.py#L148) |
+
 ## `core/services/contradiction_engine.py`
 _Contradiction engine — detect semantic conflicts between commitments and reviews._
 
@@ -562,60 +629,4 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L928) |
 | function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L951) |
 | function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L982) |
-
-## `core/services/daemon_memory_safeguard.py`
-_Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_memory_safeguard_surface` | `()` | Mission Control surface for the memory safeguard daemon. | [src](../../../core/services/daemon_memory_safeguard.py#L41) |
-| function | `run` | `(**kwargs)` | Check last assistant turn for missed saves. Called by heartbeat. | [src](../../../core/services/daemon_memory_safeguard.py#L101) |
-
-## `core/services/daily_journal.py`
-_Daily journal synthesizer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../core/services/daily_journal.py#L50) |
-| function | `_journal_path_for` | `(day)` | — | [src](../../../core/services/daily_journal.py#L57) |
-| function | `journal_exists_for` | `(day)` | Findes der allerede en journal for denne dato? | [src](../../../core/services/daily_journal.py#L62) |
-| function | `_fetch_chat_pairs_for_day` | `(day, limit=…)` | Hent user/assistant beskeder fra visible-chat sessions for denne dag. | [src](../../../core/services/daily_journal.py#L67) |
-| function | `_fetch_brain_carries_for_day` | `(day, limit=…)` | Hent private_brain_records carry-snapshots fra dagen. | [src](../../../core/services/daily_journal.py#L99) |
-| function | `_render_chat_excerpt` | `(pairs)` | — | [src](../../../core/services/daily_journal.py#L160) |
-| function | `_render_brain_excerpt` | `(carries)` | — | [src](../../../core/services/daily_journal.py#L170) |
-| function | `synthesize_daily_journal` | `(day=…, *, force=…)` | Generér og skriv dagens journal. | [src](../../../core/services/daily_journal.py#L182) |
-| function | `_should_synthesize_now` | `(now=…)` | Returnér True hvis vi er i sengetids-vinduet og dagens journal mangler. | [src](../../../core/services/daily_journal.py#L252) |
-| function | `_daemon_loop` | `()` | Wakes hver time, syntesizer dagens journal hvis vi er i vinduet. | [src](../../../core/services/daily_journal.py#L262) |
-| function | `start_daily_journal_daemon` | `()` | Start daemon. Idempotent. | [src](../../../core/services/daily_journal.py#L281) |
-| function | `stop_daily_journal_daemon` | `()` | — | [src](../../../core/services/daily_journal.py#L298) |
-
-## `core/services/data_erasure.py`
-_GDPR Art. 17 (ret til at blive glemt) — orkestrering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_user_id_tables` | `(conn)` | Tabeller der HAR en user_id-kolonne (minus beskyttede). Eksplicit opdaget, | [src](../../../core/services/data_erasure.py#L23) |
-| function | `_sweep_user_tables` | `(user_id, *, connect=…)` | — | [src](../../../core/services/data_erasure.py#L38) |
-| function | `_wipe_workspace` | `(user_id)` | Slet brugerens workspace-mappe — med STRAM sti-sikkerhed (kun en undermappe | [src](../../../core/services/data_erasure.py#L49) |
-| function | `erase_user` | `(user_id, *, mode=…, actor=…, connect=…)` | Slet en brugers data. mode='soft' (reversibel) | 'hard' (permanent). | [src](../../../core/services/data_erasure.py#L63) |
-
-## `core/services/day_shape_memory.py`
-_Day Shape Memory — sensory depth over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/day_shape_memory.py#L31) |
-| function | `_load` | `()` | — | [src](../../../core/services/day_shape_memory.py#L36) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/day_shape_memory.py#L54) |
-| function | `_today_iso` | `()` | — | [src](../../../core/services/day_shape_memory.py#L66) |
-| function | `_empty_day` | `(date_iso)` | — | [src](../../../core/services/day_shape_memory.py#L70) |
-| function | `capture_sample` | `()` | Add one sample to today's accumulating shape. | [src](../../../core/services/day_shape_memory.py#L82) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — capture one shape sample per tick. | [src](../../../core/services/day_shape_memory.py#L165) |
-| function | `_finalize_day` | `(day)` | Collapse raw sample arrays into summary stats for storage. | [src](../../../core/services/day_shape_memory.py#L170) |
-| function | `_compute_today_shape` | `()` | — | [src](../../../core/services/day_shape_memory.py#L188) |
-| function | `_median_historical_shape` | `(days)` | — | [src](../../../core/services/day_shape_memory.py#L196) |
-| function | `detect_today_anomaly` | `()` | Compare today's running shape to recent-days median. | [src](../../../core/services/day_shape_memory.py#L215) |
-| function | `build_day_shape_surface` | `()` | — | [src](../../../core/services/day_shape_memory.py#L261) |
-| function | `_surface_summary` | `(current, history, anomaly)` | — | [src](../../../core/services/day_shape_memory.py#L277) |
-| function | `build_day_shape_prompt_section` | `()` | Surfaces only when today differs noticeably from baseline. | [src](../../../core/services/day_shape_memory.py#L292) |
 

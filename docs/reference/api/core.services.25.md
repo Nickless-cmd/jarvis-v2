@@ -2,6 +2,62 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/smith_confrontation.py`
+_Trin 3: Smith standser handlingen i realtid og tvinger et nyt valg._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ord_i` | `(tekst)` | — | [src](../../../core/services/smith_confrontation.py#L79) |
+| function | `_er_fritaget` | `(navn)` | — | [src](../../../core/services/smith_confrontation.py#L83) |
+| function | `_rammer` | `(label, tool_navn, argumenter=…)` | Peger dette tool-kald paa moensteret? | [src](../../../core/services/smith_confrontation.py#L88) |
+| function | `_hold_taeller` | `(run_id, noegle, *, laes_kun=…)` | Hvor mange gange har vi holdt dette moenster i dette run? | [src](../../../core/services/smith_confrontation.py#L106) |
+| function | `_har_adfaerds_noegle` | `()` | Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags- | [src](../../../core/services/smith_confrontation.py#L123) |
+| function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L134) |
+| function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L151) |
+
+## `core/services/smith_noise_veto.py`
+_Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
+| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
+
+## `core/services/social_labilizer.py`
+_Social labilizer — Fase 2 of generative autonomy._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
+| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
+| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
+| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
+| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
+| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
+
+## `core/services/somatic_daemon.py`
+_Somatic daemon — LLM-generated body-state description from structured metrics._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_request_start` | `()` | — | [src](../../../core/services/somatic_daemon.py#L42) |
+| function | `record_request_end` | `()` | — | [src](../../../core/services/somatic_daemon.py#L47) |
+| function | `record_latency_sample` | `(ms)` | — | [src](../../../core/services/somatic_daemon.py#L52) |
+| function | `get_latest_somatic_phrase` | `()` | — | [src](../../../core/services/somatic_daemon.py#L59) |
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/somatic_daemon.py#L63) |
+| function | `build_body_state_surface` | `()` | Returns body state for Mission Control surface. | [src](../../../core/services/somatic_daemon.py#L77) |
+| function | `tick_somatic_daemon` | `(energy_level=…)` | Called each heartbeat. May trigger a new somatic phrase generation. | [src](../../../core/services/somatic_daemon.py#L104) |
+| function | `_collect_snapshot` | `(energy_level)` | — | [src](../../../core/services/somatic_daemon.py#L132) |
+| function | `_should_generate` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L172) |
+| function | `_read_cpu_temp_c` | `()` | Læs CPU-temp fra hardware_body. None hvis utilgængelig (graceful omit). | [src](../../../core/services/somatic_daemon.py#L188) |
+| function | `_read_loadavg` | `()` | 1-minut system load average. Self-safe → 0.0. | [src](../../../core/services/somatic_daemon.py#L201) |
+| function | `_build_raw_phrase` | `(snapshot)` | Byg frasen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/somatic_daemon.py#L210) |
+| function | `_generate_phrase` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L231) |
+| function | `_pressure_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L276) |
+| function | `_load_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L286) |
+| function | `_latency_band` | `(snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L299) |
+| function | `_store_phrase` | `(phrase, snapshot)` | — | [src](../../../core/services/somatic_daemon.py#L308) |
+
 ## `core/services/somatic_runtime_body.py`
 _Somatic runtime body: turn runtime signals into bodily regulation cues._
 
@@ -575,64 +631,4 @@ _Fjern terminal-styrekoder fra tool-output før det når modellen._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
-
-## `core/services/text_clip.py`
-_core/services/text_clip.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
-| function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
-| function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
-| function | `forkort_synligt` | `(text, *, limit=…)` | Forkort ved en ORDGRAENSE og sig hvor meget der blev udeladt. | [src](../../../core/services/text_clip.py#L99) |
-
-## `core/services/text_resonance.py`
-_Text Resonance — I feel what I read, before I analyze it._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | Nyeste foerst — samme raekkefoelge som den gamle `deque.appendleft`. | [src](../../../core/services/text_resonance.py#L46) |
-| function | `_save` | `(historik)` | — | [src](../../../core/services/text_resonance.py#L57) |
-| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L97) |
-| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L191) |
-| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L195) |
-| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L229) |
-| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L246) |
-
-## `core/services/theater_audit.py`
-_Theater Audit -- find narrative-first inner-life patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
-
-## `core/services/theory_of_mind.py`
-_Theory of Mind — Step A.v1 of meta-evne stack._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
-| function | `_connect` | `()` | — | [src](../../../core/services/theory_of_mind.py#L123) |
-| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L133) |
-| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L149) |
-| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L168) |
-| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L239) |
-| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L244) |
-| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L286) |
-| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L312) |
-| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L337) |
-| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L363) |
-| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
-| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
-| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
 

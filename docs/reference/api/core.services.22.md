@@ -2,6 +2,75 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_event_log.py`
+_In-memory, append-only, offset-indekseret event-log PR. RUN._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_terminal_frame` | `(frame)` | Er denne SSE-frame en TERMINAL-frame (message_stop)? Klienterne forlader kun | [src](../../../core/services/run_event_log.py#L34) |
+| function | `_is_ephemeral_frame` | `(frame)` | ping/retry-frames er KEEPALIVE-støj på den direkte stream — de er irrelevante | [src](../../../core/services/run_event_log.py#L41) |
+| function | `synthetic_terminal_frame` | `(run_id=…, session_id=…, reason=…)` | H1/G6: byg en syntetisk terminal-SSE-frame til en subscriber der GIVER OP uden | [src](../../../core/services/run_event_log.py#L66) |
+| function | `create` | `(run_id, session_id, surface=…)` | — | [src](../../../core/services/run_event_log.py#L102) |
+| function | `_hent` | `(run_id)` | Loggens tilstand for et id — log-id'et selv eller et alias. Kaldes UNDER _lock. | [src](../../../core/services/run_event_log.py#L139) |
+| function | `alias` | `(extern_id, log_id)` | Lad `extern_id` (runnets eget id) pege paa loggen `log_id`. | [src](../../../core/services/run_event_log.py#L148) |
+| function | `klient_run_id` | `(run_id)` | Det id KLIENTEN kender for dette run — aliaset hvis der findes et. | [src](../../../core/services/run_event_log.py#L160) |
+| function | `run_id_fra_ramme` | `(frame)` | run_id fra en system_event(kind=run)-ramme, ellers None. Kaster aldrig. | [src](../../../core/services/run_event_log.py#L174) |
+| function | `append` | `(run_id, frame)` | — | [src](../../../core/services/run_event_log.py#L189) |
+| function | `_emit_cap_nerve` | `(run_id)` | Observe (cluster='stream', nerve='relay_frame_cap') at ring-vinduet begyndte | [src](../../../core/services/run_event_log.py#L221) |
+| function | `touch_liveness` | `(run_id)` | Opdatér et runs liveness (last_append_at) UDEN at persistere en frame. | [src](../../../core/services/run_event_log.py#L236) |
+| function | `mark_done` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L251) |
+| function | `gap_frame` | `(resume_idx)` | Gap-markoeren MED den globale position rammerne efter den starter ved. | [src](../../../core/services/run_event_log.py#L268) |
+| function | `er_gap_frame` | `(frame)` | Er rammen en gap-markoer (med eller uden position)? | [src](../../../core/services/run_event_log.py#L284) |
+| function | `read` | `(run_id, from_idx)` | Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0) | [src](../../../core/services/run_event_log.py#L289) |
+| function | `read_from` | `(run_id, from_idx)` | Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det | [src](../../../core/services/run_event_log.py#L301) |
+| function | `active_run_for_session` | `(session_id)` | — | [src](../../../core/services/run_event_log.py#L320) |
+| function | `is_live` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L331) |
+| function | `is_open` | `(run_id)` | True while the detached producer still owns an unfinished run. | [src](../../../core/services/run_event_log.py#L342) |
+| function | `live_run_ids` | `()` | — | [src](../../../core/services/run_event_log.py#L354) |
+| function | `hale` | `(run_id, n=…)` | De seneste `n` frames for et run (tom liste hvis ukendt). Til | [src](../../../core/services/run_event_log.py#L366) |
+| function | `aabne_run_ids` | `(max_alder_s=…)` | Runs der stadig er ÅBNE (ikke markeret færdige), og yngre end | [src](../../../core/services/run_event_log.py#L374) |
+| function | `set_surface` | `(run_id, surface)` | Notér hvilken flade turen blev skrevet fra. Tom streng roerer intet. | [src](../../../core/services/run_event_log.py#L390) |
+| function | `surface_for_run` | `(run_id)` | Fladen turen blev skrevet fra, eller "" naar den ikke er kendt. | [src](../../../core/services/run_event_log.py#L406) |
+| function | `session_for_run` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L413) |
+| function | `prune` | `()` | Behold alle ikke-done runs + de seneste _KEEP_DONE_PER_SESSION done-runs | [src](../../../core/services/run_event_log.py#L419) |
+| function | `subscriber_opened` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L440) |
+| function | `subscriber_closed` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L447) |
+| function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L454) |
+| function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L462) |
+| function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L471) |
+
+## `core/services/run_finding_accounting.py`
+_Structured end-of-run findings and a conservative admission fallback._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(kind, path, behavior)` | — | [src](../../../core/services/run_finding_accounting.py#L27) |
+| function | `_ledger` | `()` | — | [src](../../../core/services/run_finding_accounting.py#L32) |
+| function | `record_finding` | `(*, kind, disposition, path, behavior, evidence, title, next_step=…, reason=…, run_id=…, session_id=…, finding_key=…, existing_side_task_id=…)` | Account for one concrete finding; only deferred gaps create tasks. | [src](../../../core/services/run_finding_accounting.py#L37) |
+| function | `audit_final_response` | `(*, run_id, session_id, text)` | Catch only explicit self-admissions with one identifiable code file. | [src](../../../core/services/run_finding_accounting.py#L99) |
+
+## `core/services/run_follow.py`
+_Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `begin_follow` | `(session_id, run_id=…)` | Nulstil buffer for en NY run i sessionen (catch-up starter forfra). | [src](../../../core/services/run_follow.py#L39) |
+| function | `publish_follow_frame` | `(session_id, frame)` | Append en v2-SSE-frame til sessionens buffer (kaldt fra run-tråden). | [src](../../../core/services/run_follow.py#L54) |
+| function | `end_follow` | `(session_id)` | Markér sessionens follow-stream som færdig → pollende endpoint stopper | [src](../../../core/services/run_follow.py#L73) |
+| function | `_snapshot` | `(session_id, from_idx)` | Returnér (nye frames fra from_idx, done). | [src](../../../core/services/run_follow.py#L85) |
+| function | `snapshot_from` | `(session_id, from_idx)` | Ring-aware snapshot with a monotonic global continuation offset. | [src](../../../core/services/run_follow.py#L91) |
+| function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L108) |
+| function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
+| function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
+
+## `core/services/run_message_provenance.py`
+_Name the source of model input without changing the user's stored text._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
+| function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
+
 ## `core/services/run_trailing.py`
 _Beskeder der hoerer EFTER historikken i en agentisk tur._
 
@@ -686,74 +755,4 @@ _Selective Consolidation Daemon — D1._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L470) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L479) |
 | function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_authored_prompt_proposal_tracking.py#L489) |
-
-## `core/services/self_compassion.py`
-_Self-Compassion & Resilience — counterweight to regret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_compassion_label` | `(failure_count, regret_level, compassion_level)` | Return a descriptive state label, not a self-compassion sentence. | [src](../../../core/services/self_compassion.py#L12) |
-| function | `process_failure_toward_acceptance` | `(*, failure_count_recent=…, regret_level=…, lesson_learned=…)` | — | [src](../../../core/services/self_compassion.py#L32) |
-| function | `build_resilience_narrative` | `(*, consecutive_failures=…, current_bearing=…)` | Return a descriptive resilience-state label. | [src](../../../core/services/self_compassion.py#L56) |
-| function | `build_self_compassion_surface` | `()` | — | [src](../../../core/services/self_compassion.py#L76) |
-
-## `core/services/self_critique_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_self_critique_interval_days` | `()` | Read base interval, modulate by dream-bias self_critique_volume. | [src](../../../core/services/self_critique_runtime.py#L34) |
-| function | `read_self_docs` | `(*, doc_id=…, include_history=…, max_chars_per_doc=…)` | — | [src](../../../core/services/self_critique_runtime.py#L68) |
-| function | `run_self_critique_cycle` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/self_critique_runtime.py#L115) |
-| function | `run_ontological_revision_check` | `()` | Check if a 90-day revision is due. If yes, append 'Er du stadig enig?' response. | [src](../../../core/services/self_critique_runtime.py#L229) |
-| function | `build_self_critique_surface` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L321) |
-| function | `self_critique_path` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L347) |
-| function | `_self_doc_manifest` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L352) |
-| function | `_render_manifest` | `(manifest)` | — | [src](../../../core/services/self_critique_runtime.py#L370) |
-| function | `_render_doc` | `(item, *, max_chars)` | — | [src](../../../core/services/self_critique_runtime.py#L377) |
-| function | `_render_recent_chronicles` | `(entries)` | — | [src](../../../core/services/self_critique_runtime.py#L387) |
-| function | `_render_recent_chronicles_extended` | `(entries)` | Extended rendering for blind-angle prompt — more entries, includes lessons too. | [src](../../../core/services/self_critique_runtime.py#L399) |
-| function | `_append_self_critique_entry` | `(*, entry_id, created_at, next_review_at, prompt, critique, source_docs, cycle_type=…)` | — | [src](../../../core/services/self_critique_runtime.py#L416) |
-| function | `_latest_entry_preview` | `(text)` | — | [src](../../../core/services/self_critique_runtime.py#L449) |
-| function | `_self_critique_enabled` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L456) |
-| function | `_state` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L461) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/self_critique_runtime.py#L466) |
-| function | `_extract_key_words` | `(text)` | Extract meaningful Danish/English words (5+ chars) from text. | [src](../../../core/services/self_critique_runtime.py#L494) |
-| function | `_check_absence_links` | `(*, entry_id, critique_text, now)` | After a blind-angle critique, look for convergence with recent absence signals. | [src](../../../core/services/self_critique_runtime.py#L501) |
-| function | `get_absence_trace_links` | `()` | Return stored absence × blind-angle convergence records. | [src](../../../core/services/self_critique_runtime.py#L576) |
-
-## `core/services/self_deception_guard.py`
-_Bounded self-deception guard — deterministic truth-constraint on user-facing stance._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `GuardConstraint` | `` | A single guard constraint to be injected into user-facing contract. | [src](../../../core/services/self_deception_guard.py#L34) |
-| class | `DeceptionGuardTrace` | `` | Observable trace of self-deception guard evaluation. | [src](../../../core/services/self_deception_guard.py#L43) |
-| method | `DeceptionGuardTrace.has_blocks` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L54) |
-| method | `DeceptionGuardTrace.has_reframes` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L60) |
-| method | `DeceptionGuardTrace.guard_lines` | `(self)` | Return prompt-injectable guard constraint lines. | [src](../../../core/services/self_deception_guard.py#L65) |
-| method | `DeceptionGuardTrace.to_dict` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L69) |
-| function | `evaluate_self_deception_guard` | `(*, question_gate=…, autonomy_pressure=…, capability_truth=…, conflict_trace=…, quiet_initiative=…, open_loops=…)` | Evaluate self-deception guard against current runtime truth. | [src](../../../core/services/self_deception_guard.py#L95) |
-| function | `get_last_guard_trace` | `()` | Return the last self-deception guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L268) |
-| function | `set_last_guard_trace` | `(trace)` | Store the latest guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L275) |
-| function | `build_self_deception_guard_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_deception_guard.py#L281) |
-
-## `core/services/self_experiments.py`
-_Self-Experiments — A/B testing on Jarvis' own behavior._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L38) |
-| function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L57) |
-| function | `_evaluate_experiment` | `(cohorts)` | Simple evaluation: compare success rates between cohorts. | [src](../../../core/services/self_experiments.py#L140) |
-| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L169) |
-| function | `_curriculum_summary` | `(curriculum, kilde_fejl)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L259) |
-| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L284) |
-| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L362) |
-| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L456) |
-| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L473) |
-| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L481) |
-| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L496) |
-| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L507) |
-| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L524) |
-| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L528) |
 

@@ -2,6 +2,62 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cache_maintenance_daemon.py`
+_Cache maintenance daemon — periodic cleanup of expired web cache entries._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_cache_maintenance_daemon` | `()` | Run cache cleanup if cadence elapsed. Returns stats dict. | [src](../../../core/services/cache_maintenance_daemon.py#L36) |
+| function | `checkpoint_wal` | `()` | Checkpoint and record the actual SQLite result, including busy frames. | [src](../../../core/services/cache_maintenance_daemon.py#L210) |
+| function | `get_cache_maintenance_stats` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L230) |
+| function | `build_cache_maintenance_surface` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L237) |
+
+## `core/services/cache_telemetry.py`
+_Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `prefix_signature` | `(system_content, tools)` | Beregn (sha-prefix, længde) for det cachebare [system + tools]. | [src](../../../core/services/cache_telemetry.py#L25) |
+| function | `message_signatures` | `(messages)` | Ét fingeraftryk og én laengde pr. besked, i den raekkefoelge de sendes. | [src](../../../core/services/cache_telemetry.py#L51) |
+| function | `_tool_name` | `(tool)` | Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen. | [src](../../../core/services/cache_telemetry.py#L114) |
+| function | `_remember_tool_names` | `(tools_sha, tools)` | Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op. | [src](../../../core/services/cache_telemetry.py#L124) |
+| function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L138) |
+| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L180) |
+| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L217) |
+
+## `core/services/cadence_claims.py`
+_Ét krav ad gangen, og en nedkoeling der overlever en genstart._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ClaimResult` | `` | — | [src](../../../core/services/cadence_claims.py#L34) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/cadence_claims.py#L40) |
+| function | `_dt` | `(raa)` | — | [src](../../../core/services/cadence_claims.py#L64) |
+| function | `claim_producer` | `(name, *, cooldown_minutes, lease_seconds, now=…)` | Tag kravet paa en producent, hvis den er moden og ledig. | [src](../../../core/services/cadence_claims.py#L75) |
+| function | `complete_producer` | `(name, lease_token, *, succeeded, now=…)` | Giv kravet fri. KUN et gennemfoert pas saetter nedkoelings-maerket. | [src](../../../core/services/cadence_claims.py#L126) |
+| function | `claim_idempotency_key` | `(scope, key, *, now=…)` | Foerste kalder vinder. Returnerer False hvis noeglen er brugt foer. | [src](../../../core/services/cadence_claims.py#L162) |
+| function | `last_success_at` | `(name)` | Hvornaar loeb producenten sidst IGENNEM? Tom streng hvis aldrig. | [src](../../../core/services/cadence_claims.py#L183) |
+| function | `note_producer_ran` | `(name, *, now=…)` | Bogfoer et gennemfoert pas — uden at gaa gennem lease-dansen. | [src](../../../core/services/cadence_claims.py#L210) |
+
+## `core/services/cadence_producers.py`
+_Cadence Producers — central orchestration for waking up dead MC fields._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/cadence_producers.py#L56) |
+| function | `_meaningful_run_topic` | `(user_message)` | — | [src](../../../core/services/cadence_producers.py#L60) |
+| function | `produce_signals_from_run` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood=…)` | Fire all relevant signals after a visible run, bypassing chain dependencies. | [src](../../../core/services/cadence_producers.py#L65) |
+| function | `produce_emergent_signals_from_history` | `()` | Run the emergent signal daemon to scan timeline for patterns. | [src](../../../core/services/cadence_producers.py#L654) |
+| function | `detect_decision_in_message` | `(*, user_message, assistant_response, run_id)` | Detect decisions in conversation and log them. | [src](../../../core/services/cadence_producers.py#L669) |
+| function | `run_adoption_pipelines` | `()` | Move things from candidate → adopted state. | [src](../../../core/services/cadence_producers.py#L703) |
+| function | `sync_personality_to_self_model` | `()` | Bridge: sync personality_vector changes to self_model_signal. | [src](../../../core/services/cadence_producers.py#L734) |
+| function | `progress_signal_lifecycles` | `()` | Move signals through lifecycle stages: active → carried → fading → released. | [src](../../../core/services/cadence_producers.py#L812) |
+| function | `_observe_frozen` | `(nerve, meta)` | EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe). | [src](../../../core/services/cadence_producers.py#L847) |
+| function | `tick_frozen_detectors` | `(tick_count)` | LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på | [src](../../../core/services/cadence_producers.py#L856) |
+| function | `build_cadence_producers_surface` | `()` | MC surface for cadence producer status. | [src](../../../core/services/cadence_producers.py#L913) |
+| function | `_levende_register` | `()` | Registrets producenter i prioritetsraekkefoelge. Selv-sikker: tomt ved | [src](../../../core/services/cadence_producers.py#L941) |
+| function | `_graf_rapport` | `()` | Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke | [src](../../../core/services/cadence_producers.py#L962) |
+
 ## `core/services/calm_anchor.py`
 _Calm Anchor — baseline reference state Jarvis can return to._
 
@@ -560,47 +616,4 @@ _Déjà Vu — ufrivillig erindring._
 | function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L79) |
 | function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L88) |
 | function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op (metadata-only observe). Self-safe. | [src](../../../core/services/central_dejavu.py#L96) |
-
-## `core/services/central_dissent.py`
-_HAL's Silence — den usagte uenighed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rows` | `()` | — | [src](../../../core/services/central_dissent.py#L35) |
-| function | `list_dissents` | `(*, limit=…)` | Ikke-grønne domme på ikke-håndhævede gates = 'jeg var imod, men handlingen skete'. READ-ONLY. | [src](../../../core/services/central_dissent.py#L43) |
-| function | `build_dissent_surface` | `()` | De tavse indsigelser, anerkendt. Self-safe. | [src](../../../core/services/central_dissent.py#L64) |
-| function | `_observe` | `(n, total)` | — | [src](../../../core/services/central_dissent.py#L78) |
-| function | `record_dissent` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_dissent.py#L87) |
-
-## `core/services/central_dream_action.py`
-_Dream-to-Action Pipeline — så Jarvis FORANDRER sig, ikke bare lærer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_dream_action.py#L34) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_dream_action.py#L38) |
-| function | `_ensure_actions` | `(conn)` | — | [src](../../../core/services/central_dream_action.py#L46) |
-| function | `select_actionable` | `(*, limit=…, min_confidence=…, min_samples=…)` | Find de modne hypoteser der er værd at HANDLE på (høj confidence + jordede + ikke allerede | [src](../../../core/services/central_dream_action.py#L58) |
-| function | `record_action` | `(hyp_id, *, action, result=…)` | Fód en handling (+ evt. resultat) tilbage på en hypotese — lukker loopet lær→handl→revidér. | [src](../../../core/services/central_dream_action.py#L89) |
-| function | `change_rate` | `(*, window_days=…)` | FORANDRINGS-hastighed: hvor mange hypoteser blev resolveret/handlet i vinduet vs hvor mange | [src](../../../core/services/central_dream_action.py#L106) |
-| function | `build_dream_action_surface` | `()` | Én moden hypotese at handle på + forandrings-hastighed + følt linje. Self-safe. | [src](../../../core/services/central_dream_action.py#L130) |
-| function | `record_dream_action` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér forandrings-tempo + antal modne-til-handling (metadata-only). Self-safe. | [src](../../../core/services/central_dream_action.py#L146) |
-
-## `core/services/central_drift.py`
-_Flag-on-change (§7) — aktiv drift-detektion pr. nerve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `NerveDriftMonitor` | `` | Pr.-nerve: akkumulér fejl/RED over et rullende vindue; flag hvis raten driver ud | [src](../../../core/services/central_drift.py#L20) |
-| method | `NerveDriftMonitor.__init__` | `(self, *, check_every=…, tol=…, alpha=…)` | — | [src](../../../core/services/central_drift.py#L24) |
-| method | `NerveDriftMonitor.record` | `(self, nerve, *, is_error, is_red)` | Opdatér nervens vindue. Returnér en drift-flag-dict hvis raten netop drev ud | [src](../../../core/services/central_drift.py#L31) |
-| method | `NerveDriftMonitor.snapshot` | `(self)` | Read-only kig på baselines (til verifikation/debug). Selv-sikker. | [src](../../../core/services/central_drift.py#L69) |
-
-## `core/services/central_echo_breaker.py`
-_Echo Chamber Breaker — tvungen diversitet mod monokultur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `break_echo` | `(*, limit=…)` | Fremtving ét simplere alternativ pr. altid-grøn overhead-proces. READ-ONLY. Self-safe. | [src](../../../core/services/central_echo_breaker.py#L21) |
-| function | `record_echo_breaker` | `()` | Cadence: observér modstemmen til nerve system/echo_breaker (metadata-only). Self-safe. | [src](../../../core/services/central_echo_breaker.py#L54) |
 

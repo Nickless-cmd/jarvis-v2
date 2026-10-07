@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8575/16203 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8583/16234 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8575/16203 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 759 | 1367 | 55% |
-| `core.services` | 5713 | 11004 | 51% |
+| `core.services` | 5721 | 11035 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8575/16203 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2256)
+## Undocumented public functions (2266)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -624,21 +624,23 @@ Generated from source. 8575/16203 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1491)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1546)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1527)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1354)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1111)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1051)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1079)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1498)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1553)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1534)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1361)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1118)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1058)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1086)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1510)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1517)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
+- `core/services/agent_sandbox.py` :: `bwrap_path` (L31)
+- `core/services/agent_sandbox.py` :: `python_prefixes` (L38)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
@@ -647,6 +649,14 @@ Generated from source. 8575/16203 functions/methods documented (52%). The list b
 - `core/services/agent_todos.py` :: `list_todos` (L68)
 - `core/services/agent_todos.py` :: `remove_todo` (L307)
 - `core/services/agent_todos.py` :: `update_todo_status` (L150)
+- `core/services/agent_worker_main.py` :: `RpcIO.after_round` (L59)
+- `core/services/agent_worker_main.py` :: `RpcIO.after_tool` (L56)
+- `core/services/agent_worker_main.py` :: `RpcIO.call` (L34)
+- `core/services/agent_worker_main.py` :: `RpcIO.model` (L48)
+- `core/services/agent_worker_main.py` :: `RpcIO.tool` (L53)
+- `core/services/agent_worker_main.py` :: `main` (L74)
+- `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
+- `core/services/agent_worker_protocol.py` :: `send` (L27)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

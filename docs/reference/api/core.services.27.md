@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/turn_trace.py`
+_core/services/turn_trace.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
+| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
+| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
+| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
+| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
+
+## `core/services/ui_panel_store.py`
+_Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `request_panel` | `(panel, *, detail=…, scope=…, session_id=…, action=…)` | Tilføj en pending panel-forespørgsel. | [src](../../../core/services/ui_panel_store.py#L32) |
+| function | `list_pending` | `(*, session_id=…)` | Returnér alle pending requests (status='pending'), valgfrit filtreret på session. | [src](../../../core/services/ui_panel_store.py#L73) |
+| function | `ack_panel` | `(request_id)` | Markér en request som 'opened' (desk-appen har åbnet panelet). | [src](../../../core/services/ui_panel_store.py#L83) |
+| function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L94) |
+| function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L103) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L114) |
+
+## `core/services/unconscious_modulation.py`
+_Unconscious modulation — sub-symbolic sampling-parameter shift._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
+| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
+
+## `core/services/unconscious_temperature_field.py`
+_Unconscious temperature field — backwards-compat wrapper for Lag 10._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L13) |
+| function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L28) |
+
 ## `core/services/unfinished_intent.py`
 _Unfinished-intent detector for visible-run output._
 
@@ -600,43 +639,4 @@ _Hvad der sker naar et run doer midt-flugt._
 | function | `_loop_lag` | `()` | Hvor sultent var event-loopet lige nu? | [src](../../../core/services/visible_run_abandonment.py#L40) |
 | function | `report_abandoned_run` | `(run, *, abort_kind, run_stage, visible_len)` | Rapportér et run der aldrig naaede sin beslutning. Kaster aldrig. | [src](../../../core/services/visible_run_abandonment.py#L53) |
 | function | `abandon_bridge_records` | `(run)` | K6: giv runnets uafklarede godkendelses-poster deres AERLIGE udfald. | [src](../../../core/services/visible_run_abandonment.py#L92) |
-
-## `core/services/visible_run_cost.py`
-_Bogfoer en koersels omkostning — ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `bogfoer_koerslens_omkostning` | `(run, *, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, cost_usd=…)` | Skriv koerslens raekke i hovedbogen. | [src](../../../core/services/visible_run_cost.py#L37) |
-
-## `core/services/visible_run_firstpass.py`
-_Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
-| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
-| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
-
-## `core/services/visible_run_guard_notices.py`
-_Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `forbindelsen_glippede` | `()` | P6 graceful-degrade: forbindelsen svigtede gentagne gange. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L85) |
-| function | `loekken_tvang_en_afslutning` | `()` | Løkken tvang en afslutning med et ventende tool-intent. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L94) |
-| function | `tool_call_loekke` | `(runder)` | Flere runder med værktøjskald og intet synligt svar. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L103) |
-| function | `ingen_tekst_i_runder` | `(runder)` | Runder uden tekst overhovedet — KLASSE 1, den holder runnet i gang. | [src](../../../core/services/visible_run_guard_notices.py#L112) |
-| function | `tomt_loefte_advarsel` | `()` | Advarslen til NÆSTE runde om et tomt løfte. Klasse 2 — MÆRKET. | [src](../../../core/services/visible_run_guard_notices.py#L128) |
-| function | `systemmaerket` | `(tekst)` | Mærk en vilkårlig runtime-besked som fra systemet. Klasse 1 og 2. | [src](../../../core/services/visible_run_guard_notices.py#L151) |
-| function | `er_menneske_note` | `(tekst)` | Er dette en klasse-3-note — altså til Bjørn og ikke til modellen? | [src](../../../core/services/visible_run_guard_notices.py#L183) |
-| function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
-| function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
-| function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
-
-## `core/services/visible_run_interruption.py`
-_Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_visible_run_interruption` | `(error_message)` | — | [src](../../../core/services/visible_run_interruption.py#L17) |
 

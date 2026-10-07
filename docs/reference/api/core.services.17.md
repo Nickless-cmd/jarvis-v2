@@ -2,6 +2,75 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_write_policy.py`
+_Memory Write Policy — gating + review queue for inferred memory writes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
+| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
+| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
+| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
+| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
+| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
+| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
+| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
+| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
+| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
+| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
+| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
+| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
+| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
+| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
+
+## `core/services/memory_write_queue.py`
+_Memory Write Queue — async write queue for sensory/brain memories._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/memory_write_queue.py#L52) |
+| function | `enqueue_write` | `(queue_type, payload, priority=…)` | Enqueue a memory write for async processing. | [src](../../../core/services/memory_write_queue.py#L77) |
+| function | `process_queue` | `(batch_size=…)` | Process pending write queue items. Called by the daemon tick. | [src](../../../core/services/memory_write_queue.py#L119) |
+| function | `queue_size` | `()` | Return counts by status. | [src](../../../core/services/memory_write_queue.py#L218) |
+| function | `build_memory_write_queue_surface` | `()` | Mission Control surface. | [src](../../../core/services/memory_write_queue.py#L240) |
+| function | `tick_memory_write_queue_daemon` | `(now=…)` | Daemon tick: process pending writes every 120s. | [src](../../../core/services/memory_write_queue.py#L263) |
+| function | `_max_retries_for` | `(queue_type)` | — | [src](../../../core/services/memory_write_queue.py#L303) |
+| function | `_process_item` | `(queue_type, payload, retry_count)` | Execute one write. Returns (ok, error_message). | [src](../../../core/services/memory_write_queue.py#L311) |
+| function | `_process_sensory` | `(payload, retry_count)` | Process a sensory memory write. | [src](../../../core/services/memory_write_queue.py#L333) |
+| function | `_process_brain` | `(payload, retry_count)` | Process a brain entry write. | [src](../../../core/services/memory_write_queue.py#L352) |
+| function | `_process_sidecar` | `(payload, retry_count)` | Process a MEMORY.md sidecar: mood capture + graph ingestion. | [src](../../../core/services/memory_write_queue.py#L385) |
+| function | `retry_failed` | `(limit=…)` | Reset failed items back to pending for retry. | [src](../../../core/services/memory_write_queue.py#L422) |
+| function | `clean_old_done` | `(hours=…)` | Delete 'done' items older than N hours. | [src](../../../core/services/memory_write_queue.py#L446) |
+
+## `core/services/mermaid_render.py`
+_Mermaid → SVG, server-side. Så diagrammer også når mobilen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MermaidFejl` | `` | Kunne ikke rende diagrammet — med en årsag der kan handles på. | [src](../../../core/services/mermaid_render.py#L74) |
+| function | `find_chrome` | `()` | Første kørende chromium-binær, eller None. | [src](../../../core/services/mermaid_render.py#L78) |
+| function | `find_mermaid` | `()` | — | [src](../../../core/services/mermaid_render.py#L86) |
+| function | `tilgaengelig` | `()` | Kan serveren rende mermaid lige nu? (ja/nej, grund). | [src](../../../core/services/mermaid_render.py#L93) |
+| function | `_side` | `(kilde, mermaid_js)` | HTML-siden der rendrer diagrammet og lægger SVG'en i titlen. | [src](../../../core/services/mermaid_render.py#L102) |
+| function | `render` | `(kilde, *, timeout=…)` | Mermaid-kilde → SVG. Rejser `MermaidFejl` hvis det ikke kan lade sig gøre. | [src](../../../core/services/mermaid_render.py#L122) |
+| function | `_svg_side` | `(svg)` | En side der viser en faerdig SVG — klar til screenshot. | [src](../../../core/services/mermaid_render.py#L193) |
+| function | `_maal` | `(svg)` | SVG'ens sande forhold. | [src](../../../core/services/mermaid_render.py#L206) |
+| function | `rasteriser` | `(svg, *, bredde, maks_hoejde, timeout=…)` | SVG → PNG, tegnet af chromium. | [src](../../../core/services/mermaid_render.py#L223) |
+
+## `core/services/message_feedback.py`
+_Ros og ris på Jarvis' svar — og hvad de bliver til._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/services/message_feedback.py#L42) |
+| function | `sæt_stemme` | `(*, message_id, session_id=…, user_id=…, vote)` | Gem (eller fjern) en stemme. `vote=''` fortryder. | [src](../../../core/services/message_feedback.py#L64) |
+| function | `ugennemgåede` | `(limit=…)` | Stemmer der endnu ikke er set på, ældste først. | [src](../../../core/services/message_feedback.py#L102) |
+| function | `markér_gennemgået` | `(message_ids)` | — | [src](../../../core/services/message_feedback.py#L122) |
+| function | `byg_review_prompt` | `(poster)` | Den tekst Jarvis vågner op til. | [src](../../../core/services/message_feedback.py#L138) |
+| function | `tick_feedback_review` | `(now=…)` | Én gang om måneden: giv Jarvis månedens stemmer at tænke over. | [src](../../../core/services/message_feedback.py#L167) |
+| function | `_nu` | `()` | — | [src](../../../core/services/message_feedback.py#L210) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/message_feedback.py#L214) |
+
 ## `core/services/meta_cognition_daemon.py`
 _Meta-Cognition Daemon — first-person reflection on own state (Experiment 4: HOT)._
 
@@ -578,51 +647,4 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L570) |
 | function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L587) |
 | function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L622) |
-
-## `core/services/notifikationer.py`
-_Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_udsend` | `(slags_haendelse, nid, user_id, slags)` | Live-vejen til klokken. Fejler den, skal FEEDEN stadig virke — men den | [src](../../../core/services/notifikationer.py#L26) |
-| function | `_nu` | `()` | — | [src](../../../core/services/notifikationer.py#L43) |
-| function | `opret` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…)` | Laeg en notifikation. Returnerer id. | [src](../../../core/services/notifikationer.py#L47) |
-| function | `aabne` | `(user_id, *, er_owner)` | Aabne raekker for denne bruger. RAA — se hydreringen for den rigtige feed. | [src](../../../core/services/notifikationer.py#L97) |
-| function | `afsluttede` | `(user_id, *, dage=…)` | KLAREDE raekker for denne bruger — de sidste `dage`. RAA. | [src](../../../core/services/notifikationer.py#L120) |
-| function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L147) |
-| function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L165) |
-| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L193) |
-
-## `core/services/notifikationer_hydrering.py`
-_Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L42) |
-| function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L59) |
-| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L96) |
-| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L115) |
-| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L160) |
-
-## `core/services/notifikations_emittere.py`
-_Hvor notifikationer foedes (spec 2026-09-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner_id` | `()` | Ejeren. Systemraekker hoerer til ham — de handler om maskinen. | [src](../../../core/services/notifikations_emittere.py#L21) |
-| function | `_maaske_push` | `(user_id, slags, titel, tekst, *, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L43) |
-| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L74) |
-| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L82) |
-| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L92) |
-| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L98) |
-| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L104) |
-| function | `system` | `(slags, titel, tekst=…)` | — | [src](../../../core/services/notifikations_emittere.py#L109) |
-| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L116) |
-
-## `core/services/notifikations_opstart.py`
-_Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `koer_ved_opstart` | `()` | — | [src](../../../core/services/notifikations_opstart.py#L13) |
 

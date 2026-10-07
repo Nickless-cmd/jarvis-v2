@@ -690,7 +690,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # Axis 3: give the agent hands only when the reversible flag is ON.
         # OFF (default) → unchanged text-only path. Self-safe: any failure in
         # the tool-loop dispatch degrades to the legacy call.
-        if agent_tools_enabled():
+        from core.services.agent_worker_runner import run_agent_in_worker, worker_mode_enabled
+        if _layers is not None and worker_mode_enabled():
+            # agent-contract-v1 (C6): loekken koerer i en sandboxet workerproces; serveren er broker.
+            # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
+            result = run_agent_in_worker(
+                agent=agent, prompt=prompt, requires_tools=_needs_tools, run_id=run_id,
+                tools_payload=_snapshot_tools(agent))
+        elif agent_tools_enabled():
             try:
                 result = _run_agent_tool_loop(
                     agent=agent, prompt=prompt, requires_tools=_needs_tools,

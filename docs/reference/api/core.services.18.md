@@ -2,6 +2,53 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/notifikationer.py`
+_Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udsend` | `(slags_haendelse, nid, user_id, slags)` | Live-vejen til klokken. Fejler den, skal FEEDEN stadig virke — men den | [src](../../../core/services/notifikationer.py#L26) |
+| function | `_nu` | `()` | — | [src](../../../core/services/notifikationer.py#L43) |
+| function | `opret` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…)` | Laeg en notifikation. Returnerer id. | [src](../../../core/services/notifikationer.py#L47) |
+| function | `aabne` | `(user_id, *, er_owner)` | Aabne raekker for denne bruger. RAA — se hydreringen for den rigtige feed. | [src](../../../core/services/notifikationer.py#L97) |
+| function | `afsluttede` | `(user_id, *, dage=…)` | KLAREDE raekker for denne bruger — de sidste `dage`. RAA. | [src](../../../core/services/notifikationer.py#L120) |
+| function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L147) |
+| function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L165) |
+| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L193) |
+
+## `core/services/notifikationer_hydrering.py`
+_Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L42) |
+| function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L59) |
+| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L96) |
+| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L115) |
+| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L160) |
+
+## `core/services/notifikations_emittere.py`
+_Hvor notifikationer foedes (spec 2026-09-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner_id` | `()` | Ejeren. Systemraekker hoerer til ham — de handler om maskinen. | [src](../../../core/services/notifikations_emittere.py#L21) |
+| function | `_maaske_push` | `(user_id, slags, titel, tekst, *, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L43) |
+| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L74) |
+| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L82) |
+| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L92) |
+| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L98) |
+| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L104) |
+| function | `system` | `(slags, titel, tekst=…)` | — | [src](../../../core/services/notifikations_emittere.py#L109) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L116) |
+
+## `core/services/notifikations_opstart.py`
+_Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `koer_ved_opstart` | `()` | — | [src](../../../core/services/notifikations_opstart.py#L13) |
+
 ## `core/services/notifikations_valg.py`
 _Push-valg per slags (spec 2026-09-21)._
 
@@ -532,79 +579,4 @@ _Personality drift detection — has Jarvis' baseline shifted?_
 | function | `personality_drift_section` | `()` | Awareness section when drift detected — surfaces in prompt. | [src](../../../core/services/personality_drift.py#L143) |
 | function | `_exec_personality_drift_check` | `(args)` | — | [src](../../../core/services/personality_drift.py#L159) |
 | function | `_exec_personality_drift_snapshot` | `(args)` | — | [src](../../../core/services/personality_drift.py#L167) |
-
-## `core/services/personality_vector.py`
-_Personality Vector — cumulative personality that grows over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_should_apply_decay` | `()` | Return True if enough time has passed since the last decay application. | [src](../../../core/services/personality_vector.py#L34) |
-| function | `_get_evolved_baseline` | `()` | Compute long-term baseline targets from accumulated snapshots. | [src](../../../core/services/personality_vector.py#L43) |
-| function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
-| function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
-| function | `update_personality_vector_from_run` | `(*, run_id, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L112) |
-| function | `update_personality_vector_async` | `(*, run_id, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L196) |
-| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L217) |
-| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L249) |
-| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L256) |
-| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L277) |
-| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L406) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L449) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L463) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L476) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L487) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L553) |
-
-## `core/services/pfsense_syslog.py`
-_core/services/pfsense_syslog.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_self_ips` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L46) |
-| function | `_parse_filterlog` | `(line)` | Tolerant parser af pfSense filterlog-CSV. Returnerer {action, src, dst, dport}. | [src](../../../core/services/pfsense_syslog.py#L74) |
-| function | `_is_internal_src` | `(src)` | Er kilde-IP'en PRIVAT (RFC1918 = husets egne maskiner)? Ægte port-scan/brute-force kommer | [src](../../../core/services/pfsense_syslog.py#L103) |
-| function | `_is_noise_dst` | `(dst)` | Multicast/broadcast er normal netværks-støj (mDNS/SSDP/LLMNR/DHCP), IKKE angreb. | [src](../../../core/services/pfsense_syslog.py#L133) |
-| function | `_ingest` | `(rec, now)` | — | [src](../../../core/services/pfsense_syslog.py#L147) |
-| function | `_listen` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L183) |
-| function | `start_syslog_listener` | `()` | Start UDP-lytteren i en daemon-tråd (idempotent). Kun i runtime-processen. | [src](../../../core/services/pfsense_syslog.py#L204) |
-| function | `drain_detections` | `()` | Hent + ryd nye detektioner (kaldes af infra_sense-cadence). Self-safe. | [src](../../../core/services/pfsense_syslog.py#L213) |
-| function | `syslog_stats` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L221) |
-| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L226) |
-
-## `core/services/phone_wake.py`
-_Push-vækning: banker på telefonen når den sover._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_som_tal` | `(version)` | — | [src](../../../core/services/phone_wake.py#L59) |
-| function | `_husk_version` | `(version)` | Gem den app-version telefonen sidst meldte ved registrering. | [src](../../../core/services/phone_wake.py#L67) |
-| function | `app_forstaar_vaekning` | `()` | Kan den app vi sidst saa haandtere en tavs vaekning? | [src](../../../core/services/phone_wake.py#L79) |
-| function | `telefon_er_forbundet` | `(user_id)` | Er der en klient med telefon-værktøjer for brugeren lige nu? | [src](../../../core/services/phone_wake.py#L97) |
-| function | `_send_vaekning` | `(user_id)` | Stille data-push. Ingen title/preview → ingen synlig notifikation. | [src](../../../core/services/phone_wake.py#L125) |
-| function | `vaek_og_vent` | `(user_id, *, vent_s=…)` | Væk telefonen og vent på at broen melder sig. True hvis den kom. | [src](../../../core/services/phone_wake.py#L150) |
-
-## `core/services/plan_proposals.py`
-_Plan mode — propose, wait for approval, then execute._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_all` | `()` | — | [src](../../../core/services/plan_proposals.py#L38) |
-| function | `_save_all` | `(data)` | — | [src](../../../core/services/plan_proposals.py#L45) |
-| function | `_prune_plans` | `(data)` | Fjern gamle terminale planer. Returnerer (beholdt, antal fjernet). | [src](../../../core/services/plan_proposals.py#L67) |
-| function | `propose_plan` | `(*, session_id, title, why, steps, skill_data=…)` | — | [src](../../../core/services/plan_proposals.py#L110) |
-| function | `resolve_plan` | `(plan_id, *, decision)` | — | [src](../../../core/services/plan_proposals.py#L196) |
-| function | `_plan_todo_auto_create_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L326) |
-| function | `revise_plan` | `(*, plan_id, session_id, reason, new_steps)` | Propose a revision of an existing approved plan. | [src](../../../core/services/plan_proposals.py#L333) |
-| function | `_plan_revision_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L437) |
-| function | `mark_step_completed` | `(plan_id, step_index)` | Append step_index to plan's completed_step_indices (idempotent, sorted). | [src](../../../core/services/plan_proposals.py#L444) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/plan_proposals.py#L489) |
-| function | `replan_signal_for_plan` | `(rec, *, now=…, stale_days=…)` | Return a non-mutating backtracking signal for an approved stale plan. | [src](../../../core/services/plan_proposals.py#L502) |
-| function | `list_session_plans` | `(session_id)` | — | [src](../../../core/services/plan_proposals.py#L545) |
-| function | `pending_plan_section` | `(session_id)` | Surface plans relevant to the current session. | [src](../../../core/services/plan_proposals.py#L550) |
-| function | `format_cross_session_plans_for_awareness` | `(current_session_id, *, max_plans=…, max_age_days=…)` | Return awareness-block text for approved+incomplete plans owned by | [src](../../../core/services/plan_proposals.py#L623) |
-| function | `all_pending_plans_section` | `()` | Show ALL pending plans (incl. auto-improvement proposals from | [src](../../../core/services/plan_proposals.py#L683) |
-| function | `_exec_propose_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L710) |
-| function | `_exec_approve_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L719) |
-| function | `_exec_dismiss_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L723) |
-| function | `_exec_list_plans` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L727) |
 

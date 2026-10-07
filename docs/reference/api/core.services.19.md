@@ -2,6 +2,81 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/personality_vector.py`
+_Personality Vector — cumulative personality that grows over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_should_apply_decay` | `()` | Return True if enough time has passed since the last decay application. | [src](../../../core/services/personality_vector.py#L34) |
+| function | `_get_evolved_baseline` | `()` | Compute long-term baseline targets from accumulated snapshots. | [src](../../../core/services/personality_vector.py#L43) |
+| function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
+| function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
+| function | `update_personality_vector_from_run` | `(*, run_id, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L112) |
+| function | `update_personality_vector_async` | `(*, run_id, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L196) |
+| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L217) |
+| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L249) |
+| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L256) |
+| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L277) |
+| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L406) |
+| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L449) |
+| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L463) |
+| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L476) |
+| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L487) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L553) |
+
+## `core/services/pfsense_syslog.py`
+_core/services/pfsense_syslog.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_self_ips` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L46) |
+| function | `_parse_filterlog` | `(line)` | Tolerant parser af pfSense filterlog-CSV. Returnerer {action, src, dst, dport}. | [src](../../../core/services/pfsense_syslog.py#L74) |
+| function | `_is_internal_src` | `(src)` | Er kilde-IP'en PRIVAT (RFC1918 = husets egne maskiner)? Ægte port-scan/brute-force kommer | [src](../../../core/services/pfsense_syslog.py#L103) |
+| function | `_is_noise_dst` | `(dst)` | Multicast/broadcast er normal netværks-støj (mDNS/SSDP/LLMNR/DHCP), IKKE angreb. | [src](../../../core/services/pfsense_syslog.py#L133) |
+| function | `_ingest` | `(rec, now)` | — | [src](../../../core/services/pfsense_syslog.py#L147) |
+| function | `_listen` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L183) |
+| function | `start_syslog_listener` | `()` | Start UDP-lytteren i en daemon-tråd (idempotent). Kun i runtime-processen. | [src](../../../core/services/pfsense_syslog.py#L204) |
+| function | `drain_detections` | `()` | Hent + ryd nye detektioner (kaldes af infra_sense-cadence). Self-safe. | [src](../../../core/services/pfsense_syslog.py#L213) |
+| function | `syslog_stats` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L221) |
+| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L226) |
+
+## `core/services/phone_wake.py`
+_Push-vækning: banker på telefonen når den sover._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_som_tal` | `(version)` | — | [src](../../../core/services/phone_wake.py#L59) |
+| function | `_husk_version` | `(version)` | Gem den app-version telefonen sidst meldte ved registrering. | [src](../../../core/services/phone_wake.py#L67) |
+| function | `app_forstaar_vaekning` | `()` | Kan den app vi sidst saa haandtere en tavs vaekning? | [src](../../../core/services/phone_wake.py#L79) |
+| function | `telefon_er_forbundet` | `(user_id)` | Er der en klient med telefon-værktøjer for brugeren lige nu? | [src](../../../core/services/phone_wake.py#L97) |
+| function | `_send_vaekning` | `(user_id)` | Stille data-push. Ingen title/preview → ingen synlig notifikation. | [src](../../../core/services/phone_wake.py#L125) |
+| function | `vaek_og_vent` | `(user_id, *, vent_s=…)` | Væk telefonen og vent på at broen melder sig. True hvis den kom. | [src](../../../core/services/phone_wake.py#L150) |
+
+## `core/services/plan_proposals.py`
+_Plan mode — propose, wait for approval, then execute._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_all` | `()` | — | [src](../../../core/services/plan_proposals.py#L38) |
+| function | `_save_all` | `(data)` | — | [src](../../../core/services/plan_proposals.py#L45) |
+| function | `_prune_plans` | `(data)` | Fjern gamle terminale planer. Returnerer (beholdt, antal fjernet). | [src](../../../core/services/plan_proposals.py#L67) |
+| function | `propose_plan` | `(*, session_id, title, why, steps, skill_data=…)` | — | [src](../../../core/services/plan_proposals.py#L110) |
+| function | `resolve_plan` | `(plan_id, *, decision)` | — | [src](../../../core/services/plan_proposals.py#L196) |
+| function | `_plan_todo_auto_create_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L326) |
+| function | `revise_plan` | `(*, plan_id, session_id, reason, new_steps)` | Propose a revision of an existing approved plan. | [src](../../../core/services/plan_proposals.py#L333) |
+| function | `_plan_revision_enabled` | `()` | — | [src](../../../core/services/plan_proposals.py#L437) |
+| function | `mark_step_completed` | `(plan_id, step_index)` | Append step_index to plan's completed_step_indices (idempotent, sorted). | [src](../../../core/services/plan_proposals.py#L444) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/plan_proposals.py#L489) |
+| function | `replan_signal_for_plan` | `(rec, *, now=…, stale_days=…)` | Return a non-mutating backtracking signal for an approved stale plan. | [src](../../../core/services/plan_proposals.py#L502) |
+| function | `list_session_plans` | `(session_id)` | — | [src](../../../core/services/plan_proposals.py#L545) |
+| function | `pending_plan_section` | `(session_id)` | Surface plans relevant to the current session. | [src](../../../core/services/plan_proposals.py#L550) |
+| function | `format_cross_session_plans_for_awareness` | `(current_session_id, *, max_plans=…, max_age_days=…)` | Return awareness-block text for approved+incomplete plans owned by | [src](../../../core/services/plan_proposals.py#L623) |
+| function | `all_pending_plans_section` | `()` | Show ALL pending plans (incl. auto-improvement proposals from | [src](../../../core/services/plan_proposals.py#L683) |
+| function | `_exec_propose_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L710) |
+| function | `_exec_approve_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L719) |
+| function | `_exec_dismiss_plan` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L723) |
+| function | `_exec_list_plans` | `(args)` | — | [src](../../../core/services/plan_proposals.py#L727) |
+
 ## `core/services/plugin_ruleset.py`
 _Plugin-regelsæt — brugerdefinerede kanal-regler der IKKE kan tilsidesættes._
 
@@ -646,64 +721,4 @@ _core/services/prompt_dump.py_
 |---|---|---|---|---|
 | function | `is_armed` | `()` | Er dumpet arméret? (sentinel-filen findes) | [src](../../../core/services/prompt_dump.py#L29) |
 | function | `dump_payload` | `(*, provider, model, messages, tools=…, params=…, lane=…, round_index=…)` | Skriv HELE requesten til latest.json; forrige dump → prev.json. | [src](../../../core/services/prompt_dump.py#L37) |
-
-## `core/services/prompt_evolution.py`
-_Prompt evolution — versioning + rollback safety net for workspace prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/prompt_evolution.py#L41) |
-| function | `_ensure_table` | `()` | Create workspace_prompt_versions table if missing. Idempotent. | [src](../../../core/services/prompt_evolution.py#L45) |
-| function | `snapshot_workspace_file` | `(*, filename, content, reason=…, workspace_id=…, created_by=…)` | Persist a snapshot of a workspace file. | [src](../../../core/services/prompt_evolution.py#L70) |
-| function | `list_prompt_history` | `(*, filename, limit=…)` | Return recent versions of a file, newest first. Excludes content | [src](../../../core/services/prompt_evolution.py#L145) |
-| function | `get_version` | `(*, version_id)` | Fetch a specific version including full content. | [src](../../../core/services/prompt_evolution.py#L171) |
-| function | `rollback_to_version` | `(*, workspace_dir, filename, version_id, snapshot_current_first=…)` | Restore a workspace file to a specific historical version. | [src](../../../core/services/prompt_evolution.py#L190) |
-| function | `recommend_rollback_after_change` | `(*, filename, hours=…)` | Score recent telemetry to assess whether the most recent change to | [src](../../../core/services/prompt_evolution.py#L248) |
-
-## `core/services/prompt_evolution_runtime.py`
-_Bounded runtime prompt evolution / self-authored prompt proposals light._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_prompt_evolution_runtime` | `(*, trigger=…, last_visible_at=…)` | Run one bounded prompt-evolution proposal pass. | [src](../../../core/services/prompt_evolution_runtime.py#L33) |
-| function | `build_prompt_evolution_from_inputs` | `(*, dream_articulation, dream_influence, self_model_surface, inner_voice_state, emergent_surface, embodied_state, loop_runtime, adaptive_learning, guided_learning, adaptive_reasoning, now=…)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L224) |
-| function | `build_prompt_evolution_runtime_surface` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L469) |
-| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L531) |
-| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L569) |
-| function | `_latest_prompt_evolution_proposal` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L593) |
-| function | `_choose_proposal_type` | `(*, dream_articulation, dream_influence, self_model_surface, embodied_state, loop_runtime, adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L600) |
-| function | `_target_asset_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L646) |
-| function | `_prompt_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L656) |
-| function | `_build_anchor` | `(*, dream_articulation, self_model_surface, loop_runtime)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L666) |
-| function | `_build_rationale` | `(*, proposal_type, target_asset, learning_influence, dream_influence, candidate_fragment, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L696) |
-| function | `_proposal_state_from_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L750) |
-| function | `_confidence_from_inputs` | `(*, proposal_type, source_input_count, self_model_surface)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L758) |
-| function | `_build_learning_influence` | `(adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L773) |
-| function | `_build_dream_influence_summary` | `(dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L783) |
-| function | `_build_fragment_co_influence` | `(*, adaptive_learning, dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L793) |
-| function | `_build_candidate_fragment` | `(*, proposal_type, target_asset, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L817) |
-| function | `_build_fragment_grounding` | `(*, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L888) |
-| function | `_build_review_light` | `(*, proposal_type, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L919) |
-| function | `_sanitize_fragment` | `(text)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1026) |
-| function | `_support_fields_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1030) |
-| function | `_learning_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1043) |
-| function | `_fragment_grounding_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1056) |
-| function | `_dream_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1069) |
-| function | `_review_light_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1081) |
-| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1093) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1122) |
-
-## `core/services/prompt_heartbeat_self_knowledge.py`
-_Heartbeat self-knowledge section builder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
-
-## `core/services/prompt_memory_recall.py`
-_Supplementary non-blocking recall during visible prompt assembly._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | — | [src](../../../core/services/prompt_memory_recall.py#L22) |
 

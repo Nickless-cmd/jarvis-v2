@@ -2,6 +2,58 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/auth_profile_scan.py`
+_Shared scanner for multi-profile provider auth slots._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_account_profile` | `(profile)` | True only for real account profiles (default, account2, account3, …). | [src](../../../core/services/auth_profile_scan.py#L41) |
+| function | `clear_cache` | `()` | Drop all cached scan results (test helper / manual invalidation). | [src](../../../core/services/auth_profile_scan.py#L51) |
+| function | `_profiles_root` | `()` | Return the auth/profiles directory (honoring JARVIS_CONFIG_DIR). | [src](../../../core/services/auth_profile_scan.py#L56) |
+| function | `_is_keyless` | `(provider)` | True if the provider needs no per-profile credentials. | [src](../../../core/services/auth_profile_scan.py#L63) |
+| function | `_sort_default_first` | `(profiles)` | — | [src](../../../core/services/auth_profile_scan.py#L83) |
+| function | `ready_profiles_for` | `(provider)` | Return profiles with ready credentials for ``provider``. | [src](../../../core/services/auth_profile_scan.py#L88) |
+
+## `core/services/auto_code_review.py`
+_Auto code-review heuristic for git-commit proposals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git_diff_stats` | `(repo, files)` | Return per-file added/removed line counts for the staged or unstaged diff. | [src](../../../core/services/auto_code_review.py#L36) |
+| function | `_scope_for_path` | `(p)` | — | [src](../../../core/services/auto_code_review.py#L72) |
+| function | `review_pending_commit` | `(*, repo_root, files, message, rationale)` | — | [src](../../../core/services/auto_code_review.py#L77) |
+| function | `review_pending_commit_gated` | `(**kwargs)` | Som review_pending_commit, men GOVERNET af Centralen (COGNITIVE, cluster='commit') | [src](../../../core/services/auto_code_review.py#L168) |
+
+## `core/services/auto_continuation.py`
+_Fortsæt automatisk når et synligt run-segment sluttede før opgaven._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L62) |
+| function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L70) |
+| function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…, *, reason=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L103) |
+| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L140) |
+| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L167) |
+| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L184) |
+| function | `kaede_nr` | `(session_id)` | Hvor mange gange er DENNE samtale allerede genoptaget? | [src](../../../core/services/auto_continuation.py#L203) |
+| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til at afgøre om han tog over MENS et run | [src](../../../core/services/auto_continuation.py#L231) |
+| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L246) |
+
+## `core/services/auto_improvement_proposer.py`
+_Auto improvement proposer — close the self-improvement loop SAFELY._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_iso` | `(value)` | Parse an ISO-8601 timestamp leniently; None on garbage. | [src](../../../core/services/auto_improvement_proposer.py#L39) |
+| function | `_is_safe_target` | `(target)` | Reject only infrastructure-protected modules. Identity files now allowed | [src](../../../core/services/auto_improvement_proposer.py#L58) |
+| function | `_check_tick_quality_degraded` | `()` | Returns proposal payload if tick quality is degrading. | [src](../../../core/services/auto_improvement_proposer.py#L69) |
+| function | `_check_stale_goals` | `()` | Returns proposal payload if stale goals exist. | [src](../../../core/services/auto_improvement_proposer.py#L101) |
+| function | `_check_decision_adherence` | `()` | — | [src](../../../core/services/auto_improvement_proposer.py#L131) |
+| function | `_already_disabled_providers` | `()` | Providers der eksplicit er slaaet fra paa provider-niveau. | [src](../../../core/services/auto_improvement_proposer.py#L160) |
+| function | `_check_provider_health_chronic` | `()` | If a provider is chronically down (>30 min), propose explicit demotion. | [src](../../../core/services/auto_improvement_proposer.py#L184) |
+| function | `generate_improvement_proposals` | `(*, session_id=…)` | Run all checks, file plans for any that fire. | [src](../../../core/services/auto_improvement_proposer.py#L239) |
+| function | `_exec_generate_improvement_proposals` | `(args)` | — | [src](../../../core/services/auto_improvement_proposer.py#L302) |
+
 ## `core/services/auto_remember_subscriber.py`
 _Auto-remember subscriber — closes cross-session memory loop._
 
@@ -544,60 +596,4 @@ _Cache-boundary drift observer (harness Part B, Mechanism A)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `observe_static_prefix` | `(*, provider, model, section_shape, static_prefix_sha)` | Record the static-prefix hash for (provider, model, shape); on a same-shape | [src](../../../core/services/cache_boundary_observer.py#L17) |
-
-## `core/services/cache_maintenance_daemon.py`
-_Cache maintenance daemon — periodic cleanup of expired web cache entries._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_cache_maintenance_daemon` | `()` | Run cache cleanup if cadence elapsed. Returns stats dict. | [src](../../../core/services/cache_maintenance_daemon.py#L36) |
-| function | `checkpoint_wal` | `()` | Checkpoint and record the actual SQLite result, including busy frames. | [src](../../../core/services/cache_maintenance_daemon.py#L210) |
-| function | `get_cache_maintenance_stats` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L230) |
-| function | `build_cache_maintenance_surface` | `()` | — | [src](../../../core/services/cache_maintenance_daemon.py#L237) |
-
-## `core/services/cache_telemetry.py`
-_Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `prefix_signature` | `(system_content, tools)` | Beregn (sha-prefix, længde) for det cachebare [system + tools]. | [src](../../../core/services/cache_telemetry.py#L25) |
-| function | `message_signatures` | `(messages)` | Ét fingeraftryk og én laengde pr. besked, i den raekkefoelge de sendes. | [src](../../../core/services/cache_telemetry.py#L51) |
-| function | `_tool_name` | `(tool)` | Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen. | [src](../../../core/services/cache_telemetry.py#L114) |
-| function | `_remember_tool_names` | `(tools_sha, tools)` | Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op. | [src](../../../core/services/cache_telemetry.py#L124) |
-| function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L138) |
-| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L180) |
-| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L217) |
-
-## `core/services/cadence_claims.py`
-_Ét krav ad gangen, og en nedkoeling der overlever en genstart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ClaimResult` | `` | — | [src](../../../core/services/cadence_claims.py#L34) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/cadence_claims.py#L40) |
-| function | `_dt` | `(raa)` | — | [src](../../../core/services/cadence_claims.py#L64) |
-| function | `claim_producer` | `(name, *, cooldown_minutes, lease_seconds, now=…)` | Tag kravet paa en producent, hvis den er moden og ledig. | [src](../../../core/services/cadence_claims.py#L75) |
-| function | `complete_producer` | `(name, lease_token, *, succeeded, now=…)` | Giv kravet fri. KUN et gennemfoert pas saetter nedkoelings-maerket. | [src](../../../core/services/cadence_claims.py#L126) |
-| function | `claim_idempotency_key` | `(scope, key, *, now=…)` | Foerste kalder vinder. Returnerer False hvis noeglen er brugt foer. | [src](../../../core/services/cadence_claims.py#L162) |
-| function | `last_success_at` | `(name)` | Hvornaar loeb producenten sidst IGENNEM? Tom streng hvis aldrig. | [src](../../../core/services/cadence_claims.py#L183) |
-| function | `note_producer_ran` | `(name, *, now=…)` | Bogfoer et gennemfoert pas — uden at gaa gennem lease-dansen. | [src](../../../core/services/cadence_claims.py#L210) |
-
-## `core/services/cadence_producers.py`
-_Cadence Producers — central orchestration for waking up dead MC fields._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/cadence_producers.py#L56) |
-| function | `_meaningful_run_topic` | `(user_message)` | — | [src](../../../core/services/cadence_producers.py#L60) |
-| function | `produce_signals_from_run` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood=…)` | Fire all relevant signals after a visible run, bypassing chain dependencies. | [src](../../../core/services/cadence_producers.py#L65) |
-| function | `produce_emergent_signals_from_history` | `()` | Run the emergent signal daemon to scan timeline for patterns. | [src](../../../core/services/cadence_producers.py#L654) |
-| function | `detect_decision_in_message` | `(*, user_message, assistant_response, run_id)` | Detect decisions in conversation and log them. | [src](../../../core/services/cadence_producers.py#L669) |
-| function | `run_adoption_pipelines` | `()` | Move things from candidate → adopted state. | [src](../../../core/services/cadence_producers.py#L703) |
-| function | `sync_personality_to_self_model` | `()` | Bridge: sync personality_vector changes to self_model_signal. | [src](../../../core/services/cadence_producers.py#L734) |
-| function | `progress_signal_lifecycles` | `()` | Move signals through lifecycle stages: active → carried → fading → released. | [src](../../../core/services/cadence_producers.py#L812) |
-| function | `_observe_frozen` | `(nerve, meta)` | EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe). | [src](../../../core/services/cadence_producers.py#L847) |
-| function | `tick_frozen_detectors` | `(tick_count)` | LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på | [src](../../../core/services/cadence_producers.py#L856) |
-| function | `build_cadence_producers_surface` | `()` | MC surface for cadence producer status. | [src](../../../core/services/cadence_producers.py#L913) |
-| function | `_levende_register` | `()` | Registrets producenter i prioritetsraekkefoelge. Selv-sikker: tomt ved | [src](../../../core/services/cadence_producers.py#L941) |
-| function | `_graf_rapport` | `()` | Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke | [src](../../../core/services/cadence_producers.py#L962) |
 

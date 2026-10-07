@@ -2,6 +2,62 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/daemon_memory_safeguard.py`
+_Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_memory_safeguard_surface` | `()` | Mission Control surface for the memory safeguard daemon. | [src](../../../core/services/daemon_memory_safeguard.py#L41) |
+| function | `run` | `(**kwargs)` | Check last assistant turn for missed saves. Called by heartbeat. | [src](../../../core/services/daemon_memory_safeguard.py#L101) |
+
+## `core/services/daily_journal.py`
+_Daily journal synthesizer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_connect` | `()` | — | [src](../../../core/services/daily_journal.py#L50) |
+| function | `_journal_path_for` | `(day)` | — | [src](../../../core/services/daily_journal.py#L57) |
+| function | `journal_exists_for` | `(day)` | Findes der allerede en journal for denne dato? | [src](../../../core/services/daily_journal.py#L62) |
+| function | `_fetch_chat_pairs_for_day` | `(day, limit=…)` | Hent user/assistant beskeder fra visible-chat sessions for denne dag. | [src](../../../core/services/daily_journal.py#L67) |
+| function | `_fetch_brain_carries_for_day` | `(day, limit=…)` | Hent private_brain_records carry-snapshots fra dagen. | [src](../../../core/services/daily_journal.py#L99) |
+| function | `_render_chat_excerpt` | `(pairs)` | — | [src](../../../core/services/daily_journal.py#L160) |
+| function | `_render_brain_excerpt` | `(carries)` | — | [src](../../../core/services/daily_journal.py#L170) |
+| function | `synthesize_daily_journal` | `(day=…, *, force=…)` | Generér og skriv dagens journal. | [src](../../../core/services/daily_journal.py#L182) |
+| function | `_should_synthesize_now` | `(now=…)` | Returnér True hvis vi er i sengetids-vinduet og dagens journal mangler. | [src](../../../core/services/daily_journal.py#L252) |
+| function | `_daemon_loop` | `()` | Wakes hver time, syntesizer dagens journal hvis vi er i vinduet. | [src](../../../core/services/daily_journal.py#L262) |
+| function | `start_daily_journal_daemon` | `()` | Start daemon. Idempotent. | [src](../../../core/services/daily_journal.py#L281) |
+| function | `stop_daily_journal_daemon` | `()` | — | [src](../../../core/services/daily_journal.py#L298) |
+
+## `core/services/data_erasure.py`
+_GDPR Art. 17 (ret til at blive glemt) — orkestrering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_id_tables` | `(conn)` | Tabeller der HAR en user_id-kolonne (minus beskyttede). Eksplicit opdaget, | [src](../../../core/services/data_erasure.py#L23) |
+| function | `_sweep_user_tables` | `(user_id, *, connect=…)` | — | [src](../../../core/services/data_erasure.py#L38) |
+| function | `_wipe_workspace` | `(user_id)` | Slet brugerens workspace-mappe — med STRAM sti-sikkerhed (kun en undermappe | [src](../../../core/services/data_erasure.py#L49) |
+| function | `erase_user` | `(user_id, *, mode=…, actor=…, connect=…)` | Slet en brugers data. mode='soft' (reversibel) | 'hard' (permanent). | [src](../../../core/services/data_erasure.py#L63) |
+
+## `core/services/day_shape_memory.py`
+_Day Shape Memory — sensory depth over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/day_shape_memory.py#L31) |
+| function | `_load` | `()` | — | [src](../../../core/services/day_shape_memory.py#L36) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/day_shape_memory.py#L54) |
+| function | `_today_iso` | `()` | — | [src](../../../core/services/day_shape_memory.py#L66) |
+| function | `_empty_day` | `(date_iso)` | — | [src](../../../core/services/day_shape_memory.py#L70) |
+| function | `capture_sample` | `()` | Add one sample to today's accumulating shape. | [src](../../../core/services/day_shape_memory.py#L82) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — capture one shape sample per tick. | [src](../../../core/services/day_shape_memory.py#L165) |
+| function | `_finalize_day` | `(day)` | Collapse raw sample arrays into summary stats for storage. | [src](../../../core/services/day_shape_memory.py#L170) |
+| function | `_compute_today_shape` | `()` | — | [src](../../../core/services/day_shape_memory.py#L188) |
+| function | `_median_historical_shape` | `(days)` | — | [src](../../../core/services/day_shape_memory.py#L196) |
+| function | `detect_today_anomaly` | `()` | Compare today's running shape to recent-days median. | [src](../../../core/services/day_shape_memory.py#L215) |
+| function | `build_day_shape_surface` | `()` | — | [src](../../../core/services/day_shape_memory.py#L261) |
+| function | `_surface_summary` | `(current, history, anomaly)` | — | [src](../../../core/services/day_shape_memory.py#L277) |
+| function | `build_day_shape_prompt_section` | `()` | Surfaces only when today differs noticeably from baseline. | [src](../../../core/services/day_shape_memory.py#L292) |
+
 ## `core/services/db_sentinel.py`
 _DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerende gate og_
 
@@ -526,102 +582,4 @@ _Discord config — load/save ~/.jarvis-v2/config/discord.json._
 | function | `load_discord_config` | `()` | Return config dict or None if missing/invalid. | [src](../../../core/services/discord_config.py#L16) |
 | function | `save_discord_config` | `(config)` | Write config with chmod 600. Creates parent dir if needed. | [src](../../../core/services/discord_config.py#L29) |
 | function | `is_discord_configured` | `()` | Return True if config exists and has all required keys. | [src](../../../core/services/discord_config.py#L36) |
-
-## `core/services/discord_gateway.py`
-_Discord gateway — runs discord.py in a dedicated daemon thread._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_discord_channel_for_session` | `(session_id)` | Lookup which Discord channel (if any) ejer denne session. | [src](../../../core/services/discord_gateway.py#L77) |
-| function | `_persist_status` | `()` | Mirror current _status to runtime_state_kv for cross-process readers. | [src](../../../core/services/discord_gateway.py#L166) |
-| function | `_status_heartbeat_loop` | `()` | Refresh persisted status every _STATUS_HB_INTERVAL seconds. | [src](../../../core/services/discord_gateway.py#L183) |
-| function | `get_discord_status` | `()` | Return current gateway status. | [src](../../../core/services/discord_gateway.py#L198) |
-| function | `_is_gateway_owner` | `()` | True if the discord client thread is running in this process. | [src](../../../core/services/discord_gateway.py#L241) |
-| function | `_dispatch_to_runtime` | `(action, args)` | Forward a send intent to the runtime process via internal HTTP. | [src](../../../core/services/discord_gateway.py#L246) |
-| function | `send_discord_message` | `(channel_id, text)` | Thread-safe: queue a message to be sent to a Discord channel. | [src](../../../core/services/discord_gateway.py#L267) |
-| function | `start_discord_typing` | `(channel_id)` | Tænd «Jarvis skriver…» og hold den kørende indtil næste besked sendes. | [src](../../../core/services/discord_gateway.py#L295) |
-| function | `_download_attachment` | `(attachment, session_id)` | Download a single discord.Attachment via attachment_service. | [src](../../../core/services/discord_gateway.py#L315) |
-| function | `_build_attachment_prefix` | `(attachments, session_id)` | Build content prefix lines for all attachments in a Discord message. | [src](../../../core/services/discord_gateway.py#L328) |
-| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/discord_gateway.py#L348) |
-| function | `_normaliser_stier` | `(file_path)` | Én sti eller en liste af stier → altid en liste. Tom liste = ingen fil. | [src](../../../core/services/discord_gateway.py#L353) |
-| function | `send_discord_file` | `(channel_id, text, file_path, *, wait=…, timeout=…)` | Queue a file send to a Discord channel. Validates path(s) first. | [src](../../../core/services/discord_gateway.py#L368) |
-| function | `_open_dm_and_send` | `(recipient_discord_id, text, timeout, max_retries=…, retry_delay=…, file_path=…)` | Open DM channel with a Discord user and queue a message. Gateway-process only. | [src](../../../core/services/discord_gateway.py#L427) |
-| function | `send_dm_to_owner` | `(text, timeout=…, file_path=…)` | Send a DM directly to the owner via owner_discord_id. | [src](../../../core/services/discord_gateway.py#L533) |
-| function | `send_dm_to_user` | `(recipient_discord_id, text, timeout=…, file_path=…)` | DM a known Discord user by ID. | [src](../../../core/services/discord_gateway.py#L580) |
-| function | `_get_or_create_discord_session` | `(channel_id, is_dm, owner_discord_id, author_id=…)` | Return session_id for this Discord channel. Creates session if needed. | [src](../../../core/services/discord_gateway.py#L627) |
-| function | `_is_table_row` | `(line)` | En tabel-række: starter med `|` og har mindst to pipe-tegn (`| a | b |`). | [src](../../../core/services/discord_gateway.py#L670) |
-| function | `_is_table_separator` | `(line)` | True for GFM-separatorrækken (`| --- | :--: |`) der skelner header fra data. | [src](../../../core/services/discord_gateway.py#L676) |
-| function | `_wrap_tables_for_discord` | `(text)` | Pak GFM-tabeller i kode-fences — Discord tegner dem ikke ellers. | [src](../../../core/services/discord_gateway.py#L685) |
-| function | `_downgrade_unsupported_for_discord` | `(text)` | Nedgrader markdown Discord ikke tegner, så det ikke står som rå tegn. | [src](../../../core/services/discord_gateway.py#L736) |
-| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L766) |
-| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L814) |
-| function | `_extract_text_deltas` | `(frames)` | Træk svarteksten ud af v2-SSE-frames. | [src](../../../core/services/discord_gateway.py#L840) |
-| function | `_tail_window` | `(text, limit)` | Vis HALEN af teksten når den overstiger Discord-loftet. | [src](../../../core/services/discord_gateway.py#L866) |
-| function | `_strip_fenced` | `(text)` | Fjern kodeblok-indhold — bruges når vi tæller inline-markører. | [src](../../../core/services/discord_gateway.py#L892) |
-| function | `_stabilize_stream_preview` | `(text)` | Luk uafsluttede markdown-markører i en STREAMENDE preview. | [src](../../../core/services/discord_gateway.py#L906) |
-| function | `_stream_run_to_discord` | `(channel_id, session_id)` | Send beskeden ved første tekst og redigér den mens runnet streamer. | [src](../../../core/services/discord_gateway.py#L926) |
-| function | `_sweep_stale_streams` | `()` | Ryd streamer-states der blev efterladt uden et finalize-kald. | [src](../../../core/services/discord_gateway.py#L1022) |
-| function | `_apply_edit_intent` | `(item)` | Redigér streamerens besked til den ENDELIGE tekst. | [src](../../../core/services/discord_gateway.py#L1040) |
-| function | `_finalize_stream_or_send` | `(session_id, channel_id, content)` | Ved run-slut: redigér streamerens besked til den endelige tekst, eller | [src](../../../core/services/discord_gateway.py#L1078) |
-| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L1113) |
-| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L1214) |
-| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1545) |
-| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1563) |
-| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1583) |
-| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1704) |
-| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1727) |
-| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1771) |
-
-## `core/services/discord_gateway_supervisor.py`
-_Vagthund der genrejser Discord-gatewayen naar dens klienttraad er doed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gateway_er_ejet` | `()` | Ejer DENNE proces gatewayen? Fejl regnes som «ja», saa en laesefejl | [src](../../../core/services/discord_gateway_supervisor.py#L89) |
-| function | `_discord_er_slaaet_til` | `()` | Er Discord konfigureret OG aktiveret? Ellers skal vi ikke rejse noget. | [src](../../../core/services/discord_gateway_supervisor.py#L103) |
-| function | `_skriv_tilstand` | `(**felter)` | Spejl supervisorens tilstand saa Centralen kan se den. | [src](../../../core/services/discord_gateway_supervisor.py#L114) |
-| function | `_vent_paa_at_traadene_doer` | `()` | Vent indtil klient- og subscriber-traaden er vaek. True hvis de doede. | [src](../../../core/services/discord_gateway_supervisor.py#L127) |
-| function | `_reparer` | `()` | Stop resterne og start gatewayen forfra. True hvis ejerskab blev vundet. | [src](../../../core/services/discord_gateway_supervisor.py#L157) |
-| function | `_loop` | `()` | Tjek med faste mellemrum; bak eksponentielt ud naar reparation fejler. | [src](../../../core/services/discord_gateway_supervisor.py#L212) |
-| function | `_sov` | `(sekunder)` | Sov i smaa bidder, saa et stop ikke skal vente et helt interval. | [src](../../../core/services/discord_gateway_supervisor.py#L235) |
-| function | `start_discord_gateway_supervisor` | `()` | Start vagthunden. Sikker at kalde ubetinget. | [src](../../../core/services/discord_gateway_supervisor.py#L243) |
-| function | `stop_discord_gateway_supervisor` | `()` | Stop vagthunden. SKAL kaldes FOER `stop_discord_gateway()` ved nedlukning, | [src](../../../core/services/discord_gateway_supervisor.py#L261) |
-| function | `supervisor_status` | `()` | Til Centralen: koerer vagthunden, og hvor mange gange har den maattet | [src](../../../core/services/discord_gateway_supervisor.py#L268) |
-
-## `core/services/dispatch_envelope.py`
-_Robustness envelope builder + plausibility guard for the dispatch-redesign._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_to_int` | `(value)` | Coerce to int; on any failure return 0. | [src](../../../core/services/dispatch_envelope.py#L16) |
-| function | `_to_float` | `(value)` | Coerce to float; on any failure return 0.0. | [src](../../../core/services/dispatch_envelope.py#L27) |
-| function | `build_envelope` | `(*, status, tokens_in=…, tokens_out=…, cost_usd=…, duration_ms=…, tool_calls=…, result=…)` | Build a fixed 7-key dispatch envelope with coerced types. | [src](../../../core/services/dispatch_envelope.py#L35) |
-| function | `validate_envelope` | `(env)` | Return plausibility warnings for an envelope. Empty list = clean. | [src](../../../core/services/dispatch_envelope.py#L60) |
-
-## `core/services/dispatch_guards.py`
-_core/services/dispatch_guards.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rs_get` | `(key, default)` | — | [src](../../../core/services/dispatch_guards.py#L71) |
-| function | `_rs_set` | `(key, value)` | — | [src](../../../core/services/dispatch_guards.py#L81) |
-| function | `_as_float` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L90) |
-| function | `_as_int` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L97) |
-| function | `_idem_ttl_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L107) |
-| function | `try_consume` | `(key, *, now=…, ttl_s=…)` | Markér `key` forbrugt ATOMISK. True første gang, False hvis allerede forbrugt | [src](../../../core/services/dispatch_guards.py#L111) |
-| function | `synthesize_timeout_envelope` | `(agent_id, deadline_ms)` | Byg en LARMENDE TIMEOUT-envelope for en dispatch der aldrig meldte tilbage. | [src](../../../core/services/dispatch_guards.py#L152) |
-| function | `register_deadline` | `(dispatch_id, deadline_ts)` | Registrér hvornår en dispatch SENEST skal have rapporteret. Durabel. | [src](../../../core/services/dispatch_guards.py#L163) |
-| function | `overdue` | `(now_ts=…)` | Returnér dispatch_ids hvis deadline er passeret ved now_ts (frisk = ikke med). | [src](../../../core/services/dispatch_guards.py#L175) |
-| function | `clear_deadline` | `(dispatch_id)` | Fjern en deadline (kaldes når dispatch rapporterer tilbage). Durabel, self-safe. | [src](../../../core/services/dispatch_guards.py#L191) |
-| function | `_breaker_threshold` | `()` | — | [src](../../../core/services/dispatch_guards.py#L205) |
-| function | `_breaker_window_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L210) |
-| function | `_breaker_cooldown_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L215) |
-| function | `_breaker_state` | `(lane)` | — | [src](../../../core/services/dispatch_guards.py#L220) |
-| function | `record_outcome` | `(lane, ok, *, now=…)` | Registrér udfaldet af en dispatch på `lane`. En succes nulstiller den | [src](../../../core/services/dispatch_guards.py#L227) |
-| function | `is_tripped` | `(lane, *, now=…)` | True hvis breakeren for `lane` er åben (blokér dispatch). Auto-resetter efter | [src](../../../core/services/dispatch_guards.py#L253) |
-| function | `_budget_max_count` | `()` | — | [src](../../../core/services/dispatch_guards.py#L275) |
-| function | `_budget_max_cost` | `()` | — | [src](../../../core/services/dispatch_guards.py#L280) |
-| function | `_budget_events` | `(lane, now)` | Hent lane-forbrug som liste af [ts, cost] beskåret til det rullende 24h-vindue. | [src](../../../core/services/dispatch_guards.py#L285) |
-| function | `budget_allows` | `(lane, cost_usd, *, now=…)` | HÅRD backstop FØR LLM'en fyrer: False hvis dette dispatch ville bryde ENTEN | [src](../../../core/services/dispatch_guards.py#L303) |
-| function | `record_spend` | `(lane, cost_usd, *, now=…)` | Registrér ét dispatch + dets cost på `lane`. Beskærer samtidig vinduet til 24h. | [src](../../../core/services/dispatch_guards.py#L329) |
 

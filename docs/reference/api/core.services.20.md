@@ -2,6 +2,66 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_evolution.py`
+_Prompt evolution — versioning + rollback safety net for workspace prompts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/prompt_evolution.py#L41) |
+| function | `_ensure_table` | `()` | Create workspace_prompt_versions table if missing. Idempotent. | [src](../../../core/services/prompt_evolution.py#L45) |
+| function | `snapshot_workspace_file` | `(*, filename, content, reason=…, workspace_id=…, created_by=…)` | Persist a snapshot of a workspace file. | [src](../../../core/services/prompt_evolution.py#L70) |
+| function | `list_prompt_history` | `(*, filename, limit=…)` | Return recent versions of a file, newest first. Excludes content | [src](../../../core/services/prompt_evolution.py#L145) |
+| function | `get_version` | `(*, version_id)` | Fetch a specific version including full content. | [src](../../../core/services/prompt_evolution.py#L171) |
+| function | `rollback_to_version` | `(*, workspace_dir, filename, version_id, snapshot_current_first=…)` | Restore a workspace file to a specific historical version. | [src](../../../core/services/prompt_evolution.py#L190) |
+| function | `recommend_rollback_after_change` | `(*, filename, hours=…)` | Score recent telemetry to assess whether the most recent change to | [src](../../../core/services/prompt_evolution.py#L248) |
+
+## `core/services/prompt_evolution_runtime.py`
+_Bounded runtime prompt evolution / self-authored prompt proposals light._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_prompt_evolution_runtime` | `(*, trigger=…, last_visible_at=…)` | Run one bounded prompt-evolution proposal pass. | [src](../../../core/services/prompt_evolution_runtime.py#L33) |
+| function | `build_prompt_evolution_from_inputs` | `(*, dream_articulation, dream_influence, self_model_surface, inner_voice_state, emergent_surface, embodied_state, loop_runtime, adaptive_learning, guided_learning, adaptive_reasoning, now=…)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L224) |
+| function | `build_prompt_evolution_runtime_surface` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L469) |
+| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L531) |
+| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L569) |
+| function | `_latest_prompt_evolution_proposal` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L593) |
+| function | `_choose_proposal_type` | `(*, dream_articulation, dream_influence, self_model_surface, embodied_state, loop_runtime, adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L600) |
+| function | `_target_asset_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L646) |
+| function | `_prompt_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L656) |
+| function | `_build_anchor` | `(*, dream_articulation, self_model_surface, loop_runtime)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L666) |
+| function | `_build_rationale` | `(*, proposal_type, target_asset, learning_influence, dream_influence, candidate_fragment, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L696) |
+| function | `_proposal_state_from_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L750) |
+| function | `_confidence_from_inputs` | `(*, proposal_type, source_input_count, self_model_surface)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L758) |
+| function | `_build_learning_influence` | `(adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L773) |
+| function | `_build_dream_influence_summary` | `(dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L783) |
+| function | `_build_fragment_co_influence` | `(*, adaptive_learning, dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L793) |
+| function | `_build_candidate_fragment` | `(*, proposal_type, target_asset, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L817) |
+| function | `_build_fragment_grounding` | `(*, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L888) |
+| function | `_build_review_light` | `(*, proposal_type, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L919) |
+| function | `_sanitize_fragment` | `(text)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1026) |
+| function | `_support_fields_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1030) |
+| function | `_learning_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1043) |
+| function | `_fragment_grounding_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1056) |
+| function | `_dream_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1069) |
+| function | `_review_light_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1081) |
+| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1093) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1122) |
+
+## `core/services/prompt_heartbeat_self_knowledge.py`
+_Heartbeat self-knowledge section builder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
+
+## `core/services/prompt_memory_recall.py`
+_Supplementary non-blocking recall during visible prompt assembly._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | — | [src](../../../core/services/prompt_memory_recall.py#L22) |
+
 ## `core/services/prompt_mutation_loop.py`
 _Prompt Mutation Loop — apply, score, auto-rollback on negative score._
 
@@ -560,75 +620,4 @@ _core/services/recall_scheduler.py_
 | function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L48) |
 | function | `_run_recall` | `(message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L61) |
 | function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L73) |
-
-## `core/services/recurrence_loop_daemon.py`
-_Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_recurrence_loop_daemon` | `()` | Run one recurrence iteration. Returns dict with generated/reason/stability. | [src](../../../core/services/recurrence_loop_daemon.py#L23) |
-| function | `build_recurrence_surface` | `()` | MC surface for recurrence loop experiment. | [src](../../../core/services/recurrence_loop_daemon.py#L94) |
-| function | `_call_recurrence_llm` | `(content)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/recurrence_loop_daemon.py#L135) |
-| function | `_extract_keywords` | `(text)` | Extract meaningful keywords from text (words >= 4 chars, deduped, max 20). | [src](../../../core/services/recurrence_loop_daemon.py#L195) |
-| function | `_jaccard_similarity` | `(a, b)` | Jaccard similarity between two keyword sets. Returns 1.0 if both empty. | [src](../../../core/services/recurrence_loop_daemon.py#L201) |
-
-## `core/services/recurring_tasks.py`
-_Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/recurring_tasks.py#L26) |
-| function | `set_channel` | `(task_id, channel)` | Sæt leverings-kanal på en recurring task. Returnerer True hvis opdateret. | [src](../../../core/services/recurring_tasks.py#L67) |
-| function | `set_weekdays` | `(task_id, weekdays)` | Sæt hvilke ugedage en task må fyre på. ``''`` = alle dage (uændret). | [src](../../../core/services/recurring_tasks.py#L83) |
-| function | `_row_to_dict` | `(row)` | — | [src](../../../core/services/recurring_tasks.py#L105) |
-| function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/services/recurring_tasks.py#L124) |
-| function | `_create` | `(*, task_id, focus, source, interval_minutes, next_fire_at, now, weekdays=…)` | — | [src](../../../core/services/recurring_tasks.py#L130) |
-| function | `_get_due` | `(now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L144) |
-| function | `parse_weekdays` | `(raw)` | Normalisér ugedage til ``'1,2,3,4,5'`` (ISO: mandag = 1). ``''`` = alle. | [src](../../../core/services/recurring_tasks.py#L168) |
-| function | `_ugedage` | `(raw)` | Ugedagene som et sæt ISO-tal (mandag = 1). Tomt sæt = alle dage. | [src](../../../core/services/recurring_tasks.py#L209) |
-| function | `_ryk_til_ugedag` | `(tid, trin, ugedage)` | Ryk frem i hele INTERVALLER til en dag brugeren har valgt. | [src](../../../core/services/recurring_tasks.py#L229) |
-| function | `_naeste_tid` | `(planlagt_iso, interval_minutes, now, ugedage=…)` | Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske. | [src](../../../core/services/recurring_tasks.py#L245) |
-| function | `_advance` | `(task_id, interval_minutes, now, planlagt_iso=…, ugedage=…)` | — | [src](../../../core/services/recurring_tasks.py#L285) |
-| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L301) |
-| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L321) |
-| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L337) |
-| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…, weekdays=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L354) |
-| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L418) |
-| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L426) |
-| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L431) |
-| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L446) |
-| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L502) |
-| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L516) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L526) |
-| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L545) |
-| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L554) |
-
-## `core/services/recursion_guard.py`
-_Recursion guard for autonomous agent dispatch._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tunable_int` | `(key, default)` | Read an int threshold from runtime-state; fall back to ``default``. | [src](../../../core/services/recursion_guard.py#L43) |
-| function | `_tunable_float` | `(key, default)` | — | [src](../../../core/services/recursion_guard.py#L53) |
-| function | `can_spawn` | `(current_depth, max_depth=…)` | True while a spawn chain still has depth budget. | [src](../../../core/services/recursion_guard.py#L63) |
-| function | `fanout_allowed` | `(requested, max_fanout=…)` | True when a single dispatch's requested child count is within budget. | [src](../../../core/services/recursion_guard.py#L77) |
-| function | `_load_entries` | `()` | — | [src](../../../core/services/recursion_guard.py#L91) |
-| function | `_save_entries` | `(entries)` | — | [src](../../../core/services/recursion_guard.py#L107) |
-| function | `_fresh_entries` | `(entries, now_ts, ttl)` | Drop entries older than ``ttl`` — reclaims slots left by crashed runs. | [src](../../../core/services/recursion_guard.py#L114) |
-| function | `try_enter` | `(now_ts=…)` | Claim a concurrency slot. | [src](../../../core/services/recursion_guard.py#L119) |
-| function | `exit` | `(now_ts=…)` | Release one concurrency slot (also reclaims stale entries). | [src](../../../core/services/recursion_guard.py#L142) |
-| function | `effective_max_fanout` | `()` | The live fan-out ceiling (runtime-state override or default). Callers use it | [src](../../../core/services/recursion_guard.py#L154) |
-| function | `active_count` | `(now_ts=…)` | Number of live (non-stale) concurrency slots currently held. | [src](../../../core/services/recursion_guard.py#L160) |
-
-## `core/services/reflection_cycle_daemon.py`
-_Reflection cycle daemon — pure experience without action, every 10 minutes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/reflection_cycle_daemon.py#L19) |
-| function | `tick_reflection_cycle_daemon` | `(snapshot, *, skip_event_gate=…)` | Generate a pure experience reflection if cadence allows. | [src](../../../core/services/reflection_cycle_daemon.py#L27) |
-| function | `_generate_reflection` | `(snapshot)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L71) |
-| function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
-| function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
-| function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16203 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16234 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,35 +29,35 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16203 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_fts`
 - [`core.runtime.02`](core.runtime.02.md) — `db_gate_verdicts` … `db_visible`
 - [`core.runtime.03`](core.runtime.03.md) — `db_world_self_truth` … `ws_auth`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agent_skill_distiller`
-- [`core.services.02`](core.services.02.md) — `agent_skill_library` … `auto_improvement_proposer`
-- [`core.services.03`](core.services.03.md) — `auto_remember_subscriber` … `cadence_producers`
-- [`core.services.04`](core.services.04.md) — `calm_anchor` … `central_echo_breaker`
-- [`core.services.05`](core.services.05.md) — `central_error_envelope` … `central_oneiric_loop`
-- [`core.services.06`](core.services.06.md) — `central_oneiric_sampler` … `central_trace`
-- [`core.services.07`](core.services.07.md) — `central_trainman` … `claim_scanner`
-- [`core.services.08`](core.services.08.md) — `clarification_classifier` … `contract_evolution`
-- [`core.services.09`](core.services.09.md) — `contradiction_engine` … `day_shape_memory`
-- [`core.services.10`](core.services.10.md) — `db_sentinel` … `dispatch_guards`
-- [`core.services.11`](core.services.11.md) — `dispatch_status` … `emotional_chords`
-- [`core.services.12`](core.services.12.md) — `emotional_controls` … `forgetting_curve`
-- [`core.services.13`](core.services.13.md) — `forgetting_engine` … `gut_calibration`
-- [`core.services.14`](core.services.14.md) — `gut_engine` … `infra_sense`
-- [`core.services.15`](core.services.15.md) — `infra_weather_daemon` … `liveness_registry`
-- [`core.services.16`](core.services.16.md) — `living_executive` … `message_feedback`
-- [`core.services.17`](core.services.17.md) — `meta_cognition_daemon` … `notifikations_opstart`
-- [`core.services.18`](core.services.18.md) — `notifikations_valg` … `plan_proposals`
-- [`core.services.19`](core.services.19.md) — `plugin_ruleset` … `prompt_memory_recall`
-- [`core.services.20`](core.services.20.md) — `prompt_mutation_loop` … `reflection_cycle_daemon`
-- [`core.services.21`](core.services.21.md) — `reflection_signal_tracking` … `run_message_provenance`
-- [`core.services.22`](core.services.22.md) — `run_trailing` … `self_experiments`
-- [`core.services.23`](core.services.23.md) — `self_history_grounding` … `session_spawn`
-- [`core.services.24`](core.services.24.md) — `session_tool_pin` … `somatic_daemon`
-- [`core.services.25`](core.services.25.md) — `somatic_runtime_body` … `theory_of_mind`
-- [`core.services.26`](core.services.26.md) — `theory_of_mind_engine` … `unconscious_temperature_field`
-- [`core.services.27`](core.services.27.md) — `unfinished_intent` … `visible_run_interruption`
-- [`core.services.28`](core.services.28.md) — `visible_run_journal` … `widget_dokument`
-- [`core.services.29`](core.services.29.md) — `witness_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agent_self_evaluation`
+- [`core.services.02`](core.services.02.md) — `agent_skill_distiller` … `attributed_git_commit`
+- [`core.services.03`](core.services.03.md) — `auth_profile_scan` … `cache_boundary_observer`
+- [`core.services.04`](core.services.04.md) — `cache_maintenance_daemon` … `central_dejavu`
+- [`core.services.05`](core.services.05.md) — `central_dissent` … `central_morpheus`
+- [`core.services.06`](core.services.06.md) — `central_mourning` … `central_terminal`
+- [`core.services.07`](core.services.07.md) — `central_timeseries` … `chronicle_consolidation_proposal_tracking`
+- [`core.services.08`](core.services.08.md) — `chronicle_consolidation_signal_tracking` … `content_blocks`
+- [`core.services.09`](core.services.09.md) — `context_window_manager` … `daemon_manager`
+- [`core.services.10`](core.services.10.md) — `daemon_memory_safeguard` … `discord_config`
+- [`core.services.11`](core.services.11.md) — `discord_gateway` … `emotion_concepts_channel_triggers`
+- [`core.services.12`](core.services.12.md) — `emotion_concepts_positive_triggers` … `flow_state_detection`
+- [`core.services.13`](core.services.13.md) — `followup_observer` … `gratitude_tracker`
+- [`core.services.14`](core.services.14.md) — `ground_truth_registry` … `inbox_prompt_section`
+- [`core.services.15`](core.services.15.md) — `inbox_state` … `lessons`
+- [`core.services.16`](core.services.16.md) — `life_milestones` … `memory_tattoos`
+- [`core.services.17`](core.services.17.md) — `memory_write_policy` … `notification_router`
+- [`core.services.18`](core.services.18.md) — `notifikationer` … `personality_drift`
+- [`core.services.19`](core.services.19.md) — `personality_vector` … `prompt_dump`
+- [`core.services.20`](core.services.20.md) — `prompt_evolution` … `recall_scheduler`
+- [`core.services.21`](core.services.21.md) — `recurrence_loop_daemon` … `run_closure_gate`
+- [`core.services.22`](core.services.22.md) — `run_event_log` … `self_authored_prompt_proposal_tracking`
+- [`core.services.23`](core.services.23.md) — `self_compassion` … `session_model_pin`
+- [`core.services.24`](core.services.24.md) — `session_permission` … `skill_security_scanner`
+- [`core.services.25`](core.services.25.md) — `smith_confrontation` … `terminal_sanitize`
+- [`core.services.26`](core.services.26.md) — `text_clip` … `turn_tail_timing`
+- [`core.services.27`](core.services.27.md) — `turn_trace` … `visible_run_abandonment`
+- [`core.services.28`](core.services.28.md) — `visible_run_cost` … `voice_daemon`
+- [`core.services.29`](core.services.29.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

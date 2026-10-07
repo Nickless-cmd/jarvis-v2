@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/causal_graph.py`
+_Causal graph query API._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fetch_event` | `(event_id)` | — | [src](../../../core/services/causal_graph.py#L22) |
+| function | `_fetch_neighbors` | `(event_id, direction, min_confidence)` | Return list of (other_event_id, edge dict) for one hop. | [src](../../../core/services/causal_graph.py#L42) |
+| function | `query_causal_chain` | `(*, event_id, direction=…, max_depth=…, min_confidence=…, offset=…, limit=…)` | BFS through causal_edges from event_id in given direction. | [src](../../../core/services/causal_graph.py#L76) |
+| function | `query_causal_neighbors` | `(*, event_id, direction=…, min_confidence=…)` | Direct neighbors only (depth=1) — convenience wrapper. | [src](../../../core/services/causal_graph.py#L149) |
+| function | `get_immediate_cause` | `(event_id)` | Return single highest-confidence direct parent, or None. | [src](../../../core/services/causal_graph.py#L170) |
+| function | `build_causal_graph_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/causal_graph.py#L179) |
+
 ## `core/services/causal_inference_daemon.py`
 _Causal inference daemon — three-tier matching against event allowlist._
 
@@ -566,18 +578,4 @@ _core/services/central_existence_feel.py_
 | function | `describe_existence_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de tre holdte aflæsninger. | [src](../../../core/services/central_existence_feel.py#L163) |
 | function | `register_existence_feel_layers` | `()` | Registrér de tre stille selv-lag som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_existence_feel.py#L196) |
 | function | `build_existence_feel_surface` | `()` | Mission Control (read-only): de tre holdte aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_existence_feel.py#L219) |
-
-## `core/services/central_form_judge.py`
-_core/services/central_form_judge.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_form_judge.py#L42) |
-| function | `_mode` | `()` | — | [src](../../../core/services/central_form_judge.py#L51) |
-| function | `form_key` | `(text)` | Reducér en prompt til dens FORM: fjern timestamps/tider/tal, normalisér whitespace, hash. | [src](../../../core/services/central_form_judge.py#L56) |
-| function | `_observe` | `(namespace, would_reuse, mode)` | — | [src](../../../core/services/central_form_judge.py#L67) |
-| function | `judge` | `(namespace, prompt)` | Dom FØR et LLM-kald: skal formen genudledes, eller er den uændret siden sidst? | [src](../../../core/services/central_form_judge.py#L76) |
-| function | `note_result` | `(namespace, prompt, value)` | Gem et friskt LLM-resultat under dets form-nøgle, så en uændret form kan genbruges. Bounded, | [src](../../../core/services/central_form_judge.py#L97) |
-| function | `snapshot` | `()` | Read-only: pr. namespace antal holdte former + mode. Til analyse/Mission Control. | [src](../../../core/services/central_form_judge.py#L116) |
-| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/central_form_judge.py#L126) |
 

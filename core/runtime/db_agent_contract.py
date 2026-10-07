@@ -487,3 +487,33 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
         error_code=_ERROR_CODE.get(registry_status, ""),
         error_phase=_ERROR_PHASE.get(registry_status, ""),
     )
+
+
+def claim_pending_results(*, owner_user_id: str, origin_session_id: str) -> list[dict[str, Any]]:
+    """Atomisk claim: alle ubehandlede (accepted/delivered) terminalbeskeder for
+    netop denne ejer og session flyttes til `claimed_by_model_step` i ÉN
+    transaktion og returneres. To samtidige kaldere deler dem aldrig."""
+    owner = _require(owner_user_id, "owner_user_id")
+    session = _require(origin_session_id, "origin_session_id")
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        rows = conn.execute(
+            "SELECT * FROM agent_result_outbox WHERE owner_user_id=? AND "
+            "origin_session_id=? AND delivery_status IN ('accepted','delivered') "
+            "ORDER BY created_at, message_id", (owner, session)).fetchall()
+        now = _now_iso()
+        for r in rows:
+            conn.execute("UPDATE agent_result_outbox SET delivery_status="
+                         "'claimed_by_model_step', updated_at=? WHERE message_id=?",
+                         (now, r["message_id"]))
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    out = []
+    for r in rows:
+        d = _row(r)
+        d["delivery_status"] = "claimed_by_model_step"
+        out.append(d)
+    return out

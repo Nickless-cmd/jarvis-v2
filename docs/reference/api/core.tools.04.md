@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/workspace_capabilities_approval.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_approval_request_user_context` | `()` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L10) |
+| function | `_persist_capability_approval_request` | `(invocation, *, requested_at, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L20) |
+| function | `_flade_for_run` | `(run_id)` | Fladen kørslen blev skrevet fra ("desk" | "mobil"), eller "". | [src](../../../core/tools/workspace_capabilities_approval.py#L110) |
+| function | `_workspace_write_proposal_content` | `(*, summary, write_content)` | — | [src](../../../core/tools/workspace_capabilities_approval.py#L123) |
+
 ## `core/tools/workspace_capabilities_const.py`
 _Delte konstanter for workspace-capabilities._
 

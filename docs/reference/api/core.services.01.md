@@ -463,6 +463,14 @@ _Agent relay — direct A→B messaging between sub-agents._
 | function | `_exec_relay_message` | `(args)` | — | [src](../../../core/services/agent_relay.py#L107) |
 | function | `_exec_relay_to_role` | `(args)` | — | [src](../../../core/services/agent_relay.py#L116) |
 
+## `core/services/agent_result_inbox.py`
+_Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_render` | `(msgs)` | — | [src](../../../core/services/agent_result_inbox.py#L23) |
+| function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater for (ejer, session) og returner teksten | [src](../../../core/services/agent_result_inbox.py#L45) |
+
 ## `core/services/agent_runtime.py`
 _Agent runtime — sub-agents, councils, swarms (facade)._
 
@@ -657,22 +665,4 @@ _Per-agent JSONL transcript persistence._
 | function | `list_agents` | `(limit=…)` | Seneste agenter med transkript, nyeste foerst. | [src](../../../core/services/agent_transcript.py#L303) |
 | function | `read_events` | `(agent_id)` | Alle events for én agent. Tom liste hvis intet transkript. | [src](../../../core/services/agent_transcript.py#L326) |
 | function | `summarize` | `(agent_id, *, max_arg_chars=…, max_result_chars=…)` | Hvad gjorde agenten, og hvad kom der ud af det? | [src](../../../core/services/agent_transcript.py#L343) |
-
-## `core/services/agentic_checkpoints.py`
-_Durable checkpoints for visible agentic loops._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/agentic_checkpoints.py#L21) |
-| function | `_load` | `()` | — | [src](../../../core/services/agentic_checkpoints.py#L25) |
-| function | `_save` | `(records)` | — | [src](../../../core/services/agentic_checkpoints.py#L32) |
-| function | `_tool_name` | `(tool_call)` | — | [src](../../../core/services/agentic_checkpoints.py#L43) |
-| function | `_compact_tool_call` | `(tool_call)` | — | [src](../../../core/services/agentic_checkpoints.py#L50) |
-| function | `_compact_result` | `(result)` | — | [src](../../../core/services/agentic_checkpoints.py#L60) |
-| function | `compact_exchange` | `(exchange)` | — | [src](../../../core/services/agentic_checkpoints.py#L68) |
-| function | `save_checkpoint` | `(*, run_id, session_id, user_message, provider, model, round_index, phase, exchanges, partial_text=…, exit_reason=…)` | — | [src](../../../core/services/agentic_checkpoints.py#L78) |
-| function | `latest_for_session` | `(session_id)` | — | [src](../../../core/services/agentic_checkpoints.py#L113) |
-| function | `clear_run` | `(run_id)` | — | [src](../../../core/services/agentic_checkpoints.py#L124) |
-| function | `clear_session` | `(session_id)` | — | [src](../../../core/services/agentic_checkpoints.py#L133) |
-| function | `checkpoint_prompt_section` | `(session_id)` | — | [src](../../../core/services/agentic_checkpoints.py#L146) |
 

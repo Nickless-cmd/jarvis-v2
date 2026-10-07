@@ -50,6 +50,108 @@ def test_runde_beskeder_ryddes_ved_ny_runde():
     assert h.som_liste() == []
 
 
+# ── Den tredje levetid: `naeste` (7/10-2026) ────────────────────────────────
+#
+# De fem gates i loekken fyrer ved runde-SLUT og skal praege praecis den runde
+# der kommer. Foer laa de i halen som «vedvarende»: noten blev tilfoejet én
+# gang, men halen sendes hver runde, saa den blev gen-sendt til turen sluttede.
+# Maalt paa hollow-promise-noten alene: 426 fyringer over 356 ture og 2.226
+# gen-sendinger — 5,4 i snit pr. ramt tur, vaerst 40 i én tur.
+
+
+def test_naeste_gaelder_KUN_den_naeste_runde():
+    """Kernen i rettelsen. Var noten «vedvarende», blev den sendt igen i hver
+    runde til turen sluttede."""
+    h = RundeHale()
+    h.tilfoej_naeste("Du lovede lige at handle")
+    h.ny_runde()                                    # noten rykker ind
+    assert len(h.som_liste()) == 1
+    h.ny_runde()                                    # ... og videre ud
+    assert h.som_liste() == [], "noten blev haengende — det er den gamle fejl"
+
+
+def test_naeste_er_USYNLIG_i_den_runde_der_loeb():
+    """Gaten fyrer ved runde-SLUT. Runden der allerede er sendt maa ikke se
+    noten — den hoerer til den naeste."""
+    h = RundeHale()
+    h.ny_runde()                                    # runden aabner
+    h.tilfoej_naeste("saml dine kald")
+    assert h.som_liste() == [], "noten laekkede ind i den runde der loeb"
+    h.ny_runde()
+    assert len(h.som_liste()) == 1
+
+
+def test_naeste_staar_FOER_rundens_egne_vink():
+    """Noten er aeldst naar runden aabner — den skal laeses foer vinket."""
+    h = RundeHale()
+    h.tilfoej_naeste("note fra gaten")
+    h.ny_runde()
+    h.tilfoej_runde("saml dine kald")
+    indhold = [m["content"] for m in h.som_liste()]
+    assert len(indhold) == 2
+    assert "note fra gaten" in indhold[0]
+    assert indhold[1].endswith("saml dine kald")
+
+
+def test_de_tre_levetider_aeder_ikke_hinanden():
+    """Den vedvarende bliver, den naeste gaar videre efter én runde, og
+    rundens eget vink ryddes ved runde-graensen."""
+    h = RundeHale()
+    h.tilfoej_vedvarende("resten af turen")
+    h.tilfoej_naeste("kun naeste")
+    h.ny_runde()
+    h.tilfoej_runde("kun denne")
+    assert len(h.som_liste()) == 3
+    h.ny_runde()
+    rest = h.som_liste()
+    assert len(rest) == 1 and "resten af turen" in rest[0]["content"], (
+        "den vedvarende skulle overleve; naeste og runde skulle vaere vaek")
+
+
+def test_et_retry_af_samme_runde_ser_den_samme_note():
+    """Pumpen binder halen som default-argument for at et retry af runde K
+    sender byte-identisk. Noten maa ikke kunne forsvinde under forsoeget."""
+    h = RundeHale()
+    h.tilfoej_naeste("note")
+    h.ny_runde()
+    bundet = h.som_liste()                          # pumpen binder denne
+    h.ny_runde()                                    # ... og et runde-skift sker
+    assert len(bundet) == 1, "retry'et fik en anden hale end foerste forsoeg"
+
+
+def test_naeste_er_system_med_runtime_ramme():
+    h = RundeHale()
+    h.tilfoej_naeste("Du lovede lige at handle")
+    h.ny_runde()
+    m = h.som_liste()[0]
+    assert m["role"] == "system"
+    assert "ikke en besked fra brugeren" in m["content"]
+
+
+def test_en_TOM_naeste_besked_kommer_ikke_med():
+    """En tom besked ville aabne en ny runde uden at sige noget."""
+    h = RundeHale()
+    for tom in ("", None, 0):
+        h.tilfoej_naeste(tom)                       # type: ignore[arg-type]
+    h.ny_runde()
+    assert h.som_liste() == []
+
+
+# ── Kilde-vagt: gaterne maa ikke falde tilbage til «resten af turen» ────────
+
+
+def test_gaterne_bruger_naeste_ikke_vedvarende():
+    """En tilbagevenden til `tilfoej_vedvarende` i loekken genindfoerer
+    gen-sendingen i hver runde. Fejlen er usynlig i drift — noten «er jo med»
+    — og den kostede op til 40 gentagelser i én tur."""
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert "_tur_hale.tilfoej_vedvarende(" not in kilde, (
+        "en gate i loekken er faldet tilbage til «resten af turen»")
+    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 5, (
+        "de fem gates (hollow-promise, skill, baggrunds-shell, stop-hook, "
+        "stillingtagen) skal alle bruge `naeste`")
+
+
 def test_vedvarende_staar_FOERST_fordi_de_er_aeldst():
     h = RundeHale()
     h.tilfoej_vedvarende("styring", rolle="user")

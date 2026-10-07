@@ -176,9 +176,13 @@ _Agentens EGEN erindring paa tvaers af assignments (agent-contract-v1 C4, spec 7
 | function | `project_summary` | `(assignment_id)` | Skriv resumeet for ét TERMINALT assignment. Idempotent (UNIQUE paa assignment). | [src](../../../core/runtime/db_agent_memory.py#L105) |
 | function | `_agent_of` | `(conn, assignment_id)` | — | [src](../../../core/runtime/db_agent_memory.py#L150) |
 | function | `retry_failed_projections` | `()` | Genopret: projicer igen for assignments hvor en fejl er registreret og stadig er aaben. | [src](../../../core/runtime/db_agent_memory.py#L160) |
-| function | `write_note` | `(*, owner_user_id, agent_id, content, author, source_assignment_id=…)` | Skriv en NY version af agentens noter (den gamle bevares med aendringsspor). | [src](../../../core/runtime/db_agent_memory.py#L176) |
-| function | `grant_session_relation` | `(*, owner_user_id, agent_id, session_id, granted_by)` | Giv en anden session adgang til agentens gamle erindring. Kun agentens ejer, og kun | [src](../../../core/runtime/db_agent_memory.py#L208) |
-| function | `recall` | `(*, owner_user_id, agent_id, session_id, budget_chars=…)` | Begraenset, kildeangivet uddrag af agentens EGEN erindring til netop denne session. | [src](../../../core/runtime/db_agent_memory.py#L232) |
+| function | `_insert_note` | `(conn, *, owner, agent_id, content, author, source_assignment_id)` | Indsaet ny noteversion paa den MEDGIVNE forbindelse (kalderen ejer BEGIN IMMEDIATE/commit). | [src](../../../core/runtime/db_agent_memory.py#L176) |
+| function | `write_note` | `(*, owner_user_id, agent_id, content, author, source_assignment_id=…)` | Skriv en NY version af agentens noter (den gamle bevares med aendringsspor). | [src](../../../core/runtime/db_agent_memory.py#L195) |
+| function | `_agent_principal` | `(conn, agent_id)` | (ejer, aabent assignment) for en agent der maa bruge noteredskabet - ellers ``ContractError``. | [src](../../../core/runtime/db_agent_memory.py#L222) |
+| function | `write_agent_note` | `(*, agent_id, content)` | Agenten skriver/retter sin EGEN note: ny version med forfatter ``agent:<id>``, kilde-assignment og | [src](../../../core/runtime/db_agent_memory.py#L239) |
+| function | `read_agent_notes` | `(*, agent_id, history=…)` | Agentens egne noter: nyeste version i fuld laengde, eller (``history``) versionssporet uden indhold. | [src](../../../core/runtime/db_agent_memory.py#L268) |
+| function | `grant_session_relation` | `(*, owner_user_id, agent_id, session_id, granted_by)` | Giv en anden session adgang til agentens gamle erindring. Kun agentens ejer, og kun | [src](../../../core/runtime/db_agent_memory.py#L290) |
+| function | `recall` | `(*, owner_user_id, agent_id, session_id, budget_chars=…)` | Begraenset, kildeangivet uddrag af agentens EGEN erindring til netop denne session. | [src](../../../core/runtime/db_agent_memory.py#L314) |
 
 ## `core/runtime/db_agent_route.py`
 _Varig rute-proveniens for agenter (agent-contract-v1 D, spec 7.1)._

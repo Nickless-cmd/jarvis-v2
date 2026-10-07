@@ -196,6 +196,11 @@ def spawn_agent_task(
     if not allowed_tools:
         from core.services.agent_runtime_base import tools_for_policy
         allowed_tools = tools_for_policy(tool_policy)
+        if contract is not None and allowed_tools and "agent_note" not in allowed_tools:
+            # Kontrakt-bundne agenter med vaerktoejer faar deres egen hukommelse (spec 7.2). Navnet er en
+            # funktion af politikken og at agenten er kontrakt-bundet - ikke af opgaveteksten - saa
+            # agentens vaerktoejsarray er fast for dens levetid.
+            allowed_tools = [*allowed_tools, "agent_note"]
     # Fase 2 Task 3: strictest-mode inheritance — never-escalate ceiling. A
     # child agent's effective tool allowlist is the requested tools
     # intersected with the parent's own allowlist, so a child can never gain

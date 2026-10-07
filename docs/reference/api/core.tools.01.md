@@ -26,6 +26,15 @@ _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 | function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L211) |
 | function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L224) |
 
+## `core/tools/agent_memory_tools.py`
+_Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C, hul 3; spec 7.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_memory_tools.py#L43) |
+| function | `_exec_agent_note` | `(args)` | Identiteten er ``_runtime_agent_id`` (sat af serveren); intet i ``args`` kan udpege en anden agent. | [src](../../../core/tools/agent_memory_tools.py#L49) |
+| function | `_render` | `(res)` | — | [src](../../../core/tools/agent_memory_tools.py#L67) |
+
 ## `core/tools/agent_todo_tools.py`
 _Tool wrappers for the per-session todo tracker (agent_todos)._
 
@@ -517,15 +526,4 @@ _Tools for Persistent Identity Sketch — read and update._
 |---|---|---|---|---|
 | function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
 | function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
-
-## `core/tools/inbox_tools.py`
-_De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger` | `()` | Den autentificerede bruger. Tom streng når ingen er bundet. | [src](../../../core/tools/inbox_tools.py#L107) |
-| function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L148) |
-| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L170) |
-| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L193) |
-| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L213) |
 

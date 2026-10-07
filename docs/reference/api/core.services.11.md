@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dispatch_status.py`
+_Typed dispatch-status enum for the dispatch-redesign._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DispatchStatus` | `` | String constants for the six terminal dispatch outcomes. | [src](../../../core/services/dispatch_status.py#L13) |
+| method | `DispatchStatus.all` | `(cls)` | Return the set of all six known statuses. | [src](../../../core/services/dispatch_status.py#L24) |
+| function | `is_failure` | `(status)` | True for failed/timeout/blocked. Unknown status -> False. | [src](../../../core/services/dispatch_status.py#L46) |
+| function | `is_terminal` | `(status)` | True for any of the six known statuses. Unknown status -> False. | [src](../../../core/services/dispatch_status.py#L51) |
+
 ## `core/services/doc_repair_agent.py`
 _Doc repair agent (spec 2026-07-10 Del 2)._
 
@@ -650,17 +660,4 @@ _Emotional Chords — emergent qualities from signal combinations._
 | function | `get_chord_lines` | `()` | Convenience: compute all active chords and format for prompt. | [src](../../../core/services/emotional_chords.py#L236) |
 | function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/emotional_chords.py#L254) |
 | function | `_map_pressures_to_families` | `(dominant_pressures)` | Map active pressure vectors to their likely signal families. | [src](../../../core/services/emotional_chords.py#L265) |
-
-## `core/services/emotional_controls.py`
-_Emotional Controls — humør der GATER handlinger, ikke bare rapporteres._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `EmotionalSnapshot` | `` | Point-in-time emotional reading used for gating decisions. | [src](../../../core/services/emotional_controls.py#L54) |
-| function | `_approval_denial_streak_last_hour` | `()` | Count consecutive recent approval denials as frustration proxy. | [src](../../../core/services/emotional_controls.py#L63) |
-| function | `_recent_tool_errors_last_10min` | `()` | Count tool.completed events with status=error in last 10 minutes (fatigue proxy). | [src](../../../core/services/emotional_controls.py#L92) |
-| function | `read_emotional_snapshot` | `()` | Compose current emotional state from available signals. | [src](../../../core/services/emotional_controls.py#L118) |
-| function | `apply_emotional_controls` | `(*, kernel_action=…, snapshot=…)` | Transform a kernel action based on current emotional state. | [src](../../../core/services/emotional_controls.py#L161) |
-| function | `build_emotional_controls_surface` | `()` | MC surface — current emotional state + what would be gated. | [src](../../../core/services/emotional_controls.py#L220) |
-| function | `format_gate_message` | `(action, reason, *, tool_name=…)` | Generate a user-facing Danish message explaining the gate. | [src](../../../core/services/emotional_controls.py#L260) |
 

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/calm_anchor.py`
+_Calm Anchor — baseline reference state Jarvis can return to._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_persisted_samples` | `()` | — | [src](../../../core/services/calm_anchor.py#L37) |
+| function | `_persist_samples` | `()` | — | [src](../../../core/services/calm_anchor.py#L55) |
+| function | `_current_snapshot` | `()` | Capture current values from runtime signals into a flat dict. | [src](../../../core/services/calm_anchor.py#L72) |
+| function | `_is_positive_stable` | `(snap)` | Qualify a snapshot as belonging to positive-stable baseline. | [src](../../../core/services/calm_anchor.py#L109) |
+| function | `tick` | `(_seconds=…)` | Capture a snapshot if current state qualifies as baseline. | [src](../../../core/services/calm_anchor.py#L126) |
+| function | `_compute_anchor_signature` | `()` | Compute median signature from buffered positive-stable snapshots. | [src](../../../core/services/calm_anchor.py#L151) |
+| function | `get_anchor_signature` | `()` | Return current anchor signature, recomputing periodically. | [src](../../../core/services/calm_anchor.py#L166) |
+| function | `_distance_from_anchor` | `(current, anchor)` | L1-distance normalized to each dimension's rough scale. | [src](../../../core/services/calm_anchor.py#L176) |
+| function | `get_anchor_state` | `()` | Return full anchor state: signature + current + distance. | [src](../../../core/services/calm_anchor.py#L201) |
+| function | `build_calm_anchor_surface` | `()` | — | [src](../../../core/services/calm_anchor.py#L215) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/calm_anchor.py#L228) |
+| function | `build_calm_anchor_prompt_section` | `()` | Surfaces a grounding line when distance is significant. | [src](../../../core/services/calm_anchor.py#L241) |
+| function | `reset_calm_anchor` | `()` | Reset state (for testing). | [src](../../../core/services/calm_anchor.py#L261) |
+
 ## `core/services/candidate_hygiene.py`
 _Hygiejne for runtime-contract-kandidater — stabil nøgle + flygtigheds-filter._
 
@@ -584,17 +603,4 @@ _Echo Chamber Breaker — tvungen diversitet mod monokultur._
 |---|---|---|---|---|
 | function | `break_echo` | `(*, limit=…)` | Fremtving ét simplere alternativ pr. altid-grøn overhead-proces. READ-ONLY. Self-safe. | [src](../../../core/services/central_echo_breaker.py#L21) |
 | function | `record_echo_breaker` | `()` | Cadence: observér modstemmen til nerve system/echo_breaker (metadata-only). Self-safe. | [src](../../../core/services/central_echo_breaker.py#L54) |
-
-## `core/services/central_error_envelope.py`
-_Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget knækker._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ErrorEnvelope` | `` | Den ENE bruger-vendte fejl-form. Alle flader (desk/companion/UI) renderer den ens. | [src](../../../core/services/central_error_envelope.py#L102) |
-| method | `ErrorEnvelope.to_client_event` | `(self)` | Konsistent payload til klient-rendering (desk SSE system_event kind='error', | [src](../../../core/services/central_error_envelope.py#L118) |
-| function | `build_envelope` | `(*, code, origin_cluster=…, run_id=…, detail=…)` | Map en kanonisk fejl-kode → bruger-vendt envelope. Ukendt kode → 'unknown'-fallback | [src](../../../core/services/central_error_envelope.py#L141) |
-| function | `emit` | `(envelope, *, session_id=…, user_id=…, notify=…)` | Gør fejlen synlig + (valgfrit) rut den til en async flade. Returnerer klient-eventet | [src](../../../core/services/central_error_envelope.py#L158) |
-| function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L206) |
-| function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L299) |
-| function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L332) |
 

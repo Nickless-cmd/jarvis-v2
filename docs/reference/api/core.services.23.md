@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_history_grounding.py`
+_Prompten maa ikke forveksle et rygte med en kendsgerning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `QueryProfile` | `` | — | [src](../../../core/services/self_history_grounding.py#L28) |
+| function | `classify_self_history_query` | `(text)` | Hvad spoerges der om? Deterministisk, uden model. | [src](../../../core/services/self_history_grounding.py#L59) |
+| function | `_verdens_fakta` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L74) |
+| function | `_emner` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L79) |
+| function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
+| function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
+| function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
+
 ## `core/services/self_model_blind_spots.py`
 _Self-Model Blind Spots — LLM-drevet opdagelse af egne usete fejlmønstre._
 
@@ -739,22 +752,4 @@ _start_session — Jarvis starter selv et run i en session der er Bjørns._
 | function | `antal_sidste_time` | `()` | Hvor mange selv-startede runs ligger i det rullende vindue lige nu. | [src](../../../core/services/session_spawn.py#L44) |
 | function | `start_session` | `(prompt, *, session_id=…, title=…, origin=…)` | Start et autonomt run i en session der tilhører Bjørn. | [src](../../../core/services/session_spawn.py#L50) |
 | function | `_exec_start_session` | `(args)` | — | [src](../../../core/services/session_spawn.py#L141) |
-
-## `core/services/session_tool_pin.py`
-_Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_tool_pin.py#L41) |
-| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L50) |
-| function | `_compact_epoch` | `(session_id)` | Compaction-markøren for sessionen. Skifter den, er historikken skrevet | [src](../../../core/services/session_tool_pin.py#L54) |
-| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L64) |
-| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_tool_pin.py#L73) |
-| function | `get_pinned` | `(session_id)` | Det låste sæt for sessionen — tom liste når intet er låst, eller når | [src](../../../core/services/session_tool_pin.py#L81) |
-| function | `pin` | `(session_id, names)` | Lås sættet for sessionen. Returnerer det låste sæt. | [src](../../../core/services/session_tool_pin.py#L96) |
-| function | `extend` | `(session_id, names)` | Udvid låsen (load_more_tools). Tilføjelser holder ved til næste tur. | [src](../../../core/services/session_tool_pin.py#L106) |
-| function | `clear` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L120) |
-| function | `_med_garanterede` | `(navne)` | Foren med de vaerktoejer der ALTID skal kunne kaldes — og sorter. | [src](../../../core/services/session_tool_pin.py#L124) |
-| function | `resolve` | `(session_id, selected_names, extra_required=…)` | Hvilke værktøjer skal denne tur sende? | [src](../../../core/services/session_tool_pin.py#L153) |
-| function | `build_session_tool_pin_surface` | `(session_id=…)` | — | [src](../../../core/services/session_tool_pin.py#L217) |
 

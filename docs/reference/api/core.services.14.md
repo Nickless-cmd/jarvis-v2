@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gut_engine.py`
+_Gut Engine — intuition and calibration tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L21) |
+| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L94) |
+| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L104) |
+| function | `gut_gate` | `(proceed_confidence, *, context=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L112) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L159) |
+| function | `build_gut_surface` | `()` | — | [src](../../../core/services/gut_engine.py#L181) |
+
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._
 
@@ -629,24 +641,4 @@ _core/services/infra_sense.py_
 | function | `_safe` | `(fn)` | — | [src](../../../core/services/infra_sense.py#L563) |
 | function | `run_infra_sense_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sans huset read-only. Bulletproof — kaster ALDRIG. | [src](../../../core/services/infra_sense.py#L570) |
 | function | `register_infra_sense_producer` | `()` | Registrér infra-sansningen som cadence-producer (~hvert 3 min). Read-only. | [src](../../../core/services/infra_sense.py#L586) |
-
-## `core/services/infra_weather_daemon.py`
-_Infra Weather Daemon — "The atmosphere of my system"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L35) |
-| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L43) |
-| function | `_disk_pressure` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L58) |
-| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L78) |
-| function | `_api_cost_today` | `()` | Sum of today's API costs via the costs ledger. | [src](../../../core/services/infra_weather_daemon.py#L121) |
-| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L142) |
-| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L161) |
-| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L178) |
-| function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L214) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L269) |
-| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L278) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L291) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L307) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L316) |
 

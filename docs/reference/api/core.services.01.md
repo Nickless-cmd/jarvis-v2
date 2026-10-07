@@ -407,6 +407,18 @@ _Agent dispatch orchestrator for code mode (spec §19)._
 | function | `scan_skills_before_dispatch` | `(skill_contents)` | Kør skill_scanner på hver skill der vil eksekvere lokalt (§19.8). Blokerer | [src](../../../core/services/agent_dispatch.py#L74) |
 | function | `dispatch_code_mode_task` | `(task, *, inline=…, executor_count=…, skill_contents=…, user_id=…, dry_run=…)` | Orchestrér en code-mode-opgave (§19.4). | [src](../../../core/services/agent_dispatch.py#L87) |
 
+## `core/services/agent_loop_core.py`
+_Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L28) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L29) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L32) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L34) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L36) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L39) |
+
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._
 
@@ -528,10 +540,19 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
 | function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L184) |
 | function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L234) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L498) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L544) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L672) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L676) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L276) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id)` | — | [src](../../../core/services/agent_runtime_base.py#L279) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L284) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L289) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L296) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L299) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L308) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L324) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L362) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L449) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L495) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L623) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L627) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -636,23 +657,4 @@ _Agent skill distillation — turns observed outcomes into principles._
 | function | `_parse_distillation` | `(text)` | — | [src](../../../core/services/agent_skill_distiller.py#L72) |
 | function | `distill_skills_for_role` | `(role, *, days=…)` | Distill recent outcomes for a role into principles. Appends to skills.md. | [src](../../../core/services/agent_skill_distiller.py#L96) |
 | function | `distill_all_known_roles` | `(*, days=…)` | — | [src](../../../core/services/agent_skill_distiller.py#L133) |
-
-## `core/services/agent_skill_library.py`
-_Agent Skill Library — per-role learned patterns + workflows._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_skills_path` | `(role)` | — | [src](../../../core/services/agent_skill_library.py#L48) |
-| function | `_hash` | `(text)` | — | [src](../../../core/services/agent_skill_library.py#L53) |
-| function | `get_skills` | `(role)` | Read the skills.md for a role. Returns {role, content, exists, path}. | [src](../../../core/services/agent_skill_library.py#L57) |
-| function | `append_skill_observation` | `(*, role, section, observation, proposer=…)` | Append an observation to a section of the role's skills.md. | [src](../../../core/services/agent_skill_library.py#L74) |
-| function | `_record_skill_mutation` | `(*, role, path, before, after, reason, proposer)` | — | [src](../../../core/services/agent_skill_library.py#L140) |
-| function | `rollback_skill_mutation` | `(mutation_id)` | Restore a skills.md to its before-state from a logged mutation. | [src](../../../core/services/agent_skill_library.py#L180) |
-| function | `list_skill_mutations` | `(*, role=…, limit=…)` | — | [src](../../../core/services/agent_skill_library.py#L217) |
-| function | `list_known_roles` | `()` | Return all roles that have a skills.md file. | [src](../../../core/services/agent_skill_library.py#L242) |
-| function | `_exec_get_agent_skills` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L255) |
-| function | `_exec_append_skill` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L259) |
-| function | `_exec_rollback_skill_mutation` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L268) |
-| function | `_exec_list_skill_mutations` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L272) |
-| function | `_exec_list_known_roles` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L282) |
 

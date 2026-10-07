@@ -20,20 +20,25 @@ import inspect
 def test_loekken_bogfoerer_hvert_kald():
     from core.services import agent_runtime_base as b
 
-    kilde = inspect.getsource(b._run_agent_tool_loop)
+    # Loekken er flyttet til agent_loop_core (C6): bogfoeringen ligger i in-process-I/O'en.
+    kilde = inspect.getsource(b._bogfoer_vaerktoejskald)
     assert "create_agent_tool_call(" in kilde, (
         "vaerktoejskald bogfoeres stadig ikke — tabellen forbliver tom, og "
         "enhver model ser ud til ikke at kunne kalde vaerktoejer")
-    i_exec = kilde.index("_execute_agent_tool_call(")
-    i_bog = kilde.index("create_agent_tool_call(")
-    assert i_exec < i_bog, "bogfoeringen sker foer kaldet er udfoert"
+    # Afslutningen bogfoeres EFTER udfoerelsen, og startposten FOER den.
+    from core.services import agent_loop_core as core
+    loop = inspect.getsource(core.run_tool_loop)
+    assert loop.index("io.tool(tc)") < loop.index("io.after_tool("), "afslutning bogfoeres foer kaldet er udfoert"
+    io_tool = inspect.getsource(b._InProcessLoopIO.tool)
+    assert io_tool.index("_bogfoer_start(") < io_tool.index("_execute_agent_tool_call("), (
+        "startposten skal skrives FOER vaerktoejet koerer")
 
 
 def test_bogfoeringen_kan_ikke_vaelte_barnets_tur():
     """En observation maa aldrig kunne stoppe det den observerer."""
     from core.services import agent_runtime_base as b
 
-    kilde = inspect.getsource(b._run_agent_tool_loop)
+    kilde = inspect.getsource(b._bogfoer_vaerktoejskald)
     # Kommentarer strippes FOERST. Foerste udgave saa i et 900-tegns vindue,
     # og de kommentarer jeg selv tilfoejede skubbede `except` ud af det —
     # testen faldt over sin egen forklaring. (Tredje gang det moenster bider.)
@@ -51,7 +56,7 @@ def test_felterne_matcher_skemaet():
 
     navne = set(inspect.signature(create_agent_tool_call).parameters)
     from core.services import agent_runtime_base as b
-    kilde = inspect.getsource(b._run_agent_tool_loop)
+    kilde = inspect.getsource(b._bogfoer_vaerktoejskald)
     kode = "\n".join(ln for ln in kilde.splitlines()
                      if not ln.strip().startswith("#"))
     blok = kode[kode.index("create_agent_tool_call("):]
@@ -78,7 +83,7 @@ def test_run_id_traades_ind_som_ARGUMENT():
 
     par = inspect.signature(b._run_agent_tool_loop).parameters
     assert "run_id" in par, "loekken kan ikke modtage et run_id"
-    kilde = inspect.getsource(b._run_agent_tool_loop)
+    kilde = inspect.getsource(b._bogfoer_vaerktoejskald)
     assert "run_id=str(run_id or" in kilde, (
         "bogfoeringen bruger stadig kun en noegle ingen saetter")
 

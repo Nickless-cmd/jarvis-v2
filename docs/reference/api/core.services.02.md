@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_skill_library.py`
+_Agent Skill Library — per-role learned patterns + workflows._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_skills_path` | `(role)` | — | [src](../../../core/services/agent_skill_library.py#L48) |
+| function | `_hash` | `(text)` | — | [src](../../../core/services/agent_skill_library.py#L53) |
+| function | `get_skills` | `(role)` | Read the skills.md for a role. Returns {role, content, exists, path}. | [src](../../../core/services/agent_skill_library.py#L57) |
+| function | `append_skill_observation` | `(*, role, section, observation, proposer=…)` | Append an observation to a section of the role's skills.md. | [src](../../../core/services/agent_skill_library.py#L74) |
+| function | `_record_skill_mutation` | `(*, role, path, before, after, reason, proposer)` | — | [src](../../../core/services/agent_skill_library.py#L140) |
+| function | `rollback_skill_mutation` | `(mutation_id)` | Restore a skills.md to its before-state from a logged mutation. | [src](../../../core/services/agent_skill_library.py#L180) |
+| function | `list_skill_mutations` | `(*, role=…, limit=…)` | — | [src](../../../core/services/agent_skill_library.py#L217) |
+| function | `list_known_roles` | `()` | Return all roles that have a skills.md file. | [src](../../../core/services/agent_skill_library.py#L242) |
+| function | `_exec_get_agent_skills` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L255) |
+| function | `_exec_append_skill` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L259) |
+| function | `_exec_rollback_skill_mutation` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L268) |
+| function | `_exec_list_skill_mutations` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L272) |
+| function | `_exec_list_known_roles` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L282) |
+
 ## `core/services/agent_todos.py`
 _Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._
 
@@ -573,21 +592,4 @@ _Auto improvement proposer — close the self-improvement loop SAFELY._
 | function | `_check_provider_health_chronic` | `()` | If a provider is chronically down (>30 min), propose explicit demotion. | [src](../../../core/services/auto_improvement_proposer.py#L184) |
 | function | `generate_improvement_proposals` | `(*, session_id=…)` | Run all checks, file plans for any that fire. | [src](../../../core/services/auto_improvement_proposer.py#L239) |
 | function | `_exec_generate_improvement_proposals` | `(args)` | — | [src](../../../core/services/auto_improvement_proposer.py#L302) |
-
-## `core/services/auto_remember_subscriber.py`
-_Auto-remember subscriber — closes cross-session memory loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_SkipMemoryShadow` | `` | Sentinel: spring den valgfrie memory_write_policy-shadow over (ingen brugerkontekst). | [src](../../../core/services/auto_remember_subscriber.py#L43) |
-| function | `_is_trivial_user_turn` | `(text)` | True hvis user-beskeden er en ren acknowledgment uden nyt indhold. | [src](../../../core/services/auto_remember_subscriber.py#L75) |
-| function | `_is_trivial_assistant_turn` | `(text)` | True hvis assistant-svaret er en kort acknowledgment uden indhold. | [src](../../../core/services/auto_remember_subscriber.py#L94) |
-| function | `_connect` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L112) |
-| function | `_parse_json_loose` | `(text)` | Find første gyldige JSON-objekt i tekst. Robust over for LLM | [src](../../../core/services/auto_remember_subscriber.py#L160) |
-| function | `evaluate_turn_for_memory` | `(user_text, assistant_text)` | Spørg cheap LLM: "skal denne tur gemmes?" | [src](../../../core/services/auto_remember_subscriber.py#L191) |
-| function | `_find_preceding_user_text` | `(session_id, before_message_id)` | Find seneste user-besked i session FØR den givne assistant-besked. | [src](../../../core/services/auto_remember_subscriber.py#L275) |
-| function | `_process_visible_assistant_turn` | `(payload)` | Evaluér én assistant-tur og kald remember_this hvis salient. | [src](../../../core/services/auto_remember_subscriber.py#L309) |
-| function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — samme pattern som metacognition_signal_tracker. | [src](../../../core/services/auto_remember_subscriber.py#L398) |
-| function | `start_auto_remember_subscriber` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/auto_remember_subscriber.py#L440) |
-| function | `stop_auto_remember_subscriber` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L457) |
 

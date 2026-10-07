@@ -260,159 +260,110 @@ def _run_agent_tool_loop(
             requires_tools=requires_tools, lane="agent",
         )
 
-    messages: list[dict] = [{"role": "user", "content": prompt}]
-    total_input = 0
-    total_output = 0
-    total_cost = 0.0
-    total_tool_calls = 0  # tool calls actually executed across all rounds
-    final_text = ""
-    rounds = 0
-    error_str = ""
-    tool_calls: list = []  # last round's tool_calls; truthy ⟺ exhausted mid-tool-use
     scout = (str(agent.get("role") or "") == "researcher"
              and str(agent.get("tool_policy") or "") in {
                  "read-only-runtime", "read-only-workstation"})
-    scout_retries = 0
-    # Bracket the whole model/tool loop so duration reflects real work even on
-    # the failure path.
-    _t0 = time.monotonic()
-    try:
-        for _ in range(_AGENT_TOOL_LOOP_MAX_ROUNDS):
-            rounds += 1
-            result = _facade().execute_with_role_or_fallback(
-                provider=provider, model=model,
-                requires_tools=requires_tools,
-                messages=messages, tools=tools_payload,
-                lane="agent",
-            )
-            total_input += int(result.get("input_tokens") or 0)
-            total_output += int(result.get("output_tokens") or 0)
-            total_cost += float(result.get("cost_usd") or 0.0)
-            final_text = str(result.get("text") or "")
-            tool_calls = list(result.get("tool_calls") or [])
-            if not tool_calls:
-                # A scout's opening sentence is not a research result. The
-                # model sometimes emits a preamble without calling any tool;
-                # give it one bounded chance to actually read a source.
-                progress = final_text.strip().lower().startswith((
-                    "jeg starter", "jeg vil", "prøver ", "proever ",
-                    "i will", "i'll ", "starting ", "let me "))
-                if scout and scout_retries < 1 and (total_tool_calls == 0 or progress):
-                    scout_retries += 1
-                    messages.append({"role": "assistant", "content": final_text})
-                    messages.append({"role": "user", "content": (
-                        "Du har endnu ikke leveret et research-resultat. Brug et af "
-                        "dine tilgængelige læseværktøjer nu. Afslut først med "
-                        "konkrete fund, kilde og hvad du ikke kunne verificere.")})
-                    continue
-                break
-            # Record the assistant turn that requested the tools, then each
-            # tool result, so the next round has full context.
-            messages.append({
-                "role": "assistant",
-                "content": final_text,
-                "tool_calls": tool_calls,
-            })
-            for tc in tool_calls:
-                _aid = str(agent.get("agent_id") or "")
-                _tc_id = str(tc.get("id") or "")
-                tool_out = _execute_agent_tool_call(tc, agent_id=_aid)
-                total_tool_calls += 1
-                # BOGFOER KALDET. `agent_tool_calls`-tabellen fandtes, men
-                # `create_agent_tool_call` havde NUL kaldere — nul raekker paa
-                # 935 agent-koersler. Konsekvensen var ikke bare manglende
-                # observabilitet: Jarvis diagnosticerede en MODEL-fejl ud fra
-                # tallet («den kan ikke kalde vaerktoejer»), og tallet var nul
-                # for enhver model, altid. Et tomt lager laeses som en maaling.
-                #
-                # Fail-safe: bogfoeringen maa aldrig kunne vaelte barnets tur.
-                try:
-                    from core.runtime.db import create_agent_tool_call
-                    _fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
-                    create_agent_tool_call(
-                        tool_call_id=_tc_id or f"tc-{uuid4().hex}",
-                        # `run_id` KOMMER IND SOM ARGUMENT. Foerste udgave
-                        # laeste `agent["_run_id"]` — en noegle INGEN i hele
-                        # kodebasen saetter, og `agent` er register-opslaget,
-                        # som ikke har den kolonne. Hver raekke ville faa
-                        # run_id="" og ikke kunne join'es til sin koersel:
-                        # tabellen fyldt, og stadig ubrugelig.
-                        #
-                        # Jarvis fandt det inden for en time. Og min egen test
-                        # fangede det ikke — den tjekkede at FELTNAVNENE
-                        # findes i skemaet, ikke at vaerdierne er der. Form
-                        # verificeret, substans ikke; samme fejlklasse som
-                        # `kontrolleret: 0 -> holder: True`.
-                        run_id=str(run_id or agent.get("_run_id") or ""),
-                        agent_id=_aid,
-                        tool_name=str(_fn.get("name") or tc.get("name") or ""),
-                        arguments_json=str(_fn.get("arguments") or "{}")[:4000],
-                        result_preview=str(tool_out)[:400],
-                        status="ok",
-                    )
-                except Exception:
-                    logger.debug("kunne ikke bogfoere agent-vaerktoejskald",
-                                 exc_info=True)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": _tc_id,
-                    "content": tool_out,
-                })
-                # Per-agent transcript: log tool call + result
-                try:
-                    from core.services.agent_transcript import write_tool_call, write_tool_result
-                    # `arguments` er en JSON-STRENG i OpenAI-formatet, ikke en
-                    # dict — den gamle isinstance-test var derfor altid falsk og
-                    # transkriptet gemte {} for hvert eneste kald. Bevis-fladen
-                    # var halvblind netop naar man skulle bruge den: man kunne se
-                    # AT agenten soegte, aldrig efter hvad.
-                    _raw = (tc.get("function") or {}).get("arguments")
-                    if isinstance(_raw, str):
-                        try:
-                            _raw = json.loads(_raw or "{}")
-                        except Exception:
-                            _raw = {"_uparsed": _raw[:400]}
-                    write_tool_call(_aid, _tc_id,
-                                    name=str((tc.get("function") or {}).get("name") or ""),
-                                    arguments=_raw if isinstance(_raw, dict) else {})
-                    write_tool_result(_aid, _tc_id, str(tool_out or "")[:2000])
-                except Exception:
-                    pass
-            try:
-                event_bus.publish("agent.tool_round", {
-                    "agent_id": str(agent.get("agent_id") or ""),
-                    "round": rounds,
-                    "tool_calls": [
-                        str((tc.get("function") or {}).get("name") or "") for tc in tool_calls
-                    ],
-                })
-            except Exception:
-                pass
-    except Exception as exc:  # model/loop failure — never a fake success
-        error_str = str(exc)[:400]
+    # Selve loekken er ren logik (agent_loop_core); her bindes den til in-process I/O. Samme
+    # funktion koerer i den sandboxede worker med RPC-stubs i stedet (C6).
+    from core.services.agent_loop_core import run_tool_loop
+    outcome = run_tool_loop(
+        _InProcessLoopIO(agent=agent, run_id=run_id), prompt=prompt, tools_payload=tools_payload,
+        requires_tools=requires_tools, provider=provider, model=model, scout=scout,
+        max_rounds=_AGENT_TOOL_LOOP_MAX_ROUNDS, synthesis_directive=_AGENT_SYNTHESIS_DIRECTIVE)
+    return _loop_result(outcome, scout=scout, provider=provider, model=model)
 
-    # Round budget exhausted mid-tool-use: the last tool results are in
-    # `messages` but the model never got to answer from them. Do ONE final
-    # tools-disabled synthesis call so the agent produces a usable result
-    # instead of an empty/preamble BLOCKED (mirrors the client dispatch fix).
-    # Bounded + guarded — a failure here degrades to the pre-synthesis text.
-    if not error_str and rounds >= _AGENT_TOOL_LOOP_MAX_ROUNDS and tool_calls:
+
+class _InProcessLoopIO:
+    """Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret)."""
+
+    def __init__(self, *, agent: dict, run_id: str) -> None:
+        self._agent = agent
+        self._run_id = run_id
+        self._aid = str(agent.get("agent_id") or "")
+
+    def model(self, *, messages, tools, requires_tools, provider, model):
+        return _facade().execute_with_role_or_fallback(
+            provider=provider, model=model, requires_tools=requires_tools,
+            messages=messages, tools=tools, lane="agent")
+
+    def tool(self, tc):
+        # Startposten skrives FOER udfoerelsen: et kald der er startet uden at vaere afsluttet kan
+        # have skrevet noget, og er det leasen (C2) bruger til at vaelge outcome_unknown frem for
+        # en blind genudfoerelse.
+        _bogfoer_start(self._agent, self._run_id, tc)
+        return _execute_agent_tool_call(tc, agent_id=self._aid)
+
+    def after_tool(self, tc, tool_out):
+        _bogfoer_vaerktoejskald(self._agent, self._run_id, tc, tool_out)
+
+    def after_round(self, rounds, tool_calls):
         try:
-            messages.append({"role": "user", "content": _AGENT_SYNTHESIS_DIRECTIVE})
-            synth = _facade().execute_with_role_or_fallback(
-                provider=provider, model=model, requires_tools=False,
-                messages=messages, tools=[], lane="agent",
-            )
-            total_input += int(synth.get("input_tokens") or 0)
-            total_output += int(synth.get("output_tokens") or 0)
-            total_cost += float(synth.get("cost_usd") or 0.0)
-            _synth_text = str(synth.get("text") or "").strip()
-            if _synth_text:
-                final_text = _synth_text
+            event_bus.publish("agent.tool_round", {
+                "agent_id": self._aid, "round": rounds,
+                "tool_calls": [str((tc.get("function") or {}).get("name") or "") for tc in tool_calls]})
         except Exception:
             pass
 
-    duration_ms = int((time.monotonic() - _t0) * 1000)
+
+def _bogfoer_start(agent: dict, run_id: str, tc: dict) -> None:
+    """Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``)."""
+    fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
+    try:
+        from core.runtime.db import create_agent_tool_call
+        create_agent_tool_call(
+            tool_call_id=str(tc.get("id") or "") or f"tc-{uuid4().hex}",
+            run_id=str(run_id or agent.get("_run_id") or ""),
+            agent_id=str(agent.get("agent_id") or ""),
+            tool_name=str(fn.get("name") or tc.get("name") or ""),
+            arguments_json=str(fn.get("arguments") or "{}")[:4000],
+            status="running", started_at=datetime.now(UTC).isoformat())
+    except Exception:
+        logger.warning("kunne ikke bogfoere start af agent-vaerktoejskald", exc_info=True)
+
+
+def _bogfoer_vaerktoejskald(agent: dict, run_id: str, tc: dict, tool_out: str) -> None:
+    """BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere:
+    et tomt lager blev laest som en maaling («den kan ikke kalde vaerktoejer»). Fail-safe:
+    bogfoeringen maa aldrig kunne vaelte barnets tur. `run_id` kommer ind som ARGUMENT - det
+    staar ikke paa register-opslaget."""
+    aid = str(agent.get("agent_id") or "")
+    tc_id = str(tc.get("id") or "")
+    fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
+    try:
+        from core.runtime.db import create_agent_tool_call
+        create_agent_tool_call(
+            tool_call_id=tc_id or f"tc-{uuid4().hex}",
+            run_id=str(run_id or agent.get("_run_id") or ""),
+            agent_id=aid,
+            tool_name=str(fn.get("name") or tc.get("name") or ""),
+            arguments_json=str(fn.get("arguments") or "{}")[:4000],
+            result_preview=str(tool_out)[:400],
+            status="ok",
+            finished_at=datetime.now(UTC).isoformat(),
+        )
+    except Exception:
+        logger.debug("kunne ikke bogfoere agent-vaerktoejskald", exc_info=True)
+    try:
+        from core.services.agent_transcript import write_tool_call, write_tool_result
+        # `arguments` er en JSON-STRENG i OpenAI-formatet, ikke en dict.
+        raw = fn.get("arguments")
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw or "{}")
+            except Exception:
+                raw = {"_uparsed": raw[:400]}
+        write_tool_call(aid, tc_id, name=str(fn.get("name") or ""),
+                        arguments=raw if isinstance(raw, dict) else {})
+        write_tool_result(aid, tc_id, str(tool_out or "")[:2000])
+    except Exception:
+        pass
+
+
+def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str, object]:
+    final_text, error_str = o["final_text"], o["error_str"]
+    total_tool_calls = o["total_tool_calls"]
+    total_input, total_output, total_cost = o["total_input"], o["total_output"], o["total_cost"]
+    duration_ms, rounds = o["duration_ms"], o["rounds"]
 
     # Derive the true terminal status instead of hardcoding "completed":
     #   exception       -> FAILED (error captured into result)

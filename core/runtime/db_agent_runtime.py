@@ -727,6 +727,9 @@ def create_agent_tool_call(
                 result_preview, started_at, finished_at, created_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(tool_call_id) DO UPDATE SET
+                status=excluded.status, result_preview=excluded.result_preview,
+                finished_at=excluded.finished_at, arguments_json=excluded.arguments_json
             """,
             (
                 tool_call_id,

@@ -2,6 +2,42 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/living_executive.py`
+_Living Executive — Jarvis' active impulse/choice/action loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/living_executive.py#L64) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/living_executive.py#L68) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/living_executive.py#L79) |
+| function | `build_living_executive_surface` | `(*, limit=…)` | — | [src](../../../core/services/living_executive.py#L83) |
+| function | `choose_impulse` | `(events)` | — | [src](../../../core/services/living_executive.py#L108) |
+| function | `process_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L120) |
+| function | `run_once` | `(*, events=…)` | One non-daemon pass used by tests and manual MC experiments. | [src](../../../core/services/living_executive.py#L127) |
+| function | `execute_impulse` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L137) |
+| function | `_impulse_from_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L171) |
+| function | `_impulse` | `(*, source_event_id, source_kind, felt_signal, impulse, intensity, action_id, choice, payload, cooldown_key, cooldown_seconds=…)` | — | [src](../../../core/services/living_executive.py#L356) |
+| function | `_genoptag_loft_naaet` | `()` | Hvor mange genoptagelser er der fyret i det sidste vindue? | [src](../../../core/services/living_executive.py#L383) |
+| function | `_noter_genoptagelse` | `()` | — | [src](../../../core/services/living_executive.py#L397) |
+| function | `_action_schedule_self_wakeup` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L407) |
+| function | `_action_record_focus_intent` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L440) |
+| function | `_action_create_jarvis_brain_observation` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L459) |
+| function | `_action_propose_tool_plan` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L474) |
+| function | `_record_trace` | `(impulse, *, status, outcome, details=…)` | — | [src](../../../core/services/living_executive.py#L515) |
+| function | `_attach_memory_precedents` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L582) |
+| function | `_recent_memory_precedents` | `(*, action_hint=…, tool_hint=…, limit=…)` | — | [src](../../../core/services/living_executive.py#L596) |
+| function | `_choice_bias_from_precedents` | `(impulse, precedents)` | — | [src](../../../core/services/living_executive.py#L631) |
+| function | `_emotional_choice_precedents` | `(*, limit)` | — | [src](../../../core/services/living_executive.py#L651) |
+| function | `_tool_family` | `(tool_name)` | — | [src](../../../core/services/living_executive.py#L671) |
+| function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L679) |
+| function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L740) |
+| function | `_afbrudte_fra_db` | `(*, minutter=…, maks=…)` | Afbrydelses-events fra DB'en — delt paa tvaers af processer. | [src](../../../core/services/living_executive.py#L752) |
+| function | `_allerede_besvaret` | `(run_id)` | Er brugeren gaaet videre siden den her koersel doede? | [src](../../../core/services/living_executive.py#L795) |
+| function | `indhent_forsoemte_afbrydelser` | `(*, minutter=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L840) |
+| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L881) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L902) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L911) |
+
 ## `core/services/living_heartbeat_cycle.py`
 _Living Heartbeat Cycle — Jarvis' inner life rhythm._
 
@@ -602,15 +638,4 @@ _Ros og ris på Jarvis' svar — og hvad de bliver til._
 | function | `tick_feedback_review` | `(now=…)` | Én gang om måneden: giv Jarvis månedens stemmer at tænke over. | [src](../../../core/services/message_feedback.py#L167) |
 | function | `_nu` | `()` | — | [src](../../../core/services/message_feedback.py#L210) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/message_feedback.py#L214) |
-
-## `core/services/meta_cognition_daemon.py`
-_Meta-Cognition Daemon — first-person reflection on own state (Experiment 4: HOT)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_meta_cognition_daemon` | `()` | Run one meta-cognition pass. Returns generated/reason/meta_depth. | [src](../../../core/services/meta_cognition_daemon.py#L26) |
-| function | `build_meta_cognition_surface` | `()` | MC surface for meta-cognition experiment. | [src](../../../core/services/meta_cognition_daemon.py#L82) |
-| function | `_gather_state` | `()` | Collect cognitive + emotional state for meta-observation input. | [src](../../../core/services/meta_cognition_daemon.py#L108) |
-| function | `_call_meta_llm` | `(prompt)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/meta_cognition_daemon.py#L148) |
-| function | `_compute_meta_depth` | `(meta_obs, meta_meta_obs)` | Return 2 if meta_meta diverges >70% from meta_obs (Jaccard distance), else 1. | [src](../../../core/services/meta_cognition_daemon.py#L204) |
 

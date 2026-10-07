@@ -160,6 +160,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_route import ensure_route_tables
 
     ensure_route_tables(conn)
+    from core.runtime.db_agent_fork import ensure_fork_tables
+
+    ensure_fork_tables(conn)
 
 
 _ENSURED: set[str] = set()

@@ -75,6 +75,10 @@ def _switch(agent_id: str, latest: dict[str, Any], cand: dict[str, str], why: st
     decision = dict(latest["decision"])
     decision.update({"route_source": cand["route_source"], "provider": cand["provider"],
                      "model": cand["model"], "failover_reason": why[:300]})
+    if "reasoning_effort" in decision:
+        # parentens effort arves kun ved samme rute: et failover til en anden model nulstiller den
+        from core.services.agent_fork_policy import effort_after_failover
+        decision.update(effort_after_failover(decision, cand["provider"], cand["model"]))
     started = begin_failover_attempt(from_run_id=_current_run(latest, run_id), decision=decision, reason=why)
     try:
         from core.eventbus.bus import event_bus

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8657/16387 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8669/16402 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 778 | 1402 | 55% |
-| `core.services` | 5774 | 11144 | 51% |
+| `core.runtime` | 780 | 1405 | 55% |
+| `core.services` | 5784 | 11156 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2300)
+## Undocumented public functions (2301)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -344,7 +344,8 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
 - `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
 - `core/runtime/db_agent_attempts.py` :: `attempts_for_assignment` (L149)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L614)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L617)
+- `core/runtime/db_agent_fork.py` :: `ensure_fork_tables` (L20)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
@@ -626,7 +627,7 @@ Generated from source. 8657/16387 functions/methods documented (52%). The list b
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_approval_notify.py` :: `wake_message` (L28)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L513)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L550)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L38)

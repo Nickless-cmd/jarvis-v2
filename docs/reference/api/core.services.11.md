@@ -2,6 +2,46 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/development_sense.py`
+_Development senses — realtime felt-sense of growth, stuck, appetite, resistance._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_crisis_resolution_ratio` | `(days=…)` | Resolved-vs-opened over window. None when insufficient data. | [src](../../../core/services/development_sense.py#L34) |
+| function | `_adherence_score` | `()` | — | [src](../../../core/services/development_sense.py#L50) |
+| function | `_skill_principles_recent` | `(days=…)` | Count skill_mutations recorded in the last N days. Each is a | [src](../../../core/services/development_sense.py#L66) |
+| function | `_tick_quality_trend_bonus` | `()` | — | [src](../../../core/services/development_sense.py#L86) |
+| function | `growth_pulse` | `()` | Composite 0-1 pulse + components. None-safe. | [src](../../../core/services/development_sense.py#L96) |
+| function | `stuck_signal` | `()` | Detect repeating friction without resolution. | [src](../../../core/services/development_sense.py#L139) |
+| function | `_topic_words_from_thought_fragments` | `(limit=…)` | — | [src](../../../core/services/development_sense.py#L198) |
+| function | `appetite_signal` | `()` | What words/topics show up unprompted in his thought stream + open | [src](../../../core/services/development_sense.py#L214) |
+| function | `resistance_signal` | `()` | Where am I acting against my own commitments / drifting from baseline? | [src](../../../core/services/development_sense.py#L233) |
+| function | `_is_after` | `(ts, cutoff)` | — | [src](../../../core/services/development_sense.py#L278) |
+| function | `development_sense_section` | `()` | Render all 4 senses as one COMPACT prompt-awareness block (2026-05-03). | [src](../../../core/services/development_sense.py#L288) |
+
+## `core/services/developmental_valence.py`
+_Developmental Valence — compass needle for flourishing vs withering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_within_window` | `(iso_str, days=…)` | — | [src](../../../core/services/developmental_valence.py#L41) |
+| function | `_clamp` | `(x, lo=…, hi=…)` | — | [src](../../../core/services/developmental_valence.py#L49) |
+| function | `_intention_closure_rate` | `()` | Of goal_signals updated in the window, what fraction are still active? | [src](../../../core/services/developmental_valence.py#L55) |
+| function | `_dream_confirmation_rate` | `()` | Of dream_hypothesis_signals in window, fraction still carried. | [src](../../../core/services/developmental_valence.py#L76) |
+| function | `_loop_health` | `()` | Closed vs total loops in window. Higher = closing what opens. | [src](../../../core/services/developmental_valence.py#L93) |
+| function | `_relation_sustained` | `()` | Trust trajectory tail + recent contact density. | [src](../../../core/services/developmental_valence.py#L111) |
+| function | `_metabolism` | `()` | Signal → action conversion. | [src](../../../core/services/developmental_valence.py#L149) |
+| function | `_compute_components` | `()` | — | [src](../../../core/services/developmental_valence.py#L175) |
+| function | `_components_to_vector` | `(components)` | Average of available components, re-centered to [-1, +1]. | [src](../../../core/services/developmental_valence.py#L185) |
+| function | `_trajectory_label` | `(vector, delta)` | Map vector + derivative to trajectory label. | [src](../../../core/services/developmental_valence.py#L198) |
+| function | `_recompute` | `()` | — | [src](../../../core/services/developmental_valence.py#L211) |
+| function | `get_developmental_state` | `()` | Return cached compass state, recomputing only periodically. | [src](../../../core/services/developmental_valence.py#L242) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — no hot work, just trigger recompute when due. | [src](../../../core/services/developmental_valence.py#L252) |
+| function | `build_developmental_valence_surface` | `()` | — | [src](../../../core/services/developmental_valence.py#L257) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/developmental_valence.py#L274) |
+| function | `build_developmental_valence_prompt_section` | `()` | Speaks up when trajectory is notable — quiet when steady. | [src](../../../core/services/developmental_valence.py#L282) |
+| function | `reset_developmental_valence` | `()` | Reset cached state (for testing). | [src](../../../core/services/developmental_valence.py#L305) |
+
 ## `core/services/device_pairing.py`
 _QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
 
@@ -667,40 +707,4 @@ _Egress routing — which network egress a (provider, auth_profile) slot uses._
 | function | `resolve_nat64` | `(provider, auth_profile)` | True if this (provider, auth_profile) slot should egress via NAT64 instead | [src](../../../core/services/egress_routing.py#L157) |
 | function | `nat64_synthesize` | `(host)` | Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server. | [src](../../../core/services/egress_routing.py#L182) |
 | function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L223) |
-
-## `core/services/embodied_presence.py`
-_Embodied Presence — situational grounding in the physical now._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PresenceSignal` | `` | — | [src](../../../core/services/embodied_presence.py#L36) |
-| function | `_hour_to_temporal_context` | `(hour)` | Map hour (0-23) to temporal context label. | [src](../../../core/services/embodied_presence.py#L43) |
-| function | `_compute_grounding` | `(has_visual, has_audio, has_atmosphere)` | Grounding increases with more sensory channels present. | [src](../../../core/services/embodied_presence.py#L57) |
-| function | `_compute_arousal` | `(visual_activity=…, audio_amplitude=…, atmosphere_energy=…)` | Arousal from ambient sensory energy. | [src](../../../core/services/embodied_presence.py#L68) |
-| function | `_summarize_presence` | `(grounding, arousal, temporal_context)` | Produce a compact presence line for assembly injection. | [src](../../../core/services/embodied_presence.py#L103) |
-| function | `compute_embodied_presence` | `(db_conn=…, now=…)` | Compute embodied presence signal from sensory data + time. | [src](../../../core/services/embodied_presence.py#L130) |
-| function | `get_presence_line` | `(db_conn=…)` | Get just the summary line for assembly injection. | [src](../../../core/services/embodied_presence.py#L236) |
-| function | `build_embodied_presence_surface` | `()` | — | [src](../../../core/services/embodied_presence.py#L249) |
-| function | `_emit_presence_event` | `(state)` | — | [src](../../../core/services/embodied_presence.py#L258) |
-
-## `core/services/embodied_state.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
-| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
-| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
-| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
-| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
-| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
-| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
-| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
-| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
-| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
-| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
-| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
-| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
-| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
-| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
 

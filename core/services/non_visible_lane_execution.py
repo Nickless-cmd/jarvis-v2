@@ -115,6 +115,7 @@ def execute_with_role_or_fallback(
     messages: list[dict] | None = None,
     tools: list[dict] | None = None,
     lane: str = "cheap",
+    owner_user_id: str | None = None,
 ) -> dict[str, object]:
     """Run the message on the role's preferred provider/model first, fall
     through to the cheap-lane chain on failure.
@@ -141,9 +142,22 @@ def execute_with_role_or_fallback(
     behaviour is fully preserved. The cheap-lane *fallback* is
     intentionally text-only (no tools) — a failover degrades gracefully
     rather than replaying tool state on a fresh provider.
+
+    ``owner_user_id`` (agent-contract-v1 D): sat for en agent med autentificeret ejer. Rettigheden
+    kontrolleres her, VED providerkaldet, og der er INGEN tavs failover: svigter modellen, rejses
+    ``ModelCallFailed``, saa kalderen vaelger naeste kandidat i den gemte rute (synligt, ikke skjult).
+    ``None`` = den gamle adfaerd uaendret.
     """
     primary_provider = (provider or "").strip()
     primary_model = (model or "").strip()
+    strict_owner = owner_user_id
+    if strict_owner is not None:
+        from core.services.agent_model_policy import guard_call
+        from core.services.agent_model_router import ModelCallFailed
+        guard_call(owner_user_id=strict_owner, provider=primary_provider, model=primary_model)
+        if not primary_provider or not primary_model:
+            raise ModelCallFailed("agenten har ingen model", provider=primary_provider,
+                                  model=primary_model)
     # Effective prompt for token-estimation / text-only fallback paths.
     #
     # ── DEN TOMME PROMPT (Bjørn 7/9-2026) ───────────────────────────────────
@@ -165,6 +179,9 @@ def execute_with_role_or_fallback(
     # the caller needs them. Falls through to cheap_lane chain which has
     # tool-supporting providers (nvidia-nim, openrouter, etc).
     if requires_tools and primary_provider in _PROVIDERS_WITHOUT_TOOL_SUPPORT:
+        if strict_owner is not None:
+            raise ModelCallFailed("udbyderen kan ikke kalde vaerktoejer", provider=primary_provider,
+                                  model=primary_model)
         try:
             from core.eventbus.bus import event_bus
             event_bus.publish(
@@ -182,9 +199,20 @@ def execute_with_role_or_fallback(
 
     # Circuit breaker: skip primary if it's been failing repeatedly.
     # Prevents wasting 5+ seconds per call on a known-dead endpoint.
+    _breaker_open = False
     try:
         from core.services.provider_circuit_breaker import should_skip as _cb_should_skip
-        if _cb_should_skip(primary_provider, primary_model):
+        _breaker_open = bool(_cb_should_skip(primary_provider, primary_model))
+    except Exception:
+        # breaker-tilstanden kunne ikke laeses: kald providerne som hidtil (fail-open er den gamle adfaerd)
+        logger.debug("circuit breaker kunne ikke laeses for %s/%s", primary_provider, primary_model,
+                     exc_info=True)
+    if _breaker_open and strict_owner is not None:
+        # uden for try: en agent med ejer faar en synlig fejl, ikke et tavst skift til anden model
+        raise ModelCallFailed("circuit breaker er aaben", provider=primary_provider,
+                              model=primary_model)
+    try:
+        if _breaker_open:
             try:
                 from core.eventbus.bus import event_bus
                 event_bus.publish(
@@ -265,6 +293,9 @@ def execute_with_role_or_fallback(
             )
         except Exception:
             pass
+        if strict_owner is not None:
+            raise ModelCallFailed(f"{type(exc).__name__}: {str(exc)[:160]}",
+                                  provider=primary_provider, model=primary_model) from exc
         skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
         _fb = execute_cheap_lane_via_pool(message=_prompt_for_estimate,
                                           skip_providers=skip, lane=lane)

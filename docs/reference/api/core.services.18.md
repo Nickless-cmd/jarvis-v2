@@ -2,6 +2,68 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/negotiation_pipeline.py`
+_Negotiation Pipeline — interne trade-offs mellem sub-persporaer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L41) |
+| class | `TradeOffer` | `` | — | [src](../../../core/services/negotiation_pipeline.py#L46) |
+| method | `TradeOffer.as_dict` | `(self)` | — | [src](../../../core/services/negotiation_pipeline.py#L58) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L64) |
+| function | `_count_topics` | `(signals)` | — | [src](../../../core/services/negotiation_pipeline.py#L90) |
+| function | `propose_trade` | `(*, run_id=…, trace_id=…, action=…, intent_confidence=…, signals=…)` | Generate a TradeOffer from signal-mix. Returns None if no signals. | [src](../../../core/services/negotiation_pipeline.py#L101) |
+| function | `resolve_trade_offer` | `(*, offer, intent_confidence)` | Decide whether to accept the offer based on intent_confidence. | [src](../../../core/services/negotiation_pipeline.py#L149) |
+| function | `record_trade_outcome` | `(*, offer, resolution, run_status=…, decision_reason=…)` | — | [src](../../../core/services/negotiation_pipeline.py#L172) |
+| function | `list_recent_trade_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/negotiation_pipeline.py#L222) |
+| function | `build_negotiation_surface` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L233) |
+
+## `core/services/nerve_registry.py`
+_Selv-registrerende nerve-arkitektur — Fase B + Fase C (spec 2026-07-13)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ContractVariant` | `` | TRE kontrakt-typer — én pr. komponent-slags (spec §"TRE kontrakt-typer"). | [src](../../../core/services/nerve_registry.py#L52) |
+| class | `IdentityTier` | `` | Rolle-baseret strenghed (spec §"Rolle-baseret strenghed" + Fase C §1). | [src](../../../core/services/nerve_registry.py#L62) |
+| class | `Capability` | `` | HVAD et modul MÅ — håndhæves (spec invariant #6 + Fase C §3). | [src](../../../core/services/nerve_registry.py#L70) |
+| class | `Mode` | `` | — | [src](../../../core/services/nerve_registry.py#L78) |
+| class | `PluginStatus` | `` | Governed plugin-livscyklus (Fase C). Default: PENDING — intet auto-on. | [src](../../../core/services/nerve_registry.py#L84) |
+| class | `NerveManifest` | `` | Et modul der DEKLARERER sig selv mod kontrakten. | [src](../../../core/services/nerve_registry.py#L102) |
+| method | `NerveManifest.to_dict` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L139) |
+| method | `NerveManifest.from_dict` | `(cls, d)` | Rekonstruér fra durabel form. Self-safe — ukendte felter ignoreres. | [src](../../../core/services/nerve_registry.py#L143) |
+| function | `validate_manifest` | `(manifest)` | Validér et manifest mod den ubrydelige kontrakt. Returnerer en LISTE af præcise | [src](../../../core/services/nerve_registry.py#L161) |
+| function | `is_compliant` | `(manifest)` | True hvis manifestet består HELE kontrakten (ingen fejl). | [src](../../../core/services/nerve_registry.py#L238) |
+| function | `_load_kv` | `(key)` | Læs en durabel KV-dict. Self-safe → {} ved enhver fejl/offline. | [src](../../../core/services/nerve_registry.py#L246) |
+| function | `_save_kv` | `(key, value)` | Skriv en durabel KV-dict. Self-safe → False ved fejl (aldrig raise). | [src](../../../core/services/nerve_registry.py#L256) |
+| function | `register` | `(manifest, *, now=…)` | Registrér en komponent i det durable registry — men KUN hvis den består HELE | [src](../../../core/services/nerve_registry.py#L266) |
+| function | `unregister` | `(name)` | Fjern en komponent fra registry. Self-safe. | [src](../../../core/services/nerve_registry.py#L291) |
+| function | `get_manifest` | `(name)` | Hent ét registreret manifest. Self-safe → None. | [src](../../../core/services/nerve_registry.py#L304) |
+| function | `is_registered` | `(name)` | — | [src](../../../core/services/nerve_registry.py#L313) |
+| function | `all_manifests` | `()` | Alle registrerede manifester. Self-safe → []. | [src](../../../core/services/nerve_registry.py#L320) |
+| function | `registered_names` | `()` | Navne på alt der er registreret (til connectivity-audittens compliant-markering). | [src](../../../core/services/nerve_registry.py#L332) |
+| function | `compliant_names` | `()` | Navne på registrerede komponenter der STADIG består kontrakten (selv-audit-basis). | [src](../../../core/services/nerve_registry.py#L340) |
+| function | `to_manifest` | `(descriptor, *, name=…, cluster=…, kind=…, contract_variant=…, klass=…, identity_tier=…, capabilities=…, mode=…, description=…, module_path=…, entrypoint=…, interface=…, kill_switch_key=…, identity_signature=…)` | Adapter: bring en EKSISTERENDE nerve/gate/daemon under kontrakten uden at rewrite | [src](../../../core/services/nerve_registry.py#L357) |
+| function | `_identity_secret` | `(tier)` | Læs den per-identitet signing-hemmelighed fra runtime.json (aldrig committet). | [src](../../../core/services/nerve_registry.py#L427) |
+| function | `_canonical_identity_payload` | `(manifest)` | Kanonisk, stabil streng der SIGNERES — binder identiteten til modulets kerne-form. | [src](../../../core/services/nerve_registry.py#L442) |
+| function | `sign_manifest` | `(manifest, *, tier=…)` | Producér en identitets-signatur for et manifest (lokal tooling — kræver hemmeligheden | [src](../../../core/services/nerve_registry.py#L453) |
+| function | `verify_identity` | `(manifest)` | Verificér manifestets identitets-signatur mod den lokale runtime.json-hemmelighed. | [src](../../../core/services/nerve_registry.py#L467) |
+| class | `GovernedPluginLoader` | `` | Den HØJEST-privilegerede dør. Et plugin aktiveres ALDRIG uden: | [src](../../../core/services/nerve_registry.py#L496) |
+| method | `GovernedPluginLoader.__init__` | `(self, *, approval_key=…)` | — | [src](../../../core/services/nerve_registry.py#L507) |
+| method | `GovernedPluginLoader._load` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L511) |
+| method | `GovernedPluginLoader._save` | `(self, data)` | — | [src](../../../core/services/nerve_registry.py#L514) |
+| method | `GovernedPluginLoader._record` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L517) |
+| method | `GovernedPluginLoader._write_record` | `(self, name, rec)` | — | [src](../../../core/services/nerve_registry.py#L521) |
+| method | `GovernedPluginLoader.submit` | `(self, manifest, *, now=…)` | Indlever et plugin til governed load. Verificerer identitet + kontrakt og lander | [src](../../../core/services/nerve_registry.py#L528) |
+| method | `GovernedPluginLoader.approve` | `(self, name, *, approver_tier, now=…)` | Eksplicit owner/claude sign-off. KUN owner/claude kan godkende (approver_tier). | [src](../../../core/services/nerve_registry.py#L570) |
+| method | `GovernedPluginLoader.reject` | `(self, name, *, reason=…)` | Eksplicit afvisning (owner-veto). Self-safe. | [src](../../../core/services/nerve_registry.py#L596) |
+| method | `GovernedPluginLoader.activate` | `(self, name, *, loader_fn=…, now=…)` | Aktivér et GODKENDT plugin. Umuligt uden forudgående ``approve`` (spec-invariant: | [src](../../../core/services/nerve_registry.py#L611) |
+| method | `GovernedPluginLoader.status` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L669) |
+| method | `GovernedPluginLoader.pending` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L673) |
+| method | `GovernedPluginLoader.is_active` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L680) |
+| method | `GovernedPluginLoader._audit` | `(self, event, name, tier, *, approver=…, errors=…)` | Bedste-indsats audit til Centralen. Self-safe — audit må aldrig vælte loaderen. | [src](../../../core/services/nerve_registry.py#L684) |
+| function | `loader` | `()` | — | [src](../../../core/services/nerve_registry.py#L704) |
+| function | `seed_known_nerves` | `(*, now=…)` | Registrér de par EKSISTERENDE nerver ovenfor mod kontrakten — proof-of-adapter. | [src](../../../core/services/nerve_registry.py#L755) |
+
 ## `core/services/network_health.py`
 _core/services/network_health.py_
 
@@ -32,37 +94,37 @@ _Non-visible (autonomous) LLM fallback chain._
 | function | `execute_cheap_lane` | `(*, message, task_kind=…)` | Run a message through the cheap lane. | [src](../../../core/services/non_visible_lane_execution.py#L56) |
 | function | `_prompt_fra_messages` | `(messages)` | Fald tilbage til samtalen når kalderen kun gav `messages`. | [src](../../../core/services/non_visible_lane_execution.py#L75) |
 | function | `_observeret_navn` | `(svar, bedt_om_provider)` | Hvem svarede — med udbyder foran hvis det ikke var den vi spurgte. | [src](../../../core/services/non_visible_lane_execution.py#L102) |
-| function | `execute_with_role_or_fallback` | `(*, message=…, provider=…, model=…, requires_tools=…, messages=…, tools=…, lane=…)` | Run the message on the role's preferred provider/model first, fall | [src](../../../core/services/non_visible_lane_execution.py#L112) |
-| function | `local_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L364) |
-| function | `coding_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L385) |
-| function | `execute_coding_lane` | `(*, message)` | — | [src](../../../core/services/non_visible_lane_execution.py#L416) |
-| function | `_lane_status` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L420) |
-| function | `_coding_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L434) |
-| function | `_local_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L642) |
-| function | `_coding_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L703) |
-| function | `_local_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L719) |
-| function | `_github_copilot_auth_state` | `(*, oauth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L727) |
-| function | `_github_copilot_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L751) |
-| function | `_github_copilot_auth_status` | `(*, auth_state, exchange_readiness)` | — | [src](../../../core/services/non_visible_lane_execution.py#L775) |
-| function | `_github_copilot_provider_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L807) |
-| function | `_coding_lane_probe` | `(*, provider, model, auth_profile, credentials_ready, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L831) |
-| function | `_probe_codex_cli_target` | `(*, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L873) |
-| function | `_probe_ollama_local_target` | `(*, model, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L913) |
-| function | `_probe_openai_coding_target` | `(*, provider, model, auth_profile, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L954) |
-| function | `_execute_lane` | `(*, message, truth)` | — | [src](../../../core/services/non_visible_lane_execution.py#L997) |
-| function | `_execute_codex_cli` | `(*, message, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1097) |
-| function | `_resolve_codex_cli_executable` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L1140) |
-| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1155) |
-| function | `_post_openai_responses` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1174) |
-| function | `_post_openrouter_chat_completion` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1189) |
-| function | `_extract_output_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1206) |
-| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1226) |
-| function | `_load_github_copilot_token` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1238) |
-| function | `_github_copilot_request_headers` | `(session_token, *, accept=…)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1255) |
-| function | `_post_github_copilot_chat_completion` | `(*, payload, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1270) |
-| function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1288) |
-| function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1300) |
-| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1327) |
+| function | `execute_with_role_or_fallback` | `(*, message=…, provider=…, model=…, requires_tools=…, messages=…, tools=…, lane=…, owner_user_id=…)` | Run the message on the role's preferred provider/model first, fall | [src](../../../core/services/non_visible_lane_execution.py#L112) |
+| function | `local_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L395) |
+| function | `coding_lane_execution_truth` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L416) |
+| function | `execute_coding_lane` | `(*, message)` | — | [src](../../../core/services/non_visible_lane_execution.py#L447) |
+| function | `_lane_status` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L451) |
+| function | `_coding_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L465) |
+| function | `_local_lane_readiness` | `(target)` | — | [src](../../../core/services/non_visible_lane_execution.py#L673) |
+| function | `_coding_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L734) |
+| function | `_local_auth_path` | `(*, provider, auth_mode)` | — | [src](../../../core/services/non_visible_lane_execution.py#L750) |
+| function | `_github_copilot_auth_state` | `(*, oauth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L758) |
+| function | `_github_copilot_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L782) |
+| function | `_github_copilot_auth_status` | `(*, auth_state, exchange_readiness)` | — | [src](../../../core/services/non_visible_lane_execution.py#L806) |
+| function | `_github_copilot_provider_status` | `(*, auth_state)` | — | [src](../../../core/services/non_visible_lane_execution.py#L838) |
+| function | `_coding_lane_probe` | `(*, provider, model, auth_profile, credentials_ready, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L862) |
+| function | `_probe_codex_cli_target` | `(*, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L904) |
+| function | `_probe_ollama_local_target` | `(*, model, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L944) |
+| function | `_probe_openai_coding_target` | `(*, provider, model, auth_profile, base_url)` | — | [src](../../../core/services/non_visible_lane_execution.py#L985) |
+| function | `_execute_lane` | `(*, message, truth)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1028) |
+| function | `_execute_codex_cli` | `(*, message, model)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1128) |
+| function | `_resolve_codex_cli_executable` | `()` | — | [src](../../../core/services/non_visible_lane_execution.py#L1171) |
+| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1186) |
+| function | `_post_openai_responses` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1205) |
+| function | `_post_openrouter_chat_completion` | `(*, base_url, payload, api_key)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1220) |
+| function | `_extract_output_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1237) |
+| function | `_extract_openrouter_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1257) |
+| function | `_load_github_copilot_token` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1269) |
+| function | `_github_copilot_request_headers` | `(session_token, *, accept=…)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1286) |
+| function | `_post_github_copilot_chat_completion` | `(*, payload, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1301) |
+| function | `_extract_github_copilot_text` | `(data)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1319) |
+| function | `fetch_github_copilot_models` | `(*, profile)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1331) |
+| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/non_visible_lane_execution.py#L1358) |
 
 ## `core/services/non_visible_rate_cap.py`
 _Global leaky-bucket rate cap FORAN den non-visible cheap-lane pool._
@@ -577,31 +639,4 @@ _PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
 |---|---|---|---|---|
 | function | `_load_bytes` | `(source)` | → (bytes, None) ved succes, ellers (None, fejlkode). | [src](../../../core/services/pdf_connector.py#L34) |
 | function | `read_pdf` | `(source, *, max_pages=…)` | — | [src](../../../core/services/pdf_connector.py#L58) |
-
-## `core/services/peak_hours.py`
-_core/services/peak_hours.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_som_utc` | `(at)` | Læs et tidspunkt som aware UTC. Naivt input læses som UTC (hovedbogen er UTC). | [src](../../../core/services/peak_hours.py#L45) |
-| function | `_vindue_start` | `(dag, fra)` | — | [src](../../../core/services/peak_hours.py#L66) |
-| function | `naeste_vindue_start` | `(now_utc=…)` | Næste myldretids-vindue der ÅBNER efter nu. Springer weekender over. | [src](../../../core/services/peak_hours.py#L70) |
-| function | `aktuelt_vindue` | `(now_utc=…)` | (start, slut) for det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L84) |
-| function | `aktuelt_vindue_slut` | `(now_utc=…)` | Slutningen på det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L103) |
-| function | `_dansk` | `(ts)` | — | [src](../../../core/services/peak_hours.py#L109) |
-| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L113) |
-| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L135) |
-| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L142) |
-
-## `core/services/peak_varsel_daemon.py`
-_core/services/peak_varsel_daemon.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vindue_slut` | `(aabning)` | Vinduets sluttid, læst fra ``MYLDRE_VINDUER`` — ikke et gæt på 4 timer. | [src](../../../core/services/peak_varsel_daemon.py#L65) |
-| function | `_allerede_varslet` | `(aabning)` | Har vi allerede sendt varsel for netop dette vindue? | [src](../../../core/services/peak_varsel_daemon.py#L73) |
-| function | `_marker_varslet` | `(aabning)` | — | [src](../../../core/services/peak_varsel_daemon.py#L79) |
-| function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L83) |
-| function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L96) |
-| function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L136) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_view_requests.py`
+_Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes` | `()` | — | [src](../../../core/runtime/db_view_requests.py#L36) |
+| function | `_gem` | `(tilstand)` | — | [src](../../../core/runtime/db_view_requests.py#L44) |
+| function | `opret` | `(op, args, *, session_id)` | — | [src](../../../core/runtime/db_view_requests.py#L48) |
+| function | `ventende` | `()` | Ubesvarede, ikke-forældede forespørgsler. | [src](../../../core/runtime/db_view_requests.py#L66) |
+| function | `hent` | `(request_id)` | — | [src](../../../core/runtime/db_view_requests.py#L73) |
+| function | `svar` | `(request_id, resultat)` | Desk svarer. Kun én gang: et andet vindue må ikke overskrive svaret. | [src](../../../core/runtime/db_view_requests.py#L80) |
+| function | `vent_paa_svar` | `(request_id, *, frist_s, interval_s=…)` | — | [src](../../../core/runtime/db_view_requests.py#L94) |
+
 ## `core/runtime/db_visible.py`
 _Persistence for the visible-lane projection tables._
 

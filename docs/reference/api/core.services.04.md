@@ -2,6 +2,44 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bounded_mutation_intent_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_bounded_mutation_intent_surface` | `(intent_surface, *, awareness_surface)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L25) |
+| function | `_build_write_proposal_surface` | `(*, classification, mutation_near, intent_state, intent_type, approval_scope, target_files, target_paths, repo_scope, system_scope, sudo_required, mutation_critical)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L127) |
+| function | `_derive_write_proposal_confidence` | `(*, proposal_type, target_files, repo_scope, system_scope)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L224) |
+| function | `_write_proposal_reason` | `(*, proposal_type, approval_scope, target_files, repo_scope, system_scope, sudo_required, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L240) |
+| function | `_derive_classification` | `(*, intent_state, intent_type, approval_scope, awareness_surface, repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L275) |
+| function | `_derive_targets` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L310) |
+| function | `_derive_repo_mutation_scope` | `(*, classification, approval_scope, repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L327) |
+| function | `_derive_system_mutation_scope` | `(*, classification, approval_scope, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L342) |
+| function | `_derive_sudo_required` | `(*, classification, approval_scope, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L355) |
+| function | `_derive_deleted_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L367) |
+| function | `_derive_modified_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L371) |
+| function | `_derive_untracked_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L375) |
+| function | `_bounded_path_list` | `(value)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L379) |
+| function | `_approval_required_mutation_capability_summary` | `()` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L385) |
+| function | `_unique` | `(values)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L403) |
+
+## `core/services/bounded_repo_tools_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_bounded_repo_tool_execution_surface` | `(intent_surface, *, awareness_surface=…)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L14) |
+| function | `_build_bounded_repo_tool_execution_surface` | `(intent_surface, *, awareness_surface)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L40) |
+| function | `_allowed_operation` | `(intent_type)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L145) |
+| function | `_inspect_repo_status` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L175) |
+| function | `_inspect_working_tree` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L198) |
+| function | `_inspect_local_changes` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L219) |
+| function | `_inspect_upstream_divergence` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L236) |
+| function | `_request_bounded_diagnostic` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L268) |
+| function | `_git_status_observation` | `(repo_root)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L293) |
+| function | `_run_git_command` | `(repo_root, args)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L374) |
+| function | `_trim_lines` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L392) |
+| function | `_safe_int` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L396) |
+| function | `_merge_unique` | `(primary, secondary)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L403) |
+
 ## `core/services/bounded_workspace_write_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -567,38 +605,4 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L155) |
 | function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L173) |
 | function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L181) |
-
-## `core/services/central_convene_judge.py`
-_core/services/central_convene_judge.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_convene_judge.py#L52) |
-| function | `current_mode` | `()` | off | shadow — `on` er ikke laengere en tilstand der findes. | [src](../../../core/services/central_convene_judge.py#L61) |
-| function | `_movement_from_signal` | `(name, surface)` | Normalise ONE signal surface to a 0..1 'how much is this moving' reading. | [src](../../../core/services/central_convene_judge.py#L86) |
-| function | `_read_flowing_values` | `(surfaces)` | Read the flowing values: signal movement + affective valence + agenda hint. | [src](../../../core/services/central_convene_judge.py#L113) |
-| function | `_mood_to_valence` | `(mood)` | Map a coarse mood word to a signed valence in [-1, 1]. Unknown → 0. | [src](../../../core/services/central_convene_judge.py#L172) |
-| function | `_derive_topic_hint` | `(movement, latest_wonder, agenda_hint, mood)` | Build a short subject hint from what is actually moving — fed to derive_topic. | [src](../../../core/services/central_convene_judge.py#L188) |
-| function | `_observe` | `(verdict, mode)` | — | [src](../../../core/services/central_convene_judge.py#L210) |
-| function | `judge_convene` | `(*, surfaces, top_signals, score, score_override=…)` | Decide whether there is a real reason to convene the council now. | [src](../../../core/services/central_convene_judge.py#L228) |
-
-## `core/services/central_core.py`
-_Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-motor)_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_default_emit` | `(kind, payload)` | — | [src](../../../core/services/central_core.py#L13) |
-| function | `_egress_safe` | `(payload)` | §24.4 privatlags-membran. observe() skriver FULD payload til den lokale | [src](../../../core/services/central_core.py#L21) |
-| function | `_coerce_verdict` | `(nerve, raw, klass)` | Normalisér en nerve-returværdi til Verdict (genbruger kernens parser). | [src](../../../core/services/central_core.py#L36) |
-| class | `Central` | `` | — | [src](../../../core/services/central_core.py#L43) |
-| method | `Central.__init__` | `(self, *, k=…, sink=…, breaker=…, emit=…)` | — | [src](../../../core/services/central_core.py#L44) |
-| method | `Central.observe` | `(self, event, *, emit=…)` | Best-effort telemetri. Kaster ALDRIG (§10.3). | [src](../../../core/services/central_core.py#L57) |
-| method | `Central._fail_verdict` | `(self, nerve, klass, reason)` | — | [src](../../../core/services/central_core.py#L106) |
-| method | `Central._isolated_verdict` | `(self, nerve, klass)` | — | [src](../../../core/services/central_core.py#L114) |
-| method | `Central._record_error` | `(self, err, *, severe=…)` | — | [src](../../../core/services/central_core.py#L119) |
-| method | `Central.decide` | `(self, nerve, ctx, fn, *, cluster=…, klass=…)` | Kør én nerve med live-switch + boundary-capture + circuit-breaker + trace. | [src](../../../core/services/central_core.py#L163) |
-| method | `Central._maybe_flag_drift` | `(self, nerve, cluster, *, is_error, is_red)` | §7 flag-on-change: opdatér drift-monitor; hvis nervens fejl-/red-rate netop drev | [src](../../../core/services/central_core.py#L220) |
-| method | `Central.self_diagnose` | `(self)` | Meta-helbreds-check: virker Centralen SELV? Probe decide+observe, rapportér åbne | [src](../../../core/services/central_core.py#L240) |
-| method | `Central.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/central_core.py#L271) |
-| function | `central` | `()` | — | [src](../../../core/services/central_core.py#L281) |
 

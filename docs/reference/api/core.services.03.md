@@ -2,6 +2,61 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/assembly_prewarm.py`
+_core/services/assembly_prewarm.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_max_created_at_real_deepseek` | `()` | Epoch seconds of the most recent NON-warmer deepseek call in costs. None if none. | [src](../../../core/services/assembly_prewarm.py#L36) |
+| function | `_seconds_since_last_real_deepseek_call` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L54) |
+| function | `_max_created_at_visible` | `()` | Epoch-sek. for seneste ÆGTE bruger↔Jarvis-aktivitet (visible-lanen). None hvis | [src](../../../core/services/assembly_prewarm.py#L59) |
+| function | `_seconds_since_last_user_activity` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L76) |
+| function | `_idle_window_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L85) |
+| function | `is_prewarm_active` | `()` | True hvis den aktuelle tråd i øjeblikket kører en pre-warm-build. Self-safe. | [src](../../../core/services/assembly_prewarm.py#L109) |
+| function | `assembly_prewarm_enabled` | `()` | Kill-switch. Default OFF (shadow) — flip via runtime-state. Self-safe → False. | [src](../../../core/services/assembly_prewarm.py#L114) |
+| function | `_interval_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L124) |
+| function | `_skip_if_recent_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L138) |
+| function | `_seconds_since_last_prewarm` | `()` | Cross-process: seconds since ANY process last prewarmed. None if never. | [src](../../../core/services/assembly_prewarm.py#L147) |
+| function | `_mark_prewarmed` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L157) |
+| function | `_should_prewarm` | `()` | Event-drevet gate (15. jul — dræber 292M-tokens/13d-burnet). Warm KUN når det | [src](../../../core/services/assembly_prewarm.py#L165) |
+| function | `_try_acquire_prewarm_lease` | `(interval_s)` | Atomisk cross-process: kun ÉN proces vinder retten til at warme pr. interval. | [src](../../../core/services/assembly_prewarm.py#L186) |
+| function | `_record_stats` | `(elapsed_s, error=…)` | — | [src](../../../core/services/assembly_prewarm.py#L205) |
+| function | `prewarm_once` | `()` | Byg én throwaway-assembly for at varme alle sektions-caches. Returnerer | [src](../../../core/services/assembly_prewarm.py#L220) |
+| function | `_loop` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L250) |
+| function | `start_prewarm_loop` | `()` | Start baggrunds-pre-warm-loopet én gang pr. proces. Idempotent. Loopet kører | [src](../../../core/services/assembly_prewarm.py#L266) |
+
+## `core/services/associative_recall.py`
+_Associative Recall — dormant memories triggered by context._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_strong_threshold` | `()` | — | [src](../../../core/services/associative_recall.py#L47) |
+| function | `_get_weak_threshold` | `()` | — | [src](../../../core/services/associative_recall.py#L55) |
+| function | `_get_max_active` | `()` | — | [src](../../../core/services/associative_recall.py#L63) |
+| function | `_get_repetition_multiplier` | `()` | — | [src](../../../core/services/associative_recall.py#L71) |
+| function | `_ensure_active_memories_table` | `()` | Create recall_active_memories table if it doesn't exist (lazy init). | [src](../../../core/services/associative_recall.py#L83) |
+| function | `_persist_active_memory` | `(memory)` | Save an active memory to DB (upsert). | [src](../../../core/services/associative_recall.py#L108) |
+| function | `_remove_persisted_memory` | `(memory_id)` | Remove a memory from the DB persistence table. | [src](../../../core/services/associative_recall.py#L133) |
+| function | `_load_active_memories_from_db` | `()` | Restore active memories from DB on module load. | [src](../../../core/services/associative_recall.py#L148) |
+| function | `_clear_persisted_memories` | `()` | Remove all active memories from DB. | [src](../../../core/services/associative_recall.py#L177) |
+| function | `recall_for_session` | `(session_context)` | Run associative recall at session start. Populates up to 3 active memories. | [src](../../../core/services/associative_recall.py#L196) |
+| function | `_observe_assoc_recall` | `(memories)` | Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — KUN scalar-metadata, aldrig | [src](../../../core/services/associative_recall.py#L252) |
+| function | `recall_for_message` | `(message_text, emotional_state)` | Run associative recall for a user message. Adds up to 2 active memories. | [src](../../../core/services/associative_recall.py#L282) |
+| function | `build_recall_prompt_section` | `()` | Format active memories as [ASSOCIATIONER] awareness section (Danish, compact). | [src](../../../core/services/associative_recall.py#L369) |
+| function | `apply_weak_recall_to_emotions` | `(memories)` | Trigger emotion concepts from weak-scoring memories. | [src](../../../core/services/associative_recall.py#L391) |
+| function | `clear_session_recall` | `()` | Reset all active memories and topic history. Call at session end. | [src](../../../core/services/associative_recall.py#L422) |
+| function | `_add_to_active` | `(memory)` | Add memory to active set. Evicts weakest if at cap. Persists to DB. | [src](../../../core/services/associative_recall.py#L435) |
+| function | `_record_topic` | `(topic)` | Record a topic in the sliding window history. | [src](../../../core/services/associative_recall.py#L449) |
+| function | `_get_topic_multiplier` | `(topic)` | Return ×1.5 if topic appears ≥3 times in recent history, else ×1.0. | [src](../../../core/services/associative_recall.py#L454) |
+| function | `_extract_keywords_llm` | `(text)` | Extract keywords via cheap-lane LLM. Returns empty list on failure. | [src](../../../core/services/associative_recall.py#L467) |
+| function | `_extract_keywords_regex` | `(text)` | Regex fallback: capitalized words, technical terms, named entities. | [src](../../../core/services/associative_recall.py#L492) |
+| function | `_extract_topic_hint` | `(text)` | Extract topic hints: LLM first, regex fallback, then simple fallback. | [src](../../../core/services/associative_recall.py#L522) |
+| function | `_add_private_brain_candidates` | `(candidates, topic_hint, limit=…)` | Add private brain records as recall candidates. | [src](../../../core/services/associative_recall.py#L565) |
+| function | `_add_sensory_candidates` | `(candidates, topic_hint, limit=…)` | Add recent sensory memories as recall candidates. | [src](../../../core/services/associative_recall.py#L597) |
+| function | `_build_session_context_text` | `(session_context)` | Build a context description string for session-level scoring. | [src](../../../core/services/associative_recall.py#L629) |
+| function | `build_associative_recall_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/associative_recall.py#L641) |
+| function | `tick_associative_recall` | `()` | Heartbeat daemon tick — decay + periodic candidate scan. | [src](../../../core/services/associative_recall.py#L664) |
+
 ## `core/services/attachment_blocks.py`
 _Vedhæftninger som blokke på brugerens besked._
 
@@ -605,42 +660,4 @@ _Boundary Awareness — "Where do I end?"_
 | function | `_default_action_continuity_surface` | `()` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L291) |
 | function | `_normalize_action_continuity_surface` | `(surface)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L323) |
 | function | `_merge_unique` | `(left, right)` | — | [src](../../../core/services/bounded_action_continuity_runtime.py#L337) |
-
-## `core/services/bounded_mutation_intent_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_bounded_mutation_intent_surface` | `(intent_surface, *, awareness_surface)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L25) |
-| function | `_build_write_proposal_surface` | `(*, classification, mutation_near, intent_state, intent_type, approval_scope, target_files, target_paths, repo_scope, system_scope, sudo_required, mutation_critical)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L127) |
-| function | `_derive_write_proposal_confidence` | `(*, proposal_type, target_files, repo_scope, system_scope)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L224) |
-| function | `_write_proposal_reason` | `(*, proposal_type, approval_scope, target_files, repo_scope, system_scope, sudo_required, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L240) |
-| function | `_derive_classification` | `(*, intent_state, intent_type, approval_scope, awareness_surface, repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L275) |
-| function | `_derive_targets` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L310) |
-| function | `_derive_repo_mutation_scope` | `(*, classification, approval_scope, repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L327) |
-| function | `_derive_system_mutation_scope` | `(*, classification, approval_scope, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L342) |
-| function | `_derive_sudo_required` | `(*, classification, approval_scope, intent_type)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L355) |
-| function | `_derive_deleted_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L367) |
-| function | `_derive_modified_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L371) |
-| function | `_derive_untracked_paths` | `(repo_observation)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L375) |
-| function | `_bounded_path_list` | `(value)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L379) |
-| function | `_approval_required_mutation_capability_summary` | `()` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L385) |
-| function | `_unique` | `(values)` | — | [src](../../../core/services/bounded_mutation_intent_runtime.py#L403) |
-
-## `core/services/bounded_repo_tools_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_bounded_repo_tool_execution_surface` | `(intent_surface, *, awareness_surface=…)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L14) |
-| function | `_build_bounded_repo_tool_execution_surface` | `(intent_surface, *, awareness_surface)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L40) |
-| function | `_allowed_operation` | `(intent_type)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L145) |
-| function | `_inspect_repo_status` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L175) |
-| function | `_inspect_working_tree` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L198) |
-| function | `_inspect_local_changes` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L219) |
-| function | `_inspect_upstream_divergence` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L236) |
-| function | `_request_bounded_diagnostic` | `(*, repo_root, intent_target)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L268) |
-| function | `_git_status_observation` | `(repo_root)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L293) |
-| function | `_run_git_command` | `(repo_root, args)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L374) |
-| function | `_trim_lines` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L392) |
-| function | `_safe_int` | `(value)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L396) |
-| function | `_merge_unique` | `(primary, secondary)` | — | [src](../../../core/services/bounded_repo_tools_runtime.py#L403) |
 

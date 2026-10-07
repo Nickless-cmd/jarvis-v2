@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/goal_reporter.py`
+_Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_criterion_fulfilment` | `(measured, target)` | Hvor stor en del af kriteriet er opfyldt — kappet ved 1.0. | [src](../../../core/services/goal_reporter.py#L33) |
+| function | `_find_goal` | `(*, title_fragment)` | Slå det aktive mål op hvis titel indeholder fragmentet. | [src](../../../core/services/goal_reporter.py#L48) |
+| function | `collect_metrics` | `(*, days=…)` | Læs de tre tal. Fejler aldrig hårdt — et manglende tal bliver None. | [src](../../../core/services/goal_reporter.py#L58) |
+| function | `compute_progress` | `(*, tick_score, heed_rate)` | progress_pct + de enkelte kriterier. Svageste led bestemmer. | [src](../../../core/services/goal_reporter.py#L95) |
+| function | `_format_note` | `(metrics, progress)` | Én kort note til update-loggen — tallene, ikke fortællingen om dem. | [src](../../../core/services/goal_reporter.py#L132) |
+| function | `report_goal_metrics` | `(*, days=…, dry_run=…, goal_title_fragment=…)` | Mål, skriv til målet, returnér hvad der skete. Aldrig stille. | [src](../../../core/services/goal_reporter.py#L155) |
+
+## `core/services/goal_signal_synthesizer.py`
+_Goal signal synthesizer — surface candidate goals from dreams/reflections._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
+| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
+
 ## `core/services/goal_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -552,36 +572,4 @@ _Identity drift proposer — when drift is sustained, propose IDENTITY.md update
 | function | `_analyze_long_drift` | `(*, lookback_days=…)` | Compare last 7 days of snapshots against the rest of the lookback window. | [src](../../../core/services/identity_drift_proposer.py#L55) |
 | function | `propose_identity_update_if_drifted` | `()` | If sustained drift detected, file a plan_proposal to update IDENTITY.md. | [src](../../../core/services/identity_drift_proposer.py#L120) |
 | function | `_exec_propose_identity_drift` | `(args)` | — | [src](../../../core/services/identity_drift_proposer.py#L176) |
-
-## `core/services/identity_guard.py`
-_Identity-mismatch-detection + pushback (spec 2026-06-21 §3, §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `extract_claimed_name` | `(message)` | Returnér det erklærede navn (normaliseret, Title-case) eller None. | [src](../../../core/services/identity_guard.py#L37) |
-| function | `_known_user_names` | `()` | Map normaliseret display-navn → user_id, fra users.json (best-effort). | [src](../../../core/services/identity_guard.py#L49) |
-| function | `_pushback_count` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L64) |
-| function | `_bump_pushback` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L72) |
-| function | `reset_pushback` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L81) |
-| function | `_display_name_for` | `(user_id)` | — | [src](../../../core/services/identity_guard.py#L88) |
-| function | `guard_incoming` | `(message, *, session_id, user_id)` | Samlet gate FØR LLM-kald — Auth-cluster GENNEM Den Intelligente Central (observe). | [src](../../../core/services/identity_guard.py#L100) |
-| function | `_guard_incoming_impl` | `(message, *, session_id, user_id)` | Samlet gate FØR LLM-kald: (1) låst session/konto → mute, (2) identity-mismatch | [src](../../../core/services/identity_guard.py#L120) |
-| function | `check_identity` | `(message, *, session_id, session_user_id, session_display_name=…)` | Kør identity-guard på en indgående besked. | [src](../../../core/services/identity_guard.py#L150) |
-
-## `core/services/identity_mutation_log.py`
-_Identity mutation log — full audit trail for Tier 3 auto-mutations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_auto_mutation_enabled` | `()` | Read kill switch from authorization file. | [src](../../../core/services/identity_mutation_log.py#L48) |
-| function | `is_target_authorized` | `(path)` | Check if a target path is in the authorized Tier 3 list. | [src](../../../core/services/identity_mutation_log.py#L63) |
-| function | `is_infrastructure_blocked` | `(target)` | Check if target hits an infrastructure-blocked module. | [src](../../../core/services/identity_mutation_log.py#L71) |
-| function | `_hash_text` | `(text)` | — | [src](../../../core/services/identity_mutation_log.py#L77) |
-| function | `_diff_summary` | `(before, after)` | Compact diff stats. | [src](../../../core/services/identity_mutation_log.py#L81) |
-| function | `record_mutation` | `(*, target_path, before_content, after_content, reason, proposer=…)` | Record a mutation for audit. Returns mutation_id for rollback reference. | [src](../../../core/services/identity_mutation_log.py#L95) |
-| function | `rollback_mutation` | `(mutation_id)` | Restore the BEFORE content for a recorded mutation. | [src](../../../core/services/identity_mutation_log.py#L163) |
-| function | `list_mutations` | `(*, limit=…, target_filter=…)` | — | [src](../../../core/services/identity_mutation_log.py#L206) |
-| function | `_exec_list_identity_mutations` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L230) |
-| function | `_exec_rollback_identity_mutation` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L240) |
-| function | `_exec_identity_mutation_status` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L244) |
 

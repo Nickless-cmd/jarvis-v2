@@ -2,6 +2,42 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/embodied_presence.py`
+_Embodied Presence — situational grounding in the physical now._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PresenceSignal` | `` | — | [src](../../../core/services/embodied_presence.py#L36) |
+| function | `_hour_to_temporal_context` | `(hour)` | Map hour (0-23) to temporal context label. | [src](../../../core/services/embodied_presence.py#L43) |
+| function | `_compute_grounding` | `(has_visual, has_audio, has_atmosphere)` | Grounding increases with more sensory channels present. | [src](../../../core/services/embodied_presence.py#L57) |
+| function | `_compute_arousal` | `(visual_activity=…, audio_amplitude=…, atmosphere_energy=…)` | Arousal from ambient sensory energy. | [src](../../../core/services/embodied_presence.py#L68) |
+| function | `_summarize_presence` | `(grounding, arousal, temporal_context)` | Produce a compact presence line for assembly injection. | [src](../../../core/services/embodied_presence.py#L103) |
+| function | `compute_embodied_presence` | `(db_conn=…, now=…)` | Compute embodied presence signal from sensory data + time. | [src](../../../core/services/embodied_presence.py#L130) |
+| function | `get_presence_line` | `(db_conn=…)` | Get just the summary line for assembly injection. | [src](../../../core/services/embodied_presence.py#L236) |
+| function | `build_embodied_presence_surface` | `()` | — | [src](../../../core/services/embodied_presence.py#L249) |
+| function | `_emit_presence_event` | `(state)` | — | [src](../../../core/services/embodied_presence.py#L258) |
+
+## `core/services/embodied_state.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
+| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
+| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
+| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
+| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
+| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
+| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
+| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
+| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
+| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
+| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
+| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
+| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
+| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
+| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
+
 ## `core/services/emergence.py`
 _Emergence — evidence-based pattern detection across recent activity._
 
@@ -630,29 +666,4 @@ _Fact-Gate — blocking output gate for unverifiable factual claims._
 | function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
 | function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
 | function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
-
-## `core/services/fcm_gateway.py`
-_FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime` | `()` | — | [src](../../../core/services/fcm_gateway.py#L19) |
-| function | `_project_id` | `()` | — | [src](../../../core/services/fcm_gateway.py#L26) |
-| function | `_sa_path` | `()` | — | [src](../../../core/services/fcm_gateway.py#L30) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
-| function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
-| function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
-| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L68) |
-
-## `core/services/felt_surface_store.py`
-_Delt lager for de følte overflader — så de overlever en procesgrænse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
-| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
-| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
-| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
-| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
-| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
 

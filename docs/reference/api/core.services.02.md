@@ -2,6 +2,55 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_runtime_base.py`
+_Agent runtime — shared foundation (imports, constants, role templates, helpers)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L63) |
+| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L86) |
+| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L110) |
+| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L125) |
+| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L188) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L243) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L287) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L290) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L301) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L310) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L325) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L328) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L337) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L353) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L391) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L485) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L534) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L662) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L666) |
+
+## `core/services/agent_runtime_council.py`
+_Agent runtime — council & swarm collective rounds._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_trim` | `(text, limit=…)` | Forkort en position synligt. Selve reglen bor i `text_clip`. | [src](../../../core/services/agent_runtime_council.py#L50) |
+| function | `_parse_percent_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L61) |
+| function | `_extract_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L79) |
+| function | `_extract_vote` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L96) |
+| function | `_format_peer_context` | `(messages, *, target_agent_id=…, limit=…)` | — | [src](../../../core/services/agent_runtime_council.py#L110) |
+| function | `_detect_swarm_conflicts` | `(outputs)` | Detect disagreements across swarm/council outputs. | [src](../../../core/services/agent_runtime_council.py#L121) |
+| function | `_load_council_model_config` | `()` | Read ~/.jarvis-v2/config/council_models.json, return role_models list. | [src](../../../core/services/agent_runtime_council.py#L142) |
+| function | `create_council_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L155) |
+| function | `create_swarm_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L205) |
+| function | `post_council_message` | `(*, council_id, content, kind=…, role=…)` | — | [src](../../../core/services/agent_runtime_council.py#L255) |
+| function | `_derive_initiative` | `(synthesis, *, topic=…)` | Distil a short, actionable initiative string from a synthesis. | [src](../../../core/services/agent_runtime_council.py#L278) |
+| function | `_augment_council_surface` | `(council_id, *, conclusion, initiative=…)` | Build the collective-round return dict with conclusion + initiative. | [src](../../../core/services/agent_runtime_council.py#L308) |
+| function | `_run_collective_round` | `(council_id, *, mode)` | Run one collective (council or swarm) round to a conclusion. | [src](../../../core/services/agent_runtime_council.py#L327) |
+| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L676) |
+| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L699) |
+| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L710) |
+| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L727) |
+
 ## `core/services/agent_runtime_spawn.py`
 _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 
@@ -19,23 +68,23 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L564) |
 | function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L577) |
 | function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L602) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1069) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1097) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1125) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1129) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1167) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1372) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1416) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1425) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1464) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1494) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1509) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1528) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1545) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1564) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1586) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1626) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1643) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1071) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1099) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1127) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1131) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1169) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1374) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1418) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1427) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1466) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1496) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1511) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1530) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1547) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1566) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1588) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1628) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1645) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -218,11 +267,11 @@ _Server-siden af en sandboxet agent-worker: spawn, broker og draeb (agent-contra
 | method | `_Broker.__init__` | `(self, *, agent, run_id, prompt, tools_payload, provider, model, max_tool_calls, resume=…)` | — | [src](../../../core/services/agent_worker_runner.py#L110) |
 | method | `_Broker.handle` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L124) |
 | method | `_Broker._model` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L144) |
-| method | `_Broker._model_text` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L157) |
-| method | `_Broker._tool` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L165) |
-| function | `_agent_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_worker_runner.py#L183) |
-| function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L192) |
-| function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…, resume=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L210) |
+| method | `_Broker._model_text` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L159) |
+| method | `_Broker._tool` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L169) |
+| function | `_agent_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_worker_runner.py#L187) |
+| function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L196) |
+| function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…, resume=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L214) |
 
 ## `core/services/agent_worktree_exec.py`
 _Skrivning i et agent-worktree - KUN gennem en sandbox (agent-contract-v1 C5b, spec 8.1 og 12.1)._
@@ -593,59 +642,4 @@ _Hvad lavede maskinen MENS prompten blev samlet?_
 | function | `_proces_cpu_sek` | `()` | Processens samlede CPU-tid (alle tråde) i sekunder. | [src](../../../core/services/assembly_load_probe.py#L60) |
 | function | `start` | `()` | Åbn en måling. Returnerer en uigennemsigtig nøgle til `afslut`. | [src](../../../core/services/assembly_load_probe.py#L79) |
 | function | `afslut` | `(start_token)` | Luk målingen og returnér felterne som ÉN streng til log-linjen. | [src](../../../core/services/assembly_load_probe.py#L84) |
-
-## `core/services/assembly_prewarm.py`
-_core/services/assembly_prewarm.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_max_created_at_real_deepseek` | `()` | Epoch seconds of the most recent NON-warmer deepseek call in costs. None if none. | [src](../../../core/services/assembly_prewarm.py#L36) |
-| function | `_seconds_since_last_real_deepseek_call` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L54) |
-| function | `_max_created_at_visible` | `()` | Epoch-sek. for seneste ÆGTE bruger↔Jarvis-aktivitet (visible-lanen). None hvis | [src](../../../core/services/assembly_prewarm.py#L59) |
-| function | `_seconds_since_last_user_activity` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L76) |
-| function | `_idle_window_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L85) |
-| function | `is_prewarm_active` | `()` | True hvis den aktuelle tråd i øjeblikket kører en pre-warm-build. Self-safe. | [src](../../../core/services/assembly_prewarm.py#L109) |
-| function | `assembly_prewarm_enabled` | `()` | Kill-switch. Default OFF (shadow) — flip via runtime-state. Self-safe → False. | [src](../../../core/services/assembly_prewarm.py#L114) |
-| function | `_interval_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L124) |
-| function | `_skip_if_recent_s` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L138) |
-| function | `_seconds_since_last_prewarm` | `()` | Cross-process: seconds since ANY process last prewarmed. None if never. | [src](../../../core/services/assembly_prewarm.py#L147) |
-| function | `_mark_prewarmed` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L157) |
-| function | `_should_prewarm` | `()` | Event-drevet gate (15. jul — dræber 292M-tokens/13d-burnet). Warm KUN når det | [src](../../../core/services/assembly_prewarm.py#L165) |
-| function | `_try_acquire_prewarm_lease` | `(interval_s)` | Atomisk cross-process: kun ÉN proces vinder retten til at warme pr. interval. | [src](../../../core/services/assembly_prewarm.py#L186) |
-| function | `_record_stats` | `(elapsed_s, error=…)` | — | [src](../../../core/services/assembly_prewarm.py#L205) |
-| function | `prewarm_once` | `()` | Byg én throwaway-assembly for at varme alle sektions-caches. Returnerer | [src](../../../core/services/assembly_prewarm.py#L220) |
-| function | `_loop` | `()` | — | [src](../../../core/services/assembly_prewarm.py#L250) |
-| function | `start_prewarm_loop` | `()` | Start baggrunds-pre-warm-loopet én gang pr. proces. Idempotent. Loopet kører | [src](../../../core/services/assembly_prewarm.py#L266) |
-
-## `core/services/associative_recall.py`
-_Associative Recall — dormant memories triggered by context._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_strong_threshold` | `()` | — | [src](../../../core/services/associative_recall.py#L47) |
-| function | `_get_weak_threshold` | `()` | — | [src](../../../core/services/associative_recall.py#L55) |
-| function | `_get_max_active` | `()` | — | [src](../../../core/services/associative_recall.py#L63) |
-| function | `_get_repetition_multiplier` | `()` | — | [src](../../../core/services/associative_recall.py#L71) |
-| function | `_ensure_active_memories_table` | `()` | Create recall_active_memories table if it doesn't exist (lazy init). | [src](../../../core/services/associative_recall.py#L83) |
-| function | `_persist_active_memory` | `(memory)` | Save an active memory to DB (upsert). | [src](../../../core/services/associative_recall.py#L108) |
-| function | `_remove_persisted_memory` | `(memory_id)` | Remove a memory from the DB persistence table. | [src](../../../core/services/associative_recall.py#L133) |
-| function | `_load_active_memories_from_db` | `()` | Restore active memories from DB on module load. | [src](../../../core/services/associative_recall.py#L148) |
-| function | `_clear_persisted_memories` | `()` | Remove all active memories from DB. | [src](../../../core/services/associative_recall.py#L177) |
-| function | `recall_for_session` | `(session_context)` | Run associative recall at session start. Populates up to 3 active memories. | [src](../../../core/services/associative_recall.py#L196) |
-| function | `_observe_assoc_recall` | `(memories)` | Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — KUN scalar-metadata, aldrig | [src](../../../core/services/associative_recall.py#L252) |
-| function | `recall_for_message` | `(message_text, emotional_state)` | Run associative recall for a user message. Adds up to 2 active memories. | [src](../../../core/services/associative_recall.py#L282) |
-| function | `build_recall_prompt_section` | `()` | Format active memories as [ASSOCIATIONER] awareness section (Danish, compact). | [src](../../../core/services/associative_recall.py#L369) |
-| function | `apply_weak_recall_to_emotions` | `(memories)` | Trigger emotion concepts from weak-scoring memories. | [src](../../../core/services/associative_recall.py#L391) |
-| function | `clear_session_recall` | `()` | Reset all active memories and topic history. Call at session end. | [src](../../../core/services/associative_recall.py#L422) |
-| function | `_add_to_active` | `(memory)` | Add memory to active set. Evicts weakest if at cap. Persists to DB. | [src](../../../core/services/associative_recall.py#L435) |
-| function | `_record_topic` | `(topic)` | Record a topic in the sliding window history. | [src](../../../core/services/associative_recall.py#L449) |
-| function | `_get_topic_multiplier` | `(topic)` | Return ×1.5 if topic appears ≥3 times in recent history, else ×1.0. | [src](../../../core/services/associative_recall.py#L454) |
-| function | `_extract_keywords_llm` | `(text)` | Extract keywords via cheap-lane LLM. Returns empty list on failure. | [src](../../../core/services/associative_recall.py#L467) |
-| function | `_extract_keywords_regex` | `(text)` | Regex fallback: capitalized words, technical terms, named entities. | [src](../../../core/services/associative_recall.py#L492) |
-| function | `_extract_topic_hint` | `(text)` | Extract topic hints: LLM first, regex fallback, then simple fallback. | [src](../../../core/services/associative_recall.py#L522) |
-| function | `_add_private_brain_candidates` | `(candidates, topic_hint, limit=…)` | Add private brain records as recall candidates. | [src](../../../core/services/associative_recall.py#L565) |
-| function | `_add_sensory_candidates` | `(candidates, topic_hint, limit=…)` | Add recent sensory memories as recall candidates. | [src](../../../core/services/associative_recall.py#L597) |
-| function | `_build_session_context_text` | `(session_context)` | Build a context description string for session-level scoring. | [src](../../../core/services/associative_recall.py#L629) |
-| function | `build_associative_recall_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/associative_recall.py#L641) |
-| function | `tick_associative_recall` | `()` | Heartbeat daemon tick — decay + periodic candidate scan. | [src](../../../core/services/associative_recall.py#L664) |
 

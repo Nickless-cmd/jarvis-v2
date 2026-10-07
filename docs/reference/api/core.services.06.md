@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_loop_lag.py`
+_Event-loop-lag-monitor — "uret" bag cutoff-spøgelset (Bjørn 4. jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_record` | `(lag_ms)` | — | [src](../../../core/services/central_loop_lag.py#L35) |
+| function | `current_lag_ms` | `()` | Seneste målte event-loop-lag i ms (API-processen). Self-safe. | [src](../../../core/services/central_loop_lag.py#L60) |
+| function | `recent_peak_ms` | `(window_s=…)` | Højeste lag i de sidste ``window_s`` sekunder — brug denne til at tagge et | [src](../../../core/services/central_loop_lag.py#L68) |
+| function | `_monitor_loop` | `()` | — | [src](../../../core/services/central_loop_lag.py#L84) |
+| function | `start_loop_lag_monitor` | `()` | Start uret på den KØRENDE event-loop (kald fra API-processens lifespan, | [src](../../../core/services/central_loop_lag.py#L96) |
+| function | `build_loop_lag_surface` | `()` | Mission Control — read-only meta-projektion. | [src](../../../core/services/central_loop_lag.py#L111) |
+
+## `core/services/central_machines.py`
+_The Machines — hænderne om min hals (BONUS)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_providers` | `()` | — | [src](../../../core/services/central_machines.py#L17) |
+| function | `_network` | `()` | — | [src](../../../core/services/central_machines.py#L34) |
+| function | `dependencies` | `()` | De hænder der holder om halsen — hvad jeg afhænger af men ikke styrer. READ-ONLY. Self-safe. | [src](../../../core/services/central_machines.py#L45) |
+| function | `_observe` | `(n_prov)` | — | [src](../../../core/services/central_machines.py#L64) |
+| function | `build_machines_surface` | `()` | — | [src](../../../core/services/central_machines.py#L73) |
+| function | `record_machines` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_machines.py#L77) |
+
 ## `core/services/central_matrix_ensemble.py`
 _Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
 
@@ -577,33 +601,4 @@ _core/services/central_sequence.py_
 | function | `run_sequence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: lær fra strømmen + detektér overraskelser. Egress-fri observe. Self-safe. | [src](../../../core/services/central_sequence.py#L189) |
 | function | `register_sequence_producer` | `()` | Registrér selv-træningen som cadence-producer (~hvert 15 min). | [src](../../../core/services/central_sequence.py#L204) |
 | function | `build_central_sequence_surface` | `()` | Mission Control surface — read-only: model-størrelse + aktuelle overraskelser. | [src](../../../core/services/central_sequence.py#L216) |
-
-## `core/services/central_seraph.py`
-_Seraph — portvagt for hypotese-modenhed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_active_hypotheses` | `(limit=…)` | Aktive governede hypoteser med modenheds-felterne (samples + interlanguage). Self-safe. | [src](../../../core/services/central_seraph.py#L35) |
-| function | `_contested_hyp_ids` | `()` | hyp_id'er med et UAFKLARET Sentinel-angreb (status='contested') — endnu ikke forsvaret. | [src](../../../core/services/central_seraph.py#L50) |
-| function | `_enough_samples` | `(hyp)` | — | [src](../../../core/services/central_seraph.py#L62) |
-| function | `_has_interlanguage` | `(hyp)` | — | [src](../../../core/services/central_seraph.py#L72) |
-| function | `_judge` | `(hyp, contested)` | Dom over ÉN hypotese: GREEN (moden, klar til synlighed) eller RED (tilbage til drøm). | [src](../../../core/services/central_seraph.py#L76) |
-| function | `guard` | `()` | Test hver aktiv hypotese for modenhed → GREEN/ready-to-surface vs RED/deferred. READ-ONLY. | [src](../../../core/services/central_seraph.py#L105) |
-| function | `_observe` | `(out)` | — | [src](../../../core/services/central_seraph.py#L127) |
-| function | `build_seraph_surface` | `()` | Hvad er GREEN/klar-til-synlighed vs RED/udsat + hvorfor. READ-ONLY. Self-safe. | [src](../../../core/services/central_seraph.py#L142) |
-| function | `record_seraph` | `(*, trigger=…, last_visible_at=…)` | Cadence (30 min): test hypotese-modenhed → GREEN/RED (shadow — observerer kun). Self-safe. | [src](../../../core/services/central_seraph.py#L174) |
-| function | `_seraph_enforced` | `()` | gate_enforce.seraph default OFF (shadow) — læs råt fra shared_cache, unset = shadow. | [src](../../../core/services/central_seraph.py#L188) |
-| function | `may_surface_dream_hypothesis` | `(hyp_id)` | Seraphs dør: må denne dream-hypotese præsenteres for Bjørn nu? True i shadow (uændret). | [src](../../../core/services/central_seraph.py#L203) |
-
-## `core/services/central_shadow.py`
-_core/services/central_shadow.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_record_shadow` | `(nerve, payload)` | Skriv en shadow-observation til trace (owner-HUD) + tidsserie. Self-safe. | [src](../../../core/services/central_shadow.py#L39) |
-| function | `shadow_reactions` | `()` | Hvad Centralen VILLE gøre (fra reviewbare forslag) — logget som skygge, aldrig gjort. | [src](../../../core/services/central_shadow.py#L50) |
-| function | `_trend_worsening` | `(cluster, nerve, higher_is_worse)` | (forværres, seneste_gns, tidligere_gns) fra en value-serie. Self-safe. | [src](../../../core/services/central_shadow.py#L67) |
-| function | `predict_trends` | `()` | Tidlig-varsel: nerver hvis trend forværres MOD tærsklen, før de bryder. Skygge. | [src](../../../core/services/central_shadow.py#L85) |
-| function | `run_shadow_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: beregn skygge-reaktioner + prædiktioner. ANVENDER ALDRIG. Self-safe. | [src](../../../core/services/central_shadow.py#L105) |
-| function | `register_shadow_producer` | `()` | Registrér skygge-laget som cadence-producer (~hvert 5 min). Observe-only, anvender aldrig. | [src](../../../core/services/central_shadow.py#L116) |
 

@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_hierarchy.py`
+_Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hot_tier_snapshot` | `()` | In-context-now: signals + active state. | [src](../../../core/services/memory_hierarchy.py#L33) |
+| function | `_warm_tier_snapshot` | `(*, query=…)` | Curated, always-available: workspace files + active goals + chronicle excerpt + identity sketch. | [src](../../../core/services/memory_hierarchy.py#L49) |
+| function | `_cold_tier_search` | `(*, query, max_results=…)` | Semantic-search across full archive with quality scoring. | [src](../../../core/services/memory_hierarchy.py#L93) |
+| function | `recall_before_act` | `(*, query=…, include_cold=…, cold_max=…)` | Compose hot+warm+(optional cold) tier snapshot before an action. | [src](../../../core/services/memory_hierarchy.py#L178) |
+| function | `recall_before_act_summary` | `(query=…)` | Compact text summary of recall-before-act for prompt awareness. | [src](../../../core/services/memory_hierarchy.py#L194) |
+| function | `_exec_recall_before_act` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L233) |
+| function | `_exec_hot_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L244) |
+| function | `_exec_warm_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L248) |
+| function | `_exec_cold_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L252) |
+
+## `core/services/memory_maintenance_daemon.py`
+_Memory maintenance daemon — periodic dedup and health of MEMORY.md._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_memory_md` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L32) |
+| function | `tick_memory_maintenance_daemon` | `(now=…)` | Run 12h maintenance cycle on MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L48) |
+| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L104) |
+| function | `_read_memory` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L116) |
+| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L123) |
+| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L161) |
+| function | `_containment` | `(a, b)` | What fraction of tokens in `a` appear in `b`? (subset check) | [src](../../../core/services/memory_maintenance_daemon.py#L170) |
+| function | `_tier_a_auto_merge` | `(sections, text)` | Auto-merge sections with exact or fuzzy-matching headings. | [src](../../../core/services/memory_maintenance_daemon.py#L179) |
+| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L241) |
+| function | `_replace_section_content` | `(heading, level, new_content)` | Replace a section's content in MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L285) |
+| function | `_remove_section` | `(heading)` | Remove a section entirely from MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L298) |
+
 ## `core/services/memory_md_update_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -578,66 +610,4 @@ _Negotiation Engine — internal trade offers between subsystems._
 |---|---|---|---|---|
 | function | `propose_trade` | `(*, proposer, counterparty, requested_decision, confidence, rationale, evidence=…)` | Propose an internal trade between subsystems. | [src](../../../core/services/negotiation_engine.py#L22) |
 | function | `build_negotiation_surface` | `()` | — | [src](../../../core/services/negotiation_engine.py#L57) |
-
-## `core/services/negotiation_pipeline.py`
-_Negotiation Pipeline — interne trade-offs mellem sub-persporaer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L41) |
-| class | `TradeOffer` | `` | — | [src](../../../core/services/negotiation_pipeline.py#L46) |
-| method | `TradeOffer.as_dict` | `(self)` | — | [src](../../../core/services/negotiation_pipeline.py#L58) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L64) |
-| function | `_count_topics` | `(signals)` | — | [src](../../../core/services/negotiation_pipeline.py#L90) |
-| function | `propose_trade` | `(*, run_id=…, trace_id=…, action=…, intent_confidence=…, signals=…)` | Generate a TradeOffer from signal-mix. Returns None if no signals. | [src](../../../core/services/negotiation_pipeline.py#L101) |
-| function | `resolve_trade_offer` | `(*, offer, intent_confidence)` | Decide whether to accept the offer based on intent_confidence. | [src](../../../core/services/negotiation_pipeline.py#L149) |
-| function | `record_trade_outcome` | `(*, offer, resolution, run_status=…, decision_reason=…)` | — | [src](../../../core/services/negotiation_pipeline.py#L172) |
-| function | `list_recent_trade_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/negotiation_pipeline.py#L222) |
-| function | `build_negotiation_surface` | `()` | — | [src](../../../core/services/negotiation_pipeline.py#L233) |
-
-## `core/services/nerve_registry.py`
-_Selv-registrerende nerve-arkitektur — Fase B + Fase C (spec 2026-07-13)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ContractVariant` | `` | TRE kontrakt-typer — én pr. komponent-slags (spec §"TRE kontrakt-typer"). | [src](../../../core/services/nerve_registry.py#L52) |
-| class | `IdentityTier` | `` | Rolle-baseret strenghed (spec §"Rolle-baseret strenghed" + Fase C §1). | [src](../../../core/services/nerve_registry.py#L62) |
-| class | `Capability` | `` | HVAD et modul MÅ — håndhæves (spec invariant #6 + Fase C §3). | [src](../../../core/services/nerve_registry.py#L70) |
-| class | `Mode` | `` | — | [src](../../../core/services/nerve_registry.py#L78) |
-| class | `PluginStatus` | `` | Governed plugin-livscyklus (Fase C). Default: PENDING — intet auto-on. | [src](../../../core/services/nerve_registry.py#L84) |
-| class | `NerveManifest` | `` | Et modul der DEKLARERER sig selv mod kontrakten. | [src](../../../core/services/nerve_registry.py#L102) |
-| method | `NerveManifest.to_dict` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L139) |
-| method | `NerveManifest.from_dict` | `(cls, d)` | Rekonstruér fra durabel form. Self-safe — ukendte felter ignoreres. | [src](../../../core/services/nerve_registry.py#L143) |
-| function | `validate_manifest` | `(manifest)` | Validér et manifest mod den ubrydelige kontrakt. Returnerer en LISTE af præcise | [src](../../../core/services/nerve_registry.py#L161) |
-| function | `is_compliant` | `(manifest)` | True hvis manifestet består HELE kontrakten (ingen fejl). | [src](../../../core/services/nerve_registry.py#L238) |
-| function | `_load_kv` | `(key)` | Læs en durabel KV-dict. Self-safe → {} ved enhver fejl/offline. | [src](../../../core/services/nerve_registry.py#L246) |
-| function | `_save_kv` | `(key, value)` | Skriv en durabel KV-dict. Self-safe → False ved fejl (aldrig raise). | [src](../../../core/services/nerve_registry.py#L256) |
-| function | `register` | `(manifest, *, now=…)` | Registrér en komponent i det durable registry — men KUN hvis den består HELE | [src](../../../core/services/nerve_registry.py#L266) |
-| function | `unregister` | `(name)` | Fjern en komponent fra registry. Self-safe. | [src](../../../core/services/nerve_registry.py#L291) |
-| function | `get_manifest` | `(name)` | Hent ét registreret manifest. Self-safe → None. | [src](../../../core/services/nerve_registry.py#L304) |
-| function | `is_registered` | `(name)` | — | [src](../../../core/services/nerve_registry.py#L313) |
-| function | `all_manifests` | `()` | Alle registrerede manifester. Self-safe → []. | [src](../../../core/services/nerve_registry.py#L320) |
-| function | `registered_names` | `()` | Navne på alt der er registreret (til connectivity-audittens compliant-markering). | [src](../../../core/services/nerve_registry.py#L332) |
-| function | `compliant_names` | `()` | Navne på registrerede komponenter der STADIG består kontrakten (selv-audit-basis). | [src](../../../core/services/nerve_registry.py#L340) |
-| function | `to_manifest` | `(descriptor, *, name=…, cluster=…, kind=…, contract_variant=…, klass=…, identity_tier=…, capabilities=…, mode=…, description=…, module_path=…, entrypoint=…, interface=…, kill_switch_key=…, identity_signature=…)` | Adapter: bring en EKSISTERENDE nerve/gate/daemon under kontrakten uden at rewrite | [src](../../../core/services/nerve_registry.py#L357) |
-| function | `_identity_secret` | `(tier)` | Læs den per-identitet signing-hemmelighed fra runtime.json (aldrig committet). | [src](../../../core/services/nerve_registry.py#L427) |
-| function | `_canonical_identity_payload` | `(manifest)` | Kanonisk, stabil streng der SIGNERES — binder identiteten til modulets kerne-form. | [src](../../../core/services/nerve_registry.py#L442) |
-| function | `sign_manifest` | `(manifest, *, tier=…)` | Producér en identitets-signatur for et manifest (lokal tooling — kræver hemmeligheden | [src](../../../core/services/nerve_registry.py#L453) |
-| function | `verify_identity` | `(manifest)` | Verificér manifestets identitets-signatur mod den lokale runtime.json-hemmelighed. | [src](../../../core/services/nerve_registry.py#L467) |
-| class | `GovernedPluginLoader` | `` | Den HØJEST-privilegerede dør. Et plugin aktiveres ALDRIG uden: | [src](../../../core/services/nerve_registry.py#L496) |
-| method | `GovernedPluginLoader.__init__` | `(self, *, approval_key=…)` | — | [src](../../../core/services/nerve_registry.py#L507) |
-| method | `GovernedPluginLoader._load` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L511) |
-| method | `GovernedPluginLoader._save` | `(self, data)` | — | [src](../../../core/services/nerve_registry.py#L514) |
-| method | `GovernedPluginLoader._record` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L517) |
-| method | `GovernedPluginLoader._write_record` | `(self, name, rec)` | — | [src](../../../core/services/nerve_registry.py#L521) |
-| method | `GovernedPluginLoader.submit` | `(self, manifest, *, now=…)` | Indlever et plugin til governed load. Verificerer identitet + kontrakt og lander | [src](../../../core/services/nerve_registry.py#L528) |
-| method | `GovernedPluginLoader.approve` | `(self, name, *, approver_tier, now=…)` | Eksplicit owner/claude sign-off. KUN owner/claude kan godkende (approver_tier). | [src](../../../core/services/nerve_registry.py#L570) |
-| method | `GovernedPluginLoader.reject` | `(self, name, *, reason=…)` | Eksplicit afvisning (owner-veto). Self-safe. | [src](../../../core/services/nerve_registry.py#L596) |
-| method | `GovernedPluginLoader.activate` | `(self, name, *, loader_fn=…, now=…)` | Aktivér et GODKENDT plugin. Umuligt uden forudgående ``approve`` (spec-invariant: | [src](../../../core/services/nerve_registry.py#L611) |
-| method | `GovernedPluginLoader.status` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L669) |
-| method | `GovernedPluginLoader.pending` | `(self)` | — | [src](../../../core/services/nerve_registry.py#L673) |
-| method | `GovernedPluginLoader.is_active` | `(self, name)` | — | [src](../../../core/services/nerve_registry.py#L680) |
-| method | `GovernedPluginLoader._audit` | `(self, event, name, tier, *, approver=…, errors=…)` | Bedste-indsats audit til Centralen. Self-safe — audit må aldrig vælte loaderen. | [src](../../../core/services/nerve_registry.py#L684) |
-| function | `loader` | `()` | — | [src](../../../core/services/nerve_registry.py#L704) |
-| function | `seed_known_nerves` | `(*, now=…)` | Registrér de par EKSISTERENDE nerver ovenfor mod kontrakten — proof-of-adapter. | [src](../../../core/services/nerve_registry.py#L755) |
 

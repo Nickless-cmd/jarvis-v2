@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/peak_hours.py`
+_core/services/peak_hours.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_som_utc` | `(at)` | Læs et tidspunkt som aware UTC. Naivt input læses som UTC (hovedbogen er UTC). | [src](../../../core/services/peak_hours.py#L45) |
+| function | `_vindue_start` | `(dag, fra)` | — | [src](../../../core/services/peak_hours.py#L66) |
+| function | `naeste_vindue_start` | `(now_utc=…)` | Næste myldretids-vindue der ÅBNER efter nu. Springer weekender over. | [src](../../../core/services/peak_hours.py#L70) |
+| function | `aktuelt_vindue` | `(now_utc=…)` | (start, slut) for det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L84) |
+| function | `aktuelt_vindue_slut` | `(now_utc=…)` | Slutningen på det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L103) |
+| function | `_dansk` | `(ts)` | — | [src](../../../core/services/peak_hours.py#L109) |
+| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L113) |
+| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L135) |
+| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L142) |
+
+## `core/services/peak_varsel_daemon.py`
+_core/services/peak_varsel_daemon.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_vindue_slut` | `(aabning)` | Vinduets sluttid, læst fra ``MYLDRE_VINDUER`` — ikke et gæt på 4 timer. | [src](../../../core/services/peak_varsel_daemon.py#L65) |
+| function | `_allerede_varslet` | `(aabning)` | Har vi allerede sendt varsel for netop dette vindue? | [src](../../../core/services/peak_varsel_daemon.py#L73) |
+| function | `_marker_varslet` | `(aabning)` | — | [src](../../../core/services/peak_varsel_daemon.py#L79) |
+| function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L83) |
+| function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L96) |
+| function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L136) |
+
 ## `core/services/perceptual_event_engine.py`
 _Perceptual event engine — eventful perception for Jarvis._
 
@@ -670,27 +697,4 @@ _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 | function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L198) |
 | function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L203) |
 | function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L232) |
-
-## `core/services/projection_drift.py`
-_Drift-detektion — er ledgeren og `chat_messages` enige?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L46) |
-| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L63) |
-| function | `_modul` | `(projektion)` | Slå projektionen op. Et ukendt navn er en fejl, ikke et tomt svar — | [src](../../../core/services/projection_drift.py#L77) |
-| function | `_samme_tid` | `(a, b)` | Samme øjeblik skrevet på to måder er ikke uenighed. | [src](../../../core/services/projection_drift.py#L88) |
-| function | `_fra_ledger` | `(session_id, m)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L117) |
-| function | `_fra_tabellen` | `(session_id, m)` | — | [src](../../../core/services/projection_drift.py#L132) |
-| function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
-| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
-| function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
-
-## `core/services/projection_guard.py`
-_Vagten der gør et skifte til hovedbogen fortrydeligt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_guard.py#L28) |
-| function | `guard_direct_write` | `(session_id, *, projektion, tabel, conn=…)` | Afvis direkte skrivninger til `tabel` for en ledger-session. | [src](../../../core/services/projection_guard.py#L32) |
 

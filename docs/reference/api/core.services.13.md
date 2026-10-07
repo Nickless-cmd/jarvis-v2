@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/fcm_gateway.py`
+_FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_runtime` | `()` | — | [src](../../../core/services/fcm_gateway.py#L19) |
+| function | `_project_id` | `()` | — | [src](../../../core/services/fcm_gateway.py#L26) |
+| function | `_sa_path` | `()` | — | [src](../../../core/services/fcm_gateway.py#L30) |
+| function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
+| function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
+| function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
+| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L68) |
+
+## `core/services/felt_surface_store.py`
+_Delt lager for de følte overflader — så de overlever en procesgrænse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
+| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
+| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
+| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
+| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
+| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
+
 ## `core/services/file_awareness_daemon.py`
 _File Awareness Daemon — proprioception: "I feel when my files change."_
 
@@ -491,24 +516,4 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 | function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L142) |
 | function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L148) |
 | function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L152) |
-
-## `core/services/goal_reporter.py`
-_Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_criterion_fulfilment` | `(measured, target)` | Hvor stor en del af kriteriet er opfyldt — kappet ved 1.0. | [src](../../../core/services/goal_reporter.py#L33) |
-| function | `_find_goal` | `(*, title_fragment)` | Slå det aktive mål op hvis titel indeholder fragmentet. | [src](../../../core/services/goal_reporter.py#L48) |
-| function | `collect_metrics` | `(*, days=…)` | Læs de tre tal. Fejler aldrig hårdt — et manglende tal bliver None. | [src](../../../core/services/goal_reporter.py#L58) |
-| function | `compute_progress` | `(*, tick_score, heed_rate)` | progress_pct + de enkelte kriterier. Svageste led bestemmer. | [src](../../../core/services/goal_reporter.py#L95) |
-| function | `_format_note` | `(metrics, progress)` | Én kort note til update-loggen — tallene, ikke fortællingen om dem. | [src](../../../core/services/goal_reporter.py#L132) |
-| function | `report_goal_metrics` | `(*, days=…, dry_run=…, goal_title_fragment=…)` | Mål, skriv til målet, returnér hvad der skete. Aldrig stille. | [src](../../../core/services/goal_reporter.py#L155) |
-
-## `core/services/goal_signal_synthesizer.py`
-_Goal signal synthesizer — surface candidate goals from dreams/reflections._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
-| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
 

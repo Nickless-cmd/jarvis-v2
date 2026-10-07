@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_drift.py`
+_Drift-detektion — er ledgeren og `chat_messages` enige?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L46) |
+| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L63) |
+| function | `_modul` | `(projektion)` | Slå projektionen op. Et ukendt navn er en fejl, ikke et tomt svar — | [src](../../../core/services/projection_drift.py#L77) |
+| function | `_samme_tid` | `(a, b)` | Samme øjeblik skrevet på to måder er ikke uenighed. | [src](../../../core/services/projection_drift.py#L88) |
+| function | `_fra_ledger` | `(session_id, m)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L117) |
+| function | `_fra_tabellen` | `(session_id, m)` | — | [src](../../../core/services/projection_drift.py#L132) |
+| function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
+| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
+| function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
+
+## `core/services/projection_guard.py`
+_Vagten der gør et skifte til hovedbogen fortrydeligt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_guard.py#L28) |
+| function | `guard_direct_write` | `(session_id, *, projektion, tabel, conn=…)` | Afvis direkte skrivninger til `tabel` for en ledger-session. | [src](../../../core/services/projection_guard.py#L32) |
+
 ## `core/services/projection_runtime.py`
 _Projektions-runtime — rene, versionerede folder over session-ledgeren._
 
@@ -626,32 +649,4 @@ _Read-before-write guard — prevents overwrite of existing files without prior 
 | function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L545) |
 | function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L549) |
 | function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L582) |
-
-## `core/services/reasoning_classifier.py`
-_Reasoning classifier — router that picks fast / reasoning / deep tier._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_score_patterns` | `(text, patterns)` | — | [src](../../../core/services/reasoning_classifier.py#L65) |
-| function | `classify_reasoning_tier` | `(message, *, task_hint=…)` | Pick reasoning tier for a user message (or task description). | [src](../../../core/services/reasoning_classifier.py#L75) |
-| function | `reasoning_tier_section` | `(message)` | Format tier verdict as a prompt-awareness section. None for fast tier | [src](../../../core/services/reasoning_classifier.py#L210) |
-| function | `_exec_reasoning_classify` | `(args)` | — | [src](../../../core/services/reasoning_classifier.py#L227) |
-| function | `build_reasoning_classifier_surface` | `()` | — | [src](../../../core/services/reasoning_classifier.py#L275) |
-| function | `_emit_tier_event` | `(tier, score)` | — | [src](../../../core/services/reasoning_classifier.py#L284) |
-
-## `core/services/reasoning_detectors.py`
-_Reasoning detectors for the reasoning-interceptor._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_downgrade_cognitive` | `(v, *, gate)` | Re-stamp a gate's verdict for the reasoning stage: keep GREEN/YELLOW, but a COGNITIVE RED | [src](../../../core/services/reasoning_detectors.py#L16) |
-| function | `fact_gate_on_reasoning` | `(reasoning_text, ctx)` | fact_gate re-applied to reasoning. A number/status claim with NO backing tool-call in this | [src](../../../core/services/reasoning_detectors.py#L26) |
-| function | `decision_gate_on_reasoning` | `(reasoning_text, ctx)` | decision_gate (commit cluster) re-applied to reasoning. Grounding = the active-decisions | [src](../../../core/services/reasoning_detectors.py#L43) |
-| function | `veto_on_reasoning` | `(reasoning_text, ctx)` | ABSTAINER — veto-gaten kan ikke dømmes af agentens egen reasoning (målt 13/9-2026). | [src](../../../core/services/reasoning_detectors.py#L55) |
-| function | `verification_on_reasoning` | `(reasoning_text, ctx)` | proactivity/verification gate re-applied. Grounding = the run's verification state (the gate | [src](../../../core/services/reasoning_detectors.py#L81) |
-| function | `cross_user_share_on_reasoning` | `(reasoning_text, ctx)` | privacy/cross_user_share gate re-applied to reasoning. SECURITY — keeps RED (a leak forming | [src](../../../core/services/reasoning_detectors.py#L97) |
-| function | `standing_orders_on_reasoning` | `(reasoning_text, ctx)` | Flag when the reasoning enters a risk class an active standing order governs. Grounding = | [src](../../../core/services/reasoning_detectors.py#L111) |
-| function | `_drift_signal` | `(ctx)` | INDEPENDENT drift signal 0..1 from the Central's OWN affect/valence nerves + an | [src](../../../core/services/reasoning_detectors.py#L131) |
-| function | `drift_on_reasoning` | `(reasoning_text, ctx)` | Affective drift (overconfidence). Grounding = the Central's own affect nerves + claim streak | [src](../../../core/services/reasoning_detectors.py#L151) |
-| function | `tone_on_reasoning` | `(reasoning_text, ctx)` | Epistemic tone — a guess stated as fact. ANCHORED (invariant 3): runs ONLY if a truth/drift | [src](../../../core/services/reasoning_detectors.py#L169) |
 

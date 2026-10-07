@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_emotional_memory.py`
+_DB helpers for emotional_memory_anchors table._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_emotional_memory_anchors_table` | `(conn)` | — | [src](../../../core/runtime/db_emotional_memory.py#L15) |
+| function | `insert_emotional_memory_anchor` | `(*, anchor_type, anchor_id, captured_at, mood, intensity, confidence=…, curiosity=…, frustration=…, fatigue=…, trust=…, outcome_score=…, outcome_source=…, context_features_json=…, source=…, notes=…)` | UPSERT an emotional memory anchor. Idempotent on (anchor_type, anchor_id). | [src](../../../core/runtime/db_emotional_memory.py#L54) |
+| function | `get_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L141) |
+| function | `list_emotional_memory_anchors` | `(*, anchor_type=…, since=…, min_intensity=…, outcome=…, limit=…)` | Return anchors filtered and ordered by captured_at DESC. | [src](../../../core/runtime/db_emotional_memory.py#L153) |
+| function | `update_emotional_memory_outcome` | `(*, anchor_type, anchor_id, score, source, force=…)` | Update outcome score. Returns True if updated, False if blocked. | [src](../../../core/runtime/db_emotional_memory.py#L190) |
+| function | `delete_emotional_memory_anchor` | `(anchor_type, anchor_id)` | — | [src](../../../core/runtime/db_emotional_memory.py#L234) |
+| function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
+| function | `aggregate_emotional_memory_anchors` | `()` | Tællinger over HELE tabellen — ikke over de seneste N rækker. | [src](../../../core/runtime/db_emotional_memory.py#L265) |
+
 ## `core/runtime/db_fts.py`
 _FTS5 full-text search over session summaries and chat messages._
 
@@ -936,17 +950,4 @@ _DB helpers for users-tabellen (spec 2026-06-15)._
 | function | `soft_delete_user_row` | `(user_id, *, deleted_at)` | — | [src](../../../core/runtime/db_users.py#L204) |
 | function | `hard_delete_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L208) |
 | function | `list_user_rows` | `(*, include_deleted=…)` | — | [src](../../../core/runtime/db_users.py#L216) |
-
-## `core/runtime/db_view_requests.py`
-_Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_laes` | `()` | — | [src](../../../core/runtime/db_view_requests.py#L36) |
-| function | `_gem` | `(tilstand)` | — | [src](../../../core/runtime/db_view_requests.py#L44) |
-| function | `opret` | `(op, args, *, session_id)` | — | [src](../../../core/runtime/db_view_requests.py#L48) |
-| function | `ventende` | `()` | Ubesvarede, ikke-forældede forespørgsler. | [src](../../../core/runtime/db_view_requests.py#L66) |
-| function | `hent` | `(request_id)` | — | [src](../../../core/runtime/db_view_requests.py#L73) |
-| function | `svar` | `(request_id, resultat)` | Desk svarer. Kun én gang: et andet vindue må ikke overskrive svaret. | [src](../../../core/runtime/db_view_requests.py#L80) |
-| function | `vent_paa_svar` | `(request_id, *, frist_s, interval_s=…)` | — | [src](../../../core/runtime/db_view_requests.py#L94) |
 

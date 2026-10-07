@@ -291,13 +291,19 @@ class _InProcessLoopIO:
         self._agent = agent
         self._run_id = run_id
         self._aid = str(agent.get("agent_id") or "")
+        # en genoptagelse har allerede udfoert vaerktoejskald i foregaaende del af runnet
+        self._tools_executed = bool(resume)
         # kaldet der ventede paa en approval -> den approval; kun DET kald genoptages via den
         pend = (resume or {}).get("pending_calls") or []
         self._resume_ids = ({str(pend[0].get("id") or ""): str(resume["approval_id"])}
                             if pend and resume.get("approval_id") else {})
 
     def model(self, *, messages, tools, requires_tools, provider, model):
-        return _facade().execute_with_role_or_fallback(
+        # D: en agent med ejer genvalideres ved hvert kald og failover'er gennem sin gemte rute;
+        # en legacy-agent gaar den gamle vej uaendret.
+        from core.services.agent_model_router import call_agent_model
+        return call_agent_model(
+            agent=self._agent, tools_executed=self._tools_executed, facade=_facade(),
             provider=provider, model=model, requires_tools=requires_tools,
             messages=messages, tools=tools, lane="agent")
 
@@ -313,6 +319,7 @@ class _InProcessLoopIO:
         if denied is not None:
             return denied
         _bogfoer_start(self._agent, self._run_id, tc)
+        self._tools_executed = True
         return _execute_agent_tool_call(tc, agent_id=self._aid)
 
     def after_tool(self, tc, tool_out):

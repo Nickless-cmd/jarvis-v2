@@ -141,9 +141,12 @@ def dispatch_agent(
     tool_policy: str = "", allowed_tools: list[str] | None = None,
     target: str = "runtime-container", budget_tokens: int = 0, max_turns: int = 0,
     expected_result: str = "", model: str = "", idempotency_key: str = "",
-    writes: bool = False, workspace: str = "",
+    writes: bool = False, workspace: str = "", model_required: bool = False,
 ) -> dict[str, Any]:
     """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS.
+
+    ``model`` er en praeference, ``model_required=True`` et haardt krav (D, spec 7.1). Ruten fastlaegges
+    FOER agenten oprettes; findes ingen tilladt rute, svares ``MODEL_UNAVAILABLE`` og intet er oprettet.
 
     ``writes=True`` + ``workspace`` giver en kodeagent: den faar sit eget git-worktree (reserveret FOER
     den er accepteret) og kan kun skrive dér, gennem en sandbox (C5). Faar worktree'et ikke plads, er
@@ -167,7 +170,7 @@ def dispatch_agent(
                     f"target {target!r} understoettes ikke endnu (kun {_SUPPORTED_TARGETS})")
     digest = _digest(goal=goal, role=role, description=description, tool_policy=tool_policy,
                      allowed_tools=allowed_tools or [], target=target, budget=budget_tokens,
-                     turns=max_turns, expected=expected_result, model=model,
+                     turns=max_turns, expected=expected_result, model=model, model_required=model_required,
                      parent=parent_agent_id, parent_run=parent_run_id, writes=writes, workspace=workspace)
     prior = c.find_assignment_by_key(owner_user_id=owner_user_id, origin_session_id=origin_session_id,
                                      operation="dispatch", idempotency_key=idempotency_key)
@@ -178,13 +181,20 @@ def dispatch_agent(
                                 "status": prior["status"], "replayed": True})}
     if (full := _capacity_error(owner_user_id, parent_agent_id)):
         return full
+    from core.services.agent_model_policy import ModelUnavailable, decide_route
+    try:
+        route = decide_route(owner_user_id=owner_user_id, requested_model=model, hard=model_required,
+                             role=role, budget_tokens=budget_tokens)
+    except ModelUnavailable as exc:
+        logger.info("dispatch afvist: ingen tilladt model (%s)", exc.detail)
+        return {**_err("MODEL_UNAVAILABLE", exc.detail, "admission"), "reasons": exc.reasons}
     from core.services.agent_runtime_spawn import spawn_agent_task
     try:
         spawned = spawn_agent_task(
             role=role, goal=goal if not description else f"{description}\n\n{goal}",
             tool_policy=tool_policy, allowed_tools=allowed_tools or None,
             parent_agent_id=parent_agent_id, budget_tokens=budget_tokens, max_turns=max_turns,
-            auto_execute=False, model=model, respekter_model=bool(model),
+            auto_execute=False, provider=route["provider"], model=route["model"], respekter_model=True,
             context={"user_id": owner_user_id, "parent_session_id": origin_session_id,
                      "parent_run_id": parent_run_id},
             contract={"idempotency_key": idempotency_key, "request_digest": digest,
@@ -197,6 +207,14 @@ def dispatch_agent(
     a = c.open_assignment_for_agent(agent_id)
     if a is None:
         return _err("INVALID_SCOPE", "agenten blev ikke bundet til kontrakten", "admission")
+    try:
+        from core.runtime import db_agent_route
+        db_agent_route.record_decision(assignment_id=a["assignment_id"], agent_id=agent_id,
+                                       owner_user_id=owner_user_id, decision=route, attempt=1)
+    except Exception as exc:
+        logger.warning("rute-proveniens kunne ikke gemmes - agenten afvises", exc_info=True)
+        c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+        return _err("INVALID_SCOPE", f"rute kunne ikke gemmes: {type(exc).__name__}"[:120])
     worktree: dict[str, Any] | None = None
     if writes:
         from core.services.agent_worktrees import provision
@@ -215,6 +233,8 @@ def dispatch_agent(
                             "ORDER BY attempt_no LIMIT 1", (a["assignment_id"],)).fetchone()
     view = _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
                          "run_id": run["run_id"] if run else "", "status": a["status"]})
+    view["route"] = {"route_source": route["route_source"], "provider": route["provider"],
+                     "model": route["model"]}
     if worktree is not None:
         view["worktree"] = {"worktree_id": worktree["worktree_id"], "branch": worktree["branch"],
                             "base_commit": worktree["base_commit"]}

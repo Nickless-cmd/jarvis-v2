@@ -148,7 +148,9 @@ class _Broker:
         if len(json.dumps(messages, default=str)) > MAX_PROMPT_MESSAGES_CHARS:
             raise WorkerError("PROTOCOL", "messages over graensen")
         tools = self.tools_payload if msg.get("tools_mode") == "full" else []
-        res = self._base._facade().execute_with_role_or_fallback(
+        from core.services.agent_model_router import call_agent_model
+        res = call_agent_model(
+            agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
             provider=self.provider, model=self.model,
             requires_tools=bool(msg.get("requires_tools")) and bool(tools),
             messages=messages, tools=tools, lane="agent")
@@ -156,7 +158,9 @@ class _Broker:
 
     def _model_text(self, msg: dict[str, Any]) -> dict[str, Any]:
         # prompten er serverens egen - workerens "message" ignoreres bevidst
-        res = self._base._facade().execute_with_role_or_fallback(
+        from core.services.agent_model_router import call_agent_model
+        res = call_agent_model(
+            agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
             message=self.prompt, provider=self.provider, model=self.model,
             requires_tools=bool(msg.get("requires_tools")), lane="agent")
         self.last_text_result = _safe(res)

@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/retry_runtime.py`
+_`RetryRuntime` — genforsøg som en BEGRÆNSET beslutning, ikke en refleks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Budget` | `` | Lofter for HELE turen. Failover nulstiller intet af det. | [src](../../../core/services/retry_runtime.py#L65) |
+| class | `Spent` | `` | Hvad turen allerede har brugt — på tværs af alle udbydere. | [src](../../../core/services/retry_runtime.py#L76) |
+| method | `Spent.plus_attempt` | `(self, *, wall_s=…, tokens=…, cost_usd=…, failover=…)` | — | [src](../../../core/services/retry_runtime.py#L85) |
+| class | `Decision` | `` | — | [src](../../../core/services/retry_runtime.py#L97) |
+| function | `_udtoemt` | `(b, s)` | Hvilket loft er nået? Tom streng hvis der er plads. | [src](../../../core/services/retry_runtime.py#L107) |
+| function | `backoff` | `(forsoeg, *, provider_hint_s=…, mindst=…, hoejst=…)` | Ventetid før næste forsøg. | [src](../../../core/services/retry_runtime.py#L126) |
+| function | `decide` | `(*, failure, budget, spent, cancelled=…, provider_hint_s=…, route_override=…)` | Skal der prøves igen? Ren funktion — ændrer ingenting. | [src](../../../core/services/retry_runtime.py#L139) |
+
+## `core/services/rhythm_engine.py`
+_Rhythm Engine — tidal model for attention and response style._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_rhythm_state` | `(*, recent_error_count=…, recent_success_count=…, idle_hours=…)` | Derive rhythm state from current time and recent activity. | [src](../../../core/services/rhythm_engine.py#L26) |
+| function | `build_rhythm_surface` | `()` | — | [src](../../../core/services/rhythm_engine.py#L73) |
+| function | `_classify_phase` | `(hour)` | — | [src](../../../core/services/rhythm_engine.py#L96) |
+| function | `_derive_energy` | `(phase, idle_hours)` | — | [src](../../../core/services/rhythm_engine.py#L108) |
+| function | `_derive_social` | `(phase)` | — | [src](../../../core/services/rhythm_engine.py#L118) |
+
 ## `core/services/role_model_resolver.py`
 _Role-model resolver — pick best-fit (provider, model) for a role + task._
 
@@ -710,27 +734,4 @@ _Scheduled task dispatcher — binds workspace_context before firing._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
-
-## `core/services/scheduled_tasks.py`
-_Scheduled tasks service — lets Jarvis schedule future reminders/actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `push_scheduled_task` | `(*, focus, delay_minutes, source=…)` | Schedule a task to fire after delay_minutes. Returns task info dict. | [src](../../../core/services/scheduled_tasks.py#L24) |
-| function | `cancel_scheduled_task` | `(task_id)` | Cancel a pending task. Returns True if found and cancelled. | [src](../../../core/services/scheduled_tasks.py#L53) |
-| function | `edit_scheduled_task` | `(task_id, *, focus=…, delay_minutes=…)` | Edit an existing pending task. Returns updated task info or error dict. | [src](../../../core/services/scheduled_tasks.py#L64) |
-| function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L90) |
-| function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L120) |
-| function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L141) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L304) |
-| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L323) |
-| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L332) |
-| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L337) |
-
-## `core/services/scout_inbox_delivery.py`
-_Deliver terminal scout runs to Jarvis' durable inbox._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
 

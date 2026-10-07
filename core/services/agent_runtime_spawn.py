@@ -709,8 +709,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             except Exception:
                 if _resume is not None:
                     raise    # en genoptagelse maa aldrig falde tilbage til en frisk tekst-tur (tabt approval)
-                result = _facade().execute_with_role_or_fallback(
-                    message=prompt,
+                from core.services.agent_model_router import call_agent_model
+                result = call_agent_model(
+                    agent=agent, facade=_facade(), message=prompt,
                     provider=str(agent.get("provider") or ""),
                     model=str(agent.get("model") or ""),
                     requires_tools=_needs_tools,
@@ -719,8 +720,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         else:
             if _resume is not None:
                 raise RuntimeError("en parkeret agent kan ikke genoptages uden vaerktoejer")
-            result = _facade().execute_with_role_or_fallback(
-                message=prompt,
+            from core.services.agent_model_router import call_agent_model
+            result = call_agent_model(
+                agent=agent, facade=_facade(), message=prompt,
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_needs_tools,

@@ -409,20 +409,20 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `_digest` | `(**parts)` | — | [src](../../../core/services/agent_contract_service.py#L116) |
 | function | `_accept_view` | `(acc)` | — | [src](../../../core/services/agent_contract_service.py#L120) |
 | function | `_capacity_error` | `(owner, parent)` | — | [src](../../../core/services/agent_contract_service.py#L126) |
-| function | `dispatch_agent` | `(*, owner_user_id, origin_session_id, goal, parent_run_id=…, parent_agent_id=…, role=…, description=…, tool_policy=…, allowed_tools=…, target=…, budget_tokens=…, max_turns=…, expected_result=…, model=…, idempotency_key=…, writes=…, workspace=…)` | Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS. | [src](../../../core/services/agent_contract_service.py#L138) |
-| function | `followup_agent` | `(*, owner_user_id, origin_session_id, agent_id, goal, parent_run_id=…, budget_tokens=…, expected_result=…, idempotency_key=…, operation=…)` | Ny opgave til SAMME agent-id: nyt assignment, nyt run. Ikke til en lukket agent. | [src](../../../core/services/agent_contract_service.py#L224) |
-| function | `send_message` | `(*, owner_user_id, origin_session_id, agent_id, content, sender=…, parent_run_id=…, idempotency_key=…)` | Information/styring til barnets aktuelle opgave, eller - er barnet ledigt - en | [src](../../../core/services/agent_contract_service.py#L271) |
-| function | `interrupt_agent` | `(*, owner_user_id, origin_session_id, agent_id, note=…)` | Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`. | [src](../../../core/services/agent_contract_service.py#L305) |
-| function | `close_agent` | `(*, owner_user_id, origin_session_id, agent_id)` | Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og | [src](../../../core/services/agent_contract_service.py#L322) |
-| function | `settle_closing` | `(agent_id, owner_user_id)` | `closing` -> `closed`, naar agentens eget assignment og alle boerns er terminale. | [src](../../../core/services/agent_contract_service.py#L335) |
-| function | `list_agents` | `(*, owner_user_id, origin_session_id=…, status=…, limit=…)` | Ejerens agenter (aldrig en andens): status, rolle, target, ubehandlede resultater. | [src](../../../core/services/agent_contract_service.py#L353) |
-| function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L382) |
-| function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L432) |
-| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L457) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L485) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L493) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L503) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L533) |
+| function | `dispatch_agent` | `(*, owner_user_id, origin_session_id, goal, parent_run_id=…, parent_agent_id=…, role=…, description=…, tool_policy=…, allowed_tools=…, target=…, budget_tokens=…, max_turns=…, expected_result=…, model=…, idempotency_key=…, writes=…, workspace=…, model_required=…)` | Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS. | [src](../../../core/services/agent_contract_service.py#L138) |
+| function | `followup_agent` | `(*, owner_user_id, origin_session_id, agent_id, goal, parent_run_id=…, budget_tokens=…, expected_result=…, idempotency_key=…, operation=…)` | Ny opgave til SAMME agent-id: nyt assignment, nyt run. Ikke til en lukket agent. | [src](../../../core/services/agent_contract_service.py#L244) |
+| function | `send_message` | `(*, owner_user_id, origin_session_id, agent_id, content, sender=…, parent_run_id=…, idempotency_key=…)` | Information/styring til barnets aktuelle opgave, eller - er barnet ledigt - en | [src](../../../core/services/agent_contract_service.py#L291) |
+| function | `interrupt_agent` | `(*, owner_user_id, origin_session_id, agent_id, note=…)` | Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`. | [src](../../../core/services/agent_contract_service.py#L325) |
+| function | `close_agent` | `(*, owner_user_id, origin_session_id, agent_id)` | Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og | [src](../../../core/services/agent_contract_service.py#L342) |
+| function | `settle_closing` | `(agent_id, owner_user_id)` | `closing` -> `closed`, naar agentens eget assignment og alle boerns er terminale. | [src](../../../core/services/agent_contract_service.py#L355) |
+| function | `list_agents` | `(*, owner_user_id, origin_session_id=…, status=…, limit=…)` | Ejerens agenter (aldrig en andens): status, rolle, target, ubehandlede resultater. | [src](../../../core/services/agent_contract_service.py#L373) |
+| function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L402) |
+| function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L452) |
+| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L477) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L505) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L513) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L523) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L553) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -486,6 +486,40 @@ _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
 | function | `er_blokeret` | `(provider, model, *, rolle=…)` | True kun når vi har MÅLT at modellen ikke duer til værktøjs-arbejde. | [src](../../../core/services/agent_model_fitness.py#L83) |
 | function | `bedste_egnede` | `(*, undtagen=…)` | Den højest scorende målte model der bestod `follows`. ('','') hvis ingen. | [src](../../../core/services/agent_model_fitness.py#L90) |
 | function | `egnede_modeller` | `(*, undtagen=…, maks=…, kraever_vaerktoejer=…)` | Målte, egnede modeller — bedste først. Til rotation. | [src](../../../core/services/agent_model_fitness.py#L114) |
+
+## `core/services/agent_model_policy.py`
+_Modelvalg for agenter: premium-agentpulje -> ejerafhaengig fallback (agent-contract-v1 D, spec 7.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_capped` | `(rows)` | — | [src](../../../core/services/agent_model_policy.py#L37) |
+| class | `ModelUnavailable` | `` | ``MODEL_UNAVAILABLE``: ingen tilladt rute. ``reasons`` er hver afvisning med aarsag. | [src](../../../core/services/agent_model_policy.py#L44) |
+| method | `ModelUnavailable.__init__` | `(self, detail, reasons=…)` | — | [src](../../../core/services/agent_model_policy.py#L49) |
+| class | `ProviderDenied` | `` | Ejeren maa ikke bruge denne provider (haandhaevet ved selve kaldet). | [src](../../../core/services/agent_model_policy.py#L54) |
+| function | `is_platform_owner` | `(owner_user_id)` | Bjoern? Fail-closed: kan ejeren ikke afgoeres, er svaret nej. | [src](../../../core/services/agent_model_policy.py#L63) |
+| function | `provider_denied_reason` | `(owner_user_id, provider)` | Tom streng = tilladt, ellers aarsagen. | [src](../../../core/services/agent_model_policy.py#L78) |
+| function | `guard_call` | `(*, owner_user_id, provider, model=…)` | Kontrollen VED providerkaldet. Kaldes af hver modelanmodning for en bundet agent. | [src](../../../core/services/agent_model_policy.py#L85) |
+| function | `_agent_candidates` | `(*, role, min_tokens, exclude, allow_paid)` | — | [src](../../../core/services/agent_model_policy.py#L96) |
+| function | `_cost_class` | `(provider)` | — | [src](../../../core/services/agent_model_policy.py#L104) |
+| function | `_evaluate` | `(provider, model, *, owner, role, needs_tools)` | (afvisningsaarsag eller '', fitness_ukendt). | [src](../../../core/services/agent_model_policy.py#L109) |
+| function | `_split_requested` | `(requested)` | ('provider','model') for ``provider/model`` eller et bart modelnavn fra kataloget; ellers ('',''). | [src](../../../core/services/agent_model_policy.py#L132) |
+| function | `_deepseek_budget_reason` | `()` | Tom = indenfor budget. Fail-closed: et ukendt budget er et afslag, ikke et ja. | [src](../../../core/services/agent_model_policy.py#L151) |
+| function | `_estimate_cost` | `(provider, model, budget_tokens)` | — | [src](../../../core/services/agent_model_policy.py#L166) |
+| function | `decide_route` | `(*, owner_user_id, requested_model=…, hard=…, role=…, needs_tools=…, min_tokens=…, budget_tokens=…, exclude=…)` | Faststil ruten FOER agenten oprettes. Rejser ``ModelUnavailable`` hvis ingen rute er tilladt. | [src](../../../core/services/agent_model_policy.py#L182) |
+
+## `core/services/agent_model_router.py`
+_Modelkald for en agent: genvalidering ved kaldet og failover i kandidatkaeden (agent-contract-v1 D)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ModelCallFailed` | `` | Modelkaldet svigtede (provider, kredit, circuit breaker). Bruges af strict-stien. | [src](../../../core/services/agent_model_router.py#L27) |
+| method | `ModelCallFailed.__init__` | `(self, detail, *, provider=…, model=…)` | — | [src](../../../core/services/agent_model_router.py#L32) |
+| function | `bound_owner` | `(agent_id)` | Agentens autentificerede ejer, eller '' for en legacy-agent. | [src](../../../core/services/agent_model_router.py#L37) |
+| function | `_chain` | `(agent_id)` | — | [src](../../../core/services/agent_model_router.py#L45) |
+| function | `_effectful` | `(agent)` | — | [src](../../../core/services/agent_model_router.py#L54) |
+| function | `_switch` | `(agent_id, latest, cand, why)` | Gem skiftet: nyt route-forsoeg + agentens aktuelle provider/model. | [src](../../../core/services/agent_model_router.py#L58) |
+| function | `call_agent_model` | `(*, agent, tools_executed=…, facade=…, **execute_kwargs)` | Kald agentens model. ``execute_kwargs`` er argumenterne til ``execute_with_role_or_fallback``. | [src](../../../core/services/agent_model_router.py#L81) |
+| function | `_facade` | `()` | — | [src](../../../core/services/agent_model_router.py#L126) |
 
 ## `core/services/agent_observation_compressor.py`
 _Agent observation compressor — Mastra-style intra-session compression._
@@ -581,53 +615,4 @@ _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 _Agent runtime — sub-agents, councils, swarms (facade)._
 
 _(no top-level classes or functions)_
-
-## `core/services/agent_runtime_base.py`
-_Agent runtime — shared foundation (imports, constants, role templates, helpers)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L63) |
-| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L86) |
-| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L110) |
-| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L125) |
-| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L188) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L243) |
-| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L287) |
-| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L290) |
-| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L299) |
-| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L304) |
-| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L318) |
-| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L321) |
-| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L330) |
-| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L346) |
-| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L384) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L478) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L527) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L655) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L659) |
-
-## `core/services/agent_runtime_council.py`
-_Agent runtime — council & swarm collective rounds._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_trim` | `(text, limit=…)` | Forkort en position synligt. Selve reglen bor i `text_clip`. | [src](../../../core/services/agent_runtime_council.py#L50) |
-| function | `_parse_percent_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L61) |
-| function | `_extract_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L79) |
-| function | `_extract_vote` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L96) |
-| function | `_format_peer_context` | `(messages, *, target_agent_id=…, limit=…)` | — | [src](../../../core/services/agent_runtime_council.py#L110) |
-| function | `_detect_swarm_conflicts` | `(outputs)` | Detect disagreements across swarm/council outputs. | [src](../../../core/services/agent_runtime_council.py#L121) |
-| function | `_load_council_model_config` | `()` | Read ~/.jarvis-v2/config/council_models.json, return role_models list. | [src](../../../core/services/agent_runtime_council.py#L142) |
-| function | `create_council_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L155) |
-| function | `create_swarm_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L205) |
-| function | `post_council_message` | `(*, council_id, content, kind=…, role=…)` | — | [src](../../../core/services/agent_runtime_council.py#L255) |
-| function | `_derive_initiative` | `(synthesis, *, topic=…)` | Distil a short, actionable initiative string from a synthesis. | [src](../../../core/services/agent_runtime_council.py#L278) |
-| function | `_augment_council_surface` | `(council_id, *, conclusion, initiative=…)` | Build the collective-round return dict with conclusion + initiative. | [src](../../../core/services/agent_runtime_council.py#L308) |
-| function | `_run_collective_round` | `(council_id, *, mode)` | Run one collective (council or swarm) round to a conclusion. | [src](../../../core/services/agent_runtime_council.py#L327) |
-| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L676) |
-| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L699) |
-| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L710) |
-| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L727) |
 

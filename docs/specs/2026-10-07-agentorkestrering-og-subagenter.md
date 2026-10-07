@@ -4,6 +4,7 @@ dato: 2026-10-07
 ejer: bjorn
 implementering: ikke startet
 note: ../notes/foreslaaet/arkitektur/2026-10-07-agentlevering-og-genopretning.md
+dsh-gennemgang: ../notes/foreslaaet/arkitektur/2026-10-07-dsh-agentlaering.md
 ---
 
 # Spec: Jarvis' agentorkestrering og subagenter
@@ -79,6 +80,16 @@ Den faste tekst skal udtrykkeligt sige: "Du arbejder for Jarvis på assignment `
 
 Barnets afslutningsformat angiver `summary`, `findings`, `evidence`, `changes`, `tests`, `uncertainty`, `blockers` og `next_action` efter relevans. Manglende felter er synlige, ikke udfyldt med opdigtede værdier. Hemmelige nøgler og private data maskeres i prompt og artefakter efter eksisterende policy.
 
+### 7.1 Én fælles agentmodelpulje
+
+Jarvis og almindelige brugeres agenter vælger fra **samme agentmodelpulje**. Den har selvstændig kandidatkonfiguration, kapabilitetskrav, sundhed og kvotestatus; den er ikke blot en `agent`-rangering af cheap lanes kandidater. Cheap lane kan godt anvende samme udbyder/model, men dens konfiguration og fallback bestemmer ikke agentvalg. Modelpuljen er forskellig fra oversigten over aktive agentinstanser.
+
+Ved dispatch fastlægges først ejer, direkte parent, parentens **faktisk anvendte** provider/model og tilgængelig myndighed. En eksplicit model kan være et hårdt krav eller en præference; det skal stå i requesten. Et hårdt krav fejler tydeligt før accept, hvis det ikke kan opfyldes. Ellers vælges en egnet, autoriseret model fra agentpuljen efter opgavens kapabiliteter (især værktøjskald og kontekstlængde), observeret egnethed, sundhed, kvote, pris og budget. Mangler en egnet puljekandidat, bruges den konkrete parents model som sidste fallback, hvis den kan udføre opgaven og er tilladt inden for samme ejers budget og rettigheder. Kan den heller ikke det, returneres `MODEL_UNAVAILABLE` med årsager; der vælges aldrig stiltiende en cheap-lane model eller en tom `floor`-rute. En almindelig bruger får ikke Jarvis' model eller betalingsadgang alene ved at delegere fra sin egen session.
+
+Beslutningen gemmes med kandidatgrundlag, `route_source` (`explicit`, `agent_pool` eller `parent_fallback`), parentens rutesnapshot, afvisningsårsager og estimeret omkostning før start. Første modelkald genvaliderer faktisk adapter, credential, værktøjsformat og policy. Hvis puljeruten svigter før nogen effektfuld handling, kan runtime vælge næste tilladte kandidat og til sidst parent-fallback med et nyt synligt runforsøg. Efter et muligt udført toolkald må modelskift ikke skjule eller gentage handlingen; recoveryreglerne i afsnit 8–9 gælder. Fitnessmålinger er hjælp til valg, mens ukendt/fejlet måling registreres særskilt og ikke omdannes til tavs succes.
+
+`fresh` er standard, når en billigere agentmodel vælges. En `fork` med kopieret parenthistorik kan genbruge providerens cache ved samme provider/model; et modelskift kan kræve ny behandling af hele konteksten. Runtime skal derfor vise den ekstra kontekstomkostning og vælge mellem eksplicit kontekstuddrag, samme parentmodel eller et bevidst betalt fork-skift. Parentens reasoning effort arves kun, når den effektive rute er den samme; ved modelskift bruges den nye models gyldige standard eller et udtrykkeligt valg.
+
 ## 8. Eksekveringssted og myndighed
 
 Hver assignment bindes til `runtime-container` eller `client:<stable_client_id>` samt konkret workspace. Klient-target kræver en autentificeret bro, der annoncerer de nødvendige værktøjer og workspace-kapabiliteter. Andre samtidige klienter for samme bruger er ikke automatisk erstatninger. Skift af target kræver en ny, synlig beslutning og eventuelt nyt run.
@@ -105,9 +116,9 @@ Miljø-feltets agentliste og inspector viser agenttræ, rolle, opgave, target (`
 
 ## 11. Gennemførelse og accept
 
-Implementeringen deles i disse afhængige leverancer: (A) varig assignment/run/inbox-kontrakt og terminal outbox; (B) kobling af inbox til aktivt og inaktivt synligt run; (C) worker-livscyklus, prompt og artefakter; (D) container-/klient-target med reconnect og ukendt udfald; (E) styringsværktøjer, råd/review/langtidsmønstre; (F) Desk-projektion og inspector. Hver leverance skal kunne testes gennem service-API før UI tilføjes.
+Implementeringen deles i disse afhængige leverancer: (A) varig assignment/run/inbox-kontrakt og terminal outbox; (B) kobling af inbox til aktivt og inaktivt synligt run; (C) worker-livscyklus, prompt og artefakter; (D) selvstændig agentmodelpulje med parent-fallback og ruteproveniens; (E) container-/klient-target med reconnect og ukendt udfald; (F) styringsværktøjer, råd/review/langtidsmønstre; (G) Desk-projektion og inspector. Hver leverance skal kunne testes gennem service-API før UI tilføjes.
 
-Acceptscenarier omfatter: resultat under aktivt run; resultat efter runslut; samtidig afslutning og lukning; dobbelt levering; workercrash før og efter resultatcommit; API-/runtimegenstart; brotab før afsendelse, efter afsendelse og efter fjern udførelse; reconnect fra samme og anden klient; afbrudt agent med ventende besked; budget-/dybdeoverskridelse; råd med ét fejlet medlem; reviewer der afviser builders påstand; fuldt output større end promptgrænsen; og langtidsagent efter planlagt vækning. For hvert scenarie verificeres DB-status, præcis én parentbesked, korrekt årsag og adgang til artefakten.
+Acceptscenarier omfatter: resultat under aktivt run; resultat efter runslut; samtidig afslutning og lukning; dobbelt levering; workercrash før og efter resultatcommit; API-/runtimegenstart; brotab før afsendelse, efter afsendelse og efter fjern udførelse; reconnect fra samme og anden klient; afbrudt agent med ventende besked; budget-/dybdeoverskridelse; råd med ét fejlet medlem; reviewer der afviser builders påstand; fuldt output større end promptgrænsen; og langtidsagent efter planlagt vækning. Modelscenarier omfatter egnet puljemodel, pulje udtømt med parent-fallback, parentmodel uden nødvendig kapabilitet, bruger uden adgang til betalt fallback, hårdt modelkrav, fork med modelskift og fejl efter et muligt skrivende toolkald. For hvert scenarie verificeres DB-status, præcis én parentbesked, korrekt årsag, valgt rutes kilde og adgang til artefakten.
 
 ## 12. Åbne produktvalg til gennemgang
 

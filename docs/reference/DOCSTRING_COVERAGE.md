@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8719/16486 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8739/16515 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 793 | 1435 | 55% |
-| `core.services` | 5816 | 11203 | 51% |
+| `core.runtime` | 797 | 1439 | 55% |
+| `core.services` | 5831 | 11225 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 523 | 1061 | 49% |
+| `core.tools` | 524 | 1064 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2318)
+## Undocumented public functions (2322)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -351,7 +351,7 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `mark_unknown` (L137)
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L644)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L645)
 - `core/runtime/db_agent_council.py` :: `create` (L62)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L84)
@@ -644,7 +644,7 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L324)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L567)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L572)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
@@ -653,26 +653,28 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L168)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L133)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)
+- `core/services/agent_retention.py` :: `sweep_artifacts` (L137)
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1544)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1599)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1580)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1407)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1164)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1104)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1132)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1549)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1604)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1585)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1412)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1169)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1109)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1137)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1563)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1568)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
-- `core/services/agent_sandbox.py` :: `bwrap_path` (L31)
-- `core/services/agent_sandbox.py` :: `python_prefixes` (L38)
+- `core/services/agent_sandbox.py` :: `bwrap_path` (L49)
+- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L105)
+- `core/services/agent_sandbox.py` :: `python_prefixes` (L56)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
@@ -689,27 +691,29 @@ Generated from source. 8719/16486 functions/methods documented (52%). The list b
 - `core/services/agent_worker_main.py` :: `main` (L81)
 - `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
-- `core/services/agent_worktree_git.py` :: `add_worktree` (L100)
-- `core/services/agent_worktree_git.py` :: `changed_files` (L120)
-- `core/services/agent_worktree_git.py` :: `commit_tree` (L210)
-- `core/services/agent_worktree_git.py` :: `commits_since` (L128)
-- `core/services/agent_worktree_git.py` :: `current_head` (L180)
-- `core/services/agent_worktree_git.py` :: `ensure_dir` (L168)
-- `core/services/agent_worktree_git.py` :: `path_is_inside` (L163)
-- `core/services/agent_worktree_git.py` :: `ref_exists` (L184)
-- `core/services/agent_worktree_git.py` :: `resolve_commit` (L82)
-- `core/services/agent_worktree_git.py` :: `run_git` (L39)
-- `core/services/agent_worktree_git.py` :: `safe_name` (L59)
-- `core/services/agent_worktree_git.py` :: `safe_ref` (L52)
-- `core/services/agent_worktree_git.py` :: `set_ref` (L222)
-- `core/services/agent_worktree_git.py` :: `stage_all` (L109)
-- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L83)
-- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L49)
-- `core/services/agent_worktrees.py` :: `get` (L185)
-- `core/services/agent_worktrees.py` :: `get_for_assignment` (L189)
-- `core/services/agent_worktrees.py` :: `quota_status` (L129)
-- `core/services/agent_worktrees.py` :: `worktree_root` (L79)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L242)
+- `core/services/agent_worktree_git.py` :: `add_worktree` (L101)
+- `core/services/agent_worktree_git.py` :: `changed_files` (L121)
+- `core/services/agent_worktree_git.py` :: `commit_tree` (L216)
+- `core/services/agent_worktree_git.py` :: `commits_since` (L129)
+- `core/services/agent_worktree_git.py` :: `current_head` (L186)
+- `core/services/agent_worktree_git.py` :: `ensure_dir` (L174)
+- `core/services/agent_worktree_git.py` :: `path_is_inside` (L169)
+- `core/services/agent_worktree_git.py` :: `ref_exists` (L190)
+- `core/services/agent_worktree_git.py` :: `resolve_commit` (L83)
+- `core/services/agent_worktree_git.py` :: `run_git` (L40)
+- `core/services/agent_worktree_git.py` :: `safe_name` (L60)
+- `core/services/agent_worktree_git.py` :: `safe_ref` (L53)
+- `core/services/agent_worktree_git.py` :: `set_ref` (L228)
+- `core/services/agent_worktree_git.py` :: `stage_all` (L110)
+- `core/services/agent_worktree_gitdir.py` :: `sandbox_env` (L120)
+- `core/services/agent_worktree_gitdir.py` :: `work_ref` (L62)
+- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L84)
+- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L50)
+- `core/services/agent_worktrees.py` :: `get` (L186)
+- `core/services/agent_worktrees.py` :: `get_for_assignment` (L190)
+- `core/services/agent_worktrees.py` :: `quota_status` (L130)
+- `core/services/agent_worktrees.py` :: `worktree_root` (L80)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L245)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

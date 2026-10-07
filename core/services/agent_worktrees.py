@@ -25,6 +25,7 @@ from typing import Any
 
 from core.runtime.db_agent_contract import ContractError, _conn, _now_iso, _require, _row
 from core.services import agent_worktree_git as g
+from core.services import agent_worktree_gitdir as agd
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +213,7 @@ def materialize(*, worktree_id: str) -> dict[str, Any]:
         os.makedirs(os.path.dirname(wt["path"]), exist_ok=True)
         g.add_worktree(wt["repo_path"], wt["path"], wt["branch"], wt["base_commit"])
         gitdir = g.read_gitdir(wt["repo_path"], wt["path"])
+        agd.create(wt["repo_path"], wt["path"], wt["branch"], wt["base_commit"])
     except (g.GitError, OSError) as exc:
         logger.warning("worktree %s kunne ikke oprettes", worktree_id, exc_info=True)
         _discard_partial(wt)
@@ -227,6 +229,7 @@ def _discard_partial(wt: dict[str, Any]) -> None:
     except g.GitError:
         shutil.rmtree(wt["path"], ignore_errors=True)
         logger.warning("delvist worktree %s ryddet med rmtree", wt["worktree_id"], exc_info=True)
+    agd.remove(wt["repo_path"], wt["path"])
 
 
 def provision(*, owner_user_id: str, assignment_id: str, repo_path: str, base_ref: str = "HEAD",
@@ -250,7 +253,7 @@ def check_growth(*, worktree_id: str) -> dict[str, Any]:
     wt = get(worktree_id=worktree_id)
     if wt is None or wt["status"] != "active":
         return {"over_quota": False, "size_bytes": (wt or {}).get("size_bytes", 0)}
-    size = g.tree_size(wt["path"])
+    size = g.tree_size(wt["path"]) + g.tree_size(agd.gitdir_path(wt["path"]))
     free, floor = _free_floor(wt["path"])
     over = size > PER_ASSIGNMENT_BYTES or free < floor
     _set(worktree_id, size_bytes=size, over_quota=1 if over else 0,
@@ -278,7 +281,8 @@ def snapshot_for_assignment(*, assignment_id: str) -> dict[str, Any] | None:
     try:
         diff = g.diff_against(wt["gitdir"], wt["path"], wt["base_commit"])
         files = g.changed_files(wt["gitdir"], wt["path"], wt["base_commit"])
-        commits = g.commits_since(wt["gitdir"], wt["path"], wt["base_commit"])
+        agd.import_agent_work(wt["repo_path"], wt["path"], wt["branch"], assignment_id)
+        commits = agd.commits_since(wt["repo_path"], wt["base_commit"], assignment_id)
     except g.GitError as exc:
         logger.warning("kunne ikke laese aendringerne i %s", wt["worktree_id"], exc_info=True)
         _set(wt["worktree_id"], status="retained", retained_at=_now_iso(), last_error=str(exc)[:300])
@@ -296,7 +300,7 @@ def snapshot_for_assignment(*, assignment_id: str) -> dict[str, Any] | None:
         except Exception as exc:                          # f.eks. ArtifactTooLarge: worktree'et bevares
             logger.warning("%s kunne ikke gemmes for %s", name, assignment_id, exc_info=True)
             summary["errors"].append(f"{name}: {type(exc).__name__}")
-    size = g.tree_size(wt["path"])
+    size = g.tree_size(wt["path"]) + g.tree_size(agd.gitdir_path(wt["path"]))
     _set(wt["worktree_id"], status="retained", size_bytes=size, retained_at=_now_iso(),
          last_error="; ".join(summary["errors"])[:300])
     return summary
@@ -337,6 +341,7 @@ def _verified_remove(wt: dict[str, Any]) -> bool:
     except g.GitError:
         logger.warning("oprydning af %s fejlede", wt["worktree_id"], exc_info=True)
         return False
+    agd.remove(wt["repo_path"], wt["path"])
     return True
 
 
@@ -353,7 +358,8 @@ def _archive(wt: dict[str, Any]) -> bool:
         art.write_artifact(name="diff.patch", data=g.diff_against(wt["gitdir"], wt["path"], wt["base_commit"]),
                            **common)
         tmp = Path(wt["path"]).parent / f"{wt['assignment_id']}.bundle.tmp"
-        if g.make_bundle(wt["repo_path"], wt["branch"], wt["base_commit"], str(tmp)):
+        tip = agd.import_agent_work(wt["repo_path"], wt["path"], wt["branch"], wt["assignment_id"])
+        if tip and g.make_bundle(wt["repo_path"], agd.work_ref(wt["assignment_id"]), wt["base_commit"], str(tmp)):
             art.write_artifact(name="worktree.bundle", data=tmp.read_bytes(), **common)
             tmp.unlink(missing_ok=True)
         return True

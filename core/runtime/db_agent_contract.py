@@ -61,6 +61,7 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
         ("owner_user_id", f"TEXT NOT NULL DEFAULT '{LEGACY_UNSCOPED}'"),
         ("owner_session_id", "TEXT NOT NULL DEFAULT ''"),
         ("lifecycle_status", "TEXT NOT NULL DEFAULT 'available'"),
+        ("closed_at", "TEXT NOT NULL DEFAULT ''"),     # retention (12.1): 90 dages uret efter lukning
     ])
     _add_columns(conn, "agent_runs", [
         ("assignment_id", "TEXT NOT NULL DEFAULT ''"),
@@ -667,8 +668,9 @@ def set_lifecycle(*, agent_id: str, owner_user_id: str, lifecycle_status: str) -
         raise ContractError("INVALID_TRANSITION", lifecycle_status)
     conn = _conn()
     cur = conn.execute(
-        "UPDATE agent_registry SET lifecycle_status=? WHERE agent_id=? AND owner_user_id=? "
-        "AND lifecycle_status != 'closed'", (lifecycle_status, agent_id, owner_user_id))
+        "UPDATE agent_registry SET lifecycle_status=?, closed_at=CASE WHEN ?='closed' THEN ? ELSE closed_at END "
+        "WHERE agent_id=? AND owner_user_id=? AND lifecycle_status != 'closed'",
+        (lifecycle_status, lifecycle_status, _now_iso(), agent_id, owner_user_id))
     conn.commit()
     return cur.rowcount == 1
 

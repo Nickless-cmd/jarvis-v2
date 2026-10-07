@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_verdict_ledger.py`
+_Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent tabel._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record` | `(nerve, cluster, decision, reason=…)` | Akkumulér ét verdict in-memory. Billig, låst, kaster ALDRIG. | [src](../../../core/services/gate_verdict_ledger.py#L27) |
+| function | `_drain` | `()` | Snapshot + nulstil akkumulatoren under lås. Returnerer delta-liste til UPSERT. | [src](../../../core/services/gate_verdict_ledger.py#L53) |
+| function | `_requeue` | `(deltas)` | Læg ubekræftede deltas TILBAGE i akkumulatoren (merge-forward), så en fejlet flush | [src](../../../core/services/gate_verdict_ledger.py#L67) |
+| function | `flush` | `()` | Skriv akkumulerede deltas til den persistente tabel. Returnerer antal rækker rørt. | [src](../../../core/services/gate_verdict_ledger.py#L100) |
+| function | `summary` | `()` | Aggregeret verdict-fordeling pr. nerve fra den persistente tabel (survives restart). | [src](../../../core/services/gate_verdict_ledger.py#L125) |
+
+## `core/services/ghost_networks.py`
+_Ghost Networks — spor af mønstre der holdt op med at være aktive._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kernen` | `(navn)` | Skaer kildens praefiks fra: «Private inner note: X» -> «X». | [src](../../../core/services/ghost_networks.py#L70) |
+| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L82) |
+| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L92) |
+| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L96) |
+| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L106) |
+| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L129) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L135) |
+| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L162) |
+| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L175) |
+| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L180) |
+| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L184) |
+
 ## `core/services/git_actions.py`
 _Rolle-aware git-eksekvering for code mode._
 
@@ -554,27 +582,4 @@ _Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
 | function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
 | function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
 | function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
-
-## `core/services/hollow_promise_guard.py`
-_Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_last_sentence` | `(text)` | Sidste hele sætning. Løftet står dér — det er dét man efterlades med. | [src](../../../core/services/hollow_promise_guard.py#L140) |
-| function | `is_promise_of_action` | `(text)` | True hvis `text` lover at assistenten tager en handling imminent. Self-safe. | [src](../../../core/services/hollow_promise_guard.py#L146) |
-| function | `is_deferred_text_promise` | `(text)` | True for a promise to emit another prose section after this run ends. | [src](../../../core/services/hollow_promise_guard.py#L179) |
-| function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…, last_round_tool_calls=…)` | Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L190) |
-| function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L222) |
-
-## `core/services/hollow_promise_round.py`
-_Hollow-promise follow-through (redesign 2026-09-04)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supports_forced_tool_choice` | `(provider)` | — | [src](../../../core/services/hollow_promise_round.py#L33) |
-| function | `next_round_tool_choice` | `(*, force_summary, hollow_force, provider)` | Sampling param for the next follow-up round. | [src](../../../core/services/hollow_promise_round.py#L37) |
-| function | `_publish` | `(kind, payload)` | — | [src](../../../core/services/hollow_promise_round.py#L50) |
-| function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
-| function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
-| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
 

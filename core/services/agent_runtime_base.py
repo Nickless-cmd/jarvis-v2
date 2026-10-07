@@ -172,8 +172,9 @@ def _build_agent_tools_payload(
         return []
     out: list[dict] = []
     # Agent-kun-vaerktoejer (findes ikke i Jarvis' katalog): kun de navne agentens allowlist nævner.
+    from core.tools.agent_memory_tools import MEMORY_TOOL_DEFINITIONS
     from core.tools.agent_worktree_tools import WT_TOOL_DEFINITIONS
-    catalog = [*(catalog or []), *[d for d in WT_TOOL_DEFINITIONS
+    catalog = [*(catalog or []), *[d for d in (*WT_TOOL_DEFINITIONS, *MEMORY_TOOL_DEFINITIONS)
                                     if d["function"]["name"] in names]]
     for tool in catalog or []:
         if not isinstance(tool, dict):
@@ -226,7 +227,7 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
     # Serverens egen identitet for kaldet. Et `_runtime_agent_id` modellen selv har skrevet fjernes ALTID;
     # kun wt_*-vaerktoejerne (der slaar sit worktree op herfra) faar den rigtige sat ind.
     arguments.pop("_runtime_agent_id", None)
-    if name in ("wt_bash", "wt_write_file"):
+    if name in ("wt_bash", "wt_write_file", "agent_note"):
         arguments["_runtime_agent_id"] = agent_id
     try:
         from core.tools.simple_tools import execute_tool

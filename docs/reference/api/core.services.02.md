@@ -45,6 +45,20 @@ _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 | function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L59) |
 | function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L69) |
 
+## `core/services/agent_retention.py`
+_Retention for agentartefakter og agentens hukommelse (agent-contract-v1 leverance C, hul 4; spec 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_retention.py#L50) |
+| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_retention.py#L54) |
+| function | `_assignment_state` | `(conn, assignment_id, names_worktree)` | Hvorfor (``reason``) et assignments artefakter er beskyttet - eller hvornaar de udloeber (``expires``). | [src](../../../core/services/agent_retention.py#L62) |
+| function | `_expire` | `(conn, rec, now)` | Slet filen (kun hvis stien er den forventede) og goer posten til en tombstone. Idempotent. | [src](../../../core/services/agent_retention.py#L110) |
+| function | `sweep_artifacts` | `(*, now=…)` | — | [src](../../../core/services/agent_retention.py#L137) |
+| function | `sweep_memory` | `(*, now=…)` | Luk-retention for agentens egen hukommelse. Roerer aldrig en agent der ikke er ``closed``. | [src](../../../core/services/agent_retention.py#L165) |
+| function | `run` | `(*, now=…)` | Hele retentionrunden: worktrees (7/14/30 dage), artefakter, hukommelse. Hver del er uafhaengig. | [src](../../../core/services/agent_retention.py#L202) |
+| function | `run_if_due` | `()` | Throttlet til højst én runde i timen pr. proces (runden er idempotent, saa to processer er ufarligt). | [src](../../../core/services/agent_retention.py#L218) |
+
 ## `core/services/agent_runtime.py`
 _Agent runtime — sub-agents, councils, swarms (facade)._
 
@@ -60,22 +74,22 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L110) |
 | function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L125) |
 | function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L145) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L188) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L243) |
-| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L287) |
-| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L290) |
-| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L301) |
-| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L316) |
-| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L319) |
-| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L340) |
-| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L343) |
-| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L352) |
-| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L368) |
-| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L406) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L500) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L549) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L688) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L692) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L189) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L244) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L288) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L291) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L302) |
+| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L317) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L320) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L341) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L344) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L353) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L369) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L407) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L501) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L550) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L689) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L693) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -109,32 +123,32 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L79) |
 | function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L112) |
 | function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…, contract=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L137) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L450) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L459) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L472) |
-| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L479) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L540) |
-| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L564) |
-| function | `_live_run` | `(run_id)` | Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse. | [src](../../../core/services/agent_runtime_spawn.py#L577) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L587) |
-| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L628) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1104) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1132) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1160) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1164) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1202) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1407) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1451) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1460) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1499) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1529) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1544) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1563) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1580) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1599) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1621) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1661) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1678) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L455) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L464) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L477) |
+| function | `_handle_agent_spawn_calls` | `(*, text, parent_agent_id)` | Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used). | [src](../../../core/services/agent_runtime_spawn.py#L484) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L545) |
+| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L569) |
+| function | `_live_run` | `(run_id)` | Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse. | [src](../../../core/services/agent_runtime_spawn.py#L582) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L592) |
+| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L633) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1109) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1137) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1165) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1169) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1207) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1412) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1456) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1465) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1504) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1534) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1549) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1568) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1585) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1604) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1626) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1666) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1683) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -154,13 +168,18 @@ _bubblewrap-sandbox til en agent-worker (agent-contract-v1 C6b, spec 12.1)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `SandboxUnavailable` | `` | Sandboxen kan ikke etableres - agentens loekke maa ikke koere usandboxet. | [src](../../../core/services/agent_sandbox.py#L27) |
-| function | `bwrap_path` | `()` | — | [src](../../../core/services/agent_sandbox.py#L31) |
-| function | `python_prefixes` | `()` | — | [src](../../../core/services/agent_sandbox.py#L38) |
-| function | `build_bwrap_argv` | `(command, *, pass_fds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…)` | Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen). | [src](../../../core/services/agent_sandbox.py#L46) |
-| function | `resource_prefix` | `(*, address_space, cpu_seconds, open_files=…, file_size=…)` | ``prlimit`` foer bwrap: graenserne arves af workeren og kan ikke haeves derinde. | [src](../../../core/services/agent_sandbox.py#L75) |
-| function | `spawn_in_sandbox` | `(command, *, pass_fds=…, stdout=…, stderr=…, address_space=…, cpu_seconds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, stdin=…, file_size=…)` | Start ``command`` i sandboxen. Egen processgruppe, saa den kan draebes samlet. | [src](../../../core/services/agent_sandbox.py#L87) |
-| function | `sandbox_usable` | `()` | Smoketest: kan et trivielt program koere i sandboxen? (ja/nej, grund) | [src](../../../core/services/agent_sandbox.py#L103) |
+| class | `SandboxUnavailable` | `` | Sandboxen kan ikke etableres - agentens loekke maa ikke koere usandboxet. | [src](../../../core/services/agent_sandbox.py#L45) |
+| function | `bwrap_path` | `()` | — | [src](../../../core/services/agent_sandbox.py#L49) |
+| function | `python_prefixes` | `()` | — | [src](../../../core/services/agent_sandbox.py#L56) |
+| function | `build_bwrap_argv` | `(command, *, pass_fds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, mounts=…)` | Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen). | [src](../../../core/services/agent_sandbox.py#L64) |
+| function | `pids_limit_disabled` | `()` | — | [src](../../../core/services/agent_sandbox.py#L105) |
+| function | `scope_env` | `()` | Miljoeet ``systemd-run --user`` skal bruge. En systemd-service har ofte ikke ``XDG_RUNTIME_DIR``. | [src](../../../core/services/agent_sandbox.py#L109) |
+| function | `_scope_argv` | `(limit)` | — | [src](../../../core/services/agent_sandbox.py#L118) |
+| function | `cgroup_pids_available` | `(*, force=…)` | Kan vi lave en cgroup-scope med ``TasksMax`` for den aktuelle bruger? Cachet i 30 s (brugerens | [src](../../../core/services/agent_sandbox.py#L125) |
+| function | `pids_prefix` | `(limit)` | ``systemd-run --user --scope -p TasksMax=N`` foer bwrap, eller ``[]`` hvis graensen er fravalgt. | [src](../../../core/services/agent_sandbox.py#L146) |
+| function | `resource_prefix` | `(*, address_space, cpu_seconds, open_files=…, file_size=…)` | ``prlimit`` foer bwrap: graenserne arves af workeren og kan ikke haeves derinde. | [src](../../../core/services/agent_sandbox.py#L158) |
+| function | `spawn_in_sandbox` | `(command, *, pass_fds=…, stdout=…, stderr=…, address_space=…, cpu_seconds=…, extra_env=…, worker_files=…, rw_binds=…, chdir=…, stdin=…, file_size=…, mounts=…, pids_limit=…)` | Start ``command`` i sandboxen under en cgroup-scope med ``TasksMax=pids_limit`` (fork-bombe-vaern). | [src](../../../core/services/agent_sandbox.py#L170) |
+| function | `sandbox_usable` | `()` | Smoketest: kan et trivielt program koere i sandboxen? (ja/nej, grund) | [src](../../../core/services/agent_sandbox.py#L189) |
 
 ## `core/services/agent_self_evaluation.py`
 _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
@@ -329,77 +348,92 @@ _Skrivning i et agent-worktree - KUN gennem en sandbox (agent-contract-v1 C5b, s
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ExecError` | `` | Kommandoen blev afvist foer den koerte (stabil ``code``). | [src](../../../core/services/agent_worktree_exec.py#L48) |
-| method | `ExecError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L51) |
-| function | `_active_worktree` | `(worktree_id)` | — | [src](../../../core/services/agent_worktree_exec.py#L56) |
-| function | `_clip` | `(data)` | — | [src](../../../core/services/agent_worktree_exec.py#L69) |
-| function | `_run` | `(wt, command, *, timeout_s, stdin_bytes=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L74) |
-| function | `run_in_worktree` | `(*, worktree_id, command, timeout_s=…)` | Koer en shell-kommando med worktree'et som /work. Kaster ``ExecError`` hvis den afvises. | [src](../../../core/services/agent_worktree_exec.py#L108) |
-| function | `write_file_in_worktree` | `(*, worktree_id, path, content)` | Skriv en fil (relativ sti) i worktree'et. Stien loeses INDE i sandboxen og afvises hvis den | [src](../../../core/services/agent_worktree_exec.py#L116) |
+| class | `ExecError` | `` | Kommandoen blev afvist foer den koerte (stabil ``code``). | [src](../../../core/services/agent_worktree_exec.py#L51) |
+| method | `ExecError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L54) |
+| function | `_active_worktree` | `(worktree_id)` | — | [src](../../../core/services/agent_worktree_exec.py#L59) |
+| function | `_clip` | `(data)` | — | [src](../../../core/services/agent_worktree_exec.py#L72) |
+| function | `_run` | `(wt, command, *, timeout_s, stdin_bytes=…, with_git=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L77) |
+| function | `run_in_worktree` | `(*, worktree_id, command, timeout_s=…)` | Koer en shell-kommando med worktree'et som /work. Kaster ``ExecError`` hvis den afvises. | [src](../../../core/services/agent_worktree_exec.py#L112) |
+| function | `write_file_in_worktree` | `(*, worktree_id, path, content)` | Skriv en fil (relativ sti) i worktree'et. Stien loeses INDE i sandboxen og afvises hvis den | [src](../../../core/services/agent_worktree_exec.py#L120) |
 
 ## `core/services/agent_worktree_git.py`
 _Git-operationer for agent-worktrees (agent-contract-v1 C5a, spec 8.1)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `GitError` | `` | — | [src](../../../core/services/agent_worktree_git.py#L25) |
-| method | `GitError.__init__` | `(self, detail, *, returncode=…)` | — | [src](../../../core/services/agent_worktree_git.py#L26) |
-| function | `_env` | `(extra=…)` | — | [src](../../../core/services/agent_worktree_git.py#L31) |
-| function | `run_git` | `(args, *, cwd=…, env=…, timeout=…, check=…, input_bytes=…)` | — | [src](../../../core/services/agent_worktree_git.py#L39) |
-| function | `safe_ref` | `(ref)` | — | [src](../../../core/services/agent_worktree_git.py#L52) |
-| function | `safe_name` | `(name, what=…)` | — | [src](../../../core/services/agent_worktree_git.py#L59) |
-| function | `validate_repo` | `(path, allowed_roots)` | Returner repoets toplevel (realpath) hvis det ligger under en tilladt rod og er et almindeligt | [src](../../../core/services/agent_worktree_git.py#L65) |
-| function | `resolve_commit` | `(repo, ref=…)` | — | [src](../../../core/services/agent_worktree_git.py#L82) |
-| function | `read_gitdir` | `(repo, path)` | Hovedrepoets administrationsmappe for et NYOPRETTET worktree, laest fra dets ``.git``-fil | [src](../../../core/services/agent_worktree_git.py#L87) |
-| function | `add_worktree` | `(repo, path, branch, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L100) |
-| function | `_wt_env` | `(gitdir, path)` | — | [src](../../../core/services/agent_worktree_git.py#L105) |
-| function | `stage_all` | `(gitdir, path)` | — | [src](../../../core/services/agent_worktree_git.py#L109) |
-| function | `diff_against` | `(gitdir, path, base_commit)` | Hele agentens aendring ift. basen - ogsaa nye og slettede filer og commits (binaer-sikker). | [src](../../../core/services/agent_worktree_git.py#L113) |
-| function | `changed_files` | `(gitdir, path, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L120) |
-| function | `commits_since` | `(gitdir, path, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L128) |
-| function | `make_bundle` | `(repo, branch, base_commit, dest)` | Bundle af agentens commits (``base..branch``). ``False`` naar der ingen commits er. | [src](../../../core/services/agent_worktree_git.py#L133) |
-| function | `remove_worktree` | `(repo, path, branch)` | Fjern worktree + branch. Idempotent: et allerede fjernet worktree er ikke en fejl. | [src](../../../core/services/agent_worktree_git.py#L142) |
-| function | `tree_size` | `(path)` | Samlet filstoerrelse (bytes) uden at foelge symlinks ud af traeet. | [src](../../../core/services/agent_worktree_git.py#L151) |
-| function | `path_is_inside` | `(path, root)` | — | [src](../../../core/services/agent_worktree_git.py#L163) |
-| function | `ensure_dir` | `(path)` | — | [src](../../../core/services/agent_worktree_git.py#L168) |
-| function | `current_head` | `(repo)` | — | [src](../../../core/services/agent_worktree_git.py#L180) |
-| function | `ref_exists` | `(repo, ref)` | — | [src](../../../core/services/agent_worktree_git.py#L184) |
-| function | `commit_worktree_tree` | `(gitdir, path, base_commit, message)` | Skriv agentens samlede arbejdstilstand som ÉT commit ovenpaa basen (server-side, med det gemte gitdir). | [src](../../../core/services/agent_worktree_git.py#L188) |
-| function | `merge_tree` | `(repo, ours, theirs)` | ``git merge-tree --write-tree``: (tree-oid, []) ved ren fletning, (None, konfliktfiler) ved konflikt. | [src](../../../core/services/agent_worktree_git.py#L197) |
-| function | `commit_tree` | `(repo, tree, parents, message)` | — | [src](../../../core/services/agent_worktree_git.py#L210) |
-| function | `create_ref` | `(repo, ref, oid)` | Opret ``ref`` -> ``oid`` KUN hvis den ikke findes (old-value = nul): en eksisterende gren overskrives aldrig. | [src](../../../core/services/agent_worktree_git.py#L217) |
-| function | `set_ref` | `(repo, ref, new, old)` | — | [src](../../../core/services/agent_worktree_git.py#L222) |
+| class | `GitError` | `` | — | [src](../../../core/services/agent_worktree_git.py#L26) |
+| method | `GitError.__init__` | `(self, detail, *, returncode=…)` | — | [src](../../../core/services/agent_worktree_git.py#L27) |
+| function | `_env` | `(extra=…)` | — | [src](../../../core/services/agent_worktree_git.py#L32) |
+| function | `run_git` | `(args, *, cwd=…, env=…, timeout=…, check=…, input_bytes=…)` | — | [src](../../../core/services/agent_worktree_git.py#L40) |
+| function | `safe_ref` | `(ref)` | — | [src](../../../core/services/agent_worktree_git.py#L53) |
+| function | `safe_name` | `(name, what=…)` | — | [src](../../../core/services/agent_worktree_git.py#L60) |
+| function | `validate_repo` | `(path, allowed_roots)` | Returner repoets toplevel (realpath) hvis det ligger under en tilladt rod og er et almindeligt | [src](../../../core/services/agent_worktree_git.py#L66) |
+| function | `resolve_commit` | `(repo, ref=…)` | — | [src](../../../core/services/agent_worktree_git.py#L83) |
+| function | `read_gitdir` | `(repo, path)` | Hovedrepoets administrationsmappe for et NYOPRETTET worktree, laest fra dets ``.git``-fil | [src](../../../core/services/agent_worktree_git.py#L88) |
+| function | `add_worktree` | `(repo, path, branch, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L101) |
+| function | `_wt_env` | `(gitdir, path)` | — | [src](../../../core/services/agent_worktree_git.py#L106) |
+| function | `stage_all` | `(gitdir, path)` | — | [src](../../../core/services/agent_worktree_git.py#L110) |
+| function | `diff_against` | `(gitdir, path, base_commit)` | Hele agentens aendring ift. basen - ogsaa nye og slettede filer og commits (binaer-sikker). | [src](../../../core/services/agent_worktree_git.py#L114) |
+| function | `changed_files` | `(gitdir, path, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L121) |
+| function | `commits_since` | `(gitdir, path, base_commit)` | — | [src](../../../core/services/agent_worktree_git.py#L129) |
+| function | `make_bundle` | `(repo, branch, base_commit, dest)` | Bundle af agentens commits (``base..branch``). ``False`` naar der ingen commits er. | [src](../../../core/services/agent_worktree_git.py#L134) |
+| function | `remove_worktree` | `(repo, path, branch)` | Fjern worktree + branch. Idempotent: et allerede fjernet worktree er ikke en fejl. | [src](../../../core/services/agent_worktree_git.py#L143) |
+| function | `tree_size` | `(path)` | Samlet filstoerrelse (bytes) uden at foelge symlinks ud af traeet. | [src](../../../core/services/agent_worktree_git.py#L157) |
+| function | `path_is_inside` | `(path, root)` | — | [src](../../../core/services/agent_worktree_git.py#L169) |
+| function | `ensure_dir` | `(path)` | — | [src](../../../core/services/agent_worktree_git.py#L174) |
+| function | `current_head` | `(repo)` | — | [src](../../../core/services/agent_worktree_git.py#L186) |
+| function | `ref_exists` | `(repo, ref)` | — | [src](../../../core/services/agent_worktree_git.py#L190) |
+| function | `commit_worktree_tree` | `(gitdir, path, base_commit, message)` | Skriv agentens samlede arbejdstilstand som ÉT commit ovenpaa basen (server-side, med det gemte gitdir). | [src](../../../core/services/agent_worktree_git.py#L194) |
+| function | `merge_tree` | `(repo, ours, theirs)` | ``git merge-tree --write-tree``: (tree-oid, []) ved ren fletning, (None, konfliktfiler) ved konflikt. | [src](../../../core/services/agent_worktree_git.py#L203) |
+| function | `commit_tree` | `(repo, tree, parents, message)` | — | [src](../../../core/services/agent_worktree_git.py#L216) |
+| function | `create_ref` | `(repo, ref, oid)` | Opret ``ref`` -> ``oid`` KUN hvis den ikke findes (old-value = nul): en eksisterende gren overskrives aldrig. | [src](../../../core/services/agent_worktree_git.py#L223) |
+| function | `set_ref` | `(repo, ref, new, old)` | — | [src](../../../core/services/agent_worktree_git.py#L228) |
+
+## `core/services/agent_worktree_gitdir.py`
+_Agentens EGEN git-administrationsmappe (agent-contract-v1 leverance C, hul 1; spec 8.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `gitdir_path` | `(worktree_path)` | Den private gitdir ligger ved siden af worktree'et (altsaa UDEN for det der mountes som /work). | [src](../../../core/services/agent_worktree_gitdir.py#L57) |
+| function | `work_ref` | `(assignment_id)` | — | [src](../../../core/services/agent_worktree_gitdir.py#L62) |
+| function | `_objects_chain` | `(repo)` | Hovedrepoets objektmappe + dens egne alternates (kaeden), som absolutte stier der findes. | [src](../../../core/services/agent_worktree_gitdir.py#L66) |
+| function | `create` | `(repo, path, branch, base_commit)` | Opret den private gitdir for et NYT worktree (foer agenten har roert noget). Returnerer stien. | [src](../../../core/services/agent_worktree_gitdir.py#L85) |
+| function | `sandbox_mounts` | `(repo, path)` | Mounts til ``agent_sandbox`` der giver agenten git i sin egen gitdir. ``None`` hvis worktree'et | [src](../../../core/services/agent_worktree_gitdir.py#L103) |
+| function | `sandbox_env` | `()` | — | [src](../../../core/services/agent_worktree_gitdir.py#L120) |
+| function | `import_agent_work` | `(repo, path, branch, assignment_id)` | Hent agentens commits ind i hovedrepoet som ``refs/agent-work/<assignment>`` og returner tippen | [src](../../../core/services/agent_worktree_gitdir.py#L128) |
+| function | `commits_since` | `(repo, base_commit, assignment_id)` | Agentens importerede commits ``base..refs/agent-work/<id>`` (tom hvis intet er importeret). | [src](../../../core/services/agent_worktree_gitdir.py#L148) |
+| function | `remove` | `(repo, path)` | Fjern den private gitdir og det importerede ref. Idempotent. | [src](../../../core/services/agent_worktree_gitdir.py#L156) |
 
 ## `core/services/agent_worktrees.py`
 _Worktrees til skrivende kodeagenter (agent-contract-v1 C5a, spec 8.1 og 12.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_worktree_tables` | `(conn)` | — | [src](../../../core/services/agent_worktrees.py#L49) |
-| function | `worktree_root` | `()` | — | [src](../../../core/services/agent_worktrees.py#L79) |
-| function | `allowed_workspace_roots` | `()` | — | [src](../../../core/services/agent_worktrees.py#L83) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_worktrees.py#L88) |
-| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_worktrees.py#L92) |
-| function | `_estimate_bytes` | `(repo, commit)` | — | [src](../../../core/services/agent_worktrees.py#L96) |
-| function | `_free_floor` | `(path)` | — | [src](../../../core/services/agent_worktrees.py#L106) |
-| function | `_holding_bytes` | `(conn, target)` | — | [src](../../../core/services/agent_worktrees.py#L111) |
-| function | `_quota` | `(conn, target)` | Taellingerne paa en GIVEN forbindelse. VIGTIGT: ``connect()`` ruller en aaben transaktion tilbage | [src](../../../core/services/agent_worktrees.py#L117) |
-| function | `quota_status` | `(*, target=…)` | — | [src](../../../core/services/agent_worktrees.py#L129) |
-| function | `reserve` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | Reserver plads og en plads i kvoten ATOMISK. Intet er oprettet paa disk endnu. | [src](../../../core/services/agent_worktrees.py#L135) |
-| function | `get` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L185) |
-| function | `get_for_assignment` | `(*, owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_worktrees.py#L189) |
-| function | `_set` | `(worktree_id, **fields)` | — | [src](../../../core/services/agent_worktrees.py#L194) |
-| function | `materialize` | `(*, worktree_id)` | Opret selve git-worktree'et. Alt-eller-intet: ved fejl ryddes det halve, og reservationen frigives. | [src](../../../core/services/agent_worktrees.py#L202) |
-| function | `_discard_partial` | `(wt)` | — | [src](../../../core/services/agent_worktrees.py#L224) |
-| function | `provision` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | reserve + materialize som ét skridt; ved fejl er intet efterladt og reservationen frigivet. | [src](../../../core/services/agent_worktrees.py#L232) |
-| function | `writes_allowed` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L242) |
-| function | `check_growth` | `(*, worktree_id)` | Maal diskforbruget. Over kvoten (eller for lidt ledig plads) stopper NYE skrivninger og bevarer | [src](../../../core/services/agent_worktrees.py#L247) |
-| function | `snapshot_for_assignment` | `(*, assignment_id)` | Ved terminalt udfald: gem diff, aendrede filer og commits som artefakter, og bevar worktree'et | [src](../../../core/services/agent_worktrees.py#L263) |
-| function | `decide` | `(*, owner_user_id, worktree_id, decision)` | Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen | [src](../../../core/services/agent_worktrees.py#L307) |
-| function | `_verified_remove` | `(wt)` | Fjern et worktree - KUN hvis posten, ejeren og stien hænger sammen. Returnerer om det lykkedes. | [src](../../../core/services/agent_worktrees.py#L322) |
-| function | `_archive` | `(wt)` | Pak diff + commits (bundle) i checksumverificerede artefakter foer fysisk oprydning. | [src](../../../core/services/agent_worktrees.py#L343) |
-| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L365) |
-| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L398) |
+| function | `ensure_worktree_tables` | `(conn)` | — | [src](../../../core/services/agent_worktrees.py#L50) |
+| function | `worktree_root` | `()` | — | [src](../../../core/services/agent_worktrees.py#L80) |
+| function | `allowed_workspace_roots` | `()` | — | [src](../../../core/services/agent_worktrees.py#L84) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_worktrees.py#L89) |
+| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_worktrees.py#L93) |
+| function | `_estimate_bytes` | `(repo, commit)` | — | [src](../../../core/services/agent_worktrees.py#L97) |
+| function | `_free_floor` | `(path)` | — | [src](../../../core/services/agent_worktrees.py#L107) |
+| function | `_holding_bytes` | `(conn, target)` | — | [src](../../../core/services/agent_worktrees.py#L112) |
+| function | `_quota` | `(conn, target)` | Taellingerne paa en GIVEN forbindelse. VIGTIGT: ``connect()`` ruller en aaben transaktion tilbage | [src](../../../core/services/agent_worktrees.py#L118) |
+| function | `quota_status` | `(*, target=…)` | — | [src](../../../core/services/agent_worktrees.py#L130) |
+| function | `reserve` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | Reserver plads og en plads i kvoten ATOMISK. Intet er oprettet paa disk endnu. | [src](../../../core/services/agent_worktrees.py#L136) |
+| function | `get` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L186) |
+| function | `get_for_assignment` | `(*, owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_worktrees.py#L190) |
+| function | `_set` | `(worktree_id, **fields)` | — | [src](../../../core/services/agent_worktrees.py#L195) |
+| function | `materialize` | `(*, worktree_id)` | Opret selve git-worktree'et. Alt-eller-intet: ved fejl ryddes det halve, og reservationen frigives. | [src](../../../core/services/agent_worktrees.py#L203) |
+| function | `_discard_partial` | `(wt)` | — | [src](../../../core/services/agent_worktrees.py#L226) |
+| function | `provision` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | reserve + materialize som ét skridt; ved fejl er intet efterladt og reservationen frigivet. | [src](../../../core/services/agent_worktrees.py#L235) |
+| function | `writes_allowed` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L245) |
+| function | `check_growth` | `(*, worktree_id)` | Maal diskforbruget. Over kvoten (eller for lidt ledig plads) stopper NYE skrivninger og bevarer | [src](../../../core/services/agent_worktrees.py#L250) |
+| function | `snapshot_for_assignment` | `(*, assignment_id)` | Ved terminalt udfald: gem diff, aendrede filer og commits som artefakter, og bevar worktree'et | [src](../../../core/services/agent_worktrees.py#L266) |
+| function | `decide` | `(*, owner_user_id, worktree_id, decision)` | Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen | [src](../../../core/services/agent_worktrees.py#L311) |
+| function | `_verified_remove` | `(wt)` | Fjern et worktree - KUN hvis posten, ejeren og stien hænger sammen. Returnerer om det lykkedes. | [src](../../../core/services/agent_worktrees.py#L326) |
+| function | `_archive` | `(wt)` | Pak diff + commits (bundle) i checksumverificerede artefakter foer fysisk oprydning. | [src](../../../core/services/agent_worktrees.py#L348) |
+| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L371) |
+| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L404) |
 
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._
@@ -609,28 +643,4 @@ _Pending runtime→app instruktioner (spec §18.5, Fase 2)._
 | function | `enqueue` | `(instruction)` | Validér + kø en app-instruktion. Returnerer record (med id/created_at) eller | [src](../../../core/services/app_dispatch_store.py#L33) |
 | function | `list_pending` | `()` | Uafgjorte instruktioner i kø-rækkefølge (desk poller). | [src](../../../core/services/app_dispatch_store.py#L58) |
 | function | `ack` | `(dispatch_id)` | Markér en instruktion som udført (consumeret af desk). | [src](../../../core/services/app_dispatch_store.py#L63) |
-
-## `core/services/approval_bridge_shadow.py`
-_Skygge for godkendelses-broen: ville den have sagt det samme?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L41) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L45) |
-| function | `taellere_fra_cache` | `()` | Læs tællerne fra en anden proces — se `settlement_shadow` for hvorfor | [src](../../../core/services/approval_bridge_shadow.py#L56) |
-| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/approval_bridge_shadow.py#L70) |
-| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville tænde en | [src](../../../core/services/approval_bridge_shadow.py#L76) |
-| function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L87) |
-| function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L105) |
-| function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L120) |
-| function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L178) |
-
-## `core/services/approval_expiry_daemon.py`
-_Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
-| function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
-| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L139) |
 

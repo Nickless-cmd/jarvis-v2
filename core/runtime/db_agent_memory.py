@@ -23,7 +23,7 @@ import sqlite3
 import uuid
 from typing import Any
 
-from core.runtime.db_agent_contract import ContractError, _conn, _now_iso, _require, _row
+from core.runtime.db_agent_contract import LEGACY_UNSCOPED, ContractError, _conn, _now_iso, _require, _row
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +173,25 @@ def retry_failed_projections() -> list[str]:
 
 # --- noter -----------------------------------------------------------------------------------
 
+def _insert_note(conn: sqlite3.Connection, *, owner: str, agent_id: str, content: str, author: str,
+                 source_assignment_id: str) -> str:
+    """Indsaet ny noteversion paa den MEDGIVNE forbindelse (kalderen ejer BEGIN IMMEDIATE/commit)."""
+    ag = conn.execute("SELECT owner_session_id FROM agent_registry WHERE agent_id=? AND owner_user_id=?",
+                      (agent_id, owner)).fetchone()
+    if ag is None:
+        raise ContractError("INVALID_SCOPE", "ukendt agent for denne ejer")
+    prev = conn.execute("SELECT note_id, version FROM agent_memory_notes WHERE agent_id=? "
+                        "ORDER BY version DESC LIMIT 1", (agent_id,)).fetchone()
+    note_id = f"note-{uuid.uuid4().hex[:16]}"
+    conn.execute(
+        "INSERT INTO agent_memory_notes (note_id, agent_id, owner_user_id, owner_session_id, "
+        "version, content, author, source_assignment_id, supersedes_note_id, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (note_id, agent_id, owner, ag["owner_session_id"], (prev["version"] + 1) if prev else 1,
+         content, author, source_assignment_id, prev["note_id"] if prev else "", _now_iso()))
+    return note_id
+
+
 def write_note(*, owner_user_id: str, agent_id: str, content: str, author: str,
                source_assignment_id: str = "") -> dict[str, Any]:
     """Skriv en NY version af agentens noter (den gamle bevares med aendringsspor)."""
@@ -185,24 +204,87 @@ def write_note(*, owner_user_id: str, agent_id: str, content: str, author: str,
     conn = _conn()
     conn.execute("BEGIN IMMEDIATE")
     try:
-        ag = conn.execute("SELECT owner_session_id FROM agent_registry WHERE agent_id=? AND "
-                          "owner_user_id=?", (agent_id, owner)).fetchone()
-        if ag is None:
-            raise ContractError("INVALID_SCOPE", "ukendt agent for denne ejer")
-        prev = conn.execute("SELECT note_id, version FROM agent_memory_notes WHERE agent_id=? "
-                            "ORDER BY version DESC LIMIT 1", (agent_id,)).fetchone()
-        note_id = f"note-{uuid.uuid4().hex[:16]}"
-        conn.execute(
-            "INSERT INTO agent_memory_notes (note_id, agent_id, owner_user_id, owner_session_id, "
-            "version, content, author, source_assignment_id, supersedes_note_id, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (note_id, agent_id, owner, ag["owner_session_id"], (prev["version"] + 1) if prev else 1,
-             content, author, source_assignment_id, prev["note_id"] if prev else "", _now_iso()))
+        note_id = _insert_note(conn, owner=owner, agent_id=agent_id, content=content, author=author,
+                               source_assignment_id=source_assignment_id)
         conn.commit()
     except BaseException:
         conn.rollback()
         raise
     return _row(conn.execute("SELECT * FROM agent_memory_notes WHERE note_id=?", (note_id,)).fetchone())
+
+
+# --- agentens EGET noteredskab (spec 7.2): identitet kommer fra serveren, aldrig fra modellen ----------------
+
+#: Hvor mange noteversioner ét assignment maa skrive - en loebsk agent maa ikke oversvoemme sit eget spor.
+MAX_NOTE_WRITES_PER_ASSIGNMENT = 10
+
+
+def _agent_principal(conn: sqlite3.Connection, agent_id: str) -> tuple[str, dict[str, Any]]:
+    """(ejer, aabent assignment) for en agent der maa bruge noteredskabet - ellers ``ContractError``."""
+    agent_id = (agent_id or "").strip()
+    if not agent_id:
+        raise ContractError("POLICY_DENIED", "kaldet har ingen agent-identitet")
+    ag = conn.execute("SELECT owner_user_id FROM agent_registry WHERE agent_id=?", (agent_id,)).fetchone()
+    owner = (ag["owner_user_id"] if ag else "") or ""
+    if not owner or owner == LEGACY_UNSCOPED:
+        raise ContractError("POLICY_DENIED", "agenten er ikke bundet til en ejer - ingen egen hukommelse")
+    a = conn.execute("SELECT * FROM agent_assignments WHERE agent_id=? AND owner_user_id=? AND status IN "
+                     "('queued','active','waiting') ORDER BY created_at DESC LIMIT 1",
+                     (agent_id, owner)).fetchone()
+    if a is None:
+        raise ContractError("POLICY_DENIED", "agenten har ingen aaben opgave - noter skrives under et run")
+    return owner, dict(a)
+
+
+def write_agent_note(*, agent_id: str, content: str) -> dict[str, Any]:
+    """Agenten skriver/retter sin EGEN note: ny version med forfatter ``agent:<id>``, kilde-assignment og
+    aendringsspor. Ejer, agent og assignment udledes af ``agent_id`` (serverens identitet); der er intet
+    argument til at udpege en andens hukommelse, og tidligere versioner/resumeer roeres aldrig."""
+    content = str(content or "").strip()
+    if not content:
+        raise ContractError("INVALID_SCOPE", "noten er tom")
+    if len(content) > MAX_NOTE_CHARS:
+        raise ContractError("CAPACITY", f"noten er over {MAX_NOTE_CHARS} tegn")
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        owner, a = _agent_principal(conn, agent_id)
+        used = conn.execute("SELECT COUNT(*) FROM agent_memory_notes WHERE agent_id=? AND "
+                            "source_assignment_id=? AND author=?",
+                            (agent_id, a["assignment_id"], f"agent:{agent_id}")).fetchone()[0]
+        if used >= MAX_NOTE_WRITES_PER_ASSIGNMENT:
+            raise ContractError("CAPACITY", f"{MAX_NOTE_WRITES_PER_ASSIGNMENT} noteskrivninger pr. opgave er brugt")
+        note_id = _insert_note(conn, owner=owner, agent_id=agent_id, content=content,
+                               author=f"agent:{agent_id}", source_assignment_id=a["assignment_id"])
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    row = _row(conn.execute("SELECT * FROM agent_memory_notes WHERE note_id=?", (note_id,)).fetchone())
+    return {k: row[k] for k in ("note_id", "version", "author", "source_assignment_id", "supersedes_note_id",
+                                "created_at")} | {"chars": len(content)}
+
+
+def read_agent_notes(*, agent_id: str, history: bool = False) -> dict[str, Any]:
+    """Agentens egne noter: nyeste version i fuld laengde, eller (``history``) versionssporet uden indhold."""
+    conn = _conn()
+    agent_id = (agent_id or "").strip()
+    ag = conn.execute("SELECT owner_user_id FROM agent_registry WHERE agent_id=?", (agent_id,)).fetchone() \
+        if agent_id else None
+    owner = (ag["owner_user_id"] if ag else "") or ""
+    if not owner or owner == LEGACY_UNSCOPED:
+        raise ContractError("POLICY_DENIED", "agenten er ikke bundet til en ejer - ingen egen hukommelse")
+    rows = conn.execute("SELECT * FROM agent_memory_notes WHERE agent_id=? AND owner_user_id=? "
+                        "ORDER BY version DESC", (agent_id, owner)).fetchall()
+    if history:
+        return {"versions": [{"version": r["version"], "author": r["author"], "created_at": r["created_at"],
+                              "source_assignment_id": r["source_assignment_id"], "chars": len(r["content"])}
+                             for r in rows]}
+    if not rows:
+        return {"note": None}
+    r = rows[0]
+    return {"note": {"version": r["version"], "author": r["author"], "created_at": r["created_at"],
+                     "source_assignment_id": r["source_assignment_id"], "content": r["content"]}}
 
 
 def grant_session_relation(*, owner_user_id: str, agent_id: str, session_id: str, granted_by: str) -> None:
@@ -257,6 +339,10 @@ def recall(*, owner_user_id: str, agent_id: str, session_id: str,
             " ORDER BY created_at DESC, summary_id DESC LIMIT ?", args_s + [MAX_SUMMARIES]).fetchall()
         problems = conn.execute("SELECT COUNT(*) FROM agent_memory_errors WHERE agent_id=? AND "
                                 "resolved_at=''", (agent_id,)).fetchone()[0]
+        # Udloebne artefakter (retention 12.1) staar som synlige tombstones - ikke som verificerbar evidens.
+        expired = {f"{r['run_id']}/{r['name']}" for r in conn.execute(
+            "SELECT run_id, name FROM agent_artifacts WHERE agent_id=? AND owner_user_id=? AND status='expired'",
+            (agent_id, owner))}
     except Exception as exc:
         logger.warning("agentens erindring kunne ikke laeses (%s)", agent_id, exc_info=True)
         msg = f"{type(exc).__name__}: {exc}"[:200]
@@ -268,7 +354,7 @@ def recall(*, owner_user_id: str, agent_id: str, session_id: str,
                      f"{' · kilde ' + note['source_assignment_id'] if note['source_assignment_id'] else ''}]\n"
                      f"{note['content']}")
     for s in sums:
-        refs = json.loads(s["evidence_refs_json"] or "[]")
+        refs = [r + (" [udloebet]" if r in expired else "") for r in json.loads(s["evidence_refs_json"] or "[]")]
         lines.append(f"[resume · assignment {s['assignment_id']} · {s['status']} · {s['created_at']}] "
                      f"gjort: {s['gjort']} | besluttet: {s['besluttet']} | aabent: {s['aabent']}"
                      f"{' | evidens: ' + ', '.join(refs) if refs else ''}")

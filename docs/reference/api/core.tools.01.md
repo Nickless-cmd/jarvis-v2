@@ -28,6 +28,15 @@ _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 | function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L273) |
 | function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L283) |
 
+## `core/tools/agent_memory_tools.py`
+_Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C, hul 3; spec 7.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_memory_tools.py#L43) |
+| function | `_exec_agent_note` | `(args)` | Identiteten er ``_runtime_agent_id`` (sat af serveren); intet i ``args`` kan udpege en anden agent. | [src](../../../core/tools/agent_memory_tools.py#L49) |
+| function | `_render` | `(res)` | — | [src](../../../core/tools/agent_memory_tools.py#L67) |
+
 ## `core/tools/agent_todo_tools.py`
 _Tool wrappers for the per-session todo tracker (agent_todos)._
 
@@ -45,10 +54,10 @@ _Agent-kun-vaerktoejer til at skrive i agentens EGET worktree (agent-contract-v1
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_worktree_for` | `(args)` | (worktree, fejl). Agenten og dens assignment slaas op af serveren. | [src](../../../core/tools/agent_worktree_tools.py#L44) |
-| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_worktree_tools.py#L61) |
-| function | `_exec_wt_bash` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L67) |
-| function | `_exec_wt_write_file` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L80) |
+| function | `_worktree_for` | `(args)` | (worktree, fejl). Agenten og dens assignment slaas op af serveren. | [src](../../../core/tools/agent_worktree_tools.py#L45) |
+| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_worktree_tools.py#L62) |
+| function | `_exec_wt_bash` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L68) |
+| function | `_exec_wt_write_file` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L81) |
 
 ## `core/tools/app_control_tool.py`
 _request_app_action tool (spec 2026-06-15) — Jarvis foreslår mode/permission-skift._
@@ -519,15 +528,4 @@ _Tools for Persistent Identity Sketch — read and update._
 |---|---|---|---|---|
 | function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
 | function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
-
-## `core/tools/inbox_tools.py`
-_De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger` | `()` | Den autentificerede bruger. Tom streng når ingen er bundet. | [src](../../../core/tools/inbox_tools.py#L107) |
-| function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L148) |
-| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L170) |
-| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L193) |
-| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L213) |
 

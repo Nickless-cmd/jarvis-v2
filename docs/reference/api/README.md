@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16486 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16515 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -30,44 +30,44 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16486 functions/
 - [`core.runtime.02`](core.runtime.02.md) — `db_credit_assignment` … `db_self_repair`
 - [`core.runtime.03`](core.runtime.03.md) — `db_sensory` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_pool_router`
-- [`core.services.02`](core.services.02.md) — `agent_pool_surface` … `approval_expiry_daemon`
-- [`core.services.03`](core.services.03.md) — `approval_feedback_subscriber` … `besked_run_kobling`
-- [`core.services.04`](core.services.04.md) — `body_memory` … `central_cadence_conductor`
-- [`core.services.05`](core.services.05.md) — `central_capture` … `central_instrument`
-- [`core.services.06`](core.services.06.md) — `central_keymaker` … `central_runtime_proxy`
-- [`core.services.07`](core.services.07.md) — `central_self_model` … `cheap_lane_route_write`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_selfheal` … `composer_suggest`
-- [`core.services.09`](core.services.09.md) — `composite_tools` … `creative_projects`
-- [`core.services.10`](core.services.10.md) — `crisis_marker_detector` … `desire_daemon`
-- [`core.services.11`](core.services.11.md) — `desktop_notifications` … `dreaming_session`
-- [`core.services.12`](core.services.12.md) — `drive_arbitration_engine` … `experiential_memory`
-- [`core.services.13`](core.services.13.md) — `experiential_runtime_context` … `ghost_networks`
-- [`core.services.14`](core.services.14.md) — `git_actions` … `hollow_promise_round`
-- [`core.services.15`](core.services.15.md) — `identity_canon` … `jarvis_brain_daemon`
-- [`core.services.16`](core.services.16.md) — `jarvis_brain_reflection` … `memory_breathing`
-- [`core.services.17`](core.services.17.md) — `memory_consolidation_nudge` … `mortality_awareness`
-- [`core.services.18`](core.services.18.md) — `multi_signal_retrieval` … `paradoxes_capture`
-- [`core.services.19`](core.services.19.md) — `parallel_selves` … `procedure_bank_pipeline`
-- [`core.services.20`](core.services.20.md) — `process_identity` … `query_language_bridge`
-- [`core.services.21`](core.services.21.md) — `quota_store` … `research_router`
-- [`core.services.22`](core.services.22.md) — `research_store` … `runtime_self_model_surfaces`
-- [`core.services.23`](core.services.23.md) — `runtime_surface_cache` … `selfhood_proposal_tracking`
-- [`core.services.24`](core.services.24.md) — `selvmodel` … `signal_pressure_accumulator`
-- [`core.services.25`](core.services.25.md) — `signal_surface_gc` … `svar_tempo`
-- [`core.services.26`](core.services.26.md) — `system_cartographer` … `tool_observer`
-- [`core.services.27`](core.services.27.md) — `tool_outcome_memory` … `visible_first_pass_pump`
-- [`core.services.28`](core.services.28.md) — `visible_first_pass_text` … `visible_self_state_summary`
-- [`core.services.29`](core.services.29.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agent_pool_surface` … `app_dispatch_store`
+- [`core.services.03`](core.services.03.md) — `approval_bridge_shadow` … `bash_sandbox`
+- [`core.services.04`](core.services.04.md) — `behavioral_decisions` … `central_body_mood_feel`
+- [`core.services.05`](core.services.05.md) — `central_brain_link` … `central_inner_life_digest`
+- [`core.services.06`](core.services.06.md) — `central_inner_salience` … `central_router_adapt`
+- [`core.services.07`](core.services.07.md) — `central_router_explore` … `cheap_lane_payloads`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_quotas` … `completion_satisfaction`
+- [`core.services.09`](core.services.09.md) — `composer_moenster` … `creative_instinct_daemon`
+- [`core.services.10`](core.services.10.md) — `creative_journal_runtime` … `delete_policy`
+- [`core.services.11`](core.services.11.md) — `delta_trace` … `dream_motif_daemon`
+- [`core.services.12`](core.services.12.md) — `dream_session_lessons` … `experience_substrate`
+- [`core.services.13`](core.services.13.md) — `experienced_time_daemon` … `gate_truth`
+- [`core.services.14`](core.services.14.md) — `gate_verdict_ledger` … `hollow_promise_census`
+- [`core.services.15`](core.services.15.md) — `hollow_promise_guard` … `irony_daemon`
+- [`core.services.16`](core.services.16.md) — `jarvis_brain` … `mcp_trust`
+- [`core.services.17`](core.services.17.md) — `meaning_significance_signal_tracking` … `mood_oscillator`
+- [`core.services.18`](core.services.18.md) — `mood_regulator_subscriber` … `paid_lane_guard`
+- [`core.services.19`](core.services.19.md) — `paradox_tracker` … `proactivity_bridge`
+- [`core.services.20`](core.services.20.md) — `procedure_bank` … `push_dispatcher`
+- [`core.services.21`](core.services.21.md) — `pushback` … `research_prompt_context`
+- [`core.services.22`](core.services.22.md) — `research_quality` … `runtime_self_model_identity`
+- [`core.services.23`](core.services.23.md) — `runtime_self_model_state` … `self_system_code_awareness`
+- [`core.services.24`](core.services.24.md) — `self_wakeup` … `signal_network_visualizer`
+- [`core.services.25`](core.services.25.md) — `signal_noise_guard` … `surprise_detector`
+- [`core.services.26`](core.services.26.md) — `sustained_attention` … `tool_intent_runtime`
+- [`core.services.27`](core.services.27.md) — `tool_lexical_match` … `veto_gate`
+- [`core.services.28`](core.services.28.md) — `visible_autonomous_run` … `visible_runs_sse_v2`
+- [`core.services.29`](core.services.29.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `inbox_tools`
-- [`core.tools.02`](core.tools.02.md) — `jarvis_brain_tools` … `screen_tool`
-- [`core.tools.03`](core.tools.03.md) — `security_predicates` … `web_scrape_tool`
-- [`core.tools.04`](core.tools.04.md) — `webhook_tools` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `identity_sketch_tools`
+- [`core.tools.02`](core.tools.02.md) — `inbox_tools` … `restart_self_tools`
+- [`core.tools.03`](core.tools.03.md) — `screen_tool` … `web_cache`
+- [`core.tools.04`](core.tools.04.md) — `web_scrape_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

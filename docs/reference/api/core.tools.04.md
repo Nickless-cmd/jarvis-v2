@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/web_scrape_tool.py`
+_web_scrape_tool — structured content extraction from URLs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_url_cache_key` | `(url)` | SHA256 of the normalised URL string. | [src](../../../core/tools/web_scrape_tool.py#L42) |
+| function | `_scrape_ttl` | `(mode)` | Return (policy_name, timedelta) for a scrape mode. | [src](../../../core/tools/web_scrape_tool.py#L47) |
+| function | `_cache_lookup` | `(url)` | Return cached scrape result for URL, or None on miss/error. | [src](../../../core/tools/web_scrape_tool.py#L52) |
+| function | `_cache_store` | `(*, url, mode, result)` | Store scrape result in web cache. Non-fatal on error. | [src](../../../core/tools/web_scrape_tool.py#L68) |
+| function | `_fetch_urllib` | `(url)` | Fetch URL via urllib. Returns (html, final_url). Raises on error. | [src](../../../core/tools/web_scrape_tool.py#L97) |
+| function | `_extract_content` | `(html, *, url)` | Extract title, content, metadata from HTML. | [src](../../../core/tools/web_scrape_tool.py#L110) |
+| function | `_detect_mode` | `(soup)` | Heuristically detect the best scrape mode from page structure. | [src](../../../core/tools/web_scrape_tool.py#L182) |
+| function | `_apply_mode` | `(soup, *, mode, extract)` | Extract structured items for listing/product modes. Returns [] for article/social. | [src](../../../core/tools/web_scrape_tool.py#L195) |
+| function | `_extract_links` | `(soup, *, base_url)` | Extract all non-empty links from page. | [src](../../../core/tools/web_scrape_tool.py#L237) |
+| function | `web_scrape` | `(url, *, mode=…, extract=…, include_links=…)` | Fetch a URL and return structured, cleaned content. | [src](../../../core/tools/web_scrape_tool.py#L258) |
+
 ## `core/tools/webhook_tools.py`
 _Webhook tools — send to and manage external HTTP endpoints._
 

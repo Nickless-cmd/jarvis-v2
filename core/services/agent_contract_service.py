@@ -547,6 +547,11 @@ def supervise() -> list[dict[str, Any]]:
         advance_councils()
     except Exception:
         logger.warning("raad kunne ikke avanceres", exc_info=True)
+    try:  # retention (12.1): artefakter, hukommelse og worktrees - højst hver time, idempotent
+        from core.services.agent_retention import run_if_due
+        run_if_due()
+    except Exception:
+        logger.warning("retention-runden fejlede", exc_info=True)
     done = reconcile_expired_leases()
     for d in done:
         if d.get("action") == "retry":

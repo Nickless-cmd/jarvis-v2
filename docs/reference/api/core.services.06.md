@@ -2,6 +2,49 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_inner_salience.py`
+_core/services/central_inner_salience.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_inner_salience.py#L33) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_inner_salience.py#L42) |
+| function | `_mode` | `()` | — | [src](../../../core/services/central_inner_salience.py#L50) |
+| function | `_norm` | `(s)` | — | [src](../../../core/services/central_inner_salience.py#L55) |
+| function | `salience_key_for_voice` | `(inner_voice_payload)` | De MENINGSFULDE dimensioner af den indre stemme (langsomt-skiftende selv). Rå tekst der | [src](../../../core/services/central_inner_salience.py#L59) |
+| function | `_held` | `(kind)` | — | [src](../../../core/services/central_inner_salience.py#L66) |
+| function | `_trace` | `(kind, would_reuse, mode)` | — | [src](../../../core/services/central_inner_salience.py#L74) |
+| function | `decide_voice` | `(*, run_id, key)` | Centralen BESTEMMER: skal inner_voice genudledes via LLM, eller genbruges fra det holdte selv? | [src](../../../core/services/central_inner_salience.py#L83) |
+| function | `note_enriched_voice` | `(*, run_id, key, value)` | Fodr det friske selv TILBAGE i Centralen (NED-siden): gem holdt voice-linje + salience-nøgle, | [src](../../../core/services/central_inner_salience.py#L107) |
+| function | `build_inner_salience_surface` | `()` | Mission Control — read-only: gate-mode + sidst-holdte selv + hvornår. | [src](../../../core/services/central_inner_salience.py#L129) |
+
+## `core/services/central_instrument.py`
+_central_instrument — selv-instrumenterende motor (system-cluster nerve, periodisk daemon)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Finding` | `` | — | [src](../../../core/services/central_instrument.py#L55) |
+| method | `Finding.signature` | `(self)` | — | [src](../../../core/services/central_instrument.py#L66) |
+| function | `_call_name` | `(node)` | Bedste streng-navn for et Call's funktion (foo / obj.foo / a.b.foo). | [src](../../../core/services/central_instrument.py#L73) |
+| function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L85) |
+| function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L98) |
+| function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L114) |
+| function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L124) |
+| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L143) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L162) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L242) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L266) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L271) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L290) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L305) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L319) |
+| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L359) |
+| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L381) |
+| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L403) |
+| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L460) |
+| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L481) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L552) |
+
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
 
@@ -581,25 +624,4 @@ _core/services/central_router_adapt.py_
 | function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L333) |
 | function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L360) |
 | function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L372) |
-
-## `core/services/central_router_explore.py`
-_core/services/central_router_explore.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_router_explore.py#L28) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_router_explore.py#L37) |
-| function | `is_explore_live` | `()` | — | [src](../../../core/services/central_router_explore.py#L45) |
-| function | `_candidates` | `(default_key)` | Konfigurerede, ikke-deep-tier modeller forskellige fra default — sorteret efter FÆRREST samples | [src](../../../core/services/central_router_explore.py#L49) |
-| function | `pick_exploration_model` | `(default_provider, default_model)` | Vælg en alternativ model at sample på DENNE autonome run — eller None (behold default/præference). | [src](../../../core/services/central_router_explore.py#L66) |
-| function | `build_router_explore_surface` | `()` | Mission Control — read-only: eksplorations-status + kandidater der ville blive samplet. | [src](../../../core/services/central_router_explore.py#L90) |
-
-## `core/services/central_runtime_proxy.py`
-_Central runtime proxy — read runtime-process-only surfaces from anywhere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_services_enabled` | `()` | True when this process runs the runtime services (state is local here). | [src](../../../core/services/central_runtime_proxy.py#L36) |
-| function | `_http_get` | `(name)` | HTTP-GET a runtime surface from jarvis-runtime. Returns a parsed dict. | [src](../../../core/services/central_runtime_proxy.py#L42) |
-| function | `proxy_or_local` | `(builder_name, local_fn)` | Return a runtime surface, in-process or via HTTP-proxy to port 8011. | [src](../../../core/services/central_runtime_proxy.py#L54) |
 

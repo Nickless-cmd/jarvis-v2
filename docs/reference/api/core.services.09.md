@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/composer_moenster.py`
+_Hvad Bjørn plejer at bede om — udledt af hans valg, ikke af hans ord._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `art` | `(forslag)` | Hvad et forslag beder om. Altid ét ord-par, aldrig tomt. | [src](../../../core/services/composer_moenster.py#L77) |
+| function | `_valg_i_vinduet` | `()` | De terminale valg indenfor vinduet. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_moenster.py#L94) |
+| function | `moenster` | `()` | Én linje til prompten — eller `""` når der ikke er noget at sige. | [src](../../../core/services/composer_moenster.py#L111) |
+| function | `er_taendt` | `()` | Kontakten. Et mønster der peger galt skal kunne tages ud uden et deploy. | [src](../../../core/services/composer_moenster.py#L151) |
+
+## `core/services/composer_suggest.py`
+_Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L52) |
+| function | `_til_tid` | `(iso)` | ISO-tid → `datetime`, uanset om den slutter paa `Z` eller `+00:00`. | [src](../../../core/services/composer_suggest.py#L67) |
+| function | `_svar_efter` | `(session_id, skrevet_at)` | Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue. | [src](../../../core/services/composer_suggest.py#L84) |
+| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L111) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L116) |
+| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L125) |
+
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._
 
@@ -588,46 +610,4 @@ _Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
 | function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L295) |
 | function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L325) |
 | function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L342) |
-
-## `core/services/creative_journal_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_creative_journal_cycle` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L23) |
-| function | `build_creative_journal_surface` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L125) |
-| function | `creative_journal_dir` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L144) |
-| function | `list_creative_journal_entries` | `(*, limit=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L149) |
-| function | `_build_journal_entry` | `(*, chronicle_entries, life_projects, broken_decisions, klangbraet, voice_anchor)` | — | [src](../../../core/services/creative_journal_runtime.py#L178) |
-| function | `_build_prompt` | `(*, chronicle_entries, life_projects, broken_decisions, klangbraet, voice_anchor)` | — | [src](../../../core/services/creative_journal_runtime.py#L210) |
-| function | `_sanitize_entry` | `(raw)` | — | [src](../../../core/services/creative_journal_runtime.py#L318) |
-| function | `_write_journal_entry` | `(*, created_at, text, frontmatter=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L330) |
-| function | `_should_skip_week` | `(*, chronicle_count, broken_decisions_count, life_projects_count)` | Return (skip?, reason). Skip when ALL three signals are absent/thin. | [src](../../../core/services/creative_journal_runtime.py#L360) |
-| function | `_interval_days_for_state` | `(state)` | Return current cadence interval based on skip counter. | [src](../../../core/services/creative_journal_runtime.py#L378) |
-| function | `_fetch_broken_decisions` | `(*, days_back=…, limit=…)` | Pull recent broken-decision summaries from the events table. | [src](../../../core/services/creative_journal_runtime.py#L388) |
-| function | `_fetch_recent_top_motif` | `(*, days_back=…)` | Return the most-recent aesthetic motif from the last `days_back` days. | [src](../../../core/services/creative_journal_runtime.py#L440) |
-| function | `_fetch_dominant_taste` | `(*, evidence_floor=…)` | Return 'dimension_name (value)' for the taste-dimension with largest |val - 0.5|. | [src](../../../core/services/creative_journal_runtime.py#L467) |
-| function | `_fetch_affective_klangbraet` | `()` | Pull current affective signals — these shape tone, not content. | [src](../../../core/services/creative_journal_runtime.py#L512) |
-| function | `_format_yaml_frontmatter` | `(*, created_at, chronicle_count, broken_decisions_count, life_projects_count, klangbraet, trigger)` | Render a YAML frontmatter block for journal entries. | [src](../../../core/services/creative_journal_runtime.py#L613) |
-| function | `_quality_lane_enabled` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L662) |
-| function | `_creative_journal_enabled` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L669) |
-| function | `_state` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L674) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/creative_journal_runtime.py#L679) |
-
-## `core/services/creative_projects.py`
-_Creative Projects — multi-week persistent creative impulse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_projects.py#L36) |
-| function | `_load` | `()` | — | [src](../../../core/services/creative_projects.py#L40) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/creative_projects.py#L54) |
-| function | `create_project` | `(*, title, intent, status=…)` | Create a new creative project. | [src](../../../core/services/creative_projects.py#L66) |
-| function | `add_progress_note` | `(project_id, note)` | Append a progress note to a project. Updates updated_at. | [src](../../../core/services/creative_projects.py#L86) |
-| function | `set_project_status` | `(project_id, status)` | — | [src](../../../core/services/creative_projects.py#L101) |
-| function | `list_projects` | `(*, status=…)` | — | [src](../../../core/services/creative_projects.py#L115) |
-| function | `get_project` | `(project_id)` | — | [src](../../../core/services/creative_projects.py#L123) |
-| function | `_is_stale` | `(project)` | — | [src](../../../core/services/creative_projects.py#L130) |
-| function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
-| function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L169) |
-| function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L189) |
 

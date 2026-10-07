@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/approval_bridge_shadow.py`
+_Skygge for godkendelses-broen: ville den have sagt det samme?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L41) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_bridge_shadow.py#L45) |
+| function | `taellere_fra_cache` | `()` | Læs tællerne fra en anden proces — se `settlement_shadow` for hvorfor | [src](../../../core/services/approval_bridge_shadow.py#L56) |
+| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/approval_bridge_shadow.py#L70) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville tænde en | [src](../../../core/services/approval_bridge_shadow.py#L76) |
+| function | `note_requested` | `(approval_id, *, tool_name, arguments, run_id=…, session_id=…)` | Godkendelsen er bedt om. Registrér den i broen — ændrer intet. | [src](../../../core/services/approval_bridge_shadow.py#L87) |
+| function | `note_decided` | `(approval_id, *, approved)` | Mennesket har klikket. | [src](../../../core/services/approval_bridge_shadow.py#L105) |
+| function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L120) |
+| function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L178) |
+
+## `core/services/approval_expiry_daemon.py`
+_Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
+| function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
+| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L139) |
+
 ## `core/services/approval_feedback_subscriber.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -619,37 +643,4 @@ _bwrap-indespærring om én bash-kommando. SLUKKET som standard._
 | method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L355) |
 | method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L359) |
 | function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L365) |
-
-## `core/services/behavioral_decisions.py`
-_Behavioral decisions — closing the reflection→behavior loop._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L36) |
-| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L40) |
-| function | `_recently_revoked` | `(normalized)` | En revokeret beslutning med samme direktiv, revokeret for nylig. | [src](../../../core/services/behavioral_decisions.py#L62) |
-| function | `_dedup_result` | `(existing, reason, source_type)` | Returnér den række der allerede dækker direktivet — uden at oprette. | [src](../../../core/services/behavioral_decisions.py#L73) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L97) |
-| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L145) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update a decision's mutable fields (None = unchanged, "" = cleared). | [src](../../../core/services/behavioral_decisions.py#L195) |
-| function | `change_status` | `(decision_id, new_status)` | — | [src](../../../core/services/behavioral_decisions.py#L236) |
-| function | `revoke_decision` | `(decision_id, *, reason=…)` | — | [src](../../../core/services/behavioral_decisions.py#L254) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L272) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L282) |
-| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L286) |
-| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L313) |
-| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L317) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L321) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L340) |
-
-## `core/services/besked_run_kobling.py`
-_Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_laes` | `()` | — | [src](../../../core/services/besked_run_kobling.py#L84) |
-| function | `noter` | `(message_id, run_id)` | Husk at ``run_id`` skrev ``message_id``. Self-safe: kaster aldrig. | [src](../../../core/services/besked_run_kobling.py#L91) |
-| function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L118) |
-| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L134) |
-| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L142) |
 

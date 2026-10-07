@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_watchdog.py`
+_Agentic-round watchdog — hvornår skal en runde opgives?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `effective_silence_budget_s` | `(max_silence_s, loop_lag_peak_ms)` | Tavsheds-budget justeret for hvor blokeret vores eget loop har været. | [src](../../../core/services/visible_runs_watchdog.py#L34) |
+| function | `agentic_watchdog_timeout_reason` | `(*, started_at, last_progress_at, now, max_total_s, max_silence_s, loop_lag_peak_ms=…)` | Returnér watchdog-timeout-grunden, eller None hvis runden må fortsætte. | [src](../../../core/services/visible_runs_watchdog.py#L47) |
+
+## `core/services/visible_self_state_summary.py`
+_Visible-chat self-state summary — let Jarvis answer questions about_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_decision_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L29) |
+| function | `_goals_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L56) |
+| function | `_recent_tick_quality` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L87) |
+| function | `build_self_state_block` | `()` | Return a short prompt section. Empty string when nothing useful to add. | [src](../../../core/services/visible_self_state_summary.py#L112) |
+
 ## `core/services/visible_stream_gate.py`
 _In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
 

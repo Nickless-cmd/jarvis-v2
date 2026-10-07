@@ -24,9 +24,10 @@ WT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "name": "wt_bash",
         "description": (
             "Run a shell command in YOUR private worktree (mounted at /work, the only writable place). "
-            "No network, no git against the main repository, no access outside /work. Use it to run "
-            "tests, build, inspect and edit files. The server records your changes as a diff when you "
-            "finish; nothing is merged without approval."),
+            "No network, no access outside /work. `git add`/`git commit` work against YOUR OWN private "
+            "branch only (the main repository, its hooks and config are not reachable). Use it to run "
+            "tests, build, inspect, edit and commit files. The server records your changes and commits "
+            "when you finish; nothing is merged without approval."),
         "parameters": {"type": "object", "properties": {
             "command": {"type": "string", "description": "Shell command, run with bash -c in /work."},
             "timeout_seconds": {"type": "number", "description": "Max 600, default 120."}},

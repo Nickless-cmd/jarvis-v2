@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_quotas.py`
+_Quota policy and measured capacity for the Cheap Lane control center._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `set_quota_policy` | `(*, provider, auth_profile, windows, expected_revision=…)` | — | [src](../../../core/services/cheap_lane_quotas.py#L18) |
+| function | `observe_provider_quota` | `(*, provider, auth_profile, observation)` | Persist an adapter's normalized provider quota observation. | [src](../../../core/services/cheap_lane_quotas.py#L31) |
+| function | `_utc` | `(value)` | — | [src](../../../core/services/cheap_lane_quotas.py#L65) |
+| function | `_parse_time` | `(value)` | — | [src](../../../core/services/cheap_lane_quotas.py#L71) |
+| function | `_period_bounds` | `(period, now)` | — | [src](../../../core/services/cheap_lane_quotas.py#L78) |
+| function | `_monthly_bounds` | `(reset_day, now)` | Return the current UTC monthly window for a provider reset day. | [src](../../../core/services/cheap_lane_quotas.py#L98) |
+| function | `_usage` | `(*, provider, auth_profile, unit, start, end)` | — | [src](../../../core/services/cheap_lane_quotas.py#L115) |
+| function | `_cheap_providers` | `(registry)` | — | [src](../../../core/services/cheap_lane_quotas.py#L133) |
+| function | `_active_profiles` | `(provider, registry_profile, *, multiprofile)` | Use the same ready account scan as the cheap-lane router. | [src](../../../core/services/cheap_lane_quotas.py#L150) |
+| function | `_account_group` | `(provider, profile)` | Logical owner of usage; gateway Ollama Cloud uses its own account2 login. | [src](../../../core/services/cheap_lane_quotas.py#L160) |
+| function | `_measured_usage` | `(now)` | Calendar-window token accounting, including profiles without policies. | [src](../../../core/services/cheap_lane_quotas.py#L173) |
+| function | `_estimated_capacity` | `(now, members, usage)` | Upper-bound forecast from configured request caps and observed call size. | [src](../../../core/services/cheap_lane_quotas.py#L222) |
+| function | `capacity_snapshot` | `(*, now=…)` | Combine configured policy, fresh provider truth, and observed usage. | [src](../../../core/services/cheap_lane_quotas.py#L300) |
+
+## `core/services/cheap_lane_route_write.py`
+_Best-effort persistence for cheap-lane route traces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_spor_uden_at_vaelte` | `(skriv, **felter)` | Write a route trace without letting telemetry interrupt the call. | [src](../../../core/services/cheap_lane_route_write.py#L4) |
+
 ## `core/services/cheap_lane_selfheal.py`
 _cheap_lane_selfheal — cheap-lane maa ALDRIG stale eller doe (Bjoern 16.jul)._
 
@@ -720,26 +746,4 @@ _Completion Satisfaction — "det er nok, jeg er tilfreds."_
 | function | `detect_completion_satisfaction` | `(*, task_outcomes, repetition_on_same_topic=…, user_mood=…)` | — | [src](../../../core/services/completion_satisfaction.py#L8) |
 | function | `build_completion_satisfaction_surface` | `()` | — | [src](../../../core/services/completion_satisfaction.py#L45) |
 | function | `_publish_completion_satisfaction_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/completion_satisfaction.py#L48) |
-
-## `core/services/composer_moenster.py`
-_Hvad Bjørn plejer at bede om — udledt af hans valg, ikke af hans ord._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `art` | `(forslag)` | Hvad et forslag beder om. Altid ét ord-par, aldrig tomt. | [src](../../../core/services/composer_moenster.py#L77) |
-| function | `_valg_i_vinduet` | `()` | De terminale valg indenfor vinduet. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_moenster.py#L94) |
-| function | `moenster` | `()` | Én linje til prompten — eller `""` når der ikke er noget at sige. | [src](../../../core/services/composer_moenster.py#L111) |
-| function | `er_taendt` | `()` | Kontakten. Et mønster der peger galt skal kunne tages ud uden et deploy. | [src](../../../core/services/composer_moenster.py#L151) |
-
-## `core/services/composer_suggest.py`
-_Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L52) |
-| function | `_til_tid` | `(iso)` | ISO-tid → `datetime`, uanset om den slutter paa `Z` eller `+00:00`. | [src](../../../core/services/composer_suggest.py#L67) |
-| function | `_svar_efter` | `(session_id, skrevet_at)` | Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue. | [src](../../../core/services/composer_suggest.py#L84) |
-| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L111) |
-| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L116) |
-| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L125) |
 

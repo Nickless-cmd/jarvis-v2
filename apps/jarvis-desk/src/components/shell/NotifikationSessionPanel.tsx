@@ -47,7 +47,9 @@ export function NotifikationSessionPanel({ config, sessionId, isOwner, onClose, 
     return () => window.clearInterval(timer)
   }, [refresh, sending])
   useEffect(() => () => control.current?.abort(), [])
-  useEffect(() => bottom.current?.scrollIntoView?.({ block: 'end' }), [messages, live.blocks, pendingText])
+  // Blok, ikke et udtryk: nyere Chromium-udgaver lader scrollIntoView returnere et Promise, og en effekt der
+  // returnerer andet end en oprydningsfunktion kaster «destroy is not a function» når panelet lukkes.
+  useEffect(() => { bottom.current?.scrollIntoView?.({ block: 'end' }) }, [messages, live.blocks, pendingText])
 
   const send = (text: string, opts: ComposerSendOpts) => {
     if (sending) return

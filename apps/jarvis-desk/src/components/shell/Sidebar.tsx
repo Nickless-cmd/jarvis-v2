@@ -22,6 +22,7 @@ import { JarvisRing } from './JarvisRing'
 import type { SecondarySurface } from './SecondaryNav'
 import { Klokke } from './Klokke'
 import { NotifikationsFeed } from './NotifikationsFeed'
+import type { AgentReference } from '../../lib/environmentEvidence'
 import { NotifikationSessionPanel } from './NotifikationSessionPanel'
 import { KontoMenu } from './KontoMenu'
 import '../../styles/notification-feed.css'
@@ -61,10 +62,13 @@ export function Sidebar({
   userName,
   onSearch,
   onOpenBug,
+  onOpenAgent,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
   userName: string
+  /** Åbner AgentInspector i sidepanelet — bruges af agentkort i notifikationsfeedet. */
+  onOpenAgent?: (agent: AgentReference) => void
   /** Aabner Ctrl+K-paletten. Samme vej som genvejen — ét sted at rette. */
   onSearch?: () => void
   /** Aabner fejl-rapporten MIDT PAA SKAERMEN. Rapporten sendes til
@@ -235,6 +239,14 @@ export function Sidebar({
             config={apiConfig}
             onLuk={() => setFeedAaben(false)}
             onAabnSession={(id) => { setNotifikationSession(id); setFeedAaben(false) }}
+            // Et agentkort åbner ALTID den oprindelige session (i sit eget sidepanel — aldrig i den åbne samtale)
+            // og den rigtige inspector, også når brugeren nu står i en anden session.
+            onAabnAgent={(card) => {
+              if (card.origin_session_id) setNotifikationSession(card.origin_session_id)
+              setFeedAaben(false)
+              onOpenAgent?.({ agentId: card.agent_id, role: '', goal: card.title, status: String(card.bucket),
+                              dispatchToolUseId: '' })
+            }}
             aktivSession={activeId}
           />
         </div>

@@ -1,0 +1,40 @@
+/* Agent-kontraktens Desk-flader (leverance G): inspector-sektion, Baggrundsjob-rækker og feedkort.
+   Genbruger hus-tokens (--bg-*, --fg-*, --line, --accent, --error-fg); intet nyt farvesprog. Klassenavnene
+   har præfikset `ac-` og bruges af AgentContractSection, AgentJobRows og NotifikationsFeed. */
+
+/* ── Inspector ─────────────────────────────────────────────────────────── */
+.ac-section .ac-attention { color: var(--error-fg); }
+.ac-hint { color: var(--fg-3); font-size: 12px; }
+.ac-approval { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-3);
+  overflow-wrap: anywhere; }
+.ac-approval code { font-family: var(--font-mono); font-size: 12px; }
+.ac-receipt { margin-top: 8px; padding: 7px 9px; border-left: 2px solid var(--accent); background: var(--bg-3); border-radius: 0 6px 6px 0;
+  display: grid; gap: 3px; }
+.ac-artifacts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ac-link { background: none; border: 0; padding: 0; color: var(--accent-text); cursor: pointer; font: inherit; text-decoration: underline; }
+.ac-artifact-view { margin-top: 8px; display: grid; gap: 4px; }
+.ac-artifact-view pre { margin: 0; padding: 8px; max-height: 260px; overflow: auto; background: var(--bg-3); border: 1px solid var(--line);
+  border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 12px; }
+
+/* ── Baggrundsjob-rækker ───────────────────────────────────────────────── */
+.ac-job { align-items: stretch; }
+.ac-job.er-opmaerksomhed { border-color: var(--error-fg); }
+.ac-job.i-gruppe { margin-left: 12px; }
+.ac-job-aaben { background: none; border: 0; padding: 0; margin: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.ac-job-aaben:hover .jobs-navn { text-decoration: underline; }
+.ac-status.er-fejl { color: var(--error-fg); }
+.ac-aarsag { white-space: normal; overflow-wrap: anywhere; }
+.ac-raad-hoved { list-style: none; color: var(--fg-3); font-size: 12px; padding: 4px 2px 0; }
+.ac-opmaerksomhed-hoved .jobs-count { color: var(--error-fg); opacity: 1; }
+
+/* ── Notifikationsfeed: agentkort ──────────────────────────────────────── */
+.ac-kort-aarsag { color: var(--fg-2); font-size: 12.5px; margin: 2px 0 0; }
+.ac-kort-fejl { color: var(--error-fg); font-size: 12.5px; margin: 2px 0 0; overflow-wrap: anywhere; }
+.ac-kort-resume { color: var(--fg-3); font-size: 12.5px; margin: 2px 0 0; overflow-wrap: anywhere; }
+.ac-kort-handlinger { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.ac-kort-handlinger button, .ac-kort-handlinger input { min-height: 28px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); color: var(--fg-1); padding: 0 9px; font: inherit; }
+.ac-kort-handlinger input { width: 7.5em; }
+.ac-kort-handlinger button:disabled { opacity: .5; cursor: default; }
+.ac-i-gang { margin: 6px 0 2px; color: var(--fg-3); font-size: 12px; }
+.ac-tilstande { color: var(--fg-3); font-size: 11.5px; margin: 3px 0 0; }

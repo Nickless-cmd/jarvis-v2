@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_payloads.py`
+_Bounded, redacted payload capture for Cheap Lane invocations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RedactionResult` | `` | — | [src](../../../core/services/cheap_lane_payloads.py#L29) |
+| function | `_configured_patterns` | `()` | — | [src](../../../core/services/cheap_lane_payloads.py#L35) |
+| function | `_retention_days` | `()` | — | [src](../../../core/services/cheap_lane_payloads.py#L45) |
+| function | `_redact_fields` | `(value)` | — | [src](../../../core/services/cheap_lane_payloads.py#L57) |
+| function | `_bounded_utf8` | `(text)` | — | [src](../../../core/services/cheap_lane_payloads.py#L81) |
+| function | `redact_payload` | `(value)` | Return a JSON-safe or textual payload with secrets removed and size bounded. | [src](../../../core/services/cheap_lane_payloads.py#L91) |
+| function | `capture_invocation_payload` | `(*, invocation_id, prompt, response)` | Redact and persist payloads without ever failing the provider call. | [src](../../../core/services/cheap_lane_payloads.py#L115) |
+| function | `purge_expired_payloads` | `(now=…)` | Delete expired payload bodies while retaining invocation metadata. | [src](../../../core/services/cheap_lane_payloads.py#L147) |
+
 ## `core/services/cheap_lane_quotas.py`
 _Quota policy and measured capacity for the Cheap Lane control center._
 
@@ -737,13 +751,4 @@ _Compass Engine — weekly strategic bearing based on open loops and priorities.
 | function | `maybe_update_compass` | `(*, open_loops=…, recent_decisions=…)` | Update compass if >3 days since last update. | [src](../../../core/services/compass_engine.py#L21) |
 | function | `build_compass_surface` | `()` | — | [src](../../../core/services/compass_engine.py#L65) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/compass_engine.py#L74) |
-
-## `core/services/completion_satisfaction.py`
-_Completion Satisfaction — "det er nok, jeg er tilfreds."_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_completion_satisfaction` | `(*, task_outcomes, repetition_on_same_topic=…, user_mood=…)` | — | [src](../../../core/services/completion_satisfaction.py#L8) |
-| function | `build_completion_satisfaction_surface` | `()` | — | [src](../../../core/services/completion_satisfaction.py#L45) |
-| function | `_publish_completion_satisfaction_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/completion_satisfaction.py#L48) |
 

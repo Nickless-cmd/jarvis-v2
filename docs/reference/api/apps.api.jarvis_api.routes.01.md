@@ -56,6 +56,27 @@ _Agent-approvals: list og afgoer (agent-contract-v1 F4c, spec 8.2)._
 | function | `list_approvals` | `(status=…, session=…)` | Brugerens egne approvals med sikker visning og digest (aldrig raa argumenter). | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L54) |
 | function | `decide` | `(approval_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L65) |
 
+## `apps/api/jarvis_api/routes/agent_contract_view.py`
+_Desks laese- og styrings-API til agentkontrakten (agent-contract-v1 G, spec 10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MessageBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L28) |
+| class | `FollowupBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L32) |
+| class | `StopBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L37) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L41) |
+| function | `_ok` | `(out)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L49) |
+| function | `overview` | `(scope=…, session=…)` | Liste + taellere (aktive og opmaerksomhed er adskilte tal). ``scope=all`` giver hele agenttraeet. | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L56) |
+| function | `agent` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L65) |
+| function | `artifact` | `(agent_id, run_id, name, offset=…, limit=…, session=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L75) |
+| function | `message` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L87) |
+| function | `followup` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L93) |
+| function | `stop` | `(agent_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L100) |
+| function | `close` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L106) |
+| function | `feed` | `()` | Kort til notifikationsfeedet (een reference pr. assignment + een pr. ventende approval). | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L112) |
+| function | `read` | `(ref_kind, ref_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L119) |
+| function | `acknowledge` | `(assignment_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L128) |
+
 ## `apps/api/jarvis_api/routes/agent_pool.py`
 _Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._
 
@@ -588,14 +609,4 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 | function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
 | function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
 | function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
-
-## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
-_Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `WorkspaceTrustRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L20) |
-| function | `get_workspace_trust` | `(kind=…, root=…)` | Er det aktuelle workspace betroet for den indloggede bruger? | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L27) |
-| function | `list_workspace_trust` | `(kind=…)` | De mapper brugeren har betroet — grundlaget for workstation-vaelgeren. | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L36) |
-| function | `set_workspace_trust` | `(request)` | Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode). | [src](../../../apps/api/jarvis_api/routes/chat_workspace_trust.py#L49) |
 

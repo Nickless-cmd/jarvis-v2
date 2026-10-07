@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/bash_sandbox.py`
+_bwrap-indespærring om én bash-kommando. SLUKKET som standard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_conda_rod` | `(sti)` | Base-installationen bag et conda-env: `<rod>/envs/<navn>` → `<rod>`. | [src](../../../core/services/bash_sandbox.py#L65) |
+| function | `_python_roedder` | `()` | Tolkens EGEN rod — oploest gennem symlinks. | [src](../../../core/services/bash_sandbox.py#L77) |
+| function | `_runtime_hjem` | `()` | Jarvis' runtime-hjem, hvis det findes. | [src](../../../core/services/bash_sandbox.py#L103) |
+| function | `is_available` | `()` | Findes bwrap på DENNE maskine? | [src](../../../core/services/bash_sandbox.py#L122) |
+| function | `kan_koere` | `(*, tving=…)` | Kan bwrap FAKTISK starte her? (svar, grund) | [src](../../../core/services/bash_sandbox.py#L138) |
+| function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L213) |
+| function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L223) |
+| function | `status` | `()` | Tilstanden — og «findes» holdes adskilt fra «kører». | [src](../../../core/services/bash_sandbox.py#L230) |
+| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L258) |
+| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L284) |
+| class | `ConfinementUnavailable` | `` | Der blev KRÆVET indespærring, og den kunne ikke leveres. | [src](../../../core/services/bash_sandbox.py#L339) |
+| class | `Enforcement` | `` | Hvad der blev bedt om, og hvad der faktisk skete. | [src](../../../core/services/bash_sandbox.py#L344) |
+| method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L355) |
+| method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L359) |
+| function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L365) |
+
 ## `core/services/behavioral_decisions.py`
 _Behavioral decisions — closing the reflection→behavior loop._
 
@@ -581,29 +602,4 @@ _PULSE — kroppens eget kort som en SANS (LivingNeuron-council, 4. jul)._
 | function | `describe_body_map` | `()` | Føl-linje til describe_self (NED): mærk strukturen NÅR den har flyttet sig. Additivt + | [src](../../../core/services/central_body_map_pulse.py#L99) |
 | function | `register_body_map_pulse_producer` | `()` | Cadence-producer ~hver 6. time — kroppens langsomme proprioception. Egress-frit. | [src](../../../core/services/central_body_map_pulse.py#L116) |
 | function | `build_body_map_surface` | `()` | Mission Control — read-only: kroppens sansede struktur. | [src](../../../core/services/central_body_map_pulse.py#L128) |
-
-## `core/services/central_body_mood_feel.py`
-_core/services/central_body_mood_feel.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `raw_awareness_enabled` | `()` | Lag 4 kill-switch: rå kompakte awareness-brackets frem for genererede label-sætninger. | [src](../../../core/services/central_body_mood_feel.py#L51) |
-| function | `_hold_reading` | `(name, reading)` | Hold en kompakt aflæsning durabelt så describe_self kan læse den model-frit efter genstart. | [src](../../../core/services/central_body_mood_feel.py#L73) |
-| function | `_read_held` | `(name)` | Ren KV-læsning (ingen syntese på læse-tid → hot-path-sikker). Self-safe. | [src](../../../core/services/central_body_mood_feel.py#L83) |
-| function | `_read_held_fresh` | `(name, max_age_s)` | Som _read_held, men TIER en aflæsning ældre end max_age_s (en forældet KROP-tilstand skal ikke | [src](../../../core/services/central_body_mood_feel.py#L95) |
-| function | `_proprioception_signal` | `()` | proprioception_metrics: nuværende proces-krop (RSS/CPU/latens). None hvis intet snapshot/psutil. | [src](../../../core/services/central_body_mood_feel.py#L108) |
-| function | `_embodied_signal` | `()` | embodied_state: host/krop-tilstand (steady…degraded). None hvis intet meningsfuldt afledt. | [src](../../../core/services/central_body_mood_feel.py#L143) |
-| function | `_mood_signal` | `()` | mood_oscillator: nuværende stemning (euforisk…trist) + intensitet. None ved fejl. | [src](../../../core/services/central_body_mood_feel.py#L166) |
-| function | `_developmental_signal` | `()` | developmental_valence: uge-skala kompasnål (blomstring vs visnen). None hvis vektor mangler. | [src](../../../core/services/central_body_mood_feel.py#L189) |
-| function | `_affective_signal` | `()` | affective_meta_state: afledt affektiv/meta-tilstand (settled…burdened) + bearing. None ved fejl. | [src](../../../core/services/central_body_mood_feel.py#L212) |
-| function | `get_proprioception_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L232) |
-| function | `get_embodied_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L236) |
-| function | `get_mood_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L240) |
-| function | `get_developmental_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L244) |
-| function | `get_affective_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L248) |
-| function | `_fmt_num` | `(v)` | Kompakt tal uden hale-nuller: 12.0 → '12', 11.2 → '11.2'. Self-safe. | [src](../../../core/services/central_body_mood_feel.py#L252) |
-| function | `describe_body_mood_feel_raw` | `()` | Lag 4 RÅ NED-syntese: kompakte bracket-linjer fra de holdte krop-/stemning-aflæsninger + | [src](../../../core/services/central_body_mood_feel.py#L261) |
-| function | `describe_body_mood_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de holdte krop-/stemning-aflæsninger. | [src](../../../core/services/central_body_mood_feel.py#L310) |
-| function | `register_body_mood_feel_layers` | `()` | Registrér krop- og stemning-lagene som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_body_mood_feel.py#L371) |
-| function | `build_body_mood_feel_surface` | `()` | Mission Control (read-only): de holdte krop-/stemning-aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_body_mood_feel.py#L398) |
 

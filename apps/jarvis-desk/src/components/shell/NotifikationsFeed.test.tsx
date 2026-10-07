@@ -12,6 +12,14 @@ vi.mock('../../lib/notifikationerApi', () => ({
   setNotifikation: (...a: unknown[]) => set(...a),
 }))
 
+// Agentkortene (G) har egne tests i NotifikationsFeed.agents.test.tsx; her er de tomme, så de gamle
+// forventninger til notifikationsrækkerne står uændret.
+const kontraktFeed = vi.fn()
+vi.mock('../../lib/agentContractApi', async () => {
+  const rigtig = await vi.importActual<typeof import('../../lib/agentContractApi')>('../../lib/agentContractApi')
+  return { ...rigtig, getKontraktFeed: (...a: unknown[]) => kontraktFeed(...a) }
+})
+
 // V5: samme stub-moenster som Klokke.test.tsx — hvert openEventSocket()-kald
 // laegger sin stub i `sockets`, saa en test kan finde den senest oprettede
 // og udloese `onmessage` selv.
@@ -51,6 +59,8 @@ const afgjortPost = (o: Partial<Record<string, unknown>> = {}) => ({
 describe('NotifikationsFeed', () => {
   beforeEach(() => {
     hent.mockReset(); hentHistorik.mockReset(); afgoer.mockReset(); set.mockReset()
+    kontraktFeed.mockReset().mockResolvedValue({
+      status: 'ok', cards: [], counts: { venter: 0, svar: 0, aktiv: 0, unread: 0 }, contract_version: 'agent-contract-v1' })
     localStorage.clear()
     sockets.length = 0
     // Historikken er tom som udgangspunkt — de fleste tests handler om
@@ -102,13 +112,16 @@ describe('NotifikationsFeed', () => {
     const capture = vi.fn()
     Object.defineProperty(card, 'setPointerCapture', { configurable: true, value: capture })
     Object.defineProperty(card, 'releasePointerCapture', { configurable: true, value: vi.fn() })
+    // Et museklik må IKKE fastholde pointeren: så ville `click` gå til <li> og kortet åbne intet.
     fireEvent.pointerDown(card, { pointerId: 1, pointerType: 'mouse', clientX: 50, clientY: 50 })
-    expect(capture).toHaveBeenCalledWith(1)
+    expect(capture).not.toHaveBeenCalled()
     fireEvent.pointerMove(card, { pointerId: 1, clientX: 53, clientY: 120 })
     fireEvent.pointerUp(card, { pointerId: 1, clientX: 53, clientY: 120 })
+    expect(capture).not.toHaveBeenCalled()                                  // lodret bevægelse scroller, fastholder ikke
     expect(notificationAttention(['1']).unread).toBe(true)
     fireEvent.pointerDown(card, { pointerId: 2, pointerType: 'mouse', clientX: 50, clientY: 50 })
     fireEvent.pointerMove(card, { pointerId: 2, clientX: 112, clientY: 53 })
+    expect(capture).toHaveBeenCalledWith(2)                                 // først et vandret swipe fastholdes
     fireEvent.pointerUp(card, { pointerId: 2, clientX: 112, clientY: 53 })
     expect(notificationAttention(['1']).unread).toBe(false)
     vi.unstubAllGlobals()

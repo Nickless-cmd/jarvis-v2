@@ -16,6 +16,13 @@ vi.mock('../../lib/jobsApi', async () => {
     resumeJob: (...a: unknown[]) => resumeJob(...a),
   }
 })
+// Kontrakt-agenterne (G) har egne tests i JobsPanel.agents.test.tsx; her er listen tom, så de gamle
+// forventninger om jobs-kilderne står uændret.
+const getKontraktOverblik = vi.fn()
+vi.mock('../../lib/agentContractApi', async () => {
+  const rigtig = await vi.importActual<typeof import('../../lib/agentContractApi')>('../../lib/agentContractApi')
+  return { ...rigtig, getKontraktOverblik: (...a: unknown[]) => getKontraktOverblik(...a) }
+})
 const removeProcess = vi.fn()
 vi.mock('../../lib/processesApi', async () => {
   const rigtig = await vi.importActual<typeof import('../../lib/processesApi')>('../../lib/processesApi')
@@ -54,6 +61,11 @@ const FAERDIG = {
 }
 
 beforeEach(() => {
+  getKontraktOverblik.mockReset().mockResolvedValue({
+    status: 'ok', agents: [], groups: [], contract_version: 'agent-contract-v1',
+    capability: { enabled: true, reason: '', contract_version: 'agent-contract-v1' },
+    counts: { active: 0, queued: 0, waiting: 0, blocked: 0, attention: 0, open: 0 },
+  })
   listJobs.mockReset().mockResolvedValue({ jobs: [SERVER, MIN_MASKINE, FAERDIG], bridge_ok: true })
   stopJob.mockReset().mockResolvedValue(undefined)
   pauseJob.mockReset().mockResolvedValue(undefined)

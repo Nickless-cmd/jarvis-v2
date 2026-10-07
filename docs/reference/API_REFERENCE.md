@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-07 from app.routes (live) — 615 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-07 from app.routes (live) — 625 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -27,6 +27,16 @@
 | GET | `/account/workspace` | dict | account |
 | GET | `/agents/approvals` | dict | agent_approvals |
 | POST | `/agents/approvals/{approval_id}/decision` | dict | agent_approvals |
+| GET | `/agents/contract/agents/{agent_id}` | dict | agent_contract_view |
+| GET | `/agents/contract/agents/{agent_id}/artifacts/{run_id}/{name}` | dict | agent_contract_view |
+| POST | `/agents/contract/agents/{agent_id}/close` | dict | agent_contract_view |
+| POST | `/agents/contract/agents/{agent_id}/followup` | dict | agent_contract_view |
+| POST | `/agents/contract/agents/{agent_id}/message` | dict | agent_contract_view |
+| POST | `/agents/contract/agents/{agent_id}/stop` | dict | agent_contract_view |
+| POST | `/agents/contract/assignments/{assignment_id}/acknowledge` | dict | agent_contract_view |
+| GET | `/agents/contract/feed` | dict | agent_contract_view |
+| POST | `/agents/contract/feed/{ref_kind}/{ref_id}/read` | dict | agent_contract_view |
+| GET | `/agents/contract/overview` | dict | agent_contract_view |
 | POST | `/anthropic/v1/messages` |  | anthropic_compat |
 | GET | `/anthropic/v1/models` |  | anthropic_compat |
 | GET | `/api/app-release/latest` | dict | app_release |

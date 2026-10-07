@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_truth.py`
+_Unified TruthGate (cluster B). Smelter Truth-klyngens tre homogene Verdict-gates_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `truth_gate` | `(ctx)` | Kør de tre Truth-checks på samme ctx og kombinér til ét Verdict. | [src](../../../core/services/gate_truth.py#L17) |
+| function | `register_truth_nerve` | `(central)` | Registrér den unified TruthGate som post_output-nerve i Centralen. | [src](../../../core/services/gate_truth.py#L33) |
+
 ## `core/services/gate_verdict_ledger.py`
 _Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent tabel._
 
@@ -573,13 +581,4 @@ _Hugging Face-connector — søg modeller/datasets via Hub API._
 | function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
 | function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
 | function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
-
-## `core/services/hollow_promise_census.py`
-_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
-| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
-| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
 

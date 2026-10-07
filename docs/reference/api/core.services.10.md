@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/creative_instinct_daemon.py`
+_Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L39) |
+| function | `_incubator_path` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L43) |
+| function | `_load` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L47) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/creative_instinct_daemon.py#L63) |
+| function | `_hours_since` | `(iso_str)` | — | [src](../../../core/services/creative_instinct_daemon.py#L75) |
+| function | `_recent_chat_topics` | `(limit=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L87) |
+| function | `_recent_dream_hypotheses` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L101) |
+| function | `_recent_avoidances` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L111) |
+| function | `_current_mood_label` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L119) |
+| function | `_compose_spark` | `(source_phrases, mood)` | Combine two source phrases into a spark. | [src](../../../core/services/creative_instinct_daemon.py#L129) |
+| function | `_short_phrase` | `(text)` | — | [src](../../../core/services/creative_instinct_daemon.py#L150) |
+| function | `_generate_seeds` | `(*, max_new)` | — | [src](../../../core/services/creative_instinct_daemon.py#L157) |
+| function | `_write_incubator_md` | `(seeds)` | Overwrite INCUBATOR.md with current active seed list. | [src](../../../core/services/creative_instinct_daemon.py#L194) |
+| function | `_age_seeds` | `(seeds)` | Mature or wither seeds based on age. Returns True if any changed. | [src](../../../core/services/creative_instinct_daemon.py#L224) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L242) |
+| function | `list_seeds` | `(*, status=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L273) |
+| function | `mark_seed` | `(seed_id, *, status)` | — | [src](../../../core/services/creative_instinct_daemon.py#L280) |
+| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L295) |
+| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L325) |
+| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L342) |
+
 ## `core/services/creative_journal_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -561,12 +587,4 @@ _Delegation advisor — inline vs which subagent role._
 |---|---|---|---|---|
 | function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
 | function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
-
-## `core/services/delete_policy.py`
-_Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
-| function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
 

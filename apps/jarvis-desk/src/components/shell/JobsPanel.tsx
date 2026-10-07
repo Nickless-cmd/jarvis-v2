@@ -6,6 +6,12 @@ import {
 } from '../../lib/jobsApi'
 import { removeProcess } from '../../lib/processesApi'
 import type { ApiConfig } from '../../lib/api'
+import {
+  getKontraktOverblik, kontraktStop, kvitterKontrakt,
+  type ContractAgentRow, type ContractOverview,
+} from '../../lib/agentContractApi'
+import type { AgentReference } from '../../lib/environmentEvidence'
+import { AgentJobRows } from './AgentJobRows'
 
 /**
  * Kørende baggrundsjob — formen er Claude Codes egen «Background tasks».
@@ -33,6 +39,7 @@ export function JobsPanel({
   onCount,
   fuld = false,
   onFuld,
+  onOpenAgent,
 }: {
   config?: ApiConfig
   onClose: () => void
@@ -43,8 +50,13 @@ export function JobsPanel({
   /** Melder antal koerende op, saa taelleren paa ikonet og listen ikke kan staa
    *  side om side og vaere uenige. */
   onCount?: (n: number) => void
+  /** Klik på en agentrække åbner AgentInspector (samme som Miljø-feltet). */
+  onOpenAgent?: (agent: AgentReference) => void
 }) {
   const [jobs, setJobs] = useState<BackgroundJob[]>([])
+  // Kontrakt-projektionen (G): agentrun fra DB, uafhængigt af /api/jobs og af klientbroen.
+  const [kontrakt, setKontrakt] = useState<ContractOverview | null>(null)
+  const [kontraktFejl, setKontraktFejl] = useState(false)
   const [broOk, setBroOk] = useState(true)
   const [fejl, setFejl] = useState('')
   // Egen tilstand, IKKE `fejl`. En besked lagt i fejl-feltet blev slettet et
@@ -63,10 +75,15 @@ export function JobsPanel({
   const hent = useCallback(() => {
     if (!config || undervejs.current) return
     undervejs.current = true
-    listJobs(config, true)
+    // To uafhængige kilder: en fejl i den ene må ikke tømme den anden. En fejlet kontrakt-hentning er IKKE en
+    // tom agentliste — det siges højt nedenfor.
+    const jobsKald = listJobs(config, true)
       .then((svar) => { setJobs(svar.jobs); setBroOk(svar.bridge_ok); setFejl('') })
       .catch(() => setFejl('kunne ikke hente jobs'))
-      .finally(() => { undervejs.current = false })
+    const kontraktKald = getKontraktOverblik(config, 'panel')
+      .then((svar) => { setKontrakt(svar); setKontraktFejl(false) })
+      .catch(() => setKontraktFejl(true))
+    void Promise.all([jobsKald, kontraktKald]).finally(() => { undervejs.current = false })
   }, [config])
 
   useEffect(() => {
@@ -75,10 +92,39 @@ export function JobsPanel({
     return () => clearInterval(id)
   }, [hent])
 
-  const koerende = jobs.filter((j) => j.status === 'running' || j.status === 'paused')
-  const faerdige = jobs.filter((j) => j.status !== 'running' && j.status !== 'paused')
+  // En kontrakt-agent står i registeret og dermed også som «scout» i /api/jobs. Rækken kommer fra kontrakten
+  // (rigere og med styring); duplikatet fra jobs-listen fjernes, så ét run ikke står to gange.
+  const kontraktIds = new Set((kontrakt?.agents ?? []).map((a) => a.agent_id))
+  const alleJobs = jobs.filter((j) => !(j.kilde === 'agent' && kontraktIds.has(j.id)))
+  const koerende = alleJobs.filter((j) => j.status === 'running' || j.status === 'paused')
+  const faerdige = alleJobs.filter((j) => j.status !== 'running' && j.status !== 'paused')
+  const agentRaekker = kontrakt?.agents ?? []
+  // To lister, to tal: det der KØRER/venter af sig selv, og det der kræver at nogen gør noget.
+  const agenterKoerer = agentRaekker.filter((r) => !r.attention)
+  const agenterOpmaerksomhed = agentRaekker.filter((r) => r.attention)
+  const koererTotal = koerende.length + agenterKoerer.length
 
-  useEffect(() => { onCount?.(koerende.length) }, [koerende.length, onCount])
+  useEffect(() => { onCount?.(koererTotal) }, [koererTotal, onCount])
+
+  const aabnAgent = (r: ContractAgentRow) => onOpenAgent?.({
+    agentId: r.agent_id, role: r.role, goal: r.goal, status: r.bucket, dispatchToolUseId: '',
+  })
+  // Egne handlinger (ikke `handling` nedenfor): serverens forklaring («kontrakten er slukket», «findes ikke for
+  // dig») skal frem — ikke et generisk «handlingen mislykkedes».
+  const agentHandling = async (r: ContractAgentRow, fn: () => Promise<void>) => {
+    setTravl(r.agent_id); setBesked('')
+    try { await fn(); hent() } catch (e) {
+      setFejl(e instanceof Error && e.message ? e.message : 'handlingen mislykkedes')
+    } finally { setTravl('') }
+  }
+  const stopAgent = (r: ContractAgentRow) => void agentHandling(r, async () => {
+    const svar = await kontraktStop(config!, r.agent_id)
+    setBesked(svar.receipt.accepted
+      ? `Stop anmodet for «${r.goal || r.agent_id}» — ikke bekræftet endnu.` : 'Stop blev afvist.')
+  })
+  const kvitterAgent = (r: ContractAgentRow) => void agentHandling(r, async () => {
+    await kvitterKontrakt(config!, r.assignment_id)
+  })
 
   const handling = async (id: string, fn: () => Promise<void>) => {
     setTravl(id)
@@ -200,13 +246,38 @@ export function JobsPanel({
         <div className="jobs-fejl">Kan ikke se din maskine lige nu — kun serverens job vises.</div>
       )}
 
+      {kontraktFejl && (
+        <div className="jobs-fejl" role="alert">
+          Agent-kontrakten kunne ikke hentes — agentlisten er ukendt, ikke tom.
+        </div>
+      )}
+      {kontrakt && !kontrakt.capability.enabled && agentRaekker.length > 0 && (
+        <div className="jobs-besked">Agent-kontrakten er slukket for nye opgaver; allerede accepteret arbejde vises stadig.</div>
+      )}
+
+      {agenterOpmaerksomhed.length > 0 && (
+        <>
+          <div className="jobs-section-head ac-opmaerksomhed-hoved" data-testid="ac-opmaerksomhed">
+            Kræver opmærksomhed <span className="jobs-count">{agenterOpmaerksomhed.length}</span>
+          </div>
+          <AgentJobRows rows={agenterOpmaerksomhed} groups={kontrakt?.groups ?? []} busyId={travl}
+                        onOpen={aabnAgent} onStop={stopAgent} onAck={kvitterAgent} />
+        </>
+      )}
+
       <div className="jobs-section-head">
-        Kører {koerende.length > 0 && <span className="jobs-count">{koerende.length}</span>}
+        Kører {koererTotal > 0 && <span className="jobs-count" data-testid="ac-koerer-tal">{koererTotal}</span>}
       </div>
-      {koerende.length === 0 ? (
+      {koererTotal === 0 ? (
         <div className="jobs-tom">Ingenting kører lige nu.</div>
       ) : (
-        <ul className="jobs-liste">{koerende.map((j) => kort(j, false))}</ul>
+        <>
+          {agenterKoerer.length > 0 && (
+            <AgentJobRows rows={agenterKoerer} groups={kontrakt?.groups ?? []} busyId={travl}
+                          onOpen={aabnAgent} onStop={stopAgent} onAck={kvitterAgent} />
+          )}
+          {koerende.length > 0 && <ul className="jobs-liste">{koerende.map((j) => kort(j, false))}</ul>}
+        </>
       )}
 
       {faerdige.length > 0 && (

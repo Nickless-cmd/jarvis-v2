@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_self_repair.py`
+_DB helpers for self_repair_patterns + self_repair_attempts tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_self_repair_tables` | `(conn)` | — | [src](../../../core/runtime/db_self_repair.py#L14) |
+| function | `insert_self_repair_pattern` | `(*, pattern_id, name, trigger_event_kind, trigger_match_json=…, action_type, action_params_json=…, enabled=…, cooldown_seconds=…, max_attempts_per_window=…, window_seconds=…, auto_disable_after_escalations=…, auto_disable_window_hours=…, source=…, source_evidence_json=…)` | UPSERT a self-repair pattern. Idempotent on pattern_id. | [src](../../../core/runtime/db_self_repair.py#L104) |
+| function | `get_self_repair_pattern` | `(pattern_id)` | — | [src](../../../core/runtime/db_self_repair.py#L173) |
+| function | `list_self_repair_patterns` | `(*, enabled=…, trigger_event_kind=…)` | — | [src](../../../core/runtime/db_self_repair.py#L183) |
+| function | `update_self_repair_pattern` | `(pattern_id, **fields)` | Update specific fields. Supports `<field>_increment` for atomic counters. | [src](../../../core/runtime/db_self_repair.py#L206) |
+| function | `delete_self_repair_pattern` | `(pattern_id)` | — | [src](../../../core/runtime/db_self_repair.py#L247) |
+| function | `insert_self_repair_attempt` | `(*, pattern_id, attempted_at, triggered_by_event_id, outcome, error_summary, elapsed_ms)` | — | [src](../../../core/runtime/db_self_repair.py#L257) |
+| function | `count_recent_attempts` | `(*, pattern_id, since_iso, outcome=…)` | — | [src](../../../core/runtime/db_self_repair.py#L287) |
+| function | `list_recent_self_repair_attempts` | `(*, pattern_id=…, limit=…)` | — | [src](../../../core/runtime/db_self_repair.py#L305) |
+| function | `_pattern_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_self_repair.py#L336) |
+
 ## `core/runtime/db_sensory.py`
 _Sensory memories — persistent archive of Jarvis's sensory experiences._
 

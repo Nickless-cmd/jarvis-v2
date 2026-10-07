@@ -878,6 +878,7 @@ export function ChatView({
           config={cfgSkinne}
           isOwner={auth?.role === 'owner'}
           onCount={setKoerendeJobs}
+          onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })}
           fuld={fuldRude === 'jobs'}
           onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
           onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agent_pool_router.py`
+_Agent-pool router (spec §4 + §5.5). Tyndt lag over central_route så agenter_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `route_agent_task` | `(*, kind=…, min_tokens=…, quality_threshold=…, allow_paid=…, exclude=…, owner_user_id=…)` | Vælg (provider, model) for en agent-task via central_route. Aldrig tør. | [src](../../../core/services/agent_pool_router.py#L41) |
+| function | `_load_task_scores` | `(provider, model)` | Nuværende task_scores for (provider, model) fra runtime-state. {} ved intet. | [src](../../../core/services/agent_pool_router.py#L114) |
+| function | `_save_task_scores` | `(provider, model, scores)` | — | [src](../../../core/services/agent_pool_router.py#L125) |
+| function | `update_task_score` | `(*, provider, model, kind, outcome_quality, lr=…)` | §4.4 kvalitets-læring: EMA-opdatér task_score for (model, kind) fra et | [src](../../../core/services/agent_pool_router.py#L133) |
+
 ## `core/services/agent_pool_surface.py`
 _Agent-puljen — en LET liste man kan filtrere i._
 
@@ -632,15 +642,4 @@ _Apophenia Guard — pattern skeptic that validates before elevation._
 | function | `_generate_assessment_rationale` | `(*, status, observation_count, adjusted_confidence, competitor_count, confounder_count)` | Generate a brief Danish explanation of the assessment. Falls back to empty string. | [src](../../../core/services/apophenia_guard.py#L21) |
 | function | `assess_pattern` | `(*, observation_count, base_confidence, competing_explanations=…, confounders=…, include_rationale=…)` | Assess whether a pattern should be elevated or rejected. | [src](../../../core/services/apophenia_guard.py#L48) |
 | function | `build_apophenia_guard_surface` | `()` | — | [src](../../../core/services/apophenia_guard.py#L120) |
-
-## `core/services/app_dispatch_store.py`
-_Pending runtime→app instruktioner (spec §18.5, Fase 2)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/app_dispatch_store.py#L24) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/app_dispatch_store.py#L29) |
-| function | `enqueue` | `(instruction)` | Validér + kø en app-instruktion. Returnerer record (med id/created_at) eller | [src](../../../core/services/app_dispatch_store.py#L33) |
-| function | `list_pending` | `()` | Uafgjorte instruktioner i kø-rækkefølge (desk poller). | [src](../../../core/services/app_dispatch_store.py#L58) |
-| function | `ack` | `(dispatch_id)` | Markér en instruktion som udført (consumeret af desk). | [src](../../../core/services/app_dispatch_store.py#L63) |
 

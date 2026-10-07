@@ -11,25 +11,37 @@ import {
 import { SettingsState, SettingsActionError } from '../settings/SettingsState'
 import { markNotificationsRead, notificationAttention, NOTIFICATION_READ_EVENT } from '../../lib/notificationAttention'
 import { updatesBridge } from '../../lib/updatesBridge'
+import {
+  getKontraktFeed, kvitterKontrakt, markerKontraktLaest, type FeedCard,
+} from '../../lib/agentContractApi'
+import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
 
 function SwipeCard({ children, className, onRead, onDelete }: {
   children: ReactNode; className: string; onRead: () => void; onDelete?: () => void
 }) {
   const start = useRef<{ x: number; y: number; pointerId?: number } | null>(null)
   const swiped = useRef(false)
+  const captured = useRef(false)
   const [drag, setDrag] = useState(0)
   const down = (e: ReactPointerEvent<HTMLLIElement>) => {
     swiped.current = false
+    captured.current = false
     // Touch events below are the fallback; handling both would commit twice.
     if (e.pointerType === 'touch') return
+    // Gribes IKKE her. En fastholdt pointer sender det efterfølgende `click` til <li>, ikke til kortets knap — og
+    // så åbner et almindeligt museklik intet (målt 7/10-2026 i Chromium: click:notif-swipe, aldrig notif-post).
+    // Fastholdelsen sker først når bevægelsen er et vandret swipe (se `move`).
     start.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId }
-    e.currentTarget.setPointerCapture?.(e.pointerId)
   }
   const move = (e: ReactPointerEvent<HTMLLIElement>) => {
     if (!start.current || start.current.pointerId !== e.pointerId || !Number.isFinite(e.clientX)) return
     const dx = e.clientX - start.current.x
     if (Math.abs(e.clientY - start.current.y) >= Math.abs(dx)) { setDrag(0); return }
     if (dx < 0 && !onDelete) return
+    if (!captured.current && Math.abs(dx) > 8) {
+      captured.current = true
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    }
     setDrag(Math.max(-86, Math.min(86, dx)))
   }
   const finish = (x: number, y: number) => {
@@ -141,10 +153,13 @@ function siden(iso: string): string {
  * funktionen — til denne ene besked. SettingsState bruges uaendret til
  * hente-tilstanden, og SettingsActionError bruges uaendret til svar-fejl.
  */
-export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }: {
+export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession, onAabnAgent }: {
   config: ApiConfig | null
   onLuk: () => void
   onAabnSession: (sessionId: string) => void
+  /** Klik på et agentkort: åbn den OPRINDELIGE session og den rigtige AgentInspector — også når brugeren nu står
+   *  i en anden session. Kortet injicerer aldrig noget i den åbne samtale. Uden handleren åbnes kun sessionen. */
+  onAabnAgent?: (card: FeedCard) => void
   /**
    * Samtalen brugeren sidder i nu. Sendes til serveren, som springer svar
    * fra den over (Bjoern 26/9-2026): man laeser dem allerede i vinduet ved
@@ -155,6 +170,9 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
 }) {
   const [poster, setPoster] = useState<Notifikation[] | null>(null)
   const [fejl, setFejl] = useState(false)
+  // Agentkort (G): hydreret fra assignment/approval i DB. En fejlet hentning er IKKE «ingen agenter».
+  const [agentKort, setAgentKort] = useState<FeedCard[] | null>(null)
+  const [agentFejl, setAgentFejl] = useState(false)
   const [handlingFejl, setHandlingFejl] = useState('')
   const [travl, setTravl] = useState('')
   const [opdaterer, setOpdaterer] = useState(false)
@@ -175,8 +193,16 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
   const [tidligere, setTidligere] = useState<TidligereNotifikation[] | null>(null)
   const [fejlTidligere, setFejlTidligere] = useState(false)
 
+  const hentAgenter = useCallback(() => {
+    if (!config) return
+    void getKontraktFeed(config)
+      .then((f) => { setAgentKort(f.cards); setAgentFejl(false) })
+      .catch(() => setAgentFejl(true))
+  }, [config])
+
   const hent = useCallback((manuel = false) => {
     if (!config) return
+    hentAgenter()
     const version = ++hentVersion.current
     if (manuel) setOpdaterer(true)
     void hentNotifikationer(config, aktivSession)
@@ -186,7 +212,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
       } })
       .catch(() => { if (version === hentVersion.current) setFejl(true) })
       .finally(() => { if (manuel) setOpdaterer(false) })
-  }, [config, aktivSession])
+  }, [config, aktivSession, hentAgenter])
 
   // Historikken hentes ogsaa ved mount — ikke foerst naar man klikker paa
   // fanen. Tallet paa fanen SKAL staa der foer man trykker: en fane der
@@ -267,6 +293,46 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
     markNotificationsRead([p.id])
   }
 
+  const laesAgent = (k: FeedCard) => {
+    if (!config) return
+    void markerKontraktLaest(config, k.ref_kind, k.ref_id).then(hentAgenter).catch(() => setAgentFejl(true))
+  }
+  const aabnAgentKort = (k: FeedCard) => {
+    laesAgent(k)
+    if (onAabnAgent) onAabnAgent(k)
+    else if (k.origin_session_id) onAabnSession(k.origin_session_id)
+  }
+  const kvitterAgent = async (k: FeedCard) => {
+    if (!config || !k.can_acknowledge) return
+    setTravl(k.ref_id); setHandlingFejl('')
+    try {
+      await kvitterKontrakt(config, k.assignment_id)
+      hentAgenter()
+    } catch (reason) {
+      setHandlingFejl(reason instanceof Error ? reason.message : 'Kortet kunne ikke kvitteres.')
+    } finally { setTravl('') }
+  }
+
+  const agentKortRaekke = (k: FeedCard) => {
+    const Ikon = agentKortIkon(k)
+    return (
+      <SwipeCard key={`${k.ref_kind}:${k.ref_id}`}
+        className={`notif-item tone-agent${k.section === 'svar' ? ' er-svar' : ''}${k.state.read ? ' er-laest' : ''}`}
+        onRead={() => laesAgent(k)} onDelete={k.can_acknowledge ? () => void kvitterAgent(k) : undefined}>
+        {k.can_acknowledge && <button type="button" className="notif-dismiss" aria-label={`Kvittér ${k.title}`}
+                disabled={travl === k.ref_id} onClick={() => void kvitterAgent(k)}><X size={13} /></button>}
+        <div className="notif-post" data-testid={`notif-agent-${k.ref_id}`} title={k.title} role="button" tabIndex={0}
+             onClick={() => aabnAgentKort(k)} onKeyDown={(e) => { if (e.key === 'Enter') aabnAgentKort(k) }}>
+          <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
+          <span className="notif-titel">{k.title}</span>
+          <span className="notif-tid">{siden(k.updated_at)}</span>
+        </div>
+        {config && <AgentFeedCardBody config={config} card={k} onChanged={() => { hentAgenter(); hent() }}
+                                      onError={setHandlingFejl} />}
+      </SwipeCard>
+    )
+  }
+
   const installerRelease = async (p: Notifikation) => {
     const bridge = updatesBridge()
     if (!bridge) return
@@ -291,6 +357,10 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
   const venter = alle.filter((p) => p.slags !== 'run_done')
   const svar = alle.filter((p) => p.slags === 'run_done')
   const afgjort = tidligere ?? []
+  const kortListe = agentKort ?? []
+  const agentVenter = kortListe.filter((k) => k.section === 'venter')
+  const agentSvar = kortListe.filter((k) => k.section === 'svar')
+  const agentAktiv = kortListe.filter((k) => k.section === 'aktiv')
   const rydBare = alle.filter((p) => RYD_BARE.has(p.slags) && !p.foraeldet &&
     !notificationAttention([p.id]).unread)
 
@@ -349,7 +419,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           onClick={() => setFane('venter')}
         >
           Venter på dig
-          {venter.length > 0 && <span className="notif-fane-tal er-venter">{venter.length}</span>}
+          {venter.length + agentVenter.length > 0 && <span className="notif-fane-tal er-venter">{venter.length + agentVenter.length}</span>}
         </button>
         <button
           type="button" role="tab" aria-selected={fane === 'svar'}
@@ -357,7 +427,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           onClick={() => setFane('svar')}
         >
           Svar
-          {svar.length > 0 && <span className="notif-fane-tal">{svar.length}</span>}
+          {svar.length + agentSvar.length > 0 && <span className="notif-fane-tal">{svar.length + agentSvar.length}</span>}
         </button>
         <button
           type="button" role="tab" aria-selected={fane === 'tidligere'}
@@ -378,6 +448,12 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
       </div>}
 
       <SettingsActionError message={handlingFejl} />
+      {agentFejl && (
+        <div className="settings-feedback error" role="alert" data-testid="ac-feed-fejl">
+          <p>Agentkortene kunne ikke hentes — listen er ukendt, ikke tom.</p>
+          <button type="button" onClick={() => hentAgenter()}>Prøv igen</button>
+        </div>
+      )}
 
       {fane === 'svar' ? (
         fejl ? (
@@ -387,10 +463,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           </div>
         ) : poster === null ? (
           <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
-        ) : svar.length === 0 ? (
+        ) : svar.length + agentSvar.length + agentAktiv.length === 0 ? (
           <p className="notif-tom">Ingen svar fra baggrunden endnu.</p>
         ) : (
           <ul className="notif-liste">
+            {agentSvar.map(agentKortRaekke)}
             {svar.map((p) => {
               const Ikon = IKON[p.slags] ?? Bell
               return (
@@ -422,6 +499,9 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
                 </SwipeCard>
               )
             })}
+            {/* «I gang» står EFTER svarene: det er baggrund, ikke et svar man skal læse. */}
+            {agentAktiv.length > 0 && <li className="ac-i-gang">Agenter i gang ({agentAktiv.length})</li>}
+            {agentAktiv.map(agentKortRaekke)}
           </ul>
         )
       ) : fane === 'venter' ? (
@@ -432,12 +512,15 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }
           </div>
         ) : poster === null ? (
           <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
-        ) : venter.length === 0 ? (
-          <p className="notif-tom">{svar.length
-            ? `Intet venter på dig. ${svar.length} svar under Svar.`
-            : 'Ingen notifikationer — alt er klaret.'}</p>
+        ) : venter.length + agentVenter.length === 0 ? (
+          <p className="notif-tom">{agentFejl
+            ? 'Kan ikke bekræfte at intet venter — agentkortene kunne ikke hentes.'
+            : svar.length + agentSvar.length
+              ? `Intet venter på dig. ${svar.length + agentSvar.length} svar under Svar.`
+              : 'Ingen notifikationer — alt er klaret.'}</p>
         ) : (
           <ul className="notif-liste">
+            {agentVenter.map(agentKortRaekke)}
             {venter.map((p) => {
               const Ikon = IKON[p.slags] ?? Bell
               return (

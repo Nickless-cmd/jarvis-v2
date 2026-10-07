@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_core.py`
+_Core infrastructure for core.runtime.db modulet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ClosingConnection` | `` | — | [src](../../../core/runtime/db_core.py#L71) |
+| method | `ClosingConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L72) |
+| class | `PooledConnection` | `` | Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer | [src](../../../core/runtime/db_core.py#L79) |
+| method | `PooledConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L82) |
+| method | `PooledConnection.close` | `(self)` | — | [src](../../../core/runtime/db_core.py#L86) |
+| function | `_make_connection` | `(_factory)` | Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous). | [src](../../../core/runtime/db_core.py#L97) |
+| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L122) |
+| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L133) |
+| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L174) |
+| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L178) |
+| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L184) |
+| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L199) |
+| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L370) |
+| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L375) |
+| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L381) |
+| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L401) |
+| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L434) |
+| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L466) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L485) |
+| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L534) |
+| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L558) |
+| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L568) |
+| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L586) |
+
 ## `core/runtime/db_credit_assignment.py`
 _Credit assignment — schema migration, choice recording, and outcome querying._
 
@@ -929,20 +958,4 @@ _Schema layer for core.runtime.db — init_db + all _ensure_*/_migrate_* helpers
 | function | `_ensure_tool_intent_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1444) |
 | function | `_ensure_runtime_webchat_execution_pilot_table` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1502) |
 | function | `_migrate_chronicle_table_add_affective_signature` | `()` | Add affective_signature column to existing tables missing it. | [src](../../../core/runtime/db_schema.py#L1544) |
-
-## `core/runtime/db_self_repair.py`
-_DB helpers for self_repair_patterns + self_repair_attempts tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_self_repair_tables` | `(conn)` | — | [src](../../../core/runtime/db_self_repair.py#L14) |
-| function | `insert_self_repair_pattern` | `(*, pattern_id, name, trigger_event_kind, trigger_match_json=…, action_type, action_params_json=…, enabled=…, cooldown_seconds=…, max_attempts_per_window=…, window_seconds=…, auto_disable_after_escalations=…, auto_disable_window_hours=…, source=…, source_evidence_json=…)` | UPSERT a self-repair pattern. Idempotent on pattern_id. | [src](../../../core/runtime/db_self_repair.py#L104) |
-| function | `get_self_repair_pattern` | `(pattern_id)` | — | [src](../../../core/runtime/db_self_repair.py#L173) |
-| function | `list_self_repair_patterns` | `(*, enabled=…, trigger_event_kind=…)` | — | [src](../../../core/runtime/db_self_repair.py#L183) |
-| function | `update_self_repair_pattern` | `(pattern_id, **fields)` | Update specific fields. Supports `<field>_increment` for atomic counters. | [src](../../../core/runtime/db_self_repair.py#L206) |
-| function | `delete_self_repair_pattern` | `(pattern_id)` | — | [src](../../../core/runtime/db_self_repair.py#L247) |
-| function | `insert_self_repair_attempt` | `(*, pattern_id, attempted_at, triggered_by_event_id, outcome, error_summary, elapsed_ms)` | — | [src](../../../core/runtime/db_self_repair.py#L257) |
-| function | `count_recent_attempts` | `(*, pattern_id, since_iso, outcome=…)` | — | [src](../../../core/runtime/db_self_repair.py#L287) |
-| function | `list_recent_self_repair_attempts` | `(*, pattern_id=…, limit=…)` | — | [src](../../../core/runtime/db_self_repair.py#L305) |
-| function | `_pattern_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_self_repair.py#L336) |
 

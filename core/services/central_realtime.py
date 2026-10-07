@@ -55,7 +55,7 @@ def _status_from(diag: dict, incidents: list, open_breakers: list, drift: dict,
 def runtime_liveness() -> dict[str, Any]:
     """Sandfærdig runtime-topologi + heartbeat-friskhed.
 
-    Modvirker at Jarvis OPFINDER 'jarvis-heartbeat'/'jarvis-central' som døde
+    Modvirker at Jarvis OPFINDER sine egne heartbeat- og central-tråde som døde
     systemd-services i sin status: de findes IKKE som units — de er tråde inde i
     jarvis-runtime (hvis unit-beskrivelse er 'runtime owner (heartbeat, schedulers,
     bridges)'). Kun jarvis-api og jarvis-runtime er systemd-units. Self-safe."""

@@ -217,7 +217,7 @@ def _maybe_emit_critical(report: dict[str, Any]) -> None:
     ## Hvorfor den gamle cooldown ikke holdt
 
     Den var en modul-global. To ting fulgte af det, og begge stod i Bjørns
-    `jarvis-heartbeat` natten til 13/9-2026:
+    notifikationer natten til 13/9-2026:
 
     * **Dubletter.** Både jarvis-api og jarvis-runtime kører denne kode, og hver
       proces havde sin egen tæller. Derfor kom alarmen to gange i samme minut —

@@ -1,6 +1,6 @@
 """Testmiljøet maa ALDRIG ringe paa hans telefon — heller ikke via ntfy.
 
-MAALT 12/9-2026 i `jarvis-heartbeat`, kl. 23:31 og 23:40:
+MAALT 12/9-2026 kl. 23:31 og 23:40:
 
     ⚠ Central greb ALVORLIG fejl: skill/skill_scan — RuntimeError: scanner exploded
     ⚠ Central greb ALVORLIG fejl: auth/tool_access — RuntimeError: boom

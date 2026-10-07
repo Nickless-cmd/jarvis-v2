@@ -82,7 +82,7 @@ def start(*, name: str = "default") -> None:
             "name": name,
             "startup_recovery_requested": bool(recovery.get("startup_recovery_requested")),
         },
-        name="jarvis-heartbeat-scheduler",
+        name="jarvis-tick-scheduler",
         daemon=True,
     )
     thread.start()

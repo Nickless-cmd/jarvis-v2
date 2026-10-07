@@ -88,8 +88,8 @@ def send_notification(
 
     ## Testmiljøet må ALDRIG nå hans telefon
 
-    Bjørn fik 12/9-2026 kl. 23:31 og 23:40 fire ALVORLIG-alarmer i
-    `jarvis-heartbeat`: «Central greb ALVORLIG fejl: skill/skill_scan —
+    Bjørn fik 12/9-2026 kl. 23:31 og 23:40 fire ALVORLIG-alarmer på sin
+    telefon: «Central greb ALVORLIG fejl: skill/skill_scan —
     RuntimeError: scanner exploded», «auth/tool_access — RuntimeError: boom»,
     «privacy/cross_user_share — RuntimeError: boom».
 

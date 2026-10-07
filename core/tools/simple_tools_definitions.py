@@ -2406,7 +2406,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_ntfy",
-            "description": "Send a push notification to Bjørn's phone via ntfy (jarvis-heartbeat topic). Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
+            "description": "Send a push notification to Bjørn's phone through the configured ntfy channel. Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
             "parameters": {
                 "type": "object",
                 "properties": {

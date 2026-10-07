@@ -372,3 +372,41 @@ def test_legacy_agents_without_an_assignment_never_use_the_worker(wk, monkeypatc
     a = spawn_agent_task(role="critic", goal="g", auto_execute=False, context={})
     M.execute_agent_task(agent_id=a["agent_id"])
     assert seen and seen[0]["message"].startswith("System prompt:")
+
+
+def test_a_model_failover_in_the_broker_moves_the_worker_logs_to_the_attempt_that_actually_ran(wk):
+    """G: broker-modelkaldet failover'er (nyt runforsoeg); workerens stderr hoerer til det SIDSTE forsoeg."""
+    import core.runtime.db_agent_route as route
+    from core.runtime import db_agent_artifacts as art
+    from core.services.agent_model_router import ModelCallFailed
+
+    ag = wk.agent()
+    aid = ag["agent_id"]
+    c = wk.c_
+    a = c.open_assignment_for_agent(aid)
+    first = c.queued_contract_run(aid)
+    chain = [{"route_source": "agent_pool", "provider": "p1", "model": "m1"},
+             {"route_source": "agent_pool", "provider": "p2", "model": "m2"}]
+    route.record_decision(assignment_id=a["assignment_id"], agent_id=aid, owner_user_id="bjorn",
+                          decision={"route_source": "agent_pool", "provider": "p1", "model": "m1",
+                                    "candidates": chain, "rejected": []}, attempt=1)
+    cn = c._conn()
+    cn.execute("UPDATE agent_runs SET status='running', started_at='t' WHERE run_id=?", (first,))
+    cn.execute("UPDATE agent_registry SET provider='p1', model='m1' WHERE agent_id=?", (aid,))
+    cn.commit()
+    ag = dict(ag, provider="p1", model="m1")
+    wk.replies_.append(ModelCallFailed("nede", provider="p1", model="m1"))
+    body = """
+send(s, {'id': 1, 'op': 'model_text', 'requires_tools': False})
+rep = r.read(30)
+sys.stderr.write('LOG fra det sidste forsoeg'); sys.stderr.flush()
+send(s, {'op': 'result', 'outcome': {}})
+"""
+    R.run_agent_in_worker(agent=ag, prompt="P", requires_tools=False, run_id=first, tools_payload=[],
+                          worker_command=evil(body))
+    runs = [dict(r) for r in c._conn().execute(
+        "SELECT run_id, status FROM agent_runs WHERE assignment_id=? ORDER BY attempt_no",
+        (a["assignment_id"],))]
+    assert [r["status"] for r in runs] == ["failed", "running"]
+    assert art.get_artifact_record(run_id=runs[1]["run_id"], name="stderr.log") is not None
+    assert art.get_artifact_record(run_id=first, name="stderr.log") is None

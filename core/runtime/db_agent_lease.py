@@ -243,8 +243,9 @@ def _decide(assignment_id: str, t: datetime) -> dict[str, Any]:
                      (now_s, assignment_id))
         conn.commit()
         return {"assignment_id": assignment_id, "action": "outcome_unknown", "open_tool_calls": int(unknown)}
-    attempts = int(conn.execute("SELECT COUNT(*) FROM agent_runs WHERE assignment_id=?",
-                                (assignment_id,)).fetchone()[0])
+    # Et modelskift (G) er et synligt forsoeg men ikke et SIKKERT RETRY efter workertab: det tael ikke med.
+    attempts = int(conn.execute("SELECT COUNT(*) FROM agent_runs WHERE assignment_id=? AND error_code != ?",
+                                (assignment_id, "MODEL_FAILOVER")).fetchone()[0])
     if run is not None:
         conn.execute("UPDATE agent_runs SET status='failed', failure_reason='lease_expired', "
                      "error_phase='recovery', error_code='LEASE_EXPIRED', finished_at=?, updated_at=? "

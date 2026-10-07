@@ -574,6 +574,16 @@ def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
         return []
 
 
+def _live_run(run_id: str) -> str:
+    """Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse."""
+    try:
+        from core.runtime.db_agent_attempts import live_run_id
+        return live_run_id(run_id)
+    except Exception:
+        logger.warning("kunne ikke afgoere det levende runforsoeg for %s", run_id, exc_info=True)
+        return run_id
+
+
 def execute_agent_task(*, agent_id: str, thread_id: str = "",
                        execution_mode: str = "solo-task") -> dict[str, object]:
     """Koer et barns arbejde.
@@ -715,7 +725,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                     provider=str(agent.get("provider") or ""),
                     model=str(agent.get("model") or ""),
                     requires_tools=_needs_tools,
-                    lane="agent",
+                    lane="agent", run_id=run_id,
                 )
         else:
             if _resume is not None:
@@ -726,8 +736,9 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                 provider=str(agent.get("provider") or ""),
                 model=str(agent.get("model") or ""),
                 requires_tools=_needs_tools,
-                lane="agent",
+                lane="agent", run_id=run_id,
             )
+        run_id = _live_run(run_id)      # G: et failover har muligvis afloest runnet - alt herunder foelger det
         if result.get("status") == "parked" and result.get("parked"):
             # F4b: loekken er stoppet foer et godkendelseskraevende kald - ikke et udfald.
             from core.services.agent_parking import park_run
@@ -999,6 +1010,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             pass
     except Exception as exc:
         message = str(exc)
+        run_id = _live_run(run_id)      # G: fejlen rammer det forsoeg der koerte til sidst, ikke et afloest
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",
             thread_id=resolved_thread_id,

@@ -149,20 +149,31 @@ class _Broker:
             raise WorkerError("PROTOCOL", "messages over graensen")
         tools = self.tools_payload if msg.get("tools_mode") == "full" else []
         from core.services.agent_model_router import call_agent_model
-        res = call_agent_model(
-            agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
-            provider=self.provider, model=self.model,
-            requires_tools=bool(msg.get("requires_tools")) and bool(tools),
-            messages=messages, tools=tools, lane="agent")
+        try:
+            res = call_agent_model(
+                agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
+                provider=self.provider, model=self.model,
+                requires_tools=bool(msg.get("requires_tools")) and bool(tools),
+                messages=messages, tools=tools, lane="agent", run_id=self._io.run_id)
+        finally:
+            self._adopt_live_run()
         return _safe(res)
+
+    def _adopt_live_run(self) -> None:
+        """G: et failover har afloest runnet - bogfoering og logs foelger det nye forsoeg."""
+        from core.runtime.db_agent_attempts import live_run_id
+        self._io._run_id = self.run_id = live_run_id(self._io.run_id)
 
     def _model_text(self, msg: dict[str, Any]) -> dict[str, Any]:
         # prompten er serverens egen - workerens "message" ignoreres bevidst
         from core.services.agent_model_router import call_agent_model
-        res = call_agent_model(
-            agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
-            message=self.prompt, provider=self.provider, model=self.model,
-            requires_tools=bool(msg.get("requires_tools")), lane="agent")
+        try:
+            res = call_agent_model(
+                agent=self.agent, tools_executed=self.tool_calls > 0, facade=self._base._facade(),
+                message=self.prompt, provider=self.provider, model=self.model,
+                requires_tools=bool(msg.get("requires_tools")), lane="agent", run_id=self._io.run_id)
+        finally:
+            self._adopt_live_run()
         self.last_text_result = _safe(res)
         return self.last_text_result
 
@@ -313,7 +324,7 @@ def run_agent_in_worker(
                 logger.debug("socket kunne ikke lukkes", exc_info=True)
         out_f.close()
         err_f.close()
-        _save_logs(agent, run_id, out_f.name, err_f.name)
+        _save_logs(agent, broker.run_id, out_f.name, err_f.name)   # G: det forsoeg der koerte til sidst
         for p in (out_f.name, err_f.name):
             try:
                 os.unlink(p)

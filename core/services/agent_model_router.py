@@ -6,7 +6,8 @@
   ``guard_call`` afviser en provider ejeren ikke maa bruge FOER noget forlader serveren;
 * svigter modellen, og agenten endnu ikke har udfoert noget der kan have en effekt, proeves den NAESTE
   kandidat i kaeden (puljen foer ejerens fallback). Hvert skifte er et nyt ``attempt`` i
-  ``agent_route_decisions`` og opdaterer agentens provider/model, saa skiftet er synligt og varigt;
+  ``agent_route_decisions`` OG et nyt ``agent_runs``-forsoeg i samme assignment (det svigtede faar en
+  fejlpost; intet terminalt udfald - se ``db_agent_attempts``), saa skiftet er synligt og varigt;
 * har agenten udfoert et vaerktoejskald (og politikken kan skrive) skjules et modelskift ikke: kaldet
   fejler i stedet for at blive gentaget paa en anden model.
 
@@ -55,32 +56,44 @@ def _effectful(agent: dict[str, Any]) -> bool:
     return not str(agent.get("tool_policy") or "").startswith(READ_ONLY_PREFIX)
 
 
-def _switch(agent_id: str, latest: dict[str, Any], cand: dict[str, str], why: str) -> None:
-    """Gem skiftet: nyt route-forsoeg + agentens aktuelle provider/model."""
-    from core.runtime import db_agent_route as r
+def _current_run(latest: dict[str, Any], run_id: str) -> str:
+    """Det forsoeg der koerer nu: kalderens run (foelg failover-kaeden), ellers assignmentets seneste run."""
+    from core.runtime.db_agent_attempts import live_run_id
+    if run_id:
+        return live_run_id(run_id)
+    row = _conn().execute("SELECT run_id FROM agent_runs WHERE assignment_id=? ORDER BY attempt_no DESC "
+                          "LIMIT 1", (latest["assignment_id"],)).fetchone()
+    return str(row["run_id"]) if row else ""
+
+
+def _switch(agent_id: str, latest: dict[str, Any], cand: dict[str, str], why: str, run_id: str = "") -> str:
+    """Failover som NYT synligt runforsoeg (G, spec 7.1): det svigtede forsoeg faar sin egen fejlpost, et nyt
+    ``agent_runs``-forsoeg i samme assignment aabnes, og rutebeslutningen + registret opdateres i samme
+    transaktion. Intet terminalt udfald, ingen ventekontrakt og ingen vaekning beroeres. Returnerer det nye
+    runs id. Er leasen mistet eller assignmentet afsluttet, rejses ``ContractError`` og INTET skifter."""
+    from core.runtime.db_agent_attempts import begin_failover_attempt
     decision = dict(latest["decision"])
     decision.update({"route_source": cand["route_source"], "provider": cand["provider"],
                      "model": cand["model"], "failover_reason": why[:300]})
-    r.record_decision(assignment_id=latest["assignment_id"], agent_id=agent_id,
-                      owner_user_id=latest["owner_user_id"], decision=decision,
-                      attempt=int(latest["attempt"]) + 1)
-    conn = _conn()
-    conn.execute("UPDATE agent_registry SET provider=?, model=? WHERE agent_id=?",
-                 (cand["provider"], cand["model"], agent_id))
-    conn.commit()
+    started = begin_failover_attempt(from_run_id=_current_run(latest, run_id), decision=decision, reason=why)
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("agent.route_failover", {
             "agent_id": agent_id, "assignment_id": latest["assignment_id"],
+            "run_id": started["run_id"], "failed_run_id": started["failed_run_id"],
+            "attempt_no": started["attempt_no"],
             "to": f"{cand['provider']}/{cand['model']}", "route_source": cand["route_source"],
             "reason": why[:200]})
     except Exception:
         logger.debug("route_failover-event kunne ikke publiceres", exc_info=True)
+    return started["run_id"]
 
 
 def call_agent_model(*, agent: dict[str, Any], tools_executed: bool = False, facade: Any = None,
-                     **execute_kwargs: Any) -> dict[str, Any]:
+                     run_id: str = "", **execute_kwargs: Any) -> dict[str, Any]:
     """Kald agentens model. ``execute_kwargs`` er argumenterne til ``execute_with_role_or_fallback``.
+
+    ``run_id`` er kalderens nuvaerende runforsoeg; et failover afloeser det med et nyt (``live_run_id``).
 
     ``facade`` er den facade kalderen allerede loeser sine modelkald igennem (tests patcher den)."""
     from core.services.agent_model_policy import ModelUnavailable, ProviderDenied, guard_call
@@ -109,7 +122,8 @@ def call_agent_model(*, agent: dict[str, Any], tools_executed: bool = False, fac
             attempts.append({"provider": p, "model": m, "reason": f"policy:{exc}"[:200]})
             continue
         if idx != start and latest is not None:
-            _switch(agent_id, latest, cand, attempts[-1]["reason"] if attempts else "failover")
+            why = "; ".join(f"{a['provider']}/{a['model']}: {a['reason']}" for a in attempts) or "failover"
+            _switch(agent_id, latest, cand, why, run_id)
             latest, _ = _chain(agent_id)
         kw = dict(execute_kwargs, provider=p, model=m, owner_user_id=owner)
         try:

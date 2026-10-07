@@ -116,6 +116,17 @@ _Artefaktlager for agentkoersler (agent-contract-v1, leverance C1, spec 9 og 12.
 | function | `reconcile` | `()` | Afstem DB mod disk. Markerer poster med manglende/korrupt fil, finder foraeldreloese | [src](../../../core/runtime/db_agent_artifacts.py#L179) |
 | function | `write_terminal_artifacts` | `(*, agent_id, assignment_id, owner_user_id, status, reply, summary, error_code=…, error_phase=…, worktree=…)` | Skriv ``result.json`` (+ ``final.txt`` og ``events.jsonl``) for assignmentets SIDSTE run | [src](../../../core/runtime/db_agent_artifacts.py#L212) |
 
+## `core/runtime/db_agent_attempts.py`
+_Failover som nyt synligt runforsoeg (agent-contract-v1 G, spec 7.1 og 6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fence` | `(conn, assignment_id)` | Den koerende traads lease skal stadig vaere den gaeldende - tjekket INDE i transaktionen. | [src](../../../core/runtime/db_agent_attempts.py#L30) |
+| function | `begin_failover_attempt` | `(*, from_run_id, decision, reason)` | Luk det svigtede forsoeg med en fejlpost og aabn det naeste (nyt ``run_id``, ``attempt_no`` + 1). | [src](../../../core/runtime/db_agent_attempts.py#L47) |
+| function | `_write_failed_attempt_artifact` | `(*, agent_id, run_id, assignment_id, owner, reason, successor, attempt_no)` | ``result.json`` for det svigtede forsoeg, saa manifestet viser det. Bedste indsats: en manglende | [src](../../../core/runtime/db_agent_attempts.py#L110) |
+| function | `live_run_id` | `(run_id)` | Foelg failover-kaeden fra ``run_id`` til det forsoeg der koerer nu. Et run der ikke er afloest af et | [src](../../../core/runtime/db_agent_attempts.py#L129) |
+| function | `attempts_for_assignment` | `(assignment_id)` | — | [src](../../../core/runtime/db_agent_attempts.py#L149) |
+
 ## `core/runtime/db_agent_contract.py`
 _Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
 
@@ -694,17 +705,4 @@ _DB helpers for dream_bias_active (Lag 2 dream-bias)._
 | function | `update_existing_bias` | `(*, workspace_id, attention_bias, threshold_bias, intensity, ttl_hours, dream_text, accumulated_count, source_event_ids, source_kinds)` | Update existing row in place. Returns True if a row was updated. | [src](../../../core/runtime/db_dream_bias.py#L76) |
 | function | `get_active_bias_raw` | `(*, workspace_id)` | Read the single active bias row for a workspace. | [src](../../../core/runtime/db_dream_bias.py#L112) |
 | function | `delete_expired_bias_rows` | `()` | Hard-delete rows whose TTL has passed. Returns count. | [src](../../../core/runtime/db_dream_bias.py#L149) |
-
-## `core/runtime/db_embeddings.py`
-_Embeddings store — unified vector index across all memory surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_memory_embeddings_table` | `(conn)` | — | [src](../../../core/runtime/db_embeddings.py#L18) |
-| function | `upsert_embedding` | `(*, source_table, source_id, modality, content_hash, embedding_bytes, model_version)` | Insert or overwrite the embedding for a given source row. | [src](../../../core/runtime/db_embeddings.py#L39) |
-| function | `get_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L78) |
-| function | `delete_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L93) |
-| function | `list_embeddings` | `(*, modalities=…, source_tables=…, limit=…)` | Return raw embedding rows (including blobs). Caller decodes. | [src](../../../core/runtime/db_embeddings.py#L104) |
-| function | `count_embeddings` | `(*, modality=…, source_table=…)` | — | [src](../../../core/runtime/db_embeddings.py#L133) |
-| function | `list_indexed_source_ids` | `(source_table)` | Return the set of source_ids already indexed for a given table. | [src](../../../core/runtime/db_embeddings.py#L156) |
 

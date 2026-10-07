@@ -301,11 +301,20 @@ class _InProcessLoopIO:
     def model(self, *, messages, tools, requires_tools, provider, model):
         # D: en agent med ejer genvalideres ved hvert kald og failover'er gennem sin gemte rute;
         # en legacy-agent gaar den gamle vej uaendret.
+        from core.runtime.db_agent_attempts import live_run_id
         from core.services.agent_model_router import call_agent_model
-        return call_agent_model(
-            agent=self._agent, tools_executed=self._tools_executed, facade=_facade(),
-            provider=provider, model=model, requires_tools=requires_tools,
-            messages=messages, tools=tools, lane="agent")
+        try:
+            return call_agent_model(
+                agent=self._agent, tools_executed=self._tools_executed, facade=_facade(),
+                provider=provider, model=model, requires_tools=requires_tools,
+                messages=messages, tools=tools, lane="agent", run_id=self._run_id)
+        finally:
+            # G: et failover har afloest runnet - vaerktoejsbogfoering og parkering foelger det nye forsoeg
+            self._run_id = live_run_id(self._run_id)
+
+    @property
+    def run_id(self) -> str:
+        return self._run_id
 
     def tool(self, tc):
         # Startposten skrives FOER udfoerelsen: et kald der er startet uden at vaere afsluttet kan

@@ -512,14 +512,15 @@ _Modelkald for en agent: genvalidering ved kaldet og failover i kandidatkaeden (
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ModelCallFailed` | `` | Modelkaldet svigtede (provider, kredit, circuit breaker). Bruges af strict-stien. | [src](../../../core/services/agent_model_router.py#L27) |
-| method | `ModelCallFailed.__init__` | `(self, detail, *, provider=…, model=…)` | — | [src](../../../core/services/agent_model_router.py#L32) |
-| function | `bound_owner` | `(agent_id)` | Agentens autentificerede ejer, eller '' for en legacy-agent. | [src](../../../core/services/agent_model_router.py#L37) |
-| function | `_chain` | `(agent_id)` | — | [src](../../../core/services/agent_model_router.py#L45) |
-| function | `_effectful` | `(agent)` | — | [src](../../../core/services/agent_model_router.py#L54) |
-| function | `_switch` | `(agent_id, latest, cand, why)` | Gem skiftet: nyt route-forsoeg + agentens aktuelle provider/model. | [src](../../../core/services/agent_model_router.py#L58) |
-| function | `call_agent_model` | `(*, agent, tools_executed=…, facade=…, **execute_kwargs)` | Kald agentens model. ``execute_kwargs`` er argumenterne til ``execute_with_role_or_fallback``. | [src](../../../core/services/agent_model_router.py#L81) |
-| function | `_facade` | `()` | — | [src](../../../core/services/agent_model_router.py#L126) |
+| class | `ModelCallFailed` | `` | Modelkaldet svigtede (provider, kredit, circuit breaker). Bruges af strict-stien. | [src](../../../core/services/agent_model_router.py#L28) |
+| method | `ModelCallFailed.__init__` | `(self, detail, *, provider=…, model=…)` | — | [src](../../../core/services/agent_model_router.py#L33) |
+| function | `bound_owner` | `(agent_id)` | Agentens autentificerede ejer, eller '' for en legacy-agent. | [src](../../../core/services/agent_model_router.py#L38) |
+| function | `_chain` | `(agent_id)` | — | [src](../../../core/services/agent_model_router.py#L46) |
+| function | `_effectful` | `(agent)` | — | [src](../../../core/services/agent_model_router.py#L55) |
+| function | `_current_run` | `(latest, run_id)` | Det forsoeg der koerer nu: kalderens run (foelg failover-kaeden), ellers assignmentets seneste run. | [src](../../../core/services/agent_model_router.py#L59) |
+| function | `_switch` | `(agent_id, latest, cand, why, run_id=…)` | Failover som NYT synligt runforsoeg (G, spec 7.1): det svigtede forsoeg faar sin egen fejlpost, et nyt | [src](../../../core/services/agent_model_router.py#L69) |
+| function | `call_agent_model` | `(*, agent, tools_executed=…, facade=…, run_id=…, **execute_kwargs)` | Kald agentens model. ``execute_kwargs`` er argumenterne til ``execute_with_role_or_fallback``. | [src](../../../core/services/agent_model_router.py#L92) |
+| function | `_facade` | `()` | — | [src](../../../core/services/agent_model_router.py#L140) |
 
 ## `core/services/agent_observation_compressor.py`
 _Agent observation compressor — Mastra-style intra-session compression._

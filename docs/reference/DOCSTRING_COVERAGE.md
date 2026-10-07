@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8583/16234 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8600/16278 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8583/16234 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 759 | 1367 | 55% |
-| `core.services` | 5721 | 11035 | 51% |
+| `core.services` | 5738 | 11079 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8583/16234 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2266)
+## Undocumented public functions (2283)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L214)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -332,11 +332,11 @@ Generated from source. 8583/16234 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
-- `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L138)
-- `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L46)
-- `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L133)
-- `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L87)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L587)
+- `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L139)
+- `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
+- `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)
+- `core/runtime/db_agent_artifacts.py` :: `run_bytes` (L88)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L598)
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
@@ -657,6 +657,23 @@ Generated from source. 8583/16234 functions/methods documented (52%). The list b
 - `core/services/agent_worker_main.py` :: `main` (L74)
 - `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
+- `core/services/agent_worktree_git.py` :: `add_worktree` (L100)
+- `core/services/agent_worktree_git.py` :: `changed_files` (L120)
+- `core/services/agent_worktree_git.py` :: `commits_since` (L128)
+- `core/services/agent_worktree_git.py` :: `ensure_dir` (L168)
+- `core/services/agent_worktree_git.py` :: `path_is_inside` (L163)
+- `core/services/agent_worktree_git.py` :: `resolve_commit` (L82)
+- `core/services/agent_worktree_git.py` :: `run_git` (L39)
+- `core/services/agent_worktree_git.py` :: `safe_name` (L59)
+- `core/services/agent_worktree_git.py` :: `safe_ref` (L52)
+- `core/services/agent_worktree_git.py` :: `stage_all` (L109)
+- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L83)
+- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L49)
+- `core/services/agent_worktrees.py` :: `get` (L185)
+- `core/services/agent_worktrees.py` :: `get_for_assignment` (L189)
+- `core/services/agent_worktrees.py` :: `quota_status` (L129)
+- `core/services/agent_worktrees.py` :: `worktree_root` (L79)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L242)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/graf_render.py`
+_Tegn en graf til PNG — saa den kan leveres som en almindelig billed-blok._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GrafFejl` | `` | En spec vi ikke kan tegne. Baerer en besked der kan vises til Jarvis. | [src](../../../core/services/graf_render.py#L42) |
+| function | `_tal_liste` | `(v, navn)` | — | [src](../../../core/services/graf_render.py#L46) |
+| function | `_validér` | `(spec)` | — | [src](../../../core/services/graf_render.py#L58) |
+| function | `tegn_graf` | `(spec)` | Spec → PNG-bytes. Kaster `GrafFejl` paa en spec vi ikke kan tegne. | [src](../../../core/services/graf_render.py#L90) |
+
+## `core/services/gratitude_tracker.py`
+_Gratitude Tracker — accumulated appreciation over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_gratitude` | `(*, trigger_event, detail=…)` | — | [src](../../../core/services/gratitude_tracker.py#L20) |
+| function | `detect_gratitude_from_interaction` | `(*, user_mood, outcome_status, was_corrected, autonomy_granted=…)` | — | [src](../../../core/services/gratitude_tracker.py#L44) |
+| function | `build_gratitude_surface` | `()` | — | [src](../../../core/services/gratitude_tracker.py#L59) |
+
 ## `core/services/ground_truth_registry.py`
 _Ground Truth Registry — Layer 3 of the Lying Engine._
 
@@ -594,27 +613,4 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1088) |
 | function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1102) |
 | function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1114) |
-
-## `core/services/inbox_gate.py`
-_Indbakkens to-trins forudsætning i mutationspunktet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gate_tændt` | `()` | — | [src](../../../core/services/inbox_gate.py#L72) |
-| function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
-| function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
-| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L129) |
-| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L196) |
-| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L209) |
-| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L227) |
-| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L235) |
-| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L244) |
-
-## `core/services/inbox_prompt_section.py`
-_Indbakken i prompten — læseren hele kæden manglede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L92) |
-| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L112) |
 

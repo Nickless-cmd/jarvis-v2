@@ -26,7 +26,8 @@ from core.runtime.db_agent_contract import ContractError, _conn, _now_iso, _row
 logger = logging.getLogger(__name__)
 
 ALLOWED_NAMES = frozenset({"assignment.json", "events.jsonl", "stdout.log", "stderr.log",
-                           "result.json", "final.txt"})
+                           "result.json", "final.txt", "diff.patch", "changes.json",
+                           "worktree.bundle"})
 #: Fuldt agentoutput maa bruge 2 GiB pr. run som standard (§12.3).
 MAX_RUN_BYTES = 2 * 1024 ** 3
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
@@ -210,7 +211,7 @@ def reconcile() -> dict[str, list[str]]:
 
 def write_terminal_artifacts(*, agent_id: str, assignment_id: str, owner_user_id: str,
                              status: str, reply: str, summary: str, error_code: str = "",
-                             error_phase: str = "") -> dict[str, str]:
+                             error_phase: str = "", worktree: dict | None = None) -> dict[str, str]:
     """Skriv ``result.json`` (+ ``final.txt`` og ``events.jsonl``) for assignmentets SIDSTE run
     FOER den terminale DB-transaktion. Returnerer ``{"artifact_ref", "artifact_error"}``;
     en fejl her aendrer aldrig udfaldet - den bliver en synlig markering (§9)."""
@@ -242,7 +243,8 @@ def write_terminal_artifacts(*, agent_id: str, assignment_id: str, owner_user_id
             "assignment_id": assignment_id, "agent_id": agent_id, "run_id": run_id,
             "attempt_run_ids": attempts, "status": status, "summary": summary,
             "error_code": error_code, "error_phase": error_phase,
-            "has_final_text": bool(reply)}, ensure_ascii=False, indent=2), **common)
+            "has_final_text": bool(reply), "worktree": worktree}, ensure_ascii=False, indent=2),
+            **common)
     except Exception as exc:
         logger.warning("terminale artefakter kunne ikke gemmes for %s", assignment_id, exc_info=True)
         return {"artifact_ref": "", "artifact_error": f"{type(exc).__name__}: {exc}"[:200]}

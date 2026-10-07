@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/attention_contour.py`
+_Attention Contour — shape of attention._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_maal` | `()` | (tråd, rytme) — tomme dicts når kilderne ikke kan læses. | [src](../../../core/services/attention_contour.py#L64) |
+| function | `_form` | `(traad, rytme)` | (ord, grundlag) — ordet skal kunne føres tilbage til sit tal. | [src](../../../core/services/attention_contour.py#L81) |
+| function | `get_attention_shape` | `()` | Formen lige nu. Samme input giver samme svar — hver gang. | [src](../../../core/services/attention_contour.py#L109) |
+| function | `describe_attention` | `()` | — | [src](../../../core/services/attention_contour.py#L114) |
+| function | `format_attention_for_prompt` | `()` | — | [src](../../../core/services/attention_contour.py#L118) |
+| function | `build_attention_contour_surface` | `()` | — | [src](../../../core/services/attention_contour.py#L122) |
+
+## `core/services/attributed_git_commit.py`
+_Execute Git commits with canonical attribution and no staging side effects._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AttributedCommitResult` | `` | Process result plus the resulting commit hash when successful. | [src](../../../core/services/attributed_git_commit.py#L21) |
+| function | `_git` | `(repo, *args, timeout, env=…)` | — | [src](../../../core/services/attributed_git_commit.py#L30) |
+| function | `_linjer` | `(tekst)` | Beskeden som git gemmer den: uden tomme linjer og hale-mellemrum. | [src](../../../core/services/attributed_git_commit.py#L48) |
+| function | `_besked_afveg` | `(root, *, sendt, timeout)` | Staar der i repoet det vi bad om? Tom streng = ingen afvigelse fundet. | [src](../../../core/services/attributed_git_commit.py#L53) |
+| function | `_verify_staged_paths` | `(repo, paths, *, timeout)` | — | [src](../../../core/services/attributed_git_commit.py#L97) |
+| function | `commit_with_attribution` | `(*, repo, message, attribution, paths=…, author=…, timeout=…, amend=…)` | Commit already-staged content with canonical audit trailers. | [src](../../../core/services/attributed_git_commit.py#L120) |
+
 ## `core/services/auth_profile_scan.py`
 _Shared scanner for multi-profile provider auth slots._
 
@@ -576,24 +600,4 @@ _Bro-broker — owner-styret skift mellem aktive bro-forbindelser (spec §6.6)._
 | function | `_active_user_ids` | `()` | user_id'er med en aktiv bro (process-local registry). | [src](../../../core/services/bro_broker.py#L70) |
 | function | `list_active_bros` | `()` | Alle brugere med en aktiv bro lige nu. | [src](../../../core/services/bro_broker.py#L79) |
 | function | `switch` | `(target_user, *, requester_session, now=…)` | Skift requester-sessionen til target-brugerens bro — kræver gyldig override. | [src](../../../core/services/bro_broker.py#L84) |
-
-## `core/services/broadcast_daemon.py`
-_Broadcast Daemon — detects emergent coherence across daemons (Experiment 3: GWT)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_broadcast_daemon` | `()` | Run one coherence analysis pass. Returns dict with broadcast_count/coherence. | [src](../../../core/services/broadcast_daemon.py#L23) |
-| function | `build_workspace_surface` | `()` | MC surface for global workspace experiment. | [src](../../../core/services/broadcast_daemon.py#L102) |
-| function | `_silent_reason` | `(snapshot)` | Hvorfor fladen er tom — uden at koere en ny analyse. | [src](../../../core/services/broadcast_daemon.py#L131) |
-| function | `_cluster_by_topic` | `(entries)` | Group entries into clusters where Jaccard similarity of topics >= threshold. | [src](../../../core/services/broadcast_daemon.py#L142) |
-| function | `_representative_topic` | `(cluster)` | Return the most common meaningful words across all topics in cluster. | [src](../../../core/services/broadcast_daemon.py#L159) |
-| function | `_fire_broadcast` | `(cluster, unique_sources, topic_cluster)` | Persist broadcast event and publish to eventbus. | [src](../../../core/services/broadcast_daemon.py#L169) |
-| function | `_compute_coherence` | `()` | workspace_coherence = broadcast events with 3+ sources / total events (rolling 24h). | [src](../../../core/services/broadcast_daemon.py#L199) |
-
-## `core/services/cache_boundary_observer.py`
-_Cache-boundary drift observer (harness Part B, Mechanism A)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `observe_static_prefix` | `(*, provider, model, section_shape, static_prefix_sha)` | Record the static-prefix hash for (provider, model, shape); on a same-shape | [src](../../../core/services/cache_boundary_observer.py#L17) |
 

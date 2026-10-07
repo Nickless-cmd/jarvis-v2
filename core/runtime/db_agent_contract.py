@@ -151,6 +151,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_memory import ensure_memory_tables
 
     ensure_memory_tables(conn)
+    from core.services.agent_worktrees import ensure_worktree_tables
+
+    ensure_worktree_tables(conn)
 
 
 _ENSURED: set[str] = set()
@@ -529,10 +532,18 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
                          (a["assignment_id"],)).fetchone()["owner_user_id"]
     # Resultatfilen faerdiggoeres FOER den terminale DB-transaktion (§9).
     from core.runtime.db_agent_artifacts import write_terminal_artifacts
+    # Skrivende kodeagent: aendringerne (diff, filer, commits) afleveres som artefakter og worktree'et
+    # BEVARES - det merges aldrig herfra (§8.1).
+    wt_summary = None
+    try:
+        from core.services.agent_worktrees import snapshot_for_assignment
+        wt_summary = snapshot_for_assignment(assignment_id=a["assignment_id"])
+    except Exception:
+        logger.warning("worktree-aflevering fejlede for %s", a["assignment_id"], exc_info=True)
     art = write_terminal_artifacts(
         agent_id=agent_id, assignment_id=a["assignment_id"], owner_user_id=owner, status=target,
         reply=full, summary=full[:500], error_code=_ERROR_CODE.get(registry_status, ""),
-        error_phase=_ERROR_PHASE.get(registry_status, ""))
+        error_phase=_ERROR_PHASE.get(registry_status, ""), worktree=wt_summary)
     return commit_terminal_outcome(
         assignment_id=a["assignment_id"], status=target, summary=full[:500],
         error_code=_ERROR_CODE.get(registry_status, ""),

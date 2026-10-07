@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/first_pass_recovery.py`
+_Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
+| function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
+| function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
+
+## `core/services/flow_state_detection.py`
+_Flow State Detection — when everything clicks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
+| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
+| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
+
 ## `core/services/followup_observer.py`
 _Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
 
@@ -483,23 +501,4 @@ _Governance bootstrap — idempotent setup of default windows, jobs handlers, au
 | function | `ensure_default_automations` | `()` | Seed a couple of baseline automations so the DSL surface has examples. | [src](../../../core/services/governance_bootstrap.py#L311) |
 | function | `ensure_warmup_job` | `()` | Enqueue a single low-priority warmup job on first boot so the | [src](../../../core/services/governance_bootstrap.py#L375) |
 | function | `bootstrap_all` | `()` | Run all idempotent bootstrap helpers. Safe at any startup. | [src](../../../core/services/governance_bootstrap.py#L400) |
-
-## `core/services/graf_render.py`
-_Tegn en graf til PNG — saa den kan leveres som en almindelig billed-blok._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `GrafFejl` | `` | En spec vi ikke kan tegne. Baerer en besked der kan vises til Jarvis. | [src](../../../core/services/graf_render.py#L42) |
-| function | `_tal_liste` | `(v, navn)` | — | [src](../../../core/services/graf_render.py#L46) |
-| function | `_validér` | `(spec)` | — | [src](../../../core/services/graf_render.py#L58) |
-| function | `tegn_graf` | `(spec)` | Spec → PNG-bytes. Kaster `GrafFejl` paa en spec vi ikke kan tegne. | [src](../../../core/services/graf_render.py#L90) |
-
-## `core/services/gratitude_tracker.py`
-_Gratitude Tracker — accumulated appreciation over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_gratitude` | `(*, trigger_event, detail=…)` | — | [src](../../../core/services/gratitude_tracker.py#L20) |
-| function | `detect_gratitude_from_interaction` | `(*, user_mood, outcome_status, was_corrected, autonomy_granted=…)` | — | [src](../../../core/services/gratitude_tracker.py#L44) |
-| function | `build_gratitude_surface` | `()` | — | [src](../../../core/services/gratitude_tracker.py#L59) |
 

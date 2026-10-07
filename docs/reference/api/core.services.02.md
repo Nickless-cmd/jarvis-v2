@@ -54,6 +54,7 @@ _Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
 | function | `_render_state` | `(p)` | Tilstandsbesked (ikke et resultat): et uvist udfald. Hverken succes eller noget at genforsoege. | [src](../../../core/services/agent_result_inbox.py#L50) |
 | function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L59) |
 | function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L69) |
+| function | `add_to_turn_tail` | `(tur_hale, *, owner_user_id, session_id)` | Claim det der venter og haeft det VEDVARENDE paa turens hale (resten af turen). | [src](../../../core/services/agent_result_inbox.py#L93) |
 
 ## `core/services/agent_retention.py`
 _Retention for agentartefakter og agentens hukommelse (agent-contract-v1 leverance C, hul 4; spec 12.1)._

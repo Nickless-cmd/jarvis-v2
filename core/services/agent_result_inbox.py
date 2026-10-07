@@ -88,3 +88,16 @@ def claim_for_model_step(*, owner_user_id: str, session_id: str) -> str:
     except Exception:
         logger.warning("kunne ikke claime agent-resultater for session %s", session, exc_info=True)
         return ""
+
+
+def add_to_turn_tail(tur_hale: object, *, owner_user_id: str, session_id: str) -> bool:
+    """Claim det der venter og haeft det VEDVARENDE paa turens hale (resten af turen).
+
+    Vedvarende med vilje: et claimet resultat indgaar kun i EN requestserie, og skiftede det plads mellem runder,
+    brod det praefiks-cachen. Det er ikke en loekke-gate (dem forbyder ``test_run_trailing`` at bruge
+    ``vedvarende``) - kaldet bor derfor her og ikke i ``visible_runs``. Returnerer om noget blev tilfoejet."""
+    text = claim_for_model_step(owner_user_id=owner_user_id, session_id=session_id)
+    if not text:
+        return False
+    tur_hale.tilfoej_vedvarende(text)          # type: ignore[attr-defined]
+    return True

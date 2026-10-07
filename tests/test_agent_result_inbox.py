@@ -98,7 +98,7 @@ def test_claim_never_raises_on_db_failure(k, monkeypatch):
 
 def test_visible_run_loop_claims_results_every_round_before_the_request():
     """Et fuldt stream-run kan ikke koeres i en enhedstest, saa ledningen pinnes paa AST'en:
-    claim -> tilfoej_vedvarende kommer EFTER ny_runde() og FOER pumpen faar halen."""
+    add_to_turn_tail (claim + vedvarende) kommer EFTER ny_runde() og FOER pumpen faar halen."""
     import ast
     import inspect
     import textwrap
@@ -113,15 +113,13 @@ def test_visible_run_loop_claims_results_every_round_before_the_request():
 
     ny_runde = lines(lambda c: isinstance(c.func, ast.Attribute) and c.func.attr == "ny_runde"
                      and isinstance(c.func.value, ast.Name) and c.func.value.id == "_tur_hale")
-    claim = [c for c in calls if isinstance(c.func, ast.Name) and c.func.id == "_claim_ar"]
-    vedv = lines(lambda c: isinstance(c.func, ast.Attribute)
-                 and c.func.attr == "tilfoej_vedvarende"
-                 and any(isinstance(a, ast.Name) and a.id == "_ar_tekst" for a in c.args))
+    claim = [c for c in calls if isinstance(c.func, ast.Name) and c.func.id == "_ar_til_hale"]
     # pumpen binder halen som default-argument (round_trailing=_tur_hale.som_liste())
     halen = lines(lambda c: isinstance(c.func, ast.Attribute) and c.func.attr == "som_liste"
                   and isinstance(c.func.value, ast.Name) and c.func.value.id == "_tur_hale")
-    assert len(ny_runde) == 1 and len(claim) == 1 and len(vedv) == 1 and halen
-    assert ny_runde[0] < claim[0].lineno < vedv[0] < min(halen)
+    assert len(ny_runde) == 1 and len(claim) == 1 and halen
+    assert ny_runde[0] < claim[0].lineno < min(halen)
+    assert ast.unparse(claim[0].args[0]) == "_tur_hale"            # det er turens hale der haeftes paa
     kw = {k.arg: ast.unparse(k.value) for k in claim[0].keywords}
     assert kw == {"owner_user_id": "run.user_id", "session_id": "run.session_id or ''"}
 
@@ -178,3 +176,28 @@ def test_a_decided_approval_is_not_announced_as_waiting(k):
     appr.decide(approval_id=r["approval_id"], decision="deny", actor_user_id="bjorn", actor_kind="human",
                 digest=r["args_digest"])
     assert claim_for_model_step(owner_user_id="bjorn", session_id="s1") == ""
+
+
+def test_add_to_turn_tail_claims_once_and_appends_persistently_not_as_next_round_only(k):
+    from core.services import agent_result_inbox as inbox
+
+    class Hale:
+        def __init__(self): self.vedvarende, self.naeste = [], []
+        def tilfoej_vedvarende(self, t): self.vedvarende.append(t)
+        def tilfoej_naeste(self, t): self.naeste.append(t)
+
+    hale = Hale()
+    assert inbox.add_to_turn_tail(hale, owner_user_id="bjorn", session_id="s1") is False       # intet ventende
+    k.settle("a1", summary="fandt Y")
+    assert inbox.add_to_turn_tail(hale, owner_user_id="bjorn", session_id="s1") is True
+    assert len(hale.vedvarende) == 1 and "fandt Y" in hale.vedvarende[0] and hale.naeste == []
+    assert inbox.add_to_turn_tail(hale, owner_user_id="bjorn", session_id="s1") is False       # claimes kun én gang
+    assert inbox.add_to_turn_tail(hale, owner_user_id="anden", session_id="s1") is False       # en anden ejer ser intet
+    assert len(hale.vedvarende) == 1
+
+
+def test_the_visible_run_uses_the_inbox_helper_and_no_loop_gate_is_persistent():
+    import pathlib
+    src = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert "add_to_turn_tail as _ar_til_hale" in src and "_ar_til_hale(_tur_hale," in src
+    assert "_tur_hale.tilfoej_vedvarende(" not in src          # upstream-reglen (test_run_trailing) holder

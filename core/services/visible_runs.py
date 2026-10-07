@@ -2682,11 +2682,8 @@ async def _stream_visible_run(
                     # agent-contract-v1 (B): terminale agent-resultater for netop dette
                     # runs ejer + session claimes foer requesten. Vedvarende, saa
                     # historikken ikke skifter mellem runder (se run_trailing).
-                    from core.services.agent_result_inbox import claim_for_model_step as _claim_ar
-                    _ar_tekst = _claim_ar(owner_user_id=run.user_id,
-                                          session_id=run.session_id or "")
-                    if _ar_tekst:
-                        _tur_hale.tilfoej_vedvarende(_ar_tekst)
+                    from core.services.agent_result_inbox import add_to_turn_tail as _ar_til_hale
+                    _ar_til_hale(_tur_hale, owner_user_id=run.user_id, session_id=run.session_id or "")
                     try:
                         if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
                             _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(

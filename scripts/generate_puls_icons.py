@@ -43,6 +43,39 @@ def svg(*, background=False, scale=1.0, phase=None, attention=False, rounded=Fal
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{backdrop}<g fill="{COLOR}" transform="translate({50*(1-scale)} {50*(1-scale)}) scale({scale})">{"".join(shapes)}</g>{badge}</svg>'
 
 
+def notifikations_vektor():
+    """Puls som Android-notifikationsikon — en monokrom silhuet.
+
+    Android bruger KUN alpha-kanalen i `smallIcon` og farver resten selv.
+    Derfor: ingen baggrund, ingen farve, kun de tre bjælker som fyldte former.
+
+    Filen blev oprindeligt lagt ind i hånden (26/9-2026) som en passager på en
+    Android 13-tilladelsesrettelse — og indeholdt en generisk taleboble, ikke
+    Puls. Den læses derfor som «ny besked» i den sammenfoldede statuslinje
+    (målt 7/10-2026, Bjørn: «det burde være dit eget ikon»). Her fødes den af
+    samme kilde som alle andre ikoner, så den ikke kan drive fra dem igen.
+    """
+    tree = ET.parse(SOURCE)
+    bars = tree.getroot().findall('{http://www.w3.org/2000/svg}rect')
+    paths = ''.join(
+        f'<path android:fillColor="#FFFFFFFF" android:pathData="'
+        f'M{bar.attrib["x"]},{bar.attrib["y"]}'
+        f'h{bar.attrib["width"]}'
+        f'v{bar.attrib["height"]}'
+        f'h-{bar.attrib["width"]}z"/>'
+        for bar in bars
+    )
+    return (
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '    android:width="24dp"\n'
+        '    android:height="24dp"\n'
+        '    android:viewportWidth="100"\n'
+        '    android:viewportHeight="100">\n'
+        f'    {paths}\n'
+        '</vector>\n'
+    )
+
+
 def render(dest, size, source):
     dest = ROOT / dest
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +121,9 @@ def main():
         render(path, size, source)
     for path in res.glob('drawable-*/splashscreen_logo.png'):
         render(path, Image.open(path).width, svg(scale=.65))
+    # Notifikationsikonet i statuslinjen. Ligger i `drawable/` (ikke
+    # `drawable-*`), fordi Android skalerer det selv.
+    (res / 'drawable/ic_notification.xml').write_text(notifikations_vektor())
     print('Rendered Puls favicon, desktop, tray, Expo and native Android assets.')
 
 

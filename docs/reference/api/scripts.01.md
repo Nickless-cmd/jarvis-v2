@@ -377,8 +377,9 @@ _Render Jarvis Puls assets. Requires rsvg-convert and Pillow; run from any cwd._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `svg` | `(*, background=…, scale=…, phase=…, attention=…, rounded=…, radius=…)` | — | [src](../../../scripts/generate_puls_icons.py#L29) |
-| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L46) |
-| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L57) |
+| function | `notifikations_vektor` | `()` | Puls som Android-notifikationsikon — en monokrom silhuet. | [src](../../../scripts/generate_puls_icons.py#L46) |
+| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L79) |
+| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L90) |
 
 ## `scripts/goal_report.py`
 _Kør goal-reporteren: skriv tick-kvalitet, heed-rate og adherence til målet._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8546/16134 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8547/16135 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 8546/16134 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 259 | 568 | 45% |
+| `scripts` | 260 | 569 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2133,8 +2133,8 @@ Generated from source. 8546/16134 functions/methods documented (52%). The list b
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/find_tidsbomber.py` :: `main` (L54)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)
-- `scripts/generate_puls_icons.py` :: `main` (L57)
-- `scripts/generate_puls_icons.py` :: `render` (L46)
+- `scripts/generate_puls_icons.py` :: `main` (L90)
+- `scripts/generate_puls_icons.py` :: `render` (L79)
 - `scripts/generate_puls_icons.py` :: `svg` (L29)
 - `scripts/goal_report.py` :: `main` (L17)
 - `scripts/god_file_map.py` :: `blast` (L24)

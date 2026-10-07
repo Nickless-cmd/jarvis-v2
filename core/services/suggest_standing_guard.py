@@ -79,6 +79,7 @@ def mangler_stilling(
     nudged_already: bool = False,
     final_text: str = "",
     is_last_round: bool = False,
+    er_autonom: bool = False,
 ) -> bool:
     """True når turen udførte arbejde og intet forslag blev lagt.
 
@@ -88,6 +89,10 @@ def mangler_stilling(
     Betingelserne, og hvorfor hver enkelt er der:
 
     * `nudged_already` — loftet. Én stillingtagen pr. tur.
+    * `er_autonom` — et autonomt nat-run har ingen bruger til stede. Forslaget
+      hører til en samtale med Bjørn; i en nat-session ville det koste en runde
+      pr. nat uden at nogen kunne se forslaget. `run.autonomous` er præcis det
+      flag (`True = heartbeat-triggered, no user present`).
     * `is_last_round` — på den tvungne afslutningsrunde er der ingen runde
       tilbage at svare i; noten ville være en død besked. Samme gate som
       `skill_gate_guard`.
@@ -100,6 +105,8 @@ def mangler_stilling(
     """
     try:
         if nudged_already:
+            return False
+        if er_autonom:
             return False
         if is_last_round:
             return False

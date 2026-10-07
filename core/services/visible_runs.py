@@ -4451,6 +4451,7 @@ async def _stream_visible_run(
                                     nudged_already=bool(_suggest_standing_nudges),
                                     final_text="".join(_a_parts),
                                     is_last_round=bool(_is_last_round),
+                                    er_autonom=bool(getattr(run, "autonomous", False)),
                                 ):
                                     _suggest_standing_nudges += 1
                                     _tur_hale.tilfoej_vedvarende(_ss_nudge())

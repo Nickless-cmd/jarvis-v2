@@ -83,6 +83,15 @@ def test_tier_paa_den_tvungne_afslutningsrunde():
     ) is False
 
 
+def test_tier_i_et_autonomt_nat_run():
+    """Et nat-run har ingen bruger til stede. Forslaget hoerer til samtalen
+    med Bjorn — i en nat-session ville det koste en runde pr. nat uden at
+    nogen kunne se det."""
+    assert mangler_stilling(
+        called_tool_names=["bash"], final_text="x", er_autonom=True,
+    ) is False
+
+
 # ── Tieren: intet svar at tage stilling efter ──────────────────────────────
 
 def test_tier_ved_tom_final_text():

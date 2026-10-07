@@ -52,7 +52,11 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
         )
         unit_display = f"{interval} {unit}"
         ug_display = task.get("weekdays") or "alle dage"
-        return {
+        from core.services.peak_hours import (
+            gentagelse_rammer_vindue,
+            tilfoej_booking_varsel,
+        )
+        svar = tilfoej_booking_varsel({
             "status": "ok",
             "task_id": task["task_id"],
             "focus": task["focus"],
@@ -61,7 +65,16 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
             "weekdays": task.get("weekdays", ""),
             "next_fire_at": task["next_fire_at"],
             "text": f"Recurring task scheduled: '{focus}' every {unit_display} ({ug_display}). First fire: {task['next_fire_at'][:16]}Z",
-        }
+        }, task["next_fire_at"])
+        # En rutine der gentages hurtigere end vinduet er langt kan ikke undgaa
+        # myldretiden. Foerste gennemloeb kan ligge i off-peak og saa ville
+        # vaernet tie om netop den rutine der koster mest.
+        if gentagelse_rammer_vindue(interval_minutes):
+            svar["peak_varsel_gentagelse"] = (
+                f"Rutinen gentages hver {unit_display} — kortere end vinduet er "
+                "langt, så mindst ét gennemløb rammer myldretiden hver hverdag."
+            )
+        return svar
     except Exception as e:
         return {"status": "error", "error": str(e)}
 

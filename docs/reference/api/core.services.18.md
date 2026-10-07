@@ -319,15 +319,18 @@ _core/services/peak_hours.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_som_utc` | `(at)` | Læs et tidspunkt som aware UTC. Naivt input læses som UTC (hovedbogen er UTC). | [src](../../../core/services/peak_hours.py#L45) |
-| function | `_vindue_start` | `(dag, fra)` | — | [src](../../../core/services/peak_hours.py#L66) |
-| function | `naeste_vindue_start` | `(now_utc=…)` | Næste myldretids-vindue der ÅBNER efter nu. Springer weekender over. | [src](../../../core/services/peak_hours.py#L70) |
-| function | `aktuelt_vindue` | `(now_utc=…)` | (start, slut) for det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L84) |
-| function | `aktuelt_vindue_slut` | `(now_utc=…)` | Slutningen på det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L103) |
-| function | `_dansk` | `(ts)` | — | [src](../../../core/services/peak_hours.py#L109) |
-| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L113) |
-| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L135) |
-| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L142) |
+| function | `_som_utc` | `(at)` | Læs et tidspunkt som aware UTC. Naivt input læses som UTC (hovedbogen er UTC). | [src](../../../core/services/peak_hours.py#L46) |
+| function | `_vindue_start` | `(dag, fra)` | — | [src](../../../core/services/peak_hours.py#L67) |
+| function | `naeste_vindue_start` | `(now_utc=…)` | Næste myldretids-vindue der ÅBNER efter nu. Springer weekender over. | [src](../../../core/services/peak_hours.py#L71) |
+| function | `aktuelt_vindue` | `(now_utc=…)` | (start, slut) for det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L85) |
+| function | `aktuelt_vindue_slut` | `(now_utc=…)` | Slutningen på det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L104) |
+| function | `_dansk` | `(ts)` | — | [src](../../../core/services/peak_hours.py#L110) |
+| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L114) |
+| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L136) |
+| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L143) |
+| function | `booking_varsel` | `(naar)` | Én linje hvis et BOOKET tidspunkt rammer myldretiden. Ellers ``None``. | [src](../../../core/services/peak_hours.py#L184) |
+| function | `gentagelse_rammer_vindue` | `(interval_minutter)` | Vil en rutine med denne kadence uundgåeligt ramme et vindue? | [src](../../../core/services/peak_hours.py#L225) |
+| function | `tilfoej_booking_varsel` | `(svar, naar)` | Hæng ``peak_varsel`` på et booking-svar. Rører intet andet. | [src](../../../core/services/peak_hours.py#L241) |
 
 ## `core/services/peak_varsel_daemon.py`
 _core/services/peak_varsel_daemon.py_

@@ -632,14 +632,15 @@ def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
         from core.services.scheduled_tasks import push_scheduled_task
         task = push_scheduled_task(focus=focus, delay_minutes=delay_minutes)
         run_at = task.get("run_at", "")
-        return {
+        from core.services.peak_hours import tilfoej_booking_varsel
+        return tilfoej_booking_varsel({
             "status": "ok",
             "task_id": task.get("task_id"),
             "focus": focus,
             "delay_minutes": delay_minutes,
             "run_at": run_at,
             "text": f"Scheduled in {delay_minutes} min: {focus} (fires at {run_at[:16]}Z)",
-        }
+        }, run_at)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 

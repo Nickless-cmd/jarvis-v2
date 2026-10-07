@@ -525,7 +525,7 @@ def _exec_schedule_self_wakeup(args: dict[str, Any]) -> dict[str, Any]:
         current_workspace_name,
     )
 
-    return schedule_self_wakeup(
+    svar = schedule_self_wakeup(
         delay_seconds=int(args.get("delay_seconds") or 60),
         prompt=str(args.get("prompt") or ""),
         reason=str(args.get("reason") or ""),
@@ -537,6 +537,11 @@ def _exec_schedule_self_wakeup(args: dict[str, Any]) -> dict[str, Any]:
         role=current_role() or None,
         context_channel=current_channel() or None,
     )
+    # Peak-vaernet (7/10-2026): bookingen gaar igennem, men lander den i
+    # myldretiden, staar det i svaret. Tidspunktet laeses fra den GEMTE record —
+    # ikke regnet om her — saa varslet ikke kan drifte fra bookingen.
+    from core.services.peak_hours import tilfoej_booking_varsel
+    return tilfoej_booking_varsel(svar, (svar.get("wakeup") or {}).get("fire_at"))
 
 
 def _exec_list_self_wakeups(args: dict[str, Any]) -> dict[str, Any]:

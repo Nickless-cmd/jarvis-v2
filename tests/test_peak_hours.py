@@ -14,9 +14,12 @@ import pytest
 from core.services.peak_hours import (
     VARSEL_MINUTTER,
     aktuelt_vindue_slut,
+    booking_varsel,
+    gentagelse_rammer_vindue,
     naeste_vindue_start,
     peak_badge,
     peak_state,
+    tilfoej_booking_varsel,
 )
 
 
@@ -128,3 +131,95 @@ def test_begge_vinduer_taelles(time_utc):
 def test_varsel_minutter_er_dokumenteret_konstant():
     assert isinstance(VARSEL_MINUTTER, int)
     assert VARSEL_MINUTTER > 0
+
+
+# ── Booking-værnet (7/10-2026) ──────────────────────────────────────────────
+#
+# Badgen siger hvad der sker NU. Værnet her siger hvad der sker når et LØFTE
+# falder — og det er to forskellige spørgsmål: bookingen kan ske i off-peak og
+# lande midt i vinduet. Præcis det skete 7/10, da jeg bookede en vækning til
+# 08:59 dansk uden at noget i svaret sagde det.
+
+
+def test_booking_ind_i_vinduet_varsler():
+    v = booking_varsel(_u(2026, 10, 5, 8))       # midt i 06-10-vinduet
+    assert v is not None
+    assert "MYLDRETIDEN" in v
+    assert "08:00" in v and "12:00" in v, "vinduets danske rammer skal med"
+
+
+def test_booking_i_natvinduet_varsler_ogsaa():
+    """Natvinduet (01-04 UTC) er også myldretid — ikke kun dagvinduet."""
+    v = booking_varsel(_u(2026, 10, 5, 2))
+    assert v is not None
+    assert "MYLDRETIDEN" in v
+
+
+def test_booking_lige_foer_vinduet_varsler_om_at_arbejdet_loeper_ind():
+    """En booking 10 min før vinduet åbner løber ind i det. Det skal siges."""
+    v = booking_varsel(_u(2026, 10, 5, 5, 50))
+    assert v is not None
+    assert "LIGE FØR" in v
+    assert "10 min" in v
+
+
+def test_booking_i_off_peak_er_tavs():
+    assert booking_varsel(_u(2026, 10, 5, 12)) is None      # efter dagvinduet
+    assert booking_varsel(_u(2026, 10, 5, 4, 30)) is None   # mellem de to vinduer
+
+
+def test_booking_i_weekenden_er_tavs():
+    assert booking_varsel(_u(2026, 10, 3, 8)) is None
+    assert booking_varsel(_u(2026, 10, 4, 8)) is None
+
+
+def test_booking_graense_foelger_varsel_minutter():
+    """Værnet og badgen skal være enige om hvornår vinduet åbner.
+
+    1/10-2026 kostede to konstanter med samme navn (30 og 15) en runde. Testen
+    regner grænsen ud af konstanten, så den ikke kan blive enig med sig selv om
+    et tal ingen andre bruger.
+    """
+    from datetime import timedelta
+    aabner = _u(2026, 10, 5, 6)
+    assert booking_varsel(aabner - timedelta(minutes=VARSEL_MINUTTER)) is not None
+    assert booking_varsel(aabner - timedelta(minutes=VARSEL_MINUTTER + 1)) is None
+
+
+def test_gentagelse_der_er_hurtigere_end_vinduet_rammer_det():
+    """Et vindue er 4 t = 240 min. Alt derunder kan ikke undgå myldretiden."""
+    assert gentagelse_rammer_vindue(10) is True
+    assert gentagelse_rammer_vindue(60) is True
+    assert gentagelse_rammer_vindue(239) is True
+    assert gentagelse_rammer_vindue(240) is False
+    assert gentagelse_rammer_vindue(1440) is False, "én gang i døgnet kan ligge frit"
+
+
+def test_gentagelse_med_nul_eller_negativ_er_ikke_et_ramm():
+    assert gentagelse_rammer_vindue(0) is False
+    assert gentagelse_rammer_vindue(-5) is False
+
+
+def test_tilfoej_booking_varsel_roerer_kun_ok_svar():
+    ok = tilfoej_booking_varsel({"status": "ok", "wakeup_id": "w1"}, _u(2026, 10, 5, 8))
+    assert "peak_varsel" in ok
+    assert ok["wakeup_id"] == "w1", "svaret skal ellers stå uberørt"
+
+    fejl = tilfoej_booking_varsel({"status": "error", "error": "loft"}, _u(2026, 10, 5, 8))
+    assert "peak_varsel" not in fejl, "et afvist forsøg fik aldrig et tidspunkt"
+
+
+def test_tilfoej_booking_varsel_uden_varsel_tilfoejer_intet():
+    svar = tilfoej_booking_varsel({"status": "ok"}, _u(2026, 10, 5, 12))
+    assert "peak_varsel" not in svar
+
+
+def test_tilfoej_booking_varsel_uden_tidspunkt_tier():
+    """Mangler fire_at, ved jeg ikke hvornår bookingen falder — så sig intet.
+
+    Ellers ville værnet varsle om NU, og det er en påstand svaret ikke bærer.
+    """
+    svar = tilfoej_booking_varsel({"status": "ok", "wakeup_id": "w2"}, None)
+    assert "peak_varsel" not in svar
+    tomt = tilfoej_booking_varsel({"status": "ok", "wakeup_id": "w3"}, "")
+    assert "peak_varsel" not in tomt

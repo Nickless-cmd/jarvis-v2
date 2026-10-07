@@ -25,6 +25,7 @@ hans ture er den eneste udgift der ikke kan flyttes.
 from __future__ import annotations
 
 from datetime import UTC, datetime, time, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from core.services.llm_pricing import MYLDRE_VINDUER, er_myldretid
@@ -178,3 +179,82 @@ def peak_badge(now: datetime | str | None = None) -> str | None:
         )
 
     return None
+
+
+def booking_varsel(naar: datetime | str | None) -> str | None:
+    """Én linje hvis et BOOKET tidspunkt rammer myldretiden. Ellers ``None``.
+
+    Hvorfor den findes (7/10-2026, Bjørns opfordring): ``peak_badge`` siger hvad
+    der sker NU og i det næste kvarter. Den kan pr. konstruktion ikke se et løfte
+    der ligger to timer ude — og det er præcis dér beslutningen om at booke ind i
+    vinduet tages. Målt samme aften: jeg bookede en vækning til kl. 08:59 dansk
+    og en anden til 19:39, og intet i svaret sagde at den ene lå midt i vinduet.
+    Badgen var tavs, fordi bookingen skete i off-peak.
+
+    Værnet BLOKERER intet — samme husmønster som badgen og ``paid_lane_guard``.
+    Et afvist booking-forsøg ville tvinge mig til at gætte et nyt tidspunkt, og
+    et forkert tidspunkt er dyrere end et varslet et. Det lægger beslutningen
+    foran mig, i det svar hvor jeg kan tage den.
+
+    Grænsen genbruger ``VARSEL_MINUTTER`` med vilje. Stod der et andet tal her,
+    ville værnet og badgen kunne blive uenige om hvornår vinduet åbner — og det
+    er netop den fejl der allerede kostede én runde 1/10-2026 (to konstanter med
+    samme navn, 30 og 15).
+    """
+    tid = _som_utc(naar)
+    st = peak_state(tid)
+
+    if st["in_peak"]:
+        return (
+            f"⚠️ BOOKINGEN LANDER I MYLDRETIDEN "
+            f"({st['peak_starts_danish']}–{st['peak_ends_danish']} dansk). "
+            "DeepSeek koster 2× i vinduet. Er det dit eget tunge arbejde, kan det "
+            "flyttes gratis — Bjørns ture kan ikke."
+        )
+
+    mangler = st["minutes_until_next"]
+    if mangler is not None and mangler <= VARSEL_MINUTTER:
+        return (
+            f"⏳ BOOKINGEN LANDER LIGE FØR MYLDRETID (om {mangler} min, kl. "
+            f"{st['next_peak_danish']} dansk) — arbejdet løber ind i vinduet."
+        )
+
+    return None
+
+
+def gentagelse_rammer_vindue(interval_minutter: int) -> bool:
+    """Vil en rutine med denne kadence uundgåeligt ramme et vindue?
+
+    En rutine der gentages hvert 10. minut kan ikke undgå myldretiden — den
+    rammer den mange gange i døgnet. En rutine der kører én gang i døgnet kan
+    måske. Førstnævnte skal have besked med det samme, også selvom FØRSTE
+    gennemløb ligger i off-peak; ellers ville værnet tie om netop den rutine
+    der koster mest.
+    """
+    try:
+        laengste = max((til - fra) * 60 for fra, til in MYLDRE_VINDUER)
+    except (TypeError, ValueError):  # tom/ugyldig tabel → gæt ikke, sig intet
+        return False
+    return 0 < int(interval_minutter) < laengste
+
+
+def tilfoej_booking_varsel(
+    svar: dict[str, Any], naar: datetime | str | None
+) -> dict[str, Any]:
+    """Hæng ``peak_varsel`` på et booking-svar. Rører intet andet.
+
+    Én indgang til alle booking-veje (``schedule_self_wakeup``,
+    ``schedule_task``, ``schedule_recurring``) — så værnet ikke kan blive halvt
+    udrullet, og så et svar der ikke er ``ok`` forbliver urørt. Et afvist
+    booking-forsøg skal ikke bære et råd om et tidspunkt det aldrig fik.
+    """
+    if not isinstance(svar, dict) or svar.get("status") != "ok":
+        return svar
+    if not naar:
+        # Uden et tidspunkt ved jeg ikke hvornaar bookingen falder. At varsle om
+        # NU ville vaere en paastand jeg ikke kan bakke op — hellere tie.
+        return svar
+    varsel = booking_varsel(naar)
+    if varsel:
+        svar["peak_varsel"] = varsel
+    return svar

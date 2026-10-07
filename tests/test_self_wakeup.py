@@ -71,6 +71,72 @@ def test_tool_schedule_binds_current_session_and_user(monkeypatch):
     assert wakeup["context_channel"] == "jarvisx-electron"
 
 
+def test_tool_schedule_baerer_peak_varsel_naar_den_lander_i_vinduet(monkeypatch):
+    """Peak-værnet skal sidde på BOOKING-VEJEN, ikke kun i hjælperen (7/10-2026).
+
+    Hjælperen alene beviser intet: en funktion der virker og aldrig bliver kaldt
+    er husets dyreste fejlform. Denne test går gennem exec-funktionen og beviser
+    at svaret fra et rigtigt booking-forsøg bærer varslet.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    monkeypatch.setattr(sw, "_load", lambda: [])
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    # Onsdag 06:00 UTC = 08:00 dansk — inde i dagvinduet (06-10 UTC).
+    peak_tid = "2026-10-07T06:00:00+00:00"
+    monkeypatch.setattr(
+        sw, "schedule_self_wakeup",
+        lambda **kw: {"status": "ok",
+                      "wakeup": {"wakeup_id": "w1", "fire_at": peak_tid}},
+    )
+    token = set_context(
+        workspace_name="bjorn",
+        user_id="owner-123",
+        user_display_name="Bjoern",
+        role="owner",
+        channel="jarvisx-electron",
+        session_id="chat-origin",
+    )
+    try:
+        result = sw._exec_schedule_self_wakeup({"delay_seconds": 120, "prompt": "x"})
+    finally:
+        reset_context(token)
+
+    assert result["status"] == "ok"
+    assert "peak_varsel" in result, "bookingen landede i vinduet — det skal stå i svaret"
+    assert "MYLDRETIDEN" in result["peak_varsel"]
+
+
+def test_tool_schedule_er_tav_naar_den_lander_i_off_peak(monkeypatch):
+    """Modprøven: uden for vinduet skal svaret være som før — intet nyt felt."""
+    from core.identity.workspace_context import reset_context, set_context
+
+    monkeypatch.setattr(sw, "_load", lambda: [])
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    # Onsdag 14:00 UTC = 16:00 dansk — mellem de to vinduer.
+    fri_tid = "2026-10-07T14:00:00+00:00"
+    monkeypatch.setattr(
+        sw, "schedule_self_wakeup",
+        lambda **kw: {"status": "ok",
+                      "wakeup": {"wakeup_id": "w2", "fire_at": fri_tid}},
+    )
+    token = set_context(
+        workspace_name="bjorn",
+        user_id="owner-123",
+        user_display_name="Bjoern",
+        role="owner",
+        channel="jarvisx-electron",
+        session_id="chat-origin",
+    )
+    try:
+        result = sw._exec_schedule_self_wakeup({"delay_seconds": 120, "prompt": "x"})
+    finally:
+        reset_context(token)
+
+    assert result["status"] == "ok"
+    assert "peak_varsel" not in result
+
+
 def test_max_pending_limit(monkeypatch):
     state = [{"wakeup_id": f"w{i}", "status": "pending"} for i in range(20)]
     monkeypatch.setattr(sw, "_load", lambda: list(state))

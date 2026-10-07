@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/semantic_search_tools.py`
+_Semantic code search — natural language queries over the Jarvis codebase._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_extract_definitions` | `(repo_root, dirs)` | Extract function/class definitions with file:line and docstring snippet. | [src](../../../core/tools/semantic_search_tools.py#L15) |
+| function | `_keyword_prefilter` | `(definitions, query, limit=…)` | Quick keyword pre-filter to reduce candidates before expensive scoring. | [src](../../../core/tools/semantic_search_tools.py#L46) |
+| function | `_score_with_llm` | `(query, candidates, top_k)` | Use LLM to rank candidates by semantic relevance to query. | [src](../../../core/tools/semantic_search_tools.py#L62) |
+| function | `_read_context` | `(file, line, context=…)` | — | [src](../../../core/tools/semantic_search_tools.py#L92) |
+| function | `_exec_semantic_search_code` | `(args)` | — | [src](../../../core/tools/semantic_search_tools.py#L103) |
+
 ## `core/tools/sensory_tools.py`
 _Sensory archive tools — record and recall sensory experiences._
 
@@ -30,22 +41,18 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L687) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L716) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L812) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L826) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L915) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L937) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L973) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1136) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1169) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1259) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L1966) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2052) |
-| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/simple_tools.py#L2111) |
-| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/simple_tools.py#L2170) |
-| function | `_signal_linjer` | `(result)` | Korte linjer for signaler der ellers forsvinder naar ``text`` findes. | [src](../../../core/tools/simple_tools.py#L2186) |
-| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/simple_tools.py#L2222) |
+| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L696) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L725) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L821) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L835) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L924) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L946) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L982) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1145) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1178) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1268) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L1980) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2066) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -60,8 +67,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3553) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3570) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3555) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3572) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -485,6 +492,16 @@ _Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver 
 | function | `bash_timeout_s` | `()` | Sekunder en enkelt bash-kommando må tage. Overstyres i runtime.json som | [src](../../../core/tools/tool_limits.py#L22) |
 | function | `timeout_note` | `(seconds, command=…)` | Besked når en kommando løber tør for tid. | [src](../../../core/tools/tool_limits.py#L35) |
 
+## `core/tools/tool_result_format.py`
+_Formatering af vaerktoejsresultater til modellen + verify-hints._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_verify_hint_for` | `(tool, result)` | Build a brief, contextual verify-hint to attach to a mutation's result. | [src](../../../core/tools/tool_result_format.py#L15) |
+| function | `_json_safe_default` | `(o)` | json.dumps default= — GARANTERER at serialisering af et tool-resultat | [src](../../../core/tools/tool_result_format.py#L74) |
+| function | `_signal_linjer` | `(result)` | Korte linjer for signaler der ellers forsvinder naar ``text`` findes. | [src](../../../core/tools/tool_result_format.py#L90) |
+| function | `format_tool_result_for_model` | `(name, result, *, clip=…)` | Format a tool result as text for the model's context. | [src](../../../core/tools/tool_result_format.py#L126) |
+
 ## `core/tools/tool_schema_contract.py`
 _Kanoniske argumenter mod versionerede skemaer — Fase 3, K2._
 
@@ -508,26 +525,26 @@ _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L301) |
-| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L312) |
-| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L317) |
-| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L321) |
-| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L334) |
-| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L339) |
-| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L344) |
-| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L352) |
-| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L366) |
-| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L384) |
-| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L418) |
-| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L431) |
-| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L450) |
-| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L484) |
-| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L560) |
-| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L570) |
-| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L587) |
-| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L600) |
-| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L624) |
-| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L628) |
+| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L304) |
+| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L315) |
+| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L320) |
+| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L324) |
+| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L337) |
+| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L342) |
+| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L347) |
+| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L355) |
+| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L369) |
+| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L387) |
+| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L421) |
+| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L434) |
+| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L453) |
+| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L487) |
+| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L563) |
+| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L573) |
+| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L590) |
+| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L603) |
+| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L627) |
+| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L631) |
 
 ## `core/tools/tool_text_render.py`
 _Læsbar `text`-form for strukturerede tool-resultater._
@@ -620,34 +637,4 @@ _Webhook tools — send to and manage external HTTP endpoints._
 | function | `_exec_webhook_list` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L105) |
 | function | `_exec_webhook_test` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L121) |
 | function | `_exec_webhook_delete` | `(args)` | — | [src](../../../core/tools/webhook_tools.py#L142) |
-
-## `core/tools/widget_tools.py`
-_`vis_widget` — en interaktiv flade i traaden, i en sandkasse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_widget_dir` | `()` | — | [src](../../../core/tools/widget_tools.py#L34) |
-| function | `_exec_vis_widget` | `(args)` | Pak, gem og laeg widget'en i traaden. Kaster aldrig. | [src](../../../core/tools/widget_tools.py#L39) |
-
-## `core/tools/workspace_capabilities.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_workspace_capabilities` | `(name=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L144) |
-| function | `build_ollama_tool_definitions` | `(name=…)` | Build Ollama-compatible tool definitions from workspace capabilities. | [src](../../../core/tools/workspace_capabilities.py#L347) |
-| function | `resolve_tool_call_to_capability` | `(tool_name, arguments)` | Map an Ollama tool_call back to capability invocation parameters. | [src](../../../core/tools/workspace_capabilities.py#L379) |
-| function | `invoke_workspace_capability` | `(capability_id, *, name=…, run_id=…, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L403) |
-| function | `get_capability_invocation_truth` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L555) |
-| function | `_invoke_runnable_capability` | `(*, workspace_dir, section, summary, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L564) |
-| function | `classify_workspace_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities.py#L1870) |
-| function | `_read_bounded_text` | `(path)` | — | [src](../../../core/tools/workspace_capabilities.py#L1970) |
-| function | `_bounded_exec_output` | `(*, stdout, stderr)` | — | [src](../../../core/tools/workspace_capabilities.py#L1977) |
-| function | `_run_bounded_command` | `(*, argv, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L1993) |
-| function | `_run_bounded_shell_command` | `(*, command_text, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L2014) |
-| function | `_search_file_matches` | `(path, query)` | — | [src](../../../core/tools/workspace_capabilities.py#L2035) |
-| function | `_bounded_excerpt` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2055) |
-| function | `_set_last_capability_invocation` | `(invocation, *, invoked_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2062) |
-| function | `_publish_capability_invocation_completed` | `(invocation, *, invoked_at, capability_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2100) |
-| function | `_persist_capability_invocation` | `(invocation, *, invoked_at, finished_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2129) |
-| function | `_now` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L2183) |
 

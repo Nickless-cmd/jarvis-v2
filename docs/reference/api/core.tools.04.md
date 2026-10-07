@@ -2,6 +2,36 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/widget_tools.py`
+_`vis_widget` — en interaktiv flade i traaden, i en sandkasse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_widget_dir` | `()` | — | [src](../../../core/tools/widget_tools.py#L34) |
+| function | `_exec_vis_widget` | `(args)` | Pak, gem og laeg widget'en i traaden. Kaster aldrig. | [src](../../../core/tools/widget_tools.py#L39) |
+
+## `core/tools/workspace_capabilities.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_workspace_capabilities` | `(name=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L144) |
+| function | `build_ollama_tool_definitions` | `(name=…)` | Build Ollama-compatible tool definitions from workspace capabilities. | [src](../../../core/tools/workspace_capabilities.py#L347) |
+| function | `resolve_tool_call_to_capability` | `(tool_name, arguments)` | Map an Ollama tool_call back to capability invocation parameters. | [src](../../../core/tools/workspace_capabilities.py#L379) |
+| function | `invoke_workspace_capability` | `(capability_id, *, name=…, run_id=…, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L403) |
+| function | `get_capability_invocation_truth` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L555) |
+| function | `_invoke_runnable_capability` | `(*, workspace_dir, section, summary, approved=…, write_content=…, target_path=…, command_text=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L564) |
+| function | `classify_workspace_execution_mode` | `(execution_mode)` | — | [src](../../../core/tools/workspace_capabilities.py#L1870) |
+| function | `_read_bounded_text` | `(path)` | — | [src](../../../core/tools/workspace_capabilities.py#L1970) |
+| function | `_bounded_exec_output` | `(*, stdout, stderr)` | — | [src](../../../core/tools/workspace_capabilities.py#L1977) |
+| function | `_run_bounded_command` | `(*, argv, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L1993) |
+| function | `_run_bounded_shell_command` | `(*, command_text, workspace_dir)` | — | [src](../../../core/tools/workspace_capabilities.py#L2014) |
+| function | `_search_file_matches` | `(path, query)` | — | [src](../../../core/tools/workspace_capabilities.py#L2035) |
+| function | `_bounded_excerpt` | `(text, limit=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2055) |
+| function | `_set_last_capability_invocation` | `(invocation, *, invoked_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2062) |
+| function | `_publish_capability_invocation_completed` | `(invocation, *, invoked_at, capability_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2100) |
+| function | `_persist_capability_invocation` | `(invocation, *, invoked_at, finished_at, capability_id=…, run_id=…)` | — | [src](../../../core/tools/workspace_capabilities.py#L2129) |
+| function | `_now` | `()` | — | [src](../../../core/tools/workspace_capabilities.py#L2183) |
+
 ## `core/tools/workspace_capabilities_approval.py`
 
 | Kind | Name | Signature | Summary | Source |

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-07 — 491 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-07 — 496 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -47,6 +47,7 @@
 | `checkpoint` | native | no |
 | `classify_clarification` | native | no |
 | `clear_flag` | native | no |
+| `close_agent` | native | no |
 | `comfyui_history` | native | no |
 | `comfyui_objects` | native | no |
 | `comfyui_status` | native | no |
@@ -102,6 +103,7 @@
 | `dismiss_nudge` | native | no |
 | `dismiss_plan` | native | no |
 | `dismiss_side_task` | native | no |
+| `dispatch_agent` | native | no |
 | `dispatch_cancel` | native | no |
 | `dispatch_code_mode_task` | native | no |
 | `dispatch_due_wakeups` | native | no |
@@ -118,6 +120,7 @@
 | `find_symbol` | native | no |
 | `find_usages` | native | no |
 | `flag_side_task` | native | no |
+| `followup_agent` | native | no |
 | `gate_override_status` | native | no |
 | `generate_improvement_proposals` | native | no |
 | `geocode` | native | no |
@@ -166,6 +169,7 @@
 | `inbox_drop` | native | no |
 | `interlanguage_protocol` | native | no |
 | `internal_api` | native | no |
+| `interrupt_agent` | native | no |
 | `jarvis_browser_click` | native | no |
 | `jarvis_browser_close` | native | no |
 | `jarvis_browser_navigate` | native | no |
@@ -414,6 +418,7 @@
 | `vis_graf` | native | no |
 | `vis_widget` | native | no |
 | `voice_journal` | native | no |
+| `wait_agents` | native | no |
 | `wake_word` | native | no |
 | `web_fetch` | native | no |
 | `web_scrape` | native | no |

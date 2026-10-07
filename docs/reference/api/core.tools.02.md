@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/jc_tool_catalog.py`
+_Single source of truth for what jarvis-code (jc) presents as tools._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `alias_for` | `(name)` | runtime_ alias for a colliding tool name. | [src](../../../core/tools/jc_tool_catalog.py#L30) |
+| function | `unalias` | `(name)` | Strip the runtime_ prefix iff it maps to a colliding tool; else unchanged. | [src](../../../core/tools/jc_tool_catalog.py#L35) |
+| function | `is_runtime_alias` | `(name)` | True only for runtime_<one-of-the-four-colliding-tools>. | [src](../../../core/tools/jc_tool_catalog.py#L42) |
+| function | `execution_location` | `(name)` | Hvor et tool med DETTE præsenterede navn eksekverer: | [src](../../../core/tools/jc_tool_catalog.py#L59) |
+| function | `execution_map` | `(defs)` | Kortlæg en liste af tool-defs → {navn: execution_location}. Muterer IKKE | [src](../../../core/tools/jc_tool_catalog.py#L74) |
+| function | `build_jc_catalog_text` | `()` | Jarvis-code-SPECIFIK toolbox-forklaring til prompten (Bjørn: der manglede en | [src](../../../core/tools/jc_tool_catalog.py#L95) |
+| function | `_def_name` | `(d)` | — | [src](../../../core/tools/jc_tool_catalog.py#L120) |
+| function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
+| function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
+
 ## `core/tools/kaldt_vaerktoej.py`
 _`call_loaded_tool` — en transport, ikke en udfører._
 
@@ -506,15 +521,4 @@ _Nummererede security-predikater (spec E, 2026-07-10)._
 | function | `all_predicates` | `()` | — | [src](../../../core/tools/security_predicates.py#L86) |
 | function | `build_security_predicates_surface` | `()` | Central-CLI read-surface: jc raw /central/security-predicates. | [src](../../../core/tools/security_predicates.py#L90) |
 | function | `render_predicates_md` | `()` | Genererer docs/security_predicates.md fra registry'en (kilde = koden). | [src](../../../core/tools/security_predicates.py#L104) |
-
-## `core/tools/semantic_search_tools.py`
-_Semantic code search — natural language queries over the Jarvis codebase._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_definitions` | `(repo_root, dirs)` | Extract function/class definitions with file:line and docstring snippet. | [src](../../../core/tools/semantic_search_tools.py#L15) |
-| function | `_keyword_prefilter` | `(definitions, query, limit=…)` | Quick keyword pre-filter to reduce candidates before expensive scoring. | [src](../../../core/tools/semantic_search_tools.py#L46) |
-| function | `_score_with_llm` | `(query, candidates, top_k)` | Use LLM to rank candidates by semantic relevance to query. | [src](../../../core/tools/semantic_search_tools.py#L62) |
-| function | `_read_context` | `(file, line, context=…)` | — | [src](../../../core/tools/semantic_search_tools.py#L92) |
-| function | `_exec_semantic_search_code` | `(args)` | — | [src](../../../core/tools/semantic_search_tools.py#L103) |
 

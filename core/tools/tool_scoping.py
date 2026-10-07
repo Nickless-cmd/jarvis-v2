@@ -77,6 +77,9 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "dispatch_status",
     "dispatch_to_claude_code",
     "cancel_agent",
+    # agent-contract-v1: owner-only indtil flerbrugerpiloten (spec 12.4) - andre brugeres
+    # agenter kraever den proevede ejer-/rutegraense foer deres modeller faar vaerktoejet.
+    "dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
     "cancel_recurring",
     "cancel_self_wakeup",
     "cancel_task",
@@ -640,4 +643,9 @@ def filter_tool_definitions(
         locked = disabled_tools()
     except Exception:
         locked = set()
+    try:  # agent-contract-v1: kontrakt-vaerktoejerne findes kun naar motoren er taendt
+        from core.tools.agent_contract_tools import hidden_contract_tools
+        locked = set(locked) | set(hidden_contract_tools())
+    except Exception:
+        logger.warning("agent-kapabilitetsfilteret kunne ikke koere", exc_info=True)
     return [d for d in defs if _fn_name(d) in allow and _fn_name(d) not in locked]

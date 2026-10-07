@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8540/16128 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8546/16142 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 8540/16128 functions/methods documented (52%). The list b
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 516 | 1040 | 49% |
+| `core.tools` | 522 | 1054 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1756,7 +1756,7 @@ Generated from source. 8540/16128 functions/methods documented (52%). The list b
 - `core/services/session_inbox.py` :: `pending_count` (L344)
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L470)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
-- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L211)
+- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_view.py` :: `saet_visning` (L58)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)
@@ -2078,10 +2078,10 @@ Generated from source. 8540/16128 functions/methods documented (52%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L321)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L339)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L317)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L344)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L324)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L342)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L320)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L347)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

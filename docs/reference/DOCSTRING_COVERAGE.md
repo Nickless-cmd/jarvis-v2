@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8554/16143 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8557/16146 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8554/16143 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 724 | 1304 | 55% |
-| `core.services` | 5705 | 10984 | 51% |
+| `core.services` | 5708 | 10987 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 114 | 189 | 60% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1257,7 +1257,7 @@ Generated from source. 8554/16143 functions/methods documented (52%). The list b
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)
 - `core/services/memory_write_policy.py` :: `list_pending_reviews` (L176)
 - `core/services/memory_write_policy.py` :: `reject_review` (L194)
-- `core/services/mermaid_render.py` :: `find_mermaid` (L85)
+- `core/services/mermaid_render.py` :: `find_mermaid` (L86)
 - `core/services/message_feedback.py` :: `markér_gennemgået` (L122)
 - `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)

@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -182,3 +183,119 @@ def render(kilde: str, *, timeout: int = TEGN_GRAENSE_S) -> str:
     if '<svg' not in svg:
         raise MermaidFejl('mermaid svarede uden SVG-indhold')
     return svg
+
+
+#: Baggrunden bag diagrammet. Samme moerke flade som klienterne bruger, saa
+#: diagrammet ikke staar paa et hvidt felt i en moerk traad.
+BAGGRUND = '#0d1117'
+
+
+def _svg_side(svg: str) -> str:
+    """En side der viser en faerdig SVG — klar til screenshot.
+
+    `width:100%` tvinger SVG'en til at fylde vinduet, uanset hvilken
+    `width`/`max-width` mermaid selv skrev ind. Ellers ville et smalt
+    diagram blive tegnet i sin naturlige stoerrelse midt i et stort vindue.
+    """
+    return f"""<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{{margin:0;padding:0;background:{BAGGRUND};overflow:hidden;}}
+#w svg{{width:100%!important;height:auto!important;max-width:none!important;display:block;}}
+</style></head><body><div id="w">{svg}</div></body></html>"""
+
+
+def _maal(svg: str) -> tuple[float, float]:
+    """SVG'ens sande forhold.
+
+    viewBox foerst — den er uafhaengig af `width`-attributten og bærer
+    forholdet. Findes den ikke, falder vi tilbage til `width`/`height`, men
+    kun naar de er rene tal: `100%` siger intet om forholdet.
+    """
+    m = re.search(r'viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"', svg)
+    if m:
+        return float(m.group(1)), float(m.group(2))
+    b = re.search(r'\bwidth="([\d.]+)(?:px)?"', svg)
+    h = re.search(r'\bheight="([\d.]+)(?:px)?"', svg)
+    if b and h:
+        return float(b.group(1)), float(h.group(1))
+    return 0.0, 0.0
+
+
+def rasteriser(
+    svg: str,
+    *,
+    bredde: int,
+    maks_hoejde: int,
+    timeout: int = TEGN_GRAENSE_S,
+) -> bytes:
+    """SVG → PNG, tegnet af chromium.
+
+    ## Hvorfor ikke rsvg-convert (maalt 7/10-2026)
+
+    Mermaid lægger sine labels i `<foreignObject>` — HTML inde i SVG'en.
+    librsvg tegner den ikke. Resultatet var at former, pile og farver kom
+    med, men ALLE kasser stod tomme. Bjørn saa det paa sin telefon og sagde
+    det praecist: «diagram tegner.. men hvis du har tilfoejet tekste i
+    diagrammet kan det ikke ses».
+
+    Maalt: samme SVG gennem chromium giver «Start her», «Valg», «Slut her»;
+    gennem rsvg-convert er kasserne tomme. `htmlLabels:false` loeser det
+    ikke — der er stadig `foreignObject` tilbage til kant-labels (maalt: 6
+    efter omlaegningen, mod 10 foer).
+
+    Vi starter browseren alligevel for at rende mermaid, saa rasteriseringen
+    koster kun den ene kommando ekstra.
+    """
+    chrome = find_chrome()
+    if chrome is None:
+        raise MermaidFejl('ingen chromium-binaer fundet — kan ikke rasterisere')
+
+    vb_b, vb_h = _maal(svg)
+    if vb_b <= 0 or vb_h <= 0:
+        # Intet at skalere efter. SVG'en fylder saa vinduet, og et kvadrat er
+        # det aerlige svar — vi ved ikke bedre, og et gaet paa hoejden ville
+        # klippe diagrammet. Mermaid skriver altid en viewBox, saa grenen er
+        # for haandskrevne SVG'er (og for tests).
+        vb_b, vb_h = 1.0, 1.0
+
+    # Bredden styrer normalt. Et lodret diagram (`flowchart TD`) bliver derved
+    # hoejere end nogen telefon kan vise, saa naar hoejden loeber over, styrer
+    # den i stedet — og bredden foelger med, saa forholdet bevares.
+    hoejde = round(bredde * vb_h / vb_b)
+    if hoejde > maks_hoejde:
+        hoejde = maks_hoejde
+        bredde = max(1, round(maks_hoejde * vb_b / vb_h))
+
+    with tempfile.TemporaryDirectory(prefix='jarvis-mermaid-png-') as tmp:
+        side = Path(tmp) / 'diagram.html'
+        png = Path(tmp) / 'diagram.png'
+        side.write_text(_svg_side(svg), encoding='utf-8')
+        try:
+            svar = subprocess.run(
+                [
+                    str(chrome),
+                    '--headless',
+                    '--disable-gpu',
+                    '--no-sandbox',
+                    '--hide-scrollbars',
+                    '--virtual-time-budget=4000',
+                    f'--window-size={bredde},{hoejde}',
+                    f'--screenshot={png}',
+                    side.as_uri(),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise MermaidFejl(f'chromium svarede ikke inden {timeout} s') from e
+
+        if not png.exists():
+            raise MermaidFejl(
+                f'chromium skrev intet screenshot (exit {svar.returncode}): '
+                f'{(svar.stderr or "").strip()[:200]}'
+            )
+        data = png.read_bytes()
+
+    if not data:
+        raise MermaidFejl('chromium gav en tom fil')
+    return data

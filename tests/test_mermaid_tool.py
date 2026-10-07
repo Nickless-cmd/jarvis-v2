@@ -113,3 +113,31 @@ def test_png_har_rigtige_dimensioner_efter_skalering():
     # Baggrunden er sat til #0d1117, så billedet må ikke være ensfarvet hvidt.
     farver = im.convert("RGB").getcolors(maxcolors=100000)
     assert farver is not None and len(farver) > 1
+
+
+def test_rasteriseringen_tegner_foreignobject():
+    """Fejlen der fik ALLE kasser til at stå tomme (målt 7/10-2026).
+
+    Mermaid lægger sine labels i `<foreignObject>` — HTML inde i SVG'en.
+    rsvg-convert tegner den ikke: former, pile og farver kom med, men ingen
+    tekst. Bjørn så det på sin telefon og sagde det præcist: «diagram tegner..
+    men hvis du har tilføjet tekste i diagrammet kan det ikke ses».
+
+    Chromium tegner den. Uden denne test kan rasteriseringen skiftes tilbage
+    til librsvg uden at nogen opdager at diagrammerne bliver tomme igen.
+    """
+    from PIL import Image
+    import io
+
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">'
+        '<rect width="200" height="60" fill="#0d1117"/>'
+        '<foreignObject x="10" y="10" width="180" height="40">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" '
+        'style="color:#ffffff;font:32px sans-serif">TEKST</div>'
+        "</foreignObject></svg>"
+    )
+    png = _svg_til_png(svg)
+    im = Image.open(io.BytesIO(png)).convert("L")
+    lyse = sum(1 for p in im.getdata() if p > 120)
+    assert lyse > 200, f"foreignObject blev ikke tegnet ({lyse} lyse pixels)"

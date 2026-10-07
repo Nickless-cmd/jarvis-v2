@@ -43,8 +43,6 @@ automatisk omskrivning af alle svar.
 from __future__ import annotations
 
 import logging
-import subprocess
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -84,59 +82,27 @@ def _generated_dir() -> Path:
 
 
 def _svg_til_png(svg: str) -> bytes:
-    """SVG → PNG med rsvg-convert. Rejser RuntimeError med en brugbar årsag.
+    """SVG → PNG. Rejser RuntimeError med en brugbar årsag.
 
-    Bredden styrer normalt skalaen, men et lodret diagram (`flowchart TD`)
-    bliver derved højere end nogen telefon kan vise. Derfor måles SVG'ens
-    eget forhold først: er det højere end `MAKS_HOEJDE`/`BREDDE`, styres
-    skalaen af højden i stedet. Forholdet bevares i begge tilfælde.
+    Rasteriseringen sker i **chromium**, ikke i rsvg-convert (maalt
+    7/10-2026). Mermaid lægger sine labels i `<foreignObject>` — HTML inde i
+    SVG'en — og librsvg tegner den ikke: former, pile og farver kom med, men
+    alle kasser stod tomme. Bjørn saa det paa sin telefon.
+
+    Chromium tegner `foreignObject` korrekt, og browseren startes alligevel
+    for at rende mermaid, saa rasteriseringen koster kun den ene kommando.
+    Skaleringen (bredde styrer, hoejden loefter naar diagrammet er lodret)
+    ligger i `mermaid_render.rasteriser`.
     """
-    import re
+    from core.services.mermaid_render import MermaidFejl, rasteriser
 
-    with tempfile.TemporaryDirectory(prefix="jarvis-mermaid-png-") as tmp:
-        svg_sti = Path(tmp) / "diagram.svg"
-        png_sti = Path(tmp) / "diagram.png"
-        svg_sti.write_text(svg, encoding="utf-8")
-
-        # viewBox'en bærer diagrammets sande forhold (målt 7/10-2026:
-        # `0 0 115.09 312.11` for et flowchart TD).
-        skala_arg = [f"--width={BREDDE}"]
-        m = re.search(r'viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"', svg)
-        if m:
-            b, h = float(m.group(1)), float(m.group(2))
-            if b > 0 and h > 0 and (BREDDE * h / b) > MAKS_HOEJDE:
-                skala_arg = [f"--height={MAKS_HOEJDE}"]
-
-        try:
-            svar = subprocess.run(
-                [
-                    "rsvg-convert",
-                    "--format=png",
-                    *skala_arg,
-                    "--background-color=#0d1117",
-                    "-o", str(png_sti),
-                    str(svg_sti),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-        except FileNotFoundError as e:
-            raise RuntimeError(
-                "rsvg-convert findes ikke — kan ikke rasterisere diagrammet"
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError("rsvg-convert svarede ikke inden 30 s") from e
-
-        if svar.returncode != 0 or not png_sti.exists():
-            raise RuntimeError(
-                f"rsvg-convert fejlede (exit {svar.returncode}): "
-                f"{(svar.stderr or '').strip()[:200]}"
-            )
-        data = png_sti.read_bytes()
+    try:
+        data = rasteriser(svg, bredde=BREDDE, maks_hoejde=MAKS_HOEJDE)
+    except MermaidFejl as exc:
+        raise RuntimeError(f"kunne ikke rasterisere diagrammet: {exc}") from exc
 
     if not data:
-        raise RuntimeError("rsvg-convert gav en tom fil")
+        raise RuntimeError("rasteriseringen gav en tom fil")
     if len(data) > MAKS_PNG_BYTES:
         raise RuntimeError(
             f"diagrammet blev {len(data)} bytes (højst {MAKS_PNG_BYTES}) — "

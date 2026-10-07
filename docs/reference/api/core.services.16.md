@@ -579,12 +579,15 @@ _Mermaid → SVG, server-side. Så diagrammer også når mobilen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `MermaidFejl` | `` | Kunne ikke rende diagrammet — med en årsag der kan handles på. | [src](../../../core/services/mermaid_render.py#L73) |
-| function | `find_chrome` | `()` | Første kørende chromium-binær, eller None. | [src](../../../core/services/mermaid_render.py#L77) |
-| function | `find_mermaid` | `()` | — | [src](../../../core/services/mermaid_render.py#L85) |
-| function | `tilgaengelig` | `()` | Kan serveren rende mermaid lige nu? (ja/nej, grund). | [src](../../../core/services/mermaid_render.py#L92) |
-| function | `_side` | `(kilde, mermaid_js)` | HTML-siden der rendrer diagrammet og lægger SVG'en i titlen. | [src](../../../core/services/mermaid_render.py#L101) |
-| function | `render` | `(kilde, *, timeout=…)` | Mermaid-kilde → SVG. Rejser `MermaidFejl` hvis det ikke kan lade sig gøre. | [src](../../../core/services/mermaid_render.py#L121) |
+| class | `MermaidFejl` | `` | Kunne ikke rende diagrammet — med en årsag der kan handles på. | [src](../../../core/services/mermaid_render.py#L74) |
+| function | `find_chrome` | `()` | Første kørende chromium-binær, eller None. | [src](../../../core/services/mermaid_render.py#L78) |
+| function | `find_mermaid` | `()` | — | [src](../../../core/services/mermaid_render.py#L86) |
+| function | `tilgaengelig` | `()` | Kan serveren rende mermaid lige nu? (ja/nej, grund). | [src](../../../core/services/mermaid_render.py#L93) |
+| function | `_side` | `(kilde, mermaid_js)` | HTML-siden der rendrer diagrammet og lægger SVG'en i titlen. | [src](../../../core/services/mermaid_render.py#L102) |
+| function | `render` | `(kilde, *, timeout=…)` | Mermaid-kilde → SVG. Rejser `MermaidFejl` hvis det ikke kan lade sig gøre. | [src](../../../core/services/mermaid_render.py#L122) |
+| function | `_svg_side` | `(svg)` | En side der viser en faerdig SVG — klar til screenshot. | [src](../../../core/services/mermaid_render.py#L193) |
+| function | `_maal` | `(svg)` | SVG'ens sande forhold. | [src](../../../core/services/mermaid_render.py#L206) |
+| function | `rasteriser` | `(svg, *, bredde, maks_hoejde, timeout=…)` | SVG → PNG, tegnet af chromium. | [src](../../../core/services/mermaid_render.py#L223) |
 
 ## `core/services/message_feedback.py`
 _Ros og ris på Jarvis' svar — og hvad de bliver til._

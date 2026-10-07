@@ -71,9 +71,9 @@ _`render_mermaid` — et diagram der også når telefonen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_generated_dir` | `()` | Samme mappe som `openrouter_image` skriver i — den er allerede synlig. | [src](../../../core/tools/mermaid_tool.py#L70) |
-| function | `_svg_til_png` | `(svg)` | SVG → PNG med rsvg-convert. Rejser RuntimeError med en brugbar årsag. | [src](../../../core/tools/mermaid_tool.py#L86) |
-| function | `_exec_render_mermaid` | `(args)` | Mermaid-kilde → PNG i tråden, så diagrammet også ses på mobilen. | [src](../../../core/tools/mermaid_tool.py#L148) |
+| function | `_generated_dir` | `()` | Samme mappe som `openrouter_image` skriver i — den er allerede synlig. | [src](../../../core/tools/mermaid_tool.py#L68) |
+| function | `_svg_til_png` | `(svg)` | SVG → PNG. Rejser RuntimeError med en brugbar årsag. | [src](../../../core/tools/mermaid_tool.py#L84) |
+| function | `_exec_render_mermaid` | `(args)` | Mermaid-kilde → PNG i tråden, så diagrammet også ses på mobilen. | [src](../../../core/tools/mermaid_tool.py#L114) |
 
 ## `core/tools/meta_learning_tools.py`
 _Meta-læring tools — Phase 1 (AGI track #3)._

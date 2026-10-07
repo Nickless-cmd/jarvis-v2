@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { WebView } from 'react-native-webview'
 
 /**
@@ -67,14 +67,65 @@ const HOEJDE_SCRIPT = `
 true;
 `
 
+/** Luft ud til skaermkanten. Boblen og vedhaeftnings-wrapperen tager hver
+ *  sin margen; 20 pr. side rammer den samme kant som teksten staar paa. */
+const SIDE_LUFT = 20
+
+/** Er adressen dokumentet selv — eller et forsoeg paa at navigere ud?
+ *
+ *  `source={{ html }}` indlaeses som `about:blank` (Android:
+ *  `loadDataWithBaseURL`) eller som en `data:`-URL. Begge ER widget'en. Alt
+ *  andet — http, https, intent:, file: — er et forsoeg paa at forlade
+ *  sandkassen og afvises. Eksporteret saa en test kan se den afvise. */
+export function dokumentets_egen(url: unknown): boolean {
+  const u = String(url ?? '').trim().toLowerCase()
+  return u === '' || u === 'about:blank' || u.startsWith('data:')
+}
+
 export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   const [hoejde, setHoejde] = useState(160)
-  const foerste = useRef(true)
+  // EN DEFINIT BREDDE, IKKE EN PROCENT (Bjoern 6/10-2026: «Og saa virker
+  // widget ikk i mobilen» — og paa spoergsmaalet om hvad der stod paa
+  // skaermen: «Ingenting»).
+  //
+  // Rammen havde `width: '100%'`. Foraelderen er `MessageAttachments`'
+  // `venstre`-stil, som saetter `alignSelf: 'flex-start'` OG
+  // `alignItems: 'flex-start'` — altsaa en bredde der kommer FRA indholdet, og
+  // boern der ikke straekkes. En procent resolver mod foraelderens definite
+  // bredde; har foraelderen ingen, bliver den nul. Med `overflow: 'hidden'`
+  // og en hoejde paa 160 giver det praecis det Bjoern saa: ingenting.
+  //
+  // Det er ogsaa hvorfor BILLEDER virker i samme wrapper: de har fast
+  // `width: 240`. Widget'en var det eneste barn med en procent.
+  //
+  // Maalt foerst: blokken NAAR frem (se MessageAttachments.test), telefonen
+  // koerer 282, og APK'en har baade det native modul og JS-koden. Alt andet
+  // var udelukket foer denne linje blev roert.
+  //
+  // `alignSelf: 'stretch'` loeser det ikke: et straakt barn har ingen egen
+  // bredde at give en foraelder der selv skal maales af sine boern.
+  // EN TOM RAMME MAA IKKE KUNNE FORBLIVE TVETYDIG (6/10-2026).
+  //
+  // To rettelser i traek ramte ved siden af, fordi en blank flade ikke kan
+  // skelne «indlaeste aldrig» fra «indlaeste og malede intet» fra «fejlede
+  // tavst». WebView'ens egne fejl-callbacks blev slet ikke lyttet paa, saa en
+  // fejl forsvandt. Nu siger rammen hvad der skete — paa skaermen, hvor den
+  // der ser problemet ogsaa kan laese svaret.
+  const [tilstand, setTilstand] = useState<'indlaeser' | 'klar' | string>('indlaeser')
+  useEffect(() => {
+    setTilstand('indlaeser')
+    const t = setTimeout(() => {
+      setTilstand((n) => (n === 'indlaeser' ? 'svarede ikke paa 6 sekunder' : n))
+    }, 6000)
+    return () => clearTimeout(t)
+  }, [html])
+
+  const vindue = useWindowDimensions()
+  const bredde = Math.max(240, Math.round(vindue.width) - 2 * SIDE_LUFT)
   // Teksten er FAERDIG-MAERKET naar den naar hertil.
   const onPrompt = useContext(WidgetPrompt)
   const sendte = useRef({ antal: 0, sidst: 0 })
 
-  useEffect(() => { foerste.current = true }, [html])
 
   if (!html) {
     return <Text style={styles.fejl}>Widget kunne ikke vises: tomt dokument</Text>
@@ -84,19 +135,44 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   }
 
   return (
-    <View style={[styles.ramme, { height: hoejde }]}>
+    <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
+      {tilstand !== 'klar' ? (
+        <Text style={styles.tilstand} testID="widget-tilstand">
+          {tilstand === 'indlaeser' ? 'Widget indlaeses…' : `Widget: ${tilstand}`}
+        </Text>
+      ) : null}
       <WebView
         testID="widget-webview"
         accessibilityLabel={titel || 'widget'}
         // INTET baseUrl — se komponentens docstring.
         source={{ html }}
         originWhitelist={[]}
-        // Den foerste indlaesning ER dokumentet selv; alt derefter er
-        // navigation og afvises.
-        onShouldStartLoadWithRequest={() => {
-          if (foerste.current) { foerste.current = false; return true }
-          return false
-        }}
+        // GATEN SER PAA ADRESSEN, IKKE PAA HVOR MANGE GANGE DEN ER KALDT.
+        //
+        // Foerste udgave talte: «foerste kald = dokumentet, alt derefter =
+        // navigation». Det var forkert. Android indlaeser `source={{html}}` med
+        // `loadDataWithBaseURL("about:blank", …)` og fyrer navigations-tjekket
+        // MERE END EN GANG for den ene indlaesning — saa taelleren slap den
+        // foerste igennem og blokerede selve dokumentet. Bjoern saa en tom
+        // ramme hvor widget'en skulle staa (6/10-2026).
+        //
+        // `about:blank` og `data:` ER dokumentet. Alt andet er navigation ud af
+        // sandkassen og afvises. Det er baade rigtigere og strammere end at
+        // taelle: en gate der siger HVAD den tillader kan ikke narres af
+        // hvor mange gange den bliver spurgt.
+        //
+        // Bemaerk at `originWhitelist` ikke daekker det: biblioteket laegger
+        // selv `about:blank` foerst i listen (`compileWhitelist` i
+        // WebViewShared), saa en tom liste tillader stadig dokumentet. Gaten
+        // her er den der afgoer sagen.
+        onShouldStartLoadWithRequest={(req) => dokumentets_egen(req?.url)}
+        // En WebView i en virtualiseret FlatList tegner blankt paa Android med
+        // standardens `androidLayerType="none"`. `MessageList` ER en FlatList.
+        androidLayerType="hardware"
+        onLoadEnd={() => setTilstand('klar')}
+        onError={(e) => setTilstand(String(e?.nativeEvent?.description || 'indlaesningsfejl'))}
+        onHttpError={(e) => setTilstand(`http ${e?.nativeEvent?.statusCode ?? '?'}`)}
+        onRenderProcessGone={() => setTilstand('webview-processen doede')}
         javaScriptEnabled
         injectedJavaScript={HOEJDE_SCRIPT}
         onMessage={(e) => {
@@ -150,7 +226,11 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
 }
 
 const styles = StyleSheet.create({
-  ramme: { width: '100%', marginVertical: 4, overflow: 'hidden' },
+  ramme: { marginVertical: 4, overflow: 'hidden' },
   web: { flex: 1, backgroundColor: 'transparent' },
+  tilstand: {
+    position: 'absolute', top: 6, left: 10, zIndex: 1,
+    fontSize: 12, opacity: 0.75,
+  },
   fejl: { fontSize: 13, opacity: 0.8, paddingVertical: 8, paddingHorizontal: 10 },
 })

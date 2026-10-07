@@ -223,3 +223,48 @@ it('en bruger-vedhaeftning staar til hoejre — ogsaa uden at sige det', async (
   )
   expect(flad(screen.getByTestId('attachment-wrap').props.style).alignSelf).toBe('flex-end')
 })
+
+// ── DEN RIGTIGE WIDGET-BLOK FRA PRODUKTIONEN (Bjørn 6/10-2026) ─────────────
+//
+// «Og så virker widget ikk i mobilen» — og på spørgsmålet om hvad der står på
+// skærmen: «Ingenting». Hverken flade, fil-kort eller fejltekst.
+//
+// Det udelukker de nemme forklaringer, og de er alle MÅLT:
+//   * telefonen kører 0.2.181 (282) — `klient_versioner` har noteret det
+//   * APK 282 har både det native modul (RNCWebView, 78 traef i dex) og
+//     JS-koden (WidgetFlade, WidgetVedhaeftning, erWidget i Hermes-bundlen)
+//   * serverens blok naar snapshottet uaendret, og `erWidget` siger true
+//
+// Blokken nedenfor er kopieret ORD FOR ORD fra besked 171735 i produktionen —
+// ikke opfundet. Et opdigtet forlaeg ville kunne bestaa mens virkeligheden
+// fejler; det er praecis den fejl der sendte mig forkert én gang i dag.
+const PRODUKTIONS_WIDGET = {
+  type: 'file',
+  filename: 'widget-20261006T191914463821.html',
+  mime_type: 'text/html',
+  tool_use_id: 'call_00_BaYu3PLH3UQuaCNAPI5v1844',
+  attachment_id: '6bafa385081647f3ae6a0e2cfbac5541',
+  kilde: 'generated',
+  size_bytes: 3201,
+} as const
+
+describe('widget-blokken fra produktionen', () => {
+  it('TEGNES overhovedet — skelner «ikke tegnet» fra «tegnet usynligt»', async () => {
+    const screen = await render(
+      <MessageAttachments items={[PRODUKTIONS_WIDGET as never]} side="left" kantlos />
+    )
+    // Én af de tre tilstande WidgetVedhaeftning kan staa i. Findes ingen af
+    // dem, naaede blokken aldrig frem — og saa ligger fejlen OPSTROEMS.
+    const tekst = screen.toJSON()
+    expect(tekst).not.toBeNull()
+    const serialiseret = JSON.stringify(tekst)
+    expect(serialiseret).toMatch(/Widget hentes|Widget kunne ikke vises|RNCWebView|WebView/i)
+  })
+
+  it('bliver IKKE et fil-kort', async () => {
+    const screen = await render(
+      <MessageAttachments items={[PRODUKTIONS_WIDGET as never]} side="left" kantlos />
+    )
+    expect(screen.queryByText(/widget-20261006T191914463821\.html/)).toBeNull()
+  })
+})

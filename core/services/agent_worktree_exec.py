@@ -2,8 +2,10 @@
 
 Kommandoer og filskrivninger koeres i en bwrap-sandbox hvor ``/work`` er agentens worktree og det
 ENESTE skrivbare mount. Alt andet er skrivebeskyttet eller en privat tmpfs; intet netvaerk, ingen
-credentials, ingen andre ejeres filer, ingen git mod hovedrepoet (serveren laeser selv aendringerne
-med sit gemte GIT_DIR). Et forsoeg paa at skrive via absolut sti, ``..``, symlink eller shell lander
+credentials, ingen andre ejeres filer. Git virker, men mod agentens EGEN private gitdir
+(``agent_worktree_gitdir``): hovedrepoets refs, hooks, config og andre worktrees er ikke monteret, og
+serveren importerer agentens commits bagefter med fsck (serveren laeser selv aendringerne med sit gemte
+GIT_DIR). Et forsoeg paa at skrive via absolut sti, ``..``, symlink eller shell lander
 i sandboxens tmpfs eller afvises - vaerten roeres ikke. Soeger ikke at haandhaeve noget i prompten:
 graensen er mount-namespacet.
 """
@@ -19,6 +21,7 @@ from typing import Any
 
 from core.services import agent_sandbox as sb
 from core.services import agent_worktree_git as g
+from core.services import agent_worktree_gitdir as agd
 from core.services import agent_worktrees as wtm
 
 logger = logging.getLogger(__name__)
@@ -71,15 +74,16 @@ def _clip(data: bytes) -> tuple[str, bool]:
     return (text[:MAX_OUTPUT], len(text) > MAX_OUTPUT)
 
 
-def _run(wt: dict[str, Any], command: list[str], *, timeout_s: float, stdin_bytes: bytes | None = None
-         ) -> dict[str, Any]:
+def _run(wt: dict[str, Any], command: list[str], *, timeout_s: float, stdin_bytes: bytes | None = None,
+         with_git: bool = False) -> dict[str, Any]:
     timeout_s = max(1.0, min(float(timeout_s or DEFAULT_TIMEOUT_S), MAX_TIMEOUT_S))
     t0 = time.monotonic()
+    mounts = agd.sandbox_mounts(wt["repo_path"], wt["path"]) if with_git else None
     proc = sb.spawn_in_sandbox(
         command, stdin=subprocess.PIPE if stdin_bytes is not None else None,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, worker_files={}, rw_binds={wt["path"]: "/work"},
         chdir="/work", address_space=_ADDRESS_SPACE, cpu_seconds=int(timeout_s) + 5,
-        file_size=_FILE_SIZE_LIMIT)
+        file_size=_FILE_SIZE_LIMIT, mounts=mounts, extra_env=agd.sandbox_env() if mounts else None)
     timed_out = False
     try:
         out, err = proc.communicate(input=stdin_bytes, timeout=timeout_s)
@@ -110,7 +114,7 @@ def run_in_worktree(*, worktree_id: str, command: str, timeout_s: float = DEFAUL
     if not str(command or "").strip():
         raise ExecError("INVALID_SCOPE", "kommandoen er tom")
     wt = _active_worktree(worktree_id)
-    return _run(wt, ["/usr/bin/bash", "-c", command], timeout_s=timeout_s)
+    return _run(wt, ["/usr/bin/bash", "-c", command], timeout_s=timeout_s, with_git=True)
 
 
 def write_file_in_worktree(*, worktree_id: str, path: str, content: str) -> dict[str, Any]:

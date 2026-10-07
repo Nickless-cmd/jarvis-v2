@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_task_runner.py`
+_Scheduled task dispatcher — binds workspace_context before firing._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
+
 ## `core/services/scheduled_tasks.py`
 _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 
@@ -768,31 +775,4 @@ _Semantic memory — unified embedding + cosine search across memory surfaces._
 | function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L666) |
 | function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L675) |
 | function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L688) |
-
-## `core/services/sensory_archive.py`
-_Sansernes Arkiv — service layer for sensory memories._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_mood_from_content` | `(content, modality)` | Auto-extract a short Danish mood tone from content using keyword matching. | [src](../../../core/services/sensory_archive.py#L29) |
-| function | `_uden_raa_tanke` | `(content)` | Fjern model-raesonnement foer det bliver til et sanseindtryk. | [src](../../../core/services/sensory_archive.py#L106) |
-| function | `klip_ved_saetningsgraense` | `(tekst, pos)` | Klip `tekst` ved `pos`, men ryk tilbage til sidste saetningsgraense. | [src](../../../core/services/sensory_archive.py#L210) |
-| function | `_fjern_anmeldelse` | `(tekst, traef)` | Fjern selve anmeldelsen — ikke resten af posten. | [src](../../../core/services/sensory_archive.py#L224) |
-| function | `_uden_wrapper` | `(tekst)` | Teksten uden `active_sensing`s maskinelle lag — til VURDERING, ikke gem. | [src](../../../core/services/sensory_archive.py#L264) |
-| function | `_uden_stillads` | `(content)` | Fjern stillads foran et indtryk. Returnerer `(tekst, var_stillads)`. | [src](../../../core/services/sensory_archive.py#L269) |
-| function | `_record` | `(modality, content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L310) |
-| function | `record_visual` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L413) |
-| function | `record_audio` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L422) |
-| function | `record_atmosphere` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L431) |
-| function | `record_mixed` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L440) |
-| function | `list_recent` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/services/sensory_archive.py#L449) |
-| function | `search` | `(query, *, modality=…, limit=…)` | — | [src](../../../core/services/sensory_archive.py#L461) |
-| function | `get` | `(memory_id)` | — | [src](../../../core/services/sensory_archive.py#L470) |
-| function | `count` | `(*, modality=…)` | — | [src](../../../core/services/sensory_archive.py#L474) |
-| function | `er_kvittering` | `(content)` | Er dette kvitteringen for at der blev sanset — ikke et indtryk? | [src](../../../core/services/sensory_archive.py#L504) |
-| function | `_kvittering_mode` | `()` | Hvornår en kvittering er en sansning: skip | always. | [src](../../../core/services/sensory_archive.py#L519) |
-| function | `skal_arkiveres` | `(content)` | Skal denne tekst arkiveres som en sansning? | [src](../../../core/services/sensory_archive.py#L532) |
-| function | `er_maettet` | `(content)` | Er det her et indtryk, eller bare kvitteringen for at der blev sanset? | [src](../../../core/services/sensory_archive.py#L545) |
-| function | `seneste_maettede` | `(*, modality=…, kig=…)` | Nyeste post der faktisk beskriver noget — ellers None. | [src](../../../core/services/sensory_archive.py#L554) |
-| function | `summarize_for_context` | `(limit=…)` | Return a compact summary usable as surface/context injection. | [src](../../../core/services/sensory_archive.py#L570) |
 

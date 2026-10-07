@@ -43,10 +43,10 @@ _Agent-kun-vaerktoejer til at skrive i agentens EGET worktree (agent-contract-v1
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_worktree_for` | `(args)` | (worktree, fejl). Agenten og dens assignment slaas op af serveren. | [src](../../../core/tools/agent_worktree_tools.py#L44) |
-| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_worktree_tools.py#L61) |
-| function | `_exec_wt_bash` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L67) |
-| function | `_exec_wt_write_file` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L80) |
+| function | `_worktree_for` | `(args)` | (worktree, fejl). Agenten og dens assignment slaas op af serveren. | [src](../../../core/tools/agent_worktree_tools.py#L45) |
+| function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_worktree_tools.py#L62) |
+| function | `_exec_wt_bash` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L68) |
+| function | `_exec_wt_write_file` | `(args)` | — | [src](../../../core/tools/agent_worktree_tools.py#L81) |
 
 ## `core/tools/app_control_tool.py`
 _request_app_action tool (spec 2026-06-15) — Jarvis foreslår mode/permission-skift._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8650/16378 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8657/16387 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 774 | 1397 | 55% |
-| `core.services` | 5771 | 11140 | 51% |
+| `core.services` | 5778 | 11149 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 118 | 193 | 61% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2299)
+## Undocumented public functions (2301)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L215)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -669,27 +669,29 @@ Generated from source. 8650/16378 functions/methods documented (52%). The list b
 - `core/services/agent_worker_main.py` :: `main` (L81)
 - `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
-- `core/services/agent_worktree_git.py` :: `add_worktree` (L100)
-- `core/services/agent_worktree_git.py` :: `changed_files` (L120)
-- `core/services/agent_worktree_git.py` :: `commit_tree` (L210)
-- `core/services/agent_worktree_git.py` :: `commits_since` (L128)
-- `core/services/agent_worktree_git.py` :: `current_head` (L180)
-- `core/services/agent_worktree_git.py` :: `ensure_dir` (L168)
-- `core/services/agent_worktree_git.py` :: `path_is_inside` (L163)
-- `core/services/agent_worktree_git.py` :: `ref_exists` (L184)
-- `core/services/agent_worktree_git.py` :: `resolve_commit` (L82)
-- `core/services/agent_worktree_git.py` :: `run_git` (L39)
-- `core/services/agent_worktree_git.py` :: `safe_name` (L59)
-- `core/services/agent_worktree_git.py` :: `safe_ref` (L52)
-- `core/services/agent_worktree_git.py` :: `set_ref` (L222)
-- `core/services/agent_worktree_git.py` :: `stage_all` (L109)
-- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L83)
-- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L49)
-- `core/services/agent_worktrees.py` :: `get` (L185)
-- `core/services/agent_worktrees.py` :: `get_for_assignment` (L189)
-- `core/services/agent_worktrees.py` :: `quota_status` (L129)
-- `core/services/agent_worktrees.py` :: `worktree_root` (L79)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L242)
+- `core/services/agent_worktree_git.py` :: `add_worktree` (L101)
+- `core/services/agent_worktree_git.py` :: `changed_files` (L121)
+- `core/services/agent_worktree_git.py` :: `commit_tree` (L216)
+- `core/services/agent_worktree_git.py` :: `commits_since` (L129)
+- `core/services/agent_worktree_git.py` :: `current_head` (L186)
+- `core/services/agent_worktree_git.py` :: `ensure_dir` (L174)
+- `core/services/agent_worktree_git.py` :: `path_is_inside` (L169)
+- `core/services/agent_worktree_git.py` :: `ref_exists` (L190)
+- `core/services/agent_worktree_git.py` :: `resolve_commit` (L83)
+- `core/services/agent_worktree_git.py` :: `run_git` (L40)
+- `core/services/agent_worktree_git.py` :: `safe_name` (L60)
+- `core/services/agent_worktree_git.py` :: `safe_ref` (L53)
+- `core/services/agent_worktree_git.py` :: `set_ref` (L228)
+- `core/services/agent_worktree_git.py` :: `stage_all` (L110)
+- `core/services/agent_worktree_gitdir.py` :: `sandbox_env` (L120)
+- `core/services/agent_worktree_gitdir.py` :: `work_ref` (L62)
+- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L84)
+- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L50)
+- `core/services/agent_worktrees.py` :: `get` (L186)
+- `core/services/agent_worktrees.py` :: `get_for_assignment` (L190)
+- `core/services/agent_worktrees.py` :: `quota_status` (L130)
+- `core/services/agent_worktrees.py` :: `worktree_root` (L80)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L245)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

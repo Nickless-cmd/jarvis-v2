@@ -208,7 +208,7 @@ def test_the_timeout_is_clamped_to_the_maximum(ex, monkeypatch):
     seen = {}
     real = ex.E_._run
 
-    def spy(wt, command, *, timeout_s, stdin_bytes=None):
+    def spy(wt, command, *, timeout_s, stdin_bytes=None, **_kw):
         seen["t"] = timeout_s
         return real(wt, ["/usr/bin/true"], timeout_s=1)
 

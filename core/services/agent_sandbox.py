@@ -46,8 +46,13 @@ def python_prefixes() -> list[str]:
 def build_bwrap_argv(command: list[str], *, pass_fds: tuple[int, ...] = (),
                      extra_env: dict[str, str] | None = None,
                      worker_files: dict[str, str] | None = None,
-                     rw_binds: dict[str, str] | None = None, chdir: str = "/tmp") -> list[str]:
-    """Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen)."""
+                     rw_binds: dict[str, str] | None = None, chdir: str = "/tmp",
+                     mounts: list[tuple[str, str, str]] | None = None) -> list[str]:
+    """Byg ``bwrap``-kommandolinjen for ``command`` (som koeres INDE i sandboxen).
+
+    ``mounts`` er en ORDNET liste af ``(art, kilde, maal)`` hvor art er ``ro`` (skrivebeskyttet bind),
+    ``rw`` (skrivbar bind) eller ``tmpfs`` (kilde ignoreres). Rækkefølgen bevares: en ``tmpfs`` skal
+    staa foer de binds der lægges ind i den."""
     argv = [bwrap_path(), "--unshare-all", "--die-with-parent", "--new-session",
             "--cap-drop", "ALL", "--clearenv"]
     for d in _SYSTEM_RO:
@@ -68,6 +73,13 @@ def build_bwrap_argv(command: list[str], *, pass_fds: tuple[int, ...] = (),
     # skrivebeskyttet eller en privat tmpfs der forsvinder med sandboxen.
     for src, dst in (rw_binds or {}).items():
         argv += ["--bind", src, dst]
+    for kind, src, dst in (mounts or []):
+        if kind == "tmpfs":
+            argv += ["--tmpfs", dst]
+        elif kind in ("ro", "rw"):
+            argv += ["--ro-bind" if kind == "ro" else "--bind", src, dst]
+        else:
+            raise ValueError(f"ukendt mount-art {kind!r}")
     argv += ["--chdir", chdir, "--"]
     return argv + list(command)
 
@@ -89,12 +101,13 @@ def spawn_in_sandbox(command: list[str], *, pass_fds: tuple[int, ...] = (), stdo
                      extra_env: dict[str, str] | None = None,
                      worker_files: dict[str, str] | None = None,
                      rw_binds: dict[str, str] | None = None, chdir: str = "/tmp",
-                     stdin=None, file_size: int = 64 * 1024 * 1024) -> subprocess.Popen:
+                     stdin=None, file_size: int = 64 * 1024 * 1024,
+                     mounts: list[tuple[str, str, str]] | None = None) -> subprocess.Popen:
     """Start ``command`` i sandboxen. Egen processgruppe, saa den kan draebes samlet."""
     argv = resource_prefix(address_space=address_space, cpu_seconds=cpu_seconds, file_size=file_size
                            ) + build_bwrap_argv(
         command, pass_fds=pass_fds, extra_env=extra_env, worker_files=worker_files,
-        rw_binds=rw_binds, chdir=chdir)
+        rw_binds=rw_binds, chdir=chdir, mounts=mounts)
     return subprocess.Popen(argv, pass_fds=pass_fds, stdin=stdin if stdin is not None else subprocess.DEVNULL,
                             stdout=stdout,
                             stderr=stderr, start_new_session=True, close_fds=True)

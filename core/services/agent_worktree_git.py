@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -142,6 +143,11 @@ def make_bundle(repo: str, branch: str, base_commit: str, dest: str) -> bool:
 def remove_worktree(repo: str, path: str, branch: str) -> None:
     """Fjern worktree + branch. Idempotent: et allerede fjernet worktree er ikke en fejl."""
     run_git(["worktree", "remove", "--force", path], cwd=repo, check=False)
+    if os.path.lexists(path):
+        # Agenten ejer worktree'ets indhold - ogsaa dets ``.git``-fil. Er den roeret, afviser git at fjerne
+        # mappen. Kalderne har allerede verificeret at ``path`` er ``<rod>/<agent>/<assignment>``, saa
+        # mappen slettes direkte (rmtree foelger ikke symlinks) og git-registreringen ryddes bagefter.
+        shutil.rmtree(path, ignore_errors=True)
     run_git(["worktree", "prune"], cwd=repo, check=False)
     if os.path.exists(path):
         raise GitError(f"{path} findes stadig efter remove")

@@ -361,6 +361,16 @@ _Agency Map surface for Mission Control._
 | function | `_theater_refactor_briefs` | `(limit=…)` | — | [src](../../../core/services/agency_map.py#L335) |
 | function | `_system_cartographer_snapshot` | `()` | — | [src](../../../core/services/agency_map.py#L344) |
 
+## `core/services/agent_activation.py`
+_Aktivering af en persistent agent: ét assignment og én rute pr. aktivering (agent-contract-v1 G, spec 12.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_refuse` | `(agent_id, code, detail, reasons=…)` | Aktiveringen koerer ikke. Aarsagen gemmes synligt; agentens status roeres ikke. | [src](../../../core/services/agent_activation.py#L26) |
+| function | `_slot` | `(agent_id, execution_mode)` | Idempotensnoegle: en planlagt aktivering er sit tidspunkt (saa samme slot aldrig koerer to gange); | [src](../../../core/services/agent_activation.py#L40) |
+| function | `ensure_activation` | `(agent_id, *, execution_mode=…)` | Sikr at aktiveringen har et aabent assignment + en rute. Returnerer ``{"status": ...}``: | [src](../../../core/services/agent_activation.py#L56) |
+| function | `_use_route` | `(agent_id, route)` | — | [src](../../../core/services/agent_activation.py#L129) |
+
 ## `core/services/agent_approval_gate.py`
 _Gate i agentens vaerktoejsdispatch: en handling der kraever godkendelse STOPPER foer den udfoeres_
 
@@ -391,7 +401,8 @@ _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
 |---|---|---|---|---|
 | function | `resolve_owner_and_session` | `(context)` | — | [src](../../../core/services/agent_contract_bridge.py#L18) |
 | function | `bind_new_agent` | `(*, agent_id, parent_agent_id, goal, persistent, context, budget_tokens=…, max_turns=…, result_contract=…, idempotency_key=…, request_digest=…, target=…, operation=…, expected_result=…)` | Opret agentens første assignment. Kaster aldrig: dispatch må ikke dø af bindingen. | [src](../../../core/services/agent_contract_bridge.py#L32) |
-| function | `_write_assignment_artifact` | `(agent_id, owner, acc, goal, parent_agent_id, context, target)` | ``assignment.json`` for foerste run (§9). Bedste-indsats: et manglende artefakt | [src](../../../core/services/agent_contract_bridge.py#L64) |
+| function | `_bind_persistent` | `(agent_id, owner, session)` | En persistent agent faar sin autentificerede ejer og oprindelsessession, men INTET assignment: de | [src](../../../core/services/agent_contract_bridge.py#L64) |
+| function | `_write_assignment_artifact` | `(agent_id, owner, acc, goal, parent_agent_id, context, target)` | ``assignment.json`` for foerste run (§9). Bedste-indsats: et manglende artefakt | [src](../../../core/services/agent_contract_bridge.py#L83) |
 
 ## `core/services/agent_contract_service.py`
 _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance F1)._
@@ -622,13 +633,4 @@ _Agent relay — direct A→B messaging between sub-agents._
 | function | `relay_to_role` | `(*, from_agent_id, council_id, role, content, kind=…)` | Send to whoever in this council holds the given role. | [src](../../../core/services/agent_relay.py#L82) |
 | function | `_exec_relay_message` | `(args)` | — | [src](../../../core/services/agent_relay.py#L107) |
 | function | `_exec_relay_to_role` | `(args)` | — | [src](../../../core/services/agent_relay.py#L116) |
-
-## `core/services/agent_result_inbox.py`
-_Leverer agenters terminale resultater ind i parentens modelrequest (A/B, §6)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_render` | `(msgs)` | — | [src](../../../core/services/agent_result_inbox.py#L23) |
-| function | `_render_approvals` | `(rows)` | — | [src](../../../core/services/agent_result_inbox.py#L47) |
-| function | `claim_for_model_step` | `(*, owner_user_id, session_id)` | Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til | [src](../../../core/services/agent_result_inbox.py#L57) |
 

@@ -457,7 +457,9 @@ def get_assignment(*, assignment_id: str, owner_user_id: str) -> dict[str, Any] 
 # PERSISTENT agent er et forsoeg, der genplanlaegges med backoff, ikke et
 # slutresultat (§6), og saettes derfor ikke her.
 _SETTLING = {"completed": "completed", "failed": "failed",
-             "cancelled": "cancelled", "expired": "timed_out"}
+             "cancelled": "cancelled", "expired": "timed_out",
+             # en persistent agent gaar til `scheduled` naar en aktivering er faerdig (G, §12.1)
+             "scheduled": "completed"}
 _ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget"}
 _ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT"}
 
@@ -538,6 +540,15 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
                          (agent_id,)).fetchone()
     if agent is None or (registry_status == "failed" and agent["persistent"]):
         return None
+    if registry_status == "scheduled":
+        # `scheduled` afslutter KUN en persistent aktivering hvis dens seneste run faktisk blev faerdigt;
+        # efter en fejlet koersel er det et retry med backoff, ikke et udfald (§6).
+        last = conn.execute("SELECT r.status FROM agent_runs r JOIN agent_assignments a "
+                            "ON a.assignment_id = r.assignment_id WHERE a.agent_id=? AND a.status IN "
+                            "('queued','active','waiting') ORDER BY r.attempt_no DESC LIMIT 1",
+                            (agent_id,)).fetchone()
+        if not agent["persistent"] or last is None or last["status"] != "completed":
+            return None
     a = conn.execute("SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND "
                      "status IN ('queued','active','waiting') ORDER BY created_at DESC LIMIT 1",
                      (agent_id,)).fetchone()

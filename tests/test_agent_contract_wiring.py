@@ -48,7 +48,7 @@ def test_spawn_without_owner_or_session_stays_legacy_and_opens_nothing(env):
     assert _assignments(c) == []
 
 
-def test_persistent_agent_is_not_bound_yet(env):
+def test_persistent_agent_stays_legacy_while_the_engine_is_off(env):
     c, rt, spawn = env
     agent = spawn(context=dict(CTX), persistent=True, ttl_seconds=900)
     assert rt.get_agent_registry_entry(agent["agent_id"])["owner_user_id"] == "legacy_unscoped"
@@ -183,7 +183,7 @@ def test_unbound_spawn_reports_why(env):
     assert bind_new_agent(agent_id="x", parent_agent_id="jarvis", goal="g", persistent=False,
                           context={}) == {"bound": False, "reason": "no_owner_or_session"}
     assert bind_new_agent(agent_id="x", parent_agent_id="jarvis", goal="g", persistent=True,
-                          context=dict(CTX)) == {"bound": False, "reason": "persistent"}
+                          context=dict(CTX)) == {"bound": False, "reason": "engine_off"}
 
 
 def test_spawn_stores_assignment_json_for_the_first_run(env):

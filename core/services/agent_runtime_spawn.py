@@ -596,6 +596,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     """
     from core.runtime.db_agent_lease import agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
+    # agent-contract-v1 (G): en persistent agent faar ét assignment + én rute pr. aktivering, FOER leasen.
+    from core.services.agent_activation import ensure_activation
+    activation = ensure_activation(agent_id, execution_mode=execution_mode)
+    if activation["status"] == "refused":
+        surface = build_agent_detail_surface(agent_id) or {"agent_id": agent_id}
+        surface["activation"] = {k: activation[k] for k in ("status", "code", "detail")}
+        return surface
     # agent-contract-v1 (C2): leasen holdes mens barnet koerer; en gammel worker kan ikke skrive.
     with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,

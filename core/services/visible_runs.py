@@ -5047,9 +5047,11 @@ async def _stream_visible_run(
                     # ── Mid-flight steer ────────────────────────────────────
                     # Pick up any user messages that landed via
                     # POST /chat/runs/{id}/steer since the previous round.
-                    # Inject them as user-role messages in base_messages so
-                    # the next agentic round sees them; "stop"/"cancel"
-                    # steers break the loop cleanly.
+                    # De lægges i followup-HISTORIKKEN (exchanges) som
+                    # user-rolle, saa næste runde ser dem — og kun dér. Foer
+                    # 7/10-2026 laa de i halen, som genopbygges hver runde, saa
+                    # modellen svarede samme besked i hver eneste runde.
+                    # "stop"/"cancel" afbryder løkken rent.
                     try:
                         steers = consume_visible_run_steers(run.run_id)
                     except Exception:

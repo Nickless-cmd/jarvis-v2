@@ -17,10 +17,23 @@ def test_et_kald_er_loest():
                         session_id="s", forced=True, tool_calls=1) is True
 
 
-def test_beskeden_indroemmer_at_intet_blev_udfoert():
+def test_beskeden_siger_at_den_annoncerede_handling_ikke_blev_bekraeftet():
+    """Kravet staar: beskeden maa ikke tie om det manglende kald.
+
+    Men den maa heller ikke paastaa at INTET blev udfoert. Maalt 7/10-2026 stod
+    der «kaldte INTET vaerktoej i denne tur» oven paa et run hvor tidligere
+    runder HAVDE kaldt flere — en usand beskyldning, som Bjørn fik at se.
+    """
     n = hollow_promise_note("deepseek-v4-pro")
-    assert "ingen værktøjer" in n
-    assert "ikke udført" in n
+    assert "ikke et nyt værktøjskald" in n
+    assert "ikke bekræftet" in n
+    assert "INTET" not in n
+
+
+def test_beskeden_annullerer_ikke_tidligere_arbejde():
+    """Et tomt loefte til sidst maa ikke lyde som om hele runnet var tomt."""
+    n = hollow_promise_note("")
+    assert "stadig" in n and "udført" in n
 
 
 def test_ingen_model_beskyldes():
@@ -39,6 +52,6 @@ def test_beskeden_er_den_samme_uanset_model():
     assert hollow_promise_note("a") == hollow_promise_note("b") == hollow_promise_note("")
 
 
-def test_beskeden_siger_at_der_blev_forsoegt_to_gange():
+def test_beskeden_siger_at_der_blev_forsoegt_igen():
     # Ellers lyder det som om han gav op med det samme.
-    assert "to gange" in hollow_promise_note("")
+    assert "ekstra forsøg" in hollow_promise_note("")

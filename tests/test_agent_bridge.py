@@ -271,7 +271,7 @@ def test_the_clients_status_at_reconnect_settles_the_waiting_assignment(br, stat
     a = br.c_._conn().execute("SELECT status, outcome_json FROM agent_assignments WHERE assignment_id=?",
                               (acc["assignment_id"],)).fetchone()
     assert a["status"] == "failed" and words in a["outcome_json"] and "Intet er genudfoert" in a["outcome_json"]
-    assert br.c_._conn().execute("SELECT COUNT(*) FROM agent_result_outbox WHERE assignment_id=?",
+    assert br.c_._conn().execute("SELECT COUNT(*) FROM agent_result_outbox WHERE message_kind='terminal' AND assignment_id=?",
                                  (acc["assignment_id"],)).fetchone()[0] == 1   # praecis EN terminalbesked
     assert len(br.wire.calls) == 1                                   # intet blev sendt igen
 
@@ -412,7 +412,7 @@ def test_a_full_client_run_reads_over_the_bridge_and_completes_with_one_terminal
     a = eng.br.c_._conn().execute("SELECT status FROM agent_assignments WHERE assignment_id=?",
                                   (out["assignment_id"],)).fetchone()
     assert a["status"] == "completed"
-    assert eng.br.c_._conn().execute("SELECT COUNT(*) FROM agent_result_outbox WHERE assignment_id=?",
+    assert eng.br.c_._conn().execute("SELECT COUNT(*) FROM agent_result_outbox WHERE message_kind='terminal' AND assignment_id=?",
                                      (out["assignment_id"],)).fetchone()[0] == 1
 
 
@@ -430,7 +430,7 @@ def test_an_unknown_bridge_call_halts_the_real_run_without_a_terminal_result(eng
     a = conn.execute("SELECT status FROM agent_assignments WHERE assignment_id=?", (out["assignment_id"],)).fetchone()
     assert (run["status"], run["error_phase"], run["error_code"]) == ("outcome_unknown", "bridge", "OUTCOME_UNKNOWN")
     assert a["status"] == "waiting"
-    assert conn.execute("SELECT COUNT(*) FROM agent_result_outbox WHERE assignment_id=?",
+    assert conn.execute("SELECT COUNT(*) FROM agent_result_outbox WHERE message_kind='terminal' AND assignment_id=?",
                         (out["assignment_id"],)).fetchone()[0] == 0           # intet falsk resultat, intet "fejlet"
     assert len(eng.model.rounds) == 1                                         # modellen blev ikke spurgt igen
     reg = conn.execute("SELECT status FROM agent_registry WHERE agent_id=?", (out["agent_id"],)).fetchone()
@@ -474,7 +474,7 @@ def test_the_run_is_never_finalised_whether_the_loop_raises_or_returns_a_failure
     run = conn.execute("SELECT status FROM agent_runs WHERE assignment_id=?", (out["assignment_id"],)).fetchone()
     a = conn.execute("SELECT status FROM agent_assignments WHERE assignment_id=?", (out["assignment_id"],)).fetchone()
     assert (run["status"], a["status"]) == ("outcome_unknown", "waiting")
-    assert conn.execute("SELECT COUNT(*) FROM agent_result_outbox WHERE assignment_id=?",
+    assert conn.execute("SELECT COUNT(*) FROM agent_result_outbox WHERE message_kind='terminal' AND assignment_id=?",
                         (out["assignment_id"],)).fetchone()[0] == 0
 
 
@@ -488,3 +488,16 @@ def test_a_late_report_cannot_settle_an_assignment_that_is_no_longer_waiting(br)
     assert br.store_.get("inv-z")["state"] == "verified_executed"
     assert br.status(acc)[1] == "active"                           # afgoerelsen roerer ikke et assignment der koerer
     assert br.c_._conn().execute("SELECT status FROM agent_registry WHERE agent_id='a1'").fetchone()[0] != "failed"
+
+
+def test_a_halt_sends_gds_separate_state_message_once_and_never_a_terminal_one(eng, monkeypatch):
+    import core.services.agent_contract_service as svc
+    started = []
+    monkeypatch.setattr(svc, "_run_in_background", lambda fn: started.append(fn))
+    out = eng.d()
+    eng.br.wire.script = [TIMEOUT] * 5
+    for fn in started:
+        fn()
+    rows = eng.br.c_._conn().execute("SELECT message_kind, state_code FROM agent_result_outbox WHERE assignment_id=?",
+                                     (out["assignment_id"],)).fetchall()
+    assert [(r[0], r[1]) for r in rows] == [("state", "outcome_unknown")]

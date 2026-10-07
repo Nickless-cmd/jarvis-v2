@@ -414,11 +414,11 @@ _Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract
 | function | `_drive` | `(*, ident, agent_id, row, client_id, tool, args, klass, dispatch, sleep)` | — | [src](../../../core/services/agent_bridge.py#L249) |
 | function | `_loads` | `(text)` | — | [src](../../../core/services/agent_bridge.py#L292) |
 | function | `_halt` | `(ident, row)` | Sæt run + assignment i ``outcome_unknown``/``waiting`` (som lease-reconcileren gør) og returner halten. | [src](../../../core/services/agent_bridge.py#L300) |
-| function | `run_is_halted` | `(run_id)` | — | [src](../../../core/services/agent_bridge.py#L319) |
-| function | `_settle_resolved` | `(row, verdict)` | Et uafgjort kald er nu afgjort: assignmentet afsluttes med de verificerede fakta. Intet genudfoeres - | [src](../../../core/services/agent_bridge.py#L327) |
-| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status ved reconnect (kaldes af WS-ruten). | [src](../../../core/services/agent_bridge.py#L345) |
-| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | — | [src](../../../core/services/agent_bridge.py#L356) |
-| function | `status_query_for` | `(owner_user_id, client_id)` | Invocation-id'er klienten skal oplyse status for ved reconnect. | [src](../../../core/services/agent_bridge.py#L364) |
+| function | `run_is_halted` | `(run_id)` | — | [src](../../../core/services/agent_bridge.py#L324) |
+| function | `_settle_resolved` | `(row, verdict, *, actor_kind, decided_by)` | Et uafgjort kald er nu afgjort: assignmentet afsluttes via den ENE vej der maa lukke et uvist udfald | [src](../../../core/services/agent_bridge.py#L332) |
+| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status ved reconnect (kaldes af WS-ruten). | [src](../../../core/services/agent_bridge.py#L351) |
+| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | — | [src](../../../core/services/agent_bridge.py#L363) |
+| function | `status_query_for` | `(owner_user_id, client_id)` | Invocation-id'er klienten skal oplyse status for ved reconnect. | [src](../../../core/services/agent_bridge.py#L372) |
 
 ## `core/services/agent_bridge_dispatch.py`
 _Fastlaast bro-dispatch til EN bestemt klient (agent-contract-v1 E, spec 8)._

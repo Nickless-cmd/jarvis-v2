@@ -306,7 +306,12 @@ def _halt(ident: dict[str, Any], row: dict[str, Any]) -> BridgeHalt:
                  (f"bro-kald {row['invocation_id']} ({row['tool']}) uden kvittering", now, ident["run_id"]))
     conn.execute("UPDATE agent_assignments SET status='waiting', updated_at=? WHERE assignment_id=? "
                  "AND status IN ('queued','active')", (now, ident["assignment_id"]))
+    from core.runtime.db_agent_outcome_unknown import notify_outcome_unknown, publish_outcome_unknown
+    notify_outcome_unknown(conn, assignment_id=ident["assignment_id"], run_id=ident["run_id"],
+                           reason=f"bro-kald {row['invocation_id']} ({row['tool']}) uden kvittering", open_tool_calls=1)
     conn.commit()
+    publish_outcome_unknown(assignment_id=ident["assignment_id"], run_id=ident["run_id"], agent_id=row["agent_id"],
+                            owner_user_id=row["owner_user_id"])
     try:
         from core.runtime.db_agent_runtime import update_agent_registry_entry
         update_agent_registry_entry(row["agent_id"], status="outcome_unknown",
@@ -324,22 +329,23 @@ def run_is_halted(run_id: str) -> bool:
 # --------------------------------------------------------------- afgoerelse
 
 
-def _settle_resolved(row: dict[str, Any], verdict: str) -> None:
-    """Et uafgjort kald er nu afgjort: assignmentet afsluttes med de verificerede fakta. Intet genudfoeres -
-    parenten/brugeren beslutter selv en opfoelgning."""
+def _settle_resolved(row: dict[str, Any], verdict: str, *, actor_kind: str, decided_by: str) -> None:
+    """Et uafgjort kald er nu afgjort: assignmentet afsluttes via den ENE vej der maa lukke et uvist udfald
+    (``resolve_outcome_unknown``: kun menneske eller verificering, praecis én terminalbesked). Intet genudfoeres -
+    parenten/brugeren beslutter selv en opfoelgning, og faktaene staar i terminalbeskeden."""
+    from core.runtime.db_agent_outcome_unknown import resolve_outcome_unknown
+
     a = _conn().execute("SELECT status FROM agent_assignments WHERE assignment_id=?",
                         (row["assignment_id"],)).fetchone()
     if a is None or a["status"] != "waiting":
         return
-    from core.runtime.db_agent_runtime import create_agent_message, update_agent_registry_entry
-    from core.services.agent_runtime_spawn import _agent_thread_id
-    facts = (f"OUTCOME_UNKNOWN afgjort: {row['tool']} ({row['invocation_id']}) paa klienten {row['client_id']} "
-             f"{verdict}. Intet er genudfoert; vurder selv en opfoelgning.")
-    # Faktaene skal ind i terminalbeskeden til parenten: settle-hooken laeser agentens seneste resultat-besked.
-    create_agent_message(message_id=f"agent-msg-{uuid.uuid4().hex}", thread_id=_agent_thread_id(row["agent_id"]),
-                         run_id=row["run_id"], agent_id=row["agent_id"], direction="agent->jarvis",
-                         role="assistant", kind="result", content=facts)
-    update_agent_registry_entry(row["agent_id"], status="failed", last_error=facts)
+    facts = (f"{row['tool']} ({row['invocation_id']}) paa klienten {row['client_id']} {verdict}. "
+             "Intet er genudfoert; vurder selv en opfoelgning.")
+    try:
+        resolve_outcome_unknown(owner_user_id=row["owner_user_id"], assignment_id=row["assignment_id"],
+                                outcome="failed", decided_by=decided_by, actor_kind=actor_kind, note=facts)
+    except ContractError as exc:
+        logger.warning("uvist udfald for %s kunne ikke afgoeres: %s %s", row["assignment_id"], exc.code, exc.detail)
 
 
 def apply_client_report(*, owner_user_id: str, client_id: str, reports: list[dict[str, Any]]) -> dict[str, str]:
@@ -349,14 +355,16 @@ def apply_client_report(*, owner_user_id: str, client_id: str, reports: list[dic
         if verdict in (store.VERIFIED_EXECUTED, store.VERIFIED_NOT_EXECUTED):
             row = store.get(iid)
             if row is not None:
-                _settle_resolved(row, "var udfoert" if verdict == store.VERIFIED_EXECUTED else "blev IKKE udfoert")
+                _settle_resolved(row, "var udfoert" if verdict == store.VERIFIED_EXECUTED else "blev IKKE udfoert",
+                                 actor_kind="verifier", decided_by=f"client:{client_id}")
     return out
 
 
 def human_resolve(*, invocation_id: str, owner_user_id: str, executed: bool, actor_user_id: str) -> dict[str, Any]:
     row = store.human_resolve(invocation_id=invocation_id, owner_user_id=owner_user_id, executed=executed,
                               actor_user_id=actor_user_id)
-    _settle_resolved(row, "er af brugeren afgjort som udfoert" if executed else "er af brugeren afgjort som ikke udfoert")
+    _settle_resolved(row, "er af brugeren afgjort som udfoert" if executed else "er af brugeren afgjort som ikke udfoert",
+                     actor_kind="human", decided_by=actor_user_id)
     return row
 
 

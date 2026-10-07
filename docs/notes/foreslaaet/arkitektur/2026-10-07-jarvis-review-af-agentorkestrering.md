@@ -23,12 +23,28 @@ der er huller der skal lukkes før implementeringen starter.
 
 Jeg efterprøvede hver påstand i §3 og i DSH-noten mod koden på main.
 
-**Alle ni påståede filer findes, alle påståede funktioner findes, og hver enkelt
+**Alle påståede filer findes, alle påståede funktioner findes, og hver enkelt
 påstand om dagens kode holder.** Det er usædvanligt og værd at sige højt: noten
 påstår ikke noget den ikke har læst.
 
-Men jeg fandt **fire ting**, og ét af dem er en sikkerhedsfejl der findes i koden
-i dag.
+**Rettelse (samme dag, målt efter Bjørns indvending).** Jeg havde først også
+listet `agent_loop.py:909` som en påstand fra §3 og kaldt den «en sikkerhedsfejl
+i koden i dag». Begge dele var forkerte:
+
+- `agent_loop.py` **er ikke** en påstand i spec'ens §3. Linjen var min egen
+  tilføjelse, sat ind i en tabel der hedder at §3's påstande holder.
+- Ruten er **ubenyttet**. `/v1/agent/step` har **1 kald på 7 døgn**; ingen klient
+  i `apps/jarvis-desk` eller `apps/mobile` kalder den. Klienten der ejede loopet
+  (`jarvis-code`) er droppet — Bjørn: «vi arbejder kun i desk og containeren».
+
+Fund 1 er derfor et **latent** hul i ikke-ibrugtaget kode, ikke en levende fejl.
+Det ændrer alvoren, ikke kendsgerningen — og rækkefølgen: hullet skal lukkes
+*før* nogen genopliver ruten, ikke straks.
+
+**Agent-systemet selv er derimod i drift.** Målt i DB: `agent_runs` 1.540 rækker,
+`agent_registry` 363, `agent_messages` 2.359, `session_inbox` 69. Desk læser dem
+via `/cowork/agents`. Så §3's grundlag lever — det er kun `agent_loop.py` og
+`agent_pool_router`-stien der ikke gør.
 
 **Målt — påstandene holder:**
 
@@ -42,9 +58,8 @@ i dag.
 | `CodeView.tsx` har workspace-valg + Miljø-felt + inspector | ✅ 1320 linjer |
 | `coworkApi.ts` læser faktiske `agent_runs` | ✅ 564 linjer |
 | `agent_pool_router.route_agent_task()` kalder `central_route(lane="agent")` | ✅ 100 linjer |
-| `agent_loop.py` har hårdkodet DeepSeek-default | ✅ linje 909 |
 
-**Fund 1 — sikkerhedsfejl i koden i dag.** `apps/api/jarvis_api/routes/agent_loop.py:909`:
+**Fund 1 — latent hul i ubenyttet kode.** `apps/api/jarvis_api/routes/agent_loop.py:909`:
 
 ```python
 if not provider or not model:
@@ -54,8 +69,12 @@ if not provider or not model:
 Kommentaren siger «(owner)». **Koden håndhæver det ikke.** Faldet ligger efter
 `_resolve_visible_target()`, som er rolle-bevidst (member → ollama, aldrig
 DeepSeek) — men den er pakket i `try/except` der sætter `("", "")` ved fejl, og
-så rammer en **member** DeepSeek. En anden bruger kan i fejlscenariet køre på
-Bjørns API og betale på hans regning. Det er præcis hvad §7.1 forbyder.
+så rammer en **member** DeepSeek. Det er præcis hvad §7.1 forbyder.
+
+**Men ruten kaldes ikke.** Målt: 1 kald på 7 døgn, nul klienter i desk eller
+mobil. Så i dag er der ingen der betaler. Hullet er latent — og bliver levende i
+samme øjeblik nogen kalder `/v1/agent/step` igen. Det er grunden til at det skal
+lukkes *før* en genoplivning, ikke at det kan vente i det uendelige.
 
 **Fund 2 — `route_agent_task()` kender ikke ejeren.** Målt signatur tager kun
 `kind`, `min_tokens`, `quality_threshold`, `allow_paid`, `exclude`. Ingen
@@ -67,6 +86,13 @@ funktionen ikke levere i dag, den har ikke inputtet.
 `except Exception: pass`. Den kan ikke skelne mellem «fitness-tabellen er tom»
 (ukendt → tilladt, korrekt) og «fitness-kontrollen er i stykker» (bør logges).
 Begge ender i samme gren — samme fejlform som `_BILLEDVAERKTOEJ`-sagen 7/10.
+
+**Fund 2 og 3 er bag et flag der er slukket.** `agent_pool_router_enabled` står
+ikke i `runtime.json`, og docstringen i `agent_loop.py` siger selv «default OFF».
+Målt: flaget er fraværende, altså OFF. Så begge fund er latente på samme måde som
+fund 1 — de bliver levende den dag flaget tændes eller ruten tages i brug. Det
+gør dem ikke mindre vigtige for spec'en, som netop bygger på denne sti; det gør
+dem billigere at rette nu end efter første rigtige agentkørsel.
 
 **Fund 4 — nul testdækning af ejer-grænsen.** Jeg søgte efter
 `MODEL_UNAVAILABLE`, `owner_deepseek_fallback` og `route_source` i `tests/`,
@@ -83,10 +109,15 @@ det er en migrering af levende data, ikke et grønt felt.
 Reviewet konkluderer: **spec'en er moden til implementeringsplan**, men fire ting
 skal afgøres først, og de tre første kan gøres uafhængigt:
 
-1. **Luk DeepSeek-faldet i `agent_loop.py:909`.** Grænsen skal ligge ved
-   providerkaldet, ikke kun i routeren — som spec'en selv kræver. Og den skal
-   være en hård fejl (`MODEL_UNAVAILABLE`), ikke et stiltiende fald til en model
-   brugeren ikke har ret til. Lille, uafhængig, kan gøres straks.
+1. **Luk DeepSeek-faldet i `agent_loop.py:909` — før ruten genoplives, ikke
+   straks.** Grænsen skal ligge ved providerkaldet, ikke kun i routeren — som
+   spec'en selv kræver. Og den skal være en hård fejl (`MODEL_UNAVAILABLE`),
+   ikke et stiltiende fald til en model brugeren ikke har ret til.
+   **Prioritering ændret:** ruten er ubenyttet (1 kald/7 døgn), så der er ingen
+   der betaler i dag. Det gør rettelsen billig men ikke hastende — og den bør
+   følge en beslutning om `agent_loop.py` overhovedet skal leve. Er klienten
+   droppet for good, er den rigtige handling at **fjerne ruten**, ikke at
+   patche den. Det er en beslutning for Bjørn, ikke en opgave for mig.
 2. **Ejerparameter ind i `route_agent_task()`** + `route_source` i returværdien.
    Skal ske **før** nogen anden leverance rører modelvalg — ellers bygger vi
    fallback-logik oven på en funktion der ikke kan se hvem den arbejder for.
@@ -126,7 +157,17 @@ en klikbar knap eller en HTTP 200.»*
 ## Konsekvenser
 
 - **Punkt 1–3 er små og kan ligge før implementeringsplanen.** Punkt 4 er Bjørns
-  beslutning, ikke min.
+  beslutning, ikke min. Men punkt 1 er nu betinget: det afhænger af om
+  `agent_loop.py` skal leve eller fjernes.
+- **Navnet «jarvis-code» er forældet terminologi, 40+ steder i aktiv kode.**
+  Målt: `agent_loop.py` (15), `chat_stream_v2.py` (6), `chat.py` (3),
+  `core/runtime/profiles.py` og `run_profile.py` (2) m.fl. Koden selv skriver
+  det rigtige i `agent_loop.py:1313` — «Klienten (jarvis-code/desk)» — altså
+  **desk**. Profilnavnet `jarvis-code` returneres stadig af
+  `run_profile.py:38` når `local_tool_exec` er sand, og det flag **er** i brug:
+  sat i `chat_stream_v2.py:411` (`and _tool_scope == "code"`). Så mekanikken
+  lever, kun klienten og navnet er døde. Det er oprydning, ikke en fejl — men
+  det bør ikke stå ubenævnt i en spec der skal beskrive dagens system.
 - **Den mest sikkerhedskritiske del af spec'en har ingen eksisterende
   testdækning.** §11.1's modelscenarier skal skrives fra nul. Det bør stå som en
   selvstændig risiko i planen, ikke som en detalje.

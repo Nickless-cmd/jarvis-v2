@@ -243,9 +243,19 @@ def geolocation_lookup(user_id: str = "") -> dict[str, Any]:
     except Exception:
         loc = None
     if loc and loc.get("label"):
-        return {"status": "ok", "source": loc.get("source", "presence"),
+        kilde = loc.get("source", "presence")
+        svar = {"status": "ok", "source": kilde,
                 "label": loc["label"], "lat": loc.get("lat"), "lon": loc.get("lon"),
                 "precision": loc.get("precision", "city"), "via": "presence"}
+        # Et IP-opslag kan ikke finde byen (målt 7/10-2026): på mobildata går
+        # trafikken gennem operatørens carrier-grade NAT, hvis udgang ligger i
+        # København. Resultatet skal derfor sige hvad stedet ER — et gæt — så
+        # en kalder ikke henter vejr for den forkerte by uden at vide det.
+        if kilde == "ip":
+            svar["note"] = ("Stedet er udledt af IP-adresse, ikke GPS. På "
+                            "mobildata peger det typisk på operatørens "
+                            "udgang, ikke på brugerens by.")
+        return svar
     # Ingen delt lokation → IP-fallback (server-side; by-niveau).
     ip = _ip_location()
     if ip and ip.get("label"):

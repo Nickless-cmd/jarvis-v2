@@ -386,11 +386,11 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 | function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L182) |
 | function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L222) |
 | function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L235) |
-| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L261) |
-| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L272) |
-| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L276) |
-| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L280) |
-| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L284) |
+| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L271) |
+| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L282) |
+| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L286) |
+| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L290) |
+| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L294) |
 
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._

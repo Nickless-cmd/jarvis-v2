@@ -73,6 +73,23 @@ def test_geolocation_lookup_from_presence(monkeypatch):
     assert r["status"] == "ok" and r["via"] == "presence" and "Svendborg" in r["label"]
 
 
+def test_geolocation_lookup_maerker_ip_gaet(monkeypatch):
+    """Et IP-opslag må ikke give sig ud for at være brugerens by (7/10-2026).
+
+    På mobildata ligger operatørens NAT-udgang i København, mens Bjørn kan stå
+    i Svendborg. Resultatet bærer nu en note der siger at stedet er et gæt.
+    """
+    import core.services.device_presence as dp
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away",
+                   location={"lat": 55.675941, "lon": 12.5655349,
+                             "label": "Copenhagen, Region Hovedstaden",
+                             "source": "ip", "precision": "city"})
+    r = g.geolocation_lookup("bjorn")
+    assert r["source"] == "ip"
+    assert "note" in r and "IP" in r["note"]
+
+
 def test_geolocation_lookup_off_no_ip(monkeypatch):
     import core.services.device_presence as dp
     dp.reset()

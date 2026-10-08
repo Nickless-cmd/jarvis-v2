@@ -36,6 +36,7 @@ def pa(isolated_runtime, monkeypatch):
 
     f = F()
     monkeypatch.setattr(ar, "execute_with_role_or_fallback", f)
+    monkeypatch.setattr(sp, "_snapshot_tools", lambda agent: [])
 
     class H:
         c_, rt_, svc_, sp_, f_ = c, rt, svc, sp, f

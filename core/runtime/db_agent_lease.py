@@ -126,6 +126,14 @@ _scope: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "agent_lease_scope", default=None)
 
 
+def current_assignment_id() -> str:
+    """The fenced assignment in this worker, or empty outside an agent run."""
+    sc = _scope.get()
+    if sc is None or not scope_is_current():
+        return ""
+    return str(sc["assignment_id"])
+
+
 def scope_is_current() -> bool:
     """Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun
     hvis dens lease/token stadig er den gaeldende. Fail-closed ved databasefejl."""
@@ -259,6 +267,12 @@ def _decide(assignment_id: str, t: datetime) -> dict[str, Any]:
     conn.commit()
     from core.runtime.db_agent_runtime import update_agent_registry_entry
     if attempts < MAX_SAFE_ATTEMPTS:
+        # En sikker retry tager en ny workerplads fra den varige koe. Den gamle worker
+        # er fenced af leasen; en anden ejer maa nu kunne bruge dens frigivne plads.
+        conn.execute("UPDATE agent_assignments SET status='queued', ready_at=?, updated_at=? "
+                     "WHERE assignment_id=? AND status IN ('queued','active')",
+                     (now_s, now_s, assignment_id))
+        conn.commit()
         update_agent_registry_entry(a["agent_id"], status="queued", last_error="lease_expired: nyt forsoeg")
         return {"assignment_id": assignment_id, "action": "retry", "attempt": attempts + 1,
                 "agent_id": a["agent_id"]}

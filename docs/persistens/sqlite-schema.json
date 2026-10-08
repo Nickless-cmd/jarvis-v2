@@ -317,8 +317,2244 @@
         "iso_utc_offset"
       ]
     },
+    "agent_approval_audit": {
+      "digest": "26:a3:45:ef:02:dc:6d:c4:ac:38:79:5b:51:ed:1d:ea:a5:d3:3a:78:8b:6a:fe:7d:81:60:9e:4b:4f:73:b0:e9",
+      "schema": {
+        "columns": [
+          {
+            "name": "actor",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "approval_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "audit_id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "detail",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "event",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": []
+      },
+      "created_at_formats": []
+    },
+    "agent_approvals": {
+      "digest": "48:08:ed:19:b2:f0:e1:de:cf:28:ca:80:38:8b:a3:5f:63:7e:38:55:21:c4:8f:82:ea:f2:5a:5f:d6:59:21:84",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "announced_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "approval_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "args_digest",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "arguments_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'{}'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "consumed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decided_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decided_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decision_note",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "expires_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'tool_call'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "requested_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'agent'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "risk_class",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'write'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "safe_view",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'pending'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "target",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'runtime-container'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_name",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "wake_task_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_approvals_assignment",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "args_digest",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_approvals_assignment ON agent_approvals(assignment_id, args_digest)"
+          },
+          {
+            "name": "idx_agent_approvals_owner",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_approvals_owner ON agent_approvals(owner_user_id, status, origin_session_id)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_approvals_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "approval_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_artifacts": {
+      "digest": "5a:4f:22:25:ba:52:e1:b1:f3:66:8f:c1:09:c9:20:69:12:f3:8e:14:a9:36:1f:49:01:55:31:ff:ef:a2:d2:ab",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "name",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "path",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "sha256",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "size",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'complete'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_artifacts_assignment",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_artifacts_assignment ON agent_artifacts(assignment_id)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_artifacts_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "name",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_assignments": {
+      "digest": "91:fe:bf:c7:0b:3a:47:f5:8e:81:1f:d8:4f:87:45:88:da:c8:93:49:ca:99:dc:21:21:4b:fc:ac:3a:08:9e:55",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "budget_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'{}'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "deadline_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "expected_result",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "goal",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "idempotency_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "input_refs_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "operation",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'dispatch'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "outcome_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'{}'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "queue_deadline_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "ready_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "request_digest",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'queued'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "target",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'runtime-container'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "terminal_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_assignments_agent",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_assignments_agent ON agent_assignments(agent_id, created_at DESC)"
+          },
+          {
+            "name": "idx_agent_queue_deadline",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "queue_deadline_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_queue_deadline ON agent_assignments(status, queue_deadline_at)"
+          },
+          {
+            "name": "idx_agent_queue_ready",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "ready_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_queue_ready ON agent_assignments(status, ready_at, created_at)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_assignments_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "uq_agent_assignments_idem",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "operation",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "idempotency_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX uq_agent_assignments_idem ON agent_assignments(owner_user_id, origin_session_id, operation, idempotency_key) WHERE idempotency_key != ''"
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_bridge_invocations": {
+      "digest": "f5:b9:0e:06:c6:e0:6c:b5:c6:5f:30:dd:ad:a4:9a:be:8a:36:09:bf:a6:8e:2f:50:bb:3b:8c:d3:2b:1e:27:19",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "args_digest",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "attempts",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "client_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "error",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "idem_class",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "invocation_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "resolution",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "resolved_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "result_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sent_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "state",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_bridge_assignment",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "state",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_bridge_assignment ON agent_bridge_invocations(assignment_id, state)"
+          },
+          {
+            "name": "idx_agent_bridge_client",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "client_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "state",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_bridge_client ON agent_bridge_invocations(owner_user_id, client_id, state)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_bridge_invocations_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "invocation_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
+    "agent_checkpoints": {
+      "digest": "3e:57:96:6b:5f:32:53:88:44:3d:fd:11:33:1f:c2:a8:50:0c:98:64:2b:85:79:ba:f4:14:18:51:cd:23:8a:dd",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "approval_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "checkpoint_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "payload_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "resumed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'parked'",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_checkpoints_assignment",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_checkpoints_assignment ON agent_checkpoints(assignment_id, status)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_checkpoints_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "checkpoint_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_councils": {
+      "digest": "4d:f6:c0:0e:03:e2:87:1a:c1:68:e6:10:54:14:2f:7f:3a:47:ed:93:f8:cb:fb:6e:1a:e1:08:e0:be:9c:f6:4e",
+      "schema": {
+        "columns": [
+          {
+            "name": "budget_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "council_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "facts",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "idempotency_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "members_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "synthesis_assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "synthesis_role",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'synthesizer'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "topic",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_councils_status",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_councils_status ON agent_councils(status)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_councils_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "council_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "uq_agent_councils_idem",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "idempotency_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX uq_agent_councils_idem ON agent_councils(owner_user_id, origin_session_id, idempotency_key) WHERE idempotency_key != ''"
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_feed_refs": {
+      "digest": "e9:5f:b1:9b:88:00:52:8f:82:aa:4b:ee:5f:7d:a7:19:67:31:25:5b:ca:bd:c3:ce:07:b7:4f:06:b6:4c:df:b1",
+      "schema": {
+        "columns": [
+          {
+            "name": "acknowledged_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "acknowledged_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "read_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "ref_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "ref_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "signaled_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "signaled_state",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_feed_refs_owner",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_feed_refs_owner ON agent_feed_refs(owner_user_id, origin_session_id)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_feed_refs_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "ref_kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "ref_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_fork_contexts": {
+      "digest": "e7:1e:c1:b8:cd:55:93:64:43:7e:e0:bd:d1:fc:8e:a7:7c:9b:74:2a:00:1b:06:e7:1c:f7:b0:ab:02:83:33:08",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "cache_reuse_possible",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "cost_basis",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "effort_source",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'model_default'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "estimated_extra_cost_usd",
+            "type": "REAL",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "excerpt_text",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "extra_context_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "history_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_effort",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_model",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_provider",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "plan_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'{}'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "plan_path",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reasoning_effort",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'default'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "requested_mode",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "route_model",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "route_provider",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "snapshot_cutoff_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "snapshot_sha256",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "snapshot_text",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "snapshot_truncated",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "snapshot_turns",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "switch_accepted",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_fork_contexts_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_leases": {
+      "digest": "75:b6:96:b8:26:76:1b:f6:24:d7:17:cb:79:2f:e6:52:df:8d:d7:18:e8:c9:cd:3c:02:dc:51:ed:4e:81:10:4f",
+      "schema": {
+        "columns": [
+          {
+            "name": "acquired_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "fencing_token",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "holder",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "lease_until",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "renewed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "state",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'held'",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_leases_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
+    "agent_memory_errors": {
+      "digest": "84:61:10:b0:df:08:d9:43:76:2e:b9:a9:8c:f6:86:02:f5:05:3f:1a:00:2e:b5:f5:6d:f2:b8:a4:01:66:1b:ba",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "error",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "error_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "resolved_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_memory_errors_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "error_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
+    "agent_memory_notes": {
+      "digest": "6f:44:db:28:9e:05:14:fa:f2:89:31:ca:53:e4:96:bb:43:10:ef:fe:56:e5:e1:e9:c4:64:7d:31:8f:6c:d0:e4",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "author",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "content",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "note_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "owner_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "source_assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "supersedes_note_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "version",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_memory_notes_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "note_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_memory_notes_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "version",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
+    "agent_memory_summaries": {
+      "digest": "e7:45:e9:fb:30:98:a6:84:bf:93:ca:df:0d:5e:86:a0:63:52:37:4b:68:82:e4:9a:de:12:29:5b:e7:9c:a4:a6",
+      "schema": {
+        "columns": [
+          {
+            "name": "aabent",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "besluttet",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "evidence_refs_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "gjort",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "summary_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_memory_summaries_agent",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_memory_summaries_agent ON agent_memory_summaries(agent_id, created_at DESC)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_memory_summaries_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "summary_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_memory_summaries_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
     "agent_messages": {
-      "digest": "0f:e0:37:90:f5:90:f9:26:b3:3f:c2:ab:70:46:a8:20:4f:2a:bd:a5:36:2b:93:9e:e9:8c:55:27:ea:00:00:b5",
+      "digest": "30:fc:b9:46:cd:d1:a5:e2:e1:e5:71:b0:3e:a0:2b:d5:5b:58:03:8e:d6:4b:b0:46:b5:36:0f:8c:cf:6d:0d:79",
       "schema": {
         "columns": [
           {
@@ -412,6 +2648,30 @@
         ],
         "indexes": [
           {
+            "name": "idx_agent_messages_agent_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_messages_agent_created ON agent_messages(agent_id, created_at)"
+          },
+          {
             "name": "idx_agent_messages_thread_created",
             "unique": false,
             "origin": "c",
@@ -461,7 +2721,7 @@
       ]
     },
     "agent_registry": {
-      "digest": "05:54:41:3e:2e:5b:cc:4a:0e:44:52:43:71:ad:67:4c:b5:75:73:ba:7d:1b:26:4c:5b:fd:60:e6:bd:eb:d6:aa",
+      "digest": "b3:b0:e3:04:bc:36:38:04:2a:67:15:e5:da:eb:13:20:91:c1:5f:38:e7:49:67:bd:79:d1:a0:03:c9:11:33:9e",
       "schema": {
         "columns": [
           {
@@ -485,6 +2745,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "closed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -569,6 +2837,14 @@
             "hidden": 0
           },
           {
+            "name": "lifecycle_status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'available'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "max_turns",
             "type": "INTEGER",
             "nullable": false,
@@ -597,6 +2873,22 @@
             "type": "TEXT",
             "nullable": false,
             "default": "'jarvis'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'legacy_unscoped'",
             "pk": 0,
             "hidden": 0
           },
@@ -771,8 +3063,249 @@
         "iso_utc_z"
       ]
     },
-    "agent_runs": {
-      "digest": "79:fa:3b:da:0b:f0:93:70:74:91:11:1e:d7:04:ec:c2:0b:d9:1e:8d:12:e9:d8:a9:52:39:c5:da:d5:d9:89:f4",
+    "agent_result_outbox": {
+      "digest": "b5:85:48:28:75:70:e5:66:52:c4:24:b7:8b:66:df:8f:44:32:25:58:97:a1:6c:fc:48:8b:48:a8:ec:16:5c:cd",
+      "schema": {
+        "columns": [
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "delivery_status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'accepted'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "message_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "message_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'terminal'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "payload_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "recipient_agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "resolved_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "result_type",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'agent_result'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sender_agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "state_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_result_outbox_recipient",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "delivery_status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_result_outbox_recipient ON agent_result_outbox(owner_user_id, origin_session_id, delivery_status)"
+          },
+          {
+            "name": "idx_agent_result_outbox_state",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "message_kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "state_code",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "resolved_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_result_outbox_state ON agent_result_outbox(message_kind, state_code, resolved_at)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_result_outbox_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "message_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_result_outbox_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "result_type",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_route_decisions": {
+      "digest": "f4:d0:2a:df:0c:b8:7d:b8:f3:ed:10:33:cf:42:11:86:27:01:a4:81:46:2e:2e:4b:fe:9f:a6:83:79:37:75:6c",
       "schema": {
         "columns": [
           {
@@ -780,6 +3313,379 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "attempt",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decision_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "decision_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "model",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "provider",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "route_source",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_route_agent",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_route_agent ON agent_route_decisions(agent_id, created_at)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_route_decisions_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "decision_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_route_decisions_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "attempt",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_run_prompts": {
+      "digest": "c6:1c:a5:fa:4d:05:14:58:71:93:3e:22:22:5b:3c:e0:48:00:3c:be:ec:ac:e3:cc:85:1f:48:96:65:d1:e3:9a",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "delegation_version",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "effective_text",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "layer_digests_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "model",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "provider",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "role_version",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "tool_names_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_schema_sha256",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_run_prompts_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_run_stops": {
+      "digest": "97:8d:ff:9f:42:c7:45:3c:de:6b:ab:84:64:78:f6:bb:ac:f2:d8:8a:c0:3e:d4:ef:68:b2:77:35:1c:65:6d:ae",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_run_stops_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
+    "agent_runs": {
+      "digest": "b4:d1:30:01:79:0d:9f:c5:59:b3:43:e6:f0:24:4c:c2:67:75:4e:95:ad:82:5d:41:93:7b:72:92:d8:26:42:ed",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "artifact_path",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "attempt_no",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
             "pk": 0,
             "hidden": 0
           },
@@ -796,6 +3702,22 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "error_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "error_phase",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -876,6 +3798,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'legacy_unscoped'",
             "pk": 0,
             "hidden": 0
           },
@@ -968,6 +3898,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_agent_runs_agent_created ON agent_runs(agent_id, created_at DESC)"
+          },
+          {
+            "name": "idx_agent_runs_assignment",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "attempt_no",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_runs_assignment ON agent_runs(assignment_id, attempt_no)"
           },
           {
             "name": "sqlite_autoindex_agent_runs_1",
@@ -1088,6 +4042,82 @@
             "parts": [
               {
                 "column": "schedule_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
+    "agent_session_relations": {
+      "digest": "5d:14:72:23:0f:65:07:ea:e0:9d:fd:f2:2d:f0:fa:0d:88:d5:57:5f:a6:17:72:43:25:ff:98:f4:e1:7b:2f:08",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "granted_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_agent_session_relations_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "agent_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "session_id",
                 "descending": false,
                 "key": true
               },
@@ -1238,6 +4268,399 @@
       },
       "created_at_formats": [
         "iso_utc_z"
+      ]
+    },
+    "agent_wait_contracts": {
+      "digest": "79:d4:e8:92:c7:62:9c:eb:6d:66:25:a1:72:88:8f:3b:8a:55:e8:3f:ac:19:cc:73:f9:0e:96:cf:ef:78:34:27",
+      "schema": {
+        "columns": [
+          {
+            "name": "assignment_ids_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "condition",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "contract_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "fired_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'registered'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "stop_reason",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "wake_task_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_wait_status",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "parent_run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_wait_status ON agent_wait_contracts(status, parent_run_id)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_wait_contracts_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "contract_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
+    "agent_worktrees": {
+      "digest": "ee:f7:36:9a:f1:25:03:49:9e:7a:d5:d2:b0:b6:77:ad:83:6f:ea:02:f4:96:7e:9c:95:0e:7f:89:6d:6d:57:4b",
+      "schema": {
+        "columns": [
+          {
+            "name": "agent_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "base_commit",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "branch",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "closed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decided_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decision",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "gitdir",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_error",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "over_quota",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "path",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "repo_path",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reserved_bytes",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "retained_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "size_bytes",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'reserved'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "target",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'runtime-container'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "worktree_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_worktrees_status",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "target",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_worktrees_status ON agent_worktrees(target, status)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_worktrees_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "worktree_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_worktrees_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
       ]
     },
     "api_connection_presence": {

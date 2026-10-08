@@ -481,67 +481,6 @@ def _result_contract_text(contract: dict[str, object]) -> str:
     return ", ".join(keys)
 
 
-def _handle_agent_spawn_calls(
-    *, text: str, parent_agent_id: str
-) -> tuple[str, str, int]:
-    """Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used)."""
-    import re as _re
-    pattern = _re.compile(
-        r'\{[^{}]*"spawn_agent"[^{}]*\}',
-        _re.DOTALL,
-    )
-    matches = pattern.findall(text)
-    if not matches:
-        return text, "", 0
-
-    tokens_used = 0
-    notes: list[str] = []
-    for raw in matches[:1]:  # max 1 spawn per execution
-        try:
-            parsed = json.loads(raw)
-            spec = parsed.get("spawn_agent") or {}
-            role = str(spec.get("role") or "researcher").strip()
-            goal = str(spec.get("goal") or "").strip()
-            # Budget-strangle-fix (2026-07-23, Bjørn "A"): default var 1500 tokens
-            # cap 4000 → agenten brændte budgettet på et par tool-kald og nåede
-            # ALDRIG at skrive et afsluttende svar → "completed" men tomt last_reply.
-            # 0 = ubegrænset (kun max_turns=20 som sikkerhedsnet, jf.
-            # _check_budget_and_expire). Kør til opgaven er løst, som Claudes egne
-            # agenter — respektér kun et EKSPLICIT budget hvis kalderen sætter et.
-            budget = int(spec.get("budget_tokens") or 0)
-            if not goal:
-                continue
-            child = spawn_agent_task(
-                role=role,
-                goal=goal,
-                budget_tokens=budget,
-                parent_agent_id=parent_agent_id,
-                auto_execute=True,
-            )
-            child_reply = ""
-            for msg in reversed(child.get("messages") or []):
-                if str(msg.get("direction") or "") == "agent->jarvis":
-                    child_reply = str(msg.get("content") or "")
-                    break
-            tokens_used += int(child.get("tokens_burned") or 0)
-            notes.append(
-                f"\n[sub-agent {role} ({child.get('agent_id', '')})]:\n{child_reply[:600]}"
-            )
-        except Exception as exc:
-            notes.append(f"\n[spawn failed: {exc}]")
-
-    cleaned = pattern.sub("", text).strip()
-    return cleaned + "".join(notes), "spawned", tokens_used
-
-
-_SPAWN_TOOL_INSTRUCTION = """
-If you need to delegate a subtask to another agent, include exactly one JSON block in your response:
-{"spawn_agent": {"role": "<researcher|planner|critic|synthesizer|executor>", "goal": "<specific, self-contained goal>"}}
-
-The spawned agent runs to completion (bounded by a turn limit) and returns its written result to Jarvis — you do NOT need to set a token budget; omit it and let the agent finish its work. Give it a sharp, self-contained goal with enough context to act without you. Use sparingly — only when the subtask genuinely benefits from isolation.
-""".strip()
-
-
 def _build_agent_prompt(
     *,
     agent: dict[str, object],
@@ -551,15 +490,13 @@ def _build_agent_prompt(
 ) -> str:
     result_contract = _json_loads(str(agent.get("result_contract_json") or "{}"), {})
     context = _json_loads(str(agent.get("context_json") or "{}"), {})
-    tool_policy = str(agent.get("tool_policy") or "")
-    spawn_section = f"\n\n{_SPAWN_TOOL_INSTRUCTION}" if tool_policy == "can-spawn" else ""
     return (
         f"System prompt:\n{agent.get('system_prompt') or ''}\n\n"
         f"Role: {agent.get('role') or 'agent'}\n"
         f"Goal: {agent.get('goal') or ''}\n"
         f"Execution mode: {execution_mode}\n"
         f"Context package: {json.dumps(context, ensure_ascii=True)}\n"
-        f"Expected sections: {_result_contract_text(result_contract)}{spawn_section}\n\n"
+        f"Expected sections: {_result_contract_text(result_contract)}\n\n"
         "Conversation so far:\n"
         f"{_format_messages(messages)}\n\n"
         f"{extra_instruction}".strip()
@@ -568,14 +505,19 @@ def _build_agent_prompt(
 
 def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
     """Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender)."""
+    from core.runtime.db_agent_contract import open_assignment_for_agent
+    # En DB-fejl her maa ikke nedgradere en kontraktagent til en tekst-agent.
+    contract_agent = bool(open_assignment_for_agent(str(agent.get("agent_id") or "")))
     try:
-        if not agent_tools_enabled():
+        if not contract_agent and not agent_tools_enabled():
             return []
         from core.services.agent_runtime_base import _build_agent_tools_payload
         allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
         return _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
     except Exception:
         logger.warning("kunne ikke bygge vaerktoejsskema til promptsnapshot", exc_info=True)
+        if contract_agent:
+            raise
         return []
 
 
@@ -721,11 +663,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     try:
         update_agent_registry_entry(agent_id, status="active")
         _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
-        # Axis 3: give the agent hands only when the reversible flag is ON.
-        # OFF (default) → unchanged text-only path. Self-safe: any failure in
-        # the tool-loop dispatch degrades to the legacy call.
+        # Kontraktagenter bruger altid en isoleret worker. Kun agenter uden
+        # assignment bruger de gamle reversible worker-/toolflags.
         from core.services.agent_worker_runner import run_agent_in_worker, worker_mode_enabled
-        if _layers is not None and worker_mode_enabled():
+        if _layers is not None:
             # agent-contract-v1 (C6): loekken koerer i en sandboxet workerproces; serveren er broker.
             # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
             result = run_agent_in_worker(
@@ -856,14 +797,6 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                 "Agent afsluttede uden et brugbart resultat: "
                 + str(result.get("result") or text or result.get("status"))[:350]
             )
-
-        # Detect and execute spawn_agent requests embedded in response (can-spawn policy)
-        tool_policy = str(agent.get("tool_policy") or "")
-        if tool_policy == "can-spawn":
-            text, spawn_note, spawn_tokens = _handle_agent_spawn_calls(
-                text=text, parent_agent_id=agent_id
-            )
-            output_tokens += spawn_tokens
 
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",

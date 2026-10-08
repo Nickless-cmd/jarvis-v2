@@ -725,10 +725,21 @@ def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEve
         # Fase 1 retry-harness: et CLEAN done der lykkes på retry-attempt'et
         # (simulerer at det forbigående blip er væk anden gang). Yielder en
         # delta + done så turen kan fortsætte (recovered).
+        #
+        # TEKSTEN SKAL MED I ``FollowupDone.text`` — ikke kun som delta.
+        # ``Done.text`` er den AUTORITATIVE rundetekst (adapterne sætter den til
+        # "".join(deltas); se synthesize_nontinking_rescue's kontrakt ovenfor).
+        # Målt 8/10-2026: med ``text=""`` så drain-løkken et svar UDEN indhold,
+        # fandt ingen tool-kald og gik videre til NÆSTE runde — hvor modellen blev
+        # kaldt igen og gentog svaret. Persisteringen blev
+        # ``'DET-ÆGTE-SVAR\n\nDET-ÆGTE-SVAR'``, og
+        # ``test_PRIMARY_partial_then_drop_retry_survives_no_dup`` stod rød på
+        # «ingen dobbelt-persist». Retry'en virkede hele tiden; det var den tomme
+        # Done der sendte turen en runde for langt.
         _txt = str(fault.get("recover_text") or "")
         if _txt:
             yield FollowupDelta(delta=_txt)
-        yield FollowupDone(text="")
+        yield FollowupDone(text=_txt)
         return
     if shape == FAULT_CLEAN_FAIL_BEFORE_DELTA:
         # (a) HTTP 502-klasse FØR nogen delta — clean fail, ingen partiel tekst.

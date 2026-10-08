@@ -103,7 +103,12 @@ def test_approving_resumes_the_child_exactly_where_it_stopped_and_runs_the_call_
     (ap,) = pk.pending()
     res = pk.human(ap)
     assert res["status"] == "ok" and res["approval"]["status"] == "approved"
-    assert pk.assignment(out) == "queued" and len(pk.started_) == 1
+    # `active`, ikke `queued`: genoptagelsen gaar gennem `_start_execution`, som
+    # CLAIMER en workerplads foer den starter (§12.3 — et parkeret run har
+    # frigivet sin plads og skal vinde en ny). Samme linje bekraefter selv at
+    # den er startet én gang, saa `active` beskriver tilstanden aerligere end
+    # den gamle `queued` gjorde.
+    assert pk.assignment(out) == "active" and len(pk.started_) == 1
     pk.go()
     assert pk.executed_ == [("c1", {"command": "echo 1"})]                      # praecis én gang
     assert pk.assignment(out) == "completed"
@@ -375,13 +380,19 @@ def test_a_worker_cannot_run_a_gated_tool_by_forging_its_own_tool_call_without_t
 
 
 def test_a_supervisor_tick_during_a_resume_in_progress_neither_restarts_nor_discards_the_checkpoint(pk):
-    """Beslutningen er truffet og barnet staar i koe, men traaden har ikke taget checkpointen endnu."""
+    """Beslutningen er truffet og barnet har vundet sin workerplads, men traaden
+    har ikke taget checkpointen endnu."""
     pk.replies_ += [{"text": "", "tool_calls": [call(1)]}, {"text": "faerdig"}]
     out = pk.dispatch()
     pk.go()
     (ap,) = pk.pending()
     pk.human(ap)
-    assert pk.assignment(out) == "queued" and len(pk.started_) == 1
+    # `active`, ikke `queued`: genoptagelsen gaar gennem `_start_execution`, som
+    # CLAIMER en workerplads foer den starter (§12.3 — et parkeret run har
+    # frigivet sin plads og skal vinde en ny). Samme linje bekraefter selv at
+    # den er startet én gang, saa `active` beskriver tilstanden aerligere end
+    # den gamle `queued` gjorde.
+    assert pk.assignment(out) == "active" and len(pk.started_) == 1
     assert pk.svc_.supervise() == []                                   # intet nyt
     assert len(pk.started_) == 1                                        # ikke startet to gange
     assert pk.appr_.parked_checkpoint(assignment_id=out["assignment_id"]) is not None     # IKKE kasseret
@@ -418,7 +429,8 @@ def test_a_failing_resume_never_falls_back_to_a_fresh_text_turn(pk, monkeypatch)
     def boom(**kw):
         raise RuntimeError("loekken braekkede")
 
-    monkeypatch.setattr(pk.M_, "_run_agent_tool_loop", boom)
+    from core.services import agent_worker_runner
+    monkeypatch.setattr(agent_worker_runner, "run_agent_in_worker", boom)
     pk.go()
     assert len(pk.calls_) == n_before and pk.assignment(out) == "failed"       # ingen frisk tekst-tur
     assert pk.executed_ == []

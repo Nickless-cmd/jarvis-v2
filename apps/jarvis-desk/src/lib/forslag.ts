@@ -37,6 +37,25 @@ export interface Forslag {
 export const INTET_FORSLAG: Forslag = { tekst: '', id: '', kildeBeskedId: '' }
 
 /**
+ * Absolut sti på api-basen — med ÉN skråstreg.
+ *
+ * `absolutApiUrl` i `api.ts` gør det samme, men den importeres IKKE her: denne
+ * fil deler kun en TYPE med api-modulet. Et værdi-import ville tvinge hver test
+ * der mocker `./api` til også at mocke den — målt 8/10-2026 gav det to
+ * utilsigtede fejl i ChatView-testen, kastet fra en timer efter testen var
+ * slut, fordi mocken ikke kendte eksporten.
+ *
+ * Begge konventioner skal virke: desk gemmer `https://api.srvlab.dk/`
+ * (`SetupScreen`), mobilen uden skråstreg. Strengsammensætning gav derfor
+ * `//composer/suggest` i desk — en sti der ikke matcher nogen API-rute, falder
+ * igennem til StaticFiles-mountet og svarer 405.
+ */
+function sti(config: ApiConfig, vej: string): string {
+  const base = String(config?.apiBaseUrl || '').replace(/\/+$/, '')
+  return base ? `${base}${vej}` : ''
+}
+
+/**
  * Hent et forslag til den næste besked. Tomt ved enhver fejl —
  * komponisten skal kunne skrives i uanset hvad der sker med modellen.
  *
@@ -52,8 +71,17 @@ export async function hentNaesteForslag(
   signal?: AbortSignal,
 ): Promise<Forslag> {
   if (!sessionId) return INTET_FORSLAG
+  // `sti` og ikke strengsammensætning. apiBaseUrl slutter på en skråstreg i
+  // desk (`SetupScreen`), så `${base}/composer/suggest` gav
+  // `//composer/suggest`. Den sti matcher ingen API-rute, falder igennem til
+  // StaticFiles-mountet — som kun tillader GET/HEAD — og svarer 405. Tavst,
+  // fordi `!r.ok` nedenfor giver INTET_FORSLAG uden at logge. Målt 8/10-2026:
+  // desk 31 kald, alle 405 · mobilen 45 kald, alle 200. Det var derfor
+  // forslaget nåede mobilen og ikke desk.
+  const url = sti(config, '/composer/suggest')
+  if (!url) return INTET_FORSLAG
   try {
-    const r = await fetch(`${config.apiBaseUrl}/composer/suggest`, {
+    const r = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -101,8 +129,10 @@ export function meldValg(
   sessionId: string,
 ): void {
   if (!forslag.id || !sessionId) return
+  const url = sti(config, '/composer/choice')
+  if (!url) return
   try {
-    void fetch(`${config.apiBaseUrl}/composer/choice`, {
+    void fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

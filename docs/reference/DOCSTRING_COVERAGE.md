@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8765/16580 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8782/16601 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 9 | 20 | 45% |
-| `apps.api.jarvis_api.routes` | 681 | 915 | 74% |
+| `apps.api.jarvis_api.routes` | 682 | 917 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,15 +24,15 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 801 | 1448 | 55% |
-| `core.services` | 5851 | 11267 | 51% |
+| `core.runtime` | 811 | 1462 | 55% |
+| `core.services` | 5856 | 11271 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 524 | 1064 | 49% |
+| `core.tools` | 525 | 1065 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2339)
+## Undocumented public functions (2343)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -53,14 +53,15 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
 - `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L128)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L75)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L106)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L93)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L87)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L119)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L100)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L113)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L144)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `dispatch` (L89)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L131)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L125)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L157)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L138)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
 - `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L254)
@@ -361,13 +362,16 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `mark_unknown` (L137)
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L661)
+- `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L680)
 - `core/runtime/db_agent_council.py` :: `create` (L62)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L84)
 - `core/runtime/db_agent_council.py` :: `open_councils` (L109)
 - `core/runtime/db_agent_council.py` :: `require` (L115)
 - `core/runtime/db_agent_council.py` :: `set_members` (L92)
+- `core/runtime/db_agent_deadlines.py` :: `ensure_deadline_columns` (L18)
+- `core/runtime/db_agent_deadlines.py` :: `initial_queue_deadline` (L55)
 - `core/runtime/db_agent_feed.py` :: `acknowledge` (L123)
 - `core/runtime/db_agent_feed.py` :: `ensure_feed_tables` (L38)
 - `core/runtime/db_agent_feed.py` :: `mark_read` (L119)
@@ -653,14 +657,14 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 - `core/services/agency_cartographer.py` :: `stop_agency_cartographer_daemon` (L210)
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_approval_notify.py` :: `wake_message` (L28)
-- `core/services/agent_bridge.py` :: `human_resolve` (L363)
+- `core/services/agent_bridge.py` :: `human_resolve` (L390)
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
-- `core/services/agent_bridge.py` :: `run_is_halted` (L324)
+- `core/services/agent_bridge.py` :: `run_is_halted` (L351)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L590)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L647)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L45)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L43)
@@ -673,24 +677,24 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1549)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1604)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1585)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1412)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1169)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1109)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1137)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1482)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1537)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1518)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1345)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1102)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1042)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1070)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1568)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1501)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
-- `core/services/agent_sandbox.py` :: `bwrap_path` (L49)
-- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L105)
-- `core/services/agent_sandbox.py` :: `python_prefixes` (L56)
+- `core/services/agent_sandbox.py` :: `bwrap_path` (L58)
+- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L136)
+- `core/services/agent_sandbox.py` :: `python_prefixes` (L65)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
@@ -2067,14 +2071,14 @@ Generated from source. 8765/16580 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6809)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6834)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6872)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6868)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6805)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6767)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6889)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6820)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6827)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6852)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6890)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6886)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6823)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6785)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6907)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6838)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)

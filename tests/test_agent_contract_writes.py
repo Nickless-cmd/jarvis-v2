@@ -191,3 +191,64 @@ def test_a_code_agent_writes_in_its_worktree_and_delivers_a_diff_without_touchin
     assert cw.head() == head_before and sh("git", "status", "--porcelain", cwd=cw.repo_) == ""
     assert not os.path.exists(os.path.join(cw.repo_, "ny.py"))                # hovedrepoet er urørt
     assert "hej" in payload["summary"]
+
+
+# ── §11.1's oprydning skal kunne naa sit eget maal (8/10-2026) ──────────────
+
+def test_en_frisk_assignment_kan_kasseres_selv_om_den_straks_er_active(cw):
+    """Hullet der kom frem da de fire produktionspunkter blev flettet sammen.
+
+    `discard_unstarted_assignment` stod paa `status='queued'` som proxy for
+    «ikke startet». Med den varige scheduler claimer en ny assignment en
+    workerplads med det samme og er `active` allerede naar dispatch returnerer.
+    Proxyen var altsaa falsk, og §11.1's oprydning efter en admission der
+    fejler EFTER accept kunne aldrig naa noget — den efterlod praecis det halve
+    barn den er skrevet for at fjerne.
+    """
+    out = cw.d()
+    aid, ag = out["assignment_id"], out["agent_id"]
+
+    status = cw.c_._conn().execute(
+        "SELECT status FROM agent_assignments WHERE assignment_id=?", (aid,)).fetchone()["status"]
+    assert status == "active", (
+        "forudsaetningen for denne test er at scheduleren starter med det samme; "
+        "staar den %r, er det den gamle verden og testen maaler ikke hullet" % status)
+
+    assert cw.c_.discard_unstarted_assignment(agent_id=ag, owner_user_id=O) is True
+    assert cw.count("agent_assignments") == 0 and cw.count("agent_registry") == 0
+
+
+def test_et_STARTET_run_kasseres_stadig_ikke_uanset_status(cw):
+    """Den vagt der betyder noget: har en worker sat `started_at`, kan der
+    vaere sket noget ude i verden, og raekken maa ikke forsvinde."""
+    out = cw.d()
+    aid, ag = out["assignment_id"], out["agent_id"]
+    conn = cw.c_._conn()
+    conn.execute("UPDATE agent_runs SET started_at='2026-10-08T06:00:00Z' WHERE assignment_id=?", (aid,))
+    conn.commit()
+
+    assert cw.c_.discard_unstarted_assignment(agent_id=ag, owner_user_id=O) is False
+    assert cw.count("agent_assignments") == 1
+
+
+def test_en_afsendt_terminalbesked_spaerrer_ogsaa(cw):
+    """Er der sendt et terminalt udfald, har parenten set et svar. Saa er der
+    ikke noget «aldrig startet» at rydde op i.
+
+    Kolonnelisten er kopieret fra `db_agent_contract`s egen indsaettelse, saa
+    testen ikke opfinder et skema ved siden af produktionens.
+    """
+    out = cw.d()
+    aid, ag = out["assignment_id"], out["agent_id"]
+    conn = cw.c_._conn()
+    conn.execute(
+        "INSERT INTO agent_result_outbox (message_id, assignment_id, result_type, "
+        "owner_user_id, origin_session_id, sender_agent_id, recipient_agent_id, "
+        "parent_run_id, last_run_id, payload_json, created_at, updated_at) "
+        "VALUES ('m1',?,'terminal',?,'s1',?,'jarvis','','','{}',"
+        "'2026-10-08T06:00:00Z','2026-10-08T06:00:00Z')",
+        (aid, O, ag))
+    conn.commit()
+
+    assert cw.c_.discard_unstarted_assignment(agent_id=ag, owner_user_id=O) is False
+    assert cw.count("agent_assignments") == 1

@@ -316,13 +316,12 @@ def test_execute_agent_task_uses_the_worker_when_the_flag_is_on(wk, monkeypatch)
     assert wk.c_._conn().execute("SELECT state FROM agent_leases").fetchone()["state"] == "released"
 
 
-def test_execute_agent_task_stays_in_process_when_the_flag_is_off(wk, monkeypatch):
+def test_contract_agent_uses_worker_even_when_legacy_worker_flag_is_off(wk, monkeypatch):
     spy = _execute(wk, monkeypatch)
-    assert spy["n"] == 0
+    assert spy["n"] == 1
 
 
-def test_execute_agent_task_fails_closed_when_the_flag_is_on_but_the_sandbox_is_gone(wk, monkeypatch):
-    R.set_worker_mode(True, role="owner")
+def test_contract_agent_fails_closed_when_the_sandbox_is_gone_even_with_legacy_flag_off(wk, monkeypatch):
     monkeypatch.setattr(R, "_sandbox_ok", (False, "bwrap mangler"))
     _execute(wk, monkeypatch)
     (st,) = [r["status"] for r in wk.c_._conn().execute("SELECT status FROM agent_assignments")]

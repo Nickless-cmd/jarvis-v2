@@ -23,7 +23,7 @@ def test_argv_has_the_isolation_flags_and_the_command_last():
     for flag in ("--unshare-all", "--die-with-parent", "--new-session", "--clearenv"):
         assert flag in a
     assert a[a.index("--cap-drop") + 1] == "ALL"
-    assert a[-3:] == [sys.executable, "-c", "pass"] and a[-4] == "--"
+    assert a[-3:] == [sb.sandbox_path(sys.executable), "-c", "pass"] and a[-4] == "--"
     assert "--share-net" not in a                         # intet netvaerk
 
 
@@ -43,14 +43,36 @@ def test_only_the_three_worker_files_are_bound_read_only_under_worker():
     assert "--bind" not in a and "--bind-try" not in a        # intet skrivbart fra vaerten
 
 
-def test_python_env_is_bound_read_only_and_env_is_explicit():
+def test_python_env_is_bound_read_only_at_a_neutral_path_outside_home():
+    """Python-prefixet bindes til en NEUTRAL sti, ikke sin egen.
+
+    Ligger miljoeet under /home (fx ~/miniconda3), gen-skaber en bind til samme sti /home/<bruger>
+    oven paa ``--tmpfs /home`` - og saa er /home ikke tom, og vaertens brugernavne staar i
+    sandkassen. Maalt 8/10-2026: ``os.listdir('/home')`` svarede ['bs'] hvor testen kraever []."""
     a = _argv(extra_env={"EKSTRA": "1"})
-    for prefix in sb.python_prefixes():
-        i = a.index(prefix)
-        assert a[i - 1] == "--ro-bind" and a[i + 1] == prefix
+    for src, dst in sb.sandbox_python_mounts():
+        i = a.index(dst)
+        assert a[i - 2] == "--ro-bind" and a[i - 1] == src
+        assert not dst.startswith("/home"), dst
     env = {a[i + 1]: a[i + 2] for i, x in enumerate(a) if x == "--setenv"}
     assert env["PYTHONPATH"] == "/worker" and env["HOME"] == "/tmp" and env["EKSTRA"] == "1"
     assert "OPENAI_API_KEY" not in env and set(env) >= {"PATH", "PYTHONDONTWRITEBYTECODE"}
+
+
+def test_no_mount_target_lies_under_home():
+    """Alt hvad der monteres SKAL ligge uden for /home - ellers er /home ikke tom i sandkassen."""
+    a = _argv(rw_binds={"/host/wt": "/work"})
+    targets = [a[i + 2] for i, x in enumerate(a) if x in ("--ro-bind", "--bind", "--tmpfs")]
+    assert targets, "ingen mounts at kontrollere"
+    assert not [t for t in targets if t == "/home" or t.startswith("/home/")], targets
+
+
+def test_sandbox_path_moves_the_python_prefix_and_leaves_everything_else():
+    for i, prefix in enumerate(sb.python_prefixes()):
+        assert sb.sandbox_path(prefix) == f"{sb._SANDBOX_PYTHON}/{i}"
+        assert sb.sandbox_path(prefix + "/bin/python3") == f"{sb._SANDBOX_PYTHON}/{i}/bin/python3"
+    for untouched in ("/usr/bin/bash", "/work/fil.py", "/tmp/x", ""):
+        assert sb.sandbox_path(untouched) == untouched
 
 
 def test_a_missing_bwrap_or_prlimit_makes_the_sandbox_unavailable_never_silently_skipped(monkeypatch):
@@ -124,7 +146,7 @@ def test_the_process_lives_in_its_own_pid_namespace_and_cannot_see_the_host():
 
 @needs_bwrap
 def test_the_filesystem_is_read_only_except_a_private_tmp():
-    prefix = sb.python_prefixes()[0]
+    prefix = sb.sandbox_path(sb.python_prefixes()[0])   # stien som den findes INDE i sandkassen
     code = (f"import os\n"
             f"try:\n    open({prefix + '/ejer-her'!r}, 'w'); print('SKREV-I-MILJOET')\n"
             f"except OSError:\n    print('RO')\n"

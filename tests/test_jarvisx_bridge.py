@@ -563,3 +563,159 @@ def test_a_client_with_nothing_unresolved_gets_no_query_and_cannot_settle_anothe
         ws.send_json({"type": "ping"})
         assert ws.receive_json()["type"] == "pong"
     assert store.get("inv-w")["state"] == "outcome_unknown"          # en ANDEN klient kan ikke afgoere kaldet
+
+
+# ── Telefonen forbundet, desk ikke (maalt paa Bjoern 8/10-2026) ─────────────
+#
+# Kaeden der kostede en time: Bjoern sad ikke ved sin maskine. Telefonen var
+# eneste bro (11 capabilities). Hvert `operator_bash` gav
+#
+#   NO_BRIDGE reason=forward_failed stage=lookup_stale_presence
+#             local=[bjoern] presence=[bjoern] token=True
+#
+# Begge ord i diagnosen var forkerte. Der var INGEN stale presence — telefonen
+# var kerne-rask og publiceret — og intet forward havde fejlet. Den eneste
+# sandhed var at ingen FORBUNDET klient kunne `operator_bash`; desk kan (62
+# capabilities), men desk var ikke forbundet.
+#
+# Diagnosen pegede paa presence og procesgraenser. Den rigtige besked var ét
+# ord: start desk.
+
+
+def _tilslut(user_id: str, klient: str, evner: list[str]):
+    """Registrér en bro med annoncerede capabilities, som desk/mobil gør."""
+    from core.services.jarvisx_bridge import BridgeConnection, bridge_registry
+
+    conn = BridgeConnection(user_id=user_id, client=klient)
+    conn.capabilities = list(evner)
+    bridge_registry.register(conn)
+    return conn
+
+
+def test_kun_telefonen_forbundet_og_vaerktoejet_er_deskets(isolated_runtime, monkeypatch):
+    """Den praecise tilstand fra 8/10: ÉN bro, som ikke kan det kaldte vaerktoej."""
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services import bridge_presence
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    _tilslut("bjoern", "mobil-2j1dxlnh", ["phone_location", "phone_battery"])
+    bridge_presence.publish({"bjoern": {"client": "mobil-2j1dxlnh"}})
+
+    diag = bridge_registry._diagnose_no_bridge("bjoern", stage="test", tool="operator_bash")
+
+    assert diag["reason"] == "no_capable_client", (
+        "diagnosen sagde %r. Der ER en bro for brugeren, og den er ikke stale — "
+        "den kan bare ikke vaerktoejet." % diag["reason"]
+    )
+    assert diag["tool"] == "operator_bash"
+    assert diag["connected_clients"] == ["mobil-2j1dxlnh"], (
+        "beskeden skal NAVNGIVE hvad der ER forbundet — det er den oplysning "
+        "der sendte fejlsoegningen det rigtige sted hen"
+    )
+
+
+def test_dispatch_siger_hvad_der_mangler_i_stedet_for_stale_presence(isolated_runtime, monkeypatch):
+    """Hele vejen gennem dispatch: stage'en maa ikke hedde stale_presence."""
+    import asyncio
+
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services import bridge_presence
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    _tilslut("bjoern", "mobil-2j1dxlnh", ["phone_location"])
+    bridge_presence.publish({"bjoern": {"client": "mobil-2j1dxlnh", "process": "api"}})
+
+    async def _koer():
+        return await bridge_registry.dispatch(
+            user_id="bjoern", tool="operator_bash", args={}, allow_cross_process=True)
+
+    ud = asyncio.run(_koer())
+    assert ud["status"] == "error"
+    d = ud["diagnosis"]
+    assert d["reason"] == "no_capable_client"
+    assert "stale_presence" not in d["stage"], (
+        "stage=%r — presence var frisk og broen levende; ordet sender "
+        "fejlsoegningen mod procesgraenser i stedet for mod en manglende enhed" % d["stage"]
+    )
+
+
+def test_en_bro_der_KAN_vaerktoejet_rammes_stadig(isolated_runtime, monkeypatch):
+    """Kontrol: rettelsen maa ikke goere en fungerende routing til en fejl."""
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    _tilslut("bjoern", "mobil-2j1dxlnh", ["phone_location"])
+    desk = _tilslut("bjoern", "jarvisx-electron", ["operator_bash", "operator_read_file"])
+
+    assert bridge_registry.get_bridge("bjoern", tool="operator_bash") is desk
+    assert bridge_registry.get_bridge("bjoern", tool="phone_location").client == "mobil-2j1dxlnh"
+
+
+def test_ingen_bro_overhovedet_hedder_stadig_no_bridge_anywhere(isolated_runtime, monkeypatch):
+    """Den nye grund maa ikke sluge den gamle: ingen klienter er noget ANDET
+    end klienter uden evnen, og de to skal kunne skelnes i en log."""
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    diag = bridge_registry._diagnose_no_bridge("bjoern", stage="test", tool="operator_bash")
+    assert diag["reason"] == "no_bridge_anywhere"
+
+
+def test_en_TAVS_klient_er_ikke_en_ukapabel_klient(isolated_runtime, monkeypatch):
+    """Diagnosen skal spejle `get_bridge` — ellers lyver den igen.
+
+    `get_bridge` har en fallback: en klient der slet ikke annoncerer
+    capabilities (aeldre bro) faar kaldet alligevel. Regner diagnosen den for
+    ukapabel, vil den melde `no_capable_client` om en bro der i praksis BLIVER
+    valgt — og saa er vi tilbage ved en diagnose der peger forkert.
+
+    Mutationen der afsloerede hullet: fjern «eller klienten er tavs» fra
+    `ingen_kan`. Ingen af de andre tests saa det.
+    """
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    tavs = _tilslut("bjoern", "gammel-klient", [])
+
+    # Forudsaetning: det er netop den fallback `get_bridge` bruger.
+    assert bridge_registry.get_bridge("bjoern", tool="operator_bash") is tavs
+
+    diag = bridge_registry._diagnose_no_bridge("bjoern", stage="test", tool="operator_bash")
+    assert diag["reason"] != "no_capable_client", (
+        "diagnosen kalder en tavs klient ukapabel, men get_bridge vaelger den — "
+        "de to steder skal vaere enige om hvad en kapabel klient er"
+    )
+
+
+def test_diagnosen_og_get_bridge_er_enige_paa_tvaers_af_kombinationer(isolated_runtime, monkeypatch):
+    """Den egentlige kontrakt, som tabel: naar `get_bridge` finder en klient,
+    maa diagnosen ALDRIG sige `no_capable_client` — og omvendt."""
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+
+    tilfaelde = [
+        ("ingen klienter",            [],                                        "operator_bash"),
+        ("kun tavs klient",           [("gammel", [])],                          "operator_bash"),
+        ("kun ukapabel",              [("mobil", ["phone_location"])],           "operator_bash"),
+        ("kapabel til stede",         [("desk", ["operator_bash"])],             "operator_bash"),
+        ("ukapabel + kapabel",        [("mobil", ["phone_location"]),
+                                       ("desk", ["operator_bash"])],             "operator_bash"),
+        ("ukapabel + tavs",           [("mobil", ["phone_location"]),
+                                       ("gammel", [])],                          "operator_bash"),
+    ]
+    for navn, klienter, vaerktoej in tilfaelde:
+        bridge_registry.clear()
+        for k, evner in klienter:
+            _tilslut("bjoern", k, evner)
+        valgt = bridge_registry.get_bridge("bjoern", tool=vaerktoej)
+        diag = bridge_registry._diagnose_no_bridge("bjoern", stage="t", tool=vaerktoej)
+        siger_ukapabel = diag["reason"] == "no_capable_client"
+        assert siger_ukapabel == (valgt is None and bool(klienter)), (
+            "%s: get_bridge gav %r, diagnosen sagde %r — de er uenige"
+            % (navn, valgt and valgt.client, diag["reason"])
+        )

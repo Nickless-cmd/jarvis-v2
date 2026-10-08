@@ -135,3 +135,50 @@ class RundeHale:
 
     def __len__(self) -> int:
         return len(self._vedvarende) + len(self._naeste) + len(self._runde)
+
+    def telemetri(self) -> dict[str, Any]:
+        """Kompakt billede af halen, praecis som den sendes i denne runde.
+
+        Halen blev sendt i HVER runde, men der fandtes intet tal paa hvad den
+        bar. Den gamle fejl — hollow-promise-noten alene: 426 fyringer over 356
+        ture og 2.226 gen-sendinger (5,4 i snit, vaerst 40 i én tur) — kunne
+        derfor kun findes ved at grave i koden, ikke ved at laese driften.
+        Uden dette kan en note der haenger igen heller ikke ses, foer nogen
+        opdager det i svarene.
+
+        ``naeste`` taelles med, men indgaar ikke i ``poster``: den er endnu ikke
+        rykket ind i runden og sendes ikke foer ``ny_runde()``. At blande dem
+        sammen ville vaere et tal der loj om hvad modellen faktisk fik.
+
+        To slags tal, med vilje: ``tegn`` er hvad modellen FAAR (inkl.
+        runtime-rammen), mens ``poster[].tegn`` er notens eget indhold uden
+        rammen — saa det staar ved siden af den etiket det beskriver.
+
+        Self-safe: halen er interne lister af dicts; intet her maa kunne kaste.
+        """
+        def _etiket(levetid: str, besked: dict[str, Any]) -> dict[str, Any]:
+            tekst = str(besked.get("content") or "")
+            # Runtime-rammen er konstant og siger intet om noten — skael den fra,
+            # saa etiketten viser notens egne foerste ord.
+            if tekst.startswith(_RUNTIME_FRAME):
+                tekst = tekst[len(_RUNTIME_FRAME):]
+            return {
+                "levetid": levetid,
+                "rolle": str(besked.get("role") or ""),
+                "tegn": len(tekst),
+                "label": tekst[:48],
+            }
+
+        poster = (
+            [("vedvarende", m) for m in self._vedvarende]
+            + [("runde", m) for m in self._runde]
+        )
+        sendt = self.som_liste()
+        return {
+            "vedvarende": len(self._vedvarende),
+            "naeste": len(self._naeste),
+            "runde": len(self._runde),
+            "beskeder": len(sendt),
+            "tegn": sum(len(str(m.get("content") or "")) for m in sendt),
+            "poster": [_etiket(levetid, m) for levetid, m in poster],
+        }

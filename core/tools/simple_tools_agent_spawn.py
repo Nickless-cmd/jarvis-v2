@@ -28,6 +28,26 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
     goal = str(args.get("goal") or "").strip()
     if not goal:
         return {"status": "error", "error": "goal is required"}
+    # The old tool name remains callable by older prompts. Once the contract is
+    # enabled it must be only an adapter, never a second execution engine.
+    from core.services.agent_contract_service import capability_enabled
+    if capability_enabled():
+        unsupported = [name for name in ("persistent", "system_prompt", "allowed_tools")
+                       if args.get(name)]
+        if unsupported:
+            return {"status": "error", "code": "INVALID_SCOPE",
+                    "error": "legacy spawn options require the contract API: " + ", ".join(unsupported)}
+        from core.tools.agent_contract_tools import _exec_dispatch_agent
+        return _exec_dispatch_agent({
+            "goal": goal,
+            "role": str(args.get("role") or "researcher"),
+            "tool_policy": str(args.get("tool_policy") or ""),
+            "budget_tokens": args.get("budget_tokens") or 0,
+            "_runtime_session_id": args.get("_runtime_session_id"),
+            "_runtime_turn_id": args.get("_runtime_turn_id"),
+            "_runtime_user_id": args.get("_runtime_user_id"),
+            "_runtime_agent_id": args.get("_runtime_agent_id"),
+        })
     # 0 = ubegraenset, med max_turns (20) som det egentlige net. Vaerktoejs-laget
     # klemte tidligere til default 2000 / loft 8000 — praecis den strangulering
     # juli-fixet fjernede i motoren: agenten braendte budgettet paa tool-kald og

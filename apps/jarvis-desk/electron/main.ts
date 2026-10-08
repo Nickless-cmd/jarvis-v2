@@ -1074,7 +1074,23 @@ async function bootstrapBridge(): Promise<void> {
       if (r.ok) userId = String((await r.json() as { user_id?: string })?.user_id || '')
     } catch { /* serveren udleder user_id fra token-claims hvis tom */ }
     const bridgeMod = await import('./bridge.js')
-    if (activeBridge) { try { activeBridge.stop() } catch { /* noop */ } }
+    // ── FRA HER OG TIL `start()` MAA DER IKKE VAERE ET TAVST HUL ─────────
+    //
+    // Maalt paa Bjoern 8/10-2026: broen lukkede 05:58:40 med `client_stop`
+    // (denne linje, kaldt fra `config:set` under app-opdateringen) og kom
+    // ALDRIG igen. Reconnect-logikken var uskyldig — den havde genforbundet
+    // syv sekunder efter serverens genstart samme nat. Det var `stop()` uden
+    // en efterfoelger.
+    //
+    // `stop()` saetter `stopped = true`, og `scheduleReconnect()` returnerer
+    // straks paa det flag. Fejler noget mellem de to linjer, er broen derfor
+    // permanent doed indtil appen genstartes — og den eneste besked om det
+    // gik til `console.warn`, som ingen gemmer. Ni timer uden workstation.
+    if (activeBridge) {
+      bridgeMod.broLog('bootstrap: stopper den gamle bro foer en ny oprettes')
+      try { activeBridge.stop() } catch { /* noop */ }
+      activeBridge = null
+    }
     activeBridge = new bridgeMod.JarvisXBridge({
       apiBaseUrl: cfg.apiBaseUrl,
       userId,
@@ -1083,6 +1099,7 @@ async function bootstrapBridge(): Promise<void> {
       log: (m: string) => console.log(`[bridge] ${m}`),
     })
     activeBridge.start()
+    bridgeMod.broLog('bootstrap: ny bro startet')
     // Resurrect any reminders/wakeups left over from previous runs.
     // Past-due ones fire immediately as catch-up; future ones get fresh
     // setTimeout entries. Safe to call multiple times — idempotent.
@@ -1091,7 +1108,32 @@ async function bootstrapBridge(): Promise<void> {
     }
   } catch (e) {
     console.warn('bridge bootstrap failed:', e)
+    // Fejlen SKAL staa i bridge.log — se kommentaren ovenfor. `console.warn`
+    // alene er grunden til at ni timers brotab ikke efterlod et spor.
+    try {
+      const m = await import('./bridge.js')
+      m.broLog(`bootstrap FEJLEDE: ${e} — bro=${activeBridge ? 'sat' : 'INGEN'}`)
+    } catch { /* bridge.js kunne ikke indlaeses — intet sted at skrive */ }
+    // Og broen maa ikke blive liggende stoppet. Et nyt forsoeg, med afstand,
+    // saa en forbigaaende fejl (netvaerk, whoami, provider) ikke koster hele
+    // sessionens workstation-adgang. Kun ÉT niveau: `bootstrapBridge` kalder
+    // sig selv, og `genforsoegPlanlagt` sikrer at et kaos af config:set-kald
+    // ikke bliver til en kaskade af timere.
+    planlaegBootstrapGenforsoeg()
   }
+}
+
+/** Et genforsoeg ad gangen — ellers giver N fejlede bootstraps N timere. */
+let genforsoegPlanlagt = false
+const BOOTSTRAP_GENFORSOEG_MS = 15_000
+
+function planlaegBootstrapGenforsoeg(): void {
+  if (genforsoegPlanlagt) return
+  genforsoegPlanlagt = true
+  setTimeout(() => {
+    genforsoegPlanlagt = false
+    void bootstrapBridge()
+  }, BOOTSTRAP_GENFORSOEG_MS).unref?.()
 }
 
 // ─── Lokal Discord-gateway (TOTP Fase 5 §5.2) ───────────────────────────

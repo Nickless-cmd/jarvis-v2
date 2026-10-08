@@ -74,6 +74,20 @@ def test_no_request_model_can_carry_an_owner_or_session(rt):
     assert r.model_dump() == {"content": "hej"}
 
 
+def test_dispatch_checks_authenticated_session_before_service_call(rt, monkeypatch):
+    from core.services import chat_sessions
+
+    seen = []
+    monkeypatch.setattr(chat_sessions, "get_session_owner", lambda sid: B if sid == "foreign" else A)
+    monkeypatch.setattr(rt.svc_, "dispatch_agent",
+                        lambda **kw: seen.append(kw) or {"status": "accepted", "agent_id": "a"})
+    assert rt.http(R.dispatch, R.DispatchBody(session_id="foreign", goal="work")) == 404
+    assert seen == []
+    out = rt.call(R.dispatch, R.DispatchBody(session_id=S1, goal="work"))
+    assert out["status"] == "accepted"
+    assert seen[0]["owner_user_id"] == A and seen[0]["origin_session_id"] == S1
+
+
 def test_overview_response_shape_is_pinned_to_the_fields_the_client_reads(rt):
     rt.agent("a1")
     out = rt.call(R.overview)

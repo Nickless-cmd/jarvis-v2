@@ -213,6 +213,21 @@ function fileLog(msg: string): void {
   } catch {}
 }
 
+/**
+ * Skriv en bro-hændelse til `bridge.log` UDEFRA (main.ts).
+ *
+ * Målt på Bjørn 8/10-2026: broen lukkede 05:58:40 med `client_stop` og kom
+ * aldrig igen. Appen kørte videre i ni timer uden bro, og i hele `bridge.log`
+ * står der ikke ét ord om hvorfor — fordi `bootstrapBridge`s eneste
+ * fejlhåndtering er `console.warn`, og appens stdout gemmes ingen steder.
+ *
+ * Loggen her er den ENESTE kilde når broen tier. Alt der kan efterlade den
+ * stoppet skal derfor skrive HER, ikke i konsollen.
+ */
+export function broLog(msg: string): void {
+  fileLog(msg)
+}
+
 export interface BridgeConfig {
   /** Jarvis-runtime base URL, e.g. "http://10.0.0.39" */
   apiBaseUrl: string

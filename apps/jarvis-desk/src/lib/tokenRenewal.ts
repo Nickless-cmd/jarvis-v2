@@ -97,7 +97,13 @@ export async function fornyOmNoedvendigt(
 ): Promise<ApiConfig> {
   if (!config?.authToken || !boerFornys(config.authToken, nuMs)) return config
   try {
-    const svar = await fetch(`${config.apiBaseUrl}api/auth/renew`, {
+    // Basen normaliseres FØR stien sættes på. Linjen var
+    // `${config.apiBaseUrl}api/auth/renew` og regnede med at basen sluttede på
+    // en skråstreg. Den gjorde det i desk (`SetupScreen`) — men ikke i mobilen,
+    // hvor den SAMME linje giver `https://api.srvlab.dkapi/auth/renew`. Med
+    // `replace` virker begge konventioner, og de to tvillinger kan holdes ens.
+    const base = String(config.apiBaseUrl || '').replace(/\/+$/, '')
+    const svar = await fetch(`${base}/api/auth/renew`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${config.authToken}` }
     })

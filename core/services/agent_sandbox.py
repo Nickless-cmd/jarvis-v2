@@ -31,6 +31,15 @@ _SERVICES_DIR = Path(__file__).resolve().parent
 #: Systemmapper der bindes skrivebeskyttet hvis de findes (biblioteker og interpreterens afhaengigheder).
 _SYSTEM_RO = ("/usr", "/bin", "/sbin", "/lib", "/lib32", "/lib64", "/etc/ld.so.cache", "/etc/alternatives")
 
+#: Neutral monteringssti for Python-miljoeet inde i sandboxen. Miljoeet bindes ALDRIG til sin EGEN
+#: sti: bor det under /home (fx ~/miniconda3), gen-skaber bind'en /home/<bruger> oven paa
+#: ``--tmpfs /home`` - og saa er /home ikke tom, og vaertens brugernavne staar i sandkassen.
+#: Maalt 8/10-2026: ``python_prefixes()`` gav /home/bs/miniconda3/envs/ai, og ``os.listdir('/home')``
+#: svarede ['bs'] hvor sikkerhedstesten kraever []. Python finder selv sit prefix ud fra
+#: executable-stien, saa den neutrale placering er usynlig for interpreten (maalt: sys.prefix blev
+#: /opt/agent-python/0, og /home var tom).
+_SANDBOX_PYTHON = "/opt/agent-python"
+
 
 #: Loft for antal processer+traade i EN sandbox (cgroup ``pids.max``). Workeren har traade til
 #: modelkald; en kommando i et worktree maa gerne bygge/teste parallelt men ikke bombe vaerten.
@@ -61,6 +70,24 @@ def python_prefixes() -> list[str]:
     return seen
 
 
+def sandbox_python_mounts() -> list[tuple[str, str]]:
+    """``(kilde, maal)`` for hvert Python-prefix - kilden bindes til en NEUTRAL sti uden for /home."""
+    return [(p, f"{_SANDBOX_PYTHON}/{i}") for i, p in enumerate(python_prefixes())]
+
+
+def sandbox_path(path: str) -> str:
+    """Den sti ``path`` har INDE i sandboxen.
+
+    Python-prefixet ligger neutralt (se ``_SANDBOX_PYTHON``), saa en sti under det - interpreten
+    selv, dens biblioteker - flyttes med. Alt andet er uaendret, ogsaa stier der slet ikke findes
+    i sandboxen (de fejler som foer)."""
+    text = str(path or "")
+    for i, prefix in enumerate(python_prefixes()):
+        if text == prefix or text.startswith(prefix + os.sep):
+            return f"{_SANDBOX_PYTHON}/{i}" + text[len(prefix):]
+    return text
+
+
 def build_bwrap_argv(command: list[str], *, pass_fds: tuple[int, ...] = (),
                      extra_env: dict[str, str] | None = None,
                      worker_files: dict[str, str] | None = None,
@@ -70,15 +97,19 @@ def build_bwrap_argv(command: list[str], *, pass_fds: tuple[int, ...] = (),
 
     ``mounts`` er en ORDNET liste af ``(art, kilde, maal)`` hvor art er ``ro`` (skrivebeskyttet bind),
     ``rw`` (skrivbar bind) eller ``tmpfs`` (kilde ignoreres). Rækkefølgen bevares: en ``tmpfs`` skal
-    staa foer de binds der lægges ind i den."""
+    staa foer de binds der lægges ind i den.
+
+    ``command`` omsaettes til sandboxens egne stier (se ``sandbox_path``): Python-prefixet ligger
+    neutralt uden for /home, saa kommandoen der returneres peger paa hvad der FAKTISK findes derinde.
+    Omsaetningen ligger her og ikke hos kald-stederne, saa ingen af dem kan glemme den."""
     argv = [bwrap_path(), "--unshare-all", "--die-with-parent", "--new-session",
             "--cap-drop", "ALL", "--clearenv"]
     for d in _SYSTEM_RO:
         if os.path.exists(d):
             argv += ["--ro-bind", d, d]
     argv += ["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--tmpfs", "/home"]
-    for prefix in python_prefixes():
-        argv += ["--ro-bind", prefix, prefix]
+    for src, dst in sandbox_python_mounts():
+        argv += ["--ro-bind", src, dst]
     files = worker_files if worker_files is not None else {n: str(_SERVICES_DIR / n) for n in WORKER_FILES}
     for name, src in files.items():
         argv += ["--ro-bind", src, f"/worker/{name}"]
@@ -99,7 +130,7 @@ def build_bwrap_argv(command: list[str], *, pass_fds: tuple[int, ...] = (),
         else:
             raise ValueError(f"ukendt mount-art {kind!r}")
     argv += ["--chdir", chdir, "--"]
-    return argv + list(command)
+    return argv + [sandbox_path(c) for c in command]
 
 
 def pids_limit_disabled() -> bool:

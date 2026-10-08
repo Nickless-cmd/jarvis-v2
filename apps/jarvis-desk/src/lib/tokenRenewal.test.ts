@@ -75,6 +75,22 @@ describe('selve fornyelsen', () => {
     )
   })
 
+  it('bygger stien rigtigt BÅDE med og uden skråstreg i basen', async () => {
+    // Desk gemmer basen med skråstreg (`SetupScreen`), mobilen uden. Linjen var
+    // `${base}api/auth/renew`, så den ene af de to gav et sammenklistret
+    // domæne: `https://api.srvlab.dkapi/auth/renew`.
+    for (const base of ['http://x/', 'http://x']) {
+      ;(global as any).fetch = vi.fn().mockResolvedValue({
+        ok: true, json: async () => ({ token: friskt }),
+      })
+      await fornyOmNoedvendigt({ ...cfg, apiBaseUrl: base }, vi.fn(), NU)
+      expect((global as any).fetch).toHaveBeenCalledWith(
+        'http://x/api/auth/renew',
+        expect.objectContaining({ method: 'POST' })
+      )
+    }
+  })
+
   it('sender det NUVÆRENDE token med — også det udløbne', async () => {
     // Serveren veksler netop det udløbne token. Sender vi intet, er der intet
     // at forny fra.

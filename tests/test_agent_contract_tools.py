@@ -146,6 +146,24 @@ def test_dispatch_tool_takes_the_owner_from_context_not_from_arguments(tl):
     assert tl.svc_.c.get_assignment(assignment_id=out["assignment_id"], owner_user_id="anden") is None
 
 
+def test_child_principal_requires_matching_fenced_assignment(tl):
+    from core.identity import workspace_context as w
+    from core.runtime.db_agent_lease import agent_lease_scope
+
+    tl.on()
+    parent = tl.t_._exec_dispatch_agent(tl.args(goal="parent"))
+    w.set_context(workspace_name="bjorn", user_id="")
+    # A model-supplied agent id without an active worker scope grants nothing.
+    fake = tl.t_._exec_dispatch_agent(tl.args(goal="fake", _runtime_agent_id=parent["agent_id"]))
+    assert fake["code"] == "INVALID_SCOPE"
+    with agent_lease_scope(parent["agent_id"]):
+        scoped = tl.t_._scoped_parent({"_runtime_agent_id": parent["agent_id"]})
+        assert scoped == (parent["agent_id"], "bjorn", "sess-1", parent["run_id"])
+        assert tl.t_._scoped_parent({"_runtime_agent_id": "another-agent"}) is None
+        assert tl.t_._principal({"_runtime_agent_id": parent["agent_id"]}) == (
+            "bjorn", "sess-1", parent["run_id"])
+
+
 def test_without_an_authenticated_owner_every_tool_is_refused(tl):
     from core.identity import workspace_context as w
 

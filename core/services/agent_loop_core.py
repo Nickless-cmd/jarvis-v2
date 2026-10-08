@@ -24,6 +24,47 @@ _SCOUT_NUDGE = (
     "dine tilgængelige læseværktøjer nu. Afslut først med "
     "konkrete fund, kilde og hvad du ikke kunne verificere.")
 
+#: Et loefte i tekst er ikke et resultat. Maalt 8/10-2026 paa en rigtig agent: den laeste
+#: filen (ét wt_bash-kald), svarede "Filen har 161 linjer. Nu tilfoejer jeg kommentarlinjen"
+#: og kaldte ALDRIG skrivevaerktoejet. Loekken laeste den stille runde som et faerdigt svar
+#: og meldte ``completed`` med files=[] og diff_bytes=0. Vagten fandtes kun for scouts, og
+#: kun naar teksten STARTEDE med et loefte - her stod det i anden saetning.
+#:
+#: Dansk vender ordstillingen om: "nu tilfoejer JEG" — den maalte saetning havde netop den
+#: omvendte form. Baade "jeg <verb>" og "<verb> jeg" taeller derfor.
+#:
+#: To signaler i stedet for ét: et loefte HVOR som helst i teksten, og - staerkere - at en
+#: agent der HAR skrivevaerktoejer slutter uden at have skrevet noget.
+_PROMISE_VERBS = ("tilføjer", "tilføje", "retter", "opdaterer", "skriver", "ændrer",
+                  "fjerner", "implementerer", "indsætter", "bygger", "laver")
+_PROMISE_EN = ("i'll ", "i will ", "let me ", "now i'll", "now i will")
+_ACTION_NUDGE = (
+    "Du har ikke kaldt et værktøj i denne runde, og du har ikke udført nogen ændring. "
+    "Skal opgaven løses, så udfør den nu med et skriveværktøj. Kan du ikke, så sig det "
+    "eksplicit med grunden — afslut ikke med et løfte om noget du ikke gjorde.")
+
+#: Skrivevaerktoejerne i kataloget. Bruges til at afgoere om agenten overhovedet KAN udfoere
+#: en handling: en agent der ikke kan skrive skal ikke nudges for ikke at have skrevet.
+_WRITE_TOOL_NAMES = frozenset({
+    "write_file", "edit_file", "wt_write_file", "operator_write_file",
+    "multi_edit", "apply_patch", "operator_edit_file", "operator_multi_edit",
+})
+
+
+def _promises_action(text: str) -> bool:
+    """True naar teksten lover en handling i stedet for at udfoere den.
+
+    Baade aabningssaetningen (``_PROGRESS_PREFIXES``) og et loefte laengere inde i teksten
+    taeller: den maalte agent skrev resultatet foerst og loeftet bagefter."""
+    low = (text or "").strip().lower()
+    if not low:
+        return False
+    if low.startswith(_PROGRESS_PREFIXES):
+        return True
+    if any(f"jeg {v}" in low or f"{v} jeg" in low for v in _PROMISE_VERBS):
+        return True
+    return any(m in low for m in _PROMISE_EN)
+
 
 class ApprovalPending(Exception):
     """Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at
@@ -64,18 +105,26 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     error_str = ""
     tool_calls: list = []         # sidste runde: sandt <=> opbrugt midt i vaerktoejsbrug
     scout_retries = 0
+    action_retries = 0
+    write_calls = 0
+    incomplete = False
     parked: dict[str, Any] | None = None
     t0 = time.monotonic()
+    # Kan agenten skrive i det hele taget? Det afgoeres af SKEMAET den fik, ikke af dens ord.
+    write_capable = bool(
+        {str((t.get("function") or {}).get("name") or "") for t in tools_payload if isinstance(t, dict)}
+        & _WRITE_TOOL_NAMES)
 
     def checkpoint(pending: list[dict], pending_round_calls: list[dict]) -> dict[str, Any]:
         return {"messages": messages, "pending_calls": pending, "round_calls": pending_round_calls,
                 "rounds": rounds, "total_input": total_input, "total_output": total_output,
                 "total_cost": total_cost, "total_tool_calls": total_tool_calls,
-                "scout_retries": scout_retries, "final_text": final_text}
+                "scout_retries": scout_retries, "action_retries": action_retries,
+                "write_calls": write_calls, "final_text": final_text}
 
     def run_calls(calls: list[dict], round_calls: list[dict]) -> bool:
         """Udfoer kald i raekkefoelge. ``True`` hvis loekken blev parkeret."""
-        nonlocal total_tool_calls, parked
+        nonlocal total_tool_calls, parked, write_calls
         for i, tc in enumerate(calls):
             tc_id = str(tc.get("id") or "")
             try:
@@ -85,6 +134,8 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                           "checkpoint": checkpoint(calls[i:], round_calls)}
                 return True
             total_tool_calls += 1
+            if str((tc.get("function") or {}).get("name") or "") in _WRITE_TOOL_NAMES:
+                write_calls += 1
             io.after_tool(tc, tool_out)
             messages.append({"role": "tool", "tool_call_id": tc_id, "content": tool_out})
         io.after_round(rounds, round_calls)
@@ -99,6 +150,8 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             total_cost = float(resume.get("total_cost") or 0.0)
             total_tool_calls = int(resume.get("total_tool_calls") or 0)
             scout_retries = int(resume.get("scout_retries") or 0)
+            action_retries = int(resume.get("action_retries") or 0)
+            write_calls = int(resume.get("write_calls") or 0)
             final_text = str(resume.get("final_text") or "")
             tool_calls = list(resume.get("round_calls") or [])
             if run_calls(list(resume.get("pending_calls") or []), tool_calls):
@@ -114,12 +167,23 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             final_text = str(result.get("text") or "")
             tool_calls = list(result.get("tool_calls") or [])
             if not tool_calls:
-                progress = final_text.strip().lower().startswith(_PROGRESS_PREFIXES)
-                if scout and scout_retries < 1 and (total_tool_calls == 0 or progress):
+                promised = _promises_action(final_text)
+                if scout and scout_retries < 1 and (total_tool_calls == 0 or promised):
                     scout_retries += 1
                     messages.append({"role": "assistant", "content": final_text})
                     messages.append({"role": "user", "content": _SCOUT_NUDGE})
                     continue
+                # Samme vaern for en SKRIVENDE agent (8/10-2026). Én afgraenset nudge - ikke et
+                # krav om succes: naeste runde maa gerne vaere "det kan jeg ikke, fordi ...".
+                if not scout and action_retries < 1 and (promised or (write_capable and write_calls == 0)):
+                    action_retries += 1
+                    messages.append({"role": "assistant", "content": final_text})
+                    messages.append({"role": "user", "content": _ACTION_NUDGE})
+                    continue
+                # Nudgen blev givet, og svaret er STADIG et loefte uden en eneste skrivning.
+                # Det er ikke en fuldfoert opgave - kalderen skal kunne se forskel.
+                if promised and write_capable and write_calls == 0:
+                    incomplete = True
                 break
             messages.append({"role": "assistant", "content": final_text, "tool_calls": tool_calls})
             if run_calls(tool_calls, tool_calls):
@@ -145,14 +209,17 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             logger.warning("afsluttende syntese fejlede - beholder teksten fra sidste runde", exc_info=True)
 
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
-                    None)
+                    None, incomplete=incomplete)
 
 
 def _outcome(final_text: str, total_input: int, total_output: int, total_cost: float, total_tool_calls: int,
-             rounds: int, error_str: str, t0: float, parked: dict[str, Any] | None) -> dict[str, Any]:
+             rounds: int, error_str: str, t0: float, parked: dict[str, Any] | None,
+             incomplete: bool = False) -> dict[str, Any]:
     out = {"final_text": final_text, "total_input": total_input, "total_output": total_output,
            "total_cost": total_cost, "total_tool_calls": total_tool_calls, "rounds": rounds,
            "error_str": error_str, "duration_ms": int((time.monotonic() - t0) * 1000)}
     if parked is not None:
         out["parked"] = parked
+    if incomplete:
+        out["incomplete"] = True
     return out

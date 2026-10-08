@@ -45,6 +45,52 @@ def _tc(i):
     return {"id": f"c{i}", "function": {"name": "t", "arguments": "{}"}}
 
 
+def _wt(i, name):
+    return {"id": f"c{i}", "function": {"name": name, "arguments": "{}"}}
+
+
+#: Skemaet en skrivende agent faar: shell i sandkassen + skrivevaerktoejet.
+_WT_TOOLS = [{"function": {"name": "wt_bash"}}, {"function": {"name": "wt_write_file"}}]
+
+
+def test_a_writing_agent_that_promises_instead_of_writing_is_nudged_once():
+    """Den maalte fejl 8/10-2026, ord for ord: agenten laeste filen (ét wt_bash-kald), svarede
+    "Filen har 161 linjer. Nu tilfoejer jeg kommentarlinjen" — og kaldte ALDRIG
+    skrivevaerktoejet. Loefte stod i ANDEN saetning, saa praefiks-tjekket missede det, og
+    loekken meldte completed med files=[] og diff_bytes=0."""
+    io = FakeIO([{"text": "", "tool_calls": [_wt(1, "wt_bash")]},
+                 {"text": "Filen har 161 linjer. Nu tilføjer jeg kommentarlinjen øverst."},
+                 {"text": "", "tool_calls": [_wt(2, "wt_write_file")]},
+                 {"text": "Kommentarlinjen er tilføjet."}])
+    out = _run(io, tools_payload=_WT_TOOLS, max_rounds=5)
+    assert out["rounds"] == 4 and out["total_tool_calls"] == 2
+    assert io.model_calls[2]["messages"][-1]["content"].startswith("Du har ikke kaldt et værktøj")
+    assert "incomplete" not in out                      # den rettede sig efter nudgen
+
+
+def test_a_write_capable_agent_that_stops_without_writing_is_asked_once():
+    """Ogsaa naar teksten ikke lover noget: en agent MED skrivevaerktoejer der slutter uden en
+    eneste skrivning faar ét spoergsmaal i stedet for et stiltiende 'faerdig'."""
+    io = FakeIO([{"text": "Jeg har undersøgt sagen."}, {"text": "Der var intet at rette."}])
+    out = _run(io, tools_payload=_WT_TOOLS)
+    assert out["rounds"] == 2 and out["final_text"] == "Der var intet at rette."
+    assert "incomplete" not in out                      # den svarede - det var ikke et loefte
+
+
+def test_an_agent_that_promises_twice_is_reported_incomplete_not_completed():
+    """Nudgen blev givet, og svaret er STADIG et loefte. Kalderen skal kunne se forskel."""
+    io = FakeIO([{"text": "Nu tilføjer jeg linjen."}, {"text": "Nu tilføjer jeg linjen."}])
+    out = _run(io, tools_payload=_WT_TOOLS)
+    assert out["rounds"] == 2 and out["incomplete"] is True
+
+
+def test_an_agent_without_write_tools_is_not_judged_on_writing():
+    """En laeseagent har intet at skrive med - den skal ikke nudges for ikke at have skrevet."""
+    io = FakeIO([{"text": "Fund: X er defineret i y.py"}])
+    out = _run(io)
+    assert out["rounds"] == 1 and "incomplete" not in out
+
+
 def test_module_imports_only_the_standard_library():
     """Den indlaeses i en sandbox hvor intet andet er monteret."""
     tree = ast.parse(inspect.getsource(core))
@@ -82,8 +128,11 @@ def test_a_scout_gets_exactly_one_nudge_after_a_preamble_without_tools():
     out = _run(io, scout=True)
     assert out["rounds"] == 2 and out["final_text"] == "Jeg starter igen"
     assert io.model_calls[1]["messages"][-1]["content"].startswith("Du har endnu ikke leveret")
-    io2 = FakeIO([{"text": "Jeg starter nu"}])
-    assert _run(io2, scout=False)["rounds"] == 1                    # kun scouts nudges
+    io2 = FakeIO([{"text": "Jeg starter nu"}, {"text": "Her er svaret: 42"}])
+    # 8/10-2026: her stod der "kun scouts nudges" — og det VAR fejlen. En agent uden for
+    # scout-stien kunne svare med et loefte og blive meldt faerdig uden at have gjort noget.
+    out2 = _run(io2, scout=False)
+    assert out2["rounds"] == 2 and out2["final_text"] == "Her er svaret: 42"
 
 
 def test_exhausting_the_round_budget_triggers_one_tool_free_synthesis():
@@ -165,6 +214,19 @@ def test_the_wrapper_maps_error_scout_and_empty_outcomes_to_the_old_statuses(bas
     replies[:] = [{"text": "   "}]
     r = b._run_agent_tool_loop(agent={**AGENT, "role": "critic"}, prompt="P", requires_tools=True, run_id="r")
     assert r["status"] == "blocked"
+
+
+def test_a_writing_agent_that_only_promises_is_blocked_not_completed(base):
+    """Bindingen skal baere 'loefte uden handling' videre som blocked — ikke som completed.
+    Maalt 8/10-2026: praecis den vej meldte en agent faerdig med files=[] og diff_bytes=0."""
+    b, replies, monkeypatch = base
+    monkeypatch.setattr(b, "_build_agent_tools_payload",
+                        lambda allowed, **k: [{"type": "function", "function": {"name": "wt_write_file"}}])
+    ag = {**AGENT, "role": "executor", "tool_policy": "worktree-write",
+          "allowed_tools_json": '["wt_write_file"]'}
+    replies += [{"text": "Nu tilføjer jeg kommentarlinjen."}, {"text": "Nu tilføjer jeg kommentarlinjen."}]
+    r = b._run_agent_tool_loop(agent=ag, prompt="P", requires_tools=True, run_id="r")
+    assert r["status"] == "blocked" and r["text"].startswith("Nu tilføjer jeg")
 
 
 def test_a_started_tool_call_is_recorded_before_it_runs_and_finished_after(base):

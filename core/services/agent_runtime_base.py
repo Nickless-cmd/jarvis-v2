@@ -430,6 +430,8 @@ def _bogfoer_vaerktoejskald(agent: dict, run_id: str, tc: dict, tool_out: str) -
 
 
 def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str, object]:
+    from core.services.agent_loop_core import _promises_action
+
     if o.get("parked"):
         # Parkeret ved en approval: IKKE et udfald. Taellerne bevares; checkpointen gemmes af kalderen.
         return {"status": "parked", "parked": o["parked"], "text": o["final_text"],
@@ -449,9 +451,12 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
     if error_str:
         status = DispatchStatus.FAILED
         result_payload: object = f"error: {error_str}"
-    elif scout and (total_tool_calls == 0 or final_text.strip().lower().startswith((
-            "jeg starter", "jeg vil", "prøver ", "proever ",
-            "i will", "i'll ", "starting ", "let me "))):
+    elif o.get("incomplete"):
+        # Loekken gav én nudge, og agenten sluttede STADIG med et loefte uden en eneste
+        # skrivning. Det er ikke en fuldfoert opgave (maalt 8/10-2026).
+        status = DispatchStatus.BLOCKED
+        result_payload = "Agenten sluttede med et løfte den ikke udførte"
+    elif scout and (total_tool_calls == 0 or _promises_action(final_text)):
         status = DispatchStatus.BLOCKED
         result_payload = "Scout sluttede uden verificerede fund eller værktøjskald"
     elif final_text.strip():

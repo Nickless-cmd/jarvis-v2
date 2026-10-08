@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CodeView } from './CodeView'
 import { skaermFor } from '../lib/skaermRegister'
@@ -22,6 +22,13 @@ const handlersRef: { current: FakeHandlers | null } = { current: null }
 vi.mock('../lib/streamClient', () => ({
   startStream: (_r: unknown, h: FakeHandlers) => { handlersRef.current = h; return { abort: vi.fn(), getRunId: () => 'r1' } },
   StreamError: class extends Error {},
+}))
+// Job-tallet i headeren (8/10-2026). Uden denne mock gik kaldet til den
+// rigtige klient og fejlede tavst — og så kunne ingen test se om viewet
+// sendte SAMTALEN med. Det er hele pointen med testen nedenfor.
+const listJobs = vi.fn().mockResolvedValue({ jobs: [], bridge_ok: true })
+vi.mock('../lib/jobsApi', () => ({
+  listJobs: (...a: unknown[]) => listJobs(...a),
 }))
 vi.mock('../lib/api', () => ({
   listSessions: vi.fn().mockResolvedValue([]),
@@ -280,5 +287,29 @@ describe('CodeView', () => {
     await act(async () => { await new Promise((r) => setTimeout(r, PIN_INTERVAL_MS + 80)) })
 
     expect(t.scrollTop).toBe(1800)
+  })
+})
+
+/**
+ * Job-tallet i headeren — samtale-scopet (8/10-2026).
+ *
+ * Tælleren hentede fra `/api/processes`, som kun kender serverens supervisor:
+ * den kunne hverken filtrere på samtale eller se værktøjskald og agenter. Så
+ * kunne headerens tal og panelet under den vise FORSKELLIGE tal for den samme
+ * samtale. Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt».
+ *
+ * Testen holder begge dele fast: at kilden er `listJobs`, og at samtalen
+ * følger med i kaldet.
+ */
+describe('CodeView — job-tallet hører til samtalen', () => {
+  beforeEach(() => {
+    listJobs.mockReset()
+    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true })
+  })
+
+  it('henter gennem listJobs med samtalen — ikke gennem /api/processes', async () => {
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await waitFor(() => expect(listJobs).toHaveBeenCalled())
+    expect(listJobs).toHaveBeenCalledWith(cfg, false, 's1')
   })
 })

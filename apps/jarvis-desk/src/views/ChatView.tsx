@@ -106,14 +106,18 @@ export function ChatView({
     const hent = () => {
       if (typeof document !== 'undefined' && document.hidden) return
       if (!maaPolle('chat-jobs', 10000)) return  // ro.ts
-      void listJobs({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
+      // Samtalen sendes med (8/10-2026). Uden den talte linjen HELE maskinens
+      // job — så en anden samtales builds stod som «1 job kører» her, og
+      // tallet og panelet (som filtrerer) kunne være uenige om det samme.
+      // Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt».
+      void listJobs({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, false, sessionId)
         .then((s) => { if (!cancelled) setRunningJobs(s.jobs.filter((j) => j.status === 'running').length) })
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
     }
     hent()
     const id = setInterval(hent, 10000)
     return () => { cancelled = true; clearInterval(id) }
-  }, [settings])
+  }, [settings, sessionId])
   // Liveness-linjens tal, i CC's form. Tænke-tiden: reduceren sætter `seconds`
   // når en tanke LUKKES og `startet` (ms) mens den kører — så vi kan vise både
   // den løbende og den afsluttede, og streg'e den over når den er slut.

@@ -40,7 +40,7 @@ import { PrPanel } from '../components/panel/PrPanel'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
 import { registrerSkaerm } from '../lib/skaermRegister'
-import { listProcesses } from '../lib/processesApi'
+import { listJobs } from '../lib/jobsApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
 import { useRailAnkre } from '../lib/useRailAnkre'
@@ -416,15 +416,21 @@ export function CodeView({
     const tik = () => {
       if (document.hidden) return
       if (!maaPolle('kode-jobs', 15_000)) return  // ro.ts
-      listProcesses(config)
-        .then((p) => { if (levende) setKoerendeJobs(p.filter((x) => x.status === 'running').length) })
+      // Samtalen sendes med (8/10-2026), som i panelet og i chat-fladen.
+      // Kilden var `/api/processes`, som kun kender serverens supervisor og
+      // derfor hverken kunne filtrere eller se værktøjskald og agenter — så
+      // tælleren i headeren og panelet under den kunne vise forskellige tal
+      // for den SAMME samtale. Bjørn: «baggrundsjobs panel i desk skal osse
+      // være sessions bestemt».
+      listJobs(config, false, sessionId)
+        .then((s) => { if (levende) setKoerendeJobs(s.jobs.filter((x) => x.status === 'running').length) })
         .catch(() => { /* stille — et tal der mangler er bedre end en fejl i headeren */ })
     }
     tik()
     const id = setInterval(tik, 15_000)
     return () => { levende = false; clearInterval(id) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config?.apiBaseUrl, config?.authToken])
+  }, [config?.apiBaseUrl, config?.authToken, sessionId])
 
   // Context-ring: hent autocompact-tærsklen (samme som chat).
   useEffect(() => {

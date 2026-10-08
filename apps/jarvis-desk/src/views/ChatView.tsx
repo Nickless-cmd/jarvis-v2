@@ -16,6 +16,7 @@ import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { remoteRunHasVisibleActivity } from '../lib/remoteLiveness'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -98,6 +99,7 @@ export function ChatView({
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
   // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
   const [bgActive, setBgActive] = useState(false)
+  const [bgObserved, setBgObserved] = useState(false)
   // Baggrundsjob til liveness-linjen («1 job kører»). Vi viser ANTALLET —
   // panelet viser detaljerne. Sjælden poll + pause når fanen er skjult: desk'ens
   // egne baggrundspolls sulter SSE-læseren (se StreamContext), og dette er
@@ -248,7 +250,7 @@ export function ChatView({
   // vis liveness + hent nye beskeder ind, så Jarvis' selv-startede svar dukker
   // op live i appen i stedet for at kræve et manuelt session-skift.
   useEffect(() => {
-    if (!settings || !sessionId) { setBgActive(false); return }
+    if (!settings || !sessionId) { setBgActive(false); setBgObserved(false); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     // Häng-detektor: antal polls i træk hvor VI tror vi streamer denne session,
@@ -276,6 +278,7 @@ export function ChatView({
           // Det er ikke et nyt baggrunds-run og skal ikke starte /follow igen.
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgObserved(active)
           setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
@@ -557,6 +560,7 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const bgVisible = bgObserved && remoteRunHasVisibleActivity(followState, bgRunId)
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
@@ -1062,12 +1066,12 @@ export function ChatView({
             væk / sad i toppen ved ny chat). Vises når der sker noget — eller
             når baggrundsjob kører, også i hvile (Bjørn 20/9-2026): så bærer
             linjen KUN job-tallet, og den forsvinder når jobbene lukker. */}
-        {(stream.status !== 'idle' || bgActive || runningJobs > 0 || compacting) && (
+        {(stream.status !== 'idle' || bgVisible || runningJobs > 0 || compacting) && (
           <LivenessIndicator
-            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
+            status={bgVisible && stream.status !== 'working' ? 'working' : stream.status}
             elapsedMs={stream.elapsedMs}
             density="compact"
-            workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep}
+            workingStep={bgVisible && stream.status !== 'working' ? (followState.workingStep ?? 'arbejder') : stream.workingStep}
             tokens={tokensTotal}
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}

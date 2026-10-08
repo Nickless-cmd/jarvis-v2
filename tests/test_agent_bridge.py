@@ -440,9 +440,9 @@ def test_an_unknown_bridge_call_halts_the_real_run_without_a_terminal_result(eng
 def _loop_that(eng, monkeypatch, *, raises):
     """Erstat tool-loekken: den saetter runnet i outcome_unknown (som broen goer) og enten kaster eller
     returnerer en almindelig fejl-udfald - begge former skal ende uden at runnet afsluttes."""
-    import core.services.agent_runtime_spawn as M
+    import core.services.agent_worker_runner as worker
 
-    def fake(*, agent, prompt, requires_tools, run_id="", resume=None):
+    def fake(*, agent, prompt, requires_tools, run_id="", resume=None, **kwargs):
         br = eng.br
         row = br.c_._conn().execute("SELECT assignment_id FROM agent_runs WHERE run_id=?", (run_id,)).fetchone()
         ident = {"run_id": run_id, "assignment_id": row["assignment_id"]}
@@ -458,7 +458,7 @@ def _loop_that(eng, monkeypatch, *, raises):
                              "total_output": 0, "total_cost": 0.0, "duration_ms": 1, "rounds": 1},
                             scout=False, provider="p", model="m")
 
-    monkeypatch.setattr(M, "_run_agent_tool_loop", fake)
+    monkeypatch.setattr(worker, "run_agent_in_worker", fake)
 
 
 @pytest.mark.parametrize("raises", [True, False])

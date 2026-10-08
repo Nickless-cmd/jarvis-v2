@@ -568,14 +568,19 @@ def _build_agent_prompt(
 
 def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
     """Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender)."""
+    from core.runtime.db_agent_contract import open_assignment_for_agent
+    # En DB-fejl her maa ikke nedgradere en kontraktagent til en tekst-agent.
+    contract_agent = bool(open_assignment_for_agent(str(agent.get("agent_id") or "")))
     try:
-        if not agent_tools_enabled():
+        if not contract_agent and not agent_tools_enabled():
             return []
         from core.services.agent_runtime_base import _build_agent_tools_payload
         allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
         return _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
     except Exception:
         logger.warning("kunne ikke bygge vaerktoejsskema til promptsnapshot", exc_info=True)
+        if contract_agent:
+            raise
         return []
 
 
@@ -721,11 +726,10 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     try:
         update_agent_registry_entry(agent_id, status="active")
         _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
-        # Axis 3: give the agent hands only when the reversible flag is ON.
-        # OFF (default) → unchanged text-only path. Self-safe: any failure in
-        # the tool-loop dispatch degrades to the legacy call.
+        # Kontraktagenter bruger altid en isoleret worker. Kun agenter uden
+        # assignment bruger de gamle reversible worker-/toolflags.
         from core.services.agent_worker_runner import run_agent_in_worker, worker_mode_enabled
-        if _layers is not None and worker_mode_enabled():
+        if _layers is not None:
             # agent-contract-v1 (C6): loekken koerer i en sandboxet workerproces; serveren er broker.
             # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
             result = run_agent_in_worker(

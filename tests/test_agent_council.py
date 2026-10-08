@@ -32,6 +32,7 @@ def cn(isolated_runtime, monkeypatch):
 
     monkeypatch.setattr(svc, "_run_in_background", lambda fn: started.append(fn))
     monkeypatch.setattr(M, "agent_tools_enabled", lambda: False)
+    monkeypatch.setattr(M, "_snapshot_tools", lambda agent: [])
     monkeypatch.setattr(M, "_facade", lambda: F())
     monkeypatch.setattr("core.services.agent_runtime_base._facade", lambda: F())
     svc.set_capability(True, role="owner")

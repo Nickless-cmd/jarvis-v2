@@ -30,13 +30,25 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure release exists
+      - name: Ensure release exists (som KLADDE)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ github.event.inputs.tag || github.ref_name }}"
+          # KLADDE, ikke en offentlig release. Målt 8/10-2026: `gh release
+          # create` uden `--draft` gjorde releasen SYNLIG i det øjeblik jobbet
+          # kørte — 81 sekunder efter tag-pushet og ~15 minutter før den første
+          # fil fandtes. I det vindue læste release-vagten
+          # (`apps/api/jarvis_api/routes/app_release.py`, der læser
+          # `releases.atom`) den som en ny version og udsendte
+          # `app.release.available`; desk kaldte `checkForUpdates()` og fik 404
+          # på `latest-linux.yml`, fordi asset'en endnu ikke var uploadet.
+          # Kladder optræder ikke i atom-feedet (det er offentligt og uden
+          # token), så en kladde er usynlig for både vagten og updateren.
+          # Publiceringen sker i `publish` — EFTER at alle filer er verificeret.
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" \
+              --draft \
               --notes "Automated desk release $tag"
 
   build:
@@ -179,3 +191,16 @@ jobs:
             exit 1
           fi
           echo "Alle ${#filer[@]} filer bekraeftet i release'en."
+
+          # FØRST NU bliver releasen offentlig. Rækkefølgen er hele pointen:
+          # filerne ligger der, FØR nogen kan se versionen. Fejler noget ovenfor
+          # (manglende fil, fejlet upload), når vi aldrig hertil — og releasen
+          # forbliver en kladde, som ingen klient kan se. Det er den rigtige
+          # fejlretning: en ufuldstændig release skal være USYNLIG, ikke
+          # synlig-og-i-stykker.
+          #
+          # Målt 8/10-2026: uden det her lå v0.6.211 offentligt med 0 assets i
+          # ~15 minutter, og desk svarede «Cannot find latest-linux.yml in the
+          # latest release artifacts» da Bjørn trykkede «installer nu».
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false
+          echo "Release $tag er publiceret — med alle ${#filer[@]} filer."

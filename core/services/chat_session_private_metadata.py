@@ -13,6 +13,10 @@ def encrypt_session_text(
     member = chat_crypto.medlem_for_raekke(
         user_id=user_id, workspace_name=workspace_name,
     ) or chat_crypto.medlem_for_session(session_id)
+    if not member:
+        from core.identity.workspace_context import current_role
+        if current_role() in {"member", "partner", "guest"}:
+            raise RuntimeError("authenticated member key could not be resolved")
     return chat_crypto.krypter(text, member) if member else text
 
 

@@ -494,8 +494,8 @@ _Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
 | function | `dekrypter` | `(raa, medlem_id)` | Modsat `krypter`. Klartekst ind → klartekst ud, uændret. | [src](../../../core/services/chat_crypto.py#L164) |
 | function | `medlem_for_skrivning` | `(raekke, *, session_id=…, conn=…)` | Hvem rækken tilhører — rækkens egne felter først, ellers SESSIONEN. | [src](../../../core/services/chat_crypto.py#L184) |
 | function | `krypter_raekke` | `(raekke, *, session_id=…, conn=…)` | Krypter de tekstbærende felter i en chat-række, hvis den er en members. | [src](../../../core/services/chat_crypto.py#L216) |
-| function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L237) |
-| function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L275) |
+| function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L240) |
+| function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L278) |
 
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._
@@ -503,8 +503,8 @@ _Encrypt message-derived session metadata for registered non-owner users._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `encrypt_session_text` | `(text, session_id, *, user_id=…, workspace_name=…)` | — | [src](../../../core/services/chat_session_private_metadata.py#L8) |
-| function | `decrypt_session_text` | `(text, session_id)` | — | [src](../../../core/services/chat_session_private_metadata.py#L19) |
-| function | `search_member_sessions` | `(query, user_id, limit)` | Search ciphertext-backed member sessions after an indexed user scope. | [src](../../../core/services/chat_session_private_metadata.py#L30) |
+| function | `decrypt_session_text` | `(text, session_id)` | — | [src](../../../core/services/chat_session_private_metadata.py#L23) |
+| function | `search_member_sessions` | `(query, user_id, limit)` | Search ciphertext-backed member sessions after an indexed user scope. | [src](../../../core/services/chat_session_private_metadata.py#L34) |
 
 ## `core/services/chat_sessions.py`
 

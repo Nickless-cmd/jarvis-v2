@@ -18,6 +18,9 @@ def protect_event(session_id: str, event: dict[str, Any], *, conn=None) -> dict[
         workspace_name=str(payload.get("workspace_name") or ""),
     ) or chat_crypto.medlem_for_session(session_id, conn=conn)
     if not member:
+        from core.identity.workspace_context import current_role
+        if current_role() in {"member", "partner", "guest"}:
+            raise RuntimeError("authenticated member key could not be resolved")
         return event
     protected = dict(payload)
     for field in _TEXT_FIELDS:

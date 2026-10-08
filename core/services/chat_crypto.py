@@ -225,6 +225,9 @@ def krypter_raekke(raekke: dict, *, session_id: str = "", conn=None) -> dict:
         return ud
     medlem = medlem_for_skrivning(ud, session_id=session_id, conn=conn)
     if medlem is None:
+        from core.identity.workspace_context import current_role
+        if current_role() in {"member", "partner", "guest"}:
+            raise RuntimeError("authenticated member key could not be resolved")
         return ud
     for felt in ("content", "reasoning_content", "content_json"):
         vaerdi = ud.get(felt)

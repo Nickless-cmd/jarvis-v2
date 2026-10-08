@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import pytest
 
 from core.services.chat_session_private_metadata import encrypt_session_text
 
@@ -18,3 +19,10 @@ def test_explicit_member_title_is_encrypted_before_first_message(monkeypatch):
     title = encrypt_session_text("private title", "new-session", user_id="member-id")
     assert title.startswith("enc:v1:")
     assert "private title" not in title
+
+
+def test_authenticated_member_without_key_cannot_write_title(monkeypatch):
+    import core.identity.workspace_context as context
+    monkeypatch.setattr(context, "current_role", lambda: "member")
+    with pytest.raises(RuntimeError, match="member key"):
+        encrypt_session_text("private title", "unknown-session", user_id="unknown")

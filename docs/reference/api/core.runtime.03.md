@@ -470,7 +470,7 @@ _Protect private message payloads at the durable ledger boundary._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `protect_event` | `(session_id, event, *, conn=…)` | — | [src](../../../core/runtime/session_ledger_crypto.py#L12) |
-| function | `reveal_event` | `(session_id, event, *, conn=…)` | — | [src](../../../core/runtime/session_ledger_crypto.py#L31) |
+| function | `reveal_event` | `(session_id, event, *, conn=…)` | — | [src](../../../core/runtime/session_ledger_crypto.py#L34) |
 
 ## `core/runtime/settings.py`
 

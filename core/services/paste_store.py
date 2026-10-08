@@ -59,6 +59,10 @@ def save_paste(text: str, *, created_at: str | None = None, user_id: str = "") -
     text = str(text or "")
     from core.services import chat_crypto
     member = chat_crypto.medlem_for_raekke(user_id=user_id)
+    if not member:
+        from core.identity.workspace_context import current_role
+        if current_role() in {"member", "partner", "guest"}:
+            raise RuntimeError("authenticated member key could not be resolved")
     paste_id = _compute_id(f"{member}\0{text}" if member else text)
     directory = _paste_dir()
     directory.mkdir(parents=True, exist_ok=True)

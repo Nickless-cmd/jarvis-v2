@@ -8,7 +8,12 @@ def member_for_run(run) -> str | None:
     member = chat_crypto.medlem_for_raekke(user_id=str(getattr(run, "user_id", "") or ""))
     if member:
         return member
-    return chat_crypto.medlem_for_session(str(getattr(run, "session_id", "") or ""))
+    member = chat_crypto.medlem_for_session(str(getattr(run, "session_id", "") or ""))
+    if not member:
+        from core.identity.workspace_context import current_role
+        if current_role() in {"member", "partner", "guest"}:
+            raise RuntimeError("authenticated member key could not be resolved")
+    return member
 
 
 def protect_preview(text: str | None, member: str | None) -> str | None:

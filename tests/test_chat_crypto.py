@@ -81,6 +81,12 @@ class TestHvadDerIKKEKrypteres:
         assert should_encrypt("en-vildt-fremmed-id") is True
         assert cc.medlem_for_raekke(user_id="en-vildt-fremmed-id") is None
 
+    def test_autentificeret_medlem_uden_registrering_afvises(self, monkeypatch) -> None:
+        import core.identity.workspace_context as context
+        monkeypatch.setattr(context, "current_role", lambda: "member")
+        with pytest.raises(RuntimeError, match="member key"):
+            cc.krypter_raekke({"user_id": "ukendt", "content": "private"})
+
     def test_brugerlisten_utilgaengelig_giver_klartekst(self, monkeypatch) -> None:
         """At kryptere på et gæt om hvem rækken er, kan ikke fortrydes."""
         import core.identity.users as users

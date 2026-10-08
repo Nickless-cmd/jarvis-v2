@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -49,6 +50,13 @@ def test_member_paste_is_encrypted_and_scoped(isolated_runtime, monkeypatch) -> 
     assert "enc:v1:" in raw
     assert get_paste(paste_id, user_id="test-member-id")["text"] == "private paste text"
     assert get_paste(paste_id, user_id="someone-else") is None
+
+
+def test_authenticated_member_without_key_cannot_save_paste(isolated_runtime, monkeypatch):
+    import core.identity.workspace_context as context
+    monkeypatch.setattr(context, "current_role", lambda: "member")
+    with pytest.raises(RuntimeError, match="member key"):
+        save_paste("private", user_id="unknown")
 
 
 def test_save_is_idempotent_same_text_same_id_one_file(isolated_runtime) -> None:

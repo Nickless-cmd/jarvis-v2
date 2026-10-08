@@ -2,37 +2,51 @@ import { describe, it, expect } from 'vitest'
 import { delIBlokke } from './markdownBlokke'
 
 describe('delIBlokke', () => {
-  it('arbejdet ved dobbelt så mange blokke vokser omtrent lineært', () => {
+  it('arbejdet ved 4× så mange blokke vokser omtrent lineært', () => {
     // 29/9-2026: en kopi af resten af linjerne for hver tom linje gav
     // superlineær vækst. Mange små afsluttede blokke svarer til et langt stream.
     const dokument = (antal: number) => Array.from({ length: antal }, (_, i) =>
       `## Del ${i}\n${Array.from({ length: 15 }, (_, j) => `linje ${i}-${j}`).join('\n')}\n\n`,
     ).join('') + 'slut'
-    // Mål over 4× input. Ved 2× var de enkelte kørsler så korte, at
-    // scheduler/GC gav 3-4× på uændret kode i både CI og lokalt. 4× skelner
-    // stadig tydeligt mellem lineær vækst (~4×) og hale-kopiering (~16×).
-    const kort = dokument(300)
-    const langt = dokument(1200)
-    const maal = (tekst: string) => {
-      const tider: number[] = []
-      for (let i = 0; i < 12; i++) {
-        const start = performance.now()
-        delIBlokke(tekst)
-        tider.push(performance.now() - start)
-      }
-      tider.sort((a, b) => a - b)
-      // 4/10-2026: medianen (tider[6]) fejlede på CI — målt 9.45 mod grænsen 8
-      // (run 37210937492, job desk) — fordi scheduler/GC-jitter løfter
-      // midterværdien på en delt runner. MINIMUM er det robuste estimat: den
-      // mindst forstyrrede kørsel viser den faktiske algoritmiske pris, og
-      // ratioen mellem to minimums-målinger er stabil på tværs af runner-
-      // hastighed. Grænsen 8 står uændret: lineær vækst giver ~4×,
-      // hale-kopiering ~16× — regressionsværnet er intakt.
-      return tider[0]!
+    const kort = dokument(400)
+    const langt = dokument(1600)
+
+    // Kalibreret 8/10-2026. Tre forsøg på at måle denne egenskab er fejlet på
+    // CI, alle af samme grund: de målte ÉN kørsel ad gangen, og én kørsel af
+    // det lille dokument tager under én millisekund. Så bliver
+    // `performance.now()`s opløsning og en enkelt GC-pause en betydelig del af
+    // tallet. Målt på CI: 9.45 og 8.40 mod en grænse på 8 — på UÆNDRET kode.
+    //
+    // Den robuste form er tre ting på én gang:
+    //  1. BATCH — hver måling er et gennemsnit over 6 kørsler, så tallet er
+    //     flere millisekunder og kvantiseringen forsvinder.
+    //  2. INTERLEAVED — kort og langt måles skiftevis, så begge møder samme
+    //     CPU-frekvens og samme GC-tryk. Måler man dem i to blokke, kan én
+    //     throttling- eller GC-fase ramme den ene gruppe alene.
+    //  3. MINIMUM over 5 batches — den mindst forstyrrede måling viser den
+    //     faktiske algoritmiske pris, og den er stabil på tværs af runners.
+    //
+    // Kalibreringen måler sin egen spredning: lineær vækst giver 4.32-4.49
+    // (4% fra min til max over 12 runder), og den gamle hale-kopierende kode
+    // giver 20.2. Grænsen 8 ligger altså 1,8× over det lineære og 2,5× under
+    // regressionen — regressionsværnet er intakt.
+    const maalBatch = (tekst: string) => {
+      const N = 6
+      const start = performance.now()
+      for (let i = 0; i < N; i++) delIBlokke(tekst)
+      return (performance.now() - start) / N
     }
-    maal(kort)
-    maal(langt)
-    expect(maal(langt) / maal(kort)).toBeLessThan(8)
+
+    for (let i = 0; i < 2; i++) { maalBatch(kort); maalBatch(langt) }
+
+    let bedsteKort = Infinity
+    let bedsteLangt = Infinity
+    for (let i = 0; i < 5; i++) {
+      bedsteKort = Math.min(bedsteKort, maalBatch(kort))
+      bedsteLangt = Math.min(bedsteLangt, maalBatch(langt))
+    }
+
+    expect(bedsteLangt / bedsteKort).toBeLessThan(8)
   })
 
   it('deler ved tomme linjer mellem afsnit, overskrifter og tabeller', () => {

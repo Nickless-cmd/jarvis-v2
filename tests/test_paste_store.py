@@ -50,6 +50,13 @@ def test_member_paste_is_encrypted_and_scoped(isolated_runtime, monkeypatch) -> 
     assert "enc:v1:" in raw
     assert get_paste(paste_id, user_id="test-member-id")["text"] == "private paste text"
     assert get_paste(paste_id, user_id="someone-else") is None
+    assert get_paste(paste_id) is None
+    import core.identity.workspace_context as context
+    reference = build_paste_reference(paste_id, line_count=1)
+    monkeypatch.setattr(context, "current_user_id", lambda: "someone-else")
+    assert expand_paste_references(reference) == reference
+    monkeypatch.setattr(context, "current_user_id", lambda: "test-member-id")
+    assert expand_paste_references(reference) == "private paste text"
 
 
 def test_authenticated_member_without_key_cannot_save_paste(isolated_runtime, monkeypatch):

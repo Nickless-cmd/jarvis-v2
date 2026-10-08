@@ -88,7 +88,7 @@ def save_paste(text: str, *, created_at: str | None = None, user_id: str = "") -
     return paste_id
 
 
-def get_paste(paste_id: str, *, user_id: str | None = None) -> dict[str, object] | None:
+def get_paste(paste_id: str, *, user_id: str = "") -> dict[str, object] | None:
     """Slå en paste op. Returnér {id, text, line_count, created_at} eller None."""
     normalized = str(paste_id or "").strip()
     if not normalized:
@@ -104,9 +104,9 @@ def get_paste(paste_id: str, *, user_id: str | None = None) -> dict[str, object]
         return None
     from core.services import chat_crypto
     owner = str(data.get("user_id") or "")
-    if user_id is not None and owner and owner != str(user_id or ""):
+    if owner and owner != str(user_id or ""):
         return None
-    if user_id is not None and not owner and chat_crypto.medlem_for_raekke(user_id=user_id):
+    if not owner and chat_crypto.medlem_for_raekke(user_id=user_id):
         return None
     if owner and chat_crypto.er_krypteret(data.get("text")):
         data["text"] = chat_crypto.dekrypter(str(data["text"]), owner)
@@ -143,10 +143,12 @@ def expand_paste_references(content: str) -> str:
     Bruges FØR modellen ser beskeden (default: model ser fuld tekst).
     """
     raw = str(content or "")
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
 
     def _sub(match: re.Match[str]) -> str:
         paste_id = str(match.group("paste_id") or "").strip()
-        data = get_paste(paste_id)
+        data = get_paste(paste_id, user_id=uid)
         if not data:
             return match.group(0)  # degradér: behold referencen
         text = data.get("text")

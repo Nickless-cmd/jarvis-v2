@@ -82,3 +82,57 @@ def test_parallel_admission_has_no_overflow_or_partial_runs(contract):
     conn = c._conn()
     assert conn.execute("SELECT COUNT(*) FROM agent_assignments").fetchone()[0] == 8
     assert conn.execute("SELECT COUNT(*) FROM agent_runs WHERE assignment_id!=''").fetchone()[0] == 8
+
+
+def test_worker_claim_needs_readiness_and_parent_slot_frees_on_terminal(contract):
+    from core.runtime import db_agent_capacity as capacity
+
+    c, agent = contract
+    assignments = [_accept(c, agent(i), "parent") for i in range(7)]
+    first = assignments[0]["assignment_id"]
+    assert capacity.claim_worker_slot(assignment_id=first) is False
+    for acc in assignments:
+        assert capacity.mark_ready(assignment_id=acc["assignment_id"]) is True
+    for acc in assignments[:6]:
+        assert capacity.claim_worker_slot(assignment_id=acc["assignment_id"]) is True
+    seventh = assignments[6]["assignment_id"]
+    assert capacity.claim_worker_slot(assignment_id=seventh) is False
+    assert capacity.claim_worker_slot(assignment_id=first) is False
+    c.commit_terminal_outcome(assignment_id=first, status="completed")
+    assert capacity.claim_worker_slot(assignment_id=seventh) is True
+
+
+def test_worker_claim_enforces_owner_and_global_caps(contract):
+    from core.runtime import db_agent_capacity as capacity
+
+    c, agent = contract
+    claims = []
+    for i in range(24):
+        owner = "owner" if i < 12 else "other"
+        aid = agent(i, owner)
+        acc = c.accept_assignment(agent_id=aid, owner_user_id=owner,
+                                  origin_session_id="session", goal="work",
+                                  parent_agent_id=f"parent-{i // 4}")
+        capacity.mark_ready(assignment_id=acc["assignment_id"])
+        claims.append((owner, acc["assignment_id"]))
+    assert sum(capacity.claim_worker_slot(assignment_id=aid) for owner, aid in claims[:12]) == 8
+    assert sum(capacity.claim_worker_slot(assignment_id=aid) for owner, aid in claims[12:]) == 4
+    assert c._conn().execute("SELECT COUNT(*) FROM agent_assignments WHERE status='active'").fetchone()[0] == 12
+
+
+def test_failed_start_releases_only_an_unstarted_claim(contract):
+    from core.runtime import db_agent_capacity as capacity
+
+    c, agent = contract
+    first = _accept(c, agent(1), "parent")
+    capacity.mark_ready(assignment_id=first["assignment_id"])
+    assert capacity.claim_worker_slot(assignment_id=first["assignment_id"])
+    assert capacity.release_unstarted_claim(assignment_id=first["assignment_id"])
+    assert c.get_assignment(assignment_id=first["assignment_id"], owner_user_id="owner")["status"] == "queued"
+
+    assert capacity.claim_worker_slot(assignment_id=first["assignment_id"])
+    conn = c._conn()
+    conn.execute("UPDATE agent_runs SET started_at=? WHERE run_id=?", ("2026-10-08T00:00:00Z", first["run_id"]))
+    conn.commit()
+    assert capacity.release_unstarted_claim(assignment_id=first["assignment_id"]) is False
+    assert c.get_assignment(assignment_id=first["assignment_id"], owner_user_id="owner")["status"] == "active"

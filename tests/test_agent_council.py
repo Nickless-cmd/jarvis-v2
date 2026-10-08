@@ -119,11 +119,11 @@ def test_without_room_for_every_member_nothing_is_started(cn, monkeypatch):
     assert cn.convene(members=cn.members(2))["status"] == "accepted"          # to passer
 
 
-def test_six_members_fit_the_default_capacity_and_a_seventh_open_task_does_not(cn):
+def test_six_council_members_fit_the_worker_cap_and_a_seventh_task_queues(cn):
     assert cn.convene(members=cn.members(6))["status"] == "accepted"
     assert cn.n("agent_councils", "status='gathering'") == 1
     other = cn.svc_.dispatch_agent(owner_user_id=O, origin_session_id=S, goal="en syvende", parent_run_id=R)
-    assert other["code"] == "CAPACITY"
+    assert other["status"] == "accepted" and other["assignment_status"] == "queued"
 
 
 def test_a_failing_dispatch_midway_stops_the_started_members_and_cancels_the_council(cn, monkeypatch):

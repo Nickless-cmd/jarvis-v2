@@ -113,6 +113,8 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_agent_runs_assignment "
         "ON agent_runs(assignment_id, attempt_no)"
     )
+    from core.runtime.db_agent_capacity import ensure_capacity_columns
+    ensure_capacity_columns(conn)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_result_outbox (

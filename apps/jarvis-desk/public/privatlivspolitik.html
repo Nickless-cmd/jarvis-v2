@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privatlivspolitik — Jarvis</title>
+<meta name="description" content="Privatlivspolitik for mobil-appen Jarvis (dk.srvlab.jarvis.mobile)." />
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b23;
+    --line: #262e3a;
+    --text: #e6e9ef;
+    --muted: #9aa4b2;
+    --accent: #6ee7a8;
+    --warn: #f0b866;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "DM Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 22px 96px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 22px; margin-bottom: 34px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  h2 { font-size: 19px; margin: 38px 0 12px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: var(--accent); font-weight: 600; }
+  p, li { color: var(--text); }
+  ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  .summary {
+    background: var(--panel); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 18px 20px; margin: 0 0 30px;
+  }
+  .summary p { margin: 0 0 8px; }
+  .summary p:last-child { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+  code { background: #1d232c; padding: 2px 6px; border-radius: 5px; font-size: 13px; color: var(--accent); }
+  a { color: var(--accent); }
+  .note {
+    background: rgba(240,184,102,0.08); border: 1px solid rgba(240,184,102,0.3);
+    border-radius: 10px; padding: 14px 18px; margin: 18px 0; font-size: 15px;
+  }
+  .note strong { color: var(--warn); }
+  footer { margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  .en { margin-top: 56px; padding-top: 30px; border-top: 1px dashed var(--line); }
+  .en h2 { font-size: 17px; }
+  .en p, .en li { color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Privatlivspolitik</h1>
+  <p class="sub">Jarvis — mobil-appen <code>dk.srvlab.jarvis.mobile</code> · Sidst opdateret 28. september 2026</p>
+</header>
+
+<div class="summary">
+  <p><strong>Kort fortalt:</strong> Jarvis er en personlig ledsager-app, der taler med din <em>egen</em> Jarvis-server. Der er ingen annoncer, ingen sporing og ingen salg af data.</p>
+  <p>Oplysninger du giver appen, sendes til den server du selv har forbundet appen til — ikke til os, ikke til et analyseselskab. Enkelte dele af funktionaliteten kræver, at tekst eller tale sendes videre til en teknisk leverandør for at kunne besvares; det er beskrevet i afsnittet <a href="#tredjeparter">Tredjeparter</a>.</p>
+</div>
+
+<h2>1. Hvem er ansvarlig</h2>
+<p>Appen Jarvis er udviklet og udgivet af srvlab.dk (herefter «vi»). Den er en klient, som forbinder til en Jarvis-server. Serveren kan være din egen (selvhostet) eller en du har fået adgang til.</p>
+<p>Spørgsmål om privatliv: <a href="mailto:admin@srvlab.dk">admin@srvlab.dk</a></p>
+
+<h2>2. Hvilke oplysninger behandles</h2>
+<p>Appen behandler kun de oplysninger, der er nødvendige for at fungere. Flere af dem er <strong>valgfrie</strong> og kan slås fra i appens indstillinger under «Sanser &amp; privatliv».</p>
+
+<table>
+  <tr><th>Type</th><th>Hvad</th><th>Valgfrit?</th></tr>
+  <tr>
+    <td><strong>Samtaler</strong></td>
+    <td>De beskeder du skriver i appen, og Jarvis' svar.</td>
+    <td>Nej — det er appens formål</td>
+  </tr>
+  <tr>
+    <td><strong>Tale</strong></td>
+    <td>Lydoptagelser, når du bruger diktering eller tale-samtale.</td>
+    <td>Ja</td>
+  </tr>
+  <tr>
+    <td><strong>Billeder</strong></td>
+    <td>Billeder du selv vælger at sende eller tage med kameraet.</td>
+    <td>Ja</td>
+  </tr>
+  <tr>
+    <td><strong>Placering</strong></td>
+    <td>Omtrentlig eller præcis placering, når du slår det til. I baggrunden højst hvert 5. minut, og kun hvis du udtrykkeligt har slået baggrundsplacering til.</td>
+    <td>Ja</td>
+  </tr>
+  <tr>
+    <td><strong>Enheds-ID</strong></td>
+    <td>Et tilfældigt ID, appen selv danner, så serveren kan kende din enhed. Push-token til notifikationer.</td>
+    <td>Nej — nødvendigt for forbindelsen</td>
+  </tr>
+  <tr>
+    <td><strong>Navn</strong></td>
+    <td>Det visningsnavn du eller serveren har sat.</td>
+    <td>Nej</td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>Vi indsamler ikke:</strong> ingen annoncer, ingen tredjeparts-analyse, ingen sporing på tværs af andre apps eller hjemmesider, ingen kontaktliste, ingen kalender, ingen sundhedsdata. Vi sælger ikke oplysninger til nogen.
+</div>
+
+<h2>3. Hvad oplysningerne bruges til</h2>
+<ul>
+  <li><strong>At besvare dig.</strong> Samtaler sendes til Jarvis-serveren, som udformer et svar.</li>
+  <li><strong>Tale til tekst.</strong> Lyd transskriberes, så du kan diktere i stedet for at skrive.</li>
+  <li><strong>Notifikationer.</strong> Push-token bruges til at sende dig svar og påmindelser, når appen ikke er åben.</li>
+  <li><strong>Placering (hvis slået til).</strong> Bruges til at Jarvis kan tage hensyn til hvor du er — fx i en morgenbriefing. Slår du det fra, indsamles intet.</li>
+  <li><strong>Hukommelse.</strong> Jarvis kan huske tidligere samtaler, så du ikke skal gentage dig. Du kan se og slette hvert lag i appen.</li>
+</ul>
+
+<h2>4. Hvor oplysningerne ligger</h2>
+<p>Alt gemmes på den Jarvis-server, appen er forbundet til. Vi har ikke selv adgang til din servers indhold, medmindre du har fået tildelt en konto på en server vi driver.</p>
+<ul>
+  <li><strong>Under overførsel</strong> er al trafik krypteret med HTTPS/TLS.</li>
+  <li><strong>På serveren</strong> er data for andre konti end ejerens egen krypteret i hvile. Ejeren af en selvhostet server har adgang til sit eget indhold i klartekst på sin egen maskine — det er en bevidst egenskab ved at eje sin egen server, ikke en fejl.</li>
+</ul>
+
+<h2 id="tredjeparter">5. Tredjeparter</h2>
+<p>For at kunne svare dig skal visse dele af funktionaliteten gå gennem tekniske leverandører. Her er de, præcist:</p>
+
+<table>
+  <tr><th>Leverandør</th><th>Hvad sendes</th><th>Hvorfor</th></tr>
+  <tr>
+    <td>Store sprogmodeller<br><em>(fx DeepSeek, OpenRouter, OpenAI)</em></td>
+    <td>Teksten i dine samtaler — og billeder, du selv sender med en besked, når de skal beskrives.</td>
+    <td>For at kunne formulere et svar.</td>
+  </tr>
+  <tr>
+    <td>Google (Firebase Cloud Messaging)</td>
+    <td>Push-token og selve notifikationens tekst.</td>
+    <td>For at levere notifikationer på Android.</td>
+  </tr>
+  <tr>
+    <td>ElevenLabs / Microsoft</td>
+    <td>Den tekst, der skal læses højt, når du bruger oplæsning.</td>
+    <td>For at skabe tale ud af tekst.</td>
+  </tr>
+  <tr>
+    <td>Cloudflare</td>
+    <td>Teknisk trafik til domænet.</td>
+    <td>Drift og beskyttelse af tjenesten.</td>
+  </tr>
+  <tr>
+    <td>OpenStreetMap (Nominatim)</td>
+    <td>Dine GPS-koordinater, når placering er slået til.</td>
+    <td>For at lave koordinaterne om til et læsbart stednavn — fx «Toftegårdsvej, Svendborg» i stedet for tal.</td>
+  </tr>
+</table>
+
+<p>Koordinaterne sendes til OpenStreetMap alene for at slå stedet op, og bruges
+ikke til at følge dig. Slår du placering fra, sendes intet.</p>
+
+<p><strong>Tale-optagelser sendes ikke til nogen tredjepart.</strong> Transskribering sker lokalt på den Jarvis-server, du er forbundet til.</p>
+
+<h2>6. Hvor længe</h2>
+<p>Oplysninger gemmes, indtil du selv sletter dem. Appen har en <strong>Datastyring</strong>-skærm, hvor du kan se hvad der er gemt, eksportere det, og slette det lag for lag. Sletning er endelig — der er ingen læsbar kopi at gendanne fra i appen.</p>
+
+<h2>7. Dine rettigheder</h2>
+<ul>
+  <li><strong>Indsigt:</strong> Datastyring viser hvad der er gemt, opdelt i samtaler, sanser, hukommelse og identitet.</li>
+  <li><strong>Eksport:</strong> Du kan hente dine data ud i ét samlet eksport.</li>
+  <li><strong>Sletning:</strong> Du kan slette hvert lag — eller det hele — direkte i appen.</li>
+  <li><strong>Slå fra:</strong> Placering, kamera, mikrofon og baggrundsplacering kan slås fra i indstillingerne, og appen holder op med at indsamle.</li>
+  <li><strong>Træk samtykke tilbage:</strong> Afinstallerer du appen og fjerner din enhed fra serveren, ophører behandlingen.</li>
+</ul>
+<p>Er du tilknyttet en server, du ikke selv ejer, rettes henvendelser om dine data til den, der driver serveren.</p>
+
+<h2>8. Børn</h2>
+<p>Appen er ikke rettet mod børn og indsamler ikke bevidst oplysninger fra børn under 13 år.</p>
+
+<h2>9. Ændringer</h2>
+<p>Ændres denne politik, opdateres datoen øverst. Væsentlige ændringer varsles i appen.</p>
+
+<h2>10. Kontakt</h2>
+<p>srvlab.dk · <a href="mailto:admin@srvlab.dk">admin@srvlab.dk</a></p>
+
+<div class="en">
+  <h2>Privacy Policy — English summary</h2>
+  <p><strong>Jarvis</strong> (<code>dk.srvlab.jarvis.mobile</code>) is a personal companion app that connects to a Jarvis server — typically your own self-hosted one. We collect only what the app needs to work: your chat messages, optional voice recordings, optional photos you choose to send, optional location (including background location if you enable it), a random device ID, a push token, and a display name.</p>
+  <p><strong>No ads. No third-party analytics. No cross-app tracking. We never sell your data.</strong></p>
+  <p>Data is transmitted over HTTPS and stored on the Jarvis server you connect to. For accounts other than the server owner's own, data is encrypted at rest. Voice recordings are transcribed locally on that server and are not sent to any third party. Chat text is processed by large-language-model providers (e.g. DeepSeek, OpenRouter, OpenAI) in order to generate replies; push notifications are delivered via Google Firebase Cloud Messaging; text-to-speech uses ElevenLabs or Microsoft; Cloudflare fronts the domain.</p>
+  <p>You can view, export and delete your data layer by layer from the <em>Datastyring</em> (Data Management) screen in the app, and you can switch off location, camera and microphone in Settings. Deletion is permanent. Contact: <a href="mailto:admin@srvlab.dk">admin@srvlab.dk</a>.</p>
+</div>
+
+<footer>
+  <p>srvlab.dk · Jarvis · Denne side er appens officielle privatlivspolitik.</p>
+</footer>
+
+</main>
+</body>
+</html>

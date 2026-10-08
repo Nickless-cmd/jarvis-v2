@@ -134,8 +134,8 @@ _PUBLIC_PATHS = (
     # KUN åben for lokale afsendere (se _er_lokal_afsender), så en
     # udefrakommende reviewer ville få 401 på trods af undtagelsen.
     #
-    # Filen ligger i apps/ui/public/privatlivspolitik.html og kopieres
-    # til apps/ui/dist ved build — den serveres af samme UI-mount som `/`.
+    # Filen ligger i apps/jarvis-desk/public/privatlivspolitik.html og kopieres
+    # til dist-web ved build — den serveres af samme UI-mount som `/`.
     # Indholdet er offentligt i sig selv: en beskrivelse af hvad appen
     # gør, uden brugernavne, uden nøgler, uden data.
     #
@@ -156,7 +156,10 @@ _PUBLIC_PATHS = (
 # Det her aabner KUN skallen — HTML, JS, CSS. Hvert eneste /mc/* og /chat/*
 # kraever stadig et token, saa login'et er ikke en formalitet: uden det viser
 # siden en login-skaerm og intet andet.
-_UI_SKAL = ("/", "/index.html", "/favicon.ico", "/vite.svg")
+_UI_SKAL = (
+    "/", "/index.html", "/favicon.ico", "/favicon.svg", "/vite.svg",
+    "/manifest.webmanifest", "/sw.js", "/icons/icon-192.png", "/icons/icon-512.png",
+)
 _UI_SKAL_PREFIX = ("/assets/",)
 
 

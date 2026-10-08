@@ -10,9 +10,9 @@ _(no top-level classes or functions)_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_runtime_services_enabled` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L156) |
-| function | `wire_root_logging` | `()` | Giv modul-loggere et sted at lande. Uden dette er de ALLE stumme. | [src](../../../apps/api/jarvis_api/app.py#L161) |
-| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L216) |
+| function | `_runtime_services_enabled` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L157) |
+| function | `wire_root_logging` | `()` | Giv modul-loggere et sted at lande. Uden dette er de ALLE stumme. | [src](../../../apps/api/jarvis_api/app.py#L162) |
+| function | `create_app` | `()` | — | [src](../../../apps/api/jarvis_api/app.py#L217) |
 
 ## `apps/api/jarvis_api/mcp_server.py`
 _Jarvis MCP server — exposes memory, identity, state, and chat via Streamable HTTP._
@@ -66,4 +66,13 @@ _SSE v2 event-dataclasses — Anthropic-style streaming protocol._
 | method | `Ping.to_sse_line` | `(self)` | Returnér ping keepalive SSE-blokken. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L194) |
 | class | `SystemEvent` | `` | Jarvis-specifik extension der ikke passer i Anthropic-skema. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L200) |
 | method | `SystemEvent.to_sse_line` | `(self)` | Returnér system_event SSE-blokken med kind og payload. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L214) |
+
+## `apps/api/jarvis_api/ui_static.py`
+_Select the shared Desk web build and serve its static files with safe caching._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ui_build_dir` | `(repo_root)` | — | [src](../../../apps/api/jarvis_api/ui_static.py#L10) |
+| class | `DeskUiFiles` | `` | — | [src](../../../apps/api/jarvis_api/ui_static.py#L21) |
+| method | `DeskUiFiles.get_response` | `(self, path, scope)` | — | [src](../../../apps/api/jarvis_api/ui_static.py#L22) |
 

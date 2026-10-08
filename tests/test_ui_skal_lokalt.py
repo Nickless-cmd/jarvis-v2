@@ -66,13 +66,17 @@ def test_kan_adressen_ikke_laeses_er_svaret_NEJ(vaert):
 # ──────────────────────────────────────────────────────── hvad der åbnes
 
 @pytest.mark.parametrize("sti", ["/", "/index.html", "/assets/index-abc123.js",
-                                 "/assets/style.css", "/favicon.ico"])
+                                 "/assets/style.css", "/favicon.ico", "/favicon.svg",
+                                 "/manifest.webmanifest", "/sw.js", "/icons/icon-192.png",
+                                 "/icons/icon-512.png"])
 def test_skallen_er_med(sti):
     assert m._er_ui_skal(sti) is True
 
 
 @pytest.mark.parametrize("sti", ["/mc/system/health", "/chat/sessions", "/api/auth/pair/create",
-                                 "/mc/runs", "/api/dispatches", "/anthropic/v1/messages"])
+                                 "/mc/runs", "/api/dispatches", "/anthropic/v1/messages",
+                                 "/icons/../chat/sessions", "/icons/icon-192.png.bak",
+                                 "/sw.js.map"])
 def test_DATA_er_ikke_med(sti):
     """Hele pointen. Ville disse også åbne, var login'et pynt."""
     assert m._er_ui_skal(sti) is False
@@ -163,6 +167,15 @@ async def test_fjern_afsender_faar_ikke_engang_skallen(monkeypatch):
     assert kode == 401, kode
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sti", ["/manifest.webmanifest", "/sw.js", "/icons/icon-192.png", "/icons/icon-512.png"])
+async def test_pwa_filer_er_kun_lokalt_tilgaengelige(sti, monkeypatch):
+    kode, igennem = await _svar_paa(sti, "10.0.0.20", monkeypatch)
+    assert kode == 200 and igennem
+    kode, igennem = await _svar_paa(sti, "185.107.14.241", monkeypatch)
+    assert kode == 401 and not igennem
+
+
 # ────────────── privatlivspolitikken er offentlig MED VILJE (28/9-2026)
 #
 # Google Play kræver en URL til appens privatlivspolitik, og en reviewer har
@@ -201,4 +214,3 @@ async def test_reviewer_udefra_faar_politikken_uden_token(monkeypatch):
     """
     kode, igennem = await _svar_paa("/privatlivspolitik.html", "185.107.14.241", monkeypatch)
     assert igennem, f"reviewer udefra blev afvist (kode {kode})"
-

@@ -1,12 +1,12 @@
 # Docstring coverage
 
-Generated from source. 8765/16578 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8765/16580 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
 | Package | Documented | Functions | % |
 |---|---|---|---|
-| `apps.api.jarvis_api` | 34 | 36 | 94% |
+| `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 9 | 20 | 45% |
 | `apps.api.jarvis_api.routes` | 681 | 915 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
@@ -42,13 +42,13 @@ Generated from source. 8765/16578 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2337)
+## Undocumented public functions (2339)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L216)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L261)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L264)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
@@ -134,6 +134,8 @@ Generated from source. 8765/16578 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L104)
 - `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
 - `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L69)
+- `apps/api/jarvis_api/ui_static.py` :: `DeskUiFiles.get_response` (L22)
+- `apps/api/jarvis_api/ui_static.py` :: `ui_build_dir` (L10)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.get_json` (L39)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.post_json` (L46)

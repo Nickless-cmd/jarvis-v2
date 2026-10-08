@@ -376,11 +376,11 @@ _Gate i agentens vaerktoejsdispatch: en handling der kraever godkendelse STOPPER
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_shell_needs_approval` | `(arguments)` | (kraever, risikoklasse) for et shell-kald, afgjort af KOMMANDOEN. | [src](../../../core/services/agent_approval_gate.py#L47) |
-| function | `requires_approval` | `(tool_name, arguments=…)` | (kraever, risikoklasse). Fail-CLOSED for de faste navne; ukendt metadata -> ingen krav for resten. | [src](../../../core/services/agent_approval_gate.py#L71) |
-| function | `_denied` | `(reason, approval_id=…)` | — | [src](../../../core/services/agent_approval_gate.py#L89) |
-| function | `_parse` | `(tc)` | — | [src](../../../core/services/agent_approval_gate.py#L96) |
-| function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L108) |
+| function | `_shell_needs_approval` | `(arguments)` | (kraever, risikoklasse) for et shell-kald, afgjort af KOMMANDOEN. | [src](../../../core/services/agent_approval_gate.py#L54) |
+| function | `requires_approval` | `(tool_name, arguments=…)` | (kraever, risikoklasse). Fail-CLOSED for de faste navne; ukendt metadata -> ingen krav for resten. | [src](../../../core/services/agent_approval_gate.py#L78) |
+| function | `_denied` | `(reason, approval_id=…)` | — | [src](../../../core/services/agent_approval_gate.py#L96) |
+| function | `_parse` | `(tc)` | — | [src](../../../core/services/agent_approval_gate.py#L103) |
+| function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L115) |
 
 ## `core/services/agent_approval_notify.py`
 _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-contract-v1 F4c, spec 8.2)._
@@ -587,15 +587,16 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L28) |
-| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L32) |
-| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L37) |
-| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L38) |
-| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L41) |
-| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L43) |
-| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L45) |
-| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L48) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked)` | — | [src](../../../core/services/agent_loop_core.py#L151) |
+| function | `_promises_action` | `(text)` | True naar teksten lover en handling i stedet for at udfoere den. | [src](../../../core/services/agent_loop_core.py#L54) |
+| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L69) |
+| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L73) |
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L78) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L79) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L82) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L84) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L86) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L89) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…)` | — | [src](../../../core/services/agent_loop_core.py#L215) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

@@ -1137,6 +1137,7 @@ export function CodeView({
             fuld={fuldRude === 'jobs'}
             onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
             onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
+            sessionId={sessionId}
           />
         )}
         {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}

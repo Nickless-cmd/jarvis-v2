@@ -42,15 +42,39 @@ def _exec_verify_file_contains(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", "path": str(p), "exists": False, "note": "file missing as expected"}
     try:
         size = p.stat().st_size
-        # Cap read at 1 MB so a wild path doesn't pull a giant binary.
-        with open(p, "rb") as fh:
-            content = fh.read(1024 * 1024)
     except OSError as exc:
         return {"status": "error", "error": f"read failed: {exc}"}
     if not expected:
         return {"status": "ok", "path": str(p), "exists": True, "bytes": size, "note": "exists check only"}
-    text = content.decode("utf-8", errors="replace")
-    if expected in text:
+    # Search the WHOLE file, in chunks. A fixed 1 MB read silently produced
+    # FALSE NEGATIVES on large files: MEMORY.md is 1.16 MB, a substring near
+    # the end was present, and the tool answered "not present" — i.e. the one
+    # tool meant to prove a write landed claimed it had not. Never truncate a
+    # verification. Stream instead, and carry a tail overlap so a match that
+    # spans a chunk boundary is still found. The 1 MB cap now limits only the
+    # preview, never the search.
+    _CAP = 1024 * 1024          # preview budget only
+    _CHUNK = 256 * 1024
+    _OVERLAP = 4096
+    needle = expected.encode("utf-8", errors="replace")
+    preview_bytes = b""
+    tail = b""
+    found = False
+    try:
+        with open(p, "rb") as fh:
+            while True:
+                chunk = fh.read(_CHUNK)
+                if not chunk:
+                    break
+                if len(preview_bytes) < _CAP:
+                    preview_bytes += chunk[: _CAP - len(preview_bytes)]
+                if needle in tail + chunk:
+                    found = True
+                    break
+                tail = chunk[-_OVERLAP:]
+    except OSError as exc:  # filen blev laast eller fjernet mellem stat() og open() — meld det som en fejl, aldrig som «ikke fundet»
+        return {"status": "error", "error": f"read failed: {exc}"}
+    if found:
         return {
             "status": "ok",
             "path": str(p),
@@ -58,6 +82,7 @@ def _exec_verify_file_contains(args: dict[str, Any]) -> dict[str, Any]:
             "bytes": size,
             "found_substring": True,
         }
+    text = preview_bytes.decode("utf-8", errors="replace")
     return {
         "status": "failed",
         "path": str(p),
@@ -65,6 +90,7 @@ def _exec_verify_file_contains(args: dict[str, Any]) -> dict[str, Any]:
         "bytes": size,
         "found_substring": False,
         "reason": "expected_substring not present in file",
+        "searched_bytes": size,
         "preview": text[:300],
     }
 

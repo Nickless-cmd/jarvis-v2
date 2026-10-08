@@ -717,22 +717,23 @@ describe('ChatView — flaggede sideopgaver', () => {
   )
   const opgave = { side_task_id: 'side-1', title: 'Ryd op i docs', prompt: 'p', tldr: 'kort', status: 'pending', session_id: 's', created_at: 'x' }
 
-  it('staar oeverst lige under headeren i en TOM chat', async () => {
+  it('vises IKKE i chat-mode — kun i code (Bjørn 8/10-2026)', async () => {
+    // «side-opgaver bør kun vises i code mode i desk.. ikk i chat mode».
+    // Kortet hører til hvor der er et arbejdsområde at løse opgaven i.
     sideopgaver.liste = [opgave]
     const { container } = render(skal(null))
-    expect(await screen.findByText('Ryd op i docs')).toBeInTheDocument()
-    // Bjørn 19/9: «i toppen af chatview» — ankeret er headerens nabo.
-    const head = container.querySelector('.chatview-head')!
-    expect(head.nextElementSibling?.classList.contains('sok-top-anker')).toBe(true)
+    await waitFor(() => expect(container.querySelector('.chatview')).not.toBeNull())
+    expect(screen.queryByText('Ryd op i docs')).toBeNull()
+    expect(container.querySelector('.sok-top-anker')).toBeNull()
     sideopgaver.liste = []
   })
 
-  it('og i en AKTIV chat', async () => {
+  it('og heller ikke i en AKTIV chat', async () => {
     sideopgaver.liste = [opgave]
     render(skal('s1'))
     await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
-    expect(await screen.findByText('Ryd op i docs')).toBeInTheDocument()
     expect(document.querySelector('.chatview:not(.empty)')).not.toBeNull()
+    expect(screen.queryByText('Ryd op i docs')).toBeNull()
     sideopgaver.liste = []
   })
 })

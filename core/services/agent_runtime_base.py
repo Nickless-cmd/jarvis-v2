@@ -430,6 +430,8 @@ def _bogfoer_vaerktoejskald(agent: dict, run_id: str, tc: dict, tool_out: str) -
 
 
 def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str, object]:
+    from core.services.agent_loop_core import _promises_action
+
     if o.get("parked"):
         # Parkeret ved en approval: IKKE et udfald. Taellerne bevares; checkpointen gemmes af kalderen.
         return {"status": "parked", "parked": o["parked"], "text": o["final_text"],
@@ -449,9 +451,12 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
     if error_str:
         status = DispatchStatus.FAILED
         result_payload: object = f"error: {error_str}"
-    elif scout and (total_tool_calls == 0 or final_text.strip().lower().startswith((
-            "jeg starter", "jeg vil", "prøver ", "proever ",
-            "i will", "i'll ", "starting ", "let me "))):
+    elif o.get("incomplete"):
+        # Loekken gav én nudge, og agenten sluttede STADIG med et loefte uden en eneste
+        # skrivning. Det er ikke en fuldfoert opgave (maalt 8/10-2026).
+        status = DispatchStatus.BLOCKED
+        result_payload = "Agenten sluttede med et løfte den ikke udførte"
+    elif scout and (total_tool_calls == 0 or _promises_action(final_text)):
         status = DispatchStatus.BLOCKED
         result_payload = "Scout sluttede uden verificerede fund eller værktøjskald"
     elif final_text.strip():
@@ -568,7 +573,17 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
     # Kodeagent: laesevaerktoejer + skrivning i SIT EGET worktree (sandboxet). Gives kun af
     # dispatch_agent(writes=true) sammen med et reserveret worktree (agent-contract-v1 C5).
-    "worktree-write": [*_READ_ONLY_TOOLS, "wt_bash", "wt_write_file"],
+    #
+    # ``bash`` er BEVIDST ikke med her, selv om den staar i ``_READ_ONLY_TOOLS``.
+    # Maalt 8/10-2026: en kodeagent fik baade ``bash`` (containeren) og ``wt_bash``
+    # (sandkassen) og valgte ``bash`` - den usikre flade - til at laese tre filer.
+    # Gaten parkerede kaldet, og Bjoern fik et godkendelses-kort for en ``sed -n``.
+    # De to er ikke samme vaerktoej: ``wt_bash`` koerer i bwrap med worktree'et som
+    # ``/work`` og kan ikke skrive udenfor; ``bash`` koerer i containeren (eller paa
+    # Bjoerns maskine gennem operator-kanalen). En skrivende agent har derfor
+    # ``wt_bash`` som sin ENESTE shell-vej - den daekker alt den skal, og den kan
+    # ikke forlade sin egen kopi. Det fjerner eskaleringen uden at fjerne en evne.
+    "worktree-write": [*[t for t in _READ_ONLY_TOOLS if t != "bash"], "wt_bash", "wt_write_file"],
 }
 
 

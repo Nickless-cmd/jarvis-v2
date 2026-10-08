@@ -70,6 +70,19 @@ def test_a_shell_tool_is_judged_by_its_command_not_by_its_name():
     assert G.requires_approval("bash", {"command": "chmod 777 /etc/x"})[0] is True
 
 
+def test_the_sandboxed_worktree_shell_is_not_treated_as_a_shell_tool():
+    """8/10-2026: ``wt_bash`` stod i ``_SHELL_TOOLS`` og blev sendt gennem
+    ``classify_command`` — som ikke kender fx ``python3 -c "import ny"`` og derfor
+    kraever godkendelse. En sandkasse der spoerger om lov til at skrive i sig selv
+    er ikke en sandkasse: ``wt_bash`` koerer i bwrap med worktree'et som ``/work``
+    og kan ikke forlade sin egen kopi. Den skal slippe fri — ellers eskaierer hvert
+    uskyldigt kald i agentens EGEN kopi til Bjoern."""
+    assert "wt_bash" not in G._SHELL_TOOLS
+    assert "bash" in G._SHELL_TOOLS  # den usandkassede shell er uaendret
+    assert G.requires_approval("wt_bash", {"command": 'python3 -c "import ny"'}) == (False, "")
+    assert G.requires_approval("wt_write_file", {"path": "x.py", "content": "y"}) == (False, "")
+
+
 def test_a_shell_tool_without_a_command_still_requires_approval():
     """Fail-CLOSED: kan kommandoen ikke laeses, spørger vi — vi gaetter ikke paa dens vegne."""
     assert G.requires_approval("bash") == (True, "write")

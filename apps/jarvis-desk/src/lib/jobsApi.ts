@@ -41,13 +41,27 @@ export interface JobsSvar {
   /** false = vi VED ikke hvad der kører på hans maskine. Det er noget ANDET
    *  end at der ikke kører noget, og panelet skal sige forskel. */
   bridge_ok: boolean
+  /** Antal viste job der IKKE kan henføres til en samtale (8/10-2026): serverens
+   *  egne services, åbne shells, operatørens filer. De vises i alle samtaler,
+   *  fordi de er maskinens arbejde og ikke samtalens — men panelet skal kunne
+   *  sige at de er der, så en samtale uden egne job ikke ser tom ud. */
+  uspecificeret?: number
 }
 
-export async function listJobs(config: ApiConfig, medFaerdige = false): Promise<JobsSvar> {
-  const d = await apiFetch<Partial<JobsSvar>>(
-    config, `/api/jobs?include_done=${medFaerdige ? 'true' : 'false'}`,
-  )
-  return { jobs: d.jobs ?? [], bridge_ok: d.bridge_ok !== false }
+export async function listJobs(
+  config: ApiConfig, medFaerdige = false, sessionId?: string | null,
+): Promise<JobsSvar> {
+  const q = new URLSearchParams({ include_done: medFaerdige ? 'true' : 'false' })
+  // Samtalen sendes med, så panelet viser DENNE samtales arbejde. Uden den
+  // hentede panelet hele maskinens job — og en anden samtales builds stod i
+  // dette panel som om de var ens egne (Bjørn 8/10-2026).
+  if (sessionId) q.set('session_id', sessionId)
+  const d = await apiFetch<Partial<JobsSvar>>(config, `/api/jobs?${q.toString()}`)
+  return {
+    jobs: d.jobs ?? [],
+    bridge_ok: d.bridge_ok !== false,
+    uspecificeret: typeof d.uspecificeret === 'number' ? d.uspecificeret : undefined,
+  }
 }
 
 export async function stopJob(config: ApiConfig, job: BackgroundJob): Promise<void> {

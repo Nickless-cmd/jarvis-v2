@@ -212,3 +212,25 @@ def test_gatens_egen_svarkanal_er_aldrig_gatet(monkeypatch):
     allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
     assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
     assert len(written) == 1 and written[0]["tool_name"] == "write_file"
+
+
+# ── Forslaget til næste opgave må ikke gates (8/10-2026) ─────────────────────
+# Målt 8/10-2026: gaten blokerede `suggest_next_task` FEM gange i samme tur på
+# `risk marker: 'merge'` — fordi turen TALTE om en merge. Forslaget blev aldrig
+# lagt, og Bjørn stod med et tomt skrivefelt uden at vide hvorfor.
+#
+# MUTATION der skal fanges:
+#   M11 — fjern "suggest_next_task" fra `_ALWAYS_ALLOWED_TOOLS` -> testen falder
+
+def test_forslaget_til_naeste_opgave_er_aldrig_gatet(monkeypatch):
+    """Et forslag rører ingen fil og sender intet — at gate det kan intet
+    beskytte. Det er hvordan turen slutter med et tilbud, ikke en handling."""
+    vg, written = _hermetic(monkeypatch, _FIRM_SECTION)
+    allowed, reason = vg.check_veto("suggest_next_task", "jeg pusher nu", record_event=True)
+    assert allowed is True, f"suggest_next_task blev gatet: {reason}"
+    assert written == [], "et forslag må ikke skrive blocked-rækker"
+
+    # Kontrollen: sektionen vetoer stadig en rigtig handling, så testen ikke
+    # består fordi sektionen er blevet harmløs.
+    allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
+    assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"

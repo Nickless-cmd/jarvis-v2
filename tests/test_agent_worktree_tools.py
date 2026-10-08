@@ -73,6 +73,19 @@ def test_the_tools_are_hidden_from_jarvis_but_in_the_schema_of_a_worktree_write_
     assert not ({"wt_bash", "wt_write_file"} & ro)
 
 
+def test_a_writing_agent_gets_the_sandboxed_shell_and_not_the_container_one(tl):
+    """8/10-2026: politikken arvede ``bash`` fra ``_READ_ONLY_TOOLS``, saa en
+    skrivende agent fik BAADE ``bash`` (containeren) og ``wt_bash`` (sandkassen) —
+    og valgte den usikre flade til at laese tre filer. Gaten parkerede kaldet, og
+    Bjoern fik et godkendelses-kort for en ``sed -n``. ``wt_bash`` daekker alt
+    agenten skal i sin egen kopi; ``bash`` hoerer ikke i dens saet."""
+    allowed = set(tl.base_.tools_for_policy("worktree-write"))
+    assert "bash" not in allowed
+    assert {"wt_bash", "wt_write_file"} <= allowed
+    # Laese-politikken er UROERT — den skal stadig have bash.
+    assert "bash" in tl.base_.tools_for_policy("read-only-runtime")
+
+
 def test_the_tools_are_registered_handlers_but_not_catalog_entries(tl):
     from core.tools.simple_tools import _TOOL_HANDLERS
     from core.tools.simple_tools_definitions import TOOL_DEFINITIONS

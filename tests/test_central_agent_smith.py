@@ -290,3 +290,54 @@ def test_en_eskaleret_linje_surfacer_uanset_score(monkeypatch):
     )
     ud = A.agent_smith_prompt_section()
     assert ud is not None and "tomme løfter" in ud
+
+
+def test_fejl_oejet_ser_kun_AKTIVE_lektioner(monkeypatch, tmp_path):
+    """En fixet fejl maa ikke blive ved med at eskalere.
+
+    Maalt 8/10-2026: `_a_truncated`-fejlen blev fixet 12. sep (commit
+    e4a8565d1), men Smith pegede stadig paa den 26 dage senere — og gaten
+    blokerede indbakken med en advarsel om et lukket problem. Forespoergslen
+    filtrerede ikke paa `status`, saa `retired` lektioner var evigt
+    braendstof for stigen. `retire_stale` kan heller ikke rydde dem selv:
+    den roerer kun lektioner med evidence_count < 2 OG repeated_count = 0.
+    """
+    import sqlite3
+
+    from core.runtime import db as db_mod
+
+    sti = tmp_path / "lessons.db"
+    kolonner = ("signature", "signature_key", "lesson", "source", "status",
+                "evidence_count", "repeated_count", "user_words", "jarvis_words",
+                "first_at", "last_at", "last_repeated_at")
+    conn = sqlite3.connect(sti)
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        "CREATE TABLE lessons (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        + ", ".join(f"{k} TEXT" for k in kolonner)
+        + ")"
+    )
+    sql = (f"INSERT INTO lessons ({', '.join(kolonner)}) "
+           f"VALUES ({', '.join('?' * len(kolonner))})")
+    conn.execute(sql, ("sig-levende", "sig-levende", "levende fejl gentaget",
+                       "tool_error", "active", 6, 4, "", "", "2026-09-09",
+                       "2026-10-08", "2026-10-08"))
+    conn.execute(sql, ("sig-fixet", "sig-fixet", "fixet fejl der stadig stod som aktiv",
+                       "tool_error", "retired", 6, 4, "", "", "2026-09-09",
+                       "2026-09-12", "2026-09-12"))
+    conn.commit()
+    conn.close()
+
+    def _connect(*a, **k):
+        c = sqlite3.connect(sti)
+        c.row_factory = sqlite3.Row
+        return c
+
+    monkeypatch.setattr(db_mod, "connect", _connect)
+
+    fundet = s._measured_error_patterns(limit=5)
+    etiketter = " ".join(x["label"] for x in fundet)
+    assert "levende fejl gentaget" in etiketter, "en aktiv fejl skal ses"
+    assert "fixet fejl" not in etiketter, (
+        "en pensioneret lektion maa ikke eskalere — det var hele fejlen"
+    )

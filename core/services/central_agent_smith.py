@@ -287,7 +287,8 @@ def _measured_error_patterns(limit: int = 3) -> list[dict[str, Any]]:
         with connect() as conn:
             rows = conn.execute(
                 "SELECT lesson, source, repeated_count FROM lessons "
-                "WHERE repeated_count >= 2 ORDER BY repeated_count DESC, "
+                "WHERE repeated_count >= 2 AND status = 'active' "
+                "ORDER BY repeated_count DESC, "
                 "last_repeated_at DESC LIMIT ?",
                 (max(1, int(limit)),)).fetchall()
     except Exception:  # self-safe: laesefejl giver tom liste, ikke en veltet tur

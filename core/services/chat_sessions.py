@@ -15,6 +15,7 @@ from core.services.tool_result_store import (
 )
 from core.runtime.db import connect
 from core.services.chat_crypto import dekrypter_sessionsraekker
+from core.services.chat_session_private_metadata import decrypt_session_text, encrypt_session_text
 from core.runtime.db_core import skriv_med_genforsoeg
 from core.identity.samtale_scope import aktuel_samtale_workspace
 
@@ -74,6 +75,12 @@ def create_chat_session(
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
+    if normalized_title != "New chat":
+        from core.identity.workspace_context import current_user_id, current_workspace_name
+        normalized_title = encrypt_session_text(
+            normalized_title, session_id,
+            user_id=current_user_id() or "", workspace_name=current_workspace_name() or "",
+        )
     # Kun to slags. En ukendt vaerdi bliver til 'chat' frem for at blive skrevet
     # ned: en raekke med kind='kode' (dansk stavning, et tastefejl, hvad som
     # helst) ville vaere usynlig i BEGGE lister, og en samtale man ikke kan
@@ -385,6 +392,11 @@ def search_chat_sessions(
     like = f"%{q}%"
     lim = max(1, min(int(limit or 30), 50))
     uid = (user_id or "").strip()
+    if uid:
+        from core.services import chat_crypto
+        if chat_crypto.medlem_for_raekke(user_id=uid):
+            from core.services.chat_session_private_metadata import search_member_sessions
+            return search_member_sessions(q, uid, lim)
 
     # BUNDET SØGNING (Bjørn 9. jul, "search_sessions hænger"): den gamle query brugte en KORRELERET
     # EXISTS-subquery PR. session (`content LIKE '%q%'` er ikke-indekserbar → fuld scan af
@@ -689,6 +701,7 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             """,
             (normalized,),
         ).fetchall()
+    messages = dekrypter_sessionsraekker([dict(row) for row in messages], normalized)
     message_items = []
     for row in messages:
         role = str(row["role"])
@@ -994,6 +1007,10 @@ def append_chat_message(
             next_title = str(exists["title"])
             if normalized_role == "user" and next_title == "New chat":
                 next_title = _normalize_title(normalized_content) or next_title
+                next_title = encrypt_session_text(
+                    next_title, normalized_session,
+                    user_id=_user_id, workspace_name=_workspace_name,
+                )
 
             conn.execute(
                 """
@@ -1130,7 +1147,7 @@ def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
                 return
             conn.execute(
                 "UPDATE chat_sessions SET title = ? WHERE session_id = ?",
-                (_normalize_title(tekst), session_id))
+                (encrypt_session_text(_normalize_title(tekst), session_id), session_id))
             conn.commit()
     except Exception as exc:
         logger.debug("chat_sessions: kunne ikke navngive %s: %s", session_id, exc)
@@ -1592,6 +1609,8 @@ def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | N
     new_title = _normalize_title(title) or "New chat"
     if not normalized:
         return None
+    if new_title != "New chat":
+        new_title = encrypt_session_text(new_title, normalized)
     now = datetime.now(UTC).isoformat()
     with connect() as conn:
         conn.execute(
@@ -1624,12 +1643,15 @@ def delete_chat_session(session_id: str) -> bool:
 
 
 def _session_summary(row: dict[str, object]) -> dict[str, object]:
+    session_id = str(row.get("session_id") or "")
     return {
-        "id": str(row.get("session_id") or ""),
-        "title": str(row.get("title") or "New chat"),
+        "id": session_id,
+        "title": decrypt_session_text(str(row.get("title") or "New chat"), session_id),
         "created_at": str(row.get("created_at") or ""),
         "updated_at": str(row.get("updated_at") or ""),
-        "last_message": _preview_text(str(row.get("last_message") or "")) or "Ready",
+        "last_message": _preview_text(decrypt_session_text(
+            str(row.get("last_message") or ""), session_id,
+        )) or "Ready",
         "message_count": int(row.get("message_count") or 0),
         "workspace_kind": (str(row.get("workspace_kind")) if row.get("workspace_kind") else None),
         # PROJEKTET — stien til arbejdstraeet. Gemt siden begyndelsen, men
@@ -1739,4 +1761,3 @@ def latest_user_content_json(session_id: str) -> str | None:
         return str(row[0]) if row and row[0] else None
     except Exception:
         return None
-

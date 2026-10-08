@@ -40,6 +40,12 @@ describe('design-tokens', () => {
     expect(regel).not.toMatch(/#2c3e54/i)
   })
 
+  it('PWA composer bruger mindst 16px paa iPhone for at undgaa fokus-zoom', () => {
+    const web = læs('web-sidebar.css')
+    expect(web).toMatch(/@media \(max-width: 600px\)[\s\S]*\.web-sidebar-closed \.composer-input[\s\S]*font-size:\s*16px/)
+    expect(web).toMatch(/\.web-sidebar-closed \.composer-ghost[\s\S]*font-size:\s*16px/)
+  })
+
   // Et var(--x) uden definition er ikke en skønhedsfejl: uden fallback
   // bliver `background: var(--bg)` gennemsigtig og `color: var(--fg)` arvet.
   // Med fallback brænder den en literal ind, som ikke følger temaskift.

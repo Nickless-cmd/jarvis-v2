@@ -843,6 +843,8 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
     rid = str(getattr(run, "run_id", "") or "")
     if not rid:
         return
+    from core.services.visible_preview_crypto import member_for_run, protect_preview
+    member = member_for_run(run)
     profil_navn, profil_hash, profil_version = _profil_for_raekken(run)
     try:
         with connect() as conn:
@@ -852,9 +854,9 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
                 INSERT INTO visible_runs (
                     run_id, lane, provider, model, status,
                     started_at, finished_at, text_preview, error, capability_id,
-                    profile_name, profile_hash, profile_schema_version
+                    profile_name, profile_hash, profile_schema_version, user_id
                 )
-                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL, ?, ?, ?)
+                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL, ?, ?, ?, ?)
                 ON CONFLICT(run_id) DO NOTHING
                 """,
                 (
@@ -863,8 +865,9 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
                     str(getattr(run, "provider", "") or ""),
                     str(getattr(run, "model", "") or ""),
                     datetime.now(UTC).isoformat(),
-                    _preview_text(getattr(run, "user_message", "") or ""),
+                    protect_preview(_preview_text(getattr(run, "user_message", "") or ""), member),
                     profil_navn, profil_hash, profil_version,
+                    str(getattr(run, "user_id", "") or ""),
                 ),
             )
     except Exception:
@@ -1059,6 +1062,12 @@ def _persist_visible_run_outcome(
     user_message_preview = controller.user_message_preview if controller else shared.get("current_user_message_preview")
     bounded_error = _vr._bounded_error(error) if error else None
     work_preview = text_preview or bounded_error
+    from core.services.visible_preview_crypto import member_for_run, protect_preview
+    member = member_for_run(run)
+    stored_user_preview = protect_preview(user_message_preview, member)
+    stored_work_preview = protect_preview(work_preview, member)
+    stored_text_preview = protect_preview(text_preview, member)
+    stored_error = protect_preview(bounded_error, member)
     work_id = f"visible-work:{run.run_id}"
     note_id = f"visible-work-note:{run.run_id}"
     with connect() as conn:
@@ -1066,9 +1075,9 @@ def _persist_visible_run_outcome(
             """
             INSERT INTO visible_runs (
                 run_id, lane, provider, model, status,
-                started_at, finished_at, text_preview, error, capability_id
+                started_at, finished_at, text_preview, error, capability_id, user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 lane=excluded.lane,
                 provider=excluded.provider,
@@ -1078,7 +1087,8 @@ def _persist_visible_run_outcome(
                 finished_at=excluded.finished_at,
                 text_preview=excluded.text_preview,
                 error=excluded.error,
-                capability_id=excluded.capability_id
+                capability_id=excluded.capability_id,
+                user_id=excluded.user_id
             """,
             (
                 run.run_id,
@@ -1088,9 +1098,10 @@ def _persist_visible_run_outcome(
                 status,
                 started_at,
                 finished_at,
-                text_preview,
-                bounded_error,
+                stored_text_preview,
+                stored_error,
                 capability_id,
+                str(getattr(run, "user_id", "") or ""),
             ),
         )
         conn.execute(
@@ -1121,9 +1132,9 @@ def _persist_visible_run_outcome(
                 run.model,
                 started_at,
                 finished_at,
-                user_message_preview,
+                stored_user_preview,
                 capability_id,
-                work_preview,
+                stored_work_preview,
             ),
         )
         conn.execute(
@@ -1156,9 +1167,9 @@ def _persist_visible_run_outcome(
                 run.lane,
                 run.provider,
                 run.model,
-                user_message_preview,
+                stored_user_preview,
                 capability_id,
-                work_preview,
+                stored_work_preview,
                 "visible-selected-work-item",
                 started_at or finished_at,
                 finished_at,

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8783/16602 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8784/16611 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 811 | 1462 | 55% |
-| `core.services` | 5857 | 11272 | 51% |
+| `core.runtime` | 811 | 1464 | 55% |
+| `core.services` | 5858 | 11278 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 261 | 572 | 45% |
+| `scripts` | 261 | 573 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2343)
+## Undocumented public functions (2351)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -582,11 +582,11 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 - `core/runtime/db_view_requests.py` :: `hent` (L73)
 - `core/runtime/db_view_requests.py` :: `opret` (L48)
 - `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)
-- `core/runtime/db_visible.py` :: `ensure_visible_tables` (L15)
-- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L168)
-- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L212)
-- `core/runtime/db_visible.py` :: `record_visible_work_note` (L252)
-- `core/runtime/db_visible.py` :: `visible_session_continuity` (L360)
+- `core/runtime/db_visible.py` :: `ensure_visible_tables` (L16)
+- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L172)
+- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L216)
+- `core/runtime/db_visible.py` :: `record_visible_work_note` (L256)
+- `core/runtime/db_visible.py` :: `visible_session_continuity` (L370)
 - `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L126)
 - `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L109)
 - `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L185)
@@ -625,6 +625,8 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
+- `core/runtime/session_ledger_crypto.py` :: `protect_event` (L12)
+- `core/runtime/session_ledger_crypto.py` :: `reveal_event` (L31)
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L704)
 - `core/runtime/settings.py` :: `load_settings` (L759)
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1233)
@@ -921,12 +923,14 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_crypto.py` :: `er_krypteret` (L150)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L793)
-- `core/services/chat_sessions.py` :: `create_chat_session` (L66)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1604)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1237)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1558)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1590)
+- `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L19)
+- `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L806)
+- `core/services/chat_sessions.py` :: `create_chat_session` (L67)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1623)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1254)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1575)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1607)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -2061,6 +2065,9 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
+- `core/services/visible_preview_crypto.py` :: `member_for_run` (L7)
+- `core/services/visible_preview_crypto.py` :: `protect_preview` (L14)
+- `core/services/visible_preview_crypto.py` :: `reveal_preview` (L18)
 - `core/services/visible_run_interruption.py` :: `classify_visible_run_interruption` (L17)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.error` (L61)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.set_error` (L93)
@@ -2302,6 +2309,7 @@ Generated from source. 8783/16602 functions/methods documented (52%). The list b
 - `scripts/memory_probe.py` :: `load_probes` (L24)
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
+- `scripts/migrate_member_session_titles.py` :: `migrate` (L10)
 - `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)
 - `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)
 - `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)

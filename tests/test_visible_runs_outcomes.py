@@ -27,6 +27,44 @@ class _Run:
         self.model = "gratis-model"
 
 
+def test_member_run_previews_are_encrypted_in_all_projection_tables(isolated_runtime, monkeypatch):
+    from dataclasses import dataclass
+    from core.runtime.db import connect
+    import core.identity.users as users
+    import core.services.keyring_store as keys
+
+    @dataclass
+    class User:
+        discord_id: str = "test-member-id"
+        role: str = "member"
+        workspace: str = "test-member-workspace"
+
+    monkeypatch.setattr(users, "load_users", lambda: [User()])
+    monkeypatch.setattr(keys, "get_user_key", lambda _uid: b"x" * 32)
+    monkeypatch.setattr(vro._vr, "get_visible_run_controller", lambda _rid: None)
+    monkeypatch.setattr(vro._vr, "_get_visible_run_control", lambda _rid: {"current_user_message_preview": "private question"})
+    monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **_kw: None)
+    monkeypatch.setattr(vro._vr, "_update_cognitive_systems_async", lambda **_kw: None)
+    run = _Run(session_id="test-member-session")
+    run.run_id = "test-member-run"
+    run.user_id = "test-member-id"
+    run.lane = "visible"
+    vro._persist_visible_run_outcome(run, status="completed", finished_at="2026-10-08T00:00:00Z",
+                                     text_preview="private answer")
+    with connect() as conn:
+        values = [conn.execute(f"SELECT {column} FROM {table} WHERE run_id=?", (run.run_id,)).fetchone()[0]
+                  for table, column in (("visible_runs", "text_preview"),
+                                        ("visible_work_notes", "user_message_preview"),
+                                        ("visible_work_notes", "work_preview"),
+                                        ("visible_work_units", "user_message_preview"),
+                                        ("visible_work_units", "work_preview"))]
+    assert all(value.startswith("enc:v1:") for value in values)
+    assert not any("private" in value for value in values)
+    from core.runtime.db_visible import recent_visible_runs
+    scoped = recent_visible_runs(user_id="test-member-id")
+    assert next(row for row in scoped if row["run_id"] == run.run_id)["text_preview"] == "private answer"
+
+
 @pytest.fixture
 def gemte(monkeypatch):
     ude: list[tuple] = []

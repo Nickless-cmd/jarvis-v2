@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/delegation_advisor.py`
+_Delegation advisor — inline vs which subagent role._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
+| function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
+
 ## `core/services/delete_policy.py`
 _Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
 
@@ -709,13 +717,4 @@ _Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._
 | function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L418) |
 | function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L428) |
 | function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/dream_influence_runtime.py#L438) |
-
-## `core/services/dream_insight_daemon.py`
-_Dream insight daemon — persists dream articulation output as private brain records._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_dream_insight_daemon` | `(*, signal_id, signal_summary)` | Persist a dream articulation result if it's new. | [src](../../../core/services/dream_insight_daemon.py#L37) |
-| function | `get_latest_dream_insight` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L85) |
-| function | `build_dream_insight_surface` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L89) |
 

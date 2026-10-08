@@ -51,13 +51,15 @@ def _line_count(text: str) -> int:
     return stripped.count("\n") + 1
 
 
-def save_paste(text: str, *, created_at: str | None = None) -> str:
+def save_paste(text: str, *, created_at: str | None = None, user_id: str = "") -> str:
     """Gem en paste og returnér dens hash-baserede id (idempotent).
 
     Samme tekst → samme id → én fil (skriver ikke dublet). Atomisk write.
     """
     text = str(text or "")
-    paste_id = _compute_id(text)
+    from core.services import chat_crypto
+    member = chat_crypto.medlem_for_raekke(user_id=user_id)
+    paste_id = _compute_id(f"{member}\0{text}" if member else text)
     directory = _paste_dir()
     directory.mkdir(parents=True, exist_ok=True)
     target = _paste_path(paste_id)
@@ -69,7 +71,8 @@ def save_paste(text: str, *, created_at: str | None = None) -> str:
 
     payload = {
         "id": paste_id,
-        "text": text,
+        "text": chat_crypto.krypter(text, member) if member else text,
+        "user_id": member or "",
         "line_count": _line_count(text),
         "created_at": created_at or datetime.now(UTC).isoformat(),
     }
@@ -81,7 +84,7 @@ def save_paste(text: str, *, created_at: str | None = None) -> str:
     return paste_id
 
 
-def get_paste(paste_id: str) -> dict[str, object] | None:
+def get_paste(paste_id: str, *, user_id: str | None = None) -> dict[str, object] | None:
     """Slå en paste op. Returnér {id, text, line_count, created_at} eller None."""
     normalized = str(paste_id or "").strip()
     if not normalized:
@@ -95,6 +98,14 @@ def get_paste(paste_id: str) -> dict[str, object] | None:
         return None
     if not isinstance(data, dict):
         return None
+    from core.services import chat_crypto
+    owner = str(data.get("user_id") or "")
+    if user_id is not None and owner and owner != str(user_id or ""):
+        return None
+    if user_id is not None and not owner and chat_crypto.medlem_for_raekke(user_id=user_id):
+        return None
+    if owner and chat_crypto.er_krypteret(data.get("text")):
+        data["text"] = chat_crypto.dekrypter(str(data["text"]), owner)
     return data
 
 

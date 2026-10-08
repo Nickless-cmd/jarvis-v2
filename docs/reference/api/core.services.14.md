@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_skill.py`
+_Skill-Safety-cluster gate 🔒 — graderet SECURITY-gate for skill-indholds-scanning_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `skill_gate` | `(ctx)` | Scan skill-indhold via skill_scanner; returnér graderet Verdict. | [src](../../../core/services/gate_skill.py#L29) |
+| class | `SkillScanVerdict` | `` | ScanResult-lignende facade så call-sites er near-drop-in. | [src](../../../core/services/gate_skill.py#L48) |
+| method | `SkillScanVerdict.as_dict` | `(self)` | — | [src](../../../core/services/gate_skill.py#L55) |
+| function | `_decide` | `(ctx)` | Route gennem Centralen (SECURITY, fail-CLOSED). Central-katastrofe → kør gaten | [src](../../../core/services/gate_skill.py#L59) |
+| function | `check_skill_scan` | `(content)` | Scan skill-indhold gennem Centralen. Returnér ScanResult-lignende facade. | [src](../../../core/services/gate_skill.py#L74) |
+
 ## `core/services/gate_truth.py`
 _Unified TruthGate (cluster B). Smelter Truth-klyngens tre homogene Verdict-gates_
 
@@ -571,14 +582,4 @@ _Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukke
 | function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L57) |
 | function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L72) |
 | function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L90) |
-
-## `core/services/hf_connector.py`
-_Hugging Face-connector — søg modeller/datasets via Hub API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_headers` | `()` | — | [src](../../../core/services/hf_connector.py#L43) |
-| function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
-| function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
-| function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
 

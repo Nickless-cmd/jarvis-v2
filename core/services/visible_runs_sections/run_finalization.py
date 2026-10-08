@@ -161,10 +161,11 @@ def svar_for_run(run_id: str) -> str:
             if not gammel:
                 return str(frisk.get("text_preview") or "")
     from core.runtime.db import connect
+    from core.services.visible_preview_crypto import reveal_preview
     with connect() as conn:
         raekke = conn.execute(
-            "SELECT text_preview FROM visible_runs WHERE run_id = ?", (run_id,)).fetchone()
-    return str(raekke[0] or "") if raekke and raekke[0] else ""
+            "SELECT text_preview, user_id FROM visible_runs WHERE run_id = ?", (run_id,)).fetchone()
+    return str(reveal_preview(raekke[0], raekke[1]) or "") if raekke else ""
 
 
 def finalize_run(session_id: str, *, status: str) -> None:

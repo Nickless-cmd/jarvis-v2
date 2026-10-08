@@ -4,6 +4,7 @@ import { whoami, type WhoAmI } from '../lib/api'
 import { StreamError } from '../lib/streamClient'
 import { clearBrowserConfig, readBrowserConfig, writeBrowserConfig } from '../lib/browserConfig'
 import { onUnauthorized } from '../lib/authEvents'
+import { clearPrivateComposerStorage } from '../lib/composerPrefs'
 
 export interface AppSettings {
   apiBaseUrl: string
@@ -93,6 +94,7 @@ export function SettingsProvider({
     whoami({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
       .then((identity) => {
         if (!alive) return
+        if (browser && identity.role !== 'owner') clearPrivateComposerStorage()
         setAuth(identity)
         if (browser) setAuthStatus('ready')
       })

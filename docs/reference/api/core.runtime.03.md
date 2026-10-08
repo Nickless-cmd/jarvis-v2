@@ -85,24 +85,24 @@ _Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L59) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L63) |
-| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L67) |
-| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L102) |
-| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L144) |
-| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L159) |
-| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L178) |
-| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L182) |
-| function | `_annoncer` | `(session_id, skrevet, seq)` | Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt. | [src](../../../core/runtime/db_session_ledger.py#L255) |
-| function | `append_unowned` | `(session_id, *, events, now=…)` | Tilføj hændelser i ÉN transaktion, uden lease. Kun for skygge-sessioner. | [src](../../../core/runtime/db_session_ledger.py#L279) |
-| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L368) |
-| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L401) |
-| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L412) |
-| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L438) |
-| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L447) |
-| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L468) |
-| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L480) |
-| function | `abandon_shadow` | `(session_id)` | Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`. | [src](../../../core/runtime/db_session_ledger.py#L507) |
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_session_ledger.py#L60) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/runtime/db_session_ledger.py#L64) |
+| function | `_ensure_session_ledger_table` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L68) |
+| function | `acquire_write_lease` | `(session_id, *, owner, ttl_s=…, now=…)` | Tag skrive-ejerskabet over én session. Returnér møntet, eller None. | [src](../../../core/runtime/db_session_ledger.py#L103) |
+| function | `release_write_lease` | `(session_id, *, owner, token)` | Giv ejerskabet fra sig. Kun den nuværende ejer med den rigtige mønt kan. | [src](../../../core/runtime/db_session_ledger.py#L145) |
+| function | `lease_state` | `(session_id)` | Diagnostik: hvem ejer sessionen, med hvilken mønt, hvor længe. | [src](../../../core/runtime/db_session_ledger.py#L160) |
+| class | `LeaseLost` | `` | Skrivningen blev afvist: leasen er væk eller møntet er forældet. | [src](../../../core/runtime/db_session_ledger.py#L179) |
+| function | `append_session_events` | `(session_id, *, owner, token, events, now=…)` | Tilføj hændelser ATOMISK og IDEMPOTENT. | [src](../../../core/runtime/db_session_ledger.py#L183) |
+| function | `_annoncer` | `(session_id, skrevet, seq)` | Fortæl bussen at der er kommet hændelser — EFTER commit, og aldrig fatalt. | [src](../../../core/runtime/db_session_ledger.py#L256) |
+| function | `append_unowned` | `(session_id, *, events, now=…)` | Tilføj hændelser i ÉN transaktion, uden lease. Kun for skygge-sessioner. | [src](../../../core/runtime/db_session_ledger.py#L280) |
+| function | `read_session_events` | `(session_id, *, from_seq=…, to_seq=…)` | Læs hændelser i rækkefølge. Halvåbent interval: (from_seq, to_seq]. | [src](../../../core/runtime/db_session_ledger.py#L369) |
+| function | `current_seq` | `(session_id)` | Sessionens højeste sekvensnummer — 0 hvis ledgeren er tom for den. | [src](../../../core/runtime/db_session_ledger.py#L403) |
+| function | `_parse` | `(value)` | — | [src](../../../core/runtime/db_session_ledger.py#L414) |
+| function | `_ensure_storage_mode_column` | `(conn)` | — | [src](../../../core/runtime/db_session_ledger.py#L440) |
+| function | `storage_mode` | `(session_id, *, conn=…)` | Hvilken kilde er kanonisk for denne session? | [src](../../../core/runtime/db_session_ledger.py#L449) |
+| function | `_storage_mode_on` | `(conn, session_id)` | — | [src](../../../core/runtime/db_session_ledger.py#L470) |
+| function | `advance_storage_mode` | `(session_id, *, to)` | Ryk EN session fremad. Envejs — der er ingen vej tilbage. | [src](../../../core/runtime/db_session_ledger.py#L482) |
+| function | `abandon_shadow` | `(session_id)` | Sluk skyggen igen: `shadow` → `legacy`. Aldrig fra `ledger`. | [src](../../../core/runtime/db_session_ledger.py#L509) |
 
 ## `core/runtime/db_user_contradiction.py`
 _DB helpers for user_contradictions + user_statements tables._
@@ -166,13 +166,13 @@ _Persistence for the visible-lane projection tables._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_visible_tables` | `(conn)` | — | [src](../../../core/runtime/db_visible.py#L15) |
-| function | `_run_user_scope` | `(user_id, include_unassigned)` | WHERE-fragment + parametre for bruger-scoping af runs. | [src](../../../core/runtime/db_visible.py#L86) |
-| function | `recent_visible_runs` | `(limit=…, *, user_id=…, include_unassigned=…, include_running=…)` | De seneste runs. UDEN `user_id` er der intet filter. | [src](../../../core/runtime/db_visible.py#L106) |
-| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L168) |
-| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L212) |
-| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L252) |
-| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L360) |
+| function | `ensure_visible_tables` | `(conn)` | — | [src](../../../core/runtime/db_visible.py#L16) |
+| function | `_run_user_scope` | `(user_id, include_unassigned)` | WHERE-fragment + parametre for bruger-scoping af runs. | [src](../../../core/runtime/db_visible.py#L90) |
+| function | `recent_visible_runs` | `(limit=…, *, user_id=…, include_unassigned=…, include_running=…)` | De seneste runs. UDEN `user_id` er der intet filter. | [src](../../../core/runtime/db_visible.py#L110) |
+| function | `recent_visible_work_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L172) |
+| function | `recent_visible_work_units` | `(limit=…)` | — | [src](../../../core/runtime/db_visible.py#L216) |
+| function | `record_visible_work_note` | `(*, note_id, work_id, run_id, status, lane, provider, model, user_message_preview=…, capability_id=…, work_preview=…, projection_source=…, created_at, finished_at)` | — | [src](../../../core/runtime/db_visible.py#L256) |
+| function | `visible_session_continuity` | `()` | — | [src](../../../core/runtime/db_visible.py#L370) |
 
 ## `core/runtime/db_world_self_truth.py`
 _Persistence for conversation topics and evidence-bounded world facts._
@@ -463,6 +463,14 @@ _`SessionHandle` — én ejer, én lease, én sekvens._
 | function | `_bedoem` | `(session_id)` | — | [src](../../../core/runtime/session_handle.py#L277) |
 | function | `open_readonly` | `(session_id)` | Kig uden at tage noget. Skriver intet — heller ikke en lease-række. | [src](../../../core/runtime/session_handle.py#L289) |
 | function | `open_for_write` | `(session_id, *, owner, ttl_s=…)` | Tag skriveretten. Returnerer et skrivebeskyttet håndtag hvis en anden | [src](../../../core/runtime/session_handle.py#L296) |
+
+## `core/runtime/session_ledger_crypto.py`
+_Protect private message payloads at the durable ledger boundary._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `protect_event` | `(session_id, event, *, conn=…)` | — | [src](../../../core/runtime/session_ledger_crypto.py#L12) |
+| function | `reveal_event` | `(session_id, event, *, conn=…)` | — | [src](../../../core/runtime/session_ledger_crypto.py#L31) |
 
 ## `core/runtime/settings.py`
 

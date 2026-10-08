@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/phase5_collect.py`
+_Fase 5 «Bor der nogen?» — indsamler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_identity_text` | `()` | SOUL + IDENTITY + USER som ren tekst — FILES-armens hele kontekst. | [src](../../../scripts/phase5_collect.py#L68) |
+| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L79) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
+| function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
+
 ## `scripts/phase6_analyze.py`
 _Fase 6 «Bæres han på tværs af tid?» — analyse._
 

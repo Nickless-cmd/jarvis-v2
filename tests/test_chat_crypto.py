@@ -218,7 +218,7 @@ class TestHeleVejenIgennem:
         sti = tmp_path / "jarvis.db"
         monkeypatch.setenv("JARVIS_DB_NOPOOL", "1")
         monkeypatch.setattr(dbc, "_POOL_DISABLED", True, raising=False)
-        monkeypatch.setattr(dbc, "DB_PATH", str(sti), raising=False)
+        monkeypatch.setattr(dbc, "DB_PATH", sti, raising=False)
         from core.runtime.db_schema import init_db
         init_db()
         # Sessionerne skrives direkte: `create_chat_session` vælger sit eget
@@ -260,6 +260,53 @@ class TestHeleVejenIgennem:
 
         tilbage = recent_chat_session_messages("s-mikkel", limit=10)
         assert [m["content"] for m in tilbage] == [hemmelig]
+
+    def test_medlems_foerste_besked_giver_krypteret_titel(self, db) -> None:
+        import sqlite3
+        from core.services.chat_sessions import append_chat_message, list_chat_sessions
+
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("UPDATE chat_sessions SET title = 'New chat' WHERE session_id = 's-mikkel'")
+        hemmelig = "Privat titel som ikke må stå i databasen"
+        append_chat_message(
+            session_id="s-mikkel", role="user", content=hemmelig,
+            user_id="member-a-id-opdigtet", workspace_name="mikkel",
+        )
+        with sqlite3.connect(str(db)) as conn:
+            raw = conn.execute("SELECT title FROM chat_sessions WHERE session_id = 's-mikkel'").fetchone()[0]
+        assert raw.startswith("enc:v1:")
+        assert hemmelig not in raw
+        sessions = list_chat_sessions(user_id="member-a-id-opdigtet")
+        assert sessions[0]["title"] == hemmelig
+
+    def test_gammel_titel_migreres_idempotent(self, db) -> None:
+        import sqlite3
+        from core.services.chat_sessions import append_chat_message
+        from scripts.migrate_member_session_titles import migrate
+
+        append_chat_message(session_id="s-mikkel", role="user", content="Et ord",
+                            user_id="member-a-id-opdigtet", workspace_name="mikkel")
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("UPDATE chat_sessions SET title='Privat gammel titel' WHERE session_id='s-mikkel'")
+            conn.execute("UPDATE chat_sessions SET title='Ejerens titel' WHERE session_id='s-bjorn'")
+        assert migrate(dry_run=True)["encrypted"] == 1
+        assert migrate(dry_run=False)["encrypted"] == 1
+        assert migrate(dry_run=False)["encrypted"] == 0
+        with sqlite3.connect(str(db)) as conn:
+            member = conn.execute("SELECT title FROM chat_sessions WHERE session_id='s-mikkel'").fetchone()[0]
+            owner = conn.execute("SELECT title FROM chat_sessions WHERE session_id='s-bjorn'").fetchone()[0]
+        assert member.startswith("enc:v1:")
+        assert owner == "Ejerens titel"
+
+    def test_medlemssoegning_finder_krypteret_titel_og_besked(self, db) -> None:
+        from core.services.chat_sessions import append_chat_message, search_chat_sessions
+
+        append_chat_message(session_id="s-mikkel", role="user",
+                            content="Privat tekst om aebletrae",
+                            user_id="member-a-id-opdigtet", workspace_name="mikkel")
+        assert any(row["session_id"] == "s-mikkel" for row in search_chat_sessions(
+            "aebletrae", user_id="member-a-id-opdigtet"))
+        assert search_chat_sessions("aebletrae", user_id="member-b-id-opdigtet") == []
 
     def test_owners_besked_roeres_ikke(self, db) -> None:
         from core.services.chat_sessions import (
@@ -315,7 +362,7 @@ class TestSessionenErEnheden:
         sti = tmp_path / "jarvis.db"
         monkeypatch.setenv("JARVIS_DB_NOPOOL", "1")
         monkeypatch.setattr(dbc, "_POOL_DISABLED", True, raising=False)
-        monkeypatch.setattr(dbc, "DB_PATH", str(sti), raising=False)
+        monkeypatch.setattr(dbc, "DB_PATH", sti, raising=False)
         from core.runtime.db_schema import init_db
         init_db()
         return sti

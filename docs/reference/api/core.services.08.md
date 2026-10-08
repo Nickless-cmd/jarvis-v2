@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_history.py`
+_Hvordan klarer cheap lane sig? — historikken bag de 90.000 kald._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_siden` | `(timer)` | — | [src](../../../core/services/cheap_lane_history.py#L46) |
+| function | `_sikr_skema` | `(conn)` | Tabellen og dens `auth_profile`-kolonne skal findes, ogsaa foer foerste kald. | [src](../../../core/services/cheap_lane_history.py#L50) |
+| function | `_rows` | `(sql, params)` | — | [src](../../../core/services/cheap_lane_history.py#L74) |
+| function | `_percentil` | `(vaerdier, p)` | p50/p95 uden numpy. Tom liste → 0. | [src](../../../core/services/cheap_lane_history.py#L82) |
+| function | `udbyder_historik` | `(timer=…, lane=…)` | Én raekke pr. (udbyder, model) i vinduet: kald, fejl, latens, pris. | [src](../../../core/services/cheap_lane_history.py#L91) |
+| function | `_fejlkoder_pr_udbyder` | `(lane, siden)` | De hyppigste fejlkoder pr. (udbyder, model). Tomt ved fejl. | [src](../../../core/services/cheap_lane_history.py#L177) |
+| function | `seneste_fejl` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked — halen man skal laese naar noget er galt. | [src](../../../core/services/cheap_lane_history.py#L197) |
+| function | `tidsserie` | `(timer=…, lane=…, spand_minutter=…)` | Kald og fejl pr. tidsspand — kurven bag «klarer den sig bedre i dag?». | [src](../../../core/services/cheap_lane_history.py#L231) |
+
 ## `core/services/cheap_lane_payloads.py`
 _Bounded, redacted payload capture for Cheap Lane invocations._
 
@@ -742,13 +756,4 @@ _Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
 | function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
 | function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
 | function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
-
-## `core/services/compass_engine.py`
-_Compass Engine — weekly strategic bearing based on open loops and priorities._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_update_compass` | `(*, open_loops=…, recent_decisions=…)` | Update compass if >3 days since last update. | [src](../../../core/services/compass_engine.py#L21) |
-| function | `build_compass_surface` | `()` | — | [src](../../../core/services/compass_engine.py#L65) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/compass_engine.py#L74) |
 

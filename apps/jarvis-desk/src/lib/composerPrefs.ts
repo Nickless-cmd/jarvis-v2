@@ -18,6 +18,17 @@ export function draftKeyFor(flade: string): string {
   return `${DRAFT_PREFIX}${flade}`
 }
 
+export function clearPrivateComposerStorage(): void {
+  try {
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+    for (const key of keys) {
+      if (!key) continue
+      if (key.startsWith(DRAFT_PREFIX)) localStorage.removeItem(key)
+    }
+    localStorage.removeItem('jarvis-desk:composerHistory')
+  } catch { /* localStorage may be unavailable */ }
+}
+
 /** Taenknings-effekt. 'think' = lad serveren vaelge (adaptivt); 'fast' og
  *  'deep' er eksplicitte overstyringer serveren ALTID respekterer. */
 export type ThinkingMode = 'fast' | 'think' | 'deep'

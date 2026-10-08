@@ -7,6 +7,7 @@ import { writeBrowserConfig, readBrowserConfig } from '../lib/browserConfig'
 import { reportUnauthorized } from '../lib/authEvents'
 import { whoami } from '../lib/api'
 import { StreamError } from '../lib/streamClient'
+import { draftKeyFor } from '../lib/composerPrefs'
 
 vi.mock('../lib/api', () => ({
   whoami: vi.fn().mockResolvedValue({ user_id: 'u1', display_name: 'Bjørn', role: 'owner' }),
@@ -26,6 +27,19 @@ describe('SettingsContext', () => {
     await waitFor(() => expect(result.current.auth?.role).toBe('owner'))
     expect(result.current.settings?.apiBaseUrl).toBe(apiBaseUrl)
     expect(result.current.settings?.authToken).toBe('test-token')
+  })
+
+  it('rydder gamle private PWA-kladden ved medlemslogin', async () => {
+    localStorage.setItem(draftKeyFor('chat'), JSON.stringify('gammel privat tekst'))
+    localStorage.setItem('jarvis-desk:composerHistory', JSON.stringify(['tidligere besked']))
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    vi.mocked(whoami).mockResolvedValue({ user_id: 'member', display_name: 'Medlem', role: 'member' })
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.auth?.role).toBe('member'))
+    expect(localStorage.getItem(draftKeyFor('chat'))).toBeNull()
+    expect(localStorage.getItem('jarvis-desk:composerHistory')).toBeNull()
   })
 
   it('clears browser login after an unauthorized API request', async () => {

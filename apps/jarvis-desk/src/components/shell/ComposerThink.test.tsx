@@ -16,7 +16,7 @@ vi.mock('../../lib/api', async () => {
 
 import { Composer } from './Composer'
 import { PermissionProvider } from '../../contexts/PermissionContext'
-import { THINK_KEY, PROV_KEY, MODEL_KEY } from '../../lib/composerPrefs'
+import { THINK_KEY, PROV_KEY, MODEL_KEY, draftKeyFor } from '../../lib/composerPrefs'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
@@ -88,5 +88,15 @@ describe('samlet model- og tænkningsvælger', () => {
     expect(picker.textContent).toMatch(/V4 Flash.*Auto/)
     expect(picker.textContent).not.toContain('Deepseek')
     expect(picker.title).toContain('Deepseek · V4 Flash · Automatisk')
+  })
+
+  it('gemmer ikke medlemsbeskeder eller kladder i web-lageret', async () => {
+    const { onSend } = setup(false)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Privat kladde' } })
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(localStorage.getItem(draftKeyFor('chat'))).toBeNull()
+    send('Privat sendt tekst')
+    expect(onSend).toHaveBeenCalled()
+    expect(localStorage.getItem('jarvis-desk:composerHistory')).toBeNull()
   })
 })

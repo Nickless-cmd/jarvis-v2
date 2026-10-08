@@ -328,6 +328,13 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 
+## `scripts/migrate_member_session_titles.py`
+_Encrypt existing member chat titles without printing private text._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `migrate` | `(*, dry_run=…, batch_size=…)` | — | [src](../../../scripts/migrate_member_session_titles.py#L10) |
+
 ## `scripts/migrer_filer_per_bruger.py`
 _Flyt de gamle fælles filer ind i ejerens egen mappe._
 
@@ -438,14 +445,4 @@ _Fase 5 «Bor der nogen?» — analyse._
 | function | `cos` | `(a, b)` | — | [src](../../../scripts/phase5_analyze.py#L50) |
 | function | `choice_of` | `(probe_id, text)` | — | [src](../../../scripts/phase5_analyze.py#L58) |
 | function | `main` | `()` | — | [src](../../../scripts/phase5_analyze.py#L82) |
-
-## `scripts/phase5_collect.py`
-_Fase 5 «Bor der nogen?» — indsamler._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_identity_text` | `()` | SOUL + IDENTITY + USER som ren tekst — FILES-armens hele kontekst. | [src](../../../scripts/phase5_collect.py#L68) |
-| function | `_full_system_prompt` | `(probe_text)` | Jarvis' ÆGTE prompt-assembly — hele runtime-laget. | [src](../../../scripts/phase5_collect.py#L79) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase5_collect.py#L89) |
-| function | `run` | `(reps, only_arm=…)` | — | [src](../../../scripts/phase5_collect.py#L109) |
 

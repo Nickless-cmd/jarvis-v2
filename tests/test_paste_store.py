@@ -29,6 +29,28 @@ def test_save_get_round_trip(isolated_runtime) -> None:
     assert isinstance(stored["created_at"], str) and stored["created_at"]
 
 
+def test_member_paste_is_encrypted_and_scoped(isolated_runtime, monkeypatch) -> None:
+    from dataclasses import dataclass
+    from core.runtime import config
+    import core.identity.users as users
+    import core.services.keyring_store as keys
+
+    @dataclass
+    class User:
+        discord_id: str = "test-member-id"
+        role: str = "member"
+        workspace: str = "test-member-workspace"
+
+    monkeypatch.setattr(users, "load_users", lambda: [User()])
+    monkeypatch.setattr(keys, "get_user_key", lambda _uid: b"x" * 32)
+    paste_id = save_paste("private paste text", user_id="test-member-id")
+    raw = (config.PASTE_STORE_DIR / f"{paste_id}.json").read_text()
+    assert "private paste text" not in raw
+    assert "enc:v1:" in raw
+    assert get_paste(paste_id, user_id="test-member-id")["text"] == "private paste text"
+    assert get_paste(paste_id, user_id="someone-else") is None
+
+
 def test_save_is_idempotent_same_text_same_id_one_file(isolated_runtime) -> None:
     from core.runtime import config
 

@@ -40,6 +40,7 @@ from __future__ import annotations
 import json as _json
 import logging
 import sqlite3
+from core.runtime.session_ledger_crypto import protect_event, reveal_event
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -241,7 +242,7 @@ def append_session_events(
                     "(session_id, seq, event_id, kind, payload_json, created_at) "
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (sid, seq, eid, str(e.get("kind") or "event"),
-                     _json.dumps(e.get("payload") or {}, ensure_ascii=False), _iso(nu)),
+                     _json.dumps(protect_event(sid, e, conn=conn).get("payload") or {}, ensure_ascii=False), _iso(nu)),
                 )
                 skrevet += 1
             conn.execute("COMMIT")
@@ -341,7 +342,7 @@ def append_unowned(session_id: str, *, events: list[dict[str, Any]],
                     "(session_id, seq, event_id, kind, payload_json, created_at) "
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (sid, seq, eid, str(e.get("kind") or "event"),
-                     _json.dumps(e.get("payload") or {}, ensure_ascii=False), _iso(nu)),
+                     _json.dumps(protect_event(sid, e, conn=conn).get("payload") or {}, ensure_ascii=False), _iso(nu)),
                 )
                 skrevet += 1
             conn.execute("COMMIT")
@@ -393,8 +394,9 @@ def read_session_events(
         # session_id følger med hændelsen fordi den er en del af dens
         # identitet: en fold der skal udlede et stabilt id, kan ikke gætte
         # hvilken session hændelsen kom fra, og en ren fold må ikke slå det op.
-        ud.append({"seq": int(r[0]), "session_id": sid, "event_id": str(r[1]),
-                   "kind": str(r[2]), "payload": payload, "created_at": str(r[4])})
+        event = {"seq": int(r[0]), "session_id": sid, "event_id": str(r[1]),
+                 "kind": str(r[2]), "payload": payload, "created_at": str(r[4])}
+        ud.append(reveal_event(sid, event))
     return ud
 
 

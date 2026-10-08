@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_registry.py`
+_MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_registry.py#L17) |
+| function | `list_mcp_servers` | `()` | — | [src](../../../core/services/mcp_registry.py#L24) |
+| function | `add_mcp_server` | `(name, url)` | — | [src](../../../core/services/mcp_registry.py#L28) |
+| function | `remove_mcp_server` | `(server_id)` | — | [src](../../../core/services/mcp_registry.py#L40) |
+
 ## `core/services/mcp_trust.py`
 _MCP-tillid: allowliste + TOFU-pinning._
 
@@ -613,19 +623,4 @@ _Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
 | function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
 | function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
 | function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
-
-## `core/services/mood_dialer.py`
-_Mood Dialer — humør til gradueret initiativ-parametre._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MoodDialerParams` | `` | — | [src](../../../core/services/mood_dialer.py#L24) |
-| method | `MoodDialerParams.as_dict` | `(self)` | — | [src](../../../core/services/mood_dialer.py#L36) |
-| function | `clamp_mood_level` | `(value)` | — | [src](../../../core/services/mood_dialer.py#L51) |
-| function | `mood_name_to_level` | `(mood_name, intensity=…)` | Convert v2 mood oscillator name + intensity to 0-4 level. | [src](../../../core/services/mood_dialer.py#L69) |
-| function | `derive_mood_dialer_params` | `(mood_level)` | Derive concrete params from a 0-4 mood level. | [src](../../../core/services/mood_dialer.py#L128) |
-| function | `derive_from_v2_mood` | `()` | Pull current mood from mood_oscillator and derive params. | [src](../../../core/services/mood_dialer.py#L134) |
-| function | `build_mood_dialer_surface` | `()` | MC surface — current dialed params. | [src](../../../core/services/mood_dialer.py#L150) |
-| function | `_interpret_dialer` | `(params)` | Mechanism description of what the active preset gates. | [src](../../../core/services/mood_dialer.py#L166) |
-| function | `_emit_mood_dialer_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/mood_dialer.py#L184) |
 

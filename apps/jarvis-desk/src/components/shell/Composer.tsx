@@ -208,7 +208,9 @@ export function Composer({
 }) {
   // Kladden huskes pr. flade (Bjørn 4/10-2026): mode-skift unmounter denne
   // Composer, og uden persistens tog `useState('')` teksten med sig.
-  const [text, setText] = usePersistedState<string>(draftKeyFor(draftKey), '')
+  const persistPrivateText = isOwner || Boolean((window as unknown as { jarvisDesk?: unknown }).jarvisDesk)
+  const [text, setText] = usePersistedState<string>(draftKeyFor(draftKey), '', persistPrivateText)
+  const memberHistory = useRef<string[]>([])
   useEffect(() => {
     if (indsaet) setText(indsaet.tekst)
   }, [indsaet?.n]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -423,7 +425,12 @@ export function Composer({
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0 && pendingPastes.length === 0) return
-    pushComposerHistory(t)  // gem den typede besked → pil op genkalder den
+    if (persistPrivateText) pushComposerHistory(t)
+    else if (t) {
+      const history = memberHistory.current
+      if (history[history.length - 1] !== t) history.push(t)
+      if (history.length > COMPOSER_HISTORY_MAX) history.shift()
+    }
     setHistIdx(-1)
     // Rolle-bevidst routing: owner sender provider + konkret model; member sender
     // kun tier (backend tvinger ollama + flash/pro). Tom = backend-default.
@@ -465,7 +472,7 @@ export function Composer({
       const finalText = t ? `${t}\n\n${suffix}` : suffix
       emit(finalText)
     })
-  }, [text, attachments, pendingPastes, config, isOwner, selModel, memberTier, provChoice, planMode, permission, thinkMode, onSend])
+  }, [text, attachments, pendingPastes, config, isOwner, persistPrivateText, selModel, memberTier, provChoice, planMode, permission, thinkMode, onSend])
 
   // Anden halvdel af vent-og-send: når den sidste upload har fået svar (eller
   // fejlet), sendes den besked der blev holdt tilbage. `doSend` lukker over de
@@ -624,7 +631,7 @@ export function Composer({
     if (e.key === 'ArrowUp') {
       // Kun genkald historik når caret er på FØRSTE linje (ellers normal caret-flyt).
       if (ta.value.slice(0, ta.selectionStart ?? 0).includes('\n')) return
-      const h = loadComposerHistory()
+      const h = persistPrivateText ? loadComposerHistory() : memberHistory.current
       if (h.length === 0) return
       e.preventDefault()
       let idx = histIdx
@@ -638,7 +645,7 @@ export function Composer({
       // Kun når caret er på SIDSTE linje.
       if (ta.value.slice(ta.selectionStart ?? 0).includes('\n')) return
       e.preventDefault()
-      const h = loadComposerHistory()
+      const h = persistPrivateText ? loadComposerHistory() : memberHistory.current
       const idx = histIdx + 1
       if (idx >= h.length) {
         setHistIdx(-1); setText(histDraftRef.current); caretToEnd(histDraftRef.current)
@@ -648,7 +655,7 @@ export function Composer({
       }
       return
     }
-  }, [send, histIdx, filnavne, ghostAktiv, forslag])
+  }, [send, histIdx, filnavne, ghostAktiv, forslag, persistPrivateText])
 
   // onPaste: store paste (>tærskel) → hold teksten lokalt, vis reference-chip i stedet
   // for at spilde tekst-væggen ind i inputtet. Under tærskel → default (inline).

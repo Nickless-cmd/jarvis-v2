@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from core.identity.workspace_context import current_user_id
 
 from core.services.paste_store import (
     build_paste_reference,
@@ -29,8 +30,9 @@ async def save_paste_endpoint(request: PasteSaveRequest) -> dict:
     text = str(request.text or "")
     if not text.strip():
         raise HTTPException(status_code=400, detail="text must not be empty")
-    paste_id = save_paste(text)
-    stored = get_paste(paste_id) or {}
+    uid = current_user_id() or ""
+    paste_id = save_paste(text, user_id=uid)
+    stored = get_paste(paste_id, user_id=uid) or {}
     line_count = int(stored.get("line_count") or 0)
     return {
         "paste_id": paste_id,
@@ -42,7 +44,7 @@ async def save_paste_endpoint(request: PasteSaveRequest) -> dict:
 @router.get("/{paste_id}")
 async def get_paste_endpoint(paste_id: str) -> dict:
     """Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id."""
-    stored = get_paste(paste_id)
+    stored = get_paste(paste_id, user_id=current_user_id() or "")
     if stored is None:
         raise HTTPException(status_code=404, detail="Paste not found")
     return {

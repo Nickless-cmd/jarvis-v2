@@ -34,6 +34,53 @@ def test_sekvensen_starter_paa_1_og_har_ingen_huller(sid):
     assert [x["seq"] for x in L.read_session_events(sid)] == [1, 2, 3]
 
 
+def test_member_message_payload_is_ciphertext(sid, monkeypatch):
+    from dataclasses import dataclass
+    from core.runtime.db import connect
+    import core.identity.users as users
+    import core.services.keyring_store as keys
+
+    @dataclass
+    class User:
+        discord_id: str = "test-member-id"
+        role: str = "member"
+        workspace: str = "test-member-workspace"
+
+    monkeypatch.setattr(users, "load_users", lambda: [User()])
+    monkeypatch.setattr(keys, "get_user_key", lambda _uid: b"x" * 32)
+    token = L.acquire_write_lease(sid, owner="test")
+    event = _e("member-event", "message", user_id="test-member-id",
+               workspace_name="test-member-workspace", content="private ledger text")
+    L.append_session_events(sid, owner="test", token=token, events=[event])
+    with connect() as conn:
+        raw = conn.execute("SELECT payload_json FROM session_events WHERE session_id=?", (sid,)).fetchone()[0]
+    assert "private ledger text" not in raw
+    assert "enc:v1:" in raw
+    assert L.read_session_events(sid)[0]["payload"]["content"] == "private ledger text"
+
+
+def test_member_ledger_write_fails_closed_without_key(sid, monkeypatch):
+    from dataclasses import dataclass
+    from core.runtime.db import connect
+    import core.identity.users as users
+    import core.services.keyring_store as keys
+
+    @dataclass
+    class User:
+        discord_id: str = "test-member-id"
+        role: str = "member"
+        workspace: str = "test-member-workspace"
+
+    monkeypatch.setattr(users, "load_users", lambda: [User()])
+    monkeypatch.setattr(keys, "get_user_key", lambda _uid: (_ for _ in ()).throw(RuntimeError("missing key")))
+    token = L.acquire_write_lease(sid, owner="test")
+    with pytest.raises(RuntimeError, match="missing key"):
+        L.append_session_events(sid, owner="test", token=token, events=[
+            _e("no-key", "message", user_id="test-member-id", content="private text")])
+    with connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM session_events WHERE session_id=?", (sid,)).fetchone()[0] == 0
+
+
 def test_sekvensen_er_PR_SESSION(sid):
     andet = sid + "-b"
     ta = L.acquire_write_lease(sid, owner="a")

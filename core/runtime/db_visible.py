@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlite3
 
 from core.runtime.db_core import connect
+from core.services.visible_preview_crypto import reveal_preview
 
 
 def ensure_visible_tables(conn: sqlite3.Connection) -> None:
@@ -26,10 +27,13 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
             finished_at TEXT NOT NULL,
             text_preview TEXT,
             error TEXT,
-            capability_id TEXT
+            capability_id TEXT,
+            user_id TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    if not any(row[1] == "user_id" for row in conn.execute("PRAGMA table_info(visible_runs)")):
+        conn.execute("ALTER TABLE visible_runs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
     conn.execute(
         # Tidsvinduet. `hollow_promise_census` slaar modellen op med
         # `? BETWEEN r.started_at AND r.finished_at ORDER BY r.started_at DESC
@@ -157,8 +161,8 @@ def recent_visible_runs(
             "status": row["status"],
             "started_at": row["started_at"],
             "finished_at": row["finished_at"],
-            "text_preview": row["text_preview"],
-            "error": row["error"],
+            "text_preview": reveal_preview(row["text_preview"], user_id),
+            "error": reveal_preview(row["error"], user_id),
             "capability_id": row["capability_id"],
         }
         for row in rows
@@ -265,7 +269,13 @@ def record_visible_work_note(
     created_at: str,
     finished_at: str,
 ) -> dict[str, object]:
+    from core.services import chat_crypto
+    from core.services.visible_preview_crypto import protect_preview
     with connect() as conn:
+        owner = conn.execute("SELECT user_id FROM visible_runs WHERE run_id=?", (run_id,)).fetchone()
+        member = chat_crypto.medlem_for_raekke(user_id=str(owner[0] or "")) if owner else None
+        stored_user_preview = protect_preview(user_message_preview, member)
+        stored_work_preview = protect_preview(work_preview, member)
         conn.execute(
             """
             INSERT INTO visible_work_notes (
@@ -276,9 +286,9 @@ def record_visible_work_note(
                 lane,
                 provider,
                 model,
-                user_message_preview,
+                stored_user_preview,
                 capability_id,
-                work_preview,
+                stored_work_preview,
                 projection_source,
                 created_at,
                 finished_at

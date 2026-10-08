@@ -52,6 +52,14 @@
 }
 
 @media (max-width: 600px) {
+  /* iOS Safari zooms the viewport on focus when an input is below 16px. */
+  .window.web-sidebar-open .composer-input,
+  .window.web-sidebar-closed .composer-input,
+  .window.web-sidebar-open .composer-ghost,
+  .window.web-sidebar-closed .composer-ghost {
+    font-size: 16px;
+  }
+
   .window.web-sidebar-closed,
   .window.web-sidebar-open {
     position: relative;

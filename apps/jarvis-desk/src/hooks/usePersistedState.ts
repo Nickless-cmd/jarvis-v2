@@ -26,8 +26,9 @@ import { useEffect, useRef, useState } from 'react'
  * standardværdien frem for en kastet fejl — en UI-præference må aldrig vælte
  * fladen.
  */
-export function usePersistedState<T>(key: string, fallback: T) {
+export function usePersistedState<T>(key: string, fallback: T, persist = true) {
   const [value, setValue] = useState<T>(() => {
+    if (!persist) return fallback
     try {
       const raw = localStorage.getItem(key)
       if (raw === null) return fallback
@@ -43,18 +44,20 @@ export function usePersistedState<T>(key: string, fallback: T) {
   nyeste.current = value
 
   useEffect(() => {
+    if (!persist) return
     const id = setTimeout(() => {
       try { localStorage.setItem(key, JSON.stringify(nyeste.current)) } catch { /* ignoreres — UI-præference, ikke kritisk */ }
     }, 150)
     return () => clearTimeout(id)
-  }, [key, value])
+  }, [key, value, persist])
 
   // Skriv ved unmount. Et mode-skift kan ske INDEN FOR debounce-vinduet — målt i
   // test: unmount efter 0 ms — og så ville kladden aldrig nå disken, som er
   // præcis den fejl denne hook findes for at lukke.
   useEffect(() => () => {
+    if (!persist) return
     try { localStorage.setItem(key, JSON.stringify(nyeste.current)) } catch { /* ignoreres */ }
-  }, [key])
+  }, [key, persist])
 
   return [value, setValue] as const
 }

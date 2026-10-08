@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hf_connector.py`
+_Hugging Face-connector — søg modeller/datasets via Hub API._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_headers` | `()` | — | [src](../../../core/services/hf_connector.py#L43) |
+| function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
+| function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
+| function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
+
 ## `core/services/hollow_promise_census.py`
 _Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
 
@@ -666,15 +676,4 @@ _Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
 |---|---|---|---|---|
 | function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
 | function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
-
-## `core/services/invocation_record.py`
-_Durabel invokations-tilstand for kald ingen bliver spurgt om._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/invocation_record.py#L37) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/invocation_record.py#L41) |
-| function | `recorded` | `(tool_name, arguments, *, run_id=…, session_id=…)` | Omslut et MUTERENDE kald med prepared → dispatching → completed/failed. | [src](../../../core/services/invocation_record.py#L48) |
-| function | `markaer_mislykket` | `(iid)` | Sig at kaldet fejlede UDEN at kaste. | [src](../../../core/services/invocation_record.py#L103) |
-| function | `_afslut` | `(iid, *, ok)` | — | [src](../../../core/services/invocation_record.py#L116) |
 

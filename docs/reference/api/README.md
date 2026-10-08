@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16602 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16611 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,29 +35,29 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16602 functions/
 - [`core.services.04`](core.services.04.md) — `bash_sandbox` … `central_body_map_pulse`
 - [`core.services.05`](core.services.05.md) — `central_body_mood_feel` … `central_inner_life_ablation`
 - [`core.services.06`](core.services.06.md) — `central_inner_life_digest` … `central_route_headroom`
-- [`core.services.07`](core.services.07.md) — `central_router_adapt` … `cheap_lane_history`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_payloads` … `compass_engine`
-- [`core.services.09`](core.services.09.md) — `completion_satisfaction` … `creative_impulse_daemon`
-- [`core.services.10`](core.services.10.md) — `creative_instinct_daemon` … `delegation_advisor`
-- [`core.services.11`](core.services.11.md) — `delete_policy` … `dream_insight_daemon`
-- [`core.services.12`](core.services.12.md) — `dream_motif_daemon` … `experience_episodes`
-- [`core.services.13`](core.services.13.md) — `experience_substrate` … `gate_skill`
-- [`core.services.14`](core.services.14.md) — `gate_truth` … `hf_connector`
-- [`core.services.15`](core.services.15.md) — `hollow_promise_census` … `invocation_record`
-- [`core.services.16`](core.services.16.md) — `irony_daemon` … `mcp_registry`
-- [`core.services.17`](core.services.17.md) — `mcp_trust` … `mood_dialer`
-- [`core.services.18`](core.services.18.md) — `mood_oscillator` … `override_store`
-- [`core.services.19`](core.services.19.md) — `paid_lane_guard` … `proactive_question_gate_tracking`
-- [`core.services.20`](core.services.20.md) — `proactivity_bridge` … `published_files`
-- [`core.services.21`](core.services.21.md) — `push_dispatcher` … `research_orchestrator`
-- [`core.services.22`](core.services.22.md) — `research_prompt_context` … `runtime_self_model_builder`
-- [`core.services.23`](core.services.23.md) — `runtime_self_model_identity` … `self_surprise_expectation`
-- [`core.services.24`](core.services.24.md) — `self_system_code_awareness` … `signal_delta_trigger`
-- [`core.services.25`](core.services.25.md) — `signal_network_visualizer` … `surprise_daemon`
-- [`core.services.26`](core.services.26.md) — `surprise_detector` … `tool_intent_approval_runtime`
-- [`core.services.27`](core.services.27.md) — `tool_intent_runtime` … `versioneret_json_svar`
-- [`core.services.28`](core.services.28.md) — `veto_gate` … `visible_runs_outcomes`
-- [`core.services.29`](core.services.29.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `central_router_adapt` … `cheap_lane_health_reconcile`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_history` … `companion_presence`
+- [`core.services.09`](core.services.09.md) — `compass_engine` … `creative_drift_daemon`
+- [`core.services.10`](core.services.10.md) — `creative_impulse_daemon` … `deepseek_modelnavne`
+- [`core.services.11`](core.services.11.md) — `delegation_advisor` … `dream_influence_runtime`
+- [`core.services.12`](core.services.12.md) — `dream_insight_daemon` … `experience_correction_listener`
+- [`core.services.13`](core.services.13.md) — `experience_episodes` … `gate_shadow`
+- [`core.services.14`](core.services.14.md) — `gate_skill` … `hentede_vaerktoejer`
+- [`core.services.15`](core.services.15.md) — `hf_connector` … `interruption_notice`
+- [`core.services.16`](core.services.16.md) — `invocation_record` … `mcp_manager`
+- [`core.services.17`](core.services.17.md) — `mcp_registry` … `monitor_streams`
+- [`core.services.18`](core.services.18.md) — `mood_dialer` … `override_command`
+- [`core.services.19`](core.services.19.md) — `override_store` … `proactive_outbound_substrate`
+- [`core.services.20`](core.services.20.md) — `proactive_question_gate_tracking` … `provider_self_heal`
+- [`core.services.21`](core.services.21.md) — `published_files` … `research_ledger`
+- [`core.services.22`](core.services.22.md) — `research_orchestrator` … `runtime_self_model_boundary`
+- [`core.services.23`](core.services.23.md) — `runtime_self_model_builder` … `self_surprise_detection`
+- [`core.services.24`](core.services.24.md) — `self_surprise_expectation` … `signal_decay_daemon`
+- [`core.services.25`](core.services.25.md) — `signal_delta_trigger` … `suggest_standing_guard`
+- [`core.services.26`](core.services.26.md) — `surprise_daemon` … `tool_hunt_nudge`
+- [`core.services.27`](core.services.27.md) — `tool_intent_approval_runtime` … `verification_gate_telemetry`
+- [`core.services.28`](core.services.28.md) — `versioneret_json_svar` … `visible_runs_learning_signals`
+- [`core.services.29`](core.services.29.md) — `visible_runs_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -73,8 +73,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16602 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `install_git_hooks`
-- [`scripts.02`](scripts.02.md) — `installer_desk_appimage` … `phase5_collect`
-- [`scripts.03`](scripts.03.md) — `phase6_analyze` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `installer_desk_appimage` … `phase5_analyze`
+- [`scripts.03`](scripts.03.md) — `phase5_collect` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

@@ -568,7 +568,17 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
     # Kodeagent: laesevaerktoejer + skrivning i SIT EGET worktree (sandboxet). Gives kun af
     # dispatch_agent(writes=true) sammen med et reserveret worktree (agent-contract-v1 C5).
-    "worktree-write": [*_READ_ONLY_TOOLS, "wt_bash", "wt_write_file"],
+    #
+    # ``bash`` er BEVIDST ikke med her, selv om den staar i ``_READ_ONLY_TOOLS``.
+    # Maalt 8/10-2026: en kodeagent fik baade ``bash`` (containeren) og ``wt_bash``
+    # (sandkassen) og valgte ``bash`` - den usikre flade - til at laese tre filer.
+    # Gaten parkerede kaldet, og Bjoern fik et godkendelses-kort for en ``sed -n``.
+    # De to er ikke samme vaerktoej: ``wt_bash`` koerer i bwrap med worktree'et som
+    # ``/work`` og kan ikke skrive udenfor; ``bash`` koerer i containeren (eller paa
+    # Bjoerns maskine gennem operator-kanalen). En skrivende agent har derfor
+    # ``wt_bash`` som sin ENESTE shell-vej - den daekker alt den skal, og den kan
+    # ikke forlade sin egen kopi. Det fjerner eskaleringen uden at fjerne en evne.
+    "worktree-write": [*[t for t in _READ_ONLY_TOOLS if t != "bash"], "wt_bash", "wt_write_file"],
 }
 
 

@@ -376,11 +376,11 @@ _Gate i agentens vaerktoejsdispatch: en handling der kraever godkendelse STOPPER
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_shell_needs_approval` | `(arguments)` | (kraever, risikoklasse) for et shell-kald, afgjort af KOMMANDOEN. | [src](../../../core/services/agent_approval_gate.py#L47) |
-| function | `requires_approval` | `(tool_name, arguments=…)` | (kraever, risikoklasse). Fail-CLOSED for de faste navne; ukendt metadata -> ingen krav for resten. | [src](../../../core/services/agent_approval_gate.py#L71) |
-| function | `_denied` | `(reason, approval_id=…)` | — | [src](../../../core/services/agent_approval_gate.py#L89) |
-| function | `_parse` | `(tc)` | — | [src](../../../core/services/agent_approval_gate.py#L96) |
-| function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L108) |
+| function | `_shell_needs_approval` | `(arguments)` | (kraever, risikoklasse) for et shell-kald, afgjort af KOMMANDOEN. | [src](../../../core/services/agent_approval_gate.py#L54) |
+| function | `requires_approval` | `(tool_name, arguments=…)` | (kraever, risikoklasse). Fail-CLOSED for de faste navne; ukendt metadata -> ingen krav for resten. | [src](../../../core/services/agent_approval_gate.py#L78) |
+| function | `_denied` | `(reason, approval_id=…)` | — | [src](../../../core/services/agent_approval_gate.py#L96) |
+| function | `_parse` | `(tc)` | — | [src](../../../core/services/agent_approval_gate.py#L103) |
+| function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L115) |
 
 ## `core/services/agent_approval_notify.py`
 _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-contract-v1 F4c, spec 8.2)._

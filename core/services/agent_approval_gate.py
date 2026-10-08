@@ -39,8 +39,15 @@ ALWAYS_APPROVE = frozenset({
 
 #: Kommando-baerende vaerktoejer: de vurderes paa ``command``-argumentet gennem
 #: ``classify_command`` (samme klassificering exec-gaten bruger), ikke paa navnet.
+#:
+#: ``wt_bash`` staar BEVIDST ikke her. Den koerer i bwrap med agentens worktree som
+#: ``/work`` og kan ikke skrive udenfor sin egen kopi (``agent_worktree_exec``) - den
+#: ER sandkassen. Maalt 8/10-2026: jeg lagde den her sammen med ``bash``, og en
+#: uskyldig ``python3 -c "import ny"`` blev sendt til Bjoern som en skrivning, fordi
+#: ``classify_command`` ikke kender den slags kommando og derfor kraever godkendelse.
+#: En sandkasse der spoerger om lov til at skrive i sig selv er ikke en sandkasse.
 _SHELL_TOOLS = frozenset({
-    "bash", "operator_bash", "wt_bash", "bash_session_run", "operator_bash_session_run",
+    "bash", "operator_bash", "bash_session_run", "operator_bash_session_run",
 })
 
 

@@ -130,9 +130,8 @@ _PUBLIC_PATHS = (
     # Play-reviewer har ikke et token til Bjørns server. En politik bag
     # login er derfor det samme som ingen politik.
     #
-    # Den hører i _PUBLIC_PATHS og ikke i _UI_SKAL: skallen er bevidst
-    # KUN åben for lokale afsendere (se _er_lokal_afsender), så en
-    # udefrakommende reviewer ville få 401 på trods af undtagelsen.
+    # Politikken er offentlig uanset HTTP-metode. PWA-skallen nedenfor er
+    # derimod kun åben for GET/HEAD fra eksterne klienter.
     #
     # Filen ligger i apps/jarvis-desk/public/privatlivspolitik.html og kopieres
     # til dist-web ved build — den serveres af samme UI-mount som `/`.
@@ -144,14 +143,12 @@ _PUBLIC_PATHS = (
 )
 
 
-# ── UI-SKALLEN, KUN LOKALT (15/9-2026) ───────────────────────────────────
+# ── UI-SKALLEN (15/9-2026; ekstern PWA 8/10-2026) ────────────────────────
 # Bjoern: «jeg kan ikk åbene den i min browser». `/` svarede 401, saa den side
 # der skulle logge ham ind laa selv bag login'et. Doeren var laast udefra.
 #
-# Bjoern valgte lokalt frem for offentligt: «Lad os bar holde den lokalt
-# aaben... de andre bruger har pt. Discord, desk og mobil adgang og det er
-# fint for nu». api.srvlab.dk peger offentligt paa 185.107.14.241, saa en
-# blank undtagelse ville laegge login-siden paa internettet.
+# Den oprindelige undtagelse var kun lokal. Michelle bruger nu PWA'en over 5G,
+# så login-siden og dens statiske filer skal også kunne hentes udefra.
 #
 # Det her aabner KUN skallen — HTML, JS, CSS. Hvert eneste /mc/* og /chat/*
 # kraever stadig et token, saa login'et er ikke en formalitet: uden det viser
@@ -189,6 +186,19 @@ def _er_lokal_afsender(request: "Request") -> bool:
 
 def _er_ui_skal(path: str) -> bool:
     return path in _UI_SKAL or any(path.startswith(p) for p in _UI_SKAL_PREFIX)
+
+
+def _er_offentlig_ui_skal(request: Request) -> bool:
+    """Lad en fjern PWA hente HTML, JS og CSS uden at åbne data eller maps."""
+    if request.method not in ("GET", "HEAD"):
+        return False
+    path = request.url.path
+    if path in _UI_SKAL:
+        return True
+    if not path.startswith("/assets/"):
+        return False
+    navn = path.removeprefix("/assets/")
+    return bool(navn and "/" not in navn and navn.endswith((".js", ".css")))
 
 
 def _is_public_path(path: str) -> bool:
@@ -294,7 +304,9 @@ async def jarvisx_user_routing_middleware(
     _sti = request.url.path
     if (not token_claims and not _is_public_path(_sti)
             and not _er_signeret_filhentning(request)
-            and not (_er_ui_skal(_sti) and _er_lokal_afsender(request))):
+            and not (_er_ui_skal(_sti) and (
+                _er_lokal_afsender(request) or _er_offentlig_ui_skal(request)
+            ))):
         try:
             from core.runtime.jarvisx_auth import auth_required
             require = auth_required()

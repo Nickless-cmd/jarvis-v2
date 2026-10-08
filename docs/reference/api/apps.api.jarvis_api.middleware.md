@@ -39,11 +39,12 @@ _JarvisX user-routing + bearer-token auth middleware._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_log_auth_afvisning` | `(grund, request, raw_auth=…)` | Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L50) |
-| function | `_er_lokal_afsender` | `(request)` | Kom kaldet fra loopback eller vores eget net? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L166) |
-| function | `_er_ui_skal` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L190) |
-| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L194) |
-| function | `_er_signeret_filhentning` | `(request)` | Er dette en GET af én fil med en gyldig, levende signatur? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L206) |
-| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L264) |
+| function | `_er_lokal_afsender` | `(request)` | Kom kaldet fra loopback eller vores eget net? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L163) |
+| function | `_er_ui_skal` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L187) |
+| function | `_er_offentlig_ui_skal` | `(request)` | Lad en fjern PWA hente HTML, JS og CSS uden at åbne data eller maps. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L191) |
+| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L204) |
+| function | `_er_signeret_filhentning` | `(request)` | Er dette en GET af én fil med en gyldig, levende signatur? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L216) |
+| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L274) |
 
 ## `apps/api/jarvis_api/middleware/security_headers.py`
 _Security-headers + let-vægts rate-limiting middleware (spec §20)._

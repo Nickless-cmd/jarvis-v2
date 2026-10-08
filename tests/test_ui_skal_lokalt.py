@@ -11,11 +11,11 @@ Bagenden havde alt: `/api/auth/login`, `/api/auth/google/start`,
 `/api/auth/google/result` er allerede public. Det der manglede var at browseren
 kunne hente den HTML der bruger dem.
 
-## Hvorfor kun lokalt
+## Adgang udefra
 
-`api.srvlab.dk` peger offentligt på 185.107.14.241 — den er nåelig udefra, og
-det er sådan mobilen virker ude. En blank undtagelse ville derfor lægge
-login-siden på internettet. Bjørn: «Lad os bar holde den lokalt åben».
+Den oprindelige skal var kun lokal. Michelles PWA på 5G fik derfor rå JSON 401
+i stedet for login. GET/HEAD til HTML, manifest, ikoner, JS og CSS er nu åbne
+udefra. API-data og sourcemaps er fortsat beskyttede.
 
 ## Hvorfor afsender-IP'en kan bæres
 
@@ -108,6 +108,7 @@ def test_porten_er_faktisk_koblet_ind():
              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
     assert "_er_ui_skal" in navne, "skallen spoerges ikke"
     assert "_er_lokal_afsender" in navne, "afsenderen tjekkes ikke"
+    assert "_er_offentlig_ui_skal" in navne, "fjern-PWA'en tjekkes ikke"
 
 
 # ─────────────────────────────── den SAMMENSATTE beslutning, ikke delene hver for sig
@@ -125,7 +126,7 @@ class _Anmodning:
         self.state = SimpleNamespace()
 
 
-async def _svar_paa(sti, vaert, monkeypatch):
+async def _svar_paa(sti, vaert, monkeypatch, metode="GET"):
     """Kør den ÆGTE middleware og se hvad den beslutter."""
     from core.runtime import jarvisx_auth
     monkeypatch.setattr(jarvisx_auth, "auth_required", lambda: True)
@@ -136,7 +137,7 @@ async def _svar_paa(sti, vaert, monkeypatch):
         naaede_igennem["ja"] = True
         return SimpleNamespace(status_code=200)
 
-    svar = await m.jarvisx_user_routing_middleware(_Anmodning(sti, vaert), _videre)
+    svar = await m.jarvisx_user_routing_middleware(_Anmodning(sti, vaert, metode), _videre)
     return getattr(svar, "status_code", None), naaede_igennem["ja"]
 
 
@@ -160,20 +161,33 @@ async def test_lokal_afsender_faar_IKKE_data_uden_token(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_fjern_afsender_faar_ikke_engang_skallen(monkeypatch):
-    """Det er hele grunden til at det er lokalt og ikke offentligt."""
-    kode, igennem = await _svar_paa("/index.html", "185.107.14.241", monkeypatch)
-    assert not igennem
-    assert kode == 401, kode
+async def test_fjern_afsender_faar_login_skallen(monkeypatch):
+    for sti in ("/", "/index.html", "/assets/index-abc123.js", "/assets/index-abc123.css"):
+        kode, igennem = await _svar_paa(sti, "185.107.14.241", monkeypatch)
+        assert kode == 200 and igennem, (sti, kode)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("sti", ["/manifest.webmanifest", "/sw.js", "/icons/icon-192.png", "/icons/icon-512.png"])
-async def test_pwa_filer_er_kun_lokalt_tilgaengelige(sti, monkeypatch):
+async def test_pwa_filer_er_tilgaengelige_udefra(sti, monkeypatch):
     kode, igennem = await _svar_paa(sti, "10.0.0.20", monkeypatch)
     assert kode == 200 and igennem
     kode, igennem = await _svar_paa(sti, "185.107.14.241", monkeypatch)
-    assert kode == 401 and not igennem
+    assert kode == 200 and igennem
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sti,metode", [
+    ("/chat/sessions", "GET"),
+    ("/mc/runs", "GET"),
+    ("/assets/index-abc123.js.map", "GET"),
+    ("/assets/nested/file.js", "GET"),
+    ("/index.html", "POST"),
+    ("/assets/index-abc123.js", "POST"),
+])
+async def test_fjern_pwa_aabner_ikke_data_eller_sourcemaps(sti, metode, monkeypatch):
+    kode, igennem = await _svar_paa(sti, "185.107.14.241", monkeypatch, metode)
+    assert kode == 401 and not igennem, (sti, metode, kode)
 
 
 # ────────────── privatlivspolitikken er offentlig MED VILJE (28/9-2026)
@@ -181,17 +195,15 @@ async def test_pwa_filer_er_kun_lokalt_tilgaengelige(sti, monkeypatch):
 # Google Play kræver en URL til appens privatlivspolitik, og en reviewer har
 # ikke et token til Bjørns server. Politikken skal derfor kunne læses UDEFRA.
 #
-# Den ligger i _PUBLIC_PATHS og ikke i _UI_SKAL — skallen er bevidst kun åben
-# for lokale afsendere, så en udefrakommende reviewer ville få 401 på trods af
-# undtagelsen. Det er forskellen mellem «åben i stuen» og «åben mod internettet»,
-# og den er hele pointen med de to lister.
+# Den ligger i _PUBLIC_PATHS og ikke i _UI_SKAL, fordi politikken også skal
+# kunne åbnes med andre metoder end PWA'ens GET/HEAD-undtagelse.
 
 
 @pytest.mark.parametrize("vaert", ["185.107.14.241", "8.8.8.8", "10.0.0.20", "127.0.0.1"])
 def test_politikken_er_offentlig_uanset_hvor_kaldet_kommer_fra(vaert):
     assert m._is_public_path("/privatlivspolitik.html") is True
     assert m._er_ui_skal("/privatlivspolitik.html") is False, (
-        "politikken maa ikke hvile paa skal-undtagelsen — den er kun lokal"
+        "politikken maa ikke hvile paa PWA-skal-undtagelsen"
     )
 
 

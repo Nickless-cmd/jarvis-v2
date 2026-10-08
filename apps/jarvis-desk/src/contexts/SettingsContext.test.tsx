@@ -1,14 +1,70 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { SettingsProvider } from './SettingsContext'
 import { useSettings } from '../hooks/useSettings'
+import { writeBrowserConfig, readBrowserConfig } from '../lib/browserConfig'
+import { reportUnauthorized } from '../lib/authEvents'
+import { whoami } from '../lib/api'
+import { StreamError } from '../lib/streamClient'
 
 vi.mock('../lib/api', () => ({
   whoami: vi.fn().mockResolvedValue({ user_id: 'u1', display_name: 'Bjørn', role: 'owner' }),
 }))
 
 describe('SettingsContext', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.mocked(whoami).mockResolvedValue({ user_id: 'u1', display_name: 'Bjørn', role: 'owner' })
+  })
+
+  it('loads browser login and validates it before reporting ready', async () => {
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.auth?.role).toBe('owner'))
+    expect(result.current.settings?.apiBaseUrl).toBe(apiBaseUrl)
+    expect(result.current.settings?.authToken).toBe('test-token')
+  })
+
+  it('clears browser login after an unauthorized API request', async () => {
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.auth?.role).toBe('owner'))
+    act(() => reportUnauthorized())
+    await waitFor(() => expect(result.current.isConfigured).toBe(false))
+    expect(readBrowserConfig().authToken).toBeNull()
+  })
+
+  it('keeps browser login when whoami is unreachable', async () => {
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    vi.mocked(whoami).mockRejectedValue(new StreamError('network', 'offline'))
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.authStatus).toBe('offline'))
+    expect(readBrowserConfig().authToken).toBe('test-token')
+  })
+
+  it('clears a rejected browser login but keeps a forbidden one', async () => {
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    vi.mocked(whoami).mockRejectedValue(new StreamError('auth', 'HTTP 401', { statusCode: 401 }))
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const first = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(first.result.current.isConfigured).toBe(false))
+    expect(readBrowserConfig().authToken).toBeNull()
+    first.unmount()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    vi.mocked(whoami).mockRejectedValue(new StreamError('auth', 'HTTP 403', { statusCode: 403 }))
+    const second = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(second.result.current.authStatus).toBe('offline'))
+    expect(readBrowserConfig().authToken).toBe('test-token')
+  })
+
   it('isConfigured=false when no apiBaseUrl/token', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <SettingsProvider initialConfig={{ apiBaseUrl: '', authToken: null }}>{children}</SettingsProvider>

@@ -54,7 +54,7 @@ import './styles/chat-reading.css'
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
 export function App() {
-  const { settings, auth, isConfigured, update } = useSettings()
+  const { settings, auth, authStatus, isConfigured, update } = useSettings()
   const [surface, setSurface] = useState<Surface>('chat')
 
   // Konsolidering (Bjørn 2026-06-21): ÉN settings-flade. Tandhjul/genvej/SecondaryNav
@@ -90,6 +90,12 @@ export function App() {
 
   if (!settings) return null
   if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
+  if (authStatus === 'checking' || (authStatus === 'ready' && !auth)) {
+    return <div className="setup" role="status">Kontrollerer login…</div>
+  }
+  if (authStatus === 'offline') {
+    return <div className="setup" role="status">Ingen forbindelse til Jarvis. Prøv igen, når serveren er tilgængelig.</div>
+  }
 
   return (
     <SessionProvider config={cfg} onRestore={(s) => setSurface(s)}>

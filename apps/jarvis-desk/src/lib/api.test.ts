@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { cancelRun, getSession, createSession, apiFetch, followRun } from './api'
 import { StreamError } from './streamClient'
+import { onUnauthorized } from './authEvents'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
@@ -52,6 +53,19 @@ describe('cancelRun', () => {
 // NotifikationsValg) rammer deres fejl-gren i stedet for "Ingen
 // notifikationer — alt er klaret".
 describe('V6: 401 paa notifikations-endpoints kaster, det stille-fejler ikke', () => {
+  it('reports 401 to browser login but keeps 403 as an authorization error', async () => {
+    let count = 0
+    const stop = onUnauthorized(() => { count += 1 })
+    try {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('', { status: 401 }))
+        .mockResolvedValueOnce(new Response('', { status: 403 })))
+      await expect(apiFetch(cfg, '/chat/sessions')).rejects.toBeInstanceOf(StreamError)
+      expect(count).toBe(1)
+      await expect(apiFetch(cfg, '/mc/runtime')).rejects.toBeInstanceOf(StreamError)
+      expect(count).toBe(1)
+    } finally { stop() }
+  })
+
   it('GET /notifikationer paa 401 kaster en ikke-genforsoegsbar auth-fejl', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
     await expect(apiFetch(cfg, '/notifikationer')).rejects.toMatchObject({

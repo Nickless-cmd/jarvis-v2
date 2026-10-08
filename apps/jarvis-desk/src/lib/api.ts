@@ -11,6 +11,7 @@ import { StreamError } from './streamClient'
 import type { ContentBlock } from './sseProtocol'
 import { messageToBlocks } from './normalizeMessage'
 import { sharedRead } from './sharedRead'
+import { reportUnauthorized } from './authEvents'
 
 export interface ChatSession {
   id: string
@@ -133,7 +134,7 @@ declare const __DESK_VERSION__: string | undefined
 export function klientHoveder(): Record<string, string> {
   try {
     const v = typeof __DESK_VERSION__ === 'string' ? __DESK_VERSION__.trim() : ''
-    return v ? { 'X-Jarvis-Klient': 'desk', 'X-Jarvis-Klientversion': v } : {}
+    return v ? { 'X-Jarvis-Klient': (window as Window & { jarvisDesk?: unknown }).jarvisDesk ? 'desk' : 'web', 'X-Jarvis-Klientversion': v } : {}
   } catch {
     return {}
   }
@@ -215,6 +216,7 @@ export async function apiFetch<T>(
           : await res.json()) as T
       }
       if (res.status === 401 || res.status === 403) {
+        if (res.status === 401) reportUnauthorized()
         throw new StreamError('auth', `HTTP ${res.status}`, {
           retryable: false,
           statusCode: res.status,

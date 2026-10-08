@@ -1,7 +1,7 @@
 # Fælles Desk, web og PWA
 
 **Dato:** 2026-10-08
-**Status:** Design til review
+**Status:** Godkendt 2026-10-08
 
 ## Formål og ramme
 

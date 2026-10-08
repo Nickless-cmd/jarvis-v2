@@ -10,6 +10,7 @@ import { useCanonicalError } from '../hooks/useCanonicalError'
 import type { CanonicalError } from '../lib/canonicalError'
 import { setStreamActive } from '../lib/sharedRead'
 import { maaPolle } from '../lib/ro'
+import { reportUnauthorized } from '../lib/authEvents'
 
 /** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
  *  Kommer fra backendens `error`-system_event ELLER klient-side StreamError. */
@@ -397,6 +398,7 @@ export function StreamProvider({
         onHung: () => setOverride('hung'),
         onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
         onError: (err) => {
+          if (err.statusCode === 401) reportUnauthorized()
           // Netværksfejl → genforbind AUTOMATISK til det levende run (re-attach,
           // ikke re-POST). Andre fejl → vis struktureret fejl-banner.
           if (err.category === 'network' && err.retryable && sessionRef.current) {

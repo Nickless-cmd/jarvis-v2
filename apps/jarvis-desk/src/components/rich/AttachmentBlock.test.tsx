@@ -40,10 +40,24 @@ beforeEach(() => {
 
 describe('en udgivet fil', () => {
   it('viser alle tre handlinger', () => {
+    ;(window as unknown as Record<string, unknown>).jarvisDesk = { browser: { aabn: vi.fn() } }
     render(<AttachmentBlock block={UDGIVET} />)
     expect(screen.getByLabelText("Åbn i Jarvis' browser")).toBeTruthy()
     expect(screen.getByLabelText('Åbn i din egen browser')).toBeTruthy()
     expect(screen.getByLabelText('Hent oktober-tal.xlsx')).toBeTruthy()
+  })
+
+  it('hides the Electron browser action and reserves a tab for signed links on web', async () => {
+    const popup = { opener: window, location: { href: '' }, close: vi.fn() }
+    const open = vi.fn(() => popup)
+    vi.stubGlobal('open', open)
+    hentSigneretFilLink.mockResolvedValue('https://api.srvlab.dk/files/oktober-tal.xlsx?sig=abc')
+    render(<AttachmentBlock block={UDGIVET} />)
+    expect(screen.queryByLabelText("Åbn i Jarvis' browser")).toBeNull()
+    screen.getByLabelText('Åbn i din egen browser').click()
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank')
+    await waitFor(() => expect(popup.location.href).toContain('sig=abc'))
+    vi.unstubAllGlobals()
   })
 
   it('viser navn og størrelse som en RÆKKE, ikke en chip', () => {

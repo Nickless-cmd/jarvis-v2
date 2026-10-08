@@ -19,6 +19,7 @@ export function CentralBadge({ config, isOwner }: { config?: ApiConfig; isOwner?
   const { data: snap, error } = usePollWhenVisible(() => getCentralRealtime(config!), 8000, !!config)
   const [hover, setHover] = useState(false)
   const [opening, setOpening] = useState(false)
+  const canOpenCli = typeof (window as unknown as { jarvisDesk?: { central?: { openCli?: unknown } } }).jarvisDesk?.central?.openCli === 'function'
 
   // Neutral grå tilstand når vi ikke har data (ukendt / offline / ingen adgang).
   const known = !!snap
@@ -52,18 +53,18 @@ export function CentralBadge({ config, isOwner }: { config?: ApiConfig; isOwner?
       + (top ? ` — ${top.cluster}/${top.nerve}` : '')
     : `Central: ${statusWord}`
 
-  const titleAttr = isOwner ? `Central — ${detail} (klik: åbn CLI)` : `Central: ${statusWord}`
+  const titleAttr = isOwner ? `Central — ${detail}${canOpenCli ? ' (klik: åbn CLI)' : ''}` : `Central: ${statusWord}`
 
   return (
     <div
       className={`central-badge tone-${tone}${isOwner ? ' owner' : ''}`}
       title={titleAttr}
-      role={isOwner ? 'button' : undefined}
-      tabIndex={isOwner ? 0 : undefined}
+      role={canOpenCli ? 'button' : undefined}
+      tabIndex={canOpenCli ? 0 : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      onClick={onClick}
-      onKeyDown={isOwner ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void onClick() } } : undefined}
+      onClick={canOpenCli ? onClick : undefined}
+      onKeyDown={canOpenCli ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void onClick() } } : undefined}
       data-testid="central-badge"
     >
       <span className="cb-dot" />

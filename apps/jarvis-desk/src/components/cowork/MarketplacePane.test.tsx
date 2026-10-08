@@ -47,6 +47,19 @@ describe('MarketplacePane', () => {
     await waitFor(() => expect(bridge.openExternal).toHaveBeenCalled())
   })
 
+  it('opens a browser tab during the click before fetching the connector URL', async () => {
+    getConnectors.mockResolvedValue([github])
+    ;(window as Window & { jarvisDesk?: unknown }).jarvisDesk = undefined
+    const popup = { opener: window, location: { href: '' }, close: vi.fn() }
+    const open = vi.fn(() => popup)
+    vi.stubGlobal('open', open)
+    render(<MarketplacePane config={cfg} />)
+    fireEvent.click(await screen.findByText('Forbind'))
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank')
+    await waitFor(() => expect(popup.location.href).toBe('https://github.com/login/oauth/authorize?x'))
+    vi.unstubAllGlobals()
+  })
+
   it('coming_soon vises med badge og uden Forbind-knap', async () => {
     const gmail = { id: 'gmail', name: 'Gmail', kind: 'oauth', category: 'Google', icon: 'mail', desc: 'Mails', scopes: ['gmail.send'], post_connect_hint: null, status: 'coming_soon', connected: false, enabled: true }
     getConnectors.mockResolvedValue([github, gmail])

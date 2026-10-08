@@ -7,11 +7,7 @@ import {
 import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { setPendingHint } from '../../lib/postConnect'
 import { ListeTilstand } from '../feedback/ListeTilstand'
-
-function openBrowser(url: string): void {
-  const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
-  void b?.openExternal?.(url)
-}
+import { prepareExternalWindow } from '../../lib/host'
 
 /** Marketplace-zonen: forbind/til-fra/slet connectors med scope-transparens.
  *  Privatlivs-først — alt går via brugerens egen session/token. */
@@ -45,11 +41,12 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
 
   const onConnect = async (c: Connector) => {
     if (!config) return
+    const completeWindow = prepareExternalWindow()
     setBusy(c.id)
     try {
       const url = await startConnect(config, c.id)
-      if (url) openBrowser(url)
-    } catch { setBusy(null); return }
+      if (!completeWindow(url || null)) { setBusy(null); return }
+    } catch { completeWindow(null); setBusy(null); return }
     // Poll til connected (browser-flow afsluttes ude i browseren).
     let n = 0
     if (pollRef.current) clearInterval(pollRef.current)

@@ -26,6 +26,7 @@ import type { AgentReference } from '../../lib/environmentEvidence'
 import { NotifikationSessionPanel } from './NotifikationSessionPanel'
 import { KontoMenu } from './KontoMenu'
 import '../../styles/notification-feed.css'
+import { hasHostCapability } from '../../lib/host'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -321,7 +322,7 @@ export function Sidebar({
                           nedenfor — saa «nyt projekt» ER en kode-samtale med en
                           mappe. Paa chat- og baggrunds-grupperne ville knappen
                           ikke kunne lave noget. */}
-                      {g.gruppe === 'kode' && <NytProjektKnap />}
+                      {g.gruppe === 'kode' && hasHostCapability('folder-picker') && <NytProjektKnap />}
                     </div>
                     {!foldet && (
                       // KODE-gruppen deles yderligere op efter PROJEKT — som i
@@ -477,6 +478,7 @@ function CoworkMenu() {
 function NytProjektKnap() {
   const { create, setWorkspace } = useSessions()
   const [arbejder, setArbejder] = useState(false)
+  if (!hasHostCapability('folder-picker')) return null
 
   const nytProjekt = async () => {
     // Ingen `stopPropagation` her, og det er MÅLT frem for antaget: en
@@ -747,7 +749,7 @@ function SessionItem({
                 <Archive size={13} /> Arkivér
               </button>
             )}
-            {!archived && (
+            {!archived && hasHostCapability('folder-picker') && (
               <button type="button" onClick={doFlytTilProjekt}>
                 <FolderInput size={13} /> Flyt til projekt
               </button>

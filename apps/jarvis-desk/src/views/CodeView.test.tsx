@@ -164,9 +164,17 @@ describe('CodeView', () => {
   })
 
   it('workstation-knap viser mappe-vælger', () => {
+    vi.stubGlobal('jarvisDesk', { pickFolder: vi.fn() })
     wrap(<CodeView sessionId={null} userName="B" role="owner" />)
     fireEvent.click(screen.getByText('Min computer'))
     expect(screen.getByText('Vælg mappe…')).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('hides local computer choice when running in a browser', () => {
+    vi.stubGlobal('jarvisDesk', undefined)
+    wrap(<CodeView sessionId={null} userName="B" role="owner" />)
+    expect(screen.queryByText('Min computer')).not.toBeInTheDocument()
   })
 
   it('viser pause_and_ask sammen med approvals over Code-transcriptet', async () => {

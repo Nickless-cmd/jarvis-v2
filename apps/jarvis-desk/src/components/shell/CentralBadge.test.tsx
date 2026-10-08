@@ -91,6 +91,13 @@ describe('CentralBadge', () => {
     await waitFor(() => expect(openCli).toHaveBeenCalledTimes(1))
   })
 
+  it('owner badge is status-only without the local CLI bridge', async () => {
+    render(<CentralBadge config={CFG} isOwner />)
+    await waitFor(() => expect(screen.getByTestId('central-badge')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /Central/i })).toBeNull()
+    expect(screen.getByTestId('central-badge').getAttribute('title')).not.toContain('klik')
+  })
+
   it.skip('member-klik gør intet (ingen openCli)', async () => {
     // Overfloedig nu: maerket renderes slet ikke for en member. Staar tilbage
     // (sprunget over) saa den er klar hvis member-visningen kommer igen.

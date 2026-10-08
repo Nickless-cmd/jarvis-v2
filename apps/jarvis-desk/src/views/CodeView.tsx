@@ -33,6 +33,7 @@ import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { hasHostCapability } from '../lib/host'
 import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
 import { PlansPanel } from '../components/panel/PlansPanel'
 import { PrPanel } from '../components/panel/PrPanel'
@@ -114,7 +115,8 @@ export function CodeView({
     try { return JSON.parse(localStorage.getItem('jarvis-desk:code-ws') || '{}') } catch { return {} }
   })() as { kind?: WsKind; root?: string; wsPath?: string }
 
-  const [kind, setKind] = useState<WsKind>(savedWs.kind === 'workstation' ? 'workstation' : 'container')
+  const canUseLocalWorkspace = hasHostCapability('folder-picker')
+  const [kind, setKind] = useState<WsKind>(canUseLocalWorkspace && savedWs.kind === 'workstation' ? 'workstation' : 'container')
   const [root, setRoot] = useState<string>(savedWs.root && serverRoots.includes(savedWs.root as never) ? savedWs.root : serverRoots[0])
   const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
   // Panel-tilstand huskes i localStorage (Bjørn 4/10-2026: «appen husker ikk om
@@ -514,7 +516,7 @@ export function CodeView({
   // scope='workstation': highlight i brugerens lokale workspace.
   // Hvis intet workspace er valgt, forsøg at bede brugeren valge via pickFolder-bridge.
   useEffect(() => onHighlight((p, scope) => {
-    if (scope === 'workstation') {
+    if (scope === 'workstation' && canUseLocalWorkspace) {
       setKind('workstation')
       if (wsPath) {
         setFilesOpen(true)
@@ -542,7 +544,7 @@ export function CodeView({
       setHighlightPath(' ')
       requestAnimationFrame(() => setHighlightPath(p))
     }
-  }), [isOwner])
+  }), [isOwner, canUseLocalWorkspace])
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
 
@@ -802,7 +804,7 @@ export function CodeView({
     <div className="codeview-empty-ws">
       <div className="codeview-kind">
         <button type="button" className={kind === 'container' ? 'active' : ''} onClick={() => setKind('container')}>{serverLabel}</button>
-        <button type="button" className={kind === 'workstation' ? 'active' : ''} onClick={() => setKind('workstation')}>Min computer</button>
+        {canUseLocalWorkspace && <button type="button" className={kind === 'workstation' ? 'active' : ''} onClick={() => setKind('workstation')}>Min computer</button>}
       </div>
       {kind === 'container' ? (
         serverRoots.length > 1 ? (
@@ -1077,8 +1079,8 @@ export function CodeView({
             config={config}
             kind={kind}
             root={effRoot}
-            onVaelgMappe={pickFolder}
-            onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
+            onVaelgMappe={canUseLocalWorkspace ? pickFolder : undefined}
+            onVaelgWorkspace={canUseLocalWorkspace ? (v) => { setKind('workstation'); setWsPath(v.root) } : undefined}
             refreshKey={gitRefresh}
             working={stream.status === 'working' || bgWorking}
             kontekstTokens={gauge.tokens}

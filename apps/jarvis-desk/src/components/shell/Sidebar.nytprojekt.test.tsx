@@ -103,10 +103,10 @@ describe('nyt projekt fra fold-ud-linjen', () => {
     expect(gruppe.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('goer intet uden broen — og braekker ikke', () => {
+  it('viser ikke en projektknap uden lokal mappevælger', () => {
     ;(window as unknown as Record<string, unknown>).jarvisDesk = {}
     vis()
-    screen.getByLabelText('Nyt projekt — vælg en mappe').click()
+    expect(screen.queryByLabelText('Nyt projekt — vælg en mappe')).not.toBeInTheDocument()
     expect(create).not.toHaveBeenCalled()
   })
 })

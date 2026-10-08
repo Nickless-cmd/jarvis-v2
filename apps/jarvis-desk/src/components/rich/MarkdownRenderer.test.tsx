@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, fireEvent } from '@testing-library/react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 describe('MarkdownRenderer', () => {
+  it('opens a safe link from the browser UI', () => {
+    vi.stubGlobal('jarvisDesk', undefined)
+    const open = vi.fn(() => ({}))
+    vi.stubGlobal('open', open)
+    const { container } = render(<MarkdownRenderer text="[docs](https://example.com/docs)" streaming={false} />)
+    fireEvent.click(container.querySelector('a')!)
+    expect(open).toHaveBeenCalledWith('https://example.com/docs', '_blank', 'noopener,noreferrer')
+    vi.unstubAllGlobals()
+  })
   it('renders bold markdown as <strong>', () => {
     const { container } = render(<MarkdownRenderer text="**fed**" streaming={false} />)
     expect(container.querySelector('strong')?.textContent).toBe('fed')

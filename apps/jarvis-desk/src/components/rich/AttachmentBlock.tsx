@@ -3,6 +3,7 @@ import { AlertCircle, AppWindow, Download, ExternalLink, FileText, Loader2 } fro
 import { useSettings } from '../../hooks/useSettings'
 import { absolutApiUrl, downloadBlob, fetchBlobWithAuth, hentSigneretFilLink, type ApiConfig } from '../../lib/api'
 import { KlikbartBillede } from './BilledLightbox'
+import { prepareExternalWindow } from '../../lib/host'
 
 /**
  * En fil Jarvis har lagt ud — eller et gemt billede.
@@ -152,6 +153,9 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
     ? decodeURIComponent(adresse.slice('/files/'.length).split('?')[0] || '')
     : ''
   const kanAabnes = Boolean(config && udgivetNavn)
+  const kanAabneIJarvisBrowser = Boolean((window as unknown as {
+    jarvisDesk?: { browser?: { aabn?: unknown } }
+  }).jarvisDesk?.browser?.aabn)
 
   const hent = () => {
     if (!config || !adresse || henter) return
@@ -176,20 +180,15 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
 
   const aabnIEgenBrowser = () => {
     if (!config || !kanAabnes || henter) return
+    const openBrowser = prepareExternalWindow()
     setHenter(true)
     setFejl(false)
     // Linket hentes ved KLIK, ikke når rækken tegnes. Et link pr. visning
     // ville udstede en signatur for hver fil i tråden ved hver render — og
     // de ville være udløbet længe før nogen klikkede.
     hentSigneretFilLink(config, udgivetNavn)
-      .then((url) => {
-        const d = (window as unknown as {
-          jarvisDesk?: { openExternal?: (u: string) => void }
-        }).jarvisDesk
-        if (d?.openExternal) d.openExternal(url)
-        else window.open(url, '_blank', 'noopener,noreferrer')
-      })
-      .catch(() => setFejl(true))
+      .then((url) => { if (!openBrowser(url)) setFejl(true) })
+      .catch(() => { openBrowser(null); setFejl(true) })
       .finally(() => setHenter(false))
   }
 
@@ -212,7 +211,7 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
       {fejl ? <span className="fil-raekke-prik" aria-hidden="true" /> : null}
       {fejl ? <span className="fil-raekke-stoerrelse">kunne ikke hentes</span> : null}
       <span className="fil-raekke-handlinger">
-        {kanAabnes ? (
+        {kanAabnes && kanAabneIJarvisBrowser ? (
           <button type="button" onClick={aabnIJarvisBrowser} disabled={henter}
                   title="Åbn i Jarvis' browser" aria-label="Åbn i Jarvis' browser">
             <AppWindow size={14} />

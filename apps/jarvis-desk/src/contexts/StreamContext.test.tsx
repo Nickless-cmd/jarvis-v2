@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { StreamProvider } from './StreamContext'
 import { useStream } from '../hooks/useStream'
+import { onUnauthorized } from '../lib/authEvents'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -163,6 +164,19 @@ describe('StreamContext', () => {
     act(() => { handlersRef.current?.onError(authErr as unknown as Error) })
     expect(result.current.status).toBe('error')
     expect(result.current.streamError?.code).toBe('auth')
+  })
+
+  it('a v2 stream 401 invalidates browser login without marking the run done', () => {
+    let unauthorized = 0
+    const stop = onUnauthorized(() => { unauthorized += 1 })
+    try {
+      const { result } = renderHook(() => useStream(), { wrapper })
+      act(() => { result.current.send('hej', { sessionId: 's' }) })
+      const authErr = Object.assign(new Error('401'), { category: 'auth', retryable: false, statusCode: 401 })
+      act(() => { handlersRef.current?.onError(authErr as unknown as Error) })
+      expect(unauthorized).toBe(1)
+      expect(result.current.status).toBe('error')
+    } finally { stop() }
   })
 })
 

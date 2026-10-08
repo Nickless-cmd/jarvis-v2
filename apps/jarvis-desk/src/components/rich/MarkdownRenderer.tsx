@@ -6,6 +6,7 @@ import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
+import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 
@@ -96,7 +97,4 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
   )
 }
 
-function openExternal(url: string): void {
-  const w = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => void } }).jarvisDesk
-  if (w?.openExternal) w.openExternal(url)
-}
+function openExternal(url: string): void { openExternalUrl(url) }

@@ -4,14 +4,10 @@ import { getConnectors, startConnect, type Connector } from '../../lib/connector
 import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
 import { takePendingHint } from '../../lib/postConnect'
+import { prepareExternalWindow } from '../../lib/host'
 
 /** Returnerer null naar der slet ingen bro er (web-fanen) — ellers selve
  *  loeftet, saa kalderen kan se om browseren faktisk aabnede. */
-function openBrowser(url: string): Promise<void> | null {
-  const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
-  return b?.openExternal?.(url) ?? null
-}
-
 /** Tom-session-skærm: tids-bevidst greeting + presence-ring tonet efter tidspunkt
  *  + op til 3 connector-forslag (kun ikke-forbundne) + "Flere apps →". Composeren
  *  gives som children, så den sidder under hilsenen (spec §3.4). */
@@ -74,17 +70,17 @@ export function GreetingHero({
   const onConnect = async (c: Connector) => {
     if (!config || c.connected) return
     setForbindFejl('')
+    const completeWindow = prepareExternalWindow()
     const url = await startConnect(config, c.id).catch(() => null)
     if (!url) {
+      completeWindow(null)
       setForbindFejl(`${c.name} kunne ikke forberedes. Proev igen, eller gaa ind under Flere apps.`)
       return
     }
-    const aabner = openBrowser(url)
-    if (!aabner) {
-      setForbindFejl(`${c.name} skal godkendes i en browser, og det kan kun desk-appen aabne.`)
+    if (!completeWindow(url)) {
+      setForbindFejl(`Browseren åbnede ikke med ${c.name}. Tillad popups og prøv igen.`)
       return
     }
-    aabner.catch(() => setForbindFejl(`Browseren aabnede ikke med ${c.name}. Proev igen.`))
   }
 
   return (

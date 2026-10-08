@@ -177,14 +177,14 @@ export function EnvironmentPanel({
                 </button>
               </li>
             )}
-            <li className="env-row">
+            {onVaelgMappe && <li className="env-row">
               {/* Var en ren etiket. Nu en vaelger: betroede mapper og ny lokal
                   worktree (Bjoern 18/9-2026). */}
               <WorkspaceVaelger
                 config={config} kind={kind} root={root}
                 onVaelg={onVaelgWorkspace} onVaelgMappe={onVaelgMappe}
               />
-            </li>
+            </li>}
             {git?.is_git && (
               <li className="env-row">
                 {/* Ligesaa: branchen kunne kun laeses, ikke skiftes. */}

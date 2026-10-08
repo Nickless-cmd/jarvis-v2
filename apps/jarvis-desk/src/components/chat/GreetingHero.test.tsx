@@ -62,4 +62,17 @@ describe('GreetingHero', () => {
     fireEvent.click(screen.getByText('Forbind'))
     await waitFor(() => expect(startConnect).toHaveBeenCalledWith(cfg, 'github'))
   })
+
+  it('opens connector authorization from the browser greeting', async () => {
+    getConnectors.mockResolvedValue([oauthC('github', false)])
+    ;(window as Window & { jarvisDesk?: unknown }).jarvisDesk = undefined
+    const popup = { opener: window, location: { href: '' }, close: vi.fn() }
+    const open = vi.fn(() => popup)
+    vi.stubGlobal('open', open)
+    render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
+    fireEvent.click(await screen.findByText('Forbind'))
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank')
+    await waitFor(() => expect(popup.location.href).toBe('https://github.com/login/oauth/authorize?x'))
+    vi.unstubAllGlobals()
+  })
 })

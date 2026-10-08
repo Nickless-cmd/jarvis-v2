@@ -5,11 +5,7 @@ import type { ApiConfig } from '../../lib/api'
 import { googleLinkStart, googleLoginResult } from '../../lib/api'
 import { EnhederSection } from './EnhederSection'
 import { getAccountMe } from '../../lib/coworkApi'
-
-function openBrowser(url: string): void {
-  const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
-  void b?.openExternal?.(url)
-}
+import { prepareExternalWindow } from '../../lib/host'
 
 /** Account-sektion (cowork command center §4.1). Viser den aktuelle brugers
  *  egen profil — henter via /account/me (self-scope, ikke owner-only). */
@@ -21,17 +17,19 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
   const [gMsg, setGMsg] = useState('')
   const [linked, setLinked] = useState(false)
   const cancelRef = useRef(false)
+  useEffect(() => () => { cancelRef.current = true }, [])
   // Vedvarende indikator: server-sandheden (/account/me → google_linked).
   // Uden denne nulstilles knappen til "Forbind Google" ved hver genstart,
   // selvom kontoen ER linket — det fik det til at ligne et glemt login.
   useEffect(() => { if (profile) setLinked(!!profile.google_linked) }, [profile])
   const linkGoogle = async () => {
     if (!config || gBusy) return
+    const openBrowser = prepareExternalWindow()
     setGBusy(true); setGMsg('Åbner Google…'); cancelRef.current = false
     try {
       const start = await googleLinkStart(config)
-      if (!start.authorize_url || !start.nonce) { setGMsg('Ikke konfigureret.'); setGBusy(false); return }
-      openBrowser(start.authorize_url)
+      if (!start.authorize_url || !start.nonce) { openBrowser(null); setGMsg('Ikke konfigureret.'); setGBusy(false); return }
+      if (!openBrowser(start.authorize_url)) { setGMsg('Kunne ikke åbne Google.'); setGBusy(false); return }
       setGMsg('Godkend i browseren — venter…')
       for (let i = 0; i < 75 && !cancelRef.current; i++) {
         await new Promise((r) => setTimeout(r, 2000))
@@ -41,7 +39,7 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
         if (res.status === 'error') { setGMsg('Kunne ikke forbinde.'); setGBusy(false); return }
       }
       setGMsg('Timeout — prøv igen.'); setGBusy(false)
-    } catch { setGMsg('Kunne ikke nå serveren.'); setGBusy(false) }
+    } catch { openBrowser(null); setGMsg('Kunne ikke nå serveren.'); setGBusy(false) }
   }
 
   if (!profile) return <SettingsState status={resource.status} label="kontoen" onRetry={resource.retry} />

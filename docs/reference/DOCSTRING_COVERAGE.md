@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8768/16581 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8769/16583 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8768/16581 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 9 | 20 | 45% |
-| `apps.api.jarvis_api.routes` | 681 | 915 | 74% |
+| `apps.api.jarvis_api.routes` | 682 | 917 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -42,7 +42,7 @@ Generated from source. 8768/16581 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2337)
+## Undocumented public functions (2338)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -53,14 +53,15 @@ Generated from source. 8768/16581 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
 - `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L128)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L75)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L106)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L93)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L87)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L119)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L100)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L113)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L144)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `dispatch` (L89)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L131)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L125)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L157)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L138)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
 - `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L254)

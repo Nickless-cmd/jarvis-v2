@@ -64,18 +64,21 @@ _Desks laese- og styrings-API til agentkontrakten (agent-contract-v1 G, spec 10)
 | class | `MessageBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L28) |
 | class | `FollowupBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L32) |
 | class | `StopBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L37) |
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L41) |
-| function | `_ok` | `(out)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L49) |
-| function | `overview` | `(scope=…, session=…)` | Liste + taellere (aktive og opmaerksomhed er adskilte tal). ``scope=all`` giver hele agenttraeet. | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L56) |
-| function | `agent` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L65) |
-| function | `artifact` | `(agent_id, run_id, name, offset=…, limit=…, session=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L75) |
-| function | `message` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L87) |
-| function | `followup` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L93) |
-| function | `stop` | `(agent_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L100) |
-| function | `close` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L106) |
-| function | `feed` | `()` | Kort til notifikationsfeedet (een reference pr. assignment + een pr. ventende approval). | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L112) |
-| function | `read` | `(ref_kind, ref_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L119) |
-| function | `acknowledge` | `(assignment_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L128) |
+| class | `DispatchBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L41) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L58) |
+| function | `_ok` | `(out)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L66) |
+| function | `dispatch_for_authenticated_session` | `(body)` | One API admission path. The requested session must already belong to the caller. | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L72) |
+| function | `dispatch` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L89) |
+| function | `overview` | `(scope=…, session=…)` | Liste + taellere (aktive og opmaerksomhed er adskilte tal). ``scope=all`` giver hele agenttraeet. | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L94) |
+| function | `agent` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L103) |
+| function | `artifact` | `(agent_id, run_id, name, offset=…, limit=…, session=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L113) |
+| function | `message` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L125) |
+| function | `followup` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L131) |
+| function | `stop` | `(agent_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L138) |
+| function | `close` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L144) |
+| function | `feed` | `()` | Kort til notifikationsfeedet (een reference pr. assignment + een pr. ventende approval). | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L150) |
+| function | `read` | `(ref_kind, ref_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L157) |
+| function | `acknowledge` | `(assignment_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_contract_view.py#L166) |
 
 ## `apps/api/jarvis_api/routes/agent_pool.py`
 _Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._

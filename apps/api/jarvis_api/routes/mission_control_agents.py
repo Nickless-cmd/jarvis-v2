@@ -253,6 +253,26 @@ def mc_council_messages(council_id: str) -> dict:
 @router.post("/runtime/agents/spawn")
 def mc_spawn_agent(payload: dict) -> dict:
     """Spawn en ny agent-task ud fra payload (role, goal, tools, budget, provider/model osv.)."""
+    from core.services.agent_contract_service import capability_enabled
+    if capability_enabled():
+        from .agent_contract_view import DispatchBody, dispatch_for_authenticated_session
+        unsupported = [key for key in ("system_prompt", "allowed_tools", "persistent",
+                                        "result_contract", "execution_mode", "provider") if payload.get(key)]
+        if payload.get("auto_execute") is False:
+            unsupported.append("auto_execute")
+        if payload.get("parent_agent_id") not in (None, "", "jarvis"):
+            unsupported.append("parent_agent_id")
+        if unsupported:
+            raise HTTPException(status_code=400, detail="Brug kontraktens dispatch for: " + ", ".join(unsupported))
+        ctx = payload.get("context") or {}
+        if not isinstance(ctx, dict):
+            raise HTTPException(status_code=400, detail="Ugyldig kontekst")
+        return dispatch_for_authenticated_session(DispatchBody(
+            session_id=str(ctx.get("parent_session_id") or ""),
+            goal=str(payload.get("goal") or ""), role=str(payload.get("role") or "researcher"),
+            tool_policy=str(payload.get("tool_policy") or ""),
+            budget_tokens=int(payload.get("budget_tokens") or 0),
+            model=str(payload.get("model") or "")))
     return spawn_agent_task(
         role=str(payload.get("role") or "researcher"),
         goal=str(payload.get("goal") or ""),
@@ -431,5 +451,3 @@ def mc_run_council_round(council_id: str) -> dict:
 def mc_run_swarm_round(council_id: str) -> dict:
     """Kør én runde i den angivne swarm-session."""
     return run_swarm_round(council_id)
-
-

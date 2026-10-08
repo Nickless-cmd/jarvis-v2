@@ -38,6 +38,23 @@ class StopBody(BaseModel):
     note: str = ""
 
 
+class DispatchBody(BaseModel):
+    session_id: str
+    goal: str
+    description: str = ""
+    role: str = "researcher"
+    expected_result: str = ""
+    tool_policy: str = ""
+    target: str = "runtime-container"
+    workspace: str = ""
+    writes: bool = False
+    budget_tokens: int = 0
+    max_turns: int = 0
+    model: str = ""
+    model_required: bool = False
+    idempotency_key: str = ""
+
+
 def _bruger() -> str:
     from core.identity.workspace_context import current_user_id
     uid = (current_user_id() or "").strip()
@@ -50,6 +67,27 @@ def _ok(out: dict[str, Any]) -> dict[str, Any]:
     if out.get("status") == "error":
         raise HTTPException(status_code=_HTTP.get(str(out.get("code")), 400), detail=out.get("error") or "fejl")
     return out
+
+
+def dispatch_for_authenticated_session(body: DispatchBody) -> dict[str, Any]:
+    """One API admission path. The requested session must already belong to the caller."""
+    uid = _bruger()
+    from core.services.chat_sessions import get_session_owner
+    if not body.session_id.strip() or get_session_owner(body.session_id) != uid:
+        raise HTTPException(status_code=404, detail="Sessionen findes ikke")
+    from core.services import agent_contract_service as svc
+    return _ok(svc.dispatch_agent(
+        owner_user_id=uid, origin_session_id=body.session_id, goal=body.goal,
+        description=body.description, role=body.role, expected_result=body.expected_result,
+        tool_policy=body.tool_policy, target=body.target, workspace=body.workspace,
+        writes=body.writes, budget_tokens=body.budget_tokens, max_turns=body.max_turns,
+        model=body.model, model_required=body.model_required,
+        idempotency_key=body.idempotency_key))
+
+
+@router.post("/dispatch")
+async def dispatch(body: DispatchBody) -> dict[str, Any]:
+    return await asyncio.to_thread(dispatch_for_authenticated_session, body)
 
 
 @router.get("/overview")

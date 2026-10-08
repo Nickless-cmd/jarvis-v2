@@ -81,3 +81,19 @@ def test_laese_ruterne_er_IKKE_gatede(monkeypatch):
                         lambda _id: {"messages": [{"content": "hej"}]})
     svar = ruter.mc_agent_messages("agent-1")
     assert svar["messages"] == [{"content": "hej"}]
+
+
+def test_legacy_spawn_adapts_to_authenticated_contract_dispatch(monkeypatch):
+    import apps.api.jarvis_api.routes.agent_contract_view as contract_view
+
+    monkeypatch.setattr("core.services.agent_contract_service.capability_enabled", lambda: True)
+    seen = []
+    monkeypatch.setattr(contract_view, "dispatch_for_authenticated_session",
+                        lambda body: seen.append(body) or {"status": "accepted"})
+    out = ruter.mc_spawn_agent({"goal": "check", "context": {"parent_session_id": "s1"}})
+    assert out["status"] == "accepted"
+    assert seen[0].session_id == "s1" and seen[0].goal == "check"
+    with pytest.raises(HTTPException) as error:
+        ruter.mc_spawn_agent({"goal": "check", "persistent": True,
+                              "context": {"parent_session_id": "s1"}})
+    assert error.value.status_code == 400

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-07 from app.routes (live) — 625 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-08 from app.routes (live) — 626 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -34,6 +34,7 @@
 | POST | `/agents/contract/agents/{agent_id}/message` | dict | agent_contract_view |
 | POST | `/agents/contract/agents/{agent_id}/stop` | dict | agent_contract_view |
 | POST | `/agents/contract/assignments/{assignment_id}/acknowledge` | dict | agent_contract_view |
+| POST | `/agents/contract/dispatch` | dict | agent_contract_view |
 | GET | `/agents/contract/feed` | dict | agent_contract_view |
 | POST | `/agents/contract/feed/{ref_kind}/{ref_id}/read` | dict | agent_contract_view |
 | GET | `/agents/contract/overview` | dict | agent_contract_view |

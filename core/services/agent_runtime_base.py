@@ -224,10 +224,35 @@ def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
             arguments["_runtime_session_id"] = str(context["session_id"])
         if context.get("workspace_root"):
             arguments["_operator_workspace_root"] = str(context["workspace_root"])
+    # A child may dispatch its own child. Stamp its identity and provenance from
+    # the fenced assignment, never from model-supplied tool arguments.
+    from core.runtime.db_agent_lease import current_assignment_id
+    scoped_assignment = current_assignment_id()
+    if scoped_assignment:
+        from core.runtime.db_agent_contract import _conn
+        row = _conn().execute(
+            "SELECT assignment_id, owner_user_id, origin_session_id FROM agent_assignments "
+            "WHERE assignment_id=? AND agent_id=?", (scoped_assignment, agent_id)).fetchone()
+        if row is None:
+            return json.dumps({"status": "error", "code": "INVALID_SCOPE",
+                               "error": "worker assignment mismatch"})
+        arguments["_runtime_user_id"] = str(row["owner_user_id"])
+        arguments["_runtime_session_id"] = str(row["origin_session_id"])
+        run = _conn().execute(
+            "SELECT run_id FROM agent_runs WHERE assignment_id=? "
+            "ORDER BY attempt_no DESC, created_at DESC LIMIT 1",
+            (scoped_assignment,)).fetchone()
+        if run is None:
+            return json.dumps({"status": "error", "code": "INVALID_SCOPE",
+                               "error": "worker run missing"})
+        arguments["_runtime_turn_id"] = str(run["run_id"])
     # Serverens egen identitet for kaldet. Et `_runtime_agent_id` modellen selv har skrevet fjernes ALTID;
-    # kun wt_*-vaerktoejerne (der slaar sit worktree op herfra) faar den rigtige sat ind.
+    # kun de agentbundne vaerktoejer faar den rigtige sat ind.
     arguments.pop("_runtime_agent_id", None)
-    if name in ("wt_bash", "wt_write_file", "agent_note"):
+    if name in ("wt_bash", "wt_write_file", "agent_note") or (
+        scoped_assignment and name in ("dispatch_agent", "spawn_agent_task", "followup_agent",
+                                       "send_message_to_agent", "list_agents", "wait_agents",
+                                       "interrupt_agent", "close_agent")):
         arguments["_runtime_agent_id"] = agent_id
     try:
         from core.tools.simple_tools import execute_tool

@@ -126,6 +126,14 @@ _scope: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "agent_lease_scope", default=None)
 
 
+def current_assignment_id() -> str:
+    """The fenced assignment in this worker, or empty outside an agent run."""
+    sc = _scope.get()
+    if sc is None or not scope_is_current():
+        return ""
+    return str(sc["assignment_id"])
+
+
 def scope_is_current() -> bool:
     """Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun
     hvis dens lease/token stadig er den gaeldende. Fail-closed ved databasefejl."""

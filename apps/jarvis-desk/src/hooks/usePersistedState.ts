@@ -42,6 +42,24 @@ export function usePersistedState<T>(key: string, fallback: T, persist = true) {
   // effekten skal gøre det for hver ændring (det ville ophæve debouncen).
   const nyeste = useRef(value)
   nyeste.current = value
+  const persistRef = useRef(persist)
+  persistRef.current = persist
+  const previousPersist = useRef(persist)
+
+  useEffect(() => {
+    if (previousPersist.current === persist) return
+    previousPersist.current = persist
+    if (!persist) {
+      setValue(fallback)
+    } else {
+      try {
+        const raw = localStorage.getItem(key)
+        setValue(raw === null ? fallback : JSON.parse(raw) as T)
+      } catch {
+        setValue(fallback)
+      }
+    }
+  }, [persist, key, fallback])
 
   useEffect(() => {
     if (!persist) return
@@ -55,9 +73,9 @@ export function usePersistedState<T>(key: string, fallback: T, persist = true) {
   // test: unmount efter 0 ms — og så ville kladden aldrig nå disken, som er
   // præcis den fejl denne hook findes for at lukke.
   useEffect(() => () => {
-    if (!persist) return
+    if (!persistRef.current) return
     try { localStorage.setItem(key, JSON.stringify(nyeste.current)) } catch { /* ignoreres */ }
-  }, [key, persist])
+  }, [key])
 
   return [value, setValue] as const
 }

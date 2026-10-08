@@ -7,6 +7,11 @@ function Probe({ k, start }: { k: string; start: boolean }) {
   return <button onClick={() => setV((p) => !p)}>{v ? 'til' : 'fra'}</button>
 }
 
+function PrivateProbe({ persist }: { persist: boolean }) {
+  const [value, setValue] = usePersistedState('private-draft', '', persist)
+  return <input aria-label="private-draft" value={value} onChange={(e) => setValue(e.target.value)} />
+}
+
 /**
  * Hooken findes fordi Bjørn 4/10-2026 mistede sin tekst ved mode-skift og sine
  * paneler ved genstart: «appen husker ikk om de var åbne».
@@ -40,5 +45,25 @@ describe('usePersistedState', () => {
     fireEvent.click(screen.getByText('fra'))
     unmount()
     expect(localStorage.getItem('k4')).toBe('true')
+  })
+
+  it('skriver ikke en tidligere ejers kladde igen ved skift til medlemsmode', () => {
+    const { rerender, unmount } = render(<PrivateProbe persist />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'private-draft' }), {
+      target: { value: 'ejerens tekst' },
+    })
+    localStorage.removeItem('private-draft')
+    rerender(<PrivateProbe persist={false} />)
+    expect(screen.getByRole('textbox', { name: 'private-draft' })).toHaveValue('')
+    unmount()
+    expect(localStorage.getItem('private-draft')).toBeNull()
+  })
+
+  it('indlæser ejerens kladde når rollen bliver kendt efter whoami', () => {
+    localStorage.setItem('private-draft', JSON.stringify('ejerens gemte kladde'))
+    const { rerender } = render(<PrivateProbe persist={false} />)
+    expect(screen.getByRole('textbox', { name: 'private-draft' })).toHaveValue('')
+    rerender(<PrivateProbe persist />)
+    expect(screen.getByRole('textbox', { name: 'private-draft' })).toHaveValue('ejerens gemte kladde')
   })
 })

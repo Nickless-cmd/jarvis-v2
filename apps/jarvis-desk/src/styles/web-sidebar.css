@@ -50,3 +50,45 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+@media (max-width: 600px) {
+  .window.web-sidebar-closed,
+  .window.web-sidebar-open {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .web-sidebar-slot {
+    position: absolute;
+    z-index: 100;
+    inset: 0 auto 0 0;
+    width: 44px;
+    background: transparent;
+    border: 0;
+    pointer-events: none;
+  }
+
+  .web-sidebar-open .web-sidebar-slot {
+    width: min(var(--sidebar-bredde), calc(100vw - 44px));
+    background: var(--bg-0);
+    border-right: 1px solid var(--line);
+    box-shadow: 12px 0 32px rgb(0 0 0 / 35%);
+    pointer-events: auto;
+  }
+
+  .web-sidebar-toggle {
+    pointer-events: auto;
+    background: var(--bg-0);
+  }
+
+  .web-sidebar-closed .chatview-head {
+    padding-left: 52px;
+  }
+
+  .web-sidebar-closed .chatview .composer,
+  .web-sidebar-closed .codeview .composer {
+    width: calc(100% - 24px);
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+}

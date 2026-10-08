@@ -108,29 +108,62 @@ bruger jeg målte som. Prøv root, før du melder en blokering.
 
 Auth håndhæves altså gennem tunnelen — ikke kun på LAN.
 
-`base-url: https://ntfy.srvlab.dk` og `behind-proxy: true` er sat i
-`server.yml` fordi TLS termineres i Cloudflare.
+### Fælden: Cloudflare afviser UA-løse requests (målt 8/10-2026)
 
-## Skiftet (rækkefølgen er ikke valgfri)
+Efter skiftet fejlede **hver** afsendelse med `403 error code: 1010`. Det er
+**ikke** ntfy's auth — det er Cloudflares bot-værn, og det rammer klientens
+signatur:
 
-En alarmkanal der ikke virker er værre end en offentlig en der gør. Derfor:
+| Kald | Resultat |
+|---|---|
+| `curl` gennem tunnelen | **200** |
+| `urllib` uden `User-Agent` | **403 / 1010** |
+| `urllib` med en vilkårlig UA | **200** |
 
-1. Tunnel + DNS på plads.
-2. Verificér udefra: `curl https://ntfy.srvlab.dk/v1/health` → 200, og at
-   emnet stadig svarer 403 uden nøgle.
-3. Bjørn peger ntfy-appen på `https://ntfy.srvlab.dk` og logger ind som
-   `phone`.
-4. Send én test → **Bjørn bekræfter at den nåede telefonen.**
-5. Først derefter skiftes `runtime.json`:
-   ```json
-   "ntfy_server": "https://ntfy.srvlab.dk",
-   "ntfy_topic":  "<emnet>",
-   "ntfy_token":  "<jarvis-token>"
-   ```
-   `ntfy_gateway._load_config` læser filen ved **hvert** kald — ingen cache,
-   så skiftet virker uden genstart.
-6. Send én alarm ad den nye vej og bekræft den på telefonen.
-7. Ryd den gamle offentlige topic.
+`curl` sender altid sin egen UA, så fejlen var usynlig i alle mine tidligere
+tunneltests. `ntfy_gateway` brugte `urllib` **uden** UA — altså ville hele
+push-vejen være død i drift, og **tavst**: kalderne er brand-and-forget, og
+kun loggen bar 403'en.
+
+Fixet er én header (`"User-Agent": "Jarvis/1.0"` i `send_notification`), og
+`tests/test_ntfy_gateway.py::test_der_sendes_altid_en_user_agent` holder den
+fast. Læren er større end linjen: **et curl-bevis er ikke et kode-bevis.**
+Test altid gennem den klient koden faktisk bruger.
+
+## Skiftet — udført 8/10-2026
+
+`runtime.json` peger nu på den selvhostede server:
+
+```json
+"ntfy_server": "https://ntfy.srvlab.dk",
+"ntfy_topic":  "<emnet — se ~/.jarvis-v2/config/ntfy_selfhosted.json>",
+"ntfy_token":  "<jarvis-token>"
+```
+
+Emnet står **ikke** her med vilje: repoet er offentligt, og
+`tests/test_ntfy_topic_ikke_i_kilden.py` kræver at det aktive navn ikke findes
+i nogen versioneret fil. Oplysningerne ligger i
+`~/.jarvis-v2/config/ntfy_selfhosted.json` (0600, uden for repoet).
+
+Backup af filen før skiftet:
+`~/.jarvis-v2/config/runtime.json.bak-20261008T162225Z`.
+
+Emnet er **et andet** end det gamle på `ntfy.sh` — det var to felter, ikke
+ét. `ntfy_gateway._load_config` læser filen ved **hvert** kald, så et skift
+virker uden genstart. Men `send_notification`-*koden* ligger i
+`sys.modules` når processen først har importeret modulet: ændringer i
+gateway'en selv kræver en genstart af `jarvis-runtime`.
+
+**Verificeret efter skiftet:**
+
+| Test | Resultat |
+|---|---|
+| Gateway læser ny config | `server=https://ntfy.srvlab.dk`, token sat |
+| Ægte afsendelse gennem `ntfy_gateway` | `status: sent` |
+| Læst tilbage med `phone`-token gennem tunnelen | beskeden ligger i cachen |
+| Portens tests | 15 passed |
+
+Den gamle offentlige topic bør ryddes (den er ikke længere i brug).
 
 ## Rollback
 
@@ -143,8 +176,10 @@ deler intet med de øvrige containere.
 
 ## Hvad der IKKE er gjort
 
-- Skiftet i `runtime.json` — bevidst, indtil telefonen er bekræftet.
-- Den gamle offentlige topic er stadig aktiv.
+- **Telefonen er ikke bekræftet.** `runtime.json` peger nu på den selvhostede
+  server, så hvis appen ikke er sat op med server + emne + brugeren `phone`,
+  når der **ingen** push frem. Den gamle vej (`ntfy.sh`) bruges ikke længere.
+- Den gamle offentlige topic på `ntfy.sh` er stadig aktiv og bør ryddes.
 
 ## Filer
 

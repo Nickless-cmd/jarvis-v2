@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8766/16579 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8768/16581 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8766/16579 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 801 | 1448 | 55% |
-| `core.services` | 5852 | 11268 | 51% |
+| `core.services` | 5854 | 11270 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -686,9 +686,9 @@ Generated from source. 8766/16579 functions/methods documented (52%). The list b
 - `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
-- `core/services/agent_sandbox.py` :: `bwrap_path` (L49)
-- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L105)
-- `core/services/agent_sandbox.py` :: `python_prefixes` (L56)
+- `core/services/agent_sandbox.py` :: `bwrap_path` (L58)
+- `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L136)
+- `core/services/agent_sandbox.py` :: `python_prefixes` (L65)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)

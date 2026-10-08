@@ -19,7 +19,21 @@ import apps.api.jarvis_api.middleware.jarvisx_user_routing as M
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("path", ["/chat/stream", "/chat/stream/v2"])
-async def test_medlemschat_pause_blokerer_nye_promptkoersler(monkeypatch, path):
+async def test_medlemschat_slippes_igennem(monkeypatch, path):
+    """Medlemskørsler skal nå frem — spærringen fra 8/10 er løftet.
+
+    Her stod en 503 for ikke-ejere. Den blev lagt ind mod en ægte prompt-læk,
+    men den ramte ALLE medlemskørsler bredt og kunne ikke skelne en læk fra et
+    rent kald — Michelle fik «Forbindelse afbrudt» i stedet for svar.
+
+    Værnet bor nu ved læsestedet: `_resolve_with_shared_fallback` returnerer
+    kun `shared/` når stien ligger i ejerens workspace, og det testes i
+    tests/test_workspace_files.py.
+
+    Denne test holder på at ruten IKKE blokeres igen: en fremtidig
+    «sikkerheds»-blokade her ville tage stemmen fra et medlem uden at lukke
+    noget hul.
+    """
     from core.runtime import jarvisx_auth
     from core.identity import users
 
@@ -33,11 +47,15 @@ async def test_medlemschat_pause_blokerer_nye_promptkoersler(monkeypatch, path):
     req.headers = {"authorization": "Bearer valid-test-token"}
     req.client = Mock(host="8.8.8.8")
 
+    naaet = {"frem": False}
+
     async def _next(_req):
-        raise AssertionError("medlemskørslen må ikke starte")
+        naaet["frem"] = True
+        return Mock(status_code=200)
 
     response = await M.jarvisx_user_routing_middleware(req, _next)
-    assert response.status_code == 503
+    assert naaet["frem"], "medlemskørslen blev blokeret i middleware'en"
+    assert response.status_code == 200
 
 
 def _request(host="1.2.3.4", path="/presence/ping"):

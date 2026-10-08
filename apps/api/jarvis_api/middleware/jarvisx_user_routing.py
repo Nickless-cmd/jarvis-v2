@@ -377,15 +377,25 @@ async def jarvisx_user_routing_middleware(
         # but still bind the project anchor below.
         user = None
 
-    # Midlertidig inddæmning af prompt-læk (8/10-2026): medlemschatten kunne
-    # få ejerens shared/USER.md og MEMORY.md i systemprompten. Blokér nye
-    # medlemskørsler, indtil alle promptkilder er gennemgået.
-    if (request.method == "POST" and _sti in ("/chat/stream", "/chat/stream/v2")
-            and (user is None or user.role != "owner")):
-        return JSONResponse(
-            status_code=503,
-            content={"detail": "Medlemschat er midlertidigt sat på pause, mens vi retter en privatlivsfejl."},
-        )
+    # ── MEDLEMSCHATTEN ER ÅBEN IGEN (8/10-2026) ───────────────────────────
+    # Her stod en midlertidig 503-spærring for ikke-ejere på /chat/stream
+    # og /chat/stream/v2, lagt ind samme aften da medlemschatten kunne få
+    # ejerens shared/USER.md og MEMORY.md ind i systemprompten.
+    #
+    # Den er løftet fordi hullet er lukket på LÆSE-siden, hvor det hører
+    # til — ikke på ruten, hvor den ramte alle medlemskørsler bredt:
+    #
+    #   `_resolve_with_shared_fallback` (workspace_files.py) returnerer nu
+    #   kun shared/ når stien ligger i EJERENS workspace. Kan ejerrollen
+    #   ikke bevises, læses shared/ ikke. Det er den ENESTE vej til shared/
+    #   i promptkæden: både workspace_files.py og learned_about_user.py
+    #   kalder den, og `_workspace_optional_file_section`s fallback peger på
+    #   TEMPLATE_DIR, ikke shared/.
+    #
+    # Værnet testes i tests/test_workspace_files.py
+    # (test_member_stub_never_reads_owner_shared_user_or_memory) — og en
+    # route-blokade kunne ikke se forskel på en læk og et rent medlemskald.
+    # Den slags hører ved kilden, ikke ved døren.
 
     if user_id and user is None:
         # Unknown discord_id — same fallback as discord_gateway / user_context.

@@ -212,6 +212,17 @@ def test_a_non_operator_tool_is_denied_and_never_runs_in_the_container(br):
     assert br.wire.calls == [] and br.inv() == []
 
 
+def test_an_open_operator_channel_is_not_inherited_by_a_client_agent(br):
+    from core.services import operator_channel as channel
+
+    ag, acc = br.agent()
+    assert channel.open_channel(SESSION, is_owner=True)["open"] is True
+    assert channel.is_open(SESSION) is True
+    out = json.loads(br.run(ag, acc, br.tc(name="bash", args={"command": "touch /tmp/escape"})))
+    assert out["code"] == "POLICY_DENIED"
+    assert br.wire.calls == [] and br.inv() == []
+
+
 def test_a_client_handler_error_is_a_known_failed_outcome_not_unknown(br):
     ag, acc = br.agent()
     br.wire.script = [{"status": "error", "error": "ENOENT: /x", "sent": True}]

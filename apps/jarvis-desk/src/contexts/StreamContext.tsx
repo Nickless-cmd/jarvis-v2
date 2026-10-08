@@ -59,7 +59,7 @@ function errorToInfo(err: StreamError): StreamErrorInfo {
     severity: net ? 'warning' : 'error',
     message: net
       ? 'Forbindelsen til Jarvis blev afbrudt.'
-      : err.category === 'forbidden'
+      : err.category === 'forbidden' || err.category === 'refused'
         ? err.message
       : err.category === 'auth'
         ? 'Din session er udløbet — log ind igen.'

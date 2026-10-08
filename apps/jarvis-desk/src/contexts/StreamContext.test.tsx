@@ -166,6 +166,20 @@ describe('StreamContext', () => {
     expect(result.current.streamError?.code).toBe('auth')
   })
 
+  it('serverens afvisning (5xx med forklaring) viser dens ord — ikke «Forbindelsen blev afbrudt»', () => {
+    // 8/10-2026: en 503 fra medlemschat-spærringen endte som en løgn om
+    // forbindelsen. Kategorien `refused` bærer serverens egen besked igennem.
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 's' }) })
+    const refused = Object.assign(new Error('Medlemschat er sat på pause.'), {
+      category: 'refused', retryable: false, statusCode: 503,
+    })
+    act(() => { handlersRef.current?.onError(refused as unknown as Error) })
+    expect(result.current.status).toBe('error')
+    expect(result.current.streamError?.message).toBe('Medlemschat er sat på pause.')
+    expect(result.current.streamError?.retryable).toBe(false)
+  })
+
   it('a v2 stream 401 invalidates browser login without marking the run done', () => {
     let unauthorized = 0
     const stop = onUnauthorized(() => { unauthorized += 1 })

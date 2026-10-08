@@ -212,3 +212,70 @@ describe('genoptagelses-vandmaerket', () => {
     expect(url).toContain('from_idx=801')
   })
 })
+
+/**
+ * 5xx MED en forklaring — serverens ægte besked skal frem (8/10-2026).
+ *
+ * Baggrunden, målt: 503-blokaden på /chat/stream bar beskeden «Medlemschat er
+ * midlertidigt sat på pause…». Klienten klassificerede den som `server` +
+ * retryable — og på en frisk POST findes intet run_id at genoptage på, så den
+ * faldt igennem til onInterrupted. UI'et viste «Forbindelse afbrudt».
+ * Brugeren fik altså en løgn om forbindelsen for en besked der lå lige for.
+ */
+describe('5xx med forklaring → refused, ikke «Forbindelse afbrudt»', () => {
+  function fejlSvar(status: number, krop: string, type = 'application/json'): Response {
+    return new Response(krop, { status, headers: { 'content-type': type } })
+  }
+
+  /** Kører én POST mod et givet fejlsvar og fanger HVILKEN udgang der valgtes. */
+  async function kør(svar: Response): Promise<{ udfald: unknown; afbrudt: boolean }> {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(svar))
+    let afbrudt = false
+    const udfald = await new Promise<unknown>((resolve) => {
+      startStream(
+        { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+        {
+          onEvent: () => {},
+          onError: (e) => resolve(e),
+          onInterrupted: () => { afbrudt = true; resolve('INTERRUPTED') },
+          onComplete: () => resolve('COMPLETE'),
+        },
+      )
+    })
+    return { udfald, afbrudt }
+  }
+
+  it('503 med detail → onError med serverens ord, og ALDRIG onInterrupted', async () => {
+    const { udfald, afbrudt } = await kør(fejlSvar(503, JSON.stringify({
+      detail: 'Medlemschat er midlertidigt sat på pause, mens vi retter en privatlivsfejl.',
+    })))
+    expect(afbrudt).toBe(false)
+    const e = udfald as { category: string; message: string; retryable: boolean; statusCode: number | null }
+    expect(e.category).toBe('refused')
+    expect(e.message).toBe('Medlemschat er midlertidigt sat på pause, mens vi retter en privatlivsfejl.')
+    expect(e.retryable).toBe(false)
+    expect(e.statusCode).toBe(503)
+  })
+
+  it('beskeden er den brugeren ser — userMessage giver serverens ord uændret', async () => {
+    const { udfald } = await kør(fejlSvar(503, JSON.stringify({ detail: 'Køen er lukket for i dag.' })))
+    expect((udfald as { userMessage: () => string }).userMessage()).toBe('Køen er lukket for i dag.')
+  })
+
+  it('503 UDEN detail (proxy-HTML) → den gamle vej er intakt', async () => {
+    // Ingen struktur at læse → vi påstår ikke at kende årsagen. Uændret adfærd.
+    const { udfald, afbrudt } = await kør(fejlSvar(503, '<html>Bad Gateway</html>', 'text/html'))
+    expect(afbrudt).toBe(true)
+    expect(udfald).toBe('INTERRUPTED')
+  })
+
+  it('500 med detail → refused også — reglen er 5xx, ikke kun 503', async () => {
+    const { udfald } = await kør(fejlSvar(500, JSON.stringify({ detail: 'Databasen er låst.' })))
+    expect((udfald as { category: string }).category).toBe('refused')
+  })
+
+  it('403 med token-ord er stadig auth — 403-reglen blev ikke slået i stykker', async () => {
+    const { udfald } = await kør(fejlSvar(403, JSON.stringify({ detail: 'token udløbet' })))
+    expect((udfald as { category: string }).category).toBe('auth')
+  })
+})

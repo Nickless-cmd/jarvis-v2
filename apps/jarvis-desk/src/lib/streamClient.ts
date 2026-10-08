@@ -56,6 +56,12 @@ export type ErrorCategory =
   /** 403 MED en forklaring fra serveren — fx enheds-reglen (19/9-2026).
    *  Tokenet er fint; det er handlingen der ikke er tilladt her. */
   | 'forbidden'
+  /** 5xx MED en forklaring fra serveren (8/10-2026). Serveren er oppe og
+   *  svarede bevidst nej — fx «medlemschat er sat på pause». Skal behandles
+   *  som en afvisning, ikke som en forbigående serverfejl: den må ikke
+   *  genforsøges, og den ægte besked skal frem i stedet for «Forbindelse
+   *  afbrudt». */
+  | 'refused'
   | 'rate_limit'
   | 'server'
   | 'protocol'
@@ -102,6 +108,7 @@ export class StreamError extends Error {
       case 'network': return 'network.unreachable'
       case 'auth': return 'auth.token_expired'
       case 'forbidden': return 'auth.forbidden'
+      case 'refused': return 'server.refused'
       case 'rate_limit': return 'model.rate_limited'
       case 'server': return 'server.error'
       case 'protocol': return 'protocol.malformed'
@@ -118,6 +125,7 @@ export class StreamError extends Error {
       case 'auth':
         return 'Adgangstoken er udløbet eller ugyldig. Log ind igen.'
       case 'forbidden':
+      case 'refused':
         return this.message
       case 'rate_limit':
         return 'For mange forespørgsler. Prøver igen om lidt.'
@@ -132,6 +140,31 @@ export class StreamError extends Error {
         return `Uventet fejl: ${this.message}`
     }
   }
+}
+
+/**
+ * Læs serverens egen forklaring ud af et fejlsvar.
+ *
+ * FastAPI lægger den i `detail`. Målt 8/10-2026: 503-blokaden på /chat/stream
+ * bar beskeden «Medlemschat er midlertidigt sat på pause…», men klienten læste
+ * den kun ved 403 — ved 5xx blev den kastet væk og erstattet af «Server-fejl
+ * HTTP 503», som UI'et derefter gjorde til «Forbindelse afbrudt».
+ *
+ * Returnerer '' når kroppen ikke er JSON med en tekstlig detail (fx en proxys
+ * HTML-side) — så gælder den generiske fejl uændret.
+ */
+async function laesDetail(response: Response): Promise<string> {
+  return response
+    .text()
+    .then((t) => {
+      try {
+        const d = (JSON.parse(t) as { detail?: unknown }).detail
+        return typeof d === 'string' ? d.trim() : ''
+      } catch {
+        return ''
+      }
+    })
+    .catch(() => '')
 }
 
 // ─── Reconnect backoff schedule ─────────────────────────────────────────
@@ -506,9 +539,7 @@ export function startStream(
     // (fx «Code mode kræver at denne enhed er tilføjet i desk»). Før blev enhver
     // 403 til «log ind igen» — forkert besked, og den sendte folk den forkerte vej.
     if (response.status === 403) {
-      const forklaring = await response.text().then((t) => {
-        try { const d = (JSON.parse(t) as { detail?: unknown }).detail; return typeof d === 'string' ? d : '' } catch { return '' }
-      }).catch(() => '')
+      const forklaring = await laesDetail(response)
       if (forklaring && !/token|udløbet|expired/i.test(forklaring)) {
         throw new StreamError('forbidden', forklaring, { retryable: false, statusCode: 403 })
       }
@@ -529,6 +560,18 @@ export function startStream(
       })
     }
     if (response.status >= 500) {
+      // Serveren svarer MED en forklaring → det er en bevidst afvisning, ikke
+      // en forbigående fejl. Ikke-retryable betyder at fejlen går til onError
+      // og viser den ÆGTE besked. Før gik en retryable 503 i stedet til
+      // onInterrupted — på en frisk POST findes intet run_id at genoptage på —
+      // og brugeren fik «Forbindelse afbrudt» for en besked der lå lige for.
+      const forklaring = await laesDetail(response)
+      if (forklaring) {
+        throw new StreamError('refused', forklaring, {
+          retryable: false,
+          statusCode: response.status,
+        })
+      }
       throw new StreamError('server', `Server-fejl HTTP ${response.status}`, {
         retryable: true,
         statusCode: response.status,

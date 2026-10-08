@@ -137,6 +137,13 @@ def send_notification(
     url = f"{cfg['server']}/{cfg['topic']}"
     resolved_title = title if title is not None else _default_title()
     headers = {
+        # Cloudflare foran et selvhostet ntfy svarer 403 «error code: 1010» paa
+        # en request UDEN User-Agent. Maalt 8/10-2026, efter skiftet til
+        # ntfy.srvlab.dk: urllib uden UA -> 403/1010, samme kald med UA -> 200,
+        # og curl (som altid sender sin egen UA) -> 200. Uden denne linje var
+        # HELE push-vejen doed i drift — og tavst, fordi kalderne er
+        # brand-and-forget og kun loggen baerer 403'en.
+        "User-Agent": "Jarvis/1.0",
         "Title": _header_safe(resolved_title),
         "Priority": priority,
         "Content-Type": "text/plain; charset=utf-8",

@@ -121,6 +121,46 @@ class TestHeaderSafe:
         r.encode("latin-1")  # maa ikke kaste
         assert ng._header_safe("x\u2603y") == "x?y"  # snefnug → erstattet
 
+    def test_der_sendes_altid_en_user_agent(self, monkeypatch):
+        """Cloudflare foran et selvhostet ntfy afviser UA-loese requests.
+
+        Maalt 8/10-2026, efter skiftet til ntfy.srvlab.dk: urllib uden
+        User-Agent -> 403 «error code: 1010», samme kald med UA -> 200, og curl
+        (som altid sender sin egen) -> 200. Kalderne er brand-and-forget, saa
+        fejlen ville vaere TAVS: ingen besked, ingen der savner den.
+
+        MUTATION der skal fanges: fjern «User-Agent» fra headers -> denne test
+        falder. Uden den kunne fixet forsvinde uden at nogen opdagede det.
+        """
+        fanget = {}
+        monkeypatch.setattr(
+            ng, "_load_config",
+            lambda: {"server": "https://ntfy.srvlab.dk", "topic": "t"},
+            raising=False,
+        )
+
+        class _Resp:
+            def read(self):
+                return b"ok"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        def _fake_urlopen(req, timeout=10):
+            fanget["headers"] = dict(req.headers)
+            return _Resp()
+
+        monkeypatch.setattr(ng.urllib.request, "urlopen", _fake_urlopen, raising=False)
+        _forbi_vagten(monkeypatch)
+
+        r = ng.send_notification("hej")
+        assert r["status"] == "sent"
+        ua = next((v for k, v in fanget["headers"].items() if k.lower() == "user-agent"), "")
+        assert ua.strip(), "en request uden User-Agent afvises af Cloudflare (403/1010)"
+
     def test_titlen_sendes_saniteret_hele_vejen(self, monkeypatch):
         """Integration: en em-dash-titel maa ikke kunne vaelte afsendelsen."""
         fanget = {}

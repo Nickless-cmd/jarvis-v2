@@ -166,8 +166,37 @@ def _principal(args: dict[str, Any]) -> tuple[str, str, str]:
         owner = str(current_user_id() or "").strip()
     except Exception:
         owner = ""
+    # In a child worker there is no HTTP user context. The lease scope proves
+    # which assignment is executing; model-supplied _runtime_* fields alone do
+    # not. The worker stamps these values from the DB before executing a tool.
+    scoped = _scoped_parent(args)
+    if scoped:
+        owner = scoped[1]
+        return (owner, scoped[2], scoped[3])
     return (owner, str(args.get("_runtime_session_id") or "").strip(),
             str(args.get("_runtime_turn_id") or "").strip())
+
+
+def _scoped_parent(args: dict[str, Any]) -> tuple[str, str, str, str] | None:
+    """Return (agent, owner, session, run) for the current fenced child run."""
+    from core.runtime.db_agent_lease import current_assignment_id
+    assignment_id = current_assignment_id()
+    agent_id = str(args.get("_runtime_agent_id") or "").strip()
+    if not assignment_id or not agent_id:
+        return None
+    from core.runtime.db_agent_contract import _conn
+    row = _conn().execute(
+        "SELECT agent_id, owner_user_id, origin_session_id FROM agent_assignments "
+        "WHERE assignment_id=? AND agent_id=?", (assignment_id, agent_id)).fetchone()
+    if row is None:
+        return None
+    run = _conn().execute(
+        "SELECT run_id FROM agent_runs WHERE assignment_id=? "
+        "ORDER BY attempt_no DESC, created_at DESC LIMIT 1", (assignment_id,)).fetchone()
+    if run is None:
+        return None
+    return (str(row["agent_id"]), str(row["owner_user_id"]),
+            str(row["origin_session_id"]), str(run["run_id"]))
 
 
 def _svc():
@@ -177,8 +206,10 @@ def _svc():
 
 def _exec_dispatch_agent(args: dict[str, Any]) -> dict[str, Any]:
     owner, session, run = _principal(args)
+    scoped = _scoped_parent(args)
     return _svc().dispatch_agent(
         owner_user_id=owner, origin_session_id=session, parent_run_id=run,
+        parent_agent_id=scoped[0] if scoped else "jarvis",
         goal=str(args.get("goal") or ""), description=str(args.get("description") or ""),
         role=str(args.get("role") or "researcher") or "researcher",
         expected_result=str(args.get("expected_result") or ""),

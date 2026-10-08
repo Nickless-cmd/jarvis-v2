@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8777/16593 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8780/16597 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8777/16593 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 9 | 20 | 45% |
-| `apps.api.jarvis_api.routes` | 681 | 915 | 74% |
+| `apps.api.jarvis_api.routes` | 682 | 917 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 8777/16593 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 810 | 1461 | 55% |
+| `core.runtime` | 811 | 1462 | 55% |
 | `core.services` | 5854 | 11269 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
@@ -32,7 +32,7 @@ Generated from source. 8777/16593 functions/methods documented (52%). The list b
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 524 | 1064 | 49% |
+| `core.tools` | 525 | 1065 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8777/16593 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2340)
+## Undocumented public functions (2341)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L216)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -53,14 +53,15 @@ Generated from source. 8777/16593 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
 - `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L128)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L65)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L75)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L106)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L93)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L87)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L119)
-- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L100)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L113)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `close` (L144)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `dispatch` (L89)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `followup` (L131)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L125)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L157)
+- `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L138)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
 - `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L254)

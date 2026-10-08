@@ -101,19 +101,22 @@ async def cowork_side_tasks(scope: str = "open") -> dict:
     `all` kom 3/10-2026. Bjørn: «desk har ikk noget panel der viser opgaver
     der er flagged selv om jeg har trykket dem væk». Ruten svarede kun med de
     åbne, så en lukket opgave forsvandt sporløst — og man kunne ikke se
-    forskel på «lukket» og «blev den nogensinde gemt?». Standarden er stadig
-    `open`, så kortet i chatten er uændret.
+    forskel på «lukket» og «blev den nogensinde gemt?».
+
+    `open` er KORTETS liste (8/10-2026): skjulte opgaver er stadig ÅBNE — de
+    står i Jarvis' prompt og i panelet — men de hører ikke i kortet over
+    samtalen. Skjul er blødt og reversibelt; se `/side-tasks/{id}/skjul`.
 
     Kun ejeren: en opgaves prompt er selvstændige instruktioner og kan rumme
     privat kontekst fra den samtale den blev flagget i."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan se sideopgaverne")
-    from core.services.side_tasks import list_alle, list_open
+    from core.services.side_tasks import list_alle, list_open_synlige
     if str(scope or "").strip().lower() == "all":
         items = await asyncio.to_thread(list_alle)
         return {"side_tasks": items, "count": len(items), "scope": "all"}
-    items = await asyncio.to_thread(list_open)
+    items = await asyncio.to_thread(list_open_synlige)
     items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
     return {"side_tasks": items, "count": len(items), "scope": "open"}
 
@@ -141,6 +144,30 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
         arbejds_run_id=arbejds_run_id,
         lukket_af="desk" if status in ("completed", "dismissed") else "",
     )
+
+
+@router.post("/side-tasks/{side_task_id}/skjul")
+async def cowork_side_task_skjul(side_task_id: str, payload: dict = Body(default={})) -> dict:
+    """Skjul eller vis en sideopgave i chatkortet — uden at lukke den.
+
+    Bjørn 8/10-2026: «sørg for X'et ikk sletter dem men bare fjerner dem fra
+    chatview». Krydset i kortet kalder nu HER i stedet for `status=dismissed`.
+    Forskellen er hele pointen: `dismissed` er TERMINAL — `resolve` nægter at
+    genåbne, og der findes ingen genåbnings-rute, så fire klik i et hjørne
+    kunne afskrive fire opgaver permanent (målt 8/10: fire poster med
+    `lukket_af: desk` inden for fem sekunder, alle genåbnet i hånden bagefter).
+
+    Skjult er reversibelt: opgaven forbliver ÅBEN og står stadig i Jarvis'
+    prompt og i panelet. Den vises blot ikke over samtalen.
+
+    `skjult: false` viser den igen — det er den vej tilbage som `dismissed`
+    aldrig havde."""
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
+    skjult = bool((payload or {}).get("skjult", True))
+    from core.services.side_tasks import saet_skjult
+    return await asyncio.to_thread(saet_skjult, side_task_id, skjult=skjult)
 
 
 @router.get("/plans")

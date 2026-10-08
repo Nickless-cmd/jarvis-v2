@@ -138,6 +138,22 @@ def list_open() -> list[dict[str, Any]]:
     return [r for r in _load_all() if r.get("status") in _AABNE]
 
 
+def list_open_synlige() -> list[dict[str, Any]]:
+    """De åbne der IKKE er skjult i chatten — præcis dem kortet viser.
+
+    Bjørn 8/10-2026: «sørg for X'et ikk sletter dem men bare fjerner dem fra
+    chatview». Krydset lavede før en TERMINAL ``dismissed``: opgaven var væk
+    for altid, og der fandtes ingen vej tilbage (``resolve`` nægter at
+    genåbne). Det er for hårdt et tryk til et kryds i et hjørne.
+
+    Skellet er med vilje: ``list_open()`` er sandheden om hvad der ER åbent og
+    styrer Jarvis' prompt som huskeliste; denne funktion er hvad der skal VISES
+    over samtalen. En skjult opgave er stadig et åbent løfte — den er bare
+    ikke i vejen.
+    """
+    return [r for r in list_open() if not r.get("skjult_i_chat")]
+
+
 def get(side_task_id: str) -> dict[str, Any] | None:
     return next((r for r in _load_all() if r.get("side_task_id") == side_task_id), None)
 
@@ -199,6 +215,34 @@ def resolve(side_task_id: str, *, decision: str,
             found["dismiss_reason"] = str(reason)[:500]
         _save_all(items)
     return {"status": "ok", "side_task_id": side_task_id, "new_status": decision}
+
+
+def saet_skjult(side_task_id: str, *, skjult: bool = True) -> dict[str, Any]:
+    """Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status.
+
+    Det er den bløde modsætning til ``resolve(..., 'dismissed')``: skjult er
+    reversibelt, dismissed er det ikke. Bjørn 8/10-2026 bad om netop den
+    forskel — krydset skal fjerne opgaven fra chatten, ikke afskrive den.
+
+    En TERMINAL opgave afvises. Den vises ikke i kortet i forvejen, så et flag
+    på den ville være en løgn om hvorfor den er væk: den er lukket, ikke skjult.
+    """
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
+        if found is None:
+            return {"status": "error", "error": f"unknown side_task_id {side_task_id}"}
+        old = str(found.get("status") or "")
+        if old in _TERMINALE:
+            return {"status": "error",
+                    "error": f"side task {side_task_id} is already {old} and cannot be hidden"}
+        if skjult:
+            found["skjult_i_chat"] = True
+        else:
+            found.pop("skjult_i_chat", None)
+        found["updated_at"] = datetime.now(UTC).isoformat()
+        _save_all(items)
+    return {"status": "ok", "side_task_id": side_task_id, "skjult_i_chat": bool(skjult)}
 
 
 def arbejds_session_for(session_id: str) -> dict[str, Any] | None:

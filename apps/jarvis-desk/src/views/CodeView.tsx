@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -31,6 +31,7 @@ import { CentralBadge } from '../components/shell/CentralBadge'
 import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
 import { hasHostCapability } from '../lib/host'
@@ -345,9 +346,12 @@ export function CodeView({
   const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
   const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
   const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
+  // Sideopgaver (8/10-2026) — samme rude som i chatten, samme grund: Bjørn
+  // havde intet sted at se dem, og krydset i kortet afskrev dem permanent.
+  const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
 
   useEffect(() => paaAendringsFokus((sti) => {
     setFokusFil(sti)
@@ -1028,6 +1032,7 @@ export function CodeView({
         onVisning={(v) => void skiftVisning(v)}
         valg={[
           ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
+          { id: 'sideopgaver', navn: 'Side-opgaver', ikon: <ListTodo size={14} />, aktiv: sideOpgaveOpen, onClick: () => setSideOpgaveOpen((o) => !o) },
           { id: 'filer', navn: 'Filer', ikon: <FolderTree size={14} />, aktiv: filesOpen, onClick: () => setFilesOpen((o) => !o) },
           { id: 'preview', navn: 'Preview', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
         ]}
@@ -1064,7 +1069,7 @@ export function CodeView({
     </div>
   )
 
-  const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen
+  const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen
   // Miljø-feltet og ruderne deler ÉN højre-stak: feltet øverst, ruden under.
   // Før skjulte hver rude feltet, så de to aldrig stod sammen — Bjørn
   // 3/10-2026: «så skal de 3 paneler kunne vises under miljøfeltet». Filer og
@@ -1144,6 +1149,14 @@ export function CodeView({
             onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
             onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
             sessionId={sessionId}
+          />
+        )}
+        {sideOpgaveOpen && (!fuldRude || fuldRude === 'sideopgaver') && (
+          <SideOpgaveListe
+            config={config}
+            fuld={fuldRude === 'sideopgaver'}
+            onFuld={(f) => setFuldRude(f ? 'sideopgaver' : '')}
+            onClose={() => { setSideOpgaveOpen(false); setFuldRude((v) => v === 'sideopgaver' ? '' : v) }}
           />
         )}
         {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}

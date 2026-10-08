@@ -3,9 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 const getSideTasks = vi.fn()
 const setSideTaskStatus = vi.fn()
+const setSideTaskSkjult = vi.fn()
 vi.mock('../../lib/sideTasksApi', () => ({
   getSideTasks: (...a: unknown[]) => getSideTasks(...a),
   setSideTaskStatus: (...a: unknown[]) => setSideTaskStatus(...a),
+  setSideTaskSkjult: (...a: unknown[]) => setSideTaskSkjult(...a),
 }))
 
 import { SideOpgaveKort, type SideOpgaveHandlinger } from './SideOpgaveKort'
@@ -25,7 +27,11 @@ const h = (): SideOpgaveHandlinger & { startLokalt: Mock; baggrund: Mock; loesHe
 })
 
 describe('SideOpgaveKort (CC «Suggested task»)', () => {
-  beforeEach(() => { getSideTasks.mockReset(); setSideTaskStatus.mockReset().mockResolvedValue(undefined) })
+  beforeEach(() => {
+    getSideTasks.mockReset()
+    setSideTaskStatus.mockReset().mockResolvedValue(undefined)
+    setSideTaskSkjult.mockReset().mockResolvedValue(undefined)
+  })
 
   it.each([
     [1, false, false],
@@ -96,12 +102,18 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     expect(await screen.findByText('i gang')).toBeInTheDocument()
   })
 
-  it('× fjerner opgaven; «Markér som færdig» afslutter den', async () => {
+  it('× SKJULER opgaven i chatten — den afskrives ikke; «Markér som færdig» afslutter den', async () => {
+    // Bjørn 8/10-2026: «sørg for X'et ikk sletter dem men bare fjerner dem fra
+    // chatview». Før kaldte krydset `setSideTaskStatus(…, 'dismissed')`, og det
+    // er TERMINALT — `resolve` nægter at genåbne, og fire klik i et hjørne
+    // afskrev fire opgaver for altid. Testen holder fast i at krydset ikke må
+    // røre status overhovedet.
     getSideTasks.mockResolvedValueOnce([opg('a', 'Første'), opg('b', 'Anden')]).mockResolvedValue([opg('b', 'Anden')])
     render(<SideOpgaveKort config={cfg} handlinger={h()} />)
     await screen.findByText('Første')
-    fireEvent.click(screen.getByLabelText('Fjern sideopgaven'))
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'dismissed'))
+    fireEvent.click(screen.getByLabelText('Skjul i chatten'))
+    await waitFor(() => expect(setSideTaskSkjult).toHaveBeenCalledWith(cfg, 'a', true))
+    expect(setSideTaskStatus).not.toHaveBeenCalledWith(cfg, 'a', 'dismissed')
     expect(await screen.findByText('Anden')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Markér som færdig' }))

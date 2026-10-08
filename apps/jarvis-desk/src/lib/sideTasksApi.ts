@@ -14,6 +14,10 @@ export interface SideTask {
   status: 'pending' | 'queued' | 'activated' | 'completed' | 'dismissed'
   session_id: string
   created_at: string
+  /** Sat når opgaven er SKJULT i chatkortet (8/10-2026). Opgaven er stadig
+   *  ÅBEN — den vises bare ikke over samtalen. Modsat `dismissed`, som er
+   *  terminal: skjult kan vises igen med `setSideTaskSkjult(…, false)`. */
+  skjult_i_chat?: boolean
   /** Sat når opgaven er lukket. */
   resolved_at?: string
   /** Hvem der lukkede den — fx `desk`, `jarvis` eller `auto:stilstand 42min`. */
@@ -58,4 +62,23 @@ export async function setSideTaskStatus(
   // Serveren svarer 200 med {status:'error'} for en ukendt eller allerede
   // afsluttet opgave. Det er en fejl for brugeren, ikke en succes.
   if (r?.status === 'error') throw new Error(r.error || 'Kunne ikke opdatere sideopgaven')
+}
+
+/**
+ * Skjul (eller vis) en sideopgave i chatkortet — uden at lukke den.
+ *
+ * Bjørn 8/10-2026: «sørg for X'et ikk sletter dem men bare fjerner dem fra
+ * chatview». Før kaldte krydset `setSideTaskStatus(…, 'dismissed')`, og det er
+ * TERMINALT: opgaven kunne ikke genåbnes, og fire klik i et hjørne afskrev
+ * fire opgaver permanent. Skjult er den bløde, reversible modsætning —
+ * opgaven forbliver åben og står i panelet; den vises bare ikke i kortet.
+ */
+export async function setSideTaskSkjult(
+  config: ApiConfig, id: string, skjult = true,
+): Promise<void> {
+  const r = await apiFetch<{ status?: string; error?: string }>(
+    config, `/cowork/side-tasks/${encodeURIComponent(id)}/skjul`,
+    { method: 'POST', body: { skjult } },
+  )
+  if (r?.status === 'error') throw new Error(r.error || 'Kunne ikke skjule sideopgaven')
 }

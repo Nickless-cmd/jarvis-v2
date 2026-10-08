@@ -3,8 +3,9 @@ import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
-import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
+import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
 import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
 import { PlansPanel } from '../components/panel/PlansPanel'
@@ -741,13 +742,18 @@ export function ChatView({
   const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
   const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
   const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
+  // Sideopgaver (8/10-2026). Bjørn: «jeg har intet sted jeg kan se dem».
+  // Panelet FANDTES, men lå som en sektion inde i Indstillinger → Arbejdsområde
+  // — og det er ikke der man leder efter sine egne opgaver. Nu en rude i samme
+  // stak som baggrundsjob, åbnet fra headerens 3-prik-menu.
+  const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
   const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
 
   // Klik paa en fil i «Redigerede N filer» aabner ruden PAA den fil.
   useEffect(() => paaAendringsFokus((sti) => {
@@ -810,7 +816,7 @@ export function ChatView({
   // browserOpen SKAL være med: uden den åbnede skinnen kun hvis ændringer
   // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
   // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
-  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen)
+  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen)
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
@@ -823,6 +829,7 @@ export function ChatView({
   const visChanges = changesOpen && (!fuldRude || fuldRude === 'changes')
   const visJobs = jobsOpen && (!fuldRude || fuldRude === 'jobs')
   const visBrowser = browserOpen && (!fuldRude || fuldRude === 'browser')
+  const visSideOpgave = sideOpgaveOpen && (!fuldRude || fuldRude === 'sideopgaver')
   const jobsRude = skinneAaben ? (
     <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
       {/* Traekgrebet (Bjoern 26/9-2026). Ikke med i fuld rude: dér fylder
@@ -858,6 +865,14 @@ export function ChatView({
           onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
           onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
           sessionId={sessionId}
+        />
+      )}
+      {visSideOpgave && cfgSkinne && (
+        <SideOpgaveListe
+          config={cfgSkinne}
+          fuld={fuldRude === 'sideopgaver'}
+          onFuld={(f) => setFuldRude(f ? 'sideopgaver' : '')}
+          onClose={() => { setSideOpgaveOpen(false); setFuldRude((v) => v === 'sideopgaver' ? '' : v) }}
         />
       )}
       {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
@@ -924,6 +939,7 @@ export function ChatView({
           valg={[
             ...(voice.supported ? [{ id: 'stemme', navn: 'Samtale med Jarvis (stemme)', ikon: <AudioWaveform size={14} />, onClick: voice.enter }] : []),
             ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
+            { id: 'sideopgaver', navn: 'Side-opgaver', ikon: <ListTodo size={14} />, aktiv: sideOpgaveOpen, onClick: () => setSideOpgaveOpen((o) => !o) },
             { id: 'panel', navn: 'Panel', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
           ]}
         />

@@ -33,13 +33,15 @@ def test_owner_afslutter_opgave(monkeypatch, lager):
     assert asyncio.run(cw.cowork_side_tasks())["count"] == 0
 
 
-@pytest.mark.parametrize("kald", ["liste", "status"])
+@pytest.mark.parametrize("kald", ["liste", "status", "skjul"])
 def test_andre_end_owner_afvises(monkeypatch, lager, kald):
     # Prompten kan rumme privat kontekst — kun ejeren ser og ændrer feedet.
     monkeypatch.setattr(cw, "_role_owner", lambda: (False, "u_m"))
     with pytest.raises(HTTPException) as ei:
         if kald == "liste":
             asyncio.run(cw.cowork_side_tasks())
+        elif kald == "skjul":
+            asyncio.run(cw.cowork_side_task_skjul("side-x", {"skjult": True}))
         else:
             asyncio.run(cw.cowork_side_task_status("side-x", {"status": "completed"}))
     assert ei.value.status_code == 403
@@ -72,3 +74,60 @@ def test_ugyldig_status_er_400(monkeypatch, lager, status):
     with pytest.raises(HTTPException) as ei:
         asyncio.run(cw.cowork_side_task_status("side-x", {"status": status}))
     assert ei.value.status_code == 400
+
+
+# ── Skjul i chatten — blødt, ikke terminalt (8/10-2026) ─────────────────────
+# Bjørn: «sørg for X'et ikk sletter dem men bare fjerner dem fra chatview».
+# Før kaldte krydset statusruten med 'dismissed', som er TERMINAL — `resolve`
+# nægter at genåbne, og der fandtes ingen genåbnings-rute. Fire klik i et
+# hjørne afskrev fire opgaver for altid. Skjul er den reversible modsætning,
+# og forskellen er hele pointen med ruten.
+
+
+def test_skjul_tager_den_ud_af_kortet_men_bevarer_opgaven(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    b = side_tasks.flag(title="B", prompt="gør B")["side_task_id"]
+
+    assert asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))["status"] == "ok"
+
+    # Kortet (scope=open) viser den ikke mere …
+    kort = asyncio.run(cw.cowork_side_tasks())["side_tasks"]
+    assert [t["side_task_id"] for t in kort] == [b]
+
+    # … men den er stadig ÅBEN og findes i den fulde liste.
+    alle = asyncio.run(cw.cowork_side_tasks(scope="all"))["side_tasks"]
+    skjult = next(t for t in alle if t["side_task_id"] == a)
+    assert skjult["status"] == "pending"
+    assert skjult["skjult_i_chat"] is True
+
+    # Og Jarvis' prompt skal stadig kende den: skjult for øjet er ikke droppet.
+    assert a in [t["side_task_id"] for t in side_tasks.list_open()]
+
+
+def test_vis_igen_henter_den_tilbage_til_kortet(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))
+    assert asyncio.run(cw.cowork_side_tasks())["count"] == 0
+    assert asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": False}))["status"] == "ok"
+    assert asyncio.run(cw.cowork_side_tasks())["count"] == 1
+
+
+def test_skjul_af_terminal_opgave_afvises(monkeypatch, lager):
+    # En lukket opgave vises ikke i kortet i forvejen; et skjul-flag på den
+    # ville være en løgn om hvorfor den er væk.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    side_tasks.resolve(a, decision="dismissed")
+    res = asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))
+    assert res["status"] == "error"
+    assert "dismissed" in res["error"]
+
+
+def test_skjul_roerer_ikke_status(monkeypatch, lager):
+    # Hele fejlen: krydset afskrev opgaven. Det må ikke kunne ske igen.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))
+    assert side_tasks.get(a)["status"] == "pending"

@@ -114,3 +114,31 @@
 .sop-meta { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .sop-knapper { display: flex; gap: 8px; margin-top: 8px; }
 .sop-fejl { color: var(--ch-amber, #d08); margin: 0 0 8px; }
+
+/* ── Sideopgave-panelet i højre-stakken (8/10-2026) ────────────────────────
+   Samme skal og samme række-form som baggrundsjob, så de to ruder i stakken
+   læses ens. Rækkerne genbruger `.sop-*` ovenfor; herunder kun det panelet
+   har brug for. */
+.jobs-panel .sop-post { background: var(--bg-3); border-color: var(--line); }
+.sol-skjult {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; color: var(--fg-3); opacity: .9;
+}
+.sol-alder {
+  margin-left: auto; font-size: 11px; color: var(--fg-3); opacity: .8;
+  font-variant-numeric: tabular-nums;
+}
+.sol-knapper { align-items: center; gap: 4px; }
+.sol-knap {
+  flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
+  background: none; border: 1px solid var(--line); border-radius: 5px;
+  color: var(--fg-3); cursor: pointer; padding: 0;
+}
+.sol-knap:hover:not(:disabled) { color: var(--fg-1); background: var(--bg-2); }
+.sol-knap:disabled { opacity: .4; cursor: default; }
+.sol-knap:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+/* «Fjern for altid» er den ENESTE irreversible handling i panelet. Den skal
+   ikke se ud som de to andre — fire klik i et hjørne afskrev fire opgaver
+   8/10, og ingen af dem kunne fortrydes. */
+.sol-farlig { color: var(--error-fg); border-color: var(--error-fg); }
+.sol-bekraeft { font-size: 11.5px; color: var(--error-fg); }

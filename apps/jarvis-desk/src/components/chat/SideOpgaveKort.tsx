@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
-import { getSideTasks, setSideTaskStatus, type SideTask } from '../../lib/sideTasksApi'
+import { getSideTasks, setSideTaskStatus, setSideTaskSkjult, type SideTask } from '../../lib/sideTasksApi'
 import '../../styles/side-tasks.css'
 
 export const POLL_MS = 6000
@@ -127,11 +127,16 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
     if (!config || travl) return
     setTravl(true); setFejl('')
     try {
-      await setSideTaskStatus(config, t.side_task_id, 'dismissed')
+      // SKJUL, ikke afskriv (Bjørn 8/10-2026: «sørg for X'et ikk sletter dem
+      // men bare fjerner dem fra chatview»). Før stod der `dismissed` her, og
+      // det er terminalt — `resolve` nægter at genåbne, og der findes ingen
+      // genåbnings-rute. Fire klik i et hjørne afskrev fire opgaver for altid.
+      // Opgaven er stadig ÅBEN nu; den er bare ikke i vejen her.
+      await setSideTaskSkjult(config, t.side_task_id, true)
       setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
       void hent(config)
     } catch (e) {
-      setFejl(e instanceof Error ? e.message : 'Kunne ikke fjerne opgaven')
+      setFejl(e instanceof Error ? e.message : 'Kunne ikke skjule opgaven')
     } finally {
       setTravl(false)
     }
@@ -143,7 +148,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
       <section className={`sok${n > 1 ? ' sok-stak' : ''}`} aria-label="Sideopgave" data-testid="side-tasks" aria-busy={travl}>
         <div className="sok-top">
           <span className="sok-overskrift">Sideopgave{t.status === 'activated' ? <span className="sok-igang">i gang</span> : t.status === 'queued' ? <span className="sok-igang">i kø</span> : null}</span>
-          <button type="button" className="sok-luk" aria-label="Fjern sideopgaven" title="Fjern sideopgaven" disabled={travl} onClick={() => void fjern()}>
+          <button type="button" className="sok-luk" aria-label="Skjul i chatten" title="Skjul i chatten — opgaven findes stadig under Side-opgaver" disabled={travl} onClick={() => void fjern()}>
             <X size={15} />
           </button>
         </div>

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8788/16616 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8791/16619 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8788/16616 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 682 | 917 | 74% |
+| `apps.api.jarvis_api.routes` | 683 | 918 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 8788/16616 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5861 | 11282 | 51% |
+| `core.services` | 5863 | 11284 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1876,7 +1876,7 @@ Generated from source. 8788/16616 functions/methods documented (52%). The list b
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
 - `core/services/side_tasks.py` :: `flag` (L98)
-- `core/services/side_tasks.py` :: `get` (L141)
+- `core/services/side_tasks.py` :: `get` (L157)
 - `core/services/side_tasks.py` :: `list_pending` (L132)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)

@@ -256,3 +256,60 @@ def test_liste_taaler_at_vaerktoejskilden_fejler(monkeypatch):
     ud = bj.liste(exec_fn=lambda n, a: {"status": "ok", "result": {"stdout": ""}})
     assert ud["bridge_ok"] is True
     assert isinstance(ud["jobs"], list)
+
+
+# ── 5. Samtale-filteret (8/10-2026) ─────────────────────────────────────────
+# Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt... lige nu
+# vises baggrundsjobs fra andre session i panelet». Panelet hentede hele
+# maskinens arbejde, så en samtale i gang med at bygge viste en ANDEN samtales
+# builds som sine egne.
+#
+# MUTATION der skal fanges:
+#   M12 — fjern session-filteret i `_tool_jobs` -> testen falder
+
+def test_et_kald_fra_en_ANDEN_samtale_vises_ikke(monkeypatch):
+    """Kernen i fixet: panelet i én samtale viser ikke en andens arbejde."""
+    _med_db(monkeypatch, _sql_rækkefølge(
+        _invoked(1, "bash", tool_use_id="t1", command="min", description="Min"),
+    ))
+    # `_invoked` skriver session_id="chat-1". Spørger vi som chat-2, er svaret tomt.
+    assert bj._tool_jobs(session_id="chat-2") == []
+    # Og spørger vi som ejeren, står den der.
+    assert [x["navn"] for x in bj._tool_jobs(session_id="chat-1")] == ["Min"]
+
+
+def test_uden_session_visers_alt_som_foer(monkeypatch):
+    """Et kald uden `session_id` (ældre klient, eller panelet før fixet) må
+    ikke ændre adfærd — ellers ville fixet være et brud for alle andre."""
+    _med_db(monkeypatch, _sql_rækkefølge(
+        _invoked(1, "bash", tool_use_id="t1", command="min", description="Min"),
+    ))
+    assert [x["navn"] for x in bj._tool_jobs()] == ["Min"]
+
+
+def test_et_kald_uden_KAENDT_samtale_skjules_ikke(monkeypatch):
+    """`UKENDT` betyder «vi ved det ikke» — ikke «hører til ingen». At skjule
+    et kald vi ikke kan henføre ville være at påstå det ikke kører."""
+    rows = _sql_rækkefølge(
+        (1, "tool.invoked", json.dumps({
+            "tool": "bash", "run_id": "visible-1", "session_id": "UKENDT",
+            "arguments": {"_runtime_tool_use_id": "t1", "command": "x",
+                          "description": "Uden samtale"},
+        }), _iso(5)),
+    )
+    _med_db(monkeypatch, rows)
+    assert [x["navn"] for x in bj._tool_jobs(session_id="chat-2")] == ["Uden samtale"]
+
+
+def test_liste_taeller_job_der_ikke_kan_henfoeres(monkeypatch):
+    """`uspecificeret` er hvad der gør en tom samtale ærlig: uden tallet ville
+    panelet se tomt ud og skjule at der kører noget på maskinen."""
+    monkeypatch.setattr(bj, "_tool_jobs", lambda session_id="": [])
+    monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [{
+        "id": "trading", "kilde": "supervisor", "navn": "trading",
+        "kommando": "python bot.py", "status": "running", "pid": 1,
+        "sekunder": 10, "exit_code": None, "can_pause": True,
+    }])
+    ud = bj.liste(session_id="chat-2")
+    assert ud["uspecificeret"] == 1
+    assert len(ud["jobs"]) == 1

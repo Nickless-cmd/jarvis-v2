@@ -100,7 +100,25 @@ describe('JobsPanel', () => {
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     await waitFor(() => expect(listJobs).toHaveBeenCalled())
     // Med færdige, ellers ville «Færdige»-sektionen altid være tom.
-    expect(listJobs).toHaveBeenCalledWith(cfg, true)
+    // Tredje argument er samtalen (8/10-2026): uden den viste panelet HELE
+    // maskinens arbejde, så en anden samtales builds stod her som ens egne.
+    // Uden `sessionId`-prop er den `undefined` — og så hentes alt, som før.
+    expect(listJobs).toHaveBeenCalledWith(cfg, true, undefined)
+  })
+
+  it('sender SAMTALEN med, så panelet ikke viser en anden samtales job', async () => {
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} sessionId="chat-7" />)
+    await waitFor(() => expect(listJobs).toHaveBeenCalled())
+    expect(listJobs).toHaveBeenCalledWith(cfg, true, 'chat-7')
+  })
+
+  it('en tom samtale med job på maskinen siger det højt', async () => {
+    // Samtalen har ingen EGNE job, men maskinen kører. «Ingenting kører» ville
+    // være usandt — og det er præcis den forskel panelet findes for at sige.
+    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true, uspecificeret: 3 })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} sessionId="chat-7" />)
+    expect(await screen.findByText(/Ingen job i denne samtale\. 3 kører på maskinen\./))
+      .toBeInTheDocument()
   })
 
   it('en død bro er IKKE en tom liste', async () => {

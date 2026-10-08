@@ -575,6 +575,18 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     # spørger brugeren i stedet. En gate der blokerer «spørg først» presser
     # mod handling, ikke væk fra den.
     "override_gate", "gate_override_status", "pause_and_ask",
+    # ── Forslaget til næste opgave (8/10-2026) ─────────────────────────────
+    # `suggest_next_task` skriver ÉN linje i Bjørns skrivefelt. Det er ikke en
+    # handling i verden — det er hvordan Jarvis afslutter en tur med et tilbud
+    # om hvad der følger. Målt 8/10-2026: gaten blokerede den fem gange i samme
+    # tur på `risk marker: 'merge'`, fordi turen TALTE om en merge. Forslaget
+    # blev aldrig lagt, og Bjørn stod med et tomt felt uden at vide hvorfor.
+    #
+    # At gate den kan ikke beskytte noget: den rører ingen fil, sender intet,
+    # og et forslag han ikke vil have, ignorerer han ved at skrive noget andet.
+    # Samme klasse som gatens egen svarkanal ovenfor — en gate der blokerer
+    # «her er næste skridt» presser mod tavshed, ikke mod forsigtighed.
+    "suggest_next_task",
 })
 
 

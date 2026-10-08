@@ -214,8 +214,15 @@ def _iso_ts(v: Any) -> float | None:
         return None
 
 
-def _scout_jobs() -> list[dict[str, Any]]:
-    """Scout-agenter der kører — og dem der blev færdige den seneste time."""
+def _scout_jobs(session_id: str = "") -> list[dict[str, Any]]:
+    """Scout-agenter der kører — og dem der blev færdige den seneste time.
+
+    `session_id` (8/10-2026): en scout startet fra en samtale bærer den i
+    `agent_assignments.origin_session_id`, og den filtreres så en anden
+    samtales scouts ikke står i dette panel. Registret selv har ingen
+    session-kolonne, så en scout UDEN et assignment kan ikke henføres — den
+    vises derfor, og `liste` tæller den med i `uspecificeret`.
+    """
     from core.runtime.db_agent_runtime import list_agent_registry_entries
     nu = _nu()
     jobs: list[dict[str, Any]] = []
@@ -223,6 +230,12 @@ def _scout_jobs() -> list[dict[str, Any]]:
         if str(a.get("role") or "") != "researcher":
             continue
         if str(a.get("tool_policy") or "") not in _SCOUT_POLICIES:
+            continue
+        # Samtalen, hvis den findes. Slås op i assignments — registret bærer
+        # den ikke. Et opslag pr. scout er prisen for at kunne skelne; der
+        # ligger sjældent mere end en håndfuld scouts i vinduet.
+        scout_session = _scout_session(str(a.get("agent_id") or ""))
+        if session_id and scout_session and scout_session != session_id:
             continue
         status = str(a.get("status") or "")
         start = _iso_ts(a.get("created_at"))
@@ -248,8 +261,34 @@ def _scout_jobs() -> list[dict[str, Any]]:
             # (_skal_vises); en annulleret eller udløbet scout er ikke gået galt.
             "exit_code": None if aktiv else (1 if status == "failed" else 0),
             "can_pause": False,
+            "session_id": scout_session,
         })
     return jobs
+
+
+def _scout_session(agent_id: str) -> str:
+    """Samtalen en scout blev startet fra — "" når den ikke kan afgøres.
+
+    Kilden er `agent_assignments.origin_session_id`, som er den fencede
+    sandhed om hvem der bad om arbejdet. Registret har ingen session-kolonne,
+    så en scout uden assignment (fx en ældre række) giver "" — og "" betyder
+    «ved det ikke», ikke «hører til ingen».
+    """
+    if not agent_id:
+        return ""
+    try:
+        from core.runtime.db_agent_contract import _conn
+        row = _conn().execute(
+            "SELECT origin_session_id FROM agent_assignments "
+            "WHERE agent_id=? ORDER BY created_at DESC LIMIT 1",
+            (agent_id,),
+        ).fetchone()
+    except Exception:
+        # Ingen session at hente: kontrakt-tabellen kan mangle i en ældre DB,
+        # og et opslag der fejler må ikke tage scout-listen med sig. "" betyder
+        # «ved det ikke» — scouten vises derfor, og tælles i `uspecificeret`.
+        return ""
+    return str(row["origin_session_id"] or "") if row else ""
 
 
 #: Hvor mange events kilden læser bagud. Målt 3/10-2026: 2.000 rækker koster
@@ -266,7 +305,7 @@ _TOOL_VINDUE = 2000
 _TOOL_SPOEGER_VINDUE_S = 1800
 
 
-def _tool_jobs() -> list[dict[str, Any]]:
+def _tool_jobs(session_id: str = "") -> list[dict[str, Any]]:
     """Værktøjskald fra et model-run — dem der kører lige nu.
 
     Panelet kendte indtil 3/10-2026 kun BEHOLDERE: supervisor-processer, åbne
@@ -331,6 +370,11 @@ def _tool_jobs() -> list[dict[str, Any]]:
             run_id = str(d.get("run_id") or "")
             if not run_id or run_id == UKENDT:
                 continue  # UI-plumbing, ikke et model-run
+            # Samtalen kaldet hører til. `identitet()` skriver den i eventets
+            # ROD (8/10-2026), så den kan læses uden at gå gennem `arguments`.
+            # UKENDT betyder «vi ved det ikke» — ikke «hører til ingen», og
+            # sådan et kald må ikke skjules for en samtale der spørger.
+            kald_session = str(d.get("session_id") or "")
             args = d.get("arguments") or {}
             noegle = str(args.get("_runtime_tool_use_id") or "")
             if not noegle:
@@ -341,6 +385,7 @@ def _tool_jobs() -> list[dict[str, Any]]:
                 "tool": str(d.get("tool") or ""),
                 "args": args,
                 "start": _iso_ts(created),
+                "session_id": kald_session,
             }
             continue
         # tool.completed — luk det kald den hoerer til.
@@ -364,6 +409,14 @@ def _tool_jobs() -> list[dict[str, Any]]:
             continue
         tool = v["tool"]
         args = v["args"]
+        # Samtale-filteret (8/10-2026). Spørger en samtale, vises KUN dens egne
+        # kald — plus dem hvor vi ikke ved hvem der ejer dem (`UKENDT`/tom).
+        # At skjule et kald vi ikke kan henføre ville være at påstå det ikke
+        # kører; at vise et kald fra en ANDEN samtale er den fejl Bjørn fandt.
+        kald_session = str(v.get("session_id") or "")
+        if session_id and kald_session and kald_session != UKENDT \
+                and kald_session != session_id:
+            continue
         # Titel er hvad kaldet LAVER — den beskrivelse Jarvis selv skriver til
         # det. Uden den er kommandoen den aerlige faldback, og værktøjets navn
         # den sidste.
@@ -384,6 +437,9 @@ def _tool_jobs() -> list[dict[str, Any]]:
             # der ikke kan holde hvad den lover.
             "can_pause": False,
             "can_stop": False,
+            # Båret videre så `liste` kan tælle hvor mange job der ikke KAN
+            # henføres til en samtale. Tom = «ved det ikke», ikke «ingen».
+            "session_id": "" if kald_session == UKENDT else kald_session,
         })
     return jobs
 
@@ -572,7 +628,8 @@ def _shell_sessioner() -> list[dict[str, Any]]:
     return jobs
 
 
-def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, Any]:
+def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True,
+          session_id: str = "") -> dict[str, Any]:
     """Alle jobs fra alle kilder.
 
     `kun_aktive` fjerner det der er FÆRDIGT — Bjørn: «de skal automatisk
@@ -580,17 +637,42 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
     stående: det er ikke fuldført, det er gået galt, og det er netop dem man
     skal se. Et panel der altid er tomt bliver et panel man holder op med at
     åbne.
+
+    ## `session_id` — panelet viser DENNE samtales arbejde (8/10-2026)
+
+    Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt... lige
+    nu vises baggrundsjobs fra andre session i panelet». Panelet hentede hele
+    maskinens arbejde, så en samtale i gang med at bygge viste en anden
+    samtales builds som sine egne.
+
+    Filtreringen kan ikke være ens for alle kilder, fordi de ikke bærer det
+    samme spor. Den er derfor delt i to, og forskellen SIGES i svaret:
+
+    * **Bærer samtalen** — `tool` (værktøjskald bærer `session_id` i eventets
+      rod, sat af `tool_call_telemetry.identitet`) og `agent` (scout-registret
+      bærer `origin_session_id`). Disse filtreres hårdt på `session_id`.
+    * **Bærer den IKKE** — `supervisor` (serverens egne langtidsservices),
+      `shell` (daemonen kender ingen samtale) og `operator` (filer i
+      `/tmp/jarvis-bg/`). De vises UANSET, fordi de er maskinens arbejde og
+      ikke samtalens: en trading-bot hører ikke til en chat, og en shell Jarvis
+      åbnede i en anden samtale er stadig åben. At skjule dem ville være at
+      påstå at de ikke kører.
+
+    `uspecificeret` i svaret tæller de viste job der ikke KAN henføres til en
+    samtale. Uden det tal ville et panel i en samtale uden egne job se tomt ud
+    og skjule at der kører seks ting på maskinen — samme fejlklasse som
+    `bridge_ok=false`: en tom liste og «vi ved det ikke» er ikke det samme.
     """
     jobs = _supervisor_jobs()
     jobs += _shell_sessioner()
     try:
-        jobs += _scout_jobs()
+        jobs += _scout_jobs(session_id=session_id)
     except Exception:
         # Registret er en tilføjelse til panelet, ikke dets fundament: fejler det,
         # skal supervisor- og operator-jobbene stadig vises.
         logger.warning("background_jobs: kunne ikke læse scout-agenter", exc_info=True)
     try:
-        jobs += _tool_jobs()
+        jobs += _tool_jobs(session_id=session_id)
     except Exception:
         # Samme afvejning som scout-registret: de øvrige kilder skal stå, selv
         # om værktøjssporet ikke kan læses.
@@ -607,7 +689,8 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
     # Koerende foerst, derefter laengst koerende oeverst. Det man skal gribe
     # ind i staar oeverst; det der bare koerer og koerer staar under.
     jobs.sort(key=lambda j: (j["status"] == "exited", -(j.get("sekunder") or 0)))
-    return {"jobs": jobs, "bridge_ok": bro_ok}
+    uspecificeret = sum(1 for j in jobs if not j.get("session_id"))
+    return {"jobs": jobs, "bridge_ok": bro_ok, "uspecificeret": uspecificeret}
 
 
 def _skal_vises(job: dict[str, Any]) -> bool:

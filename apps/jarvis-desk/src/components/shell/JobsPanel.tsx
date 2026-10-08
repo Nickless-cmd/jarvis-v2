@@ -40,6 +40,7 @@ export function JobsPanel({
   fuld = false,
   onFuld,
   onOpenAgent,
+  sessionId,
 }: {
   config?: ApiConfig
   onClose: () => void
@@ -52,12 +53,20 @@ export function JobsPanel({
   onCount?: (n: number) => void
   /** Klik på en agentrække åbner AgentInspector (samme som Miljø-feltet). */
   onOpenAgent?: (agent: AgentReference) => void
+  /** Samtalen panelet hører til (8/10-2026). Uden den viste panelet HELE
+   *  maskinens arbejde, så en anden samtales builds stod her som ens egne.
+   *  Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt». */
+  sessionId?: string | null
 }) {
   const [jobs, setJobs] = useState<BackgroundJob[]>([])
   // Kontrakt-projektionen (G): agentrun fra DB, uafhængigt af /api/jobs og af klientbroen.
   const [kontrakt, setKontrakt] = useState<ContractOverview | null>(null)
   const [kontraktFejl, setKontraktFejl] = useState(false)
   const [broOk, setBroOk] = useState(true)
+  // Job der ikke kan henføres til en samtale: maskinens egne services, åbne
+  // shells, operatørens filer. De vises i alle samtaler — men et panel der
+  // kun viste dem ville se ud som om samtalen ejede dem.
+  const [uspecificeret, setUspecificeret] = useState(0)
   const [fejl, setFejl] = useState('')
   // Egen tilstand, IKKE `fejl`. En besked lagt i fejl-feltet blev slettet et
   // oejeblik senere af den naeste hentning (som rydder fejl ved succes), saa
@@ -77,14 +86,17 @@ export function JobsPanel({
     undervejs.current = true
     // To uafhængige kilder: en fejl i den ene må ikke tømme den anden. En fejlet kontrakt-hentning er IKKE en
     // tom agentliste — det siges højt nedenfor.
-    const jobsKald = listJobs(config, true)
-      .then((svar) => { setJobs(svar.jobs); setBroOk(svar.bridge_ok); setFejl('') })
+    const jobsKald = listJobs(config, true, sessionId)
+      .then((svar) => {
+        setJobs(svar.jobs); setBroOk(svar.bridge_ok); setFejl('')
+        setUspecificeret(svar.uspecificeret ?? 0)
+      })
       .catch(() => setFejl('kunne ikke hente jobs'))
     const kontraktKald = getKontraktOverblik(config, 'panel')
       .then((svar) => { setKontrakt(svar); setKontraktFejl(false) })
       .catch(() => setKontraktFejl(true))
     void Promise.all([jobsKald, kontraktKald]).finally(() => { undervejs.current = false })
-  }, [config])
+  }, [config, sessionId])
 
   useEffect(() => {
     hent()
@@ -269,7 +281,14 @@ export function JobsPanel({
         Kører {koererTotal > 0 && <span className="jobs-count" data-testid="ac-koerer-tal">{koererTotal}</span>}
       </div>
       {koererTotal === 0 ? (
-        <div className="jobs-tom">Ingenting kører lige nu.</div>
+        <div className="jobs-tom">
+          {uspecificeret > 0
+            /* Samtalen har ingen EGNE job, men maskinen kører. At sige
+               «ingenting kører» ville være usandt — og det er præcis den
+               forskel panelet findes for at kunne sige. */
+            ? `Ingen job i denne samtale. ${uspecificeret} kører på maskinen.`
+            : 'Ingenting kører lige nu.'}
+        </div>
       ) : (
         <>
           {agenterKoerer.length > 0 && (

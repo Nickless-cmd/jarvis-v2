@@ -50,7 +50,10 @@ def tail_managed_process_log(
 
 
 @router.get("/jobs")
-def list_background_jobs(include_done: bool = Query(default=False)) -> dict[str, Any]:
+def list_background_jobs(
+    include_done: bool = Query(default=False),
+    session_id: str = Query(default=""),
+) -> dict[str, Any]:
     """Alle kørende baggrundsopgaver — supervisor OG operatørens egne shells.
 
     To kilder, ét svar. Et panel der kun viste den ene ville være sandt om sin
@@ -60,11 +63,19 @@ def list_background_jobs(include_done: bool = Query(default=False)) -> dict[str,
     `bridge_ok=false` betyder at vi ikke VED hvad der kører på operatørens
     maskine — ikke at der ingenting kører. De to er stik modsat, og klienten
     skal kunne sige forskel.
+
+    `session_id` (8/10-2026): panelet i en samtale viser DEN samtales arbejde.
+    Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt... lige
+    nu vises baggrundsjobs fra andre session i panelet». Filteret rammer de
+    kilder der BÆRER en samtale (værktøjskald og kontrakt-agenter); maskinens
+    egne services og åbne shells vises uanset, og `uspecificeret` i svaret
+    siger hvor mange af de viste job der ikke kan henføres til en samtale.
     """
     from core.identity.workspace_context import current_user_id
     from core.services.background_jobs import liste
     uid = current_user_id() or ""
-    return liste(uid=uid, exec_fn=_operator_exec_for_jobs, kun_aktive=not include_done)
+    return liste(uid=uid, exec_fn=_operator_exec_for_jobs,
+                 kun_aktive=not include_done, session_id=session_id)
 
 
 def _operator_exec_for_jobs(navn: str, args: dict[str, Any]) -> dict[str, Any]:

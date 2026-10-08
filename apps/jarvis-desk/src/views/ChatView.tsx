@@ -40,9 +40,6 @@ import { HeaderMere } from '../components/shell/HeaderMere'
 import { useFigurVist } from '../lib/figurVist'
 import '../styles/transcript-ydelse.css'
 import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
-import { SideOpgaveKort } from '../components/chat/SideOpgaveKort'
-import type { SideTask } from '../lib/sideTasksApi'
-import { startSideOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
@@ -655,36 +652,10 @@ export function ChatView({
     return onStemmeBud(() => { if (tagStemmeBud()) voiceEnter() })
   }, [voiceEnter])
 
-  // Sideopgave-kortet (CC's «Suggested task») flyder over inputfeltet.
-  const sideCfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null
-  // Handlerne returnerer den samtale der LØSER opgaven, så kortet kan knytte
-  // de to sammen (Bjørn 3/10: «måtte jeg minde ham om at markere den flaggede
-  // opgave færdig»). Uden linket kan ingen lukke opgaven.
-  const sideHandlinger = {
-    startLokalt: async (t: SideTask) => {
-      if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
-      await sessions.refresh()
-      sessions.select(sid)
-      return sid
-    },
-    baggrund: async (t: SideTask) => {
-      if (!sideCfg) return
-      const sid = await startSideOpgave(sideCfg, t, { kind: 'chat', arvFra: sessionId })
-      void sessions.refresh()
-      return sid
-    },
-    // «Løs her» kører i den AKTUELLE samtale — den er arbejdet.
-    loesHer: (t: SideTask) => { void resend(t.prompt); return sessionId ?? undefined },
-  }
-
-  // Øverst i chatten, højrestillet over samtalen — som CC's «Suggested task»
-  // (Bjørn 19/9-2026: «kan du lægge den i toppen af chatview i stedet?»).
-  const sideKort = (
-    <div className="sok-top-anker">
-      <SideOpgaveKort config={sideCfg} handlinger={sideHandlinger} />
-    </div>
-  )
+  // Sideopgave-kortet er FLYTTET UD af chat-mode (Bjørn 8/10-2026): «side-opgaver
+  // bør kun vises i code mode i desk.. ikk i chat mode». Kortet hører til hvor
+  // der er et arbejdsområde at løse opgaven i — chatten er samtalen, ikke
+  // værkstedet. Handlerne og kortet bor nu udelukkende i CodeView.
 
   const [figurVist, saetFigur] = useFigurVist()
 
@@ -882,6 +853,7 @@ export function ChatView({
           fuld={fuldRude === 'jobs'}
           onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
           onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
+          sessionId={sessionId}
         />
       )}
       {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
@@ -960,7 +932,6 @@ export function ChatView({
     return (
       <div className={`chatview empty${skinneAaben ? ' har-skinne' : ''}`}>
         {header}
-        {sideKort}
         {jobsRude}
         <div className="chat-empty">
           <GreetingHero
@@ -982,7 +953,6 @@ export function ChatView({
     <VisningContext.Provider value={visning}>
     <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
-      {sideKort}
       {jobsRude}
       <div className="transcript-wrap">
       <WidgetPrompt.Provider value={widgetPrompt}>

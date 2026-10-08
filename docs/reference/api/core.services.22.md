@@ -323,6 +323,7 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L129) |
 | method | `RundeHale.antal_naeste` | `(self)` | — | [src](../../../core/services/run_trailing.py#L133) |
 | method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L136) |
+| method | `RundeHale.telemetri` | `(self)` | Kompakt billede af halen, praecis som den sendes i denne runde. | [src](../../../core/services/run_trailing.py#L139) |
 
 ## `core/services/runtime_action_executor.py`
 

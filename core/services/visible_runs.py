@@ -2897,6 +2897,24 @@ async def _stream_visible_run(
                             _round_tool_definitions, _round_extra_tools,
                             _get_tool_defs() or [])
 
+                    # ── Hale-telemetri (8/10-2026) ──────────────────────────
+                    # Halen sendes i HVER runde, men der fandtes intet tal paa
+                    # hvad den bar. Uden det kan en note der bliver haengende —
+                    # den gamle fejl var 2.226 gen-sendinger over 416 ture —
+                    # ikke ses i driften, kun ved at grave i koden. Ét event pr.
+                    # runde, taget her hvor rundens vink er lagt og halen er
+                    # komplet. Self-safe: telemetri maa ALDRIG vaelte en tur.
+                    try:
+                        from core.eventbus.bus import event_bus as _hale_eb
+                        _hale_eb.publish("runtime.visible_run_tail", {
+                            "run_id": run.run_id,
+                            "round": _agentic_round + 1,
+                            "session_id": run.session_id or "",
+                            **_tur_hale.telemetri(),
+                        })
+                    except Exception:
+                        logger.debug("hale-telemetri kunne ikke publiceres", exc_info=True)
+
                     # ── Fase 1 inner attempt-loop (spec §4.1): re-runs THIS round's
                     # model-sampling on a retryable transient failure (round-retry that
                     # PRESERVES the turn — codex run_sampling_request semantics). The

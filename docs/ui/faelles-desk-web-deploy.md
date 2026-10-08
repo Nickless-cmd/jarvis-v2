@@ -1,6 +1,6 @@
 # Desk som web og PWA
 
-**Status 8/10-2026:** Koden er klargjort i en isoleret worktree. Produktionsserveren er ikke skiftet endnu. `apps/ui/dist` beholdes som fallback, indtil browserparitet og rollback er målt på den kørende server.
+**Status 8/10-2026:** Desk-webbygget kører på `https://api.srvlab.dk/` fra `main` (`436bab8b3`). `apps/ui/dist` beholdes som fallback, indtil browserparitet er målt efter login på den kørende server. Fallback-valget er prøvet i en isoleret kopi på produktionsværten.
 
 ## Byg og skift
 

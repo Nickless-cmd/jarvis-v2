@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_scheduled_tasks.py`
+_Scheduled tasks — engangs-planlagte opgaver Jarvis skal udføre på et tidspunkt_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_scheduled_tasks_table` | `(conn)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L22) |
+| function | `_row_get` | `(row, key, default=…)` | Safe column access — returns default if column missing from row. | [src](../../../core/runtime/db_scheduled_tasks.py#L47) |
+| function | `_scheduled_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L55) |
+| function | `create_scheduled_task` | `(*, task_id, focus, source=…, run_at, created_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L70) |
+| function | `get_scheduled_task` | `(task_id)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L92) |
+| function | `get_due_scheduled_tasks` | `(now_iso)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L101) |
+| function | `mark_scheduled_task_fired` | `(task_id, fired_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L115) |
+| function | `mark_scheduled_task_cancelled` | `(task_id, cancelled_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L129) |
+| function | `update_scheduled_task` | `(task_id, *, focus=…, run_at=…, updated_at)` | Opdater focus og/eller run_at på en pending task. Returnerer den opdaterede | [src](../../../core/runtime/db_scheduled_tasks.py#L143) |
+| function | `list_scheduled_tasks` | `(limit=…, status=…)` | List scheduled tasks — nyeste ``run_at`` først. | [src](../../../core/runtime/db_scheduled_tasks.py#L169) |
+| function | `count_scheduled_tasks` | `(status=…)` | Count scheduled tasks, optionally filtered by status. Observability helper. | [src](../../../core/runtime/db_scheduled_tasks.py#L205) |
+
 ## `core/runtime/db_schema.py`
 _Schema layer for core.runtime.db — init_db + all _ensure_*/_migrate_* helpers._
 

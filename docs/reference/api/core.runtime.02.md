@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_composites.py`
+_Composite tools store — Jarvis proposals of new tool sequences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_composites.py#L24) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_composites.py#L48) |
+| function | `propose_composite` | `(*, name, description, input_schema, steps, created_by=…)` | Insert a new proposal. Name must be unique. | [src](../../../core/runtime/db_composites.py#L52) |
+| function | `approve_composite` | `(name, *, approved_by=…)` | — | [src](../../../core/runtime/db_composites.py#L86) |
+| function | `revoke_composite` | `(name)` | — | [src](../../../core/runtime/db_composites.py#L103) |
+| function | `get_composite` | `(name)` | — | [src](../../../core/runtime/db_composites.py#L116) |
+| function | `list_composites` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_composites.py#L127) |
+| function | `record_invocation` | `(name)` | — | [src](../../../core/runtime/db_composites.py#L146) |
+| function | `delete_composite` | `(name)` | — | [src](../../../core/runtime/db_composites.py#L158) |
+| function | `count_composites` | `(*, status=…)` | — | [src](../../../core/runtime/db_composites.py#L168) |
+| function | `_decode` | `(row)` | — | [src](../../../core/runtime/db_composites.py#L183) |
+
 ## `core/runtime/db_concept_baseline.py`
 _DB helpers for concept_baseline_stats table._
 
@@ -923,21 +940,4 @@ _Persistence for Jarvis' runtime temporal/memory-* signal cluster._
 | function | `supersede_runtime_temperament_tendency_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) temperament-tendency signals | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1981) |
 | function | `_ensure_runtime_temperament_tendency_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L2015) |
 | function | `_runtime_temperament_tendency_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L2056) |
-
-## `core/runtime/db_scheduled_tasks.py`
-_Scheduled tasks — engangs-planlagte opgaver Jarvis skal udføre på et tidspunkt_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_scheduled_tasks_table` | `(conn)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L22) |
-| function | `_row_get` | `(row, key, default=…)` | Safe column access — returns default if column missing from row. | [src](../../../core/runtime/db_scheduled_tasks.py#L47) |
-| function | `_scheduled_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L55) |
-| function | `create_scheduled_task` | `(*, task_id, focus, source=…, run_at, created_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L70) |
-| function | `get_scheduled_task` | `(task_id)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L92) |
-| function | `get_due_scheduled_tasks` | `(now_iso)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L101) |
-| function | `mark_scheduled_task_fired` | `(task_id, fired_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L115) |
-| function | `mark_scheduled_task_cancelled` | `(task_id, cancelled_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L129) |
-| function | `update_scheduled_task` | `(task_id, *, focus=…, run_at=…, updated_at)` | Opdater focus og/eller run_at på en pending task. Returnerer den opdaterede | [src](../../../core/runtime/db_scheduled_tasks.py#L143) |
-| function | `list_scheduled_tasks` | `(limit=…, status=…)` | List scheduled tasks — nyeste ``run_at`` først. | [src](../../../core/runtime/db_scheduled_tasks.py#L169) |
-| function | `count_scheduled_tasks` | `(status=…)` | Count scheduled tasks, optionally filtered by status. Observability helper. | [src](../../../core/runtime/db_scheduled_tasks.py#L205) |
 

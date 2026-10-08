@@ -596,7 +596,9 @@ def supervise() -> list[dict[str, Any]]:
     from core.runtime import db_agent_approvals as appr
     from core.runtime.db_agent_lease import reconcile_expired_leases
     from core.services.agent_parking import resume_decided
+    from core.runtime.db_agent_deadlines import expire_due_queues
 
+    queue_expired = expire_due_queues()
     appr.expire_due()
     try:
         from core.services.agent_approval_notify import ensure_wakes
@@ -629,7 +631,7 @@ def supervise() -> list[dict[str, Any]]:
         if d.get("action") == "retry":
             _start_execution(d["agent_id"])
     _drain_ready_queue()
-    return done + [{"action": "resumed_after_approval", **r} for r in resumed]
+    return queue_expired + done + [{"action": "resumed_after_approval", **r} for r in resumed]
 
 
 # --- approvals (F4) -----------------------------------------------------------------------------------

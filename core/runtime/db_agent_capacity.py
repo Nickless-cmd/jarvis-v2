@@ -92,8 +92,9 @@ def claim_worker_slot(*, assignment_id: str) -> bool:
     try:
         row = conn.execute(
             "SELECT owner_user_id, parent_agent_id FROM agent_assignments "
-            "WHERE assignment_id=? AND status='queued' AND ready_at!=''",
-            (assignment_id,)).fetchone()
+            "WHERE assignment_id=? AND status='queued' AND ready_at!='' "
+            "AND (queue_deadline_at='' OR queue_deadline_at>?)",
+            (assignment_id, _now_iso())).fetchone()
         if row is None:
             conn.rollback()
             return False

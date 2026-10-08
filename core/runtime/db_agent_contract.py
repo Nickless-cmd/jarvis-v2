@@ -297,6 +297,8 @@ def accept_assignment(
         ).fetchone()
         if busy is not None:
             raise ContractError("CAPACITY", "agenten har allerede et aktivt assignment")
+        from core.runtime.db_agent_capacity import assert_queue_capacity
+        assert_queue_capacity(conn, parent_agent_id=parent_agent_id)
         now = _now_iso()
         assignment_id = f"asg-{uuid.uuid4().hex[:16]}"
         run_id = f"run-{uuid.uuid4().hex[:16]}"

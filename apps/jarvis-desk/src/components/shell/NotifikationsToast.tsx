@@ -84,7 +84,23 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   const alive = useRef(true)
   const requestVersion = useRef(0)
 
-  const hent = useCallback(() => {
+  // `hentNu` gaar UDEN OM ro-loftet (`maaPolle`). Det er ikke en detalje:
+  // klokken har haft samme skel siden 20/9, og uden det her er toasten den
+  // eneste kanal der bliver slugt af ro-mekanismen.
+  //
+  // Maalt 8/10-2026: Bjørn hørte klokken ringe hver gang, men toasten kom kun
+  // «en sjælden gang imellem». Aarsagen er praecis denne: begge komponenter
+  // henter den SAMME liste, men naar WS-signalet «notifikation.ny» lander,
+  // kalder klokken `hentNu` (altid igennem) mens toasten kaldte `hent` — som
+  // foerst spoerger `maaPolle('notifikationer', 8000)`. Er der gaaet under
+  // otte sekunder siden SIDSTE poll (klokken og toasten deler noeglen!), svarer
+  // den nej, og toasten springer den nye post over. Klokken ringer altsaa,
+  // lyden kommer — og toasten udebliver. Naar ro-faktoren saa gaar i gang
+  // (8x efter tre minutter uden livstegn), bliver vinduet endnu bredere.
+  //
+  // En haendelse ER signalet. Den maa ikke sluges af et ro-loft — det er
+  // samme regel som klokkens WS-lytter foelger.
+  const hentNu = useCallback(() => {
     if (!apiBaseUrl) return
     const version = ++requestVersion.current
     hentNotifikationer({ apiBaseUrl, authToken }, aktivSession)
@@ -113,13 +129,18 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
   }, [apiBaseUrl, authToken, aktivSession])
 
+  // Pollet — det er SIKKERHEDSNETTET, og her er ro-loftet rigtigt: ingen
+  // grund til at spoerge hvert ottende sekund naar ingen kigger.
+  const hent = useCallback(() => {
+    if (!maaPolle('notifikationer', 8000)) return
+    hentNu()
+  }, [hentNu])
+
   useEffect(() => {
     alive.current = true
     const versions = requestVersion
     hent()
-    const id = window.setInterval(() => {
-      if (maaPolle('notifikationer', 8000)) hent()
-    }, 8000)
+    const id = window.setInterval(hent, 8000)
     return () => { alive.current = false; versions.current++; window.clearInterval(id) }
   }, [hent])
 
@@ -134,23 +155,23 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
       ws.onmessage = (e) => {
         try {
           const kind = String(JSON.parse(String(e.data))?.kind || '')
-          if (kind.startsWith('notifikation.')) hent()
+          if (kind.startsWith('notifikation.')) hentNu()
         } catch { /* ikke-JSON paa bussen er ikke vores */ }
       }
       ws.onerror = () => { /* pollet daekker */ }
     } catch { /* pollet daekker */ }
     return () => { try { ws?.close() } catch { /* noop */ } }
-  }, [apiBaseUrl, authToken, hent])
+  }, [apiBaseUrl, authToken, hentNu])
 
   useEffect(() => {
     const opdaterSynlighed = () => {
       const erSynlig = document.visibilityState !== 'hidden'
       setSynlig(erSynlig)
-      if (erSynlig) hent()
+      if (erSynlig) hentNu()
     }
     document.addEventListener('visibilitychange', opdaterSynlighed)
     return () => document.removeEventListener('visibilitychange', opdaterSynlighed)
-  }, [hent])
+  }, [hentNu])
 
   const luk = useCallback((id: string) => {
     setKoe((k) => k.filter((p) => p.id !== id))

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { _saetUr, _nulstil } from '../../lib/ro'
+import { _saetUr, _nulstil, vaagn, maaPolle, ROLIG_EFTER_MS } from '../../lib/ro'
 
 const hent = vi.fn()
 const afgoer = vi.fn()
@@ -196,5 +196,39 @@ describe('NotifikationsToast', () => {
     sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
     await new Promise((r) => setTimeout(r, 30))
     expect(screen.queryByText('Foraeldet')).toBeNull()
+  })
+
+  // ── Ro-loftet maa ikke sluge en haendelse (målt 8/10-2026) ──────────────
+  //
+  // Bjørn: «klokken i feedet ringer og lyden kommer.. og en sjælen gang
+  // imellem kommer toast i desk». Aarsagen var praecis dette: klokken kaldte
+  // `hentNu` (uden om loftet) fra sin WS-lytter, mens toasten kaldte `hent`
+  // — som foerst spoerger `maaPolle('notifikationer', 8000)`. Klokken og
+  // toasten deler noeglen, saa naar klokkens poll lige har sat sit stempel,
+  // svarer loftet nej for toasten, og posten bliver sprunget over. Lyden kom
+  // (klokken), toasten udeblød.
+  //
+  // Samme test-moenster som Klokke.test.tsx: i jsdom er `sidsteLivstegn`
+  // altid frisk, saa `roFaktor()` er 1 og loftet er aldrig reelt i kraft.
+  // `_saetUr` + `vaagn()` tvinger det i kraft, og `maaPolle`-kaldet BEVISER
+  // at det blokerer — ellers maalte testen ingenting.
+  it('haendelsen gaar UDENOM ro-loftet — et poll i samme oejeblik ville vaere blokeret', async () => {
+    let ur = 1_000_000_000
+    _saetUr(() => ur)
+    vaagn()
+    ur += ROLIG_EFTER_MS + 1_000 // roFaktor() er fra nu af FAKTOR_RO
+
+    hent.mockResolvedValueOnce({ poster: [post()], antal: 1 })
+       .mockResolvedValue({ poster: [post(), post({ id: 'p2', titel: 'Svar klar', slags: 'run_done' })], antal: 2 })
+    render(<NotifikationsToast config={cfg} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('Svar klar')).toBeNull()
+
+    // Bevis at loftet reelt blokerer NU.
+    expect(maaPolle('notifikationer', 8000)).toBe(false)
+
+    sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
+
+    expect(await screen.findByText('Svar klar')).toBeInTheDocument()
   })
 })

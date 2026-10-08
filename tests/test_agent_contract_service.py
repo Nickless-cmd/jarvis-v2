@@ -157,13 +157,18 @@ def test_idempotent_dispatch_replays_and_conflict_is_refused(sv):
     assert other["replayed"] is False and sv.rows("agent_assignments") == 2
 
 
-def test_capacity_per_parent_blocks_the_seventh_child_without_creating_it(sv):
+def test_parent_worker_cap_queues_the_seventh_child_and_queue_has_its_own_limit(sv):
     sv.on()
     for i in range(6):
         assert sv.d(goal=f"opgave {i}")["status"] == "accepted"
     out = sv.d(goal="den syvende")
-    assert (out["status"], out["code"]) == ("error", "CAPACITY")
-    assert sv.rows("agent_registry") == 6 and sv.rows("agent_assignments") == 6
+    assert out["status"] == "accepted" and out["assignment_status"] == "queued"
+    assert len(sv.started) == 6
+    for i in range(7, 14):
+        assert sv.d(goal=f"queued {i}")["status"] == "accepted"
+    full = sv.d(goal="parent queue full")
+    assert (full["status"], full["code"]) == ("error", "CAPACITY")
+    assert sv.rows("agent_assignments") == 14
 
 
 # --- followup / message -----------------------------------------------------------------
@@ -252,7 +257,7 @@ def test_close_is_graceful_busy_agent_stays_closing_until_it_finishes(sv):
     first = sv.d()
     out = sv.svc_.close_agent(owner_user_id=O, origin_session_id=S, agent_id=first["agent_id"])
     assert out["lifecycle_status"] == "closing"
-    assert sv.k.get_assignment(assignment_id=first["assignment_id"], owner_user_id=O)["status"] == "queued"
+    assert sv.k.get_assignment(assignment_id=first["assignment_id"], owner_user_id=O)["status"] == "active"
     sv.run_all()
     assert sv.svc_.settle_closing(first["agent_id"], O) == "closed"
     idle = sv.d(goal="anden")

@@ -107,11 +107,38 @@ def _run_in_background(fn: Callable[[], Any]) -> None:
     threading.Thread(target=_target, daemon=True, name="agent-contract-run").start()
 
 
-def _start_execution(agent_id: str) -> None:
+def _start_execution(agent_id: str) -> bool:
+    """Start only after the durable scheduler wins an active worker slot."""
+    from core.runtime.db_agent_capacity import claim_worker_slot, release_unstarted_claim
+
+    assignment = c.open_assignment_for_agent(agent_id)
+    if assignment is None or not claim_worker_slot(assignment_id=assignment["assignment_id"]):
+        return False
+
     def _go() -> None:
         from core.services.agent_runtime_spawn import execute_agent_task
-        execute_agent_task(agent_id=agent_id)
+        try:
+            execute_agent_task(agent_id=agent_id)
+        except Exception:
+            # Et crash foer foerste lease/run er sikkert at koe igen. Efter start
+            # maa kun lease-/outcome_unknown-stien afgoere en mulig effekt.
+            if release_unstarted_claim(assignment_id=assignment["assignment_id"]):
+                logger.warning("agent %s fejlede foer start og er sat tilbage i koeen", agent_id)
+            raise
+        else:
+            _drain_ready_queue()
     _run_in_background(_go)
+    return True
+
+
+def _drain_ready_queue() -> int:
+    """Reclaim worker slots after parked/completed jobs and after process restart."""
+    from core.runtime.db_agent_capacity import ready_queue
+
+    started = 0
+    for _, agent_id in ready_queue():
+        started += int(_start_execution(agent_id))
+    return started
 
 
 def _signal_feed() -> None:
@@ -134,12 +161,14 @@ def _accept_view(acc: dict[str, Any]) -> dict[str, Any]:
 
 
 def _capacity_error(owner: str, parent: str) -> dict[str, Any] | None:
-    if c.count_open_assignments() >= MAX_ACTIVE_GLOBAL:
-        return _err("CAPACITY", f"globalt loft {MAX_ACTIVE_GLOBAL} aktive agentruns")
-    if c.count_open_assignments(owner_user_id=owner) >= MAX_ACTIVE_PER_OWNER:
-        return _err("CAPACITY", f"loft {MAX_ACTIVE_PER_OWNER} aktive agentruns pr. ejer")
-    if c.count_open_assignments(parent_agent_id=parent) >= MAX_ACTIVE_PER_PARENT:
-        return _err("CAPACITY", f"loft {MAX_ACTIVE_PER_PARENT} direkte boern pr. parent")
+    # Kun et billigt forhåndstjek før spawn. Den autoritative admission ligger i
+    # accept_assignment's BEGIN IMMEDIATE og kan derfor ikke races af en anden dispatch.
+    from core.runtime.db_agent_capacity import MAX_QUEUED_GLOBAL, MAX_QUEUED_PER_PARENT, queue_status
+    q = queue_status(c._conn(), parent_agent_id=parent)
+    if q["queued_global"] >= MAX_QUEUED_GLOBAL:
+        return _err("CAPACITY", f"global koeloft {MAX_QUEUED_GLOBAL}")
+    if q["queued_parent"] >= MAX_QUEUED_PER_PARENT:
+        return _err("CAPACITY", f"koeloft {MAX_QUEUED_PER_PARENT} pr. parent")
     return None
 
 
@@ -271,7 +300,10 @@ def dispatch_agent(
     agent_id = str(spawned.get("agent_id") or "")
     a = c.open_assignment_for_agent(agent_id)
     if a is None:
-        return _err("INVALID_SCOPE", "agenten blev ikke bundet til kontrakten", "admission")
+        from core.runtime.db_agent_capacity import discard_unbound_agent
+        discard_unbound_agent(agent_id=agent_id)
+        return (_capacity_error(owner_user_id, parent_agent_id)
+                or _err("INVALID_SCOPE", "agenten blev ikke bundet til kontrakten", "admission"))
     try:
         from core.runtime import db_agent_route
         db_agent_route.record_decision(assignment_id=a["assignment_id"], agent_id=agent_id,
@@ -301,6 +333,9 @@ def dispatch_agent(
             logger.warning("worktree kunne ikke reserveres", exc_info=True)
             c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
             return _err("INVALID_SCOPE", f"worktree: {type(exc).__name__}"[:120])
+    from core.runtime.db_agent_capacity import mark_ready
+    if not mark_ready(assignment_id=a["assignment_id"]):
+        return _err("INVALID_TRANSITION", "assignmentet kunne ikke frigives til koeen")
     _start_execution(agent_id)
     _signal_feed()
     run = c._conn().execute("SELECT run_id FROM agent_runs WHERE assignment_id=? "
@@ -361,6 +396,9 @@ def followup_agent(
                          agent_id=agent_id, direction="jarvis->agent", role="system",
                          kind="task-brief", content=goal)
     update_agent_registry_entry(agent_id, status="queued", last_error="")
+    from core.runtime.db_agent_capacity import mark_ready
+    if not mark_ready(assignment_id=acc["assignment_id"]):
+        return _err("INVALID_TRANSITION", "assignmentet kunne ikke frigives til koeen")
     _start_execution(agent_id)
     _signal_feed()
     return _accept_view(acc)
@@ -558,7 +596,9 @@ def supervise() -> list[dict[str, Any]]:
     from core.runtime import db_agent_approvals as appr
     from core.runtime.db_agent_lease import reconcile_expired_leases
     from core.services.agent_parking import resume_decided
+    from core.runtime.db_agent_deadlines import expire_due_queues
 
+    queue_expired = expire_due_queues()
     appr.expire_due()
     try:
         from core.services.agent_approval_notify import ensure_wakes
@@ -590,7 +630,8 @@ def supervise() -> list[dict[str, Any]]:
     for d in done:
         if d.get("action") == "retry":
             _start_execution(d["agent_id"])
-    return done + [{"action": "resumed_after_approval", **r} for r in resumed]
+    _drain_ready_queue()
+    return queue_expired + done + [{"action": "resumed_after_approval", **r} for r in resumed]
 
 
 # --- approvals (F4) -----------------------------------------------------------------------------------

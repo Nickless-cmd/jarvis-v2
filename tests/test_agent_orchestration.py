@@ -20,11 +20,12 @@ def pr(isolated_runtime):
         def on(self):
             svc.set_capability(True, role="owner")
 
-        def assignment(self, name, owner="bjorn", session="s1"):
+        def assignment(self, name, owner="bjorn", session="s1", parent=""):
             create_agent_registry_entry(agent_id=name, role="r", goal="g")
             c.bind_agent_owner(agent_id=name, owner_user_id=owner, owner_session_id=session)
             return c.accept_assignment(agent_id=name, owner_user_id=owner,
-                                       origin_session_id=session, goal="g")["assignment_id"]
+                                       origin_session_id=session, goal="g",
+                                       parent_agent_id=parent)["assignment_id"]
 
     return H()
 
@@ -201,8 +202,12 @@ def test_state_is_read_only_and_deterministic(pr):
 
 
 def test_state_is_capped_and_says_so(pr):
+    # Hver sin parent. §12.3 giver 8 koepladser PR. PARENT, og visningen staar
+    # ved 10 — saa 13 assignments under ÉN parent kan ikke lade sig goere, og
+    # testen ville maale koeloftet i stedet for visningens cap. I virkeligheden
+    # har hver agent sin egen parent; det er den tilstand der skal vises.
     for i in range(ao.MAX_STATE_ROWS + 3):
-        pr.assignment(f"b{i:02d}")
+        pr.assignment(f"b{i:02d}", parent=f"p{i:02d}")
     out = ao.orchestrator_state(owner_user_id="bjorn", session_id="s1")
     assert out.count("\n- b") == ao.MAX_STATE_ROWS and "og flere" in out
 

@@ -711,16 +711,35 @@ def set_lifecycle(*, agent_id: str, owner_user_id: str, lifecycle_status: str) -
 
 
 def discard_unstarted_assignment(*, agent_id: str, owner_user_id: str) -> bool:
-    """Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked,
+    """Fjern et assignment (og dets agent) der ALDRIG er startet: ingen terminalbesked,
     intet run med ``started_at``. Bruges naar en admission fejler EFTER accept (f.eks. et worktree der ikke
-    kan reserveres), saa et afvist kald ikke efterlader et halvt barn (§11.1). Alt andet afvises."""
+    kan reserveres), saa et afvist kald ikke efterlader et halvt barn (§11.1). Alt andet afvises.
+
+    ## Hvorfor `queued` ikke laengere er betingelsen (8/10-2026)
+
+    Vagten stod foer paa ``status='queued'`` som en proxy for «ikke startet».
+    Den proxy holdt op med at vaere sand da den varige scheduler kom til: en ny
+    assignment claimer en workerplads MED DET SAMME og staar derfor ``active``
+    allerede i det oejeblik dispatch returnerer. Maalt ved integrationen af de
+    fire produktionspunkter — status lige efter dispatch er ``active``, ikke
+    ``queued``.
+
+    Konsekvensen var at §11.1's oprydning aldrig kunne naa sit eget maal: en
+    admission der fejler efter accept efterlod praecis det halve barn den er
+    skrevet for at fjerne.
+
+    De to betingelser der FAKTISK betyder «ingen effekt endnu» — intet run med
+    ``started_at`` og ingen afsendt terminalbesked — blev tjekket hele tiden og
+    tjekkes stadig, inde i den samme ``BEGIN IMMEDIATE``. Har en worker naaet at
+    saette ``started_at``, afvises kaldet som foer. Workerpladsen frigives af sig
+    selv: kapaciteten taelles paa ``status='active'``, og raekken slettes."""
     import shutil
 
     conn = _conn()
     conn.execute("BEGIN IMMEDIATE")
     try:
         a = conn.execute("SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND owner_user_id=? "
-                         "AND status='queued'", (agent_id, owner_user_id)).fetchall()
+                         "AND status IN ('queued','active')", (agent_id, owner_user_id)).fetchall()
         if len(a) != 1:
             conn.rollback()
             return False

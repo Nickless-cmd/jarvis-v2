@@ -404,21 +404,21 @@ _Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract
 | function | `parse_target` | `(target)` | ('container','') eller ('client', id). ``ValueError`` for alt andet. | [src](../../../core/services/agent_bridge.py#L71) |
 | function | `check_client_target` | `(*, owner_user_id, target, writes=…)` | Afvisning (``{"code","detail"}``) eller ``None`` hvis klienten kan tage opgaven NU. | [src](../../../core/services/agent_bridge.py#L83) |
 | function | `allowed_tools_for_client` | `(owner_user_id, target, requested)` | Agentens vaerktoejer paa et klient-target: kun ``operator_*`` som klienten faktisk annoncerer. | [src](../../../core/services/agent_bridge.py#L115) |
-| function | `_identity` | `(agent_id)` | Ejer, session, target og aktuelt run - fra DB. ``ContractError`` ved alt ufuldstaendigt. | [src](../../../core/services/agent_bridge.py#L127) |
-| function | `target_of` | `(agent_id)` | ('container','') / ('client', id) for agentens aabne assignment; ('container','') for en legacy-agent. | [src](../../../core/services/agent_bridge.py#L143) |
-| function | `_run` | `(coro, timeout_s)` | Koer en coroutine fra en vilkaarlig traad. Foretraekker serverens hovedloeb (hvor WS'en bor). | [src](../../../core/services/agent_bridge.py#L155) |
-| function | `_invocation_id` | `(run_id, call_id)` | — | [src](../../../core/services/agent_bridge.py#L173) |
-| function | `_clean_args` | `(arguments)` | Myndighed kommer fra serveren. Alt modellen har skrevet med foranstillet underscore fjernes. | [src](../../../core/services/agent_bridge.py#L179) |
-| function | `_tool_error` | `(code, detail, **extra)` | — | [src](../../../core/services/agent_bridge.py#L184) |
-| function | `invoke_tool_call` | `(*, agent, run_id, tc, dispatch=…, sleep=…)` | Udfoer ET agent-vaerktoejskald paa den bundne klient. ``None`` = agenten er ikke paa et klient-target | [src](../../../core/services/agent_bridge.py#L192) |
-| function | `_drive` | `(*, ident, agent_id, row, client_id, tool, args, klass, dispatch, sleep)` | — | [src](../../../core/services/agent_bridge.py#L249) |
-| function | `_loads` | `(text)` | — | [src](../../../core/services/agent_bridge.py#L292) |
-| function | `_halt` | `(ident, row)` | Sæt run + assignment i ``outcome_unknown``/``waiting`` (som lease-reconcileren gør) og returner halten. | [src](../../../core/services/agent_bridge.py#L300) |
-| function | `run_is_halted` | `(run_id)` | — | [src](../../../core/services/agent_bridge.py#L324) |
-| function | `_settle_resolved` | `(row, verdict, *, actor_kind, decided_by)` | Et uafgjort kald er nu afgjort: assignmentet afsluttes via den ENE vej der maa lukke et uvist udfald | [src](../../../core/services/agent_bridge.py#L332) |
-| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status ved reconnect (kaldes af WS-ruten). | [src](../../../core/services/agent_bridge.py#L351) |
-| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | — | [src](../../../core/services/agent_bridge.py#L363) |
-| function | `status_query_for` | `(owner_user_id, client_id)` | Invocation-id'er klienten skal oplyse status for ved reconnect. | [src](../../../core/services/agent_bridge.py#L372) |
+| function | `_identity` | `(agent_id, *, run_id=…)` | Ejer, session, target og aktuelt run - fra DB. ``ContractError`` ved alt ufuldstaendigt. | [src](../../../core/services/agent_bridge.py#L127) |
+| function | `target_of` | `(agent_id)` | ('container','') / ('client', id) for agentens aabne assignment; ('container','') for en legacy-agent. | [src](../../../core/services/agent_bridge.py#L157) |
+| function | `_run` | `(coro, timeout_s)` | Koer en coroutine fra en vilkaarlig traad. Foretraekker serverens hovedloeb (hvor WS'en bor). | [src](../../../core/services/agent_bridge.py#L169) |
+| function | `_invocation_id` | `(run_id, call_id)` | — | [src](../../../core/services/agent_bridge.py#L187) |
+| function | `_clean_args` | `(arguments)` | Myndighed kommer fra serveren. Alt modellen har skrevet med foranstillet underscore fjernes. | [src](../../../core/services/agent_bridge.py#L193) |
+| function | `_tool_error` | `(code, detail, **extra)` | — | [src](../../../core/services/agent_bridge.py#L198) |
+| function | `invoke_tool_call` | `(*, agent, run_id, tc, dispatch=…, sleep=…)` | Udfoer ET agent-vaerktoejskald paa den bundne klient. ``None`` = agenten er ikke paa et klient-target | [src](../../../core/services/agent_bridge.py#L206) |
+| function | `_drive` | `(*, ident, agent_id, row, client_id, tool, args, klass, dispatch, sleep)` | — | [src](../../../core/services/agent_bridge.py#L267) |
+| function | `_loads` | `(text)` | — | [src](../../../core/services/agent_bridge.py#L319) |
+| function | `_halt` | `(ident, row)` | Sæt run + assignment i ``outcome_unknown``/``waiting`` (som lease-reconcileren gør) og returner halten. | [src](../../../core/services/agent_bridge.py#L327) |
+| function | `run_is_halted` | `(run_id)` | — | [src](../../../core/services/agent_bridge.py#L351) |
+| function | `_settle_resolved` | `(row, verdict, *, actor_kind, decided_by)` | Et uafgjort kald er nu afgjort: assignmentet afsluttes via den ENE vej der maa lukke et uvist udfald | [src](../../../core/services/agent_bridge.py#L359) |
+| function | `apply_client_report` | `(*, owner_user_id, client_id, reports)` | Klientens egen status ved reconnect (kaldes af WS-ruten). | [src](../../../core/services/agent_bridge.py#L378) |
+| function | `human_resolve` | `(*, invocation_id, owner_user_id, executed, actor_user_id)` | — | [src](../../../core/services/agent_bridge.py#L390) |
+| function | `status_query_for` | `(owner_user_id, client_id)` | Invocation-id'er klienten skal oplyse status for ved reconnect. | [src](../../../core/services/agent_bridge.py#L399) |
 
 ## `core/services/agent_bridge_dispatch.py`
 _Fastlaast bro-dispatch til EN bestemt klient (agent-contract-v1 E, spec 8)._

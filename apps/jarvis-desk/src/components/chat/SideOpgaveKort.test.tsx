@@ -154,9 +154,8 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
   })
 })
 
-describe('kortet findes paa BEGGE flader', () => {
-  // 19/9-2026: første udgave sad kun i ChatView. Bjørn stod i code, Jarvis
-  // flaggede en opgave, serveren havde den — og desk spurgte aldrig.
+describe('kortet findes kun i CodeView', () => {
+  // Sideopgaver er nu samtale-scope i code, og tegnes ikke i almindelig chat.
   it.each(['ChatView', 'CodeView'])('%s tegner <SideOpgaveKort>', async (vis) => {
     const fs = await import('node:fs')
     const path = await import('node:path')
@@ -169,6 +168,6 @@ describe('kortet findes paa BEGGE flader', () => {
       ts.forEachChild(n, besoeg)
     }
     besoeg(sf)
-    expect(fundet).toBe(1)
+    expect(fundet).toBe(vis === 'CodeView' ? 1 : 0)
   })
 })

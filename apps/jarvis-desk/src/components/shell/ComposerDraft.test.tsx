@@ -24,7 +24,7 @@ function mount(draftKey: string) {
       <Composer
         streaming={false} onSend={onSend} onStop={vi.fn()} model="m"
         config={cfg} showPermissions={false} getSessionId={async () => 's1'}
-        sessionId="s1" draftKey={draftKey}
+        sessionId="s1" draftKey={draftKey} isOwner
       />
     </PermissionProvider>,
   )

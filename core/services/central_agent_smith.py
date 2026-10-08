@@ -147,8 +147,17 @@ def score(phrases: list[dict], similarity: float, patterns: list[dict],
     # «du gentager dig selv», men ordene alene kan aldrig baere ham hoejere.
     # Det var netop dét der gik galt 19. aug, hvor ren hyppighed sendte «det er
     # ikke» op paa prioritet 85.
-    s = (0.25 * min(1.0, max(0.0, similarity)) + 0.15 * phrase_term
-         + 0.10 * pattern_term + 0.50 * behaviour_term)
+    # Vaegtene summer til 1,0. Adfaerd har 0,55 og sproget 0,45, og det er ikke
+    # en kosmetisk fordeling: med 0,50/0,50 landede sproget MAXET praecis PAA
+    # stemme-taerskelen (0,5), saa et maalt moenster uden sprogligt sammenfald
+    # gav praecis 0,5 — én flue fra at tie. Maalt 8/10-2026 stod Smiths score
+    # paa 0,371 med `patterns: {}`: sproget alene kunne ikke baere ham, og
+    # adfaerds-oejet var tomt. 0,55 giver ét maalt moenster alene en margin over
+    # taersklen, saa stemmen hoeres naar det gaelder — ogsaa selvom sproget er
+    # helt varieret. Det var netop dét der gik galt 19. aug, hvor ren hyppighed
+    # sendte «det er ikke» op paa prioritet 85.
+    s = (0.20 * min(1.0, max(0.0, similarity)) + 0.15 * phrase_term
+         + 0.10 * pattern_term + 0.55 * behaviour_term)
     return round(min(1.0, s), 3)
 
 
@@ -257,17 +266,76 @@ def assess() -> dict[str, Any]:
 _LADDER_WINDOW_HOURS = 3
 
 
+def _measured_error_patterns(limit: int = 3) -> list[dict[str, Any]]:
+    """Gentagne fejl-moenstre fra `lessons` — ikke kun tomme loefter.
+
+    Smiths foerste adfaerds-oeje taalte kun tomme loefter, og dét signal gik
+    gennem `is_promise_of_action` — et regex over den SIDSTE saetning. Maalt
+    8/10-2026 stod hans `patterns` derfor tomt, mens han samtidig kunne se
+    gentagelsen raat («du har sagt "det er den" i 32 beskeder»). Filteret var
+    flaskehalsen, ikke maalingen.
+
+    `lessons` er den rette kilde frem for endnu et regex: en lektion der er set
+    to gange ER definitionen paa et moenster, og tabellen baerer baade
+    vaerktoejs-fejl (kode) og Bjoerns egne rettelser (alt andet). Vi opfinder
+    ingen ny sandhed — `repeated_count` er allerede maalt og skrevet.
+
+    Self-safe → tom liste.
+    """
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT lesson, source, repeated_count FROM lessons "
+                "WHERE repeated_count >= 2 ORDER BY repeated_count DESC, "
+                "last_repeated_at DESC LIMIT ?",
+                (max(1, int(limit)),)).fetchall()
+    except Exception:  # self-safe: laesefejl giver tom liste, ikke en veltet tur
+        return []
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        try:
+            tekst = " ".join(str(r["lesson"] or "").split())[:60]
+            n = int(r["repeated_count"] or 0)
+            if not tekst or n < 2:
+                continue
+            out.append({
+                "kind": "behaviour",
+                "label": f"gentaget fejl: {tekst}",
+                "metric": float(n),
+                "detail": f"{n}× ({str(r['source'] or 'ukendt')})",
+                # Samme port som de tomme loefter gaar gennem: et maalt, gentaget
+                # moenster ER selv-bundet (han lovede at rette det, og gjorde
+                # det ikke), og et andet vaern har allerede talt det — `lessons`
+                # skrives af korrektions- og fejl-vejene.
+                "self_bound": True,
+                "corroborated": True,
+            })
+        except Exception:
+            continue
+    return out
+
+
 def _measured_behaviours() -> list[dict[str, Any]]:
-    """Maalt adfaerd fra folketaellingen over tomme loefter. Self-safe → tom liste."""
+    """Maalt adfaerd: tomme loefter OG gentagne fejl-moenstre. Self-safe → tom liste.
+
+    To kilder, med vilje. Tomme loefter er den SNAEVRE klasse (`is_promise_of_action`
+    kraever et loefte i den sidste saetning); `lessons` er den BREDE — den fanger
+    ogsaa de gentagne fejl der baerer samme moenster uden at vaere et loefte. Den
+    foerste alene var grunden til at Smith stod tavs gennem fire identiske fejl
+    paa ét doegn.
+    """
+    ud: list[dict[str, Any]] = []
     try:
         from core.services.hollow_promise_census import census
         c = census(_LADDER_WINDOW_HOURS)
-        if not c.get("available"):
-            return []
-        turns = sum(int(m.get("turns") or 0) for m in (c.get("models") or []))
-        return behaviour_patterns(int(c.get("hollow_total") or 0), turns)
+        if c.get("available"):
+            turns = sum(int(m.get("turns") or 0) for m in (c.get("models") or []))
+            ud += behaviour_patterns(int(c.get("hollow_total") or 0), turns)
     except Exception:
-        return []
+        pass
+    ud += _measured_error_patterns()
+    return ud
 
 
 def _load_escalation_state() -> dict[str, Any]:
@@ -446,6 +514,62 @@ def _execute_observe(act: dict[str, Any]) -> None:
         pass
 
 
+def _execute_inbox_post(key: str, label: str, kind: str, metric: float) -> None:
+    """Trin 1/KOMMENTÉR: laeg advarslen i INDBOKSEN — ikke kun i prompt-halen.
+
+    Bjoern 8/10-2026: «lad hans advarsel foerst gang ramme inbox, anden gang
+    prompten hvor han er nu og 3 gang eskalere og tvinge adfaerdsmoensteret».
+    Den raekkefoelge er hele pointen: en note i promptens hale kan lades ligge
+    uden konsekvens, og dét gjorde den — Smith mintede nul direktiver i hele
+    systemets historie. En post med `kraever_handling` + `verificeret_ejer=jarvis`
+    tages af `inbox_gate`, som paaminder ved naeste mutation og NÆGTER den efter
+    `inbox_paamindelser_foer_blok` (default 2). To forsoeg, derefter konsekvens —
+    haandhaevet af mekanikken, ikke af et loefte om at huske det.
+
+    Idempotent: `opret_eller_hent` har UNIQUE(bruger_id, kildetype, kilde_id), saa
+    samme moenster genregistreres ikke hver cyklus. Self-safe → None.
+    """
+    try:
+        from core.runtime import db_inbox
+        from core.services.inbox_state import laese_bruger
+        bruger = laese_bruger()
+        if not bruger:
+            # Ingen autentificeret bruger ⇒ ingen post at gate. En post vi ikke
+            # kan tilskrive nogen ville staa i alles visning eller ingens.
+            return
+        db_inbox.opret_eller_hent(
+            bruger_id=bruger,
+            kildetype="agent_smith",
+            kilde_id=str(key),
+            verificeret_ejer=db_inbox.EJER_JARVIS,
+            kraever_handling=True,
+            beskrivelse=(f"Agent Smith: gentaget moenster «{label}» "
+                         f"({int(metric)}×). Bryd det — eller luk posten."),
+        )
+    except Exception:  # self-safe: fejlende indbakke-post maa ikke vaelte eskaleringen
+        return
+
+
+def _execute_inbox_close(key: str) -> None:
+    """Moensteret er løst (eller opgivet) → luk Smiths indbakke-post.
+
+    Uden dette stod Trin 1's forpligtelse aaben for evigt og GATEDE en mutation
+    laenge efter at moensteret var væk — den «doede post der blokerer» som
+    `db_inbox.er_udloebet` blev bygget for at forhindre. Self-safe → None.
+    """
+    try:
+        from core.runtime import db_inbox
+        from core.services.inbox_state import laese_bruger
+        bruger = laese_bruger()
+        if not bruger:
+            return
+        db_inbox.afgoer(bruger_id=bruger, kilde_id=str(key),
+                        ny_status=db_inbox.STATUS_DONE,
+                        grund="Agent Smith: moenster løst")
+    except Exception:  # self-safe: fejlende lukning maa ikke vaelte eskaleringen
+        return
+
+
 def _agent_smith_enforced() -> bool:
     """Trin 3 real-time konfront default OFF (shadow) — modsat gate-default. Læs råt fra
     shared_cache (unset = shadow), som reasoning_interceptor/trinity. Owner flipper
@@ -458,7 +582,7 @@ def _agent_smith_enforced() -> bool:
         if isinstance(val, bool):
             return val
         return False
-    except Exception:
+    except Exception:  # self-safe: flag-opslag fejler aabent
         return False
 
 
@@ -529,6 +653,12 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
                 _execute_deactivate_order(act["order_id"])
             elif t == "revoke":
                 _execute_revoke(act["decision_id"])
+            elif t == "inbox_post":
+                _execute_inbox_post(act["pattern_key"], act.get("label", ""),
+                                    act.get("kind", "phrase"),
+                                    float(act.get("metric") or 0))
+            elif t == "inbox_close":
+                _execute_inbox_close(act["pattern_key"])
             elif t == "observe":
                 _execute_observe(act)
         _save_escalation_state(new_state)

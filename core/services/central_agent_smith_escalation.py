@@ -267,6 +267,11 @@ def _resolve_actions(state: dict[str, Any], key: str, pat: dict[str, Any],
         acts.append({"type": "deactivate_order", "order_id": pat["standing_order_id"],
                      "pattern_key": key})
     _kind = "unmovable" if reason == "unmovable" else "resolved"
+    # Moensteret er væk (eller opgivet) → luk Smiths indbakke-post. Ellers stod
+    # Trin 1's forpligtelse aaben for evigt og GATEDE en mutation laenge efter
+    # at moensteret var løst — praecis den «doede post der blokerer» som
+    # `er_udloebet` blev bygget for at forhindre.
+    acts.append({"type": "inbox_close", "pattern_key": key})
     acts.append({"type": "voice", "rung": _kind, "label": pat.get("label", ""),
                  "line": _voice(_kind, pat.get("label", ""))})
     acts.append({"type": "observe", "event": "resolved", "pattern_key": key,
@@ -329,6 +334,15 @@ def step_escalation(state: dict[str, Any] | None, detected: dict[str, dict[str, 
                 "cycles_at_rung": 0, "decision_id": None,
                 "history": [{"ts": now, "rung": RUNG_COMMENT, "metric": metric, "action": "comment"}],
             }
+            # TRIN 1 gaar til INDBOKSEN, ikke kun til prompten (Bjoern 8/10-2026:
+            # «lad hans advarsel foerst gang ramme inbox, anden gang prompten»).
+            # En prompt-hale er en note man kan lade ligge; en indbakke-post med
+            # `kraever_handling` er en FORPLIGTELSE — `inbox_gate` paaminder ved
+            # naeste mutation og naegter den efter `inbox_paamindelser_foer_blok`
+            # (default 2). Det giver praecis to forsoeg til at rette kursen, og
+            # derefter konsekvens. Noten alene gav nul.
+            actions.append({"type": "inbox_post", "pattern_key": key, "label": label,
+                            "kind": kind, "metric": metric})
             actions.append({"type": "voice", "rung": "comment", "label": label,
                             "line": _voice("comment", label, metric, kind)})
             actions.append({"type": "observe", "event": "new", "pattern_key": key,

@@ -33,7 +33,8 @@ def test_score_monotone_and_bounds():
     # sprog maxet ud lander PRAECIS paa stemme-taerskelen — han maa stadig tale,
     # men ord alene kan ikke baere ham hoejere. Foer kunne ren hyppighed naa 0,9+,
     # og dét var mekanismen der 19. aug sendte «det er ikke» op paa prioritet 85.
-    assert hi == 0.5
+    assert hi == 0.45
+    assert hi < s._VOICE_THRESHOLD
     assert s.score([], 0.0, []) < hi
     # Maalt adfaerd ALENE — uden en eneste gentaget frase — skal kunne faa ham
     # til at tale. Det er hele pointen: han skal se handlinger, ikke ord.

@@ -1416,7 +1416,7 @@ Generated from source. 8785/16604 functions/methods documented (52%). The list b
 - `core/services/notifikations_opstart.py` :: `koer_ved_opstart` (L13)
 - `core/services/notifikations_valg.py` :: `kanal_for` (L115)
 - `core/services/notifikations_valg.py` :: `saet` (L132)
-- `core/services/ntfy_gateway.py` :: `is_configured` (L26)
+- `core/services/ntfy_gateway.py` :: `is_configured` (L31)
 - `core/services/oauth_flow.py` :: `is_known_provider` (L46)
 - `core/services/oauth_flow.py` :: `redirect_uri` (L50)
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_prompt_section` (L55)

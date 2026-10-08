@@ -16,8 +16,13 @@ def _load_config() -> dict | None:
         data = json.loads(cfg.read_text(encoding="utf-8"))
         topic = data.get("ntfy_topic")
         server = data.get("ntfy_server", "https://ntfy.sh").rstrip("/")
+        # Selvhostet ntfy koerer med ``auth-default-access: deny-all``: uden en
+        # noegle svarer serveren 403, og beskeden forsvinder lydloest fordi
+        # kalderne er brand-and-forget. Feltet er VALGFRIT — er det tomt,
+        # sendes der praecis som foer mod ntfy.sh (bagudkompatibelt).
+        token = str(data.get("ntfy_token") or "").strip()
         if topic:
-            return {"server": server, "topic": topic}
+            return {"server": server, "topic": topic, "token": token}
     except Exception:
         pass
     return None
@@ -136,6 +141,8 @@ def send_notification(
         "Priority": priority,
         "Content-Type": "text/plain; charset=utf-8",
     }
+    if cfg.get("token"):
+        headers["Authorization"] = f"Bearer {cfg['token']}"
     if tags:
         headers["Tags"] = _header_safe(",".join(tags))
 

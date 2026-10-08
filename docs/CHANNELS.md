@@ -69,8 +69,17 @@ Dvs. uanset kanal taler brugeren med samme Jarvis — ikke en kanal-specifik per
 
 ### 6. ntfy push
 - **Kode:** `core/services/ntfy_gateway.py`
-- **Config:** `ntfy_topic` + `ntfy_server` i `runtime.json`
+- **Config:** `ntfy_topic` + `ntfy_server` + `ntfy_token` i `runtime.json`
 - **Features:** Send push-notifikation til brugerens ntfy-client
+- **Selvhostet (8/10-2026):** alarmer gik til `ntfy.sh` — en offentlig tredjepart
+  uden adgangskontrol. Et uopdageligt emnenavn skjuler kanalen men beskytter
+  den ikke, og `ntfy.sh`s adgangskontrol kraever en betalt plan. Derfor en
+  selvhostet ntfy i CT 107 (`ntfy`, 10.0.0.107, port 2586) med
+  `auth-default-access: deny-all`: intet kan laeses eller skrives uden en
+  bruger eller et token. Telefonen (Samsung S24, Android) bruger *instant
+  delivery* direkte mod serveren — ingen Firebase, ingen ntfy.sh.
+  `ntfy_token` er **valgfrit**: er det tomt, sendes der praecis som foer mod
+  ntfy.sh. Se `docs/ntfy-selvhostet.md`.
 - **Brug:** Letvægts proaktiv kommunikation. Mail-arrival, auto-svar sendt,
   boredom-triggers, incident warnings. Undgår spam på thungere kanaler.
 

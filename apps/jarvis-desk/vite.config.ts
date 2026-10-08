@@ -12,20 +12,23 @@ const DESK_VERSION = JSON.parse(
 
 // jarvis-desk Vite config.
 // Port 5174 så vi ikke kolliderer med JarvisX (5173).
-export default defineConfig({
-  base: './',
-  define: { __DESK_VERSION__: JSON.stringify(DESK_VERSION) },
+export default defineConfig(({ mode }) => ({
+  base: mode === 'web' ? '/' : './',
+  define: {
+    __DESK_VERSION__: JSON.stringify(DESK_VERSION),
+    __WEB_BUILD__: JSON.stringify(mode === 'web'),
+  },
   plugins: [react()],
   server: {
     port: 5174,
     strictPort: true,
   },
   build: {
-    outDir: 'dist',
+    outDir: mode === 'web' ? 'dist-web' : 'dist',
     emptyOutDir: true,
     sourcemap: true,
   },
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
   },
-})
+}))

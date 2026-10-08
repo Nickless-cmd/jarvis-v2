@@ -5,8 +5,6 @@ import { SettingsProvider } from './contexts/SettingsContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Vinduesknapper } from './components/shell/Vinduesknapper'
 import { loadTheme, applyTheme } from './lib/themeStore'
-import { FigurApp } from './figur/FigurApp'
-import { MarkoerApp } from './markoer/MarkoerApp'
 
 // Anvend gemt tema før render — undgår flash af forkert tema (§4.11).
 applyTheme(loadTheme())
@@ -27,17 +25,24 @@ if (!root) throw new Error('Root element #root not found')
 
 // Jarvis-figuren (electron/figur.ts) indlæser SAMME bundle med #figur og får
 // kun figuren — ingen skal, ingen vinduesknapper, ingen indstillinger.
-const erFigur = window.location.hash === '#figur'
+const erFigur = !__WEB_BUILD__ && window.location.hash === '#figur'
 
 // Markør-laget (electron/markoer.ts) er en TREDJE flade i samme bundle: et
 // gennemsigtigt fuldskærms-vindue der tegner hvor Jarvis peger. Den har ingen
 // skal og intet indhold ud over sporet.
-const erMarkoer = window.location.hash === '#markoer'
+const erMarkoer = !__WEB_BUILD__ && window.location.hash === '#markoer'
 
-createRoot(root).render(
-  erMarkoer ? <StrictMode><MarkoerApp /></StrictMode> :
-  erFigur ? <StrictMode><FigurApp /></StrictMode> :
-  <StrictMode>
+const reactRoot = createRoot(root)
+if (erMarkoer) {
+  void import('./markoer/MarkoerApp').then(({ MarkoerApp }) => {
+    reactRoot.render(<StrictMode><MarkoerApp /></StrictMode>)
+  })
+} else if (erFigur) {
+  void import('./figur/FigurApp').then(({ FigurApp }) => {
+    reactRoot.render(<StrictMode><FigurApp /></StrictMode>)
+  })
+} else {
+  reactRoot.render(<StrictMode>
     {/* Vinduesknapperne staar UDEN FOR App og uden for ErrorBoundary med
         vilje. Vinduet har ingen OS-ramme, saa de er dens eneste knapper —
         og App returnerer foer skallen i mindst tre tilfaelde: mens
@@ -55,6 +60,6 @@ createRoot(root).render(
         Desktop), ligger headerens traek-omraade under dem — stod knapperne
         foerst, slugte headeren hvert klik. Maalt med xdotool paa det
         koerende vindue: ingen hover, intet klik. */}
-    <Vinduesknapper />
-  </StrictMode>,
-)
+    {!__WEB_BUILD__ && <Vinduesknapper />}
+  </StrictMode>)
+}

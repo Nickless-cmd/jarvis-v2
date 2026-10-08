@@ -786,6 +786,28 @@ _READ_ONLY_COMMAND_PREFIXES = [
     # ping bounded by -c flag is also read-only. Bare "ping <host>"
     # would run forever, so we only whitelist when count is explicit.
     # (Pattern handling for this lives in classify_command below.)
+    #
+    # 8/10-2026: læse-kommandoer der manglede. Målt den dag: tolv «Vil du tillade
+    # bash?»-kort til Bjørn på tre dage, alle for rene læsninger — samme fejlklasse
+    # som agent-gaten havde, hvor ``bash`` stod på en fast liste og kommandoen aldrig
+    # blev vurderet. Tilføjelserne er alle rene læsninger (som ``echo`` og ``cat``
+    # allerede var): de ændrer intet på disken og starter intet. ``sed`` og ``awk``
+    # staar med vilje IKKE her — begge kan skrive til filer (``-i``/redirect), og en
+    # fejl i den vurdering er dyrere end et unødigt kort.
+    "jq ", "cut ", "tr ", "base64 ", "sha256sum ", "sha1sum ", "md5sum ", "b2sum ",
+    "xxd ", "od ", "nl ", "tac ", "fold ", "column ", "paste ", "join ", "cmp ",
+    "seq ", "printf ", "test ", "true", "false", "sleep ",
+    "readlink ", "realpath ", "basename ", "dirname ", "lsattr ", "getfacl ",
+    "lsof ", "fuser ", "mount", "findmnt", "blkid",
+    "systemctl show", "systemctl is-active", "systemctl is-enabled",
+    "systemctl list-units", "systemctl list-unit-files",
+    "docker ps", "docker images", "docker inspect",
+    "pip list", "pip show", "pip3 list", "pip3 show", "npm ls", "npm list",
+    "git config --get", "git ls-remote", "git fetch --dry-run", "git worktree list",
+    "git for-each-ref", "git count-objects", "git check-ignore", "git ls-files",
+    "dpkg -l", "apt list", "apt-cache ",
+    "nmcli ", "timedatectl", "localectl", "loginctl",
+    "zcat ", "zgrep ", "python3 -m json.tool", "python -m json.tool",
 ]
 
 # Bounded network commands: prefix + required-flag check.
@@ -858,6 +880,15 @@ def classify_command(command: str) -> str:
     for pattern in _BOUNDED_READ_ONLY_REGEX:
         if pattern.match(normalized):
             return "auto"
+
+    # `sed` UDEN -i og UDEN omdirigering skriver intet — den er en ren laesning.
+    # Maalt 8/10-2026: en agent der ville VISE tre filer (`sed -n '50,100p' …`) blev
+    # sendt til Bjørn som en skrivning, fordi `sed` ikke stod nogen steder. `-i`
+    # (in-place) og `>` (omdirigering) holder den ude; `awk` er IKKE med, fordi den
+    # kan skrive gennem begge dele uden at kommandoen ser anderledes ud.
+    if re.match(r"^sed\s", normalized) and not re.search(r"(^|\s)-i", normalized) \
+            and ">" not in normalized and ";" not in normalized:
+        return "auto"
 
     # Git with flags before subcommand (e.g. git -C /path log)
     git_match = re.match(r"git\s+(?:-\S+\s+\S+\s+)*(\S+(?:\s+\S+)?)", normalized)

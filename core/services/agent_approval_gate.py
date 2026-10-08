@@ -23,18 +23,58 @@ from core.services.agent_loop_core import ApprovalPending
 logger = logging.getLogger(__name__)
 
 #: Altid godkendelseskraevende for en agent, selv hvis metadata skulle mangle.
+#:
+#: ``bash`` STOD her indtil 8/10-2026, og det var en fejl: listen klassificerer et
+#: vaerktoejsNAVN, men risken i en shell ligger i KOMMANDOEN. Maalt den dag: en agent
+#: der ville laese tre filer (`sed -n '50,100p' …`) blev sendt til Bjørn som en
+#: skrivning, og han fik et godkendelses-kort for en `cat`. Speccen (8.2) siger at
+#: kun den gaeldende policy afgoer om en handling «allerede er tilladt» - og den
+#: policy findes allerede: ``classify_command``. Shell-vaerktoejerne ligger derfor i
+#: ``_SHELL_TOOLS`` nedenfor og vurderes paa deres kommando.
 ALWAYS_APPROVE = frozenset({
-    "bash", "write_file", "edit_file", "multi_edit", "operator_bash", "operator_write_file",
+    "write_file", "edit_file", "multi_edit", "operator_write_file",
     "operator_edit_file", "operator_kill_process", "operator_launch_app", "operator_open_url",
     "gmail_send", "calendar_create_event", "docs_append", "sheets_write", "stripe_create_issuing_card",
 })
 
+#: Kommando-baerende vaerktoejer: de vurderes paa ``command``-argumentet gennem
+#: ``classify_command`` (samme klassificering exec-gaten bruger), ikke paa navnet.
+_SHELL_TOOLS = frozenset({
+    "bash", "operator_bash", "wt_bash", "bash_session_run", "operator_bash_session_run",
+})
 
-def requires_approval(tool_name: str) -> tuple[bool, str]:
+
+def _shell_needs_approval(arguments: dict[str, Any] | None) -> tuple[bool, str]:
+    """(kraever, risikoklasse) for et shell-kald, afgjort af KOMMANDOEN.
+
+    ``auto`` (ren laesning) slipper fri - det er hele pointen med at flytte ``bash``
+    ud af den faste liste. ``blocked`` slippes ogsaa fri HER, fordi exec-gaten
+    (SECURITY, fail-closed) afviser den laengere nede; et approval-kort ville love
+    brugeren en handling der alligevel ikke maa koere. Alt andet kraever et menneske.
+
+    Fail-CLOSED: kan kommandoen ikke laeses eller klassificeres, kraeves godkendelse.
+    """
+    command = str((arguments or {}).get("command") or "")
+    if not command.strip():
+        return True, "write"
+    try:
+        from core.tools.simple_tools import classify_command
+        cls = classify_command(command)
+    except Exception:
+        logger.warning("kunne ikke klassificere en shell-kommando - kraever godkendelse", exc_info=True)
+        return True, "write"
+    if cls in ("auto", "blocked"):
+        return False, ""
+    return True, "destructive" if cls == "destructive" else "write"
+
+
+def requires_approval(tool_name: str, arguments: dict[str, Any] | None = None) -> tuple[bool, str]:
     """(kraever, risikoklasse). Fail-CLOSED for de faste navne; ukendt metadata -> ingen krav for resten."""
     name = str(tool_name or "")
     if name in ALWAYS_APPROVE:
         return True, "write"
+    if name in _SHELL_TOOLS:
+        return _shell_needs_approval(arguments)
     try:
         from core.tools.tool_definition_v2 import APPROVAL_ASK, NON_IDEMPOTENT_WRITE, describe
         d = describe(name)
@@ -68,7 +108,7 @@ def _parse(tc: dict) -> tuple[str, dict[str, Any]]:
 def gate(*, agent: dict[str, Any], run_id: str, tc: dict[str, Any], resume_approval_id: str = "") -> str | None:
     """Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa."""
     name, args = _parse(tc)
-    needed, risk = requires_approval(name)
+    needed, risk = requires_approval(name, args)
     if not needed:
         return None
     agent_id = str(agent.get("agent_id") or "")

@@ -99,6 +99,16 @@ def resume_decided(start) -> list[dict[str, str]]:
         if st is None or st["status"] in ("completed", "failed", "cancelled", "timed_out"):
             conn.execute("UPDATE agent_checkpoints SET status='discarded' WHERE assignment_id=? AND status='parked'",
                          (row["assignment_id"],))
+            # Run-raekken maa ikke blive staaende i waiting_for_approval naar assignmentet
+            # er terminalt. Maalt 8/10-2026: run-d20c48dac022473d stod som
+            # 'waiting_for_approval' laenge efter at baade agenten og approvalen var
+            # 'cancelled' - en zombie-raekke. Projektionen klassificerer paa den SENESTE
+            # run-status (``classify``), saa raekken holdt kortet i «venter» og talte med
+            # i opmaerksomheden selv om der ikke ventede noget. Et parkeret run der ikke
+            # genoptages blev afbrudt; det er hvad 'cancelled' siger.
+            conn.execute("UPDATE agent_runs SET status='cancelled', finished_at=? "
+                         "WHERE assignment_id=? AND status=?",
+                         (_now_iso(), row["assignment_id"], WAITING_STATUS))
             conn.commit()
             continue
         if st["status"] != "waiting":

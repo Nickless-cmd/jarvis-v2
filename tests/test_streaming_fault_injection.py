@@ -88,6 +88,21 @@ def _retry_switches_pinned_off(monkeypatch):
     monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "0")
     assert vf.agentic_round_retry_enabled() is False
     assert vf.provider_failover_enabled() is False
+    # ── Suggest-standing-gaten pinnes OFF (målt 8/10-2026) ───────────────────
+    # Gaten (`7ec1b8209`, 7/10) holder turen i live ÉN ekstra runde for at tage
+    # stilling til næste skridt. Den er DEFAULT ON og kom EFTER denne fil, så
+    # filens tests målte tavst to ting på én gang: retry-adfærden OG gatens
+    # ekstra runde. Målt på ``test_PRIMARY_partial_then_drop_retry_survives_no_dup``:
+    # den recoverede runde 0 fik sit svar, gaten tvang runde 1, modellen blev
+    # kaldt igen og gentog svaret → ``'DET-ÆGTE-SVAR\n\nDET-ÆGTE-SVAR'``, og
+    # testen stod rød på «ingen dobbelt-persist» — uden at retry'en fejlede
+    # noget som helst. Samme hermetik-krav som retry-switchene: filen må kun
+    # måle det den påstår. Gatens egen adfærd er pinnet i
+    # ``tests/test_suggest_standing_guard.py``.
+    from core.services import suggest_standing_guard as _ssg
+
+    monkeypatch.setenv(_ssg._ENV, "0")
+    assert _ssg.suggest_standing_guard_enabled() is False
     yield
 
 

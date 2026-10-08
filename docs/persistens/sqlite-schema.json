@@ -802,7 +802,7 @@
       ]
     },
     "agent_assignments": {
-      "digest": "61:43:9d:86:a0:12:44:8b:31:33:ca:d7:d2:05:e7:19:9b:a6:36:50:06:1e:6b:e4:87:5e:bd:e1:30:24:1b:cd",
+      "digest": "91:fe:bf:c7:0b:3a:47:f5:8e:81:1f:d8:4f:87:45:88:da:c8:93:49:ca:99:dc:21:21:4b:fc:ac:3a:08:9e:55",
       "schema": {
         "columns": [
           {
@@ -934,6 +934,22 @@
             "hidden": 0
           },
           {
+            "name": "queue_deadline_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "ready_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "request_digest",
             "type": "TEXT",
             "nullable": false,
@@ -998,6 +1014,59 @@
               }
             ],
             "sql": "CREATE INDEX idx_agent_assignments_agent ON agent_assignments(agent_id, created_at DESC)"
+          },
+          {
+            "name": "idx_agent_queue_deadline",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "queue_deadline_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_queue_deadline ON agent_assignments(status, queue_deadline_at)"
+          },
+          {
+            "name": "idx_agent_queue_ready",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "ready_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_queue_ready ON agent_assignments(status, ready_at, created_at)"
           },
           {
             "name": "sqlite_autoindex_agent_assignments_1",

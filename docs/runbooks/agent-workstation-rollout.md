@@ -37,4 +37,41 @@ python -m pytest -q tests/test_agent*.py
 python scripts/api_docs_gen.py --check
 ```
 
-`agent_contract.enabled` forbliver OFF, indtil hele spec'ens pilot- og rollbackgates er opfyldt. Eksisterende accepterede assignments, inbox og uafgjorte invocations skal stadig kunne færdiggøres under en kill switch.
+## Flagets faktiske tilstand (målt 8/10-2026)
+
+Linjen her sagde tidligere: «`agent_contract.enabled` forbliver OFF, indtil
+hele spec'ens pilot- og rollbackgates er opfyldt.» **Det er ikke tilstanden.**
+
+Målt på CT105 8/10-2026:
+
+| | |
+|---|---|
+| `agent_contract.enabled` | `true` |
+| `agent_pool_router_enabled` | `true` |
+| `agent_tools_enabled` | `true` |
+| `sandbox_usable()` | `True` |
+
+Kontrakten accepterer altså arbejde i produktion nu. Flaget blev ikke tændt af
+denne runbook eller af arbejdet i den; det stod sådan før. Men en runbook der
+påstår en spærre der ikke er der, er værre end ingen runbook — derfor står
+målingen her i stedet for påstanden.
+
+Hvad der stadig spærrer, uafhængigt af flaget:
+
+- **Skrivende kodeagenter på klienten** afvises af
+  `agent_bridge.check_client_target(writes=True)`, også når klienten annoncerer
+  `agent_worktree`. Klient-worktrees er ikke bygget.
+- **Den åbne operator-kanal** giver ikke en agent adgang til `bash`; et
+  sessionsflag er ikke en agentgrant. Pinnet i
+  `tests/test_agent_bridge.py::test_an_open_operator_channel_is_not_inherited_by_a_client_agent`.
+- **Nyt arbejde uden en brugbar sandbox** afvises før accept af
+  `agent_contract_service._worker_unavailable()` (`WORKER_UNAVAILABLE`).
+
+De tre spærrer er kode, ikke konfiguration, og de holder uanset flagets stand.
+
+**Åben beslutning til Bjørn:** skal flaget slukkes indtil §12.4's pilottrin er
+kørt, eller er den tændte tilstand bevidst? Spec'ens §12.4 beskriver en
+rækkefølge — additiv migration og læseprojektioner, så shadow-kontrol, så
+owner-only containerpilot — og den er ikke gennemført. Eksisterende accepterede
+assignments, inbox og uafgjorte invocations skal kunne færdiggøres under en
+kill switch uanset hvad der besluttes.

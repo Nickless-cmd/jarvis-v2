@@ -191,7 +191,7 @@ _Leverance A af agent-contract-v1: assignment, run-binding og terminal outbox._
 | function | `open_assignment_for_agent` | `(agent_id)` | — | [src](../../../core/runtime/db_agent_contract.py#L680) |
 | function | `count_open_assignments` | `(*, owner_user_id=…, parent_agent_id=…)` | Aabne assignments, globalt eller afgraenset til en ejer / en direkte parent. | [src](../../../core/runtime/db_agent_contract.py#L686) |
 | function | `set_lifecycle` | `(*, agent_id, owner_user_id, lifecycle_status)` | Agentens livstidsstatus (available/active/suspended/closing/closed). Kun ejeren, | [src](../../../core/runtime/db_agent_contract.py#L699) |
-| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L713) |
+| function | `discard_unstarted_assignment` | `(*, agent_id, owner_user_id)` | Fjern et assignment (og dets agent) der ALDRIG er startet: ingen terminalbesked, | [src](../../../core/runtime/db_agent_contract.py#L713) |
 
 ## `core/runtime/db_agent_council.py`
 _Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._

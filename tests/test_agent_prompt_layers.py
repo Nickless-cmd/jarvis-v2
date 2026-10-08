@@ -26,7 +26,10 @@ def pl(isolated_runtime, monkeypatch):
             return {"text": "klar", "input_tokens": 1, "output_tokens": 1, "status": "completed"}
 
     monkeypatch.setattr(M, "agent_tools_enabled", lambda: False)
+    monkeypatch.setattr(M, "_snapshot_tools", lambda agent: [])
     monkeypatch.setattr(M, "_facade", lambda: _F())
+    from core.services import agent_runtime_base as base
+    monkeypatch.setattr(base, "_facade", lambda: M._facade())
 
     class H:
         c_, L_, M_, sent_ = c, L, M, sent

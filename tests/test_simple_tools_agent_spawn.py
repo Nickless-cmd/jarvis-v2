@@ -37,3 +37,28 @@ def test_reexported_from_simple_tools_native():
     from core.tools import simple_tools_native as old
 
     assert old._exec_spawn_agent_task is new._exec_spawn_agent_task
+
+
+def test_legacy_spawn_uses_contract_when_enabled(monkeypatch):
+    import core.services.agent_contract_service as svc
+    import core.tools.agent_contract_tools as contract_tools
+    from core.tools.simple_tools_agent_spawn import _exec_spawn_agent_task
+
+    seen = {}
+    monkeypatch.setattr(svc, "capability_enabled", lambda: True)
+    monkeypatch.setattr(contract_tools, "_exec_dispatch_agent",
+                        lambda args: seen.update(args) or {"status": "accepted", "agent_id": "a"})
+    out = _exec_spawn_agent_task({"goal": "check", "role": "critic", "budget_tokens": 100,
+                                  "_runtime_session_id": "s", "_runtime_turn_id": "r"})
+    assert out == {"status": "accepted", "agent_id": "a"}
+    assert seen["goal"] == "check"
+    assert seen["_runtime_session_id"] == "s"
+
+
+def test_legacy_spawn_rejects_unmapped_options_when_contract_enabled(monkeypatch):
+    import core.services.agent_contract_service as svc
+    from core.tools.simple_tools_agent_spawn import _exec_spawn_agent_task
+
+    monkeypatch.setattr(svc, "capability_enabled", lambda: True)
+    out = _exec_spawn_agent_task({"goal": "check", "persistent": True})
+    assert out["code"] == "INVALID_SCOPE"

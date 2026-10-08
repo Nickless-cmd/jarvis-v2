@@ -113,6 +113,10 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_agent_runs_assignment "
         "ON agent_runs(assignment_id, attempt_no)"
     )
+    from core.runtime.db_agent_capacity import ensure_capacity_columns
+    ensure_capacity_columns(conn)
+    from core.runtime.db_agent_deadlines import ensure_deadline_columns
+    ensure_deadline_columns(conn)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_result_outbox (
@@ -297,19 +301,23 @@ def accept_assignment(
         ).fetchone()
         if busy is not None:
             raise ContractError("CAPACITY", "agenten har allerede et aktivt assignment")
+        from core.runtime.db_agent_capacity import assert_queue_capacity
+        assert_queue_capacity(conn, parent_agent_id=parent_agent_id)
         now = _now_iso()
+        from core.runtime.db_agent_deadlines import initial_queue_deadline
+        queue_deadline = initial_queue_deadline()
         assignment_id = f"asg-{uuid.uuid4().hex[:16]}"
         run_id = f"run-{uuid.uuid4().hex[:16]}"
         conn.execute(
             "INSERT INTO agent_assignments (assignment_id, agent_id, owner_user_id, "
             "origin_session_id, parent_agent_id, parent_run_id, goal, input_refs_json, "
             "expected_result, target, deadline_at, budget_json, created_by, operation, "
-            "idempotency_key, request_digest, status, created_at, updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'queued', ?, ?)",
+            "idempotency_key, request_digest, status, created_at, updated_at, queue_deadline_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'queued', ?, ?, ?)",
             (assignment_id, agent_id, owner, session, parent_agent_id, parent_run_id,
              goal, json.dumps(input_refs or []), expected_result, target, deadline_at,
              json.dumps(budget or {}), created_by, operation, idempotency_key, digest,
-             now, now),
+             now, now, queue_deadline),
         )
         conn.execute(
             "INSERT INTO agent_runs (run_id, agent_id, status, assignment_id, "
@@ -335,6 +343,7 @@ def commit_terminal_outcome(
     artifact_ref: str = "",
     last_run_id: str = "",
     artifact_error: str = "",
+    only_from: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Fastlæg assignmentets samlede udfald OG dets ene terminalbesked i SAMME
     transaktion. Et gentaget kald returnerer den eksisterende besked uden at
@@ -357,6 +366,9 @@ def commit_terminal_outcome(
             conn.rollback()
             return {"committed": False, "assignment_status": a["status"],
                     "message": _row(existing)}
+        if only_from is not None and a["status"] not in only_from:
+            conn.rollback()
+            return {"committed": False, "assignment_status": a["status"], "message": None}
         last = last_run_id or (conn.execute(
             "SELECT run_id FROM agent_runs WHERE assignment_id=? "
             "ORDER BY attempt_no DESC LIMIT 1", (assignment_id,)).fetchone() or {"run_id": ""}
@@ -376,6 +388,13 @@ def commit_terminal_outcome(
             "updated_at=? WHERE assignment_id=?",
             (status, json.dumps(payload), now, now, assignment_id),
         )
+        if status == "timed_out" and only_from == ("queued",):
+            conn.execute("UPDATE agent_runs SET status='timed_out', error_phase=?, error_code=?, "
+                         "failure_reason=?, finished_at=?, updated_at=? "
+                         "WHERE run_id=? AND status='queued'",
+                         (error_phase, error_code, summary, now, now, last))
+            conn.execute("UPDATE agent_registry SET status='expired', expired_at=?, updated_at=? "
+                         "WHERE agent_id=?", (now, now, a["agent_id"]))
         message_id = f"msg-{uuid.uuid4().hex[:16]}"
         conn.execute(
             "INSERT INTO agent_result_outbox (message_id, assignment_id, result_type, "
@@ -692,16 +711,35 @@ def set_lifecycle(*, agent_id: str, owner_user_id: str, lifecycle_status: str) -
 
 
 def discard_unstarted_assignment(*, agent_id: str, owner_user_id: str) -> bool:
-    """Fjern et assignment (og dets agent) der ALDRIG er startet: status ``queued``, ingen terminalbesked,
+    """Fjern et assignment (og dets agent) der ALDRIG er startet: ingen terminalbesked,
     intet run med ``started_at``. Bruges naar en admission fejler EFTER accept (f.eks. et worktree der ikke
-    kan reserveres), saa et afvist kald ikke efterlader et halvt barn (§11.1). Alt andet afvises."""
+    kan reserveres), saa et afvist kald ikke efterlader et halvt barn (§11.1). Alt andet afvises.
+
+    ## Hvorfor `queued` ikke laengere er betingelsen (8/10-2026)
+
+    Vagten stod foer paa ``status='queued'`` som en proxy for «ikke startet».
+    Den proxy holdt op med at vaere sand da den varige scheduler kom til: en ny
+    assignment claimer en workerplads MED DET SAMME og staar derfor ``active``
+    allerede i det oejeblik dispatch returnerer. Maalt ved integrationen af de
+    fire produktionspunkter — status lige efter dispatch er ``active``, ikke
+    ``queued``.
+
+    Konsekvensen var at §11.1's oprydning aldrig kunne naa sit eget maal: en
+    admission der fejler efter accept efterlod praecis det halve barn den er
+    skrevet for at fjerne.
+
+    De to betingelser der FAKTISK betyder «ingen effekt endnu» — intet run med
+    ``started_at`` og ingen afsendt terminalbesked — blev tjekket hele tiden og
+    tjekkes stadig, inde i den samme ``BEGIN IMMEDIATE``. Har en worker naaet at
+    saette ``started_at``, afvises kaldet som foer. Workerpladsen frigives af sig
+    selv: kapaciteten taelles paa ``status='active'``, og raekken slettes."""
     import shutil
 
     conn = _conn()
     conn.execute("BEGIN IMMEDIATE")
     try:
         a = conn.execute("SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND owner_user_id=? "
-                         "AND status='queued'", (agent_id, owner_user_id)).fetchall()
+                         "AND status IN ('queued','active')", (agent_id, owner_user_id)).fetchall()
         if len(a) != 1:
             conn.rollback()
             return False

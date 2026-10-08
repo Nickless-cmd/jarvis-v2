@@ -23,9 +23,11 @@ def at(isolated_runtime, monkeypatch):
     import core.runtime.db_agent_route as R
     from core.runtime.db_agent_runtime import create_agent_registry_entry
     from core.services import agent_model_router as M
+    from core.services import agent_runtime_spawn as spawn
     from core.services import in_flight_runs as ifr
 
     monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "bjorn-id")
+    monkeypatch.setattr(spawn, "_snapshot_tools", lambda agent: [])
     ifr._mutate(lambda r: r.clear())
 
     class F:

@@ -55,7 +55,6 @@ from core.services.agent_runtime_surfaces import (  # noqa: F401
     _progress_label,
 )
 from core.services.agent_runtime_spawn import (  # noqa: F401
-    _SPAWN_TOOL_INSTRUCTION,
     _WATCHER_RELAY_KEYWORDS,
     _agent_thread_id,
     _build_agent_prompt,
@@ -64,7 +63,6 @@ from core.services.agent_runtime_spawn import (  # noqa: F401
     _check_spawn_limits,
     _council_thread_id,
     _format_messages,
-    _handle_agent_spawn_calls,
     _maybe_relay_watcher_signal,
     _result_contract_text,
     _schedule_retry_backoff,

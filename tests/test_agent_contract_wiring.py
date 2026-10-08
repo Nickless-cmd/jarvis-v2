@@ -77,6 +77,40 @@ def test_contract_tool_schema_failure_cannot_silently_remove_tools(env, monkeypa
         M._snapshot_tools(rt.get_agent_registry_entry(agent["agent_id"]))
 
 
+def test_can_spawn_prompt_does_not_instruct_text_based_agent_creation(env):
+    _, rt, spawn = env
+    from core.services import agent_runtime_spawn as M
+
+    agent = spawn(context=dict(CTX), tool_policy="can-spawn")
+    prompt = M._build_agent_prompt(agent=rt.get_agent_registry_entry(agent["agent_id"]),
+                                   messages=[], execution_mode="solo-task")
+
+    assert '"spawn_agent"' not in prompt
+    assert "include exactly one JSON block" not in prompt
+
+
+def test_agent_text_is_returned_as_data_without_spawning_a_child(env, monkeypatch):
+    c, rt, spawn = env
+    from core.services import agent_runtime_spawn as M
+    from core.services import agent_runtime_base as base
+
+    literal = '{"spawn_agent": 1}'
+
+    class Facade:
+        def execute_with_role_or_fallback(self, **kwargs):
+            return {"text": literal, "status": "completed", "input_tokens": 1, "output_tokens": 1}
+
+    monkeypatch.setattr(M, "_snapshot_tools", lambda agent: [])
+    monkeypatch.setattr(base, "_facade", lambda: Facade())
+    agent = spawn(context=dict(CTX), tool_policy="can-spawn")
+    M.execute_agent_task(agent_id=agent["agent_id"])
+
+    assert c._conn().execute("SELECT COUNT(*) FROM agent_registry").fetchone()[0] == 1
+    result = rt.list_agent_messages(agent_id=agent["agent_id"])
+    assert any(message["direction"] == "agent->jarvis" and message["content"] == literal
+               for message in result)
+
+
 def test_spawn_without_owner_or_session_stays_legacy_and_opens_nothing(env):
     c, rt, spawn = env
     for ctx in ({}, {"user_id": "bjorn"}, {"parent_session_id": "s"}):

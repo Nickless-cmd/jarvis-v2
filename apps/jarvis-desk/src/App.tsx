@@ -287,7 +287,6 @@ function Shell({
             paa klokken. */}
         <NotifikationsToast
           config={cfg ?? null}
-          aktivSession={activeId}
           onAabenSession={(id) => { if (id) select(id); setSurface('chat') }}
         />
       </main>

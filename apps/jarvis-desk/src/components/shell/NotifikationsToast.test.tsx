@@ -231,4 +231,29 @@ describe('NotifikationsToast', () => {
 
     expect(await screen.findByText('Svar klar')).toBeInTheDocument()
   })
+
+  // ── Toasten maa ikke filtrere den aktive samtale fra (målt 8/10-2026) ────
+  //
+  // Ro-loftet var kun den ENE aarsag til at toasten udeblød. Den anden laa i
+  // SERVEREN: `feed()` skjuler `run_done` naar posten hoerer til den AKTIVE
+  // samtale (`?aktiv=`), og desk sendte altid sit eget sessions-id. Maalt mod
+  // den koerende server: 1705 aabne uden filter, 1160 med — 545 skjulte, og
+  // `run_done` er den mest almindelige toast.
+  //
+  // Filtreringen hoerer i FEEDET og i KLOKKEN: de viser «hvad venter paa dig
+  // lige nu». En toast er et engangs-varsel om at noget SKETE — den skal ikke
+  // skjules fordi man tilfaeldigvis sidder i den samtale svaret kom fra.
+  it('henter UDEN aktiv-filter — et svar i den aktive samtale skal ogsaa give toast', async () => {
+    hent.mockResolvedValueOnce({ poster: [post()], antal: 1 })
+       .mockResolvedValue({ poster: [post(), post({ id: 'p2', titel: 'Svar klar', slags: 'run_done' })], antal: 2 })
+    render(<NotifikationsToast config={cfg} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+
+    // Andet argument er `aktivSession`. Det skal vaere udefineret — ellers
+    // bygger serveren `?aktiv=` og fjerner netop de poster toasten skal vise.
+    expect(hent.mock.calls[0]![1]).toBeUndefined()
+
+    sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
+    expect(await screen.findByText('Svar klar')).toBeInTheDocument()
+  })
 })

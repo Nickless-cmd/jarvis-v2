@@ -66,10 +66,8 @@ const TONE: Record<string, 'fejl' | 'ok' | 'neutral'> = {
 export const LEVETID_MS = 7000
 const MAKS_SAMTIDIGE = 3
 
-export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
+export function NotifikationsToast({ config, onAabenSession }: {
   config: ApiConfig | null
-  /** Samtalen brugeren sidder i nu — svar fra den springes over paa serveren. */
-  aktivSession?: string | null
   /** Kaldes naar brugeren trykker «Aabn». Session-id kan vaere null. */
   onAabenSession?: (sessionId: string | null) => void
 }) {
@@ -100,10 +98,26 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   //
   // En haendelse ER signalet. Den maa ikke sluges af et ro-loft — det er
   // samme regel som klokkens WS-lytter foelger.
+  //
+  // ── OG DEN ANDEN HALVDEL (maalt 8/10-2026, samme dag) ──────────────────
+  // Ro-loftet var kun den ENE aarsag. Den anden laa i SERVEREN: `feed()`
+  // filtrerer `run_done` fra naar posten hoerer til den AKTIVE samtale
+  // (`?aktiv=`), og desk sendte altid sit eget sessions-id. Maalt mod den
+  // koerende server: 1705 aabne uden filter, 1160 med — **545 poster blev
+  // skjult**, og `run_done` er langt den mest almindelige toast.
+  //
+  // Filtreringen er der med vilje (Bjoern 26/9-2026: «den skal ikk vise svar
+  // for den aktive session»), og den hoerer i FEEDET og i KLOKKEN: de viser
+  // «hvad venter paa dig lige nu», og et svar man har foran sig venter ikke.
+  // En TOAST er noget andet — den er et engangs-varsel om at noget skete, og
+  // den forsvinder af sig selv. At skjule den fordi man tilfaeldigvis sidder i
+  // den samtale svaret kom fra, er at fjerne netop det oejebliks varsel.
+  //
+  // Derfor henter toasten UDEN `aktiv`. Den er den eneste af de tre der skal.
   const hentNu = useCallback(() => {
     if (!apiBaseUrl) return
     const version = ++requestVersion.current
-    hentNotifikationer({ apiBaseUrl, authToken }, aktivSession)
+    hentNotifikationer({ apiBaseUrl, authToken })
       .then((f) => {
         if (!alive.current || version !== requestVersion.current) return
         const aabne = f.poster.filter((p) => !p.foraeldet)
@@ -127,7 +141,7 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
         setKoe((k) => [...k, ...nye].slice(-MAKS_SAMTIDIGE))
       })
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
-  }, [apiBaseUrl, authToken, aktivSession])
+  }, [apiBaseUrl, authToken])
 
   // Pollet — det er SIKKERHEDSNETTET, og her er ro-loftet rigtigt: ingen
   // grund til at spoerge hvert ottende sekund naar ingen kigger.

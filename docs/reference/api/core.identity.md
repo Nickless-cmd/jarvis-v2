@@ -235,20 +235,20 @@ _User Registry — per-user workspace mapping for multi-user Jarvis._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `WorkspaceBootstrapResult` | `` | — | [src](../../../core/identity/workspace_bootstrap.py#L37) |
-| method | `WorkspaceBootstrapResult.summary` | `(self)` | — | [src](../../../core/identity/workspace_bootstrap.py#L42) |
-| function | `_resolve_workspace_name` | `(name)` | Resolve 'default' to current contextvar workspace if one is bound. | [src](../../../core/identity/workspace_bootstrap.py#L50) |
-| function | `ensure_default_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L66) |
-| function | `ensure_layered_memory_dirs` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L71) |
-| function | `workspace_memory_paths` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L88) |
-| function | `append_daily_memory_note` | `(note, *, name=…, source=…)` | Append a short note to today's daily memory file. | [src](../../../core/identity/workspace_bootstrap.py#L104) |
-| function | `read_daily_memory_lines` | `(*, name=…, limit=…)` | Read the most recent daily memory notes (today only). | [src](../../../core/identity/workspace_bootstrap.py#L163) |
-| function | `read_recent_daily_memory_lines` | `(*, name=…, days=…, limit=…)` | Read bounded daily memory notes across a recent lookback window. | [src](../../../core/identity/workspace_bootstrap.py#L204) |
-| function | `_load_known_sizes` | `(workspace_dir)` | Load last-known-good file sizes from .file_sizes.json in the workspace. | [src](../../../core/identity/workspace_bootstrap.py#L253) |
-| function | `_save_known_sizes` | `(workspace_dir, sizes)` | Persist current file sizes as last-known-good baseline. | [src](../../../core/identity/workspace_bootstrap.py#L266) |
-| function | `_check_workspace_file_health` | `(workspace_dir, filename, known_sizes)` | Check a workspace file for suspicious shrinkage or stub-level size. | [src](../../../core/identity/workspace_bootstrap.py#L301) |
-| function | `bootstrap_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L359) |
-| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L439) |
+| class | `WorkspaceBootstrapResult` | `` | — | [src](../../../core/identity/workspace_bootstrap.py#L36) |
+| method | `WorkspaceBootstrapResult.summary` | `(self)` | — | [src](../../../core/identity/workspace_bootstrap.py#L41) |
+| function | `_resolve_workspace_name` | `(name)` | Resolve 'default' to current contextvar workspace if one is bound. | [src](../../../core/identity/workspace_bootstrap.py#L49) |
+| function | `ensure_default_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L65) |
+| function | `ensure_layered_memory_dirs` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L70) |
+| function | `workspace_memory_paths` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L87) |
+| function | `append_daily_memory_note` | `(note, *, name=…, source=…)` | Append a short note to today's daily memory file. | [src](../../../core/identity/workspace_bootstrap.py#L103) |
+| function | `read_daily_memory_lines` | `(*, name=…, limit=…)` | Read the most recent daily memory notes (today only). | [src](../../../core/identity/workspace_bootstrap.py#L162) |
+| function | `read_recent_daily_memory_lines` | `(*, name=…, days=…, limit=…)` | Read bounded daily memory notes across a recent lookback window. | [src](../../../core/identity/workspace_bootstrap.py#L203) |
+| function | `_load_known_sizes` | `(workspace_dir)` | Load last-known-good file sizes from .file_sizes.json in the workspace. | [src](../../../core/identity/workspace_bootstrap.py#L252) |
+| function | `_save_known_sizes` | `(workspace_dir, sizes)` | Persist current file sizes as last-known-good baseline. | [src](../../../core/identity/workspace_bootstrap.py#L265) |
+| function | `_check_workspace_file_health` | `(workspace_dir, filename, known_sizes)` | Check a workspace file for suspicious shrinkage or stub-level size. | [src](../../../core/identity/workspace_bootstrap.py#L300) |
+| function | `bootstrap_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L358) |
+| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L450) |
 
 ## `core/identity/workspace_context.py`
 _Workspace Context — thread-local/async-safe current-user binding._

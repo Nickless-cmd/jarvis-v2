@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -390,17 +389,29 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
             pass  # eventbus may not be available in all contexts
 
     # --- Normal bootstrap: copy missing files from template ---
+    # §16 (8/10-2026): i et member-workspace ligger filen som <navn>.enc. Findes
+    # den, er filen IKKE manglende — men denne vej tjekkede kun plaintext og
+    # skrev derfor rå klartekst ind oven på en krypteret fil. Målt: 10 døde
+    # stubbe i michelle/ og mikkel/ (USER/MEMORY/SOUL/IDENTITY/MILESTONES), med
+    # «Primary user: Bjørn» i USER.md. Samme fix som bootstrap_user_workspace.
+    from core.services.workspace_crypto import member_user_id_for_path, write_text_for_path
+
+    def _ws_har_indhold(dest: Path) -> bool:
+        if dest.exists():
+            return True
+        return bool(member_user_id_for_path(dest)) and Path(str(dest) + ".enc").exists()
+
     for filename in REQUIRED_WORKSPACE_FILES:
         src = TEMPLATE_DIR / filename
         if not src.exists():
             raise FileNotFoundError(f"Missing required workspace template: {src}")
 
         dest = workspace_dir / filename
-        if dest.exists():
+        if _ws_har_indhold(dest):
             existing_files.append(filename)
             continue
 
-        shutil.copy2(src, dest)
+        write_text_for_path(dest, src.read_text(encoding="utf-8"))
         created_files.append(filename)
 
     for filename in OPTIONAL_WORKSPACE_FILES:
@@ -409,11 +420,11 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
             continue
 
         dest = workspace_dir / filename
-        if dest.exists():
+        if _ws_har_indhold(dest):
             existing_files.append(filename)
             continue
 
-        shutil.copy2(src, dest)
+        write_text_for_path(dest, src.read_text(encoding="utf-8"))
         created_files.append(filename)
 
     ensure_layered_memory_dirs(name=name)

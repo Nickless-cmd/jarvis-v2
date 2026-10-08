@@ -61,3 +61,55 @@ def test_bootstrap_skriver_krypteret_stub_naar_flaget_er_til(_member_env, monkey
     assert (ws / "MEMORY.md.enc").exists()
     assert (ws / "USER.md.enc").exists()
     assert not (ws / "MEMORY.md").exists()
+
+
+def test_generisk_bootstrap_gen_saar_ikke_plaintext_over_enc(_member_env) -> None:
+    """Den GENERISKE bootstrap må ikke gen-så klartekst oven på en .enc-fil (§16).
+
+    Målt 8/10-2026: `bootstrap_workspace` — den generiske vej, nået gennem
+    `ensure_default_workspace()` fra ~20 steder i core/ — tjekkede kun
+    `dest.exists()` og skrev med rå `shutil.copy2`. `bootstrap_user_workspace`
+    (medlems-vejen) var allerede .enc-bevidst; denne var ikke.
+
+    Konsekvensen stod i michelle/ og mikkel/: 10 døde klartekst-filer oven på
+    deres krypterede profiler — bl.a. en USER.md med «Primary user: Bjørn» inde
+    i et medlems workspace. Filen læses aldrig (læseren foretrækker .enc), men
+    den ligger ukrypteret og peger på den forkerte person.
+
+    Testen dækker hullet: den generiske vej havde ingen test, kun medlems-vejen.
+    """
+    from core.identity.workspace_bootstrap import bootstrap_workspace
+
+    ws = _member_env / "mikkel"
+    ws.mkdir(parents=True, exist_ok=True)
+    # Et medlems workspace har sine filer som .enc — intet i klartekst.
+    for navn in ("USER", "MEMORY", "SOUL", "IDENTITY", "MILESTONES", "STANDING_ORDERS"):
+        (ws / f"{navn}.md.enc").write_bytes(b"ciphertext")
+
+    res = bootstrap_workspace("mikkel")
+
+    for navn in ("USER", "MEMORY", "SOUL", "IDENTITY", "MILESTONES", "STANDING_ORDERS"):
+        assert not (ws / f"{navn}.md").exists(), (
+            f"{navn}.md blev gen-sået i klartekst oven på {navn}.md.enc"
+        )
+    # Filen var ikke manglende — den var krypteret. Den skal meldes som EKSISTERENDE.
+    assert "USER.md" in res.existing_files
+    assert "USER.md" not in res.created_files
+
+
+def test_generisk_bootstrap_opretter_stadig_manglende_filer(_member_env, monkeypatch) -> None:
+    """Fixet må ikke gøre bootstrap til en no-op.
+
+    En helt tom workspace skal stadig fyldes op fra templaten — ellers ville
+    fixet være «ingen filer nogen steder» i stedet for «ingen stubbe oven på
+    krypterede filer».
+    """
+    monkeypatch.delenv("JARVISX_ENCRYPT_WORKSPACES", raising=False)
+    from core.identity.workspace_bootstrap import bootstrap_workspace
+
+    res = bootstrap_workspace("mikkel")
+
+    ws = _member_env / "mikkel"
+    assert res.created_files, "bootstrap oprettede intet i en tom workspace"
+    assert (ws / "SOUL.md").exists()
+    assert (ws / "USER.md").exists()

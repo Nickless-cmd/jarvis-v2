@@ -418,7 +418,8 @@ def test_a_failing_resume_never_falls_back_to_a_fresh_text_turn(pk, monkeypatch)
     def boom(**kw):
         raise RuntimeError("loekken braekkede")
 
-    monkeypatch.setattr(pk.M_, "_run_agent_tool_loop", boom)
+    from core.services import agent_worker_runner
+    monkeypatch.setattr(agent_worker_runner, "run_agent_in_worker", boom)
     pk.go()
     assert len(pk.calls_) == n_before and pk.assignment(out) == "failed"       # ingen frisk tekst-tur
     assert pk.executed_ == []

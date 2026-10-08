@@ -8,9 +8,8 @@ udefra af adapteren (fra den autentificerede anmodningskontekst) og valideres he
 - aldrig fra modeltekst. Ethvert muterende kald returnerer identitet og
 accept-status: accept er ikke gennemfoerelse.
 
-Interim: agentens model-/vaerktoejsloekke koeres endnu i en baggrundstraad i denne
-proces (`_run_in_background`). Spec'ens krav om en isoleret workerproces (§12.1)
-hoerer til leverance C og aendrer ikke denne kontrakt.
+Baggrundstraaden koordinerer kun jobbet; kontraktagentens model-/vaerktoejsloekke
+koerer i en isoleret workerproces. Mangler sandboxen, afvises nyt arbejde foer accept.
 """
 from __future__ import annotations
 
@@ -144,6 +143,19 @@ def _capacity_error(owner: str, parent: str) -> dict[str, Any] | None:
     return None
 
 
+def _worker_unavailable() -> dict[str, Any] | None:
+    """Ny kontraktopgave maa ikke accepteres uden en isoleret worker."""
+    from core.services.agent_sandbox import sandbox_usable
+    try:
+        ready, reason = sandbox_usable()
+    except Exception as exc:
+        logger.warning("agent-sandboxens klarhed kunne ikke kontrolleres", exc_info=True)
+        ready, reason = False, type(exc).__name__
+    if not ready:
+        return _err("WORKER_UNAVAILABLE", str(reason or "agent-sandboxen er utilgaengelig"))
+    return None
+
+
 # --- operationer -----------------------------------------------------------------
 
 def dispatch_agent(
@@ -214,6 +226,8 @@ def dispatch_agent(
             return _err("IDEMPOTENCY_CONFLICT", idempotency_key)
         return {**_accept_view({"agent_id": prior["agent_id"], "assignment_id": prior["assignment_id"],
                                 "status": prior["status"], "replayed": True})}
+    if (unavailable := _worker_unavailable()):
+        return unavailable
     if (full := _capacity_error(owner_user_id, parent_agent_id)):
         return full
     from core.services.agent_model_policy import ModelUnavailable, decide_route
@@ -327,6 +341,8 @@ def followup_agent(
             return _err("IDEMPOTENCY_CONFLICT", idempotency_key)
         return _accept_view({"agent_id": prior["agent_id"], "assignment_id": prior["assignment_id"],
                              "status": prior["status"], "replayed": True})
+    if (unavailable := _worker_unavailable()):
+        return unavailable
     if (full := _capacity_error(owner_user_id, agent["parent_agent_id"] or "jarvis")):
         return full
     try:

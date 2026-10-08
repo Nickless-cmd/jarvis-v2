@@ -307,7 +307,10 @@ def test_execute_agent_task_really_holds_the_lease_while_the_agent_runs(ls, monk
             return {"text": "klar", "input_tokens": 1, "output_tokens": 1, "status": "completed"}
 
     monkeypatch.setattr(M, "agent_tools_enabled", lambda: False)
+    monkeypatch.setattr(M, "_snapshot_tools", lambda agent: [])
     monkeypatch.setattr(M, "_facade", lambda: _F())
+    from core.services import agent_runtime_base as base
+    monkeypatch.setattr(base, "_facade", lambda: M._facade())
     agent = spawn_agent_task(role="researcher", goal="g", auto_execute=False,
                              context={"user_id": "bjorn", "parent_session_id": "s1"})
     execute_agent_task(agent_id=agent["agent_id"])

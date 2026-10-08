@@ -5,6 +5,7 @@ import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
+import { PwaRunUpdateHost, PwaUpdateHost } from './components/PwaUpdateHost'
 import { PermissionProvider } from './contexts/PermissionContext'
 import { usePermission } from './hooks/usePermission'
 import { useStream } from './hooks/useStream'
@@ -88,18 +89,19 @@ export function App() {
     [settings?.apiBaseUrl, settings?.authToken],
   )
 
-  if (!settings) return null
-  if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
+  if (!settings) return __WEB_BUILD__ ? <PwaUpdateHost /> : null
+  if (!isConfigured) return <><SetupScreen onSave={(cfg) => void update(cfg)} />{__WEB_BUILD__ && <PwaUpdateHost />}</>
   if (authStatus === 'checking' || (authStatus === 'ready' && !auth)) {
-    return <div className="setup" role="status">Kontrollerer login…</div>
+    return <><div className="setup" role="status">Kontrollerer login…</div>{__WEB_BUILD__ && <PwaUpdateHost />}</>
   }
   if (authStatus === 'offline') {
-    return <div className="setup" role="status">Ingen forbindelse til Jarvis. Prøv igen, når serveren er tilgængelig.</div>
+    return <><div className="setup" role="status">Ingen forbindelse til Jarvis. Prøv igen, når serveren er tilgængelig.</div>{__WEB_BUILD__ && <PwaUpdateHost />}</>
   }
 
   return (
     <SessionProvider config={cfg} onRestore={(s) => setSurface(s)}>
       <StreamProvider config={cfg}>
+        {__WEB_BUILD__ && <PwaRunUpdateHost />}
         <PermissionProvider config={cfg}>
           <PanelProvider defaultWidth={480}>
             <Shell

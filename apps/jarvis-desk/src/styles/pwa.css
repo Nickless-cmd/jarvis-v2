@@ -1,0 +1,25 @@
+.pwa-update {
+  position: fixed;
+  inset: auto 1rem 1rem auto;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: .75rem 1rem;
+  border: 1px solid var(--border, #404047);
+  border-radius: .75rem;
+  background: var(--surface, #222228);
+  color: var(--text, #f2f2f4);
+  box-shadow: 0 .5rem 2rem #0006;
+  font-size: .875rem;
+}
+
+.pwa-update button {
+  padding: .4rem .65rem;
+  border: 1px solid currentColor;
+  border-radius: .4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}

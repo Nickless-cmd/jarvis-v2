@@ -69,6 +69,25 @@ describe('hentNaesteForslag', () => {
     expect(f.tekst).toBe('kør testene igen')
     expect(f.id).toBe('')
   })
+
+  it('bygger stien rigtigt når apiBaseUrl slutter på en skråstreg', async () => {
+    // Målt 8/10-2026: desk gemmer `https://api.srvlab.dk/` (SetupScreen), og
+    // strengsammensætning gav `//composer/suggest`. Den sti matcher ingen
+    // API-rute, falder igennem til StaticFiles-mountet og svarer 405 — tavst,
+    // fordi `!r.ok` giver INTET_FORSLAG uden at logge. Derfor nåede forslaget
+    // kun mobilen, hvis base ikke har skråstregen.
+    const f = svar({ forslag: 'x' })
+    vi.stubGlobal('fetch', f)
+    await hentNaesteForslag({ apiBaseUrl: 'https://api.srvlab.dk/', authToken: 't' }, 's1')
+    expect(f.mock.calls[0]?.[0]).toBe('https://api.srvlab.dk/composer/suggest')
+  })
+
+  it('og når basen IKKE har skråstregen — begge konventioner skal virke', async () => {
+    const f = svar({ forslag: 'x' })
+    vi.stubGlobal('fetch', f)
+    await hentNaesteForslag({ apiBaseUrl: 'https://api.srvlab.dk', authToken: 't' }, 's1')
+    expect(f.mock.calls[0]?.[0]).toBe('https://api.srvlab.dk/composer/suggest')
+  })
 })
 
 describe('meldValg', () => {
@@ -96,5 +115,14 @@ describe('meldValg', () => {
   it('en fejl i meldingen kaster ikke — komponisten skriver videre', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('nede')))
     expect(() => meldValg(cfg, forslag, 'accepteret', 's1')).not.toThrow()
+  })
+
+  it('melder til den rigtige sti — også med skråstreg i basen', () => {
+    // Samme fejl som i `hentNaesteForslag`, samme dag: `valg`-telemetrien var
+    // også død, fordi stien blev bygget med strengsammensætning.
+    const f = svar({ ok: true })
+    vi.stubGlobal('fetch', f)
+    meldValg({ apiBaseUrl: 'https://api.srvlab.dk/', authToken: 't' }, forslag, 'accepteret', 's1')
+    expect(f.mock.calls[0]?.[0]).toBe('https://api.srvlab.dk/composer/choice')
   })
 })

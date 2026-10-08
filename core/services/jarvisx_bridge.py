@@ -436,7 +436,9 @@ class BridgeRegistry:
         except Exception:  # pragma: no cover - presence er blødt
             pass
 
-    def _diagnose_no_bridge(self, user_id: str, *, stage: str) -> dict[str, Any]:
+    def _diagnose_no_bridge(
+        self, user_id: str, *, stage: str, tool: str | None = None,
+    ) -> dict[str, Any]:
         """Fastslå HVORFOR der ikke er en bro for user_id (i stedet for et blindt
         'bridge_not_connected'): user_id-mismatch, ingen bro nogen steder, eller
         forward-fejl. Observeres i Centralen + logges, så vi ser den ægte grund når
@@ -448,16 +450,45 @@ class BridgeRegistry:
             presence = {}
         local = [uid for uid, k in self._by_user.items() if k]
         token = bool(internal_dispatch_token())
-        if presence and user_id not in presence:
+
+        # ── «DER ER EN BRO, DEN KAN BARE IKKE DET HER» (8/10-2026) ──────────
+        #
+        # Maalt paa Bjoern: telefonen var eneste bro (11 capabilities), desk
+        # var ikke startet (62). Hvert `operator_bash` gav
+        # `reason=forward_failed stage=lookup_stale_presence` — og BEGGE ord
+        # var forkerte. Presence var frisk, broen levende, intet forward
+        # fejlede. `get_bridge(tool=…)` havde bare ingen kandidat, fordi ingen
+        # forbundet klient annoncerer vaerktoejet.
+        #
+        # Den gamle `else`-gren kaldte alt det her `forward_failed`, saa
+        # diagnosen pegede paa procesgraenser og presence-TTL. Den rigtige
+        # besked var ét ord: start desk. Derfor faar den sin EGEN grund, og
+        # beskeden navngiver baade vaerktoejet og hvad der ER forbundet.
+        egne = self._by_user.get(user_id) or {}
+        ingen_kan = bool(tool) and bool(egne) and not any(
+            tool in (c.capabilities or ()) or not (c.capabilities or ())
+            for c in egne.values()
+        )
+
+        if ingen_kan:
+            reason = "no_capable_client"
+        elif presence and user_id not in presence and not egne:
             reason = "user_id_mismatch"   # bro FINDES, men under et andet user_id
         elif not presence and not local:
             reason = "no_bridge_anywhere"  # ingen bro overhovedet (desk ikke forbundet)
+        elif not presence and not egne:
+            reason = "no_bridge_anywhere"
         else:
             reason = "forward_failed"      # bro burde være nåelig, men rundturen fejlede
         detail = {
             "reason": reason, "stage": stage, "requesting_user_id": user_id,
             "token_present": token, "local_bridges": local,
             "presence_user_ids": list(presence.keys()),
+            "tool": tool or "",
+            "connected_clients": sorted(c.client for c in egne.values()),
+            "client_capabilities": {
+                c.client: len(c.capabilities or ()) for c in egne.values()
+            },
         }
         try:
             from core.services.central_core import central
@@ -467,10 +498,18 @@ class BridgeRegistry:
             })
         except Exception:  # pragma: no cover
             pass
-        logger.warning(
-            "[bridge-dispatch] NO_BRIDGE reason=%s stage=%s user=%s local=%s presence=%s token=%s",
-            reason, stage, user_id, local, list(presence.keys()), token,
-        )
+        if reason == "no_capable_client":
+            # Den linje et menneske skal kunne handle paa uden at laese kode.
+            logger.warning(
+                "[bridge-dispatch] NO_CAPABLE_CLIENT tool=%s user=%s forbundet=%s "
+                "evner=%s — en enhed der kan vaerktoejet er ikke forbundet",
+                tool, user_id, detail["connected_clients"], detail["client_capabilities"],
+            )
+        else:
+            logger.warning(
+                "[bridge-dispatch] NO_BRIDGE reason=%s stage=%s user=%s local=%s presence=%s token=%s",
+                reason, stage, user_id, local, list(presence.keys()), token,
+            )
         return detail
 
     @staticmethod
@@ -702,7 +741,7 @@ class BridgeRegistry:
         - allow_cross_process=False (vi ER forward-målet) → definitiv: diagnose.
         """
         if not allow_cross_process:
-            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_terminal")
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_terminal", tool=tool)
             return {"status": "error", "result": None,
                     "error": "bridge_not_connected", "diagnosis": diag}
 
@@ -715,7 +754,7 @@ class BridgeRegistry:
             presence, own_role = {}, ""
 
         if presence and user_id not in presence:
-            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_pre_forward")
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_pre_forward", tool=tool)
             return {"status": "error", "result": None,
                     "error": "bridge_not_connected", "diagnosis": diag}
 
@@ -725,7 +764,13 @@ class BridgeRegistry:
         # at forwarde til os selv (self-loop).
         target_role = str((presence.get(user_id) or {}).get("process") or "") if presence else ""
         if target_role and own_role and target_role == own_role:
-            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_stale_presence")
+            # Er aarsagen at ingen FORBUNDET klient kan vaerktoejet, er presence
+            # ikke gammel — den er sand. Diagnosen afgoer navnet, saa stage'en
+            # ikke paastaar en procesgraense der ikke er problemet (8/10-2026).
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_probe", tool=tool)
+            if diag.get("reason") != "no_capable_client":
+                diag = self._diagnose_no_bridge(
+                    user_id, stage=f"{stage}_stale_presence", tool=tool)
             return {"status": "error", "result": None,
                     "error": "bridge_not_connected", "diagnosis": diag}
 

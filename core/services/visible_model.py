@@ -621,11 +621,12 @@ def _build_visible_chat_messages_for_github(
                         msg_dict["reasoning_content"] = r_content
                 messages.append(msg_dict)
     # Hallucination guard: injectér memory for faktuelle spørgsmål
-    try:
-        from core.services.hallucination_guard import inject_memory_into_prompt
-        messages = inject_memory_into_prompt(message, messages)
-    except Exception:
-        logger.warning("hallucination_guard inject failed", exc_info=True)
+    if not _member_context_user_id():
+        try:
+            from core.services.hallucination_guard import inject_memory_into_prompt
+            messages = inject_memory_into_prompt(message, messages)
+        except Exception:
+            logger.warning("hallucination_guard inject failed", exc_info=True)
 
     # The current user message is persisted before prompt assembly and is therefore
     # already the transcript's final user turn. Appending it unconditionally created
@@ -716,22 +717,32 @@ def _insert_typed_system_tail_before_current_user(items: list[dict], tail: str) 
 def _visible_system_instruction_for_provider(
     *, provider: str, model: str, user_message: str, session_id: str | None
 ) -> str | None:
-    assembly = build_visible_chat_prompt_assembly(
-        provider=provider,
-        model=model,
-        user_message=user_message,
+    assembly = _build_visible_prompt_assembly(
+        provider=provider, model=model, user_message=user_message,
         session_id=session_id,
-        runtime_self_report_context={
-            "visible_execution_readiness": visible_execution_readiness(),
-        },
     )
     return assembly.text or None
+
+
+def _member_context_user_id() -> str:
+    """Known non-owner (or unknown nonempty id): never use the owner prompt."""
+    from core.identity.workspace_context import current_user_id
+    uid = str(current_user_id() or "").strip()
+    if not uid:
+        return ""
+    from core.identity.users import find_user_by_discord_id
+    user = find_user_by_discord_id(uid)
+    return uid if user is None or user.role != "owner" else ""
 
 
 def _build_visible_prompt_assembly(
     *, provider: str, model: str, user_message: str, session_id: str | None
 ):
     """Return the full PromptAssembly (including structured transcript)."""
+    member_uid = _member_context_user_id()
+    if member_uid:
+        from core.services.visible_member_prompt import build_member_prompt
+        return build_member_prompt(user_id=member_uid, session_id=session_id or "")
     return build_visible_chat_prompt_assembly(
         provider=provider,
         model=model,

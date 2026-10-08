@@ -249,6 +249,9 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         )
     if get_chat_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
+    from core.identity.session_access import maa_tilgaa_session
+    if not maa_tilgaa_session(session_id):
+        raise HTTPException(status_code=403, detail="Ikke din samtale")
 
     # Prepend attachment-direktiv-blok (delt helper med v1) så Jarvis ser billeder
     # via analyze_image. Empty-check sker på effective_message → billede-kun virker.

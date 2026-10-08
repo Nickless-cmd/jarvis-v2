@@ -81,6 +81,36 @@ describe('NotifikationsToast', () => {
       .toBeInTheDocument()
   })
 
+  it('bevarer live-forbindelsen naar kun config-objektets identitet skifter', async () => {
+    const view = render(<NotifikationsToast config={{ ...cfg }} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    expect(sockets).toHaveLength(1)
+
+    view.rerender(<NotifikationsToast config={{ ...cfg }} />)
+    expect(sockets).toHaveLength(1)
+    expect(hent).toHaveBeenCalledTimes(1)
+  })
+
+  it('holder toasten synlig mens vinduet er skjult og henter igen naar det vises', async () => {
+    let synlighed = 'visible'
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => synlighed as DocumentVisibilityState)
+    try {
+      await medNyPost({ id: 'p2', titel: 'Svar klar', slags: 'run_done', kan_afgoere: false })
+      const nedtaelling = document.querySelector('.notif-toast-nedtaelling') as HTMLElement
+      synlighed = 'hidden'
+      fireEvent(document, new Event('visibilitychange'))
+      expect(nedtaelling.style.animationPlayState).toBe('paused')
+
+      const foer = hent.mock.calls.length
+      synlighed = 'visible'
+      fireEvent(document, new Event('visibilitychange'))
+      await waitFor(() => expect(hent.mock.calls.length).toBeGreaterThan(foer))
+      expect(nedtaelling.style.animationPlayState).not.toBe('paused')
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
   // Klokken springer bevidst `run_done` over (1152 aabne 4/10). En toast maa
   // vise den alligevel — den viser noget ÉN gang og forsvinder, saa den
   // gentager ikke det problem klokken havde. Denne test laaser den forskel.

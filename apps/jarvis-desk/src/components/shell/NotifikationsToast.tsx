@@ -74,6 +74,9 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   onAabenSession?: (sessionId: string | null) => void
 }) {
   const [koe, setKoe] = useState<Notifikation[]>([])
+  const [synlig, setSynlig] = useState(() => document.visibilityState !== 'hidden')
+  const apiBaseUrl = config?.apiBaseUrl ?? ''
+  const authToken = config?.authToken ?? null
 
   // `null` = vi har ikke sat baseline endnu. Foerste svar saetter den og
   // viser intet; derefter er forskellen mod dette saet de nye poster.
@@ -82,9 +85,9 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   const requestVersion = useRef(0)
 
   const hent = useCallback(() => {
-    if (!config) return
+    if (!apiBaseUrl) return
     const version = ++requestVersion.current
-    hentNotifikationer(config, aktivSession)
+    hentNotifikationer({ apiBaseUrl, authToken }, aktivSession)
       .then((f) => {
         if (!alive.current || version !== requestVersion.current) return
         const aabne = f.poster.filter((p) => !p.foraeldet)
@@ -108,7 +111,7 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
         setKoe((k) => [...k, ...nye].slice(-MAKS_SAMTIDIGE))
       })
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
-  }, [config, aktivSession])
+  }, [apiBaseUrl, authToken, aktivSession])
 
   useEffect(() => {
     alive.current = true
@@ -124,10 +127,10 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   // sikkerhedsnettet; DETTE er grunden til at en ny post dukker op med det
   // samme i stedet for op til otte sekunder senere.
   useEffect(() => {
-    if (!config) return
+    if (!apiBaseUrl) return
     let ws: WebSocket | null = null
     try {
-      ws = openEventSocket(config)
+      ws = openEventSocket({ apiBaseUrl, authToken })
       ws.onmessage = (e) => {
         try {
           const kind = String(JSON.parse(String(e.data))?.kind || '')
@@ -137,7 +140,17 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
       ws.onerror = () => { /* pollet daekker */ }
     } catch { /* pollet daekker */ }
     return () => { try { ws?.close() } catch { /* noop */ } }
-  }, [config, hent])
+  }, [apiBaseUrl, authToken, hent])
+
+  useEffect(() => {
+    const opdaterSynlighed = () => {
+      const erSynlig = document.visibilityState !== 'hidden'
+      setSynlig(erSynlig)
+      if (erSynlig) hent()
+    }
+    document.addEventListener('visibilitychange', opdaterSynlighed)
+    return () => document.removeEventListener('visibilitychange', opdaterSynlighed)
+  }, [hent])
 
   const luk = useCallback((id: string) => {
     setKoe((k) => k.filter((p) => p.id !== id))
@@ -170,6 +183,7 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
     <div className="notif-toast-lag" role="status" aria-live="polite">
       {koe.map((p) => (
         <ToastKort key={p.id} post={p}
+                   synlig={synlig}
                    onAabn={() => aabn(p)}
                    onAfvis={() => afvis(p)}
                    onLuk={() => luk(p.id)} />
@@ -178,8 +192,9 @@ export function NotifikationsToast({ config, aktivSession, onAabenSession }: {
   )
 }
 
-function ToastKort({ post, onAabn, onAfvis, onLuk }: {
+function ToastKort({ post, synlig, onAabn, onAfvis, onLuk }: {
   post: Notifikation
+  synlig: boolean
   onAabn: () => void
   onAfvis: () => void
   /** Fjern feltet UDEN at afvise posten — den bliver saa liggende i feedet. */
@@ -246,8 +261,8 @@ function ToastKort({ post, onAabn, onAfvis, onLuk }: {
         <X size={12} />
       </button>
       <span className="notif-toast-nedtaelling" aria-hidden="true"
-            style={{ animationDuration: `${LEVETID_MS}ms` }}
-            onAnimationEnd={() => setUde(true)} />
+            style={{ animationDuration: `${LEVETID_MS}ms`, animationPlayState: synlig ? undefined : 'paused' }}
+            onAnimationEnd={() => { if (synlig) setUde(true) }} />
     </div>
   )
 }

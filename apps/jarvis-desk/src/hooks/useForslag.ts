@@ -25,6 +25,7 @@ import { hentNaesteForslag, INTET_FORSLAG, type Forslag } from '../lib/forslag'
  * tomt, så der er ingen der venter på forslaget.
  */
 export const HENT_PAUSE_MS = 700
+const GENTAG_PAUSE_MS = 2000
 
 export function useForslag(
   config: ApiConfig | undefined,
@@ -47,13 +48,22 @@ export function useForslag(
     setForslag(INTET_FORSLAG)
     if (!aktiv || !base || !sid) return
     const ctrl = new AbortController()
+    let gentag: number | undefined
     const t = window.setTimeout(() => {
-      void hentNaesteForslag({ apiBaseUrl: base, authToken: token }, sid, ctrl.signal)
-        .then((f) => { if (!ctrl.signal.aborted) setForslag(f) })
+      const hent = (sidsteForsøg: boolean) => {
+        void hentNaesteForslag({ apiBaseUrl: base, authToken: token }, sid, ctrl.signal)
+          .then((f) => {
+            if (ctrl.signal.aborted) return
+            if (f.tekst) setForslag(f)
+            else if (!sidsteForsøg) gentag = window.setTimeout(() => hent(true), GENTAG_PAUSE_MS)
+          })
+      }
+      hent(false)
     }, HENT_PAUSE_MS)
 
     return () => {
       window.clearTimeout(t)
+      window.clearTimeout(gentag)
       ctrl.abort()
     }
   }, [base, token, sid, aktiv])

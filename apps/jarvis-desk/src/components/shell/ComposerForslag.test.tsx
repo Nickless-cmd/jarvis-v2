@@ -101,6 +101,20 @@ describe('Composer · auto-forslag', () => {
     expect(felt.placeholder).toBe('')
   })
 
+  it('henter igen naar forslaget endnu ikke var klar ved foerste kald', async () => {
+    let antal = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () => String(url).includes('/composer/suggest')
+        ? { forslag: ++antal === 1 ? '' : 'fortsæt arbejdet', forslag_id: 'f2', kilde_besked_id: 'm2' }
+        : {},
+    } as Response)))
+
+    opsæt()
+    expect(await screen.findByText('fortsæt arbejdet', {}, { timeout: 4500 })).toBeInTheDocument()
+    expect(antal).toBe(2)
+  })
+
   it('Tab gør det grå til rigtig tekst, og Enter sender den', async () => {
     serverForeslaar('kør testene igen')
     const { felt, onSend } = opsæt()

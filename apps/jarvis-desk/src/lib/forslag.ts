@@ -63,7 +63,8 @@ function sti(config: ApiConfig, vej: string): string {
  * skrive selv eller skifte samtale. Uden det ville et langsomt svar kunne
  * lande ovenpå og foreslå noget der hørte til et andet sted.
  *
- * Ingen retries: et forslag der ikke kom i første forsøg er allerede for sent.
+ * Funktionen laver ét kald. useForslag kan spørge én gang mere efter en kort
+ * pause, hvis serveren endnu ikke havde registreret Jarvis' forslag.
  */
 export async function hentNaesteForslag(
   config: ApiConfig,

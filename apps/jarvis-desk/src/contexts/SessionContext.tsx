@@ -158,6 +158,11 @@ export function SessionProvider({
   const select = useCallback((id: string) => {
     setActiveId(id)
     try { localStorage.setItem('jarvis-desk:activeSession', id) } catch { /* ignore */ }
+    // Et nyt VALG af samtalen er et nyt forsøg: ryd afvisnings-mærket, så et
+    // 403 ikke låser samtalen for evigt hvis adgangen er blevet rettet (fx
+    // ejeren har delt den, eller brugeren er skiftet). Pollingen må ikke selv
+    // rydde det — kun et bevidst valg.
+    afvistRef.current.delete(id)
     if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
     const prevLoaded = loadedRef.current
     loadedRef.current = id
@@ -175,8 +180,16 @@ export function SessionProvider({
       // Uden denne stod samtalen TOM naar hentningen fejlede — nøjagtig som en
       // ny samtale. Vi rydder loadedRef igen, saa «Prøv igen» faktisk henter
       // paa ny i stedet for at ramme «allerede loaded»-genvejen ovenfor.
-      .catch(() => {
+      .catch((e: unknown) => {
         loadedRef.current = prevLoaded
+        // 403 = «ikke din samtale». Det er ikke en manglende hentning der kan
+        // prøves igen — det er et nej. Vi siger det som det er, og mærker
+        // samtalen afvist så pollingen ikke hamrer løs på den (8/10-2026).
+        if ((e as { statusCode?: number | null })?.statusCode === 403) {
+          afvistRef.current.add(id)
+          setLoadFejl('Du har ikke adgang til denne samtale.')
+          return
+        }
         setLoadFejl('Samtalens beskeder kunne ikke hentes. Det du ser her er ikke hele samtalen.')
       })
       .finally(() => setLoading(false))
@@ -195,15 +208,42 @@ export function SessionProvider({
     try { localStorage.removeItem('jarvis-desk:activeSession') } catch { /* ignore */ }
   }, [])
 
+  // Samtaler serveren har AFVIST (403) for denne bruger. Uden denne blev en
+  // fremmed samtale hentet igen hvert 1,5 sekund i det uendelige: `refreshMessages`
+  // kaldes af begge views' poll-loop, og `refreshActiveSession` havde ingen catch,
+  // så hver runde gav en ubehandlet rejection og et nyt 403-kald. Målt 8/10-2026:
+  // ~50 identiske 403'er i træk fra Michelles IP på én fremmed samtale.
+  //
+  // Et 403 er et ENDELIGT svar — det bliver ikke anderledes af at spørge igen.
+  // Vi husker afvisningen pr. samtale-id, holder op med at polle den, og lader
+  // `select()` rydde mærket når brugeren selv vælger samtalen på ny.
+  const afvistRef = useRef(new Set<string>())
+
   const refreshActiveSession = useCallback(async () => {
     if (!activeId) return
+    if (afvistRef.current.has(activeId)) return // afvist → spørg ikke igen
     const etag = etagBySessionRef.current.get(activeId)
-    const snapshot = etag
-      ? await getSession(config, activeId, { ifNoneMatch: etag })
-      : await getSession(config, activeId)
-    if (!snapshot) return
-    if (snapshot.etag) etagBySessionRef.current.set(activeId, snapshot.etag)
-    setMessages((local) => mergeServer(local, snapshot.messages))
+    try {
+      const snapshot = etag
+        ? await getSession(config, activeId, { ifNoneMatch: etag })
+        : await getSession(config, activeId)
+      if (!snapshot) return
+      if (snapshot.etag) etagBySessionRef.current.set(activeId, snapshot.etag)
+      setMessages((local) => mergeServer(local, snapshot.messages))
+    } catch (e) {
+      // 403 = «ikke din samtale». Det er ikke en netværksfejl der går over, og
+      // det skal ikke se ud som om samtalen er tom. Vi viser den ægte besked og
+      // stopper pollingen af netop denne samtale.
+      const status = (e as { statusCode?: number | null })?.statusCode
+      if (status === 403) {
+        afvistRef.current.add(activeId)
+        setLoadFejl('Du har ikke adgang til denne samtale.')
+        return
+      }
+      // Andre fejl (netværk, 5xx) er forbigående: næste poll forsøger igen.
+      // Vi kaster ikke videre — en ubehandlet rejection i et 1,5-sekunders loop
+      // er støj, ikke et signal.
+    }
   }, [config, activeId])
 
   const refresh = useCallback(async () => {

@@ -475,3 +475,84 @@ describe('mergeServer: run-id slaar tekst-matchet', () => {
     expect(merged.find((m) => m.id === 'noget-andet')).toBeDefined()
   })
 })
+
+// ---------------------------------------------------------------------------
+// 403 paa en fremmed samtale maa ikke blive et evigt poll-loop (8/10-2026)
+// ---------------------------------------------------------------------------
+describe('403 paa en fremmed samtale', () => {
+  // Maalt 8/10-2026: Michelle aabnede en samtale der ikke var hendes, og
+  // klienten hentede den igen ~50 gange i traek. `refreshMessages` kaldes af
+  // begge views' poll-loop hvert 1,5 sekund, og `refreshActiveSession` havde
+  // INGEN catch — hver runde gav en ubehandlet rejection og et nyt 403-kald.
+  //
+  // Et 403 er et ENDELIGT svar. Klienten skal spoerge én gang, vise den aegte
+  // besked, og holde op.
+  beforeEach(() => localStorage.clear())
+
+  const fremmed403 = () => Object.assign(new Error('HTTP 403'), {
+    category: 'auth', retryable: false, statusCode: 403,
+  })
+
+  it('spoerger KUN én gang — pollingen holder op efter afvisningen', async () => {
+    const { getSession } = await import('../lib/api')
+    const session = vi.mocked(getSession)
+    session.mockClear()
+    session.mockRejectedValue(fremmed403())
+
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions).toHaveLength(1))
+    await act(async () => { result.current.select('s1') })
+    await waitFor(() => expect(result.current.loadFejl).toMatch(/ikke adgang/))
+
+    const efterSelect = session.mock.calls.length
+    // Ti poll-runder — som views' 1,5-sekunders loop ville kalde dem.
+    for (let i = 0; i < 10; i += 1) {
+      await act(async () => { await result.current.refreshMessages() })
+    }
+
+    // Ingen af de ti runder maa have spoergt igen.
+    expect(session.mock.calls.length).toBe(efterSelect)
+  })
+
+  it('et nyt VALG af samtalen proever igen — afvisningen laaser ikke for evigt', async () => {
+    const { getSession } = await import('../lib/api')
+    const session = vi.mocked(getSession)
+    session.mockClear()
+    session.mockRejectedValueOnce(fremmed403())
+      .mockResolvedValue({
+        session: { id: 's1', title: 'T', updated_at: 'x' },
+        messages: [userMsg('u-1', 'nu virker det')],
+      } as never)
+
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions).toHaveLength(1))
+    await act(async () => { result.current.select('s1') })
+    await waitFor(() => expect(result.current.loadFejl).toMatch(/ikke adgang/))
+
+    // Brugeren vaelger samtalen igen — det er et nyt forsoeg.
+    await act(async () => { result.current.select('s1') })
+    await waitFor(() => expect(result.current.messages).toHaveLength(1))
+  })
+
+  it('en netvaerksfejl laaser IKKE — naeste poll forsoeger igen', async () => {
+    // Modstykket: kun 403 er endeligt. En forbigaaende fejl skal ikke
+    // efterlade samtalen permanent tom.
+    const { getSession } = await import('../lib/api')
+    const session = vi.mocked(getSession)
+    session.mockClear()
+    session.mockRejectedValueOnce(Object.assign(new Error('offline'), {
+      category: 'network', retryable: true, statusCode: null,
+    }))
+      .mockResolvedValue({
+        session: { id: 's1', title: 'T', updated_at: 'x' },
+        messages: [userMsg('u-1', 'kom tilbage')],
+      } as never)
+
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions).toHaveLength(1))
+    await act(async () => { result.current.select('s1') })
+    await act(async () => { await result.current.refreshMessages() })
+
+    await waitFor(() => expect(result.current.messages).toHaveLength(1))
+  })
+})

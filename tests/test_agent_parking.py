@@ -9,9 +9,17 @@ import pytest
 
 O, S = "bjorn", "sess-1"
 
+#: Et kald der KRÆVER godkendelse. Testene brugte ``echo`` — det gik i stykker
+#: 8/10-2026, da ``bash`` blev vurderet paa sin KOMMANDO i stedet for sit navn:
+#: ``echo`` er ren laesning og slipper nu fri, saa kaldet blev UDFOERT i stedet for
+#: at parkere, og testen maalte ikke gaten. ``chmod`` klassificeres som ``approval``.
+#: Kommandoen er bevidst IDENTISK for alle ``i`` — to kald med samme argumenter er
+#: «samme handling» (samme digest), hvilket er praecis hvad gentagelses-testen maaler.
+MUTERENDE = "chmod 777 /tmp/x"
+
 
 def call(i, name="bash", **args):
-    return {"id": f"c{i}", "function": {"name": name, "arguments": json.dumps(args or {"command": f"echo {i}"})}}
+    return {"id": f"c{i}", "function": {"name": name, "arguments": json.dumps(args or {"command": MUTERENDE})}}
 
 
 @pytest.fixture
@@ -110,7 +118,7 @@ def test_approving_resumes_the_child_exactly_where_it_stopped_and_runs_the_call_
     # den gamle `queued` gjorde.
     assert pk.assignment(out) == "active" and len(pk.started_) == 1
     pk.go()
-    assert pk.executed_ == [("c1", {"command": "echo 1"})]                      # praecis én gang
+    assert pk.executed_ == [("c1", {"command": MUTERENDE})]                      # praecis én gang
     assert pk.assignment(out) == "completed"
     assert pk.runs() == [(1, "resumed"), (2, "completed")]
     (m,) = pk.c_.list_pending_results(owner_user_id=O, origin_session_id=S)
@@ -161,7 +169,7 @@ def test_a_decision_made_before_a_restart_still_resumes_via_the_supervisor(pk):
     done = pk.svc_.supervise()                                     # "efter genstart"
     assert any(d.get("action") == "resumed_after_approval" for d in done)
     pk.go()
-    assert pk.assignment(out) == "completed" and pk.executed_ == [("c1", {"command": "echo 1"})]
+    assert pk.assignment(out) == "completed" and pk.executed_ == [("c1", {"command": MUTERENDE})]
 
 
 def test_two_concurrent_resumers_start_the_child_once(pk):
@@ -224,13 +232,13 @@ def test_an_unbound_legacy_agent_is_unchanged_and_runs_the_gated_tool_as_before(
     a = spawn_agent_task(role="researcher", goal="g", auto_execute=False, context={}, tool_policy="",
                          allowed_tools=["bash"])
     execute_agent_task(agent_id=a["agent_id"])
-    assert pk.executed_ == [("c1", {"command": "echo 1"})] and pk.pending() == []
+    assert pk.executed_ == [("c1", {"command": MUTERENDE})] and pk.pending() == []
 
 
 def test_the_same_denied_action_is_not_retried_but_a_different_one_gets_its_own_approval(pk):
     pk.replies_ += [{"text": "", "tool_calls": [call(1)]},
-                    {"text": "", "tool_calls": [call(2, command="echo 1")]},   # prover SAMME handling igen
-                    {"text": "", "tool_calls": [call(3, command="echo andet")]},   # en ANDEN handling
+                    {"text": "", "tool_calls": [call(2)]},   # prover SAMME handling igen
+                    {"text": "", "tool_calls": [call(3, command="chmod 700 /tmp/andet")]},   # en ANDEN handling
                     ]
     out = pk.dispatch()
     pk.go()
@@ -241,7 +249,7 @@ def test_the_same_denied_action_is_not_retried_but_a_different_one_gets_its_own_
     denial2 = json.loads([m for m in pk.calls_[2] if m["role"] == "tool"][-1]["content"])
     assert denial2["code"] == "APPROVAL_DENIED" and "allerede afvist" in denial2["error"]
     (second,) = pk.pending()
-    assert second["safe_view"].count("echo andet") == 1 and second["approval_id"] != ap["approval_id"]
+    assert second["safe_view"].count("chmod 700 /tmp/andet") == 1 and second["approval_id"] != ap["approval_id"]
     assert pk.assignment(out) == "waiting"                                    # parkerer igen, nu for den nye handling
 
 
@@ -347,7 +355,7 @@ def test_a_worker_parks_at_the_approval_and_a_second_worker_resumes_it(pk, monke
     assert pk.appr_.parked_checkpoint(assignment_id=out["assignment_id"]) is not None
     pk.human(ap)
     pk.go()
-    assert pk.executed_ == [("c1", {"command": "echo 1"})] and pk.assignment(out) == "completed"
+    assert pk.executed_ == [("c1", {"command": MUTERENDE})] and pk.assignment(out) == "completed"
     assert len(pids) == 2 and pids[0] != pids[1] and os.getpid() not in pids          # to forskellige workers
     assert pk.runs() == [(1, "resumed"), (2, "completed")]
     assert pk.calls_[1][2]["content"] == "UDFOERT c1"
@@ -397,7 +405,7 @@ def test_a_supervisor_tick_during_a_resume_in_progress_neither_restarts_nor_disc
     assert len(pk.started_) == 1                                        # ikke startet to gange
     assert pk.appr_.parked_checkpoint(assignment_id=out["assignment_id"]) is not None     # IKKE kasseret
     pk.go()                                                              # den ene start koerer: fortsaetter, ikke forfra
-    assert pk.executed_ == [("c1", {"command": "echo 1"})] and pk.assignment(out) == "completed"
+    assert pk.executed_ == [("c1", {"command": MUTERENDE})] and pk.assignment(out) == "completed"
     assert len(pk.calls_) == 2                                           # kun to modelkald i alt
 
 

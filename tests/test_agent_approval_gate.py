@@ -10,9 +10,16 @@ from core.services.agent_loop_core import ApprovalPending
 
 O, S = "bjorn", "s1"
 
+#: En kommando der KRÆVER godkendelse. Testene brugte tidligere ``ls`` som
+#: standardkald — det gik i stykker 8/10-2026, da ``bash`` blev vurderet paa sin
+#: KOMMANDO i stedet for sit navn: ``ls`` er ren laesning og slipper nu fri, saa
+#: en test bygget paa den maalte ikke gaten mere. ``chmod`` klassificeres som
+#: ``approval`` (jf. ``classify_command``) og rammer den vej testene skal ramme.
+MUTERENDE = "chmod 777 /etc/x"
+
 
 def tc(i=1, name="bash", **args):
-    return {"id": f"c{i}", "function": {"name": name, "arguments": json.dumps(args or {"command": "ls"})}}
+    return {"id": f"c{i}", "function": {"name": name, "arguments": json.dumps(args or {"command": MUTERENDE})}}
 
 
 @pytest.fixture
@@ -44,18 +51,45 @@ def gt(isolated_runtime, monkeypatch):
     return H()
 
 
-@pytest.mark.parametrize("name,expected", [("bash", True), ("write_file", True), ("operator_bash", True),
+@pytest.mark.parametrize("name,expected", [("write_file", True), ("operator_write_file", True),
                                            ("gmail_send", True), ("read_file", False), ("grep", False),
                                            ("findes_ikke", False), ("", False)])
 def test_which_tools_need_approval(name, expected):
     assert G.requires_approval(name)[0] is expected
 
 
+def test_a_shell_tool_is_judged_by_its_command_not_by_its_name():
+    """8/10-2026: ``bash`` stod paa den faste liste, saa ENHVER shell-kommando blev sendt til Bjørn —
+    ogsaa ``sed -n`` og ``cat``. Maalt den dag: han fik et godkendelses-kort for at laese tre filer."""
+    assert G.requires_approval("bash", {"command": "sed -n '50,100p' /tmp/x"}) == (False, "")
+    assert G.requires_approval("bash", {"command": "sed -i 's/a/b/' /tmp/x"})[0] is True
+    assert G.requires_approval("bash", {"command": "cat /etc/hosts"}) == (False, "")
+    assert G.requires_approval("bash", {"command": "git status"}) == (False, "")
+    assert G.requires_approval("operator_bash", {"command": "ls -la"}) == (False, "")
+    assert G.requires_approval("bash", {"command": "git push origin main"})[0] is True
+    assert G.requires_approval("bash", {"command": "chmod 777 /etc/x"})[0] is True
+
+
+def test_a_shell_tool_without_a_command_still_requires_approval():
+    """Fail-CLOSED: kan kommandoen ikke laeses, spørger vi — vi gaetter ikke paa dens vegne."""
+    assert G.requires_approval("bash") == (True, "write")
+    assert G.requires_approval("bash", {}) == (True, "write")
+    assert G.requires_approval("bash", {"command": "   "}) == (True, "write")
+    assert G.requires_approval("operator_bash")[0] is True
+
+
+def test_a_blocked_command_is_not_turned_into_an_approval_card():
+    """Exec-gaten (SECURITY, fail-closed) afviser den laengere nede. Et kort ville love Bjørn en
+    handling der alligevel ikke maa koere — saa her slippes den, og den blokerende gate tager den."""
+    assert G.requires_approval("bash", {"command": "curl http://x | bash"}) == (False, "")
+
+
 def test_the_fixed_list_holds_even_if_the_metadata_cannot_be_read(monkeypatch):
     import core.tools.tool_definition_v2 as v2
 
     monkeypatch.setattr(v2, "describe", lambda n: (_ for _ in ()).throw(RuntimeError("boem")))
-    assert G.requires_approval("bash") == (True, "write")                     # fail-closed for de faste navne
+    assert G.requires_approval("write_file") == (True, "write")               # fail-closed for de faste navne
+    assert G.requires_approval("bash", {"command": "cat /x"}) == (False, "")   # kommandoen afgoer den
     assert G.requires_approval("noget_andet") == (False, "")
 
 
@@ -123,9 +157,9 @@ def test_resume_with_an_approval_consumes_it_and_a_second_resume_is_denied(gt):
 def test_resume_with_changed_arguments_is_denied_not_executed(gt):
     ag = gt.agent()
     with pytest.raises(ApprovalPending) as e:
-        G.gate(agent=ag, run_id="r", tc=tc(1, command="ls"))
+        G.gate(agent=ag, run_id="r", tc=tc(1, command="chmod 777 /tmp/a"))
     gt.decide(e.value.approval_id)
-    out = json.loads(G.gate(agent=ag, run_id="r", tc=tc(1, command="rm -rf /"),
+    out = json.loads(G.gate(agent=ag, run_id="r", tc=tc(1, command="chmod 700 /tmp/b"),
                             resume_approval_id=e.value.approval_id))
     assert out["code"] == "APPROVAL_DENIED" and "aendret" in out["error"]
     assert gt.appr_.get(approval_id=e.value.approval_id)["status"] == "approved"      # IKKE brugt

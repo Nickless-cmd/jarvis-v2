@@ -32,7 +32,9 @@ def br(isolated_runtime, monkeypatch):
         sleeps: list = []
 
         def agent(self, name="a1", target=f"client:{CLIENT}", owner=OWNER, session=SESSION, policy="client-operator"):
-            create_agent_registry_entry(agent_id=name, role="researcher", goal="g", tool_policy=policy)
+            create_agent_registry_entry(agent_id=name, role="researcher", goal="g", tool_policy=policy,
+                                        allowed_tools_json=json.dumps(["operator_read_file", "operator_write_file",
+                                                                       "operator_bash"]))
             c.bind_agent_owner(agent_id=name, owner_user_id=owner, owner_session_id=session)
             acc = c.accept_assignment(agent_id=name, owner_user_id=owner, origin_session_id=session, goal="g",
                                       parent_agent_id="jarvis", parent_run_id="pr", target=target)
@@ -126,6 +128,64 @@ def test_a_bound_agent_with_a_blank_session_is_refused_not_defaulted(br):
     out = json.loads(br.run(ag, acc))
     assert (out["status"], out["code"], out["phase"]) == ("error", "INVALID_SCOPE", "bridge")
     assert br.wire.calls == []
+
+
+def test_a_previous_run_cannot_send_a_tool_call_for_the_next_assignment(br):
+    ag, first = br.agent()
+    conn = br.c_._conn()
+    conn.execute("UPDATE agent_assignments SET status='completed' WHERE assignment_id=?", (first["assignment_id"],))
+    conn.commit()
+    second = br.c_.accept_assignment(agent_id="a1", owner_user_id=OWNER, origin_session_id=SESSION,
+                                     goal="next", parent_agent_id="jarvis", parent_run_id="pr",
+                                     target=f"client:{CLIENT}")
+    conn.execute("UPDATE agent_assignments SET status='active' WHERE assignment_id=?", (second["assignment_id"],))
+    conn.commit()
+    out = json.loads(br.run(ag, first))
+    assert out["code"] == "INVALID_SCOPE"
+    assert br.wire.calls == [] and br.inv() == []
+
+
+def test_a_tool_outside_the_saved_agent_allowlist_never_reaches_the_client(br):
+    ag, acc = br.agent()
+    out = json.loads(br.run(ag, acc, br.tc(name="operator_kill_process", args={"pid": 1})))
+    assert out["code"] == "POLICY_DENIED"
+    assert br.wire.calls == [] and br.inv() == []
+
+
+def test_a_lost_worker_lease_cannot_start_a_client_write(br):
+    from core.runtime.db_agent_lease import _scope
+    import threading
+
+    ag, acc = br.agent()
+    token = _scope.set({"assignment_id": acc["assignment_id"], "token": 999,
+                        "lost": threading.Event()})
+    try:
+        out = json.loads(br.run(ag, acc, br.tc(name="operator_write_file",
+                                                args={"path": "/x", "content": "write"})))
+    finally:
+        _scope.reset(token)
+    assert out["code"] == "LEASE_LOST"
+    assert br.wire.calls == [] and br.inv() == []
+
+
+def test_a_worker_that_loses_its_lease_during_an_unsent_retry_does_not_send_again(br, monkeypatch):
+    from core.runtime import db_agent_lease as lease
+    import threading
+
+    ag, acc = br.agent()
+    br.wire.script = [{"status": "error", "error": "client_not_connected", "sent": False},
+                      {"status": "ok", "result": "must not happen", "sent": True}]
+    checks = iter((True, True, False))
+    monkeypatch.setattr(lease, "scope_is_current", lambda: next(checks))
+    token = lease._scope.set({"assignment_id": acc["assignment_id"], "token": 1,
+                              "lost": threading.Event()})
+    try:
+        out = json.loads(br.run(ag, acc, br.tc(name="operator_write_file",
+                                                args={"path": "/x", "content": "write"})))
+    finally:
+        lease._scope.reset(token)
+    assert out["code"] == "LEASE_LOST"
+    assert len(br.wire.calls) == 1
 
 
 # --- det normale kald ---------------------------------------------------------------------------

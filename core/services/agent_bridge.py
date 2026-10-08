@@ -124,7 +124,7 @@ def allowed_tools_for_client(owner_user_id: str, target: str, requested: list[st
 # --------------------------------------------------------------- identitet fra DB
 
 
-def _identity(agent_id: str) -> dict[str, Any]:
+def _identity(agent_id: str, *, run_id: str = "") -> dict[str, Any]:
     """Ejer, session, target og aktuelt run - fra DB. ``ContractError`` ved alt ufuldstaendigt."""
     conn = _conn()
     a = conn.execute("SELECT * FROM agent_assignments WHERE agent_id=? AND status IN "
@@ -136,8 +136,22 @@ def _identity(agent_id: str) -> dict[str, Any]:
         raise ContractError("INVALID_SCOPE", "assignmentet mangler ejer eller session")
     run = conn.execute("SELECT run_id FROM agent_runs WHERE assignment_id=? ORDER BY attempt_no DESC LIMIT 1",
                        (a["assignment_id"],)).fetchone()
+    if run_id and (run is None or run["run_id"] != run_id):
+        raise ContractError("INVALID_SCOPE", "runnet ejer ikke agentens aktuelle assignment")
+    from core.runtime.db_agent_lease import _scope, scope_is_current
+    scope = _scope.get()
+    if scope is not None and (scope["assignment_id"] != a["assignment_id"] or not scope_is_current()):
+        raise ContractError("LEASE_LOST", "workerens lease er udloebet eller overtaget")
+    registry = conn.execute("SELECT allowed_tools_json FROM agent_registry WHERE agent_id=?", (agent_id,)).fetchone()
+    try:
+        allowed = json.loads(registry["allowed_tools_json"]) if registry else []
+    except (TypeError, ValueError):
+        allowed = []
+    if not isinstance(allowed, list):
+        allowed = []
     return {"owner": owner, "session": session, "target": str(a["target"] or ""),
-            "assignment_id": a["assignment_id"], "run_id": str(run["run_id"]) if run else ""}
+            "assignment_id": a["assignment_id"], "run_id": str(run["run_id"]) if run else "",
+            "allowed_tools": frozenset(str(t) for t in allowed)}
 
 
 def target_of(agent_id: str) -> tuple[str, str]:
@@ -203,17 +217,21 @@ def invoke_tool_call(*, agent: dict[str, Any], run_id: str, tc: dict[str, Any],
         # En legacy-agent har intet assignment: den koerer containerstien. En bundet agent med et
         # ufuldstaendigt assignment afvises hoejt - men kun hvis den overhovedet er bundet.
         from core.services.agent_model_router import bound_owner
-        return _tool_error("INVALID_SCOPE", exc.detail) if bound_owner(agent_id) else None
+        return _tool_error(exc.code, exc.detail) if bound_owner(agent_id) else None
     except ValueError as exc:
         logger.warning("agent %s har et ugyldigt target: %s", agent_id, exc)
         return _tool_error("INVALID_SCOPE", str(exc))
     if kind != "client":
         return None
+    if not run_id or ident["run_id"] != run_id:
+        return _tool_error("INVALID_SCOPE", "runnet ejer ikke agentens aktuelle assignment")
     fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
     tool = str(fn.get("name") or "").strip()
     if not tool.startswith("operator_"):
         # Ingen stille tilbagegang til containeren: et ikke-klientvaerktoej er afvist paa et klient-target.
         return _tool_error("POLICY_DENIED", f"{tool or '(intet navn)'} kan ikke koeres paa et klient-target")
+    if tool not in ident["allowed_tools"]:
+        return _tool_error("POLICY_DENIED", f"{tool} er ikke i agentens gemte vaerktoejspolitik")
     raw = fn.get("arguments")
     try:
         args = json.loads(raw) if isinstance(raw, str) and raw.strip() else (dict(raw) if isinstance(raw, dict) else {})
@@ -256,6 +274,15 @@ def _drive(*, ident: dict[str, Any], agent_id: str, row: dict[str, Any], client_
     unsent = 0
     timeouts = 0
     while True:
+        from core.runtime.db_agent_lease import _scope, scope_is_current
+        scope = _scope.get()
+        if scope is not None and (scope["assignment_id"] != ident["assignment_id"] or not scope_is_current()):
+            # A stale worker must not send after a retry wait. A pending unsent invocation is safe to
+            # close; a possibly sent one remains in the ledger for supervisor reconciliation.
+            if (store.get(iid) or {}).get("state") == store.PENDING:
+                store.abort_unsent(iid, "worker lease lost before dispatch")
+            return _tool_error("LEASE_LOST", "workerens lease er udloebet eller overtaget",
+                               invocation_id=iid)
         store.mark_sent(iid)
         try:
             res = _run(send(user_id=ident["owner"], client_id=client_id, tool=tool, args=args,

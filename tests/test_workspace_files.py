@@ -5,6 +5,7 @@ Dækker især den 2026-06-09-tilføjede stub-fallback til shared/.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def test_workspace_file_section_reads_rich_workspace(tmp_path) -> None:
@@ -52,6 +53,7 @@ def test_stub_workspace_falls_back_to_shared(tmp_path, monkeypatch) -> None:
     # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
     # forskellige svar paa «hvor er hjemmet».
     monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: SimpleNamespace(workspace="bjorn"))
 
     section = workspace_files._workspace_file_section(
         workspaces / "SOUL.md",
@@ -129,7 +131,7 @@ def test_no_fallback_for_non_identity_file(tmp_path, monkeypatch) -> None:
 
 
 def test_resolve_with_shared_fallback_handles_missing_workspace(tmp_path, monkeypatch) -> None:
-    """Workspace mangler men shared har den → fallback aktiveres."""
+    """Ejer-workspace mangler men shared har filen → fallback aktiveres."""
     from core.services.prompt_sections.workspace_files import _resolve_with_shared_fallback
 
     fake_home = tmp_path / "home"
@@ -144,9 +146,32 @@ def test_resolve_with_shared_fallback_handles_missing_workspace(tmp_path, monkey
     # forskellige svar paa «hvor er hjemmet».
     monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
-    fake_workspace_path = tmp_path / "non-existent" / "MEMORY.md"
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: SimpleNamespace(workspace="bjorn"))
+    fake_workspace_path = tmp_path / "bjorn" / "MEMORY.md"
     resolved = _resolve_with_shared_fallback(fake_workspace_path)
     assert resolved == shared / "MEMORY.md"
+
+
+def test_member_stub_never_reads_owner_shared_user_or_memory(tmp_path, monkeypatch) -> None:
+    """Michelles korte filer må ikke erstattes af ejerens shared-profil."""
+    from core.services.prompt_sections import workspace_files as wf
+
+    home = tmp_path / ".jarvis-v2"
+    shared = home / "shared"
+    member = home / "workspaces" / "michelle"
+    shared.mkdir(parents=True)
+    member.mkdir(parents=True)
+    monkeypatch.setenv("JARVIS_HOME", str(home))
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: SimpleNamespace(workspace="bjorn"))
+    for name in ("USER.md", "MEMORY.md", "SOUL.md"):
+        (shared / name).write_text("Ejerens private oplysninger\n" * 30, encoding="utf-8")
+        own = member / name
+        own.write_text("Michelles egen korte profil\n", encoding="utf-8")
+        assert wf._resolve_with_shared_fallback(own) == own
+        section = wf._workspace_file_section(own, label=name, max_lines=5, max_chars=200)
+        assert section is not None
+        assert "Michelles egen" in section
+        assert "Ejerens private" not in section
 
 
 def test_resolve_with_shared_fallback_preserves_when_shared_missing(tmp_path, monkeypatch) -> None:

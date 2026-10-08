@@ -12,6 +12,7 @@ sider skal blive enige om at shared vinder.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -32,6 +33,7 @@ def home(tmp_path, monkeypatch):
     ws.mkdir(parents=True)
     shared.mkdir(parents=True)
     monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir_or_owner", lambda: ws)
+    monkeypatch.setattr("core.identity.users.get_owner", lambda: SimpleNamespace(workspace="bjorn"))
     return {"ws": ws, "shared": shared}
 
 

@@ -9,10 +9,9 @@ og bygge prompt-sektioner ud af dem:
 Re-eksporteres fra prompt_contract.py så eksisterende imports + monkeypatches
 i tests ikke knækker.
 
-2026-06-09: tilføjet `_resolve_with_shared_fallback` — hvis workspace-
+2026-06-09: tilføjet `_resolve_with_shared_fallback` — hvis ejer-workspace-
 versionen er stub-tynd (<500 bytes), prøv ~/.jarvis-v2/shared/<navn>
-som fallback. Multi-user spec'en gør shared/ til owner-state og
-workspaces/<user>/ til per-user overrides, men hvis owner-workspace
+som fallback. shared/ er owner-state og må aldrig bruges til medlemmer. Hvis ejer-workspace
 indeholder en bootstrap-stub (typisk fra workspace_bootstrap) skulle
 shared-versionen vinde. Uden denne fallback læste vi tynde stubs for
 SOUL/IDENTITY/MILESTONES selvom rige versioner lå i shared/.
@@ -48,8 +47,7 @@ def _effective_size(path: Path) -> int:
 
 
 def _resolve_with_shared_fallback(path: Path) -> Path:
-    """Hvis `path` peger på en stub-tynd identitets-fil og shared/<navn>
-    har en større version, returner shared-versionen i stedet.
+    """Brug kun shared/ som fallback for ejerens stub-tynde identitetsfil.
 
     Garanteret aldrig at returnere en sti der ikke eksisterer hvis den
     oprindelige eksisterede — fallback bruges KUN når shared har mere
@@ -57,6 +55,15 @@ def _resolve_with_shared_fallback(path: Path) -> Path:
     """
     filename = path.name
     if filename not in _FALLBACK_FILENAMES:
+        return path
+    # Shared/ indeholder ejerens profil og hukommelse. En medlemsfil på under
+    # 500 bytes må aldrig erstattes af dem (Michelle/PWA 8/10-2026).
+    try:
+        from core.identity.users import get_owner
+        owner = get_owner()
+        if owner is None or path.parent.name != owner.workspace:
+            return path
+    except Exception:  # Kan ejerrollen ikke bevises, må shared/ ikke læses.
         return path
     try:
         own = _effective_size(path)

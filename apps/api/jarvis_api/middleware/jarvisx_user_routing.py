@@ -377,6 +377,16 @@ async def jarvisx_user_routing_middleware(
         # but still bind the project anchor below.
         user = None
 
+    # Midlertidig inddæmning af prompt-læk (8/10-2026): medlemschatten kunne
+    # få ejerens shared/USER.md og MEMORY.md i systemprompten. Blokér nye
+    # medlemskørsler, indtil alle promptkilder er gennemgået.
+    if (request.method == "POST" and _sti in ("/chat/stream", "/chat/stream/v2")
+            and (user is None or user.role != "owner")):
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Medlemschat er midlertidigt sat på pause, mens vi retter en privatlivsfejl."},
+        )
+
     if user_id and user is None:
         # Unknown discord_id — same fallback as discord_gateway / user_context.
         # We bind to "public" workspace so memory writes can't accidentally

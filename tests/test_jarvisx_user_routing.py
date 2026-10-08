@@ -10,8 +10,34 @@ from __future__ import annotations
 
 import logging
 from unittest.mock import Mock
+from types import SimpleNamespace
+
+import pytest
 
 import apps.api.jarvis_api.middleware.jarvisx_user_routing as M
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["/chat/stream", "/chat/stream/v2"])
+async def test_medlemschat_pause_blokerer_nye_promptkoersler(monkeypatch, path):
+    from core.runtime import jarvisx_auth
+    from core.identity import users
+
+    monkeypatch.setattr(jarvisx_auth, "verify_token", lambda token: {"sub": "member-1", "role": "partner"})
+    monkeypatch.setattr(users, "find_user_by_discord_id", lambda uid: SimpleNamespace(
+        discord_id=uid, workspace="michelle", name="Michelle", role="partner",
+    ))
+    req = Mock()
+    req.method = "POST"
+    req.url = Mock(path=path)
+    req.headers = {"authorization": "Bearer valid-test-token"}
+    req.client = Mock(host="8.8.8.8")
+
+    async def _next(_req):
+        raise AssertionError("medlemskørslen må ikke starte")
+
+    response = await M.jarvisx_user_routing_middleware(req, _next)
+    assert response.status_code == 503
 
 
 def _request(host="1.2.3.4", path="/presence/ping"):

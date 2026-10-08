@@ -237,3 +237,67 @@ def test_slankningen_efterlader_et_VARIGT_spor():
     kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
     assert '"context", "lean_prompt"' in kilde
     assert '"applied": bool(_lean_metrics.get("changed"))' in kilde
+
+
+def test_telemetrien_taeller_hver_levetid_for_sig():
+    """Uden tal pr. levetid kan man ikke se om en note haenger. `naeste`
+    taelles med, men maa IKKE indgaa i `beskeder`: den er ikke sendt endnu."""
+    h = RundeHale()
+    h.tilfoej_vedvarende("en varig note")
+    h.tilfoej_naeste("en note til naeste runde")
+    h.tilfoej_runde("et vink til denne runde")
+    t = h.telemetri()
+    assert (t["vedvarende"], t["naeste"], t["runde"]) == (1, 1, 1)
+    assert t["beskeder"] == 2          # naeste sendes IKKE endnu
+    assert [p["levetid"] for p in t["poster"]] == ["vedvarende", "runde"]
+
+
+def test_telemetrien_viser_noten_i_PRAECIS_en_runde():
+    """Kernebeviset. Den gamle fejl var netop at noten blev staaende: 2.226
+    gen-sendinger over 416 ture. Telemetrien skal vise BEGGE bevaegelser — at
+    noten kommer, og at den forsvinder igen. Kan den kun det foerste, maaler
+    den ikke det den blev bygget til."""
+    h = RundeHale()
+    h.tilfoej_naeste("HOLLOW-PROMISE: du lovede et kald")
+    assert h.telemetri()["beskeder"] == 0        # endnu ikke rykket ind
+    h.ny_runde()
+    t = h.telemetri()
+    assert t["beskeder"] == 1
+    assert t["poster"][0]["label"].startswith("HOLLOW-PROMISE")
+    assert t["poster"][0]["levetid"] == "runde"
+    h.ny_runde()
+    assert h.telemetri()["beskeder"] == 0        # vaek igen
+
+
+def test_telemetriens_etiket_skaeler_runtime_rammen_fra():
+    """Rammen er konstant og siger intet om noten. Stod den i etiketten, ville
+    hver post begynde med de samme tegn — og ingen kunne se forskel paa dem."""
+    h = RundeHale()
+    h.tilfoej_runde("Skriv nu dit endelige svar")
+    p = h.telemetri()["poster"][0]
+    assert not p["label"].startswith("[RUNTIME")
+    assert p["label"].startswith("Skriv nu")
+    assert p["tegn"] == len("Skriv nu dit endelige svar")
+
+
+def test_telemetriens_total_er_hvad_modellen_faar():
+    """`tegn` skal vaere den raa laengde INKL. runtime-rammen — det er den pris
+    modellen betaler. Et tal uden rammen ville underdrive hver eneste runde."""
+    h = RundeHale()
+    h.tilfoej_runde("abc")
+    t = h.telemetri()
+    assert t["tegn"] == len(h.som_liste()[0]["content"])
+    assert t["tegn"] > t["poster"][0]["tegn"]
+
+
+def test_telemetrien_er_self_safe_paa_tom_hale():
+    """Den kaldes inde i den hede loekke. Kaster den, vaelter den turen."""
+    t = RundeHale().telemetri()
+    assert t["beskeder"] == 0 and t["poster"] == []
+
+
+def test_hale_telemetrien_publiceres_FAKTISK_fra_loekken():
+    """En telemetri ingen publicerer, er en klasse — ikke en maaling."""
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert "runtime.visible_run_tail" in kilde
+    assert "_tur_hale.telemetri()" in kilde

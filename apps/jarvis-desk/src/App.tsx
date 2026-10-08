@@ -37,6 +37,7 @@ import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { ArtifactsView } from './views/ArtifactsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
+import { WebSidebarFrame } from './components/shell/WebSidebarFrame'
 // OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026): det lille arbejder-felt i
 // højre nederste hjørne skulle ud. Komponenten er bevaret — kun renderingen
 // er fjernet. Genaktiveres med: import + <OpmaerksomhedsVaert setSurface={setSurface} />
@@ -51,6 +52,7 @@ import './styles/cowork-categories.css'
 import './styles/desk-settings.css'
 import './styles/raekkevisning.css'
 import './styles/chat-reading.css'
+import './styles/web-sidebar.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
@@ -221,10 +223,11 @@ function Shell({
   // top-laget MIDT på skærmen, ikke inde i sidens kolonne-layout.
   const [bugOpen, setBugOpen] = useState(false)
   return (
-    <div className="window">
+    <WebSidebarFrame web={__WEB_BUILD__} sidebar={
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)}
                onOpenBug={() => setBugOpen(true)}
                onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })} />
+    }>
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
         <PresenceHost />
@@ -288,7 +291,7 @@ function Shell({
           onAabenSession={(id) => { if (id) select(id); setSurface('chat') }}
         />
       </main>
-    </div>
+    </WebSidebarFrame>
   )
 }
 

@@ -58,12 +58,13 @@ export function withoutPauseAsk<T extends {
   type: string; name?: string; id?: string; tool_use_id?: string
 }>(blocks: T[] | null): T[] | null {
   if (!blocks) return null
-  const ids = new Set(blocks
+  const complete = blocks.filter((block): block is T => block != null)
+  const ids = new Set(complete
     .filter((block) => block.type === 'tool_use' && block.name === 'pause_and_ask')
     .map((block) => block.id)
     .filter((id): id is string => Boolean(id)))
-  if (!ids.size && !blocks.some((block) => block.type === 'tool_use' && block.name === 'pause_and_ask')) return blocks
-  return blocks.filter((block) =>
+  if (!ids.size && !complete.some((block) => block.type === 'tool_use' && block.name === 'pause_and_ask')) return complete
+  return complete.filter((block) =>
     !(block.type === 'tool_use' && block.name === 'pause_and_ask') &&
     !(block.type === 'tool_result' && !!block.tool_use_id && ids.has(block.tool_use_id)))
 }

@@ -45,3 +45,24 @@ test('fjerner spørgsmål og tilhørende tool-resultat fra samtalen', () => {
   ]
   expect(withoutPauseAsk(blocks)).toEqual([blocks[0], blocks[3], blocks[4]])
 })
+
+test('viser øvrige live-blokke når listen har et tomt indeks og et spørgsmål', () => {
+  // visibleStreamBlocks spreder et sparsomt array, når foreløbig tekst tilføjes.
+  // Hullet bliver da et eksplicit undefined-element.
+  const live = [
+    { type: 'text', text: 'Venter på dit svar.' },
+    undefined,
+    { type: 'tool_use', id: 'ask-2', name: 'pause_and_ask', input: {}, result },
+  ] as ContentBlock[]
+  expect(withoutPauseAsk(live)).toEqual([{ type: 'text', text: 'Venter på dit svar.' }])
+})
+
+test('viser øvrige live-blokke når listen har et tomt indeks uden spørgsmål', () => {
+  const live: ContentBlock[] = []
+  live[0] = { type: 'text', text: 'Før' }
+  live[2] = { type: 'text', text: 'Efter' }
+  expect(withoutPauseAsk(live)).toEqual([
+    { type: 'text', text: 'Før' },
+    { type: 'text', text: 'Efter' },
+  ])
+})

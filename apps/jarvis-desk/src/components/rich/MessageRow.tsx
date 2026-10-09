@@ -18,6 +18,7 @@ import { useRaekkevisning } from '../../lib/visningsPref'
 import { EditedFilesCard } from './EditedFilesCard'
 import { maalteRedigeringer, redigeredeDiffPar, redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
+import { usePacedBlocks } from '../../lib/usePacedBlocks'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -82,7 +83,7 @@ function MessageRowImpl({
   // return braekker hele visningen, og hverken tsc eller testene ser det
   // (maalt tidligere i dette repo).
   const raekker = useRaekkevisning()
-  const blocks = denseBlocks(rawBlocks)
+  const blocks = usePacedBlocks(denseBlocks(rawBlocks), streaming && role === 'assistant')
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const images = blocks.filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')

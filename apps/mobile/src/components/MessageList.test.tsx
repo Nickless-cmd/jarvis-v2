@@ -34,6 +34,19 @@ it('viser ikke pause_and_ask igen under svaret i samtalen', async () => {
   expect(view.getByText('Jeg har et spørgsmål.')).toBeTruthy()
 })
 
+it('lader en stor live-tekst komme frem i flere trin og viser alt ved afslutning', async () => {
+  jest.useFakeTimers()
+  try {
+    const text = 'Et langt svar med mange ord. '.repeat(12)
+    const view = await render(<MessageList messages={[]} blocks={[{ type: 'text', text }]} working />)
+    expect(view.queryByText(text)).toBeNull()
+    await act(async () => { jest.advanceTimersByTime(99) })
+    expect(view.queryByText(text)).toBeNull()
+    await view.rerender(<MessageList messages={[]} blocks={[{ type: 'text', text }]} working={false} />)
+    expect(view.getByText(text)).toBeTruthy()
+  } finally { jest.useRealTimers() }
+})
+
 /**
  * Et billede Jarvis laver MIDT i streamen. Det bærer sin egen `src` (en
  * data-URL), så det kan tegnes med det samme.

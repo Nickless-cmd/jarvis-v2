@@ -31,6 +31,7 @@ import { ImageGenerationCard } from './ImageGenerationCard'
 import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
 import { billedArbejdeFor } from '../lib/billedArbejde'
+import { usePacedBlocks } from '../lib/usePacedBlocks'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -572,6 +573,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 ) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const pacedBlocks = usePacedBlocks(blocks, working)
   const flatRef = useRef<FlatList>(null)
   const [turnOverrides, setTurnOverrides] = useState<Record<string, boolean>>({})
   const wasWorking = useRef(working)
@@ -828,7 +830,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   })
 
   // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
-  const levende = buildStreamingRows(blocks)
+  const levende = buildStreamingRows(pacedBlocks)
   const flade = skillFlade?.matches?.length && levende.length
     ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches,
         turnId: 'stream', work: true }]

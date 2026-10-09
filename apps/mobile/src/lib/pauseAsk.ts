@@ -1,6 +1,7 @@
 import type { ChatMessage } from './types'
 import type { ContentBlock } from './sseProtocol'
 import { parseBlocks, type PersistedBlock } from './persistedBlocks'
+import { denseBlocks } from './blockHelpers'
 
 export type PauseAsk = {
   question: string
@@ -49,7 +50,7 @@ export function activePauseAsk(messages: ChatMessage[], live: ContentBlock[]): P
     if (message.role === 'user') active = null
     if (message.role === 'assistant') active = pauseIn(parseBlocks(message) ?? []) ?? active
   }
-  return pauseIn(live) ?? active
+  return pauseIn(denseBlocks(live)) ?? active
 }
 
 /** The active question has one host above the composer, not another tool row. */

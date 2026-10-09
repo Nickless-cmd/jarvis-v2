@@ -23,7 +23,11 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
-from core.tools.tool_call_telemetry import byg_completed_payload, udgiv_tool_invoked
+from core.tools.tool_call_telemetry import (
+    byg_completed_payload,
+    er_internt_kald,
+    udgiv_tool_invoked,
+)
 from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
@@ -1001,26 +1005,39 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if _haarde and _tcs.haandhaever():
             from core.tools.tool_schema_contract import afvisning
             _afvist = afvisning(name, _haarde)
-            from core.tools.tool_call_observation import observe_tool_call
-            observe_tool_call(name, arguments, _afvist)
+            if not er_internt_kald():
+                from core.tools.tool_call_observation import observe_tool_call
+                observe_tool_call(name, arguments, _afvist)
             return _afvist
     except Exception:
         pass  # en maaling maa aldrig kunne vaelte kaldet den maaler
 
     result = _execute_tool_impl(name, arguments)
     # Observationen er udskilt til `tool_call_observation` (Boy Scout, 2.141
-    # linjer). Den aendrer aldrig udfaldet og kaster aldrig.
-    from core.tools.tool_call_observation import observe_tool_call
-    observe_tool_call(name, arguments, result)
+    # linjer). Den aendrer aldrig udfaldet og kaster aldrig. Systemets EGNE kald
+    # (job-pollen) observeres ikke — de er panelets puls, ikke model-kald.
+    if not er_internt_kald():
+        from core.tools.tool_call_observation import observe_tool_call
+        observe_tool_call(name, arguments, result)
     return result
 
 
 def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a tool call and return the result."""
+    # Systemets EGNE kald observeres ikke i tool-laget (10/10-2026): job-pollen
+    # er panelets puls, ikke et model-kald, og skrev 34.079 events i doegnet —
+    # 59 % af hele stroemmen. Se `internt_kald` i tool_call_telemetry.
+    _intern = er_internt_kald()
+
+    def _husk(res: dict[str, Any]) -> None:
+        """Outcome-memory — sprunget over for systemets egne kald."""
+        if not _intern:
+            _record_tool_outcome_memory(name, arguments, res, mode="tool")
+
     handler = _TOOL_HANDLERS.get(name)
     if not handler:
         result = {"error": f"Unknown tool: {name}", "status": "error"}
-        _record_tool_outcome_memory(name, arguments, result, mode="tool")
+        _husk(result)
         return result
 
     # Serverside rolle-håndhævelse (Spor A, defense-in-depth): selv hvis model-
@@ -1092,7 +1109,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                                   role=_role, run_id=_ua_rid)
             except Exception:
                 pass
-            _record_tool_outcome_memory(name, arguments, result, mode="tool")
+            _husk(result)
             return result
 
     # Trusted-folder gate: skrive/exec i ikke-betroet code-workspace → Execution-cluster 🔒
@@ -1105,7 +1122,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _trust_block = None
     if _trust_block:
         result = {"error": _trust_block, "status": "error", "blocked": "untrusted_workspace"}
-        _record_tool_outcome_memory(name, arguments, result, mode="tool")
+        _husk(result)
         return result
 
     # Identiteten staar nu i payloadens ROD, ikke kun inde i argumenterne
@@ -1113,7 +1130,8 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     # `json_extract(..., '$._runtime_user_id')` gav None for alle 59.778 kald.
     # Udskilt til `tool_call_telemetry` foer aendringen — Boy Scout, filen er
     # over 2.000 linjer.
-    udgiv_tool_invoked(name, arguments)
+    if not _intern:
+        udgiv_tool_invoked(name, arguments)
 
     try:
         result = handler(arguments)
@@ -1137,33 +1155,35 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             )
         except Exception:  # self-safe: mutating-flag er kosmetisk, ma ikke vælte tool-flow
             pass
-    event_bus.publish("tool.completed", _completed_payload)
+    if not _intern:
+        event_bus.publish("tool.completed", _completed_payload)
 
     # Tavs kæde-knæk (Bjørn 9/10-2026): en REN `&&`-kæde der brød, hvor led
     # efter brud-punktet beviseligt ikke kørte — og Jarvis læste videre som om
     # hele kommandoen kørte. Detektoren ser exit-koden HER, hvor den er frisk;
     # `tool.completed` bærer den ikke. Se core/services/silent_chain_break.py.
-    try:
-        from core.services.silent_chain_break import observe as _scb_observe
+    if not _intern:
+        try:
+            from core.services.silent_chain_break import observe as _scb_observe
 
-        _scb_observe(name, arguments, result)
-    except Exception:  # self-safe: detektoren maa ikke vaelte tool-flow
-        pass
+            _scb_observe(name, arguments, result)
+        except Exception:  # self-safe: detektoren maa ikke vaelte tool-flow
+            pass
 
-    # Outcome learning: each tool execution is a datapoint. Context = tool name,
-    # outcome = success/error. Fire-and-forget — must never break tool flow.
-    try:
-        from core.services.outcome_learning import record_outcome
-        outcome_label = "error" if status == "error" else "success"
-        record_outcome(
-            context=f"tool:{name}",
-            outcome=outcome_label,
-            weight=1.0,
-        )
-    except Exception:  # self-safe: outcome-learning er fire-and-forget
-        pass
+        # Outcome learning: each tool execution is a datapoint. Context = tool name,
+        # outcome = success/error. Fire-and-forget — must never break tool flow.
+        try:
+            from core.services.outcome_learning import record_outcome
+            outcome_label = "error" if status == "error" else "success"
+            record_outcome(
+                context=f"tool:{name}",
+                outcome=outcome_label,
+                weight=1.0,
+            )
+        except Exception:  # self-safe: outcome-learning er fire-and-forget
+            pass
 
-    _record_tool_outcome_memory(name, arguments, result, mode="tool")
+    _husk(result)
 
     return result
 

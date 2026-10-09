@@ -477,3 +477,22 @@ def test_cachen_er_pr_bruger(monkeypatch):
     bj._operator_jobs("u1", exec_fn)
     bj._operator_jobs("u2", exec_fn)
     assert len(kald) == 2, "cachen delte et svar paa tvaers af to brugere"
+
+
+def test_pollens_bro_kald_er_markeret_internt(monkeypatch):
+    """Pollen er systemets EGET kald — ikke et model-kald.
+
+    Bro-kaldet skal baere `internt_kald`, saa tool-laget ikke observerer det.
+    Uden flaget skrev hvert poll `tool.invoked` + `tool.completed` +
+    outcome-memory: maalt 34.079 events i doegnet = 59 % af hele stroemmen."""
+    from core.tools.tool_call_telemetry import er_internt_kald
+
+    set_flag: list[bool] = []
+
+    def _exec(navn, args):
+        set_flag.append(er_internt_kald())
+        return {"status": "ok", "result": {"stdout": ""}}
+
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    bj._bro_svar("u1", _exec)
+    assert set_flag == [True], "bro-kaldet baerer ikke internt-flaget"

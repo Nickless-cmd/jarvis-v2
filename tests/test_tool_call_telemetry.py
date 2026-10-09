@@ -197,3 +197,48 @@ def test_operator_bash_er_med_i_shell_familien():
         "operator_bash", "ok", {"command": "ls && rm x"}, {"exit_code": 2},
     )
     assert p["exit_code"] == 2
+
+
+# ── Interne kald: systemets egen trafik observeres ikke (10/10-2026) ─────────
+#
+# Job-pollen er ikke et vaerktoejskald. Den er panelets puls, og alligevel gik
+# hvert poll gennem hele observations-laget. Maalt: 34.079 events i doegnet =
+# 59 % af hele begivenhedsstroemmen, fra 11.351 kald.
+
+def test_internt_kald_er_per_kontekst_og_nulstilles():
+    """Flaget maa ikke laekke: efter blokken er vi tilbage til normale kald."""
+    assert t.er_internt_kald() is False
+    with t.internt_kald():
+        assert t.er_internt_kald() is True
+    assert t.er_internt_kald() is False
+
+
+def test_internt_kald_skriver_ingen_tool_events(monkeypatch):
+    """Kontrakten maalt direkte: et internt kald udgiver INTET i tool-laget."""
+    from core.services import outcome_learning as ol
+    from core.services import silent_chain_break as scb
+    from core.tools import simple_tools as st
+    from core.tools import tool_call_observation as obs
+
+    spor: list[str] = []
+
+    class _FakeBus:
+        def publish(self, kind, payload):
+            spor.append(kind)
+
+    monkeypatch.setitem(st._TOOL_HANDLERS, "_probe", lambda args: {"status": "ok"})
+    monkeypatch.setattr(st, "event_bus", _FakeBus())
+    monkeypatch.setattr(st, "udgiv_tool_invoked", lambda n, a: spor.append("invoked"))
+    monkeypatch.setattr(
+        st, "_record_tool_outcome_memory", lambda *a, **k: spor.append("memory"))
+    monkeypatch.setattr(obs, "observe_tool_call", lambda *a, **k: spor.append("observe"))
+    monkeypatch.setattr(ol, "record_outcome", lambda **k: None)
+    monkeypatch.setattr(scb, "observe", lambda *a, **k: None)
+
+    st.execute_tool("_probe", {})  # et normalt kald observeres
+    assert "invoked" in spor and "observe" in spor, spor
+
+    spor.clear()
+    with t.internt_kald():
+        st.execute_tool("_probe", {})  # systemets eget kald — usynligt
+    assert spor == [], f"et internt kald skrev alligevel: {spor}"

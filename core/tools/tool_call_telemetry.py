@@ -29,7 +29,9 @@ reglen i CLAUDE.md. Udgivelsen af `tool.invoked` er en naturlig enhed: den har
 """
 from __future__ import annotations
 
+import contextvars
 import logging
+from contextlib import contextmanager
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,43 @@ logger = logging.getLogger(__name__)
 #: Skrives naar identiteten ikke kan fastslaas. En taelling skal kunne vise
 #: hvor stort hullet er — ikke skjule det ved at springe raekken over.
 UKENDT = "UKENDT"
+
+
+# ── Interne kald: systemets egen trafik er ikke model-kald (10/10-2026) ─────
+#
+# Job-pollen er ikke et vaerktoejskald. Den er panelets puls: serveren spoerger
+# broen «hvad koerer derovre?», og svaret gaar til et panel — ikke til en model.
+# Alligevel gik hvert poll gennem hele observations-laget: `tool.invoked`,
+# `tool.completed` (med ~12 abonnenter), outcome-memory og Centralens
+# tools-observation. Maalt 10/10: 34.079 events i doegnet = 59 % af HELE
+# begivenhedsstroemmen, fra 11.351 kald.
+#
+# Flaget saettes EET sted — hvor pollens bro-kald faktisk sker
+# (`background_jobs._bro_svar`) — og baeres ned gennem kall-stakken. Et
+# parameter ville kraeve at hver af de tre kaldere huskede det; det goer denne
+# ikke. Konteksten er per-traad, saa et poll i én traad ikke kan slaa
+# observation fra for et model-kald i en anden.
+_INTERNT_KALD: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "jarvis_internt_tool_kald", default=False,
+)
+
+
+@contextmanager
+def internt_kald():
+    """Markér kaldet som systemets eget — ikke et model-kald.
+
+    Alt observations-arbejde i tool-laget springes over mens konteksten varer.
+    """
+    _tok = _INTERNT_KALD.set(True)
+    try:
+        yield
+    finally:
+        _INTERNT_KALD.reset(_tok)
+
+
+def er_internt_kald() -> bool:
+    """Er vi inde i et af systemets egne kald? Se `internt_kald`."""
+    return _INTERNT_KALD.get()
 
 #: Argumenterne afkortes i eventet. 100 tegn har vaeret grænsen siden
 #: begyndelsen; den er BEVARET her med vilje, saa udskillelsen ikke aendrer

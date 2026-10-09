@@ -133,7 +133,14 @@ def _bro_svar(uid: str, exec_fn) -> str:
     hit = _bro_cache.get(uid)
     if hit is not None and (nu - hit[0]) < _CACHE_TTL_S:
         return hit[1]
-    res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
+    # Pollen er systemets EGET kald, ikke et model-kald: uden dette skriver hvert
+    # poll `tool.invoked` + `tool.completed` + outcome-memory — maalt 34.079
+    # events i doegnet, 59 % af hele begivenhedsstroemmen. Flaget saettes HER,
+    # hvor bro-kaldet faktisk sker, saa alle tre kaldere (ruten, vagtposten,
+    # baggrundsjob-vagten) er daekket og ingen fremtidig kalder kan glemme det.
+    from core.tools.tool_call_telemetry import internt_kald
+    with internt_kald():
+        res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
     if res.get("status") != "ok":
         raise BroTier(str(res.get("error") or res.get("reason") or "broen svarede ikke"))
     ud = str((res.get("result") or {}).get("stdout") or "")

@@ -357,3 +357,154 @@ def test_taenke_resumeet_gemmes_paa_gruppens_blok():
         {"type": "tool_use_summary", "summary": "Rettede login", "preceding_tool_use_ids": ["t1"], "thinking_summary": "Ville tjekke ruten"},
         {"type": "tool_use_summary", "summary": "", "preceding_tool_use_ids": ["t2"], "thinking_summary": "Læste testen først"},
     ]
+
+
+# ── svaret sidst: kald efter den afsluttende besked ─────────────────────────
+
+
+def test_et_kald_efter_svaret_flyttes_op_foer_det():
+    """Kvitteringen må ikke blive svaret.
+
+    Målt 8/10-2026: et internt kald (fx `decision_create`) lå EFTER den
+    afsluttende tekst. Klienten sætter skillerummet ved det sidste
+    værktøjskald, så kvitteringen stod som svaret og beskeden blev et
+    mellemsvar. Uden `_med_svaret_sidst` fejler denne test.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Her er svaret.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "decision_create", "arguments": {"directive": "x"}}}],
+        [],
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Her er svaret.")
+    typer = [b["type"] for b in blokke]
+    # Klientens skillerum er det sidste tool_use — svaret skal ligge EFTER det.
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use")
+    assert blokke[typer.index("text")]["text"] == "Her er svaret."
+
+
+def test_et_svar_UDEN_hale_roeres_ikke():
+    """Er svaret allerede sidst, er listen uændret."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_tools([{"id": "c1", "function": {"name": "read_file", "arguments": {"path": "a.py"}}}], [])
+    t.note_tool()
+    t.add_text("Svaret til sidst.")
+    t.note_text()
+    t.close_segment()
+    blokke = t.build_blocks("Svaret til sidst.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use")
+    assert typer.count("tool_use") == 1
+
+
+def test_et_RIGTIGT_kald_efter_svaret_roeres_IKKE():
+    """Rækkefølgen fortæller turen som den blev til — den må ikke omskrives.
+
+    Kontrakten fra 2026-09-02: et rigtigt værktøj efter teksten ER arbejde der
+    skete i den rækkefølge. Kun bogførings-kald flyttes.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Jeg kigger i filen.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools([{"id": "c1", "function": {"name": "read_file", "arguments": {"path": "x.py"}}}], [])
+    t.note_tool()
+    blokke = t.build_blocks("Jeg kigger i filen.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") < typer.index("tool_use"), typer
+
+
+def test_en_tur_UDEN_svar_beholder_halen_bagest():
+    """Uden en tekstblok er der intet svar at beskytte."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_tools([{"id": "c1", "function": {"name": "remember_this", "arguments": {}}}], [])
+    t.note_tool()
+    blokke = t.build_blocks("")
+    assert all(b["type"] != "text" for b in blokke)
+    assert blokke[0]["type"] == "tool_use"
+
+
+def test_halens_indbyrdes_raekkefoelge_bevares():
+    """Kun placeringen flyttes — kaldene kommer i den orden de skete."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Svaret.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools([{"id": "c1", "function": {"name": "remember_this", "arguments": {}}}], [])
+    t.note_tool()
+    t.add_tools([{"id": "c2", "function": {"name": "suggest_next_task", "arguments": {}}}], [])
+    t.note_tool()
+    blokke = t.build_blocks("Svaret.")
+    navne = [b.get("name") for b in blokke if b["type"] == "tool_use"]
+    assert navne == ["remember_this", "suggest_next_task"]
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use")
+
+
+def test_et_blandet_hale_flyttes_ikke():
+    """Er ét af halens kald et rigtigt værktøj, røres listen ikke."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Svaret.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools([{"id": "c1", "function": {"name": "read_file", "arguments": {}}}], [])
+    t.note_tool()
+    t.add_tools([{"id": "c2", "function": {"name": "decision_create", "arguments": {}}}], [])
+    t.note_tool()
+    blokke = t.build_blocks("Svaret.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") < typer.index("tool_use"), typer
+
+
+# ── fremtvungne kald: hollow-promise-værnets runde ──────────────────────────
+
+
+def test_et_FREMTVUNGET_kald_flyttes_op_foer_svaret():
+    """Værnets tvungne kald er ikke arbejde Jarvis valgte.
+
+    Målt 9/10-2026: hollow-promise-værnet tvang et kald i 339 af 369 fyringer
+    (``tool_choice="required"``) — overvejende ``bash`` og ``edit_file``, altså
+    rigtige værktøjer som listen over bogførings-kald aldrig fangede. De landede
+    efter hans afsluttende besked, og klientens skillerum flyttede sig ned under
+    dem. Uden ``forced_ids`` fejler denne test.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Her er svaret.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}],
+        [], forced=True,
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Her er svaret.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use")
+    assert blokke[typer.index("text")]["text"] == "Her er svaret."
+
+
+def test_det_SAMME_kald_uden_tvang_roeres_ikke():
+    """Kontrakten holder: kun tvangen flytter kaldet, ikke værktøjets navn."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Jeg kigger i filen.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}],
+        [], forced=False,
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Jeg kigger i filen.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") < typer.index("tool_use"), typer

@@ -23,14 +23,15 @@ _Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppressio
 | function | `_fcm_send` | `(token, data)` | — | [src](../../../core/services/push_dispatcher.py#L12) |
 | function | `_owner_of_run` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L17) |
 | function | `_push_to_user` | `(user_id, data)` | — | [src](../../../core/services/push_dispatcher.py#L24) |
-| function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L38) |
-| function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L62) |
-| function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L80) |
-| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L113) |
-| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L121) |
-| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L134) |
-| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L140) |
-| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L146) |
+| function | `_push_to_web` | `(user_id, data)` | Web-push — fjerde udgang (side-67aea8c5b6). Additiv: FCM/routing røres ikke. | [src](../../../core/services/push_dispatcher.py#L38) |
+| function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L63) |
+| function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L88) |
+| function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L106) |
+| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L139) |
+| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L147) |
+| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L160) |
+| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L166) |
+| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L172) |
 
 ## `core/services/pushback.py`
 _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
@@ -48,9 +49,9 @@ _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
 | function | `_har_pres_cue` | `(lower, marker, kort)` | Står et pres-cue i nærheden af markøren — før ELLER efter den? | [src](../../../core/services/pushback.py#L321) |
 | function | `_marker_er_pres` | `(marker, lower, kort)` | Er markøren et pres eller et emne? Se kommentaren over `_PRESSURE_CUES`. | [src](../../../core/services/pushback.py#L346) |
 | function | `_request_risk_evidence` | `(user_message)` | — | [src](../../../core/services/pushback.py#L376) |
-| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L391) |
-| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L468) |
-| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L475) |
+| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L401) |
+| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L478) |
+| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L485) |
 
 ## `core/services/query_language_bridge.py`
 _Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
@@ -99,7 +100,7 @@ _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 | function | `_publicer` | `(kind, data)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L118) |
 | function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L126) |
 | function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L154) |
-| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L194) |
+| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L220) |
 
 ## `core/services/raesonnering_eksperiment.py`
 _A/B: raesonnerer han paa mellem-runderne, eller ikke?_

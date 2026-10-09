@@ -294,6 +294,10 @@ ALLOWED_EVENT_FAMILIES = {
     #    siden den landede. Fundet ved at tjekke CI efter en tag-push: vagten
     #    var ROED i to doegn, 30+ ci-koersler i traek, uden at nogen saa det. ──
     "mobile",
+    # 9/10-2026: autonomous_tool_policy.blocked — simple_tool_executor publicerer
+    # når en autonom kørsel blokeres fra at bruge et værktøj (agent-dispatch etc.).
+    # Governance-telemetri, ikke privat indre liv → kun her, ikke i PRIVATE-ruter.
+    "autonomous_tool_policy",
 }
 
 

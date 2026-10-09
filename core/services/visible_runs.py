@@ -4741,7 +4741,16 @@ async def _stream_visible_run(
                     )
                     # Tur-akkumulering (agentisk runde) — samme calls + results
                     # som ToolExchange'en; side-effekt-frit.
-                    _turn.add_tools(_a_tool_calls, _a_followup_results)
+                    #
+                    # `forced` bærer hollow-promise-værnets tvang videre: blev
+                    # runden fremtvunget med tool_choice="required", er kaldet
+                    # ikke arbejde Jarvis valgte, og blok-byggeren flytter det
+                    # op før hans afsluttende besked (målt 9/10-2026: 339 af
+                    # 369 fyringer tvang et kald, overvejende bash/edit_file).
+                    _turn.add_tools(
+                        _a_tool_calls, _a_followup_results,
+                        forced=bool(_hollow_forced_this_round),
+                    )
                     _followup_exchanges.append(
                         _vf.ToolExchange(
                             text=_exchange_text(),

@@ -340,11 +340,11 @@ _Smaa, selvstaendige sektionsbyggere til promptens dynamiske hale._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_central_notices_section` | `()` | Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem | [src](../../../core/services/prompt_sections/tail_section_builders.py#L12) |
-| function | `_pending_promises_section` | `(session_id)` | Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så | [src](../../../core/services/prompt_sections/tail_section_builders.py#L43) |
-| function | `_connected_connectors_section` | `()` | Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L72) |
-| function | `_open_questions_section` | `(*, limit=…)` | Surface curiosity_daemon._open_questions into the visible prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L117) |
-| function | `_time_pin_section` | `()` | Prominent, unmissable time indicator — placed high in every system prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L146) |
+| function | `_central_notices_section` | `()` | Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem | [src](../../../core/services/prompt_sections/tail_section_builders.py#L16) |
+| function | `_pending_promises_section` | `(session_id)` | Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så | [src](../../../core/services/prompt_sections/tail_section_builders.py#L47) |
+| function | `_connected_connectors_section` | `()` | Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L81) |
+| function | `_open_questions_section` | `(*, limit=…)` | Surface curiosity_daemon._open_questions into the visible prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L129) |
+| function | `_time_pin_section` | `()` | Prominent, unmissable time indicator — placed high in every system prompt. | [src](../../../core/services/prompt_sections/tail_section_builders.py#L161) |
 
 ## `core/services/prompt_sections/tool_discovery_nudge.py`
 _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikke ved findes._

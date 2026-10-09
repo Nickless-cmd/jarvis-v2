@@ -109,6 +109,10 @@ _Push token-registrering. Scoper til den auth'ede bruger._
 | function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L21) |
 | function | `register` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L27) |
 | function | `unregister` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L36) |
+| class | `WebSubscribeBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L41) |
+| function | `web_vapid` | `()` | Den offentlige VAPID-nøgle — klienten skal bruge den til at abonnere. | [src](../../../apps/api/jarvis_api/routes/push.py#L48) |
+| function | `web_subscribe` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L59) |
+| function | `web_unsubscribe` | `(body)` | Afmeld et web-abonnement. ``token`` bærer her abonnementets endpoint — | [src](../../../apps/api/jarvis_api/routes/push.py#L69) |
 
 ## `apps/api/jarvis_api/routes/review.py`
 _Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_

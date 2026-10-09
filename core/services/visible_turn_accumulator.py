@@ -55,6 +55,13 @@ class TurnAccumulator:
     round_labels: list[dict] = field(default_factory=list)
     #: Uret. Injicerbart, så en test kan måle uden at vente.
     ur: object = None
+    #: Kald-id'er fra runder som hollow-promise-værnet TVANG frem
+    #: (``tool_choice="required"``). Et fremtvunget kald er ikke arbejde
+    #: Jarvis valgte — det er konsekvensen af at han lovede en handling uden
+    #: at udføre den. Uden dette står kaldet efter hans afsluttende besked,
+    #: og klientens skillerum flytter sig ned under det (målt 9/10-2026:
+    #: 339 af 369 fyringer tvang et kald, overvejende ``bash``/``edit_file``).
+    forced_tool_ids: set[str] = field(default_factory=set)
     _segment_open: bool = False
     _thinking_open: bool = False
 
@@ -99,17 +106,27 @@ class TurnAccumulator:
         self._thinking_open = False
 
     # ── værktøjskald ─────────────────────────────────────────────────────
-    def add_tools(self, tool_calls: list | None, results: list | None) -> None:
+    def add_tools(
+        self, tool_calls: list | None, results: list | None, *,
+        forced: bool = False,
+    ) -> None:
         """Optag et batch af kald og deres resultater. Kaster ALDRIG.
 
         En fejl i blok-opsamlingen må ikke forplante sig ind i streamet: så
         ville en kosmetisk detalje kunne afbryde et svar der ellers virkede.
+
+        ``forced=True`` markerer at runden blev TVUNGET frem af
+        hollow-promise-værnet (``tool_choice="required"``). Kaldet er ægte
+        nok — det kørte — men det er ikke arbejde Jarvis valgte, og det må
+        derfor flyttes op før hans afsluttende besked (se
+        ``_med_interne_kald_foer_svaret``).
         """
         try:
             for tc in (tool_calls or []):
                 fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
+                _tid = str((tc.get("id") if isinstance(tc, dict) else "") or "")
                 self.tool_calls.append({
-                    "id": str((tc.get("id") if isinstance(tc, dict) else "") or ""),
+                    "id": _tid,
                     "name": str(
                         fn.get("name")
                         or (tc.get("name") if isinstance(tc, dict) else None)
@@ -121,6 +138,8 @@ class TurnAccumulator:
                         else (tc.get("input") if isinstance(tc, dict) else None)
                     ),
                 })
+                if forced and _tid:
+                    self.forced_tool_ids.add(_tid)
             # Udfaldet foelger med — med SAMME regel som stroemmen, saa en fejl
             # der stod alene live ogsaa staar alene efter genindlaesning. Her
             # stod «done»/False hardkodet: 4.885 af 4.885 gemte resultater paa
@@ -242,6 +261,11 @@ class TurnAccumulator:
         # svaret.
         etiketter = [dict(b) for b in self.round_labels]
         krop = _med_etiketter_foer_svaret(blokke, etiketter)
+        # Og halen efter svaret flyttes op, så turens sidste tekstblok ER den
+        # sidste blok. Klienten sætter skillerummet ved det sidste
+        # værktøjskald; uden dette bliver et internt kald EFTER beskeden til
+        # «svaret», og beskeden selv til et mellemsvar (målt 8/10-2026).
+        krop = _med_interne_kald_foer_svaret(krop, forced_ids=self.forced_tool_ids)
         if self.skill_surface:
             return [dict(self.skill_surface), *krop]
         return krop
@@ -264,6 +288,88 @@ def _med_etiketter_foer_svaret(
     if sidste_tekst < 0:
         return [*blokke, *etiketter]
     return [*blokke[:sidste_tekst], *etiketter, *blokke[sidste_tekst:]]
+
+
+def _med_interne_kald_foer_svaret(
+    blokke: list[dict], *, forced_ids: set[str] | None = None,
+) -> list[dict]:
+    """Flyt INTERNE bogførings-kald efter svaret op FØR det, så svaret står sidst.
+
+    Klienten sætter skillerummet ved det sidste værktøjskald
+    (``raekkeModel.ts``): tekst FØR det bliver «mellemsvar», og alt efter
+    læses som arbejde. Lægger Jarvis et internt kald efter sin afsluttende
+    besked, flytter skillerummet sig ned under kaldet — og så står
+    kvitteringen som det egentlige svar, mens beskeden bliver et mellemsvar.
+
+    Målt 8/10-2026: i vejr-tråden lå et ``decision_create`` efter den
+    afsluttende tekst, og kvitteringen landede efter svaret. Bjørn rettede
+    det: «vi skal have lært dit ikk at lave extra kald efter din endelig
+    besked». Reglen stod allerede i VISIBLE_CHAT_RULES.md og blev brudt
+    gentagne gange — derfor flyttes halen mekanisk i stedet for at blive
+    bedt om.
+
+    **Kun interne kald — og fremtvungne kald.** Et rigtigt værktøj efter
+    teksten er arbejde der faktisk skete i den rækkefølge, og rækkefølgen må
+    ikke omskrives (kontrakten fra 2026-09-02: blokkene fortæller turen som
+    den blev til). To ting flyttes derfor:
+
+    * kald der står på listen over bogførings-værktøjer, og
+    * kald hvis id står i ``forced_ids`` — runder som hollow-promise-værnet
+      TVANG frem med ``tool_choice="required"``.
+
+    Det andet er ikke en omskrivning af historien: et fremtvunget kald er
+    ikke arbejde Jarvis valgte, det er konsekvensen af at han lovede en
+    handling uden at udføre den. Målt 9/10-2026: 339 af 369 fyringer tvang
+    et kald — overvejende ``bash`` og ``edit_file``, altså rigtige værktøjer
+    som listen over bogførings-kald aldrig fangede. Det var præcis dem Bjørn
+    så ligge efter svaret.
+
+    Halen flyttes KUN når hvert kald i den er flytbart — ellers er listen
+    uændret.
+    """
+    sidste_tekst = -1
+    for i, b in enumerate(blokke):
+        if (isinstance(b, dict) and b.get("type") == "text"
+                and str(b.get("text") or "").strip()):
+            sidste_tekst = i
+    if sidste_tekst < 0:
+        return list(blokke)
+    hale = blokke[sidste_tekst + 1:]
+    if not hale:
+        return list(blokke)
+    hale_kald = [b for b in hale if b.get("type") == "tool_use"]
+    if not hale_kald:
+        return list(blokke)
+    _tvungne = forced_ids or set()
+
+    def _flytbar(b: dict) -> bool:
+        if str(b.get("name") or "") in _INTERNE_HALE_VAERKTOEJER:
+            return True
+        return str(b.get("id") or "") in _tvungne
+
+    if not all(_flytbar(b) for b in hale_kald):
+        return list(blokke)
+    # Halens indbyrdes rækkefølge bevares — kun placeringen flyttes.
+    return [*blokke[:sidste_tekst], *hale, blokke[sidste_tekst]]
+
+
+#: Værktøjer der er AFSLUTNING, ikke arbejde — de bogfører, husker eller
+#: tilbyder det næste skridt. Ligger de efter den sidste tekstblok, er det
+#: ikke fordi arbejdet fortsatte; det er fordi beskeden blev skrevet først.
+#: Sideopgaven 8/10-2026 navngav de fire første; resten er samme form.
+_INTERNE_HALE_VAERKTOEJER = frozenset({
+    "decision_create",
+    "remember_this",
+    "flag_side_task",
+    "suggest_next_task",
+    "activate_side_task",
+    "dismiss_side_task",
+    "write_handover",
+    "note_add",
+    "set_flag",
+    "clear_flag",
+    "memory_upsert_section",
+})
 
 
 def coerce_tool_input(raw: object) -> dict:

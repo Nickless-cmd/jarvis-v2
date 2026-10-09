@@ -23,6 +23,53 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting()
 })
 
+// ── Web-push (side-67aea8c5b6) ─────────────────────────────────────────────
+// Workeren havde kun install/activate/message/fetch. Uden en `push`-handler
+// kan PWA'en ikke vækkes i baggrunden; uden `notificationclick` åbner et tryk
+// ingenting — beskeden forsvinder uden at føre nogen steder hen.
+
+self.addEventListener('push', (event) => {
+  let data: Record<string, unknown> = {}
+  try {
+    data = event.data ? (event.data.json() as Record<string, unknown>) : {}
+  } catch {
+    data = {}
+  }
+  const title = String(data.title ?? 'Jarvis')
+  const body = String(data.preview ?? data.body ?? 'Nyt svar fra Jarvis')
+  const session = String(data.session_id ?? '')
+  const url = session ? `/?session=${encodeURIComponent(session)}` : '/'
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      // run_id som tag: to notifikationer fra samme kørsel erstatter hinanden
+      // i stedet for at hobe sig op i systembakken.
+      tag: String(data.run_id ?? data.kind ?? 'jarvis'),
+      data: { url },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = String((event.notification.data as { url?: string } | null)?.url ?? '/')
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of all) {
+        if ('focus' in client) {
+          await client.focus()
+          if ('navigate' in client) void client.navigate(target)
+          return
+        }
+      }
+      await self.clients.openWindow(target)
+    })(),
+  )
+})
+
 self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)

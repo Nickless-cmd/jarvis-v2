@@ -211,3 +211,41 @@ def test_vaerktoejsloekken_afviser_og_koerer_ikke(bus, monkeypatch):
     kind2, _ = ex._prepare_call(tc2, force=False, run_id="r1", session_id="s1",
                                 user_message="", controller=None, round_seen=set())
     assert kind2 == "run"
+
+
+# ── Overstyrings-vejen (side-1fca7cd0d3, 9/10-2026) ────────────────────────
+# R2.5 skrev ALDRIG til veto_events, så en afvisning efterlod intet event_id at
+# armere `override_gate` imod. Disse tre tests måler at den vej nu findes — og
+# at den ikke svækker gaten: uden en armering blokerer den præcis som før.
+
+def test_en_afvisning_skriver_til_veto_events(bus, monkeypatch):
+    """En R2.5-afvisning skal efterlade et event_id i veto_events."""
+    kald = []
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event",
+                        lambda **k: kald.append(k))
+    _aaben()
+    assert h.afvis_mutation("edit_file", {}, nu=NU)
+    assert len(kald) == 1
+    assert kald[0]["tool_name"] == "edit_file"
+    assert kald[0]["veto_result"] == "blocked"
+    assert kald[0]["feeling"] == "r2_5_gate"
+
+
+def test_en_armeret_overstyring_slipper_mutationen_igennem(bus, monkeypatch):
+    """En armeret one-shot er et SVAR på blokken, ikke en vej udenom."""
+    kald = []
+    monkeypatch.setattr("core.services.gate_override.consume_override",
+                        lambda navn, feeling: kald.append((navn, feeling)) or "fordi")
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
+    _aaben()
+    assert h.afvis_mutation("edit_file", {}, nu=NU) is None
+    assert kald == [("edit_file", "r2_5_gate")]
+
+
+def test_uden_armering_afvises_den_stadig(bus, monkeypatch):
+    """Modstykket: uden en armering er der ingen udvej — gaten blokerer som før."""
+    monkeypatch.setattr("core.services.gate_override.consume_override",
+                        lambda navn, feeling: None)
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
+    _aaben()
+    assert h.afvis_mutation("edit_file", {}, nu=NU)

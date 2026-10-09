@@ -171,20 +171,21 @@ _Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `TurnAccumulator` | `` | Samler tekst-segmenter, værktøjskald og deres rækkefølge for én tur. | [src](../../../core/services/visible_turn_accumulator.py#L30) |
-| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L62) |
-| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L76) |
-| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L80) |
-| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L84) |
-| method | `TurnAccumulator._luk_tanketid` | `(self)` | En tanke varer til det NÆSTE begynder — ikke til dens sidste token. | [src](../../../core/services/visible_turn_accumulator.py#L88) |
-| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L102) |
-| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L141) |
-| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L160) |
-| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L163) |
-| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L169) |
-| method | `TurnAccumulator.add_round_label` | `(self, etik)` | Gem en runde-etiket som den blok Claude Desktop selv gemmer. | [src](../../../core/services/visible_turn_accumulator.py#L182) |
-| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L212) |
-| function | `_med_etiketter_foer_svaret` | `(blokke, etiketter)` | Læg etiketterne ind lige før den sidste tekstblok. | [src](../../../core/services/visible_turn_accumulator.py#L250) |
-| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L269) |
+| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L69) |
+| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L83) |
+| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L87) |
+| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L91) |
+| method | `TurnAccumulator._luk_tanketid` | `(self)` | En tanke varer til det NÆSTE begynder — ikke til dens sidste token. | [src](../../../core/services/visible_turn_accumulator.py#L95) |
+| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results, *, forced=…)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L109) |
+| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L160) |
+| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L179) |
+| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L182) |
+| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L188) |
+| method | `TurnAccumulator.add_round_label` | `(self, etik)` | Gem en runde-etiket som den blok Claude Desktop selv gemmer. | [src](../../../core/services/visible_turn_accumulator.py#L201) |
+| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L231) |
+| function | `_med_etiketter_foer_svaret` | `(blokke, etiketter)` | Læg etiketterne ind lige før den sidste tekstblok. | [src](../../../core/services/visible_turn_accumulator.py#L274) |
+| function | `_med_interne_kald_foer_svaret` | `(blokke, *, forced_ids=…)` | Flyt INTERNE bogførings-kald efter svaret op FØR det, så svaret står sidst. | [src](../../../core/services/visible_turn_accumulator.py#L293) |
+| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L375) |
 
 ## `core/services/visible_turn_blocks.py`
 _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
@@ -309,6 +310,25 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L153) |
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L184) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L377) |
+
+## `core/services/web_push_gateway.py`
+_Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(name)` | Læs en VAPID-nøgle fra runtime.json. Tom streng hvis den ikke findes. | [src](../../../core/services/web_push_gateway.py#L20) |
+| function | `vapid_public_key` | `()` | Den offentlige VAPID-nøgle — gives til klienten ved abonnement. | [src](../../../core/services/web_push_gateway.py#L32) |
+| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L37) |
+
+## `core/services/web_push_subscriptions.py`
+_Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/web_push_subscriptions.py#L18) |
+| function | `save` | `(user_id, endpoint, p256dh, auth)` | — | [src](../../../core/services/web_push_subscriptions.py#L38) |
+| function | `list_for_user` | `(user_id)` | Alle abonnementer for brugeren som ``[{endpoint, p256dh, auth}]``. | [src](../../../core/services/web_push_subscriptions.py#L57) |
+| function | `delete` | `(endpoint)` | — | [src](../../../core/services/web_push_subscriptions.py#L72) |
 
 ## `core/services/weekly_manifest.py`
 _Weekly manifest — Jarvis' running self-reflection._

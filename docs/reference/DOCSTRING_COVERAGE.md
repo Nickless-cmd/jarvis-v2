@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8795/16623 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8807/16639 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 683 | 918 | 74% |
+| `apps.api.jarvis_api.routes` | 685 | 921 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -21,11 +21,11 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
-| `core.identity` | 72 | 166 | 43% |
+| `core.identity` | 73 | 167 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5866 | 11287 | 51% |
+| `core.services` | 5875 | 11299 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2352)
+## Undocumented public functions (2355)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -117,6 +117,7 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/presence.py` :: `presence_ping` (L57)
 - `apps/api/jarvis_api/routes/push.py` :: `register` (L27)
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
+- `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
@@ -275,10 +276,10 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L226)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L248)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L254)
-- `core/eventbus/events.py` :: `Event.create` (L311)
-- `core/eventbus/events.py` :: `Event.family` (L307)
-- `core/eventbus/events.py` :: `Event.from_record` (L317)
-- `core/eventbus/events.py` :: `Event.validate` (L328)
+- `core/eventbus/events.py` :: `Event.create` (L315)
+- `core/eventbus/events.py` :: `Event.family` (L311)
+- `core/eventbus/events.py` :: `Event.from_record` (L321)
+- `core/eventbus/events.py` :: `Event.validate` (L332)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
@@ -314,7 +315,7 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/identity/visible_identity.py` :: `load_visible_identity_prompt` (L17)
 - `core/identity/visible_identity.py` :: `load_visible_identity_summary` (L39)
 - `core/identity/workspace_bootstrap.py` :: `WorkspaceBootstrapResult.summary` (L41)
-- `core/identity/workspace_bootstrap.py` :: `bootstrap_workspace` (L358)
+- `core/identity/workspace_bootstrap.py` :: `bootstrap_workspace` (L426)
 - `core/identity/workspace_bootstrap.py` :: `ensure_default_workspace` (L65)
 - `core/identity/workspace_bootstrap.py` :: `ensure_layered_memory_dirs` (L70)
 - `core/identity/workspace_bootstrap.py` :: `workspace_memory_paths` (L87)
@@ -1576,9 +1577,9 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
 - `core/services/proprioception_metrics.py` :: `tick` (L100)
-- `core/services/push_dispatcher.py` :: `on_approval_requested` (L146)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L134)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L140)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L172)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L160)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L166)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L232)
@@ -1685,15 +1686,15 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/services/run_event_log.py` :: `subscriber_opened` (L440)
 - `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L133)
 - `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L129)
-- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L420)
-- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L262)
-- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L310)
-- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L456)
-- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L438)
-- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L246)
-- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L371)
-- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L117)
-- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L383)
+- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L481)
+- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L323)
+- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L371)
+- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L517)
+- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L499)
+- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L307)
+- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L432)
+- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L162)
+- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L444)
 - `core/services/runtime_action_outcome_tracking.py` :: `build_runtime_action_outcome_surface` (L53)
 - `core/services/runtime_action_outcome_tracking.py` :: `recent_runtime_action_outcomes` (L77)
 - `core/services/runtime_action_outcome_tracking.py` :: `record_runtime_action_outcome` (L13)
@@ -2079,14 +2080,14 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6827)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6852)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6890)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6886)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6823)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6785)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6907)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6838)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6836)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6861)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6899)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6895)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6832)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6794)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6916)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6847)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
@@ -2097,10 +2098,10 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L51)
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L64)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L142)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L76)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L160)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L80)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L84)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L83)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L179)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L87)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L91)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_item` (L111)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_note` (L163)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_surface` (L80)
@@ -2109,6 +2110,8 @@ Generated from source. 8795/16623 functions/methods documented (52%). The list b
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L243)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
+- `core/services/web_push_subscriptions.py` :: `delete` (L72)
+- `core/services/web_push_subscriptions.py` :: `save` (L38)
 - `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L145)
 - `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L193)
 - `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L210)

@@ -2269,9 +2269,10 @@ def upsert_runtime_contract_candidate(
     status_reason: str = "",
     proposed_value: str = "",
     write_section: str = "",
+    owner_workspace: str = "",
 ) -> dict[str, object]:
     """Insert or merge a runtime contract candidate, keyed on
-    (candidate_type, target_file, canonical_key).
+    (candidate_type, target_file, canonical_key, owner_workspace).
 
     Looks up an existing proposed/approved row for that key; inserts when none
     exists, otherwise merges (stronger source_kind/confidence/evidence_class,
@@ -2280,6 +2281,11 @@ def upsert_runtime_contract_candidate(
     ``approved`` status is preserved). Returns the persisted row dict with
     ``was_created``/``was_updated``/``merge_state`` meta. Raises if the row cannot
     be re-read.
+
+    ``owner_workspace`` (9/10-2026) er kandidatens ophav. Den er en del af
+    nøglen, så to brugeres kandidater med samme canonical_key ikke flettes til
+    én række — og så apply-vejen kan skrive til den rigtige fil i stedet for
+    til den workspace der tilfældigvis er aktiv.
     """
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
@@ -2313,10 +2319,11 @@ def upsert_runtime_contract_candidate(
                 WHERE candidate_type = ?
                   AND target_file = ?
                   AND canonical_key = ?
+                  AND owner_workspace = ?
                 ORDER BY id DESC
                 LIMIT 1
                 """,
-                (candidate_type, target_file, canonical_key),
+                (candidate_type, target_file, canonical_key, owner_workspace),
             ).fetchone()
 
         if existing is not None and str(existing["status"] or "") in TERMINAL_CANDIDATE_STATUSES:
@@ -2344,6 +2351,7 @@ def upsert_runtime_contract_candidate(
                     actor,
                     session_id,
                     run_id,
+                    owner_workspace,
                     canonical_key,
                     summary,
                     reason,
@@ -2360,7 +2368,7 @@ def upsert_runtime_contract_candidate(
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     candidate_id,
@@ -2372,6 +2380,7 @@ def upsert_runtime_contract_candidate(
                     actor,
                     session_id,
                     run_id,
+                    owner_workspace,
                     canonical_key,
                     summary,
                     reason,
@@ -2568,6 +2577,7 @@ def list_runtime_contract_candidates(
                 actor,
                 session_id,
                 run_id,
+                owner_workspace,
                 canonical_key,
                 summary,
                 reason,
@@ -2643,6 +2653,7 @@ def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | Non
                 actor,
                 session_id,
                 run_id,
+                owner_workspace,
                 canonical_key,
                 summary,
                 reason,
@@ -2783,6 +2794,7 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
             actor TEXT NOT NULL DEFAULT '',
             session_id TEXT NOT NULL DEFAULT '',
             run_id TEXT NOT NULL DEFAULT '',
+            owner_workspace TEXT NOT NULL DEFAULT '',
             canonical_key TEXT NOT NULL DEFAULT '',
             summary TEXT NOT NULL,
             reason TEXT NOT NULL DEFAULT '',
@@ -2823,6 +2835,11 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
         "support_count": "INTEGER NOT NULL DEFAULT 1",
         "session_count": "INTEGER NOT NULL DEFAULT 1",
         "merge_count": "INTEGER NOT NULL DEFAULT 0",
+        # 9/10-2026 (B før A): kandidaten skal kunne huske HVEM den tilhører.
+        # Uden den skrev apply-vejen til den workspace der tilfældigvis var
+        # aktiv — et heartbeat kører med konteksten 'bjorn', så en kandidat
+        # skabt i Michelles samtale ville lande i Bjørns USER.md.
+        "owner_workspace": "TEXT NOT NULL DEFAULT ''",
     }
     for name, spec in required_columns.items():
         if name in existing:
@@ -2843,6 +2860,7 @@ def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
         "actor": row["actor"],
         "session_id": row["session_id"],
         "run_id": row["run_id"],
+        "owner_workspace": row["owner_workspace"],
         "canonical_key": row["canonical_key"],
         "summary": row["summary"],
         "reason": row["reason"],

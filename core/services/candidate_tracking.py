@@ -917,6 +917,31 @@ def _extract_candidates_from_messages(
     return extracted
 
 
+def _owner_workspace_for_session(session_id: str) -> str:
+    """Kandidatens ophav — workspace-navnet for den samtale den blev skabt i.
+
+    9/10-2026 (B før A): uden dette stempel skrev apply-vejen til den workspace
+    der tilfældigvis var aktiv. Et heartbeat kører med konteksten 'bjorn', så en
+    kandidat skabt i Michelles samtale ville lande i Bjørns USER.md. Vi læser
+    derfor ophavet fra SAMTALEN, ikke fra den levende kontekst.
+
+    Ukendt ophav giver "" — og apply-vejen nægter at skrive en ejerløs kandidat
+    til en anden brugers fil (fail closed).
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return ""
+    try:
+        from core.identity.session_access import arbejdsrum_for
+        from core.services.chat_sessions import get_session_owner
+
+        return arbejdsrum_for(get_session_owner(sid) or "")
+    except Exception:
+        # Opslaget er et stempel, ikke en forudsætning for at kandidaten findes.
+        # Fejler det, står kandidaten ejerløs — og bliver derfor ikke skrevet.
+        return ""
+
+
 def _persist_candidates(
     *,
     candidates: list[dict[str, str]],
@@ -967,6 +992,7 @@ def _persist_candidates(
             status_reason=status_reason,
             proposed_value=str(candidate.get("proposed_value") or ""),
             write_section=str(candidate.get("write_section") or ""),
+            owner_workspace=_owner_workspace_for_session(session_id),
         )
         if not bool(persisted_candidate.get("was_created")) and not bool(persisted_candidate.get("was_updated")):
             continue

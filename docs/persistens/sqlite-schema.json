@@ -28966,7 +28966,7 @@
       ]
     },
     "runtime_contract_candidates": {
-      "digest": "c9:22:13:89:2c:6a:24:5a:8e:03:cd:5a:16:f8:d9:36:c6:fc:3f:71:a9:f6:fd:4e:1b:4a:db:93:e9:de:f0:f5",
+      "digest": "21:70:39:51:19:e8:79:2e:04:c2:6d:ba:ba:20:c6:c1:18:77:69:99:71:44:11:90:48:03:dd:d9:69:dc:54:71",
       "schema": {
         "columns": [
           {
@@ -29046,6 +29046,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -45232,7 +45240,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "user_flags": {

@@ -161,6 +161,7 @@ def apply_runtime_contract_candidate(
         target_file=str(candidate["target_file"]),
         section_heading=material["section_heading"],
         content_line=material["content_line"],
+        owner_workspace=str(candidate.get("owner_workspace") or ""),
     )
     now = _now_iso()
     write = record_runtime_contract_file_write(
@@ -380,6 +381,10 @@ def _latest_equivalent_applied_candidate(candidate: dict[str, object]) -> dict[s
     canonical_key = str(candidate.get("canonical_key") or "")
     if not canonical_key:
         return None
+    # 9/10-2026 (A): «ækvivalent» skal betyde samme bruger. Uden ejer-leddet
+    # supersederer Michelles kandidat Bjørns (samme canonical_key), og den
+    # ene forsvinder sporløst fra køen.
+    owner = str(candidate.get("owner_workspace") or "")
     matches = list_runtime_contract_candidates(
         candidate_type=str(candidate["candidate_type"]),
         target_file=str(candidate["target_file"]),
@@ -388,6 +393,8 @@ def _latest_equivalent_applied_candidate(candidate: dict[str, object]) -> dict[s
     )
     for item in matches:
         if str(item.get("canonical_key") or "") != canonical_key:
+            continue
+        if str(item.get("owner_workspace") or "") != owner:
             continue
         if str(item.get("candidate_id") or "") == str(candidate["candidate_id"]):
             continue
@@ -430,6 +437,10 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
     dimension_key = _candidate_dimension_key(candidate)
     if not dimension_key:
         return False
+    # 9/10-2026 (A): dedup må kun gælde INDEN FOR samme bruger. Uden dette
+    # blokerer Michelles kandidater Bjørns (og omvendt), fordi begge har
+    # canonical_key 'user-preference:llm:…' og dimension-key'en er grov.
+    owner = str(candidate.get("owner_workspace") or "")
     for other in list_runtime_contract_candidates(
         candidate_type="preference_update",
         target_file="USER.md",
@@ -438,6 +449,8 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
         if str(other.get("candidate_id") or "") == str(candidate.get("candidate_id") or ""):
             continue
         if str(other.get("status") or "") not in {"proposed", "approved"}:
+            continue
+        if str(other.get("owner_workspace") or "") != owner:
             continue
         if _candidate_dimension_key(other) != dimension_key:
             continue
@@ -527,11 +540,17 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
 
 
 def _candidate_dimension_key(candidate: dict[str, object]) -> str:
+    """Dedup-nøglen for auto-apply.
+
+    9/10-2026 (A): den var `":".join(parts[:2])` — altså `user-preference:llm`
+    for ALLE præference-kandidater. Målt: 133 kandidater delte den nøgle, og
+    gaten afviser en kandidat hvis en anden proposed kandidat har samme nøgle.
+    Derfor blev ingen af dem nogensinde GREEN, og intet USER.md-kandidat er
+    skrevet siden 1/10. Nøglen er nu HELE canonical_key'en, som allerede bærer
+    et indholds-hash — så kun reelt identiske kandidater blokerer hinanden.
+    """
     canonical_key = str(candidate.get("canonical_key") or "")
-    parts = canonical_key.split(":")
-    if len(parts) < 2:
-        return canonical_key
-    return ":".join(parts[:2])
+    return canonical_key.strip()
 
 
 # Bevis-klasse → dansk kilde-mærkat i USER.md-linjen (blok A, 2026-09-04).
@@ -770,6 +789,7 @@ def _append_workspace_contract_line(
     target_file: str,
     section_heading: str,
     content_line: str,
+    owner_workspace: str = "",
 ) -> dict[str, str]:
     # VÆKST-VÆRN (2026-07-10): MEMORY.md må ikke vokse ukontrolleret via auto-
     # promoveringer. Alle MEMORY.md-linje-appends (kun memory_promotion rammer
@@ -781,6 +801,7 @@ def _append_workspace_contract_line(
         target_file=target_file,
         section_heading=section_heading,
         content_line=content_line,
+        owner_workspace=owner_workspace,
     )
 
 
@@ -789,8 +810,36 @@ def _append_workspace_contract_line_raw(
     target_file: str,
     section_heading: str,
     content_line: str,
+    owner_workspace: str = "",
 ) -> dict[str, str]:
-    workspace_dir = ensure_default_workspace()
+    # 9/10-2026 (A): skriv til KANDIDATENS workspace, ikke til den der
+    # tilfældigvis er aktiv. Uden dette skrev et heartbeat (kontekst 'bjorn')
+    # en kandidat skabt i Michelles samtale ind i Bjørns USER.md.
+    #
+    # Fail closed: en ejerløs kandidat må ikke skrives til en anden brugers fil.
+    # Vigtigt: default-konteksten ER workspace 'bjorn' med user_id="" — så
+    # «ingen kontekst» kan IKKE skelnes fra «Bjørns kontekst» på navnet alene.
+    # Vi kræver derfor et bundet user_id: er det tomt, er konteksten ikke knyttet
+    # til en person, og vi nægter frem for at gætte på 'bjorn'.
+    from core.identity.workspace_context import current_user_id, current_workspace_name
+
+    owner = str(owner_workspace or "").strip()
+    active = str(current_workspace_name() or "").strip()
+    bound_user = str(current_user_id() or "").strip()
+    if owner:
+        if active and active != owner:
+            raise PermissionError(
+                f"candidate owner '{owner}' does not match active workspace "
+                f"'{active}' — refusing cross-user write"
+            )
+        workspace_dir = ensure_default_workspace(owner)
+    else:
+        if not bound_user:
+            raise PermissionError(
+                "candidate has no owner and the context is not bound to a user "
+                "— refusing to guess a write target"
+            )
+        workspace_dir = ensure_default_workspace(active)
     path = Path(workspace_dir) / target_file
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else ""

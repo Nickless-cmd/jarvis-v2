@@ -73,6 +73,10 @@ def test_canonical_self_candidate_cannot_apply_without_explicit_approval(isolate
 
 
 def test_explicitly_approved_soul_candidate_can_apply_to_soul_md(isolated_runtime) -> None:
+    # 9/10-2026 (A): skrive-vejen kræver en bundet bruger (fail closed).
+    from core.identity.workspace_context import set_context
+
+    set_context(workspace_name="bjorn", user_id="bjorn-test")
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control
@@ -117,6 +121,10 @@ def test_explicitly_approved_soul_candidate_can_apply_to_soul_md(isolated_runtim
 def test_explicitly_approved_identity_candidate_applies_to_identity_md_and_surfaces_history(
     isolated_runtime,
 ) -> None:
+    # 9/10-2026 (A): skrive-vejen kræver en bundet bruger (fail closed).
+    from core.identity.workspace_context import set_context
+
+    set_context(workspace_name="bjorn", user_id="bjorn-test")
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control

@@ -3,6 +3,32 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+def _stamp_session_owner(user_id: str = "bjorn") -> str:
+    """9/10-2026 (A): kandidatens ophav læses fra SAMTALEN, ikke fra konteksten.
+
+    `track_..._for_visible_turn` udleder ejeren via `get_session_owner`, som
+    slår op i `chat_messages.user_id`. Uden en stemplt besked er ophavet tomt,
+    og skrive-vejen nægter korrekt at gætte et mål (fail closed). Testene
+    opretter derfor en rigtig session og stempler den, præcis som en chat-tur.
+
+    Returnerer sessionens id — testene skal bruge DET, ikke "test-session".
+    """
+    from core.services.chat_sessions import (
+        append_chat_message,
+        get_or_create_named_session,
+    )
+
+    session_id = f"test-owner-{uuid4().hex}"
+    get_or_create_named_session(session_id, "owner-stempel")
+    append_chat_message(
+        session_id=session_id,
+        role="user",
+        content="stempler sessionens ejer",
+        user_id=user_id,
+        workspace_name=user_id,
+    )
+    return session_id
+
 
 def _insert_user_md_update_proposal(
     db,
@@ -66,6 +92,9 @@ def _insert_prompt_candidate(db) -> None:
         status_reason="Validation prompt candidate status",
         proposed_value="- Communication nudge: keep replies plain, grounded, and slightly more self-calibrating.",
         write_section="## Runtime Feedback",
+        # 9/10-2026 (A): kandidaten bærer sit ophav — skrive-vejen nægter
+        # ellers at gætte et mål (fail closed).
+        owner_workspace="bjorn",
     )
 
 
@@ -74,6 +103,7 @@ def test_safe_user_md_candidate_can_auto_apply_via_existing_workflow(isolated_ru
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control
 
+    session_id = _stamp_session_owner()
     _insert_user_md_update_proposal(
         db,
         status="fresh",
@@ -83,11 +113,11 @@ def test_safe_user_md_candidate_can_auto_apply_via_existing_workflow(isolated_ru
     )
 
     draft_result = tracking.track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     apply_result = tracking.auto_apply_safe_user_md_candidates_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     candidates = db.list_runtime_contract_candidates(target_file="USER.md", limit=8)
@@ -106,6 +136,7 @@ def test_workstyle_user_md_candidate_now_auto_applies(isolated_runtime) -> None:
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control
 
+    session_id = _stamp_session_owner()
     _insert_user_md_update_proposal(
         db,
         status="active",
@@ -115,11 +146,11 @@ def test_workstyle_user_md_candidate_now_auto_applies(isolated_runtime) -> None:
     )
 
     tracking.track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     apply_result = tracking.auto_apply_safe_user_md_candidates_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     candidates = db.list_runtime_contract_candidates(target_file="USER.md", limit=8)
@@ -160,6 +191,7 @@ def test_explicit_danish_preference_candidate_now_auto_applies(isolated_runtime)
         status_reason="Validation candidate status",
         proposed_value="- Language preference: replies in Danish by default.",
         write_section="## Durable Preferences",
+        owner_workspace="bjorn",
     )
 
     apply_result = tracking.auto_apply_safe_user_md_candidates_for_visible_turn(
@@ -177,6 +209,7 @@ def test_prompt_candidates_are_not_auto_applied_as_side_effect(isolated_runtime)
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
 
+    session_id = _stamp_session_owner()
     _insert_user_md_update_proposal(
         db,
         status="fresh",
@@ -187,11 +220,11 @@ def test_prompt_candidates_are_not_auto_applied_as_side_effect(isolated_runtime)
     _insert_prompt_candidate(db)
 
     tracking.track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     apply_result = tracking.auto_apply_safe_user_md_candidates_for_visible_turn(
-        session_id="test-session",
+        session_id=session_id,
         run_id="test-run",
     )
     user_candidates = db.list_runtime_contract_candidates(target_file="USER.md", limit=8)

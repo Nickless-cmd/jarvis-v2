@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8820/16657 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8822/16658 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,11 +21,11 @@ Generated from source. 8820/16657 functions/methods documented (52%). The list b
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
-| `core.identity` | 73 | 167 | 43% |
+| `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5881 | 11306 | 52% |
+| `core.services` | 5882 | 11307 | 52% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -280,11 +280,11 @@ Generated from source. 8820/16657 functions/methods documented (52%). The list b
 - `core/eventbus/events.py` :: `Event.family` (L311)
 - `core/eventbus/events.py` :: `Event.from_record` (L321)
 - `core/eventbus/events.py` :: `Event.validate` (L332)
-- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
+- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L319)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L278)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L238)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L279)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L239)
 - `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L95)
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
@@ -1164,7 +1164,7 @@ Generated from source. 8820/16657 functions/methods documented (52%). The list b
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)
 - `core/services/emergent_signal_tracking.py` :: `get_emergent_signal_daemon_state` (L228)
 - `core/services/emotion_tagging.py` :: `build_emotion_tagging_surface` (L90)
-- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L32)
+- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L33)
 - `core/services/endpoint_usage_store.py` :: `usage_stats` (L83)
 - `core/services/env_block.py` :: `is_enabled` (L48)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_prompt_section` (L185)

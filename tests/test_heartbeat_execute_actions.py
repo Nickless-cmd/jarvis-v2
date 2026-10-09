@@ -232,6 +232,10 @@ def test_phase1_heartbeat_prefers_pending_initiative_when_execute_allowed(
 def test_process_contract_writes_applies_safe_and_approved_candidates(
     isolated_runtime,
 ) -> None:
+    # 9/10-2026 (A): skrive-vejen kræver en bundet bruger (fail closed).
+    from core.identity.workspace_context import set_context
+
+    set_context(workspace_name="bjorn", user_id="bjorn-test")
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
     workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
     db = isolated_runtime.db

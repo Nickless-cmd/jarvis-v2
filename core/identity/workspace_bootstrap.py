@@ -279,6 +279,74 @@ def _save_known_sizes(workspace_dir: Path, sizes: dict[str, int]) -> None:
         )
 
 
+# System-regeltekster der SKAL følge templaten. De er ikke medlemmets egne —
+# de er systemets kontrakt med ham (honesty-regler, standing orders, memory-
+# selektion), og de skal derfor opdateres når templaten ændres.
+#
+# Målt 9/10-2026: begge medlemmers .enc var 3,5 måneder bagud (14. juni vs
+# template 1. oktober) — VISIBLE_CHAT_RULES manglede honesty-reglerne, fordi
+# bootstrap ikke gen-sår en fil der findes, og `.enc` tæller som "findes".
+# Uden denne liste sker det igen ved næste template-ændring.
+#
+# BEVIDST SMAL: MEMORY.md og USER.md er medlemmets EGNE og må ALDRIG
+# overskrives. Kun disse tre er systemets.
+_SYSTEM_REGELTEKSTER = (
+    "VISIBLE_CHAT_RULES.md",
+    "VISIBLE_MEMORY_SELECTION.md",
+    "STANDING_ORDERS.md",
+)
+
+
+def _opdater_system_regeltekster(workspace_dir: Path, *, name: str) -> list[str]:
+    """Gen-opdater system-regelteksterne fra templaten når indholdet afviger.
+
+    Kaldes EFTER den normale seeding. Rører KUN filerne i
+    ``_SYSTEM_REGELTEKSTER`` — medlemmets egne filer (MEMORY.md, USER.md,
+    SOUL.md, IDENTITY.md) er urørte.
+
+    Returnerer navnene på de filer der blev opdateret. Sammenligningen sker på
+    det LÆSTE indhold (``read_text_for_path`` læser ``.enc`` transparent), så
+    en krypteret fil måles på sin klartekst — ikke på sin ciffertekst.
+    """
+    from core.services.workspace_crypto import read_text_for_path, write_text_for_path
+
+    opdaterede: list[str] = []
+    for filename in _SYSTEM_REGELTEKSTER:
+        src = TEMPLATE_DIR / filename
+        if not src.exists():
+            continue
+        dest = workspace_dir / filename
+        try:
+            ny = src.read_text(encoding="utf-8")
+            gammel = read_text_for_path(dest)
+        except Exception:
+            LOGGER.warning(
+                "Kunne ikke læse system-regeltekst",
+                extra={"workspace": name, "file": filename},
+                exc_info=True,
+            )
+            continue
+        if gammel is None:
+            # Findes ikke — den normale seeding har netop skabt den.
+            continue
+        if gammel == ny:
+            continue
+        try:
+            write_text_for_path(dest, ny)
+            opdaterede.append(filename)
+            LOGGER.info(
+                "System-regeltekst opdateret fra template: %s/%s (%d -> %d tegn)",
+                name, filename, len(gammel), len(ny),
+            )
+        except Exception:
+            LOGGER.warning(
+                "Kunne ikke opdatere system-regeltekst",
+                extra={"workspace": name, "file": filename},
+                exc_info=True,
+            )
+    return opdaterede
+
+
 # Files that are identity-critical and should never silently shrink to stubs.
 _IDENTITY_CRITICAL_FILES = frozenset({
     "SOUL.md",
@@ -528,6 +596,10 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         created.append(filename)
 
     ensure_layered_memory_dirs(name=name)
+
+    # System-regelteksterne følger templaten (side-e0deddd6da). Ligger EFTER
+    # den normale seeding, så en nyoprettet fil ikke skrives to gange.
+    _opdater_system_regeltekster(workspace_dir, name=name)
 
     return WorkspaceBootstrapResult(
         workspace_dir=workspace_dir,

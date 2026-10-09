@@ -113,3 +113,65 @@ def test_generisk_bootstrap_opretter_stadig_manglende_filer(_member_env, monkeyp
     assert res.created_files, "bootstrap oprettede intet i en tom workspace"
     assert (ws / "SOUL.md").exists()
     assert (ws / "USER.md").exists()
+
+
+# ── system-regeltekster følger templaten (side-e0deddd6da) ────────────────
+
+
+def test_foraeldet_system_regeltekst_opdateres_fra_template(_member_env, monkeypatch) -> None:
+    """En .enc der er bagud skal opdateres — det var hele defekten.
+
+    Målt 9/10-2026: begge medlemmers .enc stod på 14. juni-versionen mens
+    templaten var fra 1. oktober. VISIBLE_CHAT_RULES manglede honesty-reglerne.
+    """
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    from core.identity.workspace_bootstrap import bootstrap_user_workspace
+    from core.services.workspace_crypto import read_text_for_path, write_text_for_path
+
+    ws = _member_env / "mikkel"
+    ws.mkdir(parents=True, exist_ok=True)
+    # En forældet regeltekst — som den bootstrap skrev første gang.
+    write_text_for_path(ws / "VISIBLE_CHAT_RULES.md", "# gammel version\n")
+
+    bootstrap_user_workspace("mikkel", display_name="Mikkel")
+
+    laest = read_text_for_path(ws / "VISIBLE_CHAT_RULES.md") or ""
+    assert "gammel version" not in laest
+    assert "Honesty of action" in laest, "templatens honesty-regler mangler stadig"
+
+
+def test_memory_og_user_roeres_ikke_af_regeltekst_opdatering(_member_env, monkeypatch) -> None:
+    """Medlemmets EGNE filer må aldrig overskrives — kun de tre system-filer."""
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    from core.identity.workspace_bootstrap import bootstrap_user_workspace
+    from core.services.workspace_crypto import read_text_for_path, write_text_for_path
+
+    ws = _member_env / "mikkel"
+    ws.mkdir(parents=True, exist_ok=True)
+    write_text_for_path(ws / "MEMORY.md", "# Mikkels egne erindringer\n")
+    write_text_for_path(ws / "USER.md", "# Mikkel\n\nHans egne ord.\n")
+
+    bootstrap_user_workspace("mikkel", display_name="Mikkel")
+
+    assert read_text_for_path(ws / "MEMORY.md") == "# Mikkels egne erindringer\n"
+    assert "Hans egne ord." in (read_text_for_path(ws / "USER.md") or "")
+
+
+def test_identisk_regeltekst_skrives_ikke_unodigt(_member_env, monkeypatch) -> None:
+    """Er indholdet allerede templatens, skal filen ikke røres (mtime bevares)."""
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    from core.identity.workspace_bootstrap import bootstrap_user_workspace
+    from core.services.workspace_crypto import read_text_for_path, write_text_for_path
+
+    ws = _member_env / "mikkel"
+    ws.mkdir(parents=True, exist_ok=True)
+    from core.identity.workspace_bootstrap import TEMPLATE_DIR
+    tpl = (TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md").read_text(encoding="utf-8")
+    write_text_for_path(ws / "VISIBLE_CHAT_RULES.md", tpl)
+
+    foer = (ws / "VISIBLE_CHAT_RULES.md.enc").stat().st_mtime_ns
+    bootstrap_user_workspace("mikkel", display_name="Mikkel")
+    efter = (ws / "VISIBLE_CHAT_RULES.md.enc").stat().st_mtime_ns
+
+    assert foer == efter, "filen blev skrevet selvom indholdet var identisk"
+    assert read_text_for_path(ws / "VISIBLE_CHAT_RULES.md") == tpl

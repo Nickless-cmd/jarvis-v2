@@ -246,9 +246,10 @@ _User Registry — per-user workspace mapping for multi-user Jarvis._
 | function | `read_recent_daily_memory_lines` | `(*, name=…, days=…, limit=…)` | Read bounded daily memory notes across a recent lookback window. | [src](../../../core/identity/workspace_bootstrap.py#L203) |
 | function | `_load_known_sizes` | `(workspace_dir)` | Load last-known-good file sizes from .file_sizes.json in the workspace. | [src](../../../core/identity/workspace_bootstrap.py#L252) |
 | function | `_save_known_sizes` | `(workspace_dir, sizes)` | Persist current file sizes as last-known-good baseline. | [src](../../../core/identity/workspace_bootstrap.py#L265) |
-| function | `_check_workspace_file_health` | `(workspace_dir, filename, known_sizes)` | Check a workspace file for suspicious shrinkage or stub-level size. | [src](../../../core/identity/workspace_bootstrap.py#L300) |
-| function | `bootstrap_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L358) |
-| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L450) |
+| function | `_opdater_system_regeltekster` | `(workspace_dir, *, name)` | Gen-opdater system-regelteksterne fra templaten når indholdet afviger. | [src](../../../core/identity/workspace_bootstrap.py#L300) |
+| function | `_check_workspace_file_health` | `(workspace_dir, filename, known_sizes)` | Check a workspace file for suspicious shrinkage or stub-level size. | [src](../../../core/identity/workspace_bootstrap.py#L368) |
+| function | `bootstrap_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L426) |
+| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L518) |
 
 ## `core/identity/workspace_context.py`
 _Workspace Context — thread-local/async-safe current-user binding._

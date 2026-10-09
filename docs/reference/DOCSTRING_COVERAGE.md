@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8806/16638 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8807/16639 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,7 +21,7 @@ Generated from source. 8806/16638 functions/methods documented (52%). The list b
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
-| `core.identity` | 72 | 166 | 43% |
+| `core.identity` | 73 | 167 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
@@ -315,7 +315,7 @@ Generated from source. 8806/16638 functions/methods documented (52%). The list b
 - `core/identity/visible_identity.py` :: `load_visible_identity_prompt` (L17)
 - `core/identity/visible_identity.py` :: `load_visible_identity_summary` (L39)
 - `core/identity/workspace_bootstrap.py` :: `WorkspaceBootstrapResult.summary` (L41)
-- `core/identity/workspace_bootstrap.py` :: `bootstrap_workspace` (L358)
+- `core/identity/workspace_bootstrap.py` :: `bootstrap_workspace` (L426)
 - `core/identity/workspace_bootstrap.py` :: `ensure_default_workspace` (L65)
 - `core/identity/workspace_bootstrap.py` :: `ensure_layered_memory_dirs` (L70)
 - `core/identity/workspace_bootstrap.py` :: `workspace_memory_paths` (L87)

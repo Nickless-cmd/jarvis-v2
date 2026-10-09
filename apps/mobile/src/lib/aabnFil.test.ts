@@ -23,9 +23,12 @@ describe('blokUrl', () => {
       .toBe('https://api.example.dk/attachments/image/abc')
   })
 
-  it('vedhaeftet FIL gaar til den generelle rute', () => {
+  it('vedhaeftet FIL gaar til media-ruten', () => {
+    // `/attachments/media/`, ikke `/attachments/{id}` (maalt 7/10-2026): den
+    // generiske rute laeser en in-memory registry OG kraever `session_id`, som
+    // ingen klient sender — mobilen fik 422 hver gang. Se `blokUrl`s kommentar.
     expect(blokUrl({ attachment_id: 'abc', type: 'file' }, base))
-      .toBe('https://api.example.dk/attachments/abc')
+      .toBe('https://api.example.dk/attachments/media/abc')
   })
 
   it('url vinder over attachment_id', () => {
@@ -42,6 +45,6 @@ describe('blokUrl', () => {
 
   it('id med specialtegn bliver encodet', () => {
     expect(blokUrl({ attachment_id: 'a b/c', type: 'file' }, base))
-      .toBe('https://api.example.dk/attachments/a%20b%2Fc')
+      .toBe('https://api.example.dk/attachments/media/a%20b%2Fc')
   })
 })

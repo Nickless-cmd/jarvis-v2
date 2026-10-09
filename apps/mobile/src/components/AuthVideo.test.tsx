@@ -56,11 +56,13 @@ describe('adressen', () => {
     expect(blokUrl({ type: 'video', attachment_id: 'aid-1' }, 'https://api.test/'))
       .toBe('https://api.test/attachments/media/aid-1')
   })
-  it('billede og fil er uroerte', async () => {
+  it('billede gaar til billed-ruten, fil til media-ruten', async () => {
     expect(blokUrl({ type: 'image', attachment_id: 'a' }, 'https://api.test/'))
       .toBe('https://api.test/attachments/image/a')
+    // Filen er FLYTTET til `/media/` (maalt 7/10-2026) — den generiske
+    // `/attachments/{id}` kraever `session_id` og gav 422. Se `aabnFil.ts`.
     expect(blokUrl({ type: 'file', attachment_id: 'a' }, 'https://api.test/'))
-      .toBe('https://api.test/attachments/a')
+      .toBe('https://api.test/attachments/media/a')
   })
   it('en UDGIVET video bruger sin egen url', async () => {
     expect(blokUrl({ type: 'video', url: '/files/k.mp4', attachment_id: 'x' }, 'https://api.test/'))

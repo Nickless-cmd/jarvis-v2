@@ -206,10 +206,24 @@ describe('widget-rammens tilstand', () => {
     expect(screen.getByTestId('widget-tilstand')).toBeTruthy()
   })
 
-  it('forsvinder naar indlaesningen er faerdig', async () => {
+  it('statuslinjen forsvinder naar dokumentet RAPPORTERER sin hoejde', async () => {
+    // Kontrakten (7/10-2026): `onLoadEnd` maa ikke skjule noget — biblioteket
+    // kalder `onError` FOER `onLoadEnd`, saa et ukritisk «klar» her gjorde
+    // enhver fejl usynlig. Linjen forsvinder derfor FOERST naar dokumentet har
+    // koert JS og maalt sig selv: en `jarvis-widget-hoejde`-besked. Testen
+    // pinner begge trin — foer melder den «loadet, men tavs», efter er den vaek.
     const screen = await render(<WidgetFlade html="<p>hej</p>" />)
     const p = screen.getByTestId('widget-webview').props as Record<string, never>
     await act(async () => { (p.onLoadEnd as unknown as () => void)() })
+    // Loadet, men dokumentet svarede ikke: linjen STAAR og siger hvad der mangler.
+    expect(JSON.stringify(screen.getByTestId('widget-tilstand').props.children))
+      .toContain('svarede ikke')
+    // Foerst da dokumentet maalte sig selv, forsvinder den.
+    await act(async () => {
+      (p.onMessage as unknown as (e: unknown) => void)({
+        nativeEvent: { data: JSON.stringify({ type: 'jarvis-widget-hoejde', hoejde: 200 }) },
+      })
+    })
     expect(screen.queryByTestId('widget-tilstand')).toBeNull()
   })
 

@@ -88,6 +88,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 // braekker ikke foer han selv saetter filen op.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('keystore.properties')
+def useDebugSigningForRelease = (findProperty('jarvis.useDebugSigningForRelease') ?: 'false').toBoolean()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
@@ -103,8 +104,8 @@ android {
         applicationId 'dk.srvlab.jarvis.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 287
-        versionName "0.2.186"
+        versionCode 288
+        versionName "0.2.187"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -154,7 +155,7 @@ android {
             // Skifter foerst certifikat naar upload-noeglen er sat op. Indtil da
             // debug-noeglen — ellers ville Bjørns installerede app ikke kunne
             // opdateres uden en afinstallering foerst.
-            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            signingConfig useDebugSigningForRelease ? signingConfigs.debug : (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

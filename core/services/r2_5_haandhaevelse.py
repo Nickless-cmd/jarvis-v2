@@ -172,6 +172,20 @@ def afvis_mutation(navn: str, argumenter: dict[str, Any] | None = None, *,
         if not gate_enforcement.is_enforced(NERVE, GateClass.COGNITIVE):
             gate_enforcement.note_suppressed_block(NERVE, "proactivity", grund)
             return None
+        # ── Overstyrings-vejen (side-1fca7cd0d3, 9/10-2026) ──────────────────
+        # R2.5 skrev ALDRIG til veto_events, så en afvisning efterlod intet
+        # event_id at armere imod — og afvisningen konsulterede heller ikke
+        # gate_override. Målt 9/10: gaten blokerede uden spor, og vejen ud var
+        # at gå udenom via en isoleret bash-session. Samme design som veto-gaten
+        # (gate_override: «B med C som forudsætning»): gaten fyrer og logger
+        # FØRST; en armeret one-shot er et SVAR på signalet, ikke en vej udenom.
+        try:
+            from core.services.gate_override import consume_override
+            if consume_override(navn, NERVE):
+                return None
+        except Exception:
+            logger.debug("r2.5-håndhævelse: override-konsultation fejlede",
+                         exc_info=True)
         with _laas:
             _afvist_i_blokken += 1
             antal = _afvist_i_blokken
@@ -182,6 +196,18 @@ def afvis_mutation(navn: str, argumenter: dict[str, Any] | None = None, *,
                  "og det første kig tilbage løfter blokken.")
         _publicer("mutation_refused", {"tool": navn, "refused": antal,
                                        "run_id": run_id, "tier": blok.get("tier")})
+        # Blokeringen får et event_id (side-1fca7cd0d3): uden en række i
+        # veto_events findes der intet at armere `override_gate` imod. Rækken
+        # ER sporet — og uden den kan gaten blokere uden at nogen kan se det.
+        try:
+            from core.services.veto_gate import log_veto_event
+            log_veto_event(
+                tool_name=navn, user_message="", feeling=NERVE, intensity=1.0,
+                evidence_summary=grund, veto_result="blocked",
+            )
+        except Exception:
+            logger.debug("r2.5-håndhævelse: veto_events-logning fejlede",
+                         exc_info=True)
         if antal >= 2:
             _rapporter_gentagelse(navn, antal, run_id=run_id, session_id=session_id)
         return tekst

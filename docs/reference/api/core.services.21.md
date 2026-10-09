@@ -99,7 +99,7 @@ _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 | function | `_publicer` | `(kind, data)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L118) |
 | function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L126) |
 | function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L154) |
-| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L194) |
+| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L220) |
 
 ## `core/services/raesonnering_eksperiment.py`
 _A/B: raesonnerer han paa mellem-runderne, eller ikke?_

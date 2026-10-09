@@ -558,7 +558,9 @@ def allowed_tool_names(
     if not current_local_exec():
         result = result - LOCAL_EXEC_ONLY_TOOLS
 
-    return _apply_computer_use_policy(result)
+    result = _apply_computer_use_policy(result)
+    from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
+    return {name for name in result if _autonomous_allowed(name)}
 
 
 def preferred_tools_for_user_message(user_message: str) -> list[str]:
@@ -595,6 +597,9 @@ def is_tool_allowed(*, role: str, scope: str, name: str) -> bool:
     kører uden bundet non-owner-rolle. Non-owner → `allowed_tool_names` (som er
     permission_engine + computer-use-policy → samme sandhed som model-filteret).
     """
+    from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
+    if not _autonomous_allowed(name):
+        return False
     r = (role or "").strip().lower()
     if r in ("", "owner"):
         return True

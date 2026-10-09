@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/web_cache.py`
+_Web search result cache — normalization, TTL classification, orchestration._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normalize_query` | `(raw)` | Normalize query and produce SHA256 cache key. | [src](../../../core/tools/web_cache.py#L10) |
+| function | `classify_ttl` | `(query)` | Classify query into a TTL policy. First match wins, default medium. | [src](../../../core/tools/web_cache.py#L31) |
+| function | `cached_web_search` | `(*, query, max_results, fetch_fn, conn=…)` | Check cache, call fetch_fn on miss, store result. | [src](../../../core/tools/web_cache.py#L40) |
+
 ## `core/tools/web_scrape_tool.py`
 _web_scrape_tool — structured content extraction from URLs._
 

@@ -66,6 +66,24 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             pass
     if not name:
         return ("skip", None)
+    # The model may name an old/pinned tool or wrap it in call_loaded_tool.
+    # Check the resolved name before cache lookup, gate evaluation or execute.
+    from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
+    if not _autonomous_allowed(name):
+        reason = f"Autonom kørsel må ikke bruge værktøjet '{name}'."
+        try:
+            event_bus.publish("autonomous_tool_policy.blocked", {
+                "tool_name": name, "run_id": run_id,
+            })
+        except Exception:
+            logger.warning("autonomous tool denial could not be observed", exc_info=True)
+        return ("result", {
+            "tool_name": name, "arguments": arguments,
+            "result": {"status": "gate_blocked", "gate_type": "autonomous_tool_policy",
+                       "message": reason},
+            "result_text": f"[autonomous_tool_policy] {reason}",
+            "status": "gate_blocked",
+        })
     try:
         from core.services.in_flight_runs import mark_tool
         mark_tool(run_id or "", name)

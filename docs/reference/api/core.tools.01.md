@@ -92,6 +92,13 @@ _Auto-ensure tests — Layer 2 of the Agentic Test Enforcement._
 | function | `auto_ensure_tests` | `(changed_path)` | Main entry point. | [src](../../../core/tools/auto_ensure_tests.py#L174) |
 | function | `_count_tests` | `(pytest_stdout)` | Extract the 'X passed' summary from pytest output. | [src](../../../core/tools/auto_ensure_tests.py#L235) |
 
+## `core/tools/autonomous_tool_policy.py`
+_Explicit tool permissions for runs without a user present._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L50) |
+
 ## `core/tools/bash_session.py`
 _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 
@@ -521,12 +528,4 @@ _Identity-pinning — pin a snippet from chronicle/MILESTONES/letters as_
 | function | `_exec_pin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L145) |
 | function | `_exec_list_identity_pins` | `(_args)` | — | [src](../../../core/tools/identity_pin_tools.py#L154) |
 | function | `_exec_unpin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L158) |
-
-## `core/tools/identity_sketch_tools.py`
-_Tools for Persistent Identity Sketch — read and update._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
-| function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
 

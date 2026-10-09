@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/identity_sketch_tools.py`
+_Tools for Persistent Identity Sketch — read and update._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_read_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L12) |
+| function | `_exec_update_identity_sketch` | `(args)` | — | [src](../../../core/tools/identity_sketch_tools.py#L33) |
+
 ## `core/tools/inbox_tools.py`
 _De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
 
@@ -519,17 +527,4 @@ _Recurring scheduler tools — Jarvis can schedule repeating tasks._
 | function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L98) |
 | function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L236) |
 | function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L256) |
-
-## `core/tools/restart_self_tools.py`
-_restart_self tool — fire-and-forget service restart that survives process death._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L92) |
-| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L145) |
-| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L265) |
-| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L291) |
-| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L312) |
-| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L343) |
-| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L374) |
 

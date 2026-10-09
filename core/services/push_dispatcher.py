@@ -35,8 +35,34 @@ def _push_to_user(user_id: str, data: dict) -> bool:
     return sent
 
 
+def _push_to_web(user_id: str, data: dict) -> bool:
+    """Web-push — fjerde udgang (side-67aea8c5b6). Additiv: FCM/routing røres ikke.
+
+    Web-abonnementer er ikke med i device-rangeringen (en browser kan ikke melde
+    presence som en app), så de får ALTID beskeden når en notifikation
+    dispatches. Det er med vilje: et dobbelt-varsel er bedre end et tabt.
+    """
+    try:
+        from core.services import web_push_subscriptions as wps
+        from core.services.web_push_gateway import send as _web_send
+    except Exception as e:
+        logger.warning("web-push: kunne ikke indlæse moduler: %s", e)
+        return False
+    sent = False
+    for sub in wps.list_for_user(user_id):
+        try:
+            ok, code = _web_send(sub, data)
+            sent = sent or bool(ok)
+            if not ok and code == "invalid":
+                wps.delete(sub["endpoint"])
+        except Exception as e:
+            logger.warning("web-push: send-fejl for abonnement: %s", e)
+    return sent
+
+
 def _route_or_blast(user_id: str, data: dict, kind: str) -> bool:
     """Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat)."""
+    web_sent = _push_to_web(user_id, data)
     try:
         from core.runtime.settings import load_settings
         if load_settings().device_awareness_enabled:
@@ -53,10 +79,10 @@ def _route_or_blast(user_id: str, data: dict, kind: str) -> bool:
             # kunne prøve igen.
             from core.services import device_tokens as _dt
             notification_router.route_device_aware(user_id, data, kind)
-            return bool(list(_dt.list_for_user(user_id)))
+            return bool(list(_dt.list_for_user(user_id))) or web_sent
     except Exception as e:
         logger.warning("push: routing-fejl, falder tilbage til blast: %s", e)
-    return _push_to_user(user_id, data)
+    return _push_to_user(user_id, data) or web_sent
 
 
 def _last_assistant_preview(session_id: str, *, width: int = 160) -> str:

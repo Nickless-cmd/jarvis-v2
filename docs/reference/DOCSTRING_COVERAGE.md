@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8799/16627 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8806/16638 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 683 | 918 | 74% |
+| `apps.api.jarvis_api.routes` | 685 | 921 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5870 | 11291 | 51% |
+| `core.services` | 5875 | 11299 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2352)
+## Undocumented public functions (2355)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -117,6 +117,7 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/presence.py` :: `presence_ping` (L57)
 - `apps/api/jarvis_api/routes/push.py` :: `register` (L27)
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
+- `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
@@ -1576,9 +1577,9 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
 - `core/services/proprioception_metrics.py` :: `tick` (L100)
-- `core/services/push_dispatcher.py` :: `on_approval_requested` (L146)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L134)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L140)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L172)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L160)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L166)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L232)
@@ -2109,6 +2110,8 @@ Generated from source. 8799/16627 functions/methods documented (52%). The list b
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L243)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
+- `core/services/web_push_subscriptions.py` :: `delete` (L72)
+- `core/services/web_push_subscriptions.py` :: `save` (L38)
 - `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L145)
 - `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L193)
 - `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L210)

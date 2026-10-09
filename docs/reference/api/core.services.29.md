@@ -311,6 +311,25 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L184) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L377) |
 
+## `core/services/web_push_gateway.py`
+_Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(name)` | Læs en VAPID-nøgle fra runtime.json. Tom streng hvis den ikke findes. | [src](../../../core/services/web_push_gateway.py#L20) |
+| function | `vapid_public_key` | `()` | Den offentlige VAPID-nøgle — gives til klienten ved abonnement. | [src](../../../core/services/web_push_gateway.py#L32) |
+| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L37) |
+
+## `core/services/web_push_subscriptions.py`
+_Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/web_push_subscriptions.py#L18) |
+| function | `save` | `(user_id, endpoint, p256dh, auth)` | — | [src](../../../core/services/web_push_subscriptions.py#L38) |
+| function | `list_for_user` | `(user_id)` | Alle abonnementer for brugeren som ``[{endpoint, p256dh, auth}]``. | [src](../../../core/services/web_push_subscriptions.py#L57) |
+| function | `delete` | `(endpoint)` | — | [src](../../../core/services/web_push_subscriptions.py#L72) |
+
 ## `core/services/weekly_manifest.py`
 _Weekly manifest — Jarvis' running self-reflection._
 

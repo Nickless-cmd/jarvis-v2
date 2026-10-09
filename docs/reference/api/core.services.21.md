@@ -23,14 +23,15 @@ _Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppressio
 | function | `_fcm_send` | `(token, data)` | — | [src](../../../core/services/push_dispatcher.py#L12) |
 | function | `_owner_of_run` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L17) |
 | function | `_push_to_user` | `(user_id, data)` | — | [src](../../../core/services/push_dispatcher.py#L24) |
-| function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L38) |
-| function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L62) |
-| function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L80) |
-| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L113) |
-| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L121) |
-| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L134) |
-| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L140) |
-| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L146) |
+| function | `_push_to_web` | `(user_id, data)` | Web-push — fjerde udgang (side-67aea8c5b6). Additiv: FCM/routing røres ikke. | [src](../../../core/services/push_dispatcher.py#L38) |
+| function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L63) |
+| function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L88) |
+| function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L106) |
+| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L139) |
+| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L147) |
+| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L160) |
+| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L166) |
+| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L172) |
 
 ## `core/services/pushback.py`
 _Pushback — three prompt-level mechanisms that give Jarvis a real voice_

@@ -25,6 +25,7 @@ import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { InspectorPanel } from './components/panel/InspectorPanel'
 import { useSessions } from './hooks/useSessions'
+import { genopretWebPush } from './pwa/webPush'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { PrivacyDialog } from './components/PrivacyDialog'
@@ -209,6 +210,13 @@ function Shell({
   const { settings } = useSettings()
   const panel = usePanel()
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // Web-push: gen-etablér abonnementet ved opstart, men KUN hvis tilladelsen
+  // allerede er givet (side-67aea8c5b6). Spørger aldrig af sig selv — browseren
+  // kræver en brugerhandling, og et prompt ved hver opstart ville være støj.
+  useEffect(() => {
+    if (!settings?.apiBaseUrl) return
+    void genopretWebPush({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
+  }, [settings?.apiBaseUrl, settings?.authToken])
   // Inspektoren er en delt rude i højre side; sessionspanelet fra et notifikationskort er flydende og lå oven på
   // den, så et agentkort (session + inspector) skjulte inspectoren. Bredden gives videre som CSS-variabel.
   useEffect(() => {

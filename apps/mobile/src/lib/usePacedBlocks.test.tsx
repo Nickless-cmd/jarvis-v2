@@ -21,3 +21,15 @@ it('mobilen viser en hurtig tekstbid over flere trin og slipper hele svaret ved 
   await rerender({ live: false })
   expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(text)
 })
+
+it('mobilen starter et nyt svar uden synlig tekst fra den forrige tur', async () => {
+  jest.useFakeTimers()
+  const first = 'Jarvis: ' + 'A'.repeat(72)
+  const next = 'Jarvis: ' + 'B'.repeat(72)
+  const { result, rerender } = await renderHook(({ text, live }: { text: string; live: boolean }) =>
+    usePacedBlocks([{ type: 'text', text }], live), { initialProps: { text: first, live: true } })
+  await act(async () => { jest.advanceTimersByTime(33) })
+  await rerender({ text: first, live: false })
+  await rerender({ text: next, live: true })
+  expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
+})

@@ -25,6 +25,7 @@ Dekryptering sker KUN i memory (§16.5), aldrig skrevet i klartekst tilbage til 
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 _ENC = ".enc"
@@ -190,3 +191,49 @@ def write_text_for_path(path: str | os.PathLike, content: str | bytes) -> str:
     with open(p, "wb") as f:
         f.write(data)
     return p
+
+
+def atomic_write_text_for_path(path: str | os.PathLike, content: str | bytes) -> str:
+    """Som `write_text_for_path`, men atomisk (temp-fil + os.replace).
+
+    Skrivere der ikke må efterlade en halv fil hvis processen dør midt i
+    skrivningen (fx MEMORY.md) bruger denne i stedet. Samme sti-nøgle-regel:
+    member-filer → .enc, owner/shared/projekt → plaintext.
+
+    9/10-2026 (§16, Task 3.2): `memory_md_writer.upsert_section` læste og skrev
+    rå plaintext. Med ENCRYPT_ON_WRITE tændt betød det at en skrivning til et
+    member-workspace lagde en KLARTEKST-fil ved siden af den krypterede — målt:
+    `workspaces/michelle/USER.md` (34 B klartekst) opstod ved siden af
+    `USER.md.enc` (888 B). Den læste samtidig ikke den eksisterende .enc, så
+    indholdet divergerede. Denne funktion lukker begge huller.
+    """
+    p = str(path)
+    data = content.encode("utf-8") if isinstance(content, str) else content
+    member = member_user_id_for_path(p)
+    if member and encrypt_on_write():
+        from core.services.encryption import encrypt
+        from core.services.keyring_store import get_user_key
+        target = p + _ENC
+        data = encrypt(data, get_user_key(member))
+    else:
+        target = p
+    parent = os.path.dirname(target) or "."
+    os.makedirs(parent, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=os.path.basename(target) + ".", suffix=".tmp", dir=parent)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, target)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass  # temp-filen er allerede væk; den ægte fejl er den vi rejser nu
+        raise
+    # En .enc-skrivning må ikke efterlade en plaintext-rest ved siden af.
+    if target.endswith(_ENC) and os.path.exists(p):
+        try:
+            os.remove(p)
+        except OSError:
+            pass  # plaintext-resten kunne ikke fjernes; .enc er skrevet og er sandheden
+    return target

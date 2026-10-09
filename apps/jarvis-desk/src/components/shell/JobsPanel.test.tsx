@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 const listJobs = vi.fn()
@@ -72,6 +72,12 @@ beforeEach(() => {
   resumeJob.mockReset().mockResolvedValue(undefined)
   removeProcess.mockReset().mockResolvedValue(undefined)
 })
+
+// Timer-oprydning (10/10-2026): de to poll-tests slaar fake timers til. Fejler
+// en af dem paa sin assertion, naar `vi.useRealTimers()` i dens egen krop ikke
+// at koere — og fake timers laekkede da ind i de otte naeste tests. Maalt: ni
+// fejl i stedet for een. Oprydningen hoerer her, ikke i testens hale.
+afterEach(() => { vi.useRealTimers() })
 
 describe('JobsPanel', () => {
   it('viser job fra BEGGE maskiner', async () => {
@@ -200,19 +206,37 @@ describe('tilstande der ikke er «kører» eller «exit N»', () => {
 describe('JobsPanel — belastningen på broen', () => {
   it('starter ikke et nyt opslag mens det forrige er undervejs', async () => {
     // Hvert opslag koerer en kommando paa Bjoerns maskine over broen. Er den
-    // langsom, ville en poll hvert 5. sekund lægge kald i kø hos ham.
+    // langsom, ville en poll hvert 10. sekund lægge kald i kø hos ham.
     vi.useFakeTimers()
     let slip: ((v: unknown) => void) | null = null
     listJobs.mockImplementation(() => new Promise((r) => { slip = r }))
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     expect(listJobs).toHaveBeenCalledTimes(1)
 
-    await vi.advanceTimersByTimeAsync(15000)      // tre polls ville vaere fyret
+    await vi.advanceTimersByTimeAsync(25000)      // to polls (10 s og 20 s) ville vaere fyret
     expect(listJobs).toHaveBeenCalledTimes(1)
 
     slip!({ jobs: [], bridge_ok: true })
-    await vi.advanceTimersByTimeAsync(5000)
+    await vi.advanceTimersByTimeAsync(10000)
     expect(listJobs).toHaveBeenCalledTimes(2)     // og saa maa den igen
+    vi.useRealTimers()
+  })
+
+  it('poller hvert 10. sekund — ikke hvert 5.', async () => {
+    // Maalt 10/10-2026: hvert opslag er en fuld tur over broen til Bjoerns
+    // maskine. 5 s gav ~800 bro-kald i timen doegnet rundt. Denne test er
+    // skarp paa TALLET: ved 9 s maa der ikke vaere sket noget nyt, ved 10 s skal der.
+    vi.useFakeTimers()
+    listJobs.mockImplementation(() => Promise.resolve({ jobs: [], bridge_ok: true }))
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(listJobs).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(9000)
+    expect(listJobs).toHaveBeenCalledTimes(1)     // 9 s: endnu ingen ny poll
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(listJobs).toHaveBeenCalledTimes(2)     // 10 s: nu
     vi.useRealTimers()
   })
 })

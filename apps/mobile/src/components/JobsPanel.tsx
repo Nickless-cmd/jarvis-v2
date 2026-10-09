@@ -6,8 +6,12 @@ import { formatVarighed } from '../lib/runResume'
 import type { ApiConfig } from '../lib/types'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
-/** Tre sekunder. Se `useEffect` nedenfor for hvorfor klienten ikke tæller selv. */
-const PULS_MS = 3_000
+/** Ti sekunder. Se `useEffect` nedenfor for hvorfor klienten ikke tæller selv.
+ *
+ * Var 3 s til 10/10-2026. Hvert opslag er en fuld tur over broen til Bjoerns
+ * maskine, og job-pollen var maalt ~800 bro-kald i timen doegnet rundt.
+ * Prisen er at varigheds-tallet nu springer ti sekunder ad gangen. */
+const PULS_MS = 10_000
 
 /**
  * Hvad kører lige nu?
@@ -17,7 +21,7 @@ const PULS_MS = 3_000
  * Klienten kunne tælle sekunder selv mellem opslag, og tallet ville se mere
  * levende ud. Men så er der to ure, og to ure driver fra hinanden — desk
  * traf det samme valg med samme begrundelse. I stedet spørges der hvert
- * tredje sekund, og tallet er altid serverens.
+ * tiende sekund, og tallet er altid serverens.
  *
  * ## Hvorfor panelet må være tomt
  *

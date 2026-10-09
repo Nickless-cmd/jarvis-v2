@@ -46,7 +46,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 #: Kun shell-kald bærer en kommando OG en exit-kode i sit resultat.
-_SHELL_TOOLS = frozenset({"bash", "bash_session_run"})
+#:
+#: `operator_bash` med fra 10/10-2026. Maalt: den var 96 % af alle shell-kald
+#: (11.238 mod bash' 509 i doegnet), saa uden den saa detektoren 4 % af det
+#: den skal fange. Indvendingen var at langt de fleste kald er desk-broens
+#: job-poll — men den er nu flagget som internt kald (`_bro_svar` saetter
+#: contextvar'et), saa `observe` kaldes slet ikke for den. Tilbage er de
+#: aegte model-kald gennem broen, og de kan braekke en `&&`-kaede som alle andre.
+_SHELL_TOOLS = frozenset({"bash", "bash_session_run", "operator_bash"})
 
 #: Signaturen alle knæk samles på — så en gentagelse bliver ÉT fund hos Smith,
 #: ikke én ny lesson pr. kommando. `repeated_count` kræver en stabil signatur.

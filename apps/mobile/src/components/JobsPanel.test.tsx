@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { JobsPanel } from './JobsPanel'
 import * as api from '../lib/jobsApi'
 import type { BaggrundsJob } from '../lib/jobsApi'
@@ -70,8 +70,25 @@ it('et afsluttet job viser sin exit-kode frem for en tid', async () => {
 })
 
 it('LUKKET panel henter slet ikke', async () => {
-  // Ellers ville den pulse hvert 3. sekund resten af appens levetid.
+  // Ellers ville den pulse hvert 10. sekund resten af appens levetid.
   const hent = jest.spyOn(api, 'hentJobs').mockResolvedValue({ jobs: [], broOk: true })
   await render(<JobsPanel {...base()} aaben={false} />)
   expect(hent).not.toHaveBeenCalled()
+})
+
+it('poller hvert 10. sekund — ikke hvert 3.', async () => {
+  // Maalt 10/10-2026: hvert opslag er en fuld tur over broen til Bjoerns
+  // maskine, og mobilens 3 s var den taetteste puls i huset. Testen er skarp
+  // paa TALLET: ved 9 s maa der ikke vaere sket noget nyt, ved 10 s skal der.
+  jest.useFakeTimers()
+  const hent = jest.spyOn(api, 'hentJobs').mockResolvedValue({ jobs: [], broOk: true })
+  await render(<JobsPanel {...base()} />)
+  expect(hent).toHaveBeenCalledTimes(1)
+
+  await act(async () => { await jest.advanceTimersByTimeAsync(9000) })
+  expect(hent).toHaveBeenCalledTimes(1)     // 9 s: endnu ingen ny poll
+
+  await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+  expect(hent).toHaveBeenCalledTimes(2)     // 10 s: nu
+  jest.useRealTimers()
 })

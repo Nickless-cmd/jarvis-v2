@@ -77,7 +77,7 @@ export function JobsPanel({
 
   // Hvert opslag gaar over broen til Bjoerns maskine og koerer en kommando
   // dér. Uden denne vagt ville en langsom bro give overlappende kald: panelet
-  // poller hvert 5. sekund uanset om det forrige svar er kommet, og saa staar
+  // poller hvert 10. sekund uanset om det forrige svar er kommet, og saa staar
   // der to-tre kald i koe paa hans maskine for ét aabent panel.
   const undervejs = useRef(false)
 
@@ -100,7 +100,10 @@ export function JobsPanel({
 
   useEffect(() => {
     hent()
-    const id = setInterval(() => { if (!document.hidden) hent() }, 5000)
+    // 10 s, ikke 5 (10/10-2026). Hvert opslag er en fuld tur over broen til
+    // Bjoerns maskine; maalt var job-pollen ~800 bro-kald i timen doegnet
+    // rundt. Panelet viser hvad der KOERER — det skal ikke taelle sekunder.
+    const id = setInterval(() => { if (!document.hidden) hent() }, 10_000)
     return () => clearInterval(id)
   }, [hent])
 

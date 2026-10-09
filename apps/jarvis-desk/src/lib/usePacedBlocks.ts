@@ -3,7 +3,7 @@ import type { ContentBlock } from './sseProtocol'
 
 const TICK_MS = 33
 const MIN_CHARS = 5
-const MAX_CHARS = 18
+const MAX_CHARS = 28
 const SHORT_TEXT = 32
 /** Hvor langt visningen må sakke bagud, før vi springer frem til grænsen.
  *  Loftet på MAX_CHARS pr. tick kan ikke følge en hurtigere kilde alene, og
@@ -15,6 +15,7 @@ const BACKLOG_MAX = 330
 export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBlock[] {
   const index = live && blocks.length > 0 && blocks[blocks.length - 1]?.type === 'text'
     ? blocks.length - 1 : -1
+  const active = index >= 0
   const target = index >= 0 ? (blocks[index] as Extract<ContentBlock, { type: 'text' }>).text : ''
   const latest = useRef({ index, target })
   latest.current = { index, target }
@@ -24,7 +25,11 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
   const [cursor, setCursor] = useState({ index: -1, shown: '' })
 
   useEffect(() => {
-    if (!live || index < 0) return
+    if (!live) setCursor((previous) => previous.index < 0 ? previous : { index: -1, shown: '' })
+  }, [live])
+
+  useEffect(() => {
+    if (!active) return
     const timer = setInterval(() => {
       const { index: currentIndex, target: currentTarget } = latest.current
       setCursor((previous) => {
@@ -36,15 +41,18 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         const pending = currentTarget.length - shown.length
         if (pending <= 0) return previous
         // Jævn kadence: små trin så længe vi kan følge kilden.
-        const step = Math.min(MAX_CHARS, Math.max(MIN_CHARS, Math.ceil(pending / 8)))
+        const step = Math.min(MAX_CHARS, Math.max(MIN_CHARS, Math.ceil(pending / 12)))
         // …og grænsen der gør at vi ALTID indhenter: er vi mere end
         // BACKLOG_MAX bagud, springer vi frem til grænsen i stedet.
-        const from = Math.max(shown.length + step, currentTarget.length - BACKLOG_MAX)
-        return { index: currentIndex, shown: currentTarget.slice(0, from) }
+        let end = Math.min(currentTarget.length,
+          Math.max(shown.length + step, currentTarget.length - BACKLOG_MAX))
+        const code = currentTarget.charCodeAt(end - 1)
+        if (end < currentTarget.length && code >= 0xD800 && code <= 0xDBFF) end++
+        return { index: currentIndex, shown: currentTarget.slice(0, end) }
       })
     }, TICK_MS)
     return () => clearInterval(timer)
-  }, [live, index >= 0])
+  }, [active])
 
   if (index < 0 || target.length <= SHORT_TEXT) return blocks
   const previousShown = cursor.index === index && target.startsWith(cursor.shown) ? cursor.shown : ''

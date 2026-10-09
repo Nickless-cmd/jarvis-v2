@@ -54,4 +54,26 @@ describe('usePacedBlocks', () => {
     expect(visible.length).toBeLessThan(source.length)
     expect(source.length - visible.length).toBeLessThan(350)
   })
+
+  it('deler ikke en emoji midt i et tegn', () => {
+    vi.useFakeTimers()
+    const text = 'abcd🙂' + ' videre i teksten'.repeat(3)
+    const { result } = renderHook(() => usePacedBlocks([{ type: 'text', text }], true))
+    act(() => vi.advanceTimersByTime(33))
+    const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+    expect(visible).toBe('abcd🙂')
+  })
+
+  it('genbruger ikke synlig tekst fra et tidligere svar', () => {
+    vi.useFakeTimers()
+    const first = 'Jarvis: ' + 'A'.repeat(72)
+    const next = 'Jarvis: ' + 'B'.repeat(72)
+    const { result, rerender } = renderHook(({ text, live }) => usePacedBlocks([{ type: 'text', text }], live), {
+      initialProps: { text: first, live: true },
+    })
+    act(() => vi.advanceTimersByTime(33))
+    rerender({ text: first, live: false })
+    rerender({ text: next, live: true })
+    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
+  })
 })

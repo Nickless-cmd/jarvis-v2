@@ -20,6 +20,14 @@
 - **Findes den ikke** → `signingConfigs.release` findes ikke, og release falder
   tilbage til debug-nøglen.
 
+Til sideload-udgivelse kan debug-nøglen vælges eksplicit, også hvis
+`keystore.properties` findes:
+
+```bash
+cd apps/mobile/android
+./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a -Pjarvis.useDebugSigningForRelease=true
+```
+
 Fallbacken er der for to grunde: en frisk klon skal kunne bygge uden at have
 nøglen, og Bjørns installerede app skal ikke brække midt i en almindelig
 opdatering.

@@ -1,5 +1,6 @@
 import { activePauseAsk, withoutPauseAsk } from './pauseAsk'
 import type { ChatMessage } from './types'
+import type { ContentBlock } from './sseProtocol'
 
 const result = JSON.stringify({ kind: 'pause_and_ask', question: 'Hvilke flader?', options: ['Desk', 'Mobil'], allow_multiple: true })
 const assistant: ChatMessage = {
@@ -23,6 +24,15 @@ test('viser nyt live-spørgsmål efter det første svar', () => {
   const user: ChatMessage = { id: 'u2', role: 'user', content: 'Desk', created_at: '2026-10-09T00:01:00Z' }
   const live = [{ type: 'tool_use' as const, id: 't2', name: 'pause_and_ask', input: {}, result: JSON.stringify({ kind: 'pause_and_ask', question: 'Vis resultat?', options: ['Ja', 'Nej'] }) }]
   expect(activePauseAsk([assistant, user], live)?.question).toBe('Vis resultat?')
+})
+
+test('viser live-spørgsmålet selv om streamen har et tomt blokindeks', () => {
+  const live: ContentBlock[] = []
+  live[0] = { type: 'text', text: 'Et værktøj er færdigt.' }
+  live[2] = {
+    type: 'tool_use', id: 'ask-2', name: 'pause_and_ask', input: {}, result,
+  }
+  expect(activePauseAsk([], live)?.question).toBe('Hvilke flader?')
 })
 
 test('fjerner spørgsmål og tilhørende tool-resultat fra samtalen', () => {

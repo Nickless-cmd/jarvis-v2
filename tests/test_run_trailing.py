@@ -137,6 +137,128 @@ def test_en_TOM_naeste_besked_kommer_ikke_med():
     assert h.som_liste() == []
 
 
+# ── ARTEN: forpligtelse vs raadgivning (10/10-2026) ─────────────────────────
+#
+# Levetiden siger HVOR LAENGE en note bliver; arten siger HVAD den er. Skellet
+# findes fordi en note i halen kun kan naa modellen ved at koere modellen igen:
+# enhver note ved runde-SLUT koster +1 runde. Maalt 10/10-2026 stod batch-vinket
+# i halen i runde 4, og runde 5 fulgte — én ekstra runde for et stil-raad.
+
+
+def test_naeste_er_som_standard_en_FORPLIGTELSE():
+    """De fem gater er forpligtelser: de fyrer fordi modellen gjorde noget
+    ufuldstaendigt, og de tvinger deres runde. Standarden skal derfor vaere
+    forpligtelse — en gate der blev klassificeret som raadgivning ville ikke
+    kunne kraeve sin runde."""
+    from core.services.run_trailing import FORPLIGTELSE
+    h = RundeHale()
+    h.tilfoej_naeste("Du lovede lige at handle")
+    h.ny_runde()
+    assert h.som_liste()[0]["art"] == FORPLIGTELSE
+
+
+def test_runde_er_som_standard_en_RAADGIVNING():
+    """Batch-vinket og budget-varslet kraever intet — de siger «du kunne gøre
+    det anderledes», ikke «du mangler noget». De maa ikke vaere grunden til at
+    turen fortsaetter."""
+    from core.services.run_trailing import RAADGIVNING
+    h = RundeHale()
+    h.tilfoej_runde("saml dine kald")
+    assert h.som_liste()[0]["art"] == RAADGIVNING
+
+
+def test_arten_kan_saettes_eksplicit():
+    """En kalder der ved bedre end standarden skal kunne sige det — fx en
+    raadgivning der alligevel skal gaelde naeste runde."""
+    from core.services.run_trailing import RAADGIVNING
+    h = RundeHale()
+    h.tilfoej_naeste("et raad til naeste runde", art=RAADGIVNING)
+    h.ny_runde()
+    assert h.som_liste()[0]["art"] == RAADGIVNING
+
+
+def test_raadgivning_i_runden_taeller_KUN_det_sendte():
+    """Løkken skal kunne se om runden baerer et krav. En `naeste`-note er ikke
+    sendt endnu og maa derfor ikke taelles med — den ville melde om et krav i
+    en runde der ikke har det."""
+    from core.services.run_trailing import RAADGIVNING
+    h = RundeHale()
+    h.tilfoej_naeste("et raad der ikke er sendt endnu", art=RAADGIVNING)
+    assert h.raadgivning_i_runden == 0        # endnu ikke rykket ind
+    h.ny_runde()
+    assert h.raadgivning_i_runden == 1
+
+
+def test_raadgivning_i_runden_skelner_krav_fra_raad():
+    """Kernebeviset: en runde med baade en forpligtelse og et raad skal vise
+    at der ER et krav — ellers kunne løkken afslutte en tur der manglede
+    noget."""
+    h = RundeHale()
+    h.tilfoej_naeste("Du lovede lige at handle")     # forpligtelse
+    h.ny_runde()
+    h.tilfoej_runde("saml dine kald")                # raadgivning
+    assert h.raadgivning_i_runden == 1
+    assert len(h.som_liste()) == 2, "forpligtelsen skal stadig vaere der"
+
+
+def test_telemetrien_viser_arten_saa_en_fejlklassificering_kan_SES():
+    """Uden arten i telemetrien kan en raadgivning der opfoerer sig som et krav
+    ikke findes i driften — kun ved at grave i koden."""
+    from core.services.run_trailing import FORPLIGTELSE, RAADGIVNING
+    h = RundeHale()
+    h.tilfoej_naeste("Du lovede lige at handle")
+    h.ny_runde()
+    h.tilfoej_runde("saml dine kald")
+    t = h.telemetri()
+    arter = {p["label"][:12]: p["art"] for p in t["poster"]}
+    assert arter["Du lovede li"] == FORPLIGTELSE
+    assert arter["saml dine ka"] == RAADGIVNING
+    assert t["raadgivning"] == 1
+
+
+def test_telemetriens_raadgivningstal_er_self_safe():
+    t = RundeHale().telemetri()
+    assert t["raadgivning"] == 0
+
+
+# ── Kilde-vagt: raadgivning maa ikke tvinge en runde ────────────────────────
+
+
+def test_batch_vinket_er_FJERNET_helt():
+    """Vinket blev fjernet 10/10-2026 — ikke omklassificeret.
+
+    Det var en raadgivning (laa i `runde`), men selv en raadgivning i halen
+    koster +1 runde: en note ved runde-SLUT kan kun naa modellen ved at koere
+    modellen igen. Maalt samme doegn stod vinket i halen i runde 4, og runde 5
+    fulgte. Det dublerede desuden workflow-kontrakten, der staar permanent i
+    prompten («call EVERY tool that step needs — all at once»).
+
+    Vagtens form er derfor vendt: den fangede foer en fejlklassificering, nu
+    fanger den en GENINDFOERSEL. Baade kaldet, modulet og dets test skal vaere
+    vaek — en tilbagevenden til `tilfoej_runde(_vink)` er lige saa forkert som
+    den var foer."""
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert "_vink" not in kilde, (
+        "batch-vinket er tilbage i loekken — det koster en runde pr. tur for "
+        "et stil-raad prompten allerede giver")
+    assert "tool_batch_notice" not in kilde
+    assert not pathlib.Path("core/services/tool_batch_notice.py").exists(), (
+        "modulet skal vaere slettet, ikke bare ude af import-stien")
+
+
+def test_budgetvarslet_er_ogsaa_en_RAADGIVNING():
+    """Samme klasse: det siger hvor modellen er, ikke hvad den mangler."""
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert "_tur_hale.tilfoej_runde(_varsel)" in kilde
+
+
+def test_de_fem_gater_er_FORPLIGTELSER():
+    """De skal kunne kraeve deres runde. Ligger de i `runde`, ryddes de ved
+    runde-START — foer de blev sendt."""
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
+    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 5
+
+
 # ── Kilde-vagt: gaterne maa ikke falde tilbage til «resten af turen» ────────
 
 

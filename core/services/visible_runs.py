@@ -2444,12 +2444,16 @@ async def _stream_visible_run(
                 _forced_finalize_seen = False
                 _a_pending_tool_intent = False
                 _a_finish_reason = ""
-                # Batch-vink: maalt 13/9 kaldte 304 af 366 runder ÉT vaerktoej.
-                # 4/10-2026: vinket kraever at MOENSTERET gentager sig — se
-                # `tool_batch_notice`. Derfor baeres to runders tal, ikke ét.
-                _forrige_runde_kald = 0
-                _forrige_forrige_kald = 0
-                _batch_vink_vist = 0
+                # Batch-vinket blev FJERNET 10/10-2026. Det stod i halen i runde
+                # 4 af et run, og runde 5 fulgte — én ekstra runde pr. tur for
+                # et stil-raad. Målt samme døgn: syv runs ramte 45-runde-loftet
+                # med 65-110 kald (~1,8 kald pr. runde) efter tre uger hvor
+                # vinket kostede en runde pr. tur uden at flytte tallet. Det
+                # dublerede desuden workflow-kontrakten, der allerede står
+                # permanent i prompten: «call EVERY tool that step needs — all
+                # at once, in the same round». Se `run_trailing`s docstring om
+                # ARTEN: en raadgivning maa ikke vaere grunden til at turen
+                # fortsaetter.
                 # CUT-OFF-flag (12. sep 2026 — ROD-ÅRSAG til UnboundLocalError):
                 # initialiseres HER, ikke kun pr. forsøg inde i loopet. To tidlige
                 # udgange i loopets FØRSTE runde — `provider-not-supported` (~2729)
@@ -2854,20 +2858,6 @@ async def _stream_visible_run(
                             _varsel = ""
                         if _varsel:
                             _tur_hale.tilfoej_runde(_varsel)
-                    if not _is_last_round:
-                        try:
-                            from core.services.tool_batch_notice import tool_batch_notice as _tbn
-                            _vink = _tbn(
-                                forrige_runde_kald=_forrige_runde_kald,
-                                forrige_forrige_kald=_forrige_forrige_kald,
-                                runder_tilbage=_AGENTIC_MAX_ROUNDS - _agentic_round,
-                                gange_vist=_batch_vink_vist,
-                            )
-                        except Exception:
-                            _vink = ""
-                        if _vink:
-                            _batch_vink_vist += 1
-                            _tur_hale.tilfoej_runde(_vink)
                     if _is_last_round:
                         _forced_finalize_seen = True
                         # Behold listen hos de udbydere der ER maalt til at
@@ -4438,10 +4428,6 @@ async def _stream_visible_run(
                         _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                         _outcome_state.set_error("user-cancelled-during-tool-exec")
                         break
-                    # Skub historikken foer vi overskriver: vinket skal kunne se
-                    # om den forrige runde OGSAA noejedes med ét kald.
-                    _forrige_forrige_kald = _forrige_runde_kald
-                    _forrige_runde_kald = len(_a_tool_calls or [])
                     _a_results = _a_batch_out["results"]
                     _step_counter = _a_batch_out["step_counter"]
                     logger.info(

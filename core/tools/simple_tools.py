@@ -1139,6 +1139,17 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             pass
     event_bus.publish("tool.completed", _completed_payload)
 
+    # Tavs kæde-knæk (Bjørn 9/10-2026): en REN `&&`-kæde der brød, hvor led
+    # efter brud-punktet beviseligt ikke kørte — og Jarvis læste videre som om
+    # hele kommandoen kørte. Detektoren ser exit-koden HER, hvor den er frisk;
+    # `tool.completed` bærer den ikke. Se core/services/silent_chain_break.py.
+    try:
+        from core.services.silent_chain_break import observe as _scb_observe
+
+        _scb_observe(name, arguments, result)
+    except Exception:  # self-safe: detektoren maa ikke vaelte tool-flow
+        pass
+
     # Outcome learning: each tool execution is a datapoint. Context = tool name,
     # outcome = success/error. Fire-and-forget — must never break tool flow.
     try:

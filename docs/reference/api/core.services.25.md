@@ -138,6 +138,17 @@ _Silence Patterns — hvad brugeren IKKE siger._
 | function | `render_soft_question` | `(signal)` | Generate a natural Danish follow-up question for a silence signal. | [src](../../../core/services/silence_patterns.py#L253) |
 | function | `build_silence_patterns_surface` | `()` | MC surface for silence patterns. | [src](../../../core/services/silence_patterns.py#L277) |
 
+## `core/services/silent_chain_break.py`
+_Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_led` | `(command)` | Split i (operator, led) på top-niveau. Første led har operator ''. | [src](../../../core/services/silent_chain_break.py#L56) |
+| function | `silent_chain_break` | `(command, exit_code)` | Ren detektor. Fund-dict hvis en REN ``&&``-kæde brød, ellers None. | [src](../../../core/services/silent_chain_break.py#L110) |
+| function | `_record` | `(fund)` | Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser. | [src](../../../core/services/silent_chain_break.py#L143) |
+| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L161) |
+| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L176) |
+
 ## `core/services/simple_tool_executor.py`
 _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
 
@@ -572,13 +583,4 @@ _Subjective Time — how time FEELS, not just passes._
 |---|---|---|---|---|
 | function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
 | function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
-
-## `core/services/suggest_standing_guard.py`
-_Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `suggest_standing_guard_enabled` | `()` | Default TRUE (Bjørn bad om den 7/10-2026). Env vinder, så den kan slås | [src](../../../core/services/suggest_standing_guard.py#L64) |
-| function | `mangler_stilling` | `(*, called_tool_names, nudged_already=…, final_text=…, is_last_round=…, er_autonom=…)` | True når turen udførte arbejde og intet forslag blev lagt. | [src](../../../core/services/suggest_standing_guard.py#L76) |
-| function | `build_nudge` | `()` | Beskeden der lægges i turen. Bedømmer, opfordrer ikke til gentagelse. | [src](../../../core/services/suggest_standing_guard.py#L126) |
 

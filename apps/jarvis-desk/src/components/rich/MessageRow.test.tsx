@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { MessageRow } from './MessageRow'
 import { PanelProvider } from '../../contexts/PanelContext'
 import { SettingsProvider } from '../../contexts/SettingsContext'
@@ -14,6 +14,20 @@ const REDIGERING: ContentBlock[] = [
 ]
 
 describe('MessageRow', () => {
+  it('lader live-tekst komme frem i flere trin uden at ændre det færdige svar', () => {
+    vi.useFakeTimers()
+    try {
+      const text = 'Et synligt svar med mange ord. '.repeat(10)
+      const row = <MessageRow role="assistant" blocks={[{ type: 'text', text }]} density="compact" streaming />
+      const view = render(row)
+      expect(view.container.textContent).not.toContain(text.trim())
+      act(() => vi.advanceTimersByTime(99))
+      expect(view.container.textContent?.length).toBeGreaterThan(0)
+      expect(view.container.textContent).not.toContain(text.trim())
+      view.rerender(<MessageRow role="assistant" blocks={[{ type: 'text', text }]} density="compact" streaming={false} />)
+      expect(view.container.textContent).toContain(text.trim())
+    } finally { vi.useRealTimers() }
+  })
   it('viser billedgenerering også i rækkevisning', () => {
     localStorage.setItem(RAEKKE_KEY, '1')
     try {

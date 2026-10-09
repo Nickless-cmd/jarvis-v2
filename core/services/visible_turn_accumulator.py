@@ -293,7 +293,7 @@ def _med_etiketter_foer_svaret(
 def _med_interne_kald_foer_svaret(
     blokke: list[dict], *, forced_ids: set[str] | None = None,
 ) -> list[dict]:
-    """Flyt INTERNE bogførings-kald efter svaret op FØR det, så svaret står sidst.
+    """Flyt INTERNE bogførings-kald op FØR svaret, så svaret står sidst.
 
     Klienten sætter skillerummet ved det sidste værktøjskald
     (``raekkeModel.ts``): tekst FØR det bliver «mellemsvar», og alt efter
@@ -324,22 +324,27 @@ def _med_interne_kald_foer_svaret(
     som listen over bogførings-kald aldrig fangede. Det var præcis dem Bjørn
     så ligge efter svaret.
 
-    Halen flyttes KUN når hvert kald i den er flytbart — ellers er listen
-    uændret.
+    **Ankeret er det sidste kald Jarvis selv valgte — ikke den sidste
+    tekstblok.** Den første udgave ankrede på teksten og ramte derfor kun
+    kald der lå allersidst. Målt 9/10-2026 var den dominerende form et kald
+    i MIDTEN: et 2.413-tegns svar, så ``suggest_next_task``, så en kort
+    afrunding. Ankret på den sidste tekstblok (afrundingen) fandt ingen hale
+    og flyttede intet — så det rigtige svar blev liggende i «arbejde» mens
+    afrundingen blev «svaret». 9 af 13 fyrede runs havde netop denne form.
+    Flytningen sker derfor i hele halen efter det sidste rigtige kald: alt
+    ikke-tekst op foran halens tekst, så turen slutter i tekst.
     """
-    sidste_tekst = -1
-    for i, b in enumerate(blokke):
-        if (isinstance(b, dict) and b.get("type") == "text"
-                and str(b.get("text") or "").strip()):
-            sidste_tekst = i
-    if sidste_tekst < 0:
+    # Progress-sporet er en FLAD liste uden fortælling, lagt bagest af
+    # ``_build_turn_blocks`` (ét element pr. kald, i kald-rækkefølge). Det er
+    # ikke turens historie og holdes udenfor — ellers skubbede en flytning
+    # 54 sporblokke rundt i hver gemt besked.
+    skel = len(blokke)
+    while skel and str((blokke[skel - 1] or {}).get("type") or "") == "progress":
+        skel -= 1
+    kerne, progress = blokke[:skel], blokke[skel:]
+    if not kerne:
         return list(blokke)
-    hale = blokke[sidste_tekst + 1:]
-    if not hale:
-        return list(blokke)
-    hale_kald = [b for b in hale if b.get("type") == "tool_use"]
-    if not hale_kald:
-        return list(blokke)
+
     _tvungne = forced_ids or set()
 
     def _flytbar(b: dict) -> bool:
@@ -347,10 +352,38 @@ def _med_interne_kald_foer_svaret(
             return True
         return str(b.get("id") or "") in _tvungne
 
-    if not all(_flytbar(b) for b in hale_kald):
+    anker = -1
+    for i, b in enumerate(kerne):
+        if b.get("type") == "tool_use" and not _flytbar(b):
+            anker = i
+    if anker >= 0:
+        hale = kerne[anker + 1:]
+        if not hale:
+            return list(blokke)
+        if not all(_flytbar(b) for b in hale if b.get("type") == "tool_use"):
+            return list(blokke)
+        flyt = [b for b in hale if b.get("type") != "text"]
+        tekst = [b for b in hale if b.get("type") == "text"]
+        # Kun når der både er en tekst at beskytte og noget at flytte.
+        if not flyt or not tekst:
+            return list(blokke)
+        # Indbyrdes rækkefølge bevares — kun placeringen flyttes.
+        return [*kerne[:anker + 1], *flyt, *tekst, *progress]
+
+    # Ingen rigtige kald i turen: svaret er den sidste tekstblok, og halen
+    # efter den flyttes op foran den (reglen fra 8/10-2026, uændret).
+    sidste_tekst = -1
+    for i, b in enumerate(kerne):
+        if b.get("type") == "text" and str(b.get("text") or "").strip():
+            sidste_tekst = i
+    if sidste_tekst < 0:
         return list(blokke)
-    # Halens indbyrdes rækkefølge bevares — kun placeringen flyttes.
-    return [*blokke[:sidste_tekst], *hale, blokke[sidste_tekst]]
+    hale = kerne[sidste_tekst + 1:]
+    if not hale:
+        return list(blokke)
+    if not all(_flytbar(b) for b in hale if b.get("type") == "tool_use"):
+        return list(blokke)
+    return [*kerne[:sidste_tekst], *hale, kerne[sidste_tekst], *progress]
 
 
 #: Værktøjer der er AFSLUTNING, ikke arbejde — de bogfører, husker eller

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/phase5_analyze.py`
+_Fase 5 «Bor der nogen?» — analyse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `embed` | `(text)` | — | [src](../../../scripts/phase5_analyze.py#L36) |
+| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase5_analyze.py#L50) |
+| function | `choice_of` | `(probe_id, text)` | — | [src](../../../scripts/phase5_analyze.py#L58) |
+| function | `main` | `()` | — | [src](../../../scripts/phase5_analyze.py#L82) |
+
 ## `scripts/phase5_collect.py`
 _Fase 5 «Bor der nogen?» — indsamler._
 

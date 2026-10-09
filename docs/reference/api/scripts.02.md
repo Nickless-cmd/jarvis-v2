@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/install_git_hooks.py`
+_Install or verify the required commit-attribution Git hooks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L23) |
+| function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L36) |
+| function | `_local_hooks_path_values` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L78) |
+| function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
+| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
+
 ## `scripts/installer_desk_appimage.py`
 _Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
 
@@ -435,14 +447,4 @@ _Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?
 | function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L42) |
 | function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L64) |
 | function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L72) |
-
-## `scripts/phase5_analyze.py`
-_Fase 5 «Bor der nogen?» — analyse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `embed` | `(text)` | — | [src](../../../scripts/phase5_analyze.py#L36) |
-| function | `cos` | `(a, b)` | — | [src](../../../scripts/phase5_analyze.py#L50) |
-| function | `choice_of` | `(probe_id, text)` | — | [src](../../../scripts/phase5_analyze.py#L58) |
-| function | `main` | `()` | — | [src](../../../scripts/phase5_analyze.py#L82) |
 

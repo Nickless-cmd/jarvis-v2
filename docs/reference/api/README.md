@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16639 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16644 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -72,9 +72,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16639 functions/
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `install_git_hooks`
-- [`scripts.02`](scripts.02.md) — `installer_desk_appimage` … `phase5_analyze`
-- [`scripts.03`](scripts.03.md) — `phase5_collect` … `verify_vagt_graenser`
+- [`scripts.01`](scripts.01.md) — `__init__` … `injection_richness_check`
+- [`scripts.02`](scripts.02.md) — `install_git_hooks` … `perception_mix`
+- [`scripts.03`](scripts.03.md) — `phase5_analyze` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

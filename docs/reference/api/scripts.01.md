@@ -396,6 +396,17 @@ _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (lin
 | function | `own_py_files` | `()` | — | [src](../../../scripts/god_file_map.py#L14) |
 | function | `blast` | `(dotted, target_rel)` | — | [src](../../../scripts/god_file_map.py#L24) |
 
+## `scripts/hollow_verify.py`
+_Vagt for hollow-promise-fixet (a19939854, 9/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fyringer` | `(since)` | — | [src](../../../scripts/hollow_verify.py#L33) |
+| function | `_beskeder` | `(run_id, session_id, created_at)` | Beskeden for et run — filtreret på SESSION + tidsvindue. | [src](../../../scripts/hollow_verify.py#L60) |
+| function | `_blokke` | `(content_json)` | — | [src](../../../scripts/hollow_verify.py#L111) |
+| function | `_maal` | `(blokke)` | Find sidste text og sidste tool_use — og om rækkefølgen er rigtig. | [src](../../../scripts/hollow_verify.py#L126) |
+| function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L144) |
+
 ## `scripts/honesty_metrics.py`
 _Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._
 
@@ -418,16 +429,4 @@ _Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
 |---|---|---|---|---|
 | function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
 | function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
-
-## `scripts/install_git_hooks.py`
-_Install or verify the required commit-attribution Git hooks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hook_path` | `(repo, hook)` | — | [src](../../../scripts/install_git_hooks.py#L23) |
-| function | `check_installation` | `(repo)` | Return one error for every missing or inactive required hook. | [src](../../../scripts/install_git_hooks.py#L36) |
-| function | `_local_hooks_path_values` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L78) |
-| function | `_is_default_hooks_path` | `(repo, configured)` | — | [src](../../../scripts/install_git_hooks.py#L93) |
-| function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
 

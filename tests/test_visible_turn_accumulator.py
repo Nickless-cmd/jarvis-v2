@@ -508,3 +508,62 @@ def test_det_SAMME_kald_uden_tvang_roeres_ikke():
     blokke = t.build_blocks("Jeg kigger i filen.")
     typer = [b["type"] for b in blokke]
     assert typer.index("text") < typer.index("tool_use"), typer
+
+
+# ── kaldet i MIDTEN: svar → internt kald → afrunding ───────────────────────
+
+
+def test_et_kald_i_MIDTEN_flyttes_op_foer_svaret():
+    """Den dominerende form — og den den første regel ikke fangede.
+
+    Målt 9/10-2026 i denne samtale: blok 134 var et 2.413-tegns svar, blok
+    135 `suggest_next_task`, og blok 156 en kort afrunding. Ankret på den
+    sidste TEKSTBLOK (afrundingen) fandt ingen hale og flyttede intet, så
+    det rigtige svar blev liggende i «arbejde» mens afrundingen blev
+    «svaret». 9 af 13 fyrede runs havde denne form. Uden den udvidede regel
+    fejler denne test.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_tools([{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}], [])
+    t.note_tool()
+    t.add_text("Her er det rigtige svar.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c2", "function": {"name": "suggest_next_task", "arguments": {}}}], [],
+    )
+    t.note_tool()
+    t.add_text("Kort afrunding.")
+    t.note_text()
+    t.close_segment()
+    blokke = t.build_blocks("")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use"), typer
+    tekster = [b["text"] for b in blokke if b["type"] == "text"]
+    assert tekster == ["Her er det rigtige svar.", "Kort afrunding."], tekster
+
+
+def test_et_RIGTIGT_kald_i_midten_roeres_IKKE():
+    """Kontrakten holder også for det udvidede anker.
+
+    Et rigtigt værktøj efter svaret er arbejde der skete — ankret er det
+    SIDSTE kald Jarvis selv valgte, så en senere rigtig kald blokerer
+    flytningen, selv om der ligger et bogførings-kald efter det.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_tools([{"id": "c1", "function": {"name": "bash", "arguments": {}}}], [])
+    t.note_tool()
+    t.add_text("Jeg kigger i filen.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools([{"id": "c2", "function": {"name": "read_file", "arguments": {}}}], [])
+    t.note_tool()
+    t.add_tools([{"id": "c3", "function": {"name": "decision_create", "arguments": {}}}], [])
+    t.note_tool()
+    blokke = t.build_blocks("")
+    typer = [b["type"] for b in blokke]
+    # Teksten bliver hvor den var — efter bash, før read_file.
+    assert typer.index("text") == 1, typer
+    assert typer[2] == "tool_use"

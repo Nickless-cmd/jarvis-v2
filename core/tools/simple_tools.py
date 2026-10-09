@@ -1135,7 +1135,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             _completed_payload["mutating"] = shell_command_is_mutating(
                 str(arguments.get("command", ""))
             )
-        except Exception:
+        except Exception:  # self-safe: mutating-flag er kosmetisk, ma ikke vælte tool-flow
             pass
     event_bus.publish("tool.completed", _completed_payload)
 
@@ -1149,7 +1149,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             outcome=outcome_label,
             weight=1.0,
         )
-    except Exception:
+    except Exception:  # self-safe: outcome-learning er fire-and-forget
         pass
 
     _record_tool_outcome_memory(name, arguments, result, mode="tool")
@@ -1293,7 +1293,7 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
             outcome=outcome_label,
             weight=1.0,
         )
-    except Exception:
+    except Exception:  # self-safe: outcome-learning er fire-and-forget
         pass
 
     _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
@@ -1316,7 +1316,7 @@ def _record_tool_outcome_memory(
             result=result,
             mode=mode,
         )
-    except Exception:
+    except Exception:  # self-safe: tool-outcome-memory ma ikke vælte tool-flow
         pass
 
 

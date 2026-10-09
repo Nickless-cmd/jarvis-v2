@@ -43,7 +43,11 @@ def _should_run(last_run_iso: object, now: datetime) -> bool:
 
 
 def _workspace_dir() -> Path:
-    from core.memory.workspace import ensure_default_workspace
+    # Modulet flyttede til core.identity.workspace_bootstrap; den gamle sti
+    # (core.memory.workspace) findes ikke og fik kuratoren til at fejle tavst.
+    # ensure_default_workspace opløser "default" gennem contextvar'en, så
+    # kuratoren rammer den aktive brugers workspace — også for medlemmer.
+    from core.identity.workspace_bootstrap import ensure_default_workspace
     return Path(ensure_default_workspace())
 
 

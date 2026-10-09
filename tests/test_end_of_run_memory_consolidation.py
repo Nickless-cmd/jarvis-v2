@@ -1,8 +1,35 @@
 from __future__ import annotations
 
 import importlib
+from uuid import uuid4
+
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
+
+
+def _stamp_session_owner(user_id: str = "bjorn") -> str:
+    """9/10-2026 (A): kandidatens ophav læses fra SAMTALEN, ikke fra konteksten.
+
+    `consolidate_run_memory` udleder ejeren via `get_session_owner`, som slår op
+    i `chat_messages.user_id`. Uden en stemplt besked er ophavet tomt, og
+    skrive-vejen nægter korrekt at gætte et mål (fail closed). Testen stempler
+    derfor sessionen, præcis som en rigtig chat-tur gør det.
+    """
+    from core.services.chat_sessions import (
+        append_chat_message,
+        get_or_create_named_session,
+    )
+
+    session_id = f"test-owner-{uuid4().hex}"
+    get_or_create_named_session(session_id, "owner-stempel")
+    append_chat_message(
+        session_id=session_id,
+        role="user",
+        content="stempel",
+        user_id=user_id,
+        workspace_name=user_id,
+    )
+    return session_id
 
 
 def test_autonomous_task_is_not_consolidated_as_bjorns_request(
@@ -54,7 +81,7 @@ def test_end_of_run_memory_consolidation_can_auto_apply_explicit_user_preference
     )
 
     result = module.consolidate_run_memory(
-        session_id="test-session",
+        session_id=_stamp_session_owner(),
         run_id="test-run",
         user_message="Husk det her fremover: svar på dansk.",
         assistant_response="Jeg svarer på dansk fremover.",

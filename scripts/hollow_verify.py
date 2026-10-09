@@ -9,9 +9,9 @@ Denne vagt måler det i DRIFT — ikke i en unit-test:
 
 1. Find hollow_promise-fyringer efter fix-tidspunktet (``--since``).
 2. For hver ramt run: læs den persisterede assistent-besked.
-3. Find den sidste ``text``-blok og den sidste ``tool_use``-blok.
-4. FEJL hvis den sidste ``tool_use`` ligger EFTER den sidste ``text``
-   — det er præcis den fejl fixet skulle fjerne.
+3. Find det sidste ``tool_use`` og se hvad der staar umiddelbart foer det.
+4. FEJL hvis det sidste kald er et bogfoerings-kald OG der ligger tekst
+   foer det — saa skubber klientens skillerum svaret ind i «arbejde».
 
 Brug:
     python scripts/hollow_verify.py                 # siden fixet
@@ -124,20 +124,55 @@ def _blokke(content_json: str | None) -> list[dict]:
 
 
 def _maal(blokke: list[dict]) -> dict:
-    """Find sidste text og sidste tool_use — og om rækkefølgen er rigtig."""
+    """Maal blok-raekkefoelgen mod klientens skillerum.
+
+    Klienten saetter skillerummet EFTER det sidste ``tool_use``: alt tekst
+    derefter er svaret, alt foer er «arbejde». To former er defekter:
+
+    * et kald der ligger efter den SIDSTE tekstblok, og
+    * et bogfoerings-kald hvis naermeste synlige forgænger er TEKST — kaldet
+      i midten.
+
+    Den foerste udgave sammenlignede «sidste tekst» med «sidste kald» og
+    fandt derfor KUN den foerste form. Maalt 9/10-2026 var den dominerende
+    form netop kaldet i MIDTEN: et 2.413-tegns svar, saa
+    ``suggest_next_task``, saa en afrunding. Begge tal pegede «rigtigt»
+    (teksten laa sidst) mens svaret alligevel var begravet — vagten havde
+    samme blinde plet som det fix den skulle maale.
+    """
+    from core.services.visible_turn_accumulator import _INTERNE_HALE_VAERKTOEJER
+
+    def _synligt(b: dict) -> bool:
+        """Resultater, etiketter og spor er ikke fortælling."""
+        return b.get("type") not in ("tool_result", "tool_use_summary", "progress")
+
+    tool_ix = [i for i, b in enumerate(blokke) if b.get("type") == "tool_use"]
+    sidste_tool = max(tool_ix, default=-1)
     sidste_text = max(
         (i for i, b in enumerate(blokke) if b.get("type") == "text"), default=-1
     )
-    tool_ix = [i for i, b in enumerate(blokke) if b.get("type") == "tool_use"]
-    sidste_tool = max(tool_ix, default=-1)
-    navne = [blokke[i].get("name") for i in tool_ix if i > sidste_text]
+    efter = [blokke[i].get("name") for i in tool_ix if i > sidste_text]
+
+    midten: list[str] = []
+    if sidste_tool >= 0:
+        navn = str(blokke[sidste_tool].get("name") or "")
+        if navn in _INTERNE_HALE_VAERKTOEJER:
+            j = sidste_tool - 1
+            while j >= 0 and not _synligt(blokke[j]):
+                j -= 1
+            if (j >= 0 and blokke[j].get("type") == "text"
+                    and str(blokke[j].get("text") or "").strip()):
+                midten.append(navn)
+
     return {
         "antal_blokke": len(blokke),
         "sidste_text": sidste_text,
         "sidste_tool_use": sidste_tool,
-        "kald_efter_svaret": len(navne),
-        "navne_efter_svaret": navne[:8],
-        "ok": not (sidste_tool > sidste_text and sidste_text >= 0),
+        "kald_efter_svaret": len(efter),
+        "navne_efter_svaret": efter[:8],
+        "kald_i_midten": len(midten),
+        "navne_i_midten": midten[:8],
+        "ok": not efter and not midten,
     }
 
 
@@ -168,14 +203,15 @@ def main() -> int:
                 f"{flag} | {f['created_at'][:19]} | runde {f['round']} "
                 f"| msg {m['id']} | blokke={r['antal_blokke']} "
                 f"| sidste_text={r['sidste_text']} sidste_tool={r['sidste_tool_use']} "
-                f"| kald-efter-svar={r['kald_efter_svaret']} {r['navne_efter_svaret']}"
+                f"| efter={r['kald_efter_svaret']} {r['navne_efter_svaret']} "
+                f"| midten={r['kald_i_midten']} {r['navne_i_midten']}"
             )
 
     print()
     if fejl:
-        print(f"RESULTAT: {fejl} besked(er) med kald EFTER svaret — fixet virker IKKE.")
+        print(f"RESULTAT: {fejl} besked(er) med et internt kald efter svaret — fixet virker IKKE.")
         return 1
-    print("RESULTAT: alle målte runs slutter i tekst. Fixet holder i drift.")
+    print("RESULTAT: intet internt kald efter svaret. Fixet holder i drift.")
     return 0
 
 

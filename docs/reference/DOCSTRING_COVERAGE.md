@@ -2253,7 +2253,7 @@ Generated from source. 8809/16644 functions/methods documented (52%). The list b
 - `scripts/goal_report.py` :: `main` (L17)
 - `scripts/god_file_map.py` :: `blast` (L24)
 - `scripts/god_file_map.py` :: `own_py_files` (L14)
-- `scripts/hollow_verify.py` :: `main` (L144)
+- `scripts/hollow_verify.py` :: `main` (L179)
 - `scripts/honesty_metrics.py` :: `main` (L45)
 - `scripts/identity_formation_monitor.py` :: `main` (L36)
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)

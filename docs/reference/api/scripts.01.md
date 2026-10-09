@@ -404,8 +404,8 @@ _Vagt for hollow-promise-fixet (a19939854, 9/10-2026)._
 | function | `_fyringer` | `(since)` | — | [src](../../../scripts/hollow_verify.py#L33) |
 | function | `_beskeder` | `(run_id, session_id, created_at)` | Beskeden for et run — filtreret på SESSION + tidsvindue. | [src](../../../scripts/hollow_verify.py#L60) |
 | function | `_blokke` | `(content_json)` | — | [src](../../../scripts/hollow_verify.py#L111) |
-| function | `_maal` | `(blokke)` | Find sidste text og sidste tool_use — og om rækkefølgen er rigtig. | [src](../../../scripts/hollow_verify.py#L126) |
-| function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L144) |
+| function | `_maal` | `(blokke)` | Maal blok-raekkefoelgen mod klientens skillerum. | [src](../../../scripts/hollow_verify.py#L126) |
+| function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L179) |
 
 ## `scripts/honesty_metrics.py`
 _Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._

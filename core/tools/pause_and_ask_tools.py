@@ -41,6 +41,7 @@ def _exec_pause_and_ask(args: dict[str, Any]) -> dict[str, Any]:
                 break
 
     context_note = str(args.get("context") or "").strip()[:400]
+    allow_multiple = args.get("allow_multiple") is True
     urgency = str(args.get("urgency") or "normal").strip().lower()
     if urgency not in {"low", "normal", "high"}:
         urgency = "normal"
@@ -51,7 +52,8 @@ def _exec_pause_and_ask(args: dict[str, Any]) -> dict[str, Any]:
         from core.eventbus.bus import event_bus
         event_bus.publish(
             "tool.pause_and_ask",
-            {"question": question[:200], "options": options, "urgency": urgency},
+            {"question": question[:200], "options": options,
+             "allow_multiple": allow_multiple, "urgency": urgency},
         )
     except Exception as exc:
         logger.debug("pause_and_ask: eventbus emit failed: %s", exc)
@@ -61,6 +63,7 @@ def _exec_pause_and_ask(args: dict[str, Any]) -> dict[str, Any]:
         "kind": "pause_and_ask",
         "question": question,
         "options": options,
+        "allow_multiple": allow_multiple,
         "context": context_note,
         "urgency": urgency,
         "instructions_to_jarvis": (
@@ -87,7 +90,10 @@ PAUSE_AND_ASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "DON'T use for: trivial confirmations (just decide), questions you "
                 "can answer yourself by reading code (read first), or as a stall "
                 "tactic when you don't want to commit. Reserve it for real forks.\n\n"
-                "End your turn after calling this — don't keep doing other work."
+                "Set allow_multiple=true only if several options may be selected "
+                "together; otherwise Bjørn selects one. After his answer, "
+                "you may ask the next question with a new pause_and_ask call. "
+                "End your turn after each call — don't keep doing other work."
             ),
             "parameters": {
                 "type": "object",
@@ -103,6 +109,10 @@ PAUSE_AND_ASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "Optional pre-canned answers (max 6, each ≤120 chars). "
                             "If omitted, Bjørn just types a free-form reply."
                         ),
+                    },
+                    "allow_multiple": {
+                        "type": "boolean",
+                        "description": "True only when Bjørn may choose several options in this one question.",
                     },
                     "context": {
                         "type": "string",

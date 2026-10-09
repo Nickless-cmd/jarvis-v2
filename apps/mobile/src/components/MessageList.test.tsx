@@ -22,6 +22,18 @@ const msg = (over: Partial<ChatMessage>): ChatMessage => ({
   ...over
 })
 
+it('viser ikke pause_and_ask igen under svaret i samtalen', async () => {
+  const result = JSON.stringify({ kind: 'pause_and_ask', question: 'Hvilke flader?', options: ['Desk', 'Mobil'] })
+  const assistant = msg({ id: 'a1', role: 'assistant', content: 'Jeg har et spørgsmål.', content_json: [
+    { type: 'text', text: 'Jeg har et spørgsmål.' },
+    { type: 'tool_use', id: 'ask-1', name: 'pause_and_ask', result },
+    { type: 'tool_result', tool_use_id: 'ask-1', content: result },
+  ] })
+  const view = await render(<MessageList messages={[assistant]} blocks={[]} />)
+  expect(view.queryByText('Hvilke flader?')).toBeNull()
+  expect(view.getByText('Jeg har et spørgsmål.')).toBeTruthy()
+})
+
 /**
  * Et billede Jarvis laver MIDT i streamen. Det bærer sin egen `src` (en
  * data-URL), så det kan tegnes med det samme.

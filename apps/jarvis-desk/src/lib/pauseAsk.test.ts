@@ -21,6 +21,11 @@ describe('parsePauseAsk', () => {
     expect(parsePauseAsk({ kind: 'pause_and_ask', question: 'Hvad nu?' })?.options).toEqual([])
   })
 
+  it('bærer serverens flag for flere valg videre til kortet', () => {
+    expect(parsePauseAsk({ kind: 'pause_and_ask', question: 'Hvilke?', allow_multiple: true })?.allowMultiple).toBe(true)
+    expect(parsePauseAsk({ kind: 'pause_and_ask', question: 'Hvilken?' })?.allowMultiple).toBe(false)
+  })
+
   it('rører ikke almindeligt tool-output', () => {
     expect(parsePauseAsk('bash: 42 filer ændret')).toBeNull()
     expect(parsePauseAsk(svar({ status: 'ok', stdout: 'hej' }))).toBeNull()

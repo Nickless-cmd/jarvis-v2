@@ -21,6 +21,7 @@ import { SkillFladeLinje, SkillLinje, type SkillFladeMatch } from './SkillLinje'
 import { TankeResumeLinje } from './TankeResumeLinje'
 import type { Visning } from '../lib/visning'
 import { attachmentBlocks, gemteEtiketter, hasOrdering, parseBlocks, thinkingBlock, gemteResumeer } from '../lib/persistedBlocks'
+import { withoutPauseAsk } from '../lib/pauseAsk'
 import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
@@ -634,7 +635,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       const m = messages[i]!
       if (m.role === 'assistant') {
         legacyTurnId = String(m.id)
-        const blocks = parseBlocks(m)
+        const blocks = withoutPauseAsk(parseBlocks(m))
         const think = thinkingBlock(blocks)
         // UDGIVNE FILER. De bæres nu PÅ beskedens sidste afsnit frem for i
         // deres egen række (GPT-formen, 27/9-2026). I en egen række faldt de

@@ -25,6 +25,18 @@ def test_all_exempt_names_are_fixed_cadence():
         assert cc.effective_cooldown(name, 5.0, 2.0) == 5.0
 
 
+def test_agent_smith_er_exempt():
+    """Smith er et selv-korrektions-værn og må ikke throttles under pres.
+
+    Målt 9/10-2026 (side-cfada05e8c): han stod IKKE på listen, så DIASTOLE
+    fordoblede hans cooldown (180 → 360 min) præcis når der var flest fejl at
+    fange — effektiviteten var omvendt proportional med behovet. Testen fanger
+    det, hvis han falder ud af sættet igen.
+    """
+    assert "agent_smith" in cc.CADENCE_TEMPO_EXEMPT
+    assert cc.effective_cooldown("agent_smith", 180.0, 2.0) == 180.0
+
+
 def test_nonexempt_halved_at_tempo_floor():
     assert cc.effective_cooldown("inner_voice_daemon", 10.0, 0.5) == 5.0
 

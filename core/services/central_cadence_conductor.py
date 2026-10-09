@@ -137,6 +137,13 @@ CADENCE_TEMPO_EXEMPT: frozenset[str] = frozenset({
     "config_drift_check",
     "stream_stall_sweep",
     "central_self_health",
+    # SELF-CORRECTION (side-cfada05e8c, 9/10-2026)
+    # Agent Smith fanger gentagne fejl — og DIASTOLE sænkede hans kadence
+    # PRÆCIS når der var flest fejl (tempo 2.0 → 180→360 min). Værnets
+    # effektivitet var omvendt proportional med behovet. Målt 9/10-2026:
+    # tempo 2.0 med consuming=true både 8/10 aften og 9/10 middag — altså
+    # den normale tilstand under pres, ikke et sjældent tilfælde.
+    "agent_smith",
 })
 
 

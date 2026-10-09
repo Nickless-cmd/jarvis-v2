@@ -114,10 +114,16 @@ def _nu() -> float:
 # de beder om forskellige `session_id`, fordi `_LISTE_CMD` ikke kender nogen
 # samtale. Filtreringen bagefter er billig og kører uændret pr. kald.
 #
-# 4 s, ikke 5: panelet poller hvert 5. sekund, så et 5-sekunders vindue ville
-# ramme kanten og slippe halvdelen igennem. 4 s garanterer at to pollere der
-# ligger forskudt (målt: op til 0,5 s fra hinanden) deler ét kald.
-_CACHE_TTL_S = 4.0
+# 10 s (hævet fra 4, 10/10-2026): begge klienter poller nu hvert 10. sekund —
+# desk OG mobil, samme ur. To pollere der tikker samtidig rammer derfor ind
+# inden for samme vindue, og ét bro-hop dækker dem begge. Ved 4 s gjorde de
+# det modsatte: de to ure drev fra hinanden, og hvert panel betalte sin egen
+# tur. Vinduet skal matche intervallet, ikke ligge under det.
+#
+# Prisen er ærlig: et svar kan være op til 10 s gammelt. Panelet viser hvad
+# der KØRER — ikke hvor mange sekunder der er gået — og varigheden regnes
+# fortsat pr. kald ud fra `start`-stemplet, så tallet er ikke frosset.
+_CACHE_TTL_S = 10.0
 _bro_cache: dict[str, tuple[float, str]] = {}
 
 

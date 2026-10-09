@@ -413,10 +413,14 @@ def test_uden_baade_titel_og_kommando_staar_der_noget_aerligt():
 # ── Bro-svars-cachen (10/10-2026) ─────────────────────────────────────────
 #
 # Målt 10/10: job-poll'en var 11.351 operator_bash-kald i døgnet — 59 % af
-# hele begivenhedsstrømmen — fordi desk OG mobil poller oveni hinanden, hvert
-# 5. sekund, hver med en fuld tur over broen. Cachen deler ét bro-hop mellem
-# kaldere i vinduet. Testene her pinner de tre egenskaber der gør det til
-# andet end «husk det sidste svar»: deling, udløb, og at et nej IKKE huskes.
+# hele begivenhedsstrømmen — fordi desk OG mobil poller oveni hinanden, hver
+# med en fuld tur over broen. Cachen deler ét bro-hop mellem kaldere i
+# vinduet. Testene her pinner de tre egenskaber der gør det til andet end
+# «husk det sidste svar»: deling, udløb, og at et nej IKKE huskes.
+#
+# Vinduet er 10 s (hævet fra 4, 10/10-2026) fordi begge klienter nu poller
+# hvert 10. sekund. `test_vinduet_daekker_klienternes_interval` pinner at
+# TTL'en ikke falder under intervallet igen — det var netop fejlen ved 4 s.
 
 
 def _taellende_bro(stdout, status="ok"):
@@ -431,7 +435,7 @@ def _taellende_bro(stdout, status="ok"):
 
 
 def test_to_kald_i_vinduet_deler_et_bro_hop(monkeypatch):
-    """Kernen i fixet: desk og mobil poller forskudt, men inden for 4 s."""
+    """Kernen i fixet: desk og mobil poller forskudt, men inden for vinduet."""
     monkeypatch.setattr(bj, "_bro_cache", {})
     monkeypatch.setattr(bj, "_nu", lambda: 1_000_000.0)
     exec_fn, kald = _taellende_bro("bg_a|1|S||1000000|ok\n")
@@ -457,7 +461,7 @@ def test_kald_efter_vinduet_gaar_til_broen_igen(monkeypatch):
 
 def test_en_fejl_caches_ikke(monkeypatch):
     """`BroTier` betyder «vi VED ikke hvad der koerer derovre». Et cachet nej
-    ville goere et forbigaaende bro-hop til fire sekunders blindhed — netop
+    ville goere et forbigaaende bro-hop til ti sekunders blindhed — netop
     den tilstand panelet har et eget felt for at kunne vise."""
     monkeypatch.setattr(bj, "_bro_cache", {})
     monkeypatch.setattr(bj, "_nu", lambda: 1_000_000.0)
@@ -477,6 +481,33 @@ def test_cachen_er_pr_bruger(monkeypatch):
     bj._operator_jobs("u1", exec_fn)
     bj._operator_jobs("u2", exec_fn)
     assert len(kald) == 2, "cachen delte et svar paa tvaers af to brugere"
+
+
+def test_vinduet_daekker_klienternes_interval(monkeypatch):
+    """Vinduet skal matche poll-intervallet, ikke ligge under det.
+
+    Målt 10/10-2026: ved 4 s drev desk og mobil fra hinanden — hvert panel
+    betalte sin egen tur over broen, og cachen sparede næsten intet. Begge
+    klienter poller nu hvert 10. sekund, så et svar skal kunne deles mellem
+    to kald der ligger op til ét interval fra hinanden. Falder TTL'en under
+    intervallet igen, fejler denne test — og det er meningen.
+    """
+    assert bj._CACHE_TTL_S >= 10.0, (
+        f"TTL'en er {bj._CACHE_TTL_S} s, men klienterne poller hvert 10. — "
+        "vinduet skal daekke intervallet, ellers deler de ikke et bro-hop"
+    )
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    ur = {"t": 1_000_000.0}
+    monkeypatch.setattr(bj, "_nu", lambda: ur["t"])
+    exec_fn, kald = _taellende_bro("bg_a|1|S||1000000|ok\n")
+    bj._operator_jobs("u1", exec_fn)
+    # Desk poller, og 9,9 s senere poller mobilen — de skal dele ét hop.
+    ur["t"] += 9.9
+    bj._operator_jobs("u1", exec_fn)
+    assert len(kald) == 1, (
+        f"to pollere 9,9 s fra hinanden ramte broen {len(kald)} gange — "
+        "vinduet daekker ikke intervallet"
+    )
 
 
 def test_pollens_bro_kald_er_markeret_internt(monkeypatch):

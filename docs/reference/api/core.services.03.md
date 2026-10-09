@@ -589,23 +589,23 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L100) |
-| function | `_bro_svar` | `(uid, exec_fn)` | Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches. | [src](../../../core/services/background_jobs.py#L124) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L151) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L194) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L198) |
-| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L205) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L219) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L254) |
-| function | `_scout_jobs` | `(session_id=…)` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L261) |
-| function | `_scout_session` | `(agent_id)` | Samtalen en scout blev startet fra — "" når den ikke kan afgøres. | [src](../../../core/services/background_jobs.py#L313) |
-| function | `_tool_jobs` | `(session_id=…)` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L352) |
-| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L491) |
-| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L514) |
-| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L570) |
-| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L631) |
-| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L662) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…, session_id=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L675) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L740) |
+| function | `_bro_svar` | `(uid, exec_fn)` | Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches. | [src](../../../core/services/background_jobs.py#L130) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L157) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L200) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L204) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L211) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L225) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L260) |
+| function | `_scout_jobs` | `(session_id=…)` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L267) |
+| function | `_scout_session` | `(agent_id)` | Samtalen en scout blev startet fra — "" når den ikke kan afgøres. | [src](../../../core/services/background_jobs.py#L319) |
+| function | `_tool_jobs` | `(session_id=…)` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L358) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L497) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L520) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L576) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L637) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L668) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…, session_id=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L681) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L746) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._

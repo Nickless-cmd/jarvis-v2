@@ -23,6 +23,8 @@ import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { arbejdslinjeTekst } from '../lib/arbejdslinje'
 import { visibleStreamBlocks } from '../lib/streamReducer'
+import { activePauseAsk, withoutPauseAsk } from '../lib/pauseAsk'
+import { PauseAndAskCard } from '../components/PauseAndAskCard'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -1199,7 +1201,11 @@ export function ChatScreen({
   // nedenfor findes — en klods uden noget at holde afstand fra er bare et hul.
   // Banneret taeller med: det ligger i samme blok som kortene, og uden det
   // ville det mangle den afstandsklods der holder det over komposeren.
-  const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message)
+  const pendingPauseAsk = activePauseAsk(
+    sessions.messages,
+    stream.state.status === 'working' ? visibleStreamBlocks(stream.state) : [],
+  )
+  const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message) || Boolean(pendingPauseAsk)
 
   // Arbejdslinjens token-tal: HELE konteksten turen bærer — input, cache-hit,
   // cache-miss og output — ikke kun svaret. Samme fire led som desk summerer
@@ -1234,7 +1240,7 @@ export function ChatScreen({
               ref={listRef}
               topInset={topInset}
               messages={sessions.messages}
-              blocks={visibleStreamBlocks(stream.state)}
+              blocks={withoutPauseAsk(visibleStreamBlocks(stream.state)) ?? []}
               // Liveness-værnet (spejlet fra desk 3/10-2026, `8b054042f`):
               // serverens «kører»-svar dækker også runnets EFTERSLÆB —
               // `/active-runs` melder først færdig når `mark_done` er kørt til
@@ -1338,6 +1344,13 @@ export function ChatScreen({
             approval={stream.approval}
             onApprove={() => void stream.approve(config)}
             onDeny={() => void stream.deny(config)}
+          />
+        ) : null}
+        {pendingPauseAsk ? (
+          <PauseAndAskCard
+            key={pendingPauseAsk.question}
+            ask={pendingPauseAsk}
+            onAnswer={ensureSessionAndSend}
           />
         ) : null}
         </View>

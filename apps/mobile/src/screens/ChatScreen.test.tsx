@@ -274,6 +274,21 @@ it('renders approval requests and forwards explicit decisions', async () => {
   expect(mockDeny).toHaveBeenCalledWith(config)
 })
 
+it('viser et ubesvaret pause_and_ask over skrivefeltet og sender valget', async () => {
+  mockSessions.messages.push({
+    id: 'ask-1', role: 'assistant', content: '', created_at: '2026-10-09T00:00:00.000Z',
+    content_json: [{ type: 'tool_use', name: 'pause_and_ask', result: JSON.stringify({
+      kind: 'pause_and_ask', question: 'Hvilke flader?', options: ['Desk', 'Mobil'],
+    }) }],
+  } as never)
+
+  const screen = await render(<ChatScreen />)
+  expect(screen.getByText('Hvilke flader?')).toBeTruthy()
+  await fireEvent.press(screen.getByText('Desk'))
+  await fireEvent.press(screen.getByText('Send svar'))
+  expect(mockSend.mock.calls[0].slice(0, 3)).toEqual([config, 'session-1', 'Desk'])
+})
+
 it('tilladelses-knappen findes IKKE i chat-fladen', async () => {
   // Tilladelser handler om hvad Jarvis maa goere ved filer og skal. I en
   // samtale er skjoldet et ikon man aldrig roerer, paa den plads hvor de faa

@@ -20,18 +20,42 @@ describe('PauseAndAskCard', () => {
     expect(screen.getByRole('button', { name: 'Nej, bare ret' })).toBeTruthy()
   })
 
-  it('sender option-teksten videre som svar ved klik', () => {
+  it('sender først et enkelt valg ved Send svar', () => {
     const set = vi.fn()
     const af = onPauseSvar(set)
     render(<PauseAndAskCard ask={ask} />)
     fireEvent.click(screen.getByRole('button', { name: 'Ja, split først' }))
+    expect(set).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Send svar' }))
     expect(set).toHaveBeenCalledWith('Ja, split først')
     af()
   })
 
-  it('siger til når der ingen knapper er, i stedet for at stå tom', () => {
+  it('samler flere markerede valg i ét svar når Jarvis tillader det', () => {
+    const set = vi.fn()
+    const af = onPauseSvar(set)
+    render(<PauseAndAskCard ask={{ ...ask, options: ['Desk', 'Mobil', 'Web UI'], allowMultiple: true }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Desk' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mobil' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send svar' }))
+    expect(set).toHaveBeenCalledWith('Jeg vælger:\n- Desk\n- Mobil')
+    af()
+  })
+
+  it('lader et eget svar erstatte de markerede muligheder', () => {
+    const set = vi.fn()
+    const af = onPauseSvar(set)
+    render(<PauseAndAskCard ask={ask} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, split først' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Skriv dit eget svar' }), { target: { value: 'Spørg mig i morgen' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send svar' }))
+    expect(set).toHaveBeenCalledWith('Spørg mig i morgen')
+    af()
+  })
+
+  it('giver et skrivefelt når Jarvis ikke har forslag', () => {
     render(<PauseAndAskCard ask={{ ...ask, options: [] }} />)
-    expect(screen.getByText(/Svar i feltet/)).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Skriv dit eget svar' })).toBeTruthy()
   })
 })
 

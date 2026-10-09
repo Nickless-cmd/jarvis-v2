@@ -10,6 +10,7 @@
 export type PauseAsk = {
   question: string
   options: string[]
+  allowMultiple?: boolean
   context: string
   urgency: 'low' | 'normal' | 'high'
 }
@@ -39,6 +40,7 @@ export function parsePauseAsk(result: unknown): PauseAsk | null {
   return {
     question,
     options,
+    allowMultiple: d.allow_multiple === true,
     context: String(d.context ?? '').trim().slice(0, 400),
     urgency: u === 'low' || u === 'high' ? u : 'normal',
   }

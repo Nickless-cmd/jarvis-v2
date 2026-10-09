@@ -68,6 +68,25 @@ def test_affective_pushback_omits_when_no_affective_pressure(monkeypatch):
     assert pushback.affective_pushback_section("deploy nu") is None
 
 
+def test_fatigue_cannot_become_a_firm_veto_for_every_tool(monkeypatch):
+    from core.services import pushback
+
+    monkeypatch.setattr(
+        "core.services.emotional_controls.read_emotional_snapshot",
+        lambda: EmotionalSnapshot(
+            frustration=0.0, confidence=0.5, fatigue=1.0,
+            primary_mood="neutral", intensity=0.0,
+        ),
+    )
+    monkeypatch.setattr(pushback, "_conflict_with_decisions", lambda _message: [])
+
+    section = pushback.affective_pushback_section("restart nu")
+
+    assert section is not None
+    assert "feeling=fatigue intensity=1.00" in section
+    assert "action=soft_pushback" in section
+
+
 def test_conflict_with_decisions_detects_conflict(tmp_path, monkeypatch):
     """Integration test: _conflict_with_decisions should find conflicts
     against active behavioral decisions without being mocked away.

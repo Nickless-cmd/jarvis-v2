@@ -149,7 +149,7 @@ _Fact-Gate — blocking output gate for unverifiable factual claims._
 | function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
 
 ## `core/services/fcm_gateway.py`
-_FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
+_FCM HTTP v1 gateway — data-only push rendered once by the mobile app._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
@@ -159,7 +159,7 @@ _FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
 | function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
 | function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
 | function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
-| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L68) |
+| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L67) |
 
 ## `core/services/felt_surface_store.py`
 _Delt lager for de følte overflader — så de overlever en procesgrænse._

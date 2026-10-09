@@ -90,13 +90,18 @@ def _approval_denial_streak_last_hour() -> int:
 
 
 def _recent_tool_errors_last_10min() -> int:
-    """Count tool.completed events with status=error in last 10 minutes (fatigue proxy)."""
+    """Count distinct failing tools in 10 minutes as a fatigue proxy.
+
+    One broken tool retried in a loop is one operational fault, not twenty
+    independent signs of fatigue. Repeated operator_bash errors previously
+    saturated the score and made unrelated tools hit the fatigue veto.
+    """
     try:
         events = event_bus.recent(limit=60)
     except Exception:
         return 0
     cutoff = datetime.now(UTC) - timedelta(minutes=10)
-    count = 0
+    failing_tools: set[str] = set()
     for ev in events:
         if str(ev.get("kind") or "") != "tool.completed":
             continue
@@ -111,8 +116,8 @@ def _recent_tool_errors_last_10min() -> int:
             continue
         payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
         if str(payload.get("status") or "") == "error":
-            count += 1
-    return count
+            failing_tools.add(str(payload.get("tool") or "unknown"))
+    return len(failing_tools)
 
 
 def read_emotional_snapshot() -> EmotionalSnapshot:

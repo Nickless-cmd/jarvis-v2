@@ -10,6 +10,15 @@ def test_build_message_is_data_only_high_priority():
     assert body["android"]["priority"] == "high"
 
 
+def test_titled_alert_is_data_only_to_avoid_android_duplicate():
+    msg = fcm._build_message("tok-X", {
+        "kind": "infra_security", "title": "Gate-override", "preview": "Veto overstyret",
+    })["message"]
+    assert msg["data"]["title"] == "Gate-override"
+    assert msg["data"]["preview"] == "Veto overstyret"
+    assert "notification" not in msg
+
+
 def test_send_unregistered_returns_invalid(monkeypatch):
     monkeypatch.setattr(fcm, "is_configured", lambda: True)
     monkeypatch.setattr(fcm, "_access_token", lambda: "fake-oauth")

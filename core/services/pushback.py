@@ -418,7 +418,11 @@ def affective_pushback_section(user_message: str) -> str | None:
         _emit_pushback_telemetry("affective_pushback", triggered=False, reason="no_evidence")
         return None
 
-    if strength >= 0.75:
+    # Fatigue comes from Jarvis' own tool-error/mood signals. It can ask for a
+    # smaller plan, but it is not evidence that the user objects to every tool
+    # in the turn. A firm veto here repeated on unrelated tools and forced
+    # one-shot overrides for each of them.
+    if strength >= 0.75 and feeling != "fatigue":
         action = "firm_pushback"
         instruction = (
             "Klassifikation: firm_pushback band — affect-intensity ≥0.75 + "

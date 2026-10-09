@@ -75,9 +75,8 @@ def test_push_der_fejler_maa_ikke_tabe_raekken(isolated_runtime, monkeypatch) ->
 
 # ── K1 (2026-09-22): pushet naaede frem UDEN indhold ────────────────────────
 # `_maaske_push` sendte {"titel": …, "tekst": …} — routeren, desktop-koeen og
-# FCM laeser `title` + `preview`/`body`. `fcm_gateway._build_message` tilfoejer
-# kun en synlig 'notification'-blok naar BAADE title OG body findes, saa hele
-# push-halvdelen var reelt doed: ingen synlig notifikation paa telefonen,
+# FCM laeser `title` + `preview`/`body` som data. Mobilappen viser data via
+# Notifee, saa uden de felter var push-halvdelen reelt doed: tom notifikation paa telefonen,
 # "Jarvis" + tom krop paa desktoppen. De foer-eksisterende tests monkeypatchede
 # routeren og asserterede kun `assert sendt` — de saa aldrig noeglerne (husets
 # `pin_feltnavne_mod_produktion`-lektie). Disse to pinner noeglerne OG koerer
@@ -105,8 +104,8 @@ def test_push_payloaden_bruger_routerens_egne_navne(isolated_runtime, monkeypatc
 
 def test_push_payloaden_giver_en_synlig_notifikation_i_AEGTE_fcm(isolated_runtime, monkeypatch) -> None:
     """Koerer den RIGTIGE `fcm_gateway._build_message()` paa den payload
-    emitteren sender — beviser at der rent faktisk kommer en 'notification'-
-    blok med, ikke kun at nogle noegler er til stede."""
+    emitteren sender — mobilens Notifee faar indhold i data, mens Androids
+    egen notification-blok ikke duplikerer kortet."""
     from core.services import notifikations_emittere as e
     from core.services import notification_router
     from core.services import fcm_gateway
@@ -119,12 +118,9 @@ def test_push_payloaden_giver_en_synlig_notifikation_i_AEGTE_fcm(isolated_runtim
 
     _uid, _slags, payload = sendt[0]
     msg = fcm_gateway._build_message("tok-1", payload)["message"]
-    assert "notification" in msg, (
-        "uden en 'notification'-blok viser Android INGEN synlig push — "
-        f"payload var {payload!r}"
-    )
-    assert msg["notification"]["title"]
-    assert msg["notification"]["body"]
+    assert "notification" not in msg
+    assert msg["data"]["title"]
+    assert msg["data"].get("preview") or msg["data"].get("body")
 
 
 # ── K2 (2026-09-22): kun ÉN ventende godkendelse kunne naa feeden ad gangen ──

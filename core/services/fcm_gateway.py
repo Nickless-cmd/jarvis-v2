@@ -1,4 +1,4 @@
-"""FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal.
+"""FCM HTTP v1 gateway — data-only push rendered once by the mobile app.
 
 Parallel til ntfy_gateway. OAuth via google-auth (allerede i ai-miljoeet).
 Config i runtime.json: fcm_project_id + fcm_service_account_path.
@@ -56,12 +56,11 @@ def _build_message(token: str, data: dict) -> dict:
         "data": str_data,
         "android": {"priority": "high"},
     }
-    # Hvis payload har title+preview, tilføj en notification-blok så OS'et
-    # viser en synlig notifikation selv hvis app'en ikke er åben.
-    title = str_data.get("title") or ""
-    body = str_data.get("preview") or str_data.get("body") or ""
-    if title and body:
-        msg["notification"] = {"title": title, "body": body}
+    # Do not add an FCM notification block when title/body are present.
+    # Android displays that block itself, while the mobile background handler
+    # also renders the same data via Notifee. A single alert became two cards.
+    # Keeping the payload data-only lets the handler display one card, including
+    # when the app is in the background.
     return {"message": msg}
 
 

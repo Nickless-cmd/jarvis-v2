@@ -463,3 +463,48 @@ def test_et_blandet_hale_flyttes_ikke():
     blokke = t.build_blocks("Svaret.")
     typer = [b["type"] for b in blokke]
     assert typer.index("text") < typer.index("tool_use"), typer
+
+
+# ── fremtvungne kald: hollow-promise-værnets runde ──────────────────────────
+
+
+def test_et_FREMTVUNGET_kald_flyttes_op_foer_svaret():
+    """Værnets tvungne kald er ikke arbejde Jarvis valgte.
+
+    Målt 9/10-2026: hollow-promise-værnet tvang et kald i 339 af 369 fyringer
+    (``tool_choice="required"``) — overvejende ``bash`` og ``edit_file``, altså
+    rigtige værktøjer som listen over bogførings-kald aldrig fangede. De landede
+    efter hans afsluttende besked, og klientens skillerum flyttede sig ned under
+    dem. Uden ``forced_ids`` fejler denne test.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Her er svaret.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}],
+        [], forced=True,
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Her er svaret.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") > max(i for i, x in enumerate(typer) if x == "tool_use")
+    assert blokke[typer.index("text")]["text"] == "Her er svaret."
+
+
+def test_det_SAMME_kald_uden_tvang_roeres_ikke():
+    """Kontrakten holder: kun tvangen flytter kaldet, ikke værktøjets navn."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Jeg kigger i filen.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}],
+        [], forced=False,
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Jeg kigger i filen.")
+    typer = [b["type"] for b in blokke]
+    assert typer.index("text") < typer.index("tool_use"), typer

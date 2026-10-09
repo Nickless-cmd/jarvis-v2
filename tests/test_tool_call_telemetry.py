@@ -134,3 +134,66 @@ def test_completed_fra_et_UI_kald_har_TOMME_felter_ikke_gaettede():
     p = t.byg_completed_payload("operator_bash", "ok", {"command": "ls"})
     assert p["run_id"] == ""
     assert p["tool_use_id"] == ""
+
+
+# ── Exit-koden persisteres så detektoren kan måles BAGUD (10/10-2026) ───────
+
+def test_completed_baerer_exit_kode_og_kommando_for_shell_vaerktoejer():
+    """`tool.completed` bar ikke exit-koden, så Smiths tavse-kæde-detektor
+    kunne kun måles i NUET — den findes kun i `result` og blev smidt væk ved
+    udgivelsen. Uden den i `events` har «hvor ofte knækker mine kæder?» intet
+    svar bagud. Kommandoen gemmes med, fordi detektoren er en REN funktion af
+    (kommando, exit-kode): med begge dele kan historikken afspilles."""
+    p = t.byg_completed_payload(
+        "bash", "ok", {"command": "cd x && grep -c foo bar"},
+        {"exit_code": 1, "status": "ok"},
+    )
+    assert p["exit_code"] == 1
+    assert p["command"] == "cd x && grep -c foo bar"
+
+
+def test_exit_kode_NUL_gemmes_den_er_et_gyldigt_svar():
+    """0 er den vigtigste værdi at have med — den er beviset for at kæden
+    kørte hele vejen. Derfor `is not None`, ikke en sandhedstest."""
+    p = t.byg_completed_payload(
+        "bash", "ok", {"command": "true"}, {"exit_code": 0},
+    )
+    assert p["exit_code"] == 0
+
+
+def test_ikke_shell_vaerktoej_faar_hverken_exit_kode_eller_kommando():
+    """`read_file` bærer ingen exit-kode. Feltet må ikke opstå af ingenting —
+    et gættet exit_code ville forurene enhver bagud-måling."""
+    p = t.byg_completed_payload(
+        "read_file", "ok", {"path": "/x"}, {"exit_code": 1, "content": "…"},
+    )
+    assert "exit_code" not in p
+    assert "command" not in p
+
+
+def test_kommandoen_klippes_ved_graensen():
+    """En rigtig kommando er 200-400 tegn. `tool.invoked` klipper ved 100,
+    hvilket er for kort til at afgøre kæde-strukturen — her klippes ved 400."""
+    p = t.byg_completed_payload(
+        "bash", "ok", {"command": "x" * 900}, {"exit_code": 1},
+    )
+    assert len(p["command"]) == t.COMMAND_GRAENSE
+
+
+def test_uden_result_er_payloaden_uændret():
+    """Bagud-kompatibel: kaldes funktionen uden `result` (fx fra en ældre
+    kalder), er formen præcis som før."""
+    p = t.byg_completed_payload("bash", "ok", {"command": "ls"})
+    assert "exit_code" not in p
+    assert "command" not in p
+
+
+def test_operator_bash_er_med_i_shell_familien():
+    """`operator_bash` er også et shell-kald med en exit-kode — og i drift er
+    den langt det største antal. Uden den i familien ville bagud-målingen se
+    4 % af mine shell-kald."""
+    assert "operator_bash" in t.SHELL_TOOLS
+    p = t.byg_completed_payload(
+        "operator_bash", "ok", {"command": "ls && rm x"}, {"exit_code": 2},
+    )
+    assert p["exit_code"] == 2

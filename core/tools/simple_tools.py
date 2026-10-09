@@ -1126,7 +1126,7 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = byg_completed_payload(name, status, arguments)
+    _completed_payload = byg_completed_payload(name, status, arguments, result)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):
@@ -1282,7 +1282,7 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = byg_completed_payload(name, status, arguments)
+    _completed_payload = byg_completed_payload(name, status, arguments, result)
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):

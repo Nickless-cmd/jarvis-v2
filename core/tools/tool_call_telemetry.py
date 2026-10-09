@@ -92,7 +92,23 @@ def udgiv_tool_invoked(name: str, arguments: dict[str, Any]) -> None:
                        name, exc)
 
 
-def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> dict[str, Any]:
+#: Shell-vaerktoejer — kun de baerer baade en kommando OG en exit-kode i
+#: resultatet. Det er den raa substans bagud-maalingen kraever: detektoren
+#: `silent_chain_break` er en REN funktion af (kommando, exit-kode).
+SHELL_TOOLS = frozenset({"bash", "bash_session_run", "operator_bash"})
+
+#: Kommandoen gemmes i completed-eventet op til denne graense. `tool.invoked`
+#: klipper ved 100 tegn — for kort til at afgoere kaede-strukturen i en rigtig
+#: kommando. Detektoren klipper selv ved 400.
+COMMAND_GRAENSE = 400
+
+
+def byg_completed_payload(
+    name: str,
+    status: str,
+    arguments: dict[str, Any],
+    result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """`tool.completed` — nu med de to felter der goer parringen mulig.
 
     Frem til 3/10-2026 bar eventet kun ``{tool, status, mutating}``. Et
@@ -108,9 +124,23 @@ def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> 
     der ikke hoerer til et model-run.
     """
     args = arguments or {}
-    return {
+    payload = {
         "tool": str(name),
         "status": str(status),
         "run_id": _fra_args(args, "_runtime_turn_id"),
         "tool_use_id": _fra_args(args, "_runtime_tool_use_id"),
     }
+    # Exit-koden (10/10-2026). `tool.completed` bar den ikke, saa Smiths
+    # tavse-kaede-detektor kunne kun maales i NUET: exit-koden findes kun i
+    # `result` og blev smidt vaek ved udgivelsen. Uden den kan «hvor ofte
+    # knækker mine kaeder?» ikke besvares bagud. Kommandoen gemmes med, fordi
+    # detektoren er en ren funktion af (kommando, exit-kode) — med begge dele
+    # kan historikken afspilles gennem den aegte funktion i stedet for et gæt.
+    if str(name) in SHELL_TOOLS and isinstance(result, dict):
+        kode = result.get("exit_code")
+        if kode is not None:
+            payload["exit_code"] = kode
+        kommando = _fra_args(args, "command")
+        if kommando:
+            payload["command"] = kommando[:COMMAND_GRAENSE]
+    return payload

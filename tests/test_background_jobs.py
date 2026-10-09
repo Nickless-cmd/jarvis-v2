@@ -16,6 +16,10 @@ def _bro(stdout, status="ok"):
 
 @pytest.fixture(autouse=True)
 def ingen_supervisor(monkeypatch):
+    # Bro-svars-cachen (10/10-2026) lever paa MODULNIVEAU og ville ellers
+    # baere et svar fra en tidligere test ind i den naeste — hver test skal
+    # maale sin egen bro. De tests der handler OM cachen rydder den selv.
+    monkeypatch.setattr(bj, "_bro_cache", {})
     monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [])
     monkeypatch.setattr(bj, "_scout_jobs", lambda: [])
     # Shell-sessionerne slaas fra som de to andre kilder. De tests der
@@ -404,3 +408,72 @@ def test_uden_baade_titel_og_kommando_staar_der_noget_aerligt():
     j = bj._operator_jobs("u1", _bro(linje))
     assert j[0]["navn"] == "(baggrunds-shell)"
     assert j[0]["kommando"] == ""
+
+
+# ── Bro-svars-cachen (10/10-2026) ─────────────────────────────────────────
+#
+# Målt 10/10: job-poll'en var 11.351 operator_bash-kald i døgnet — 59 % af
+# hele begivenhedsstrømmen — fordi desk OG mobil poller oveni hinanden, hvert
+# 5. sekund, hver med en fuld tur over broen. Cachen deler ét bro-hop mellem
+# kaldere i vinduet. Testene her pinner de tre egenskaber der gør det til
+# andet end «husk det sidste svar»: deling, udløb, og at et nej IKKE huskes.
+
+
+def _taellende_bro(stdout, status="ok"):
+    """Som `_bro`, men tæller hvor mange gange broen faktisk blev ramt."""
+    kald = []
+
+    def _exec(navn, args):
+        kald.append(navn)
+        return {"status": status, "result": {"stdout": stdout}}
+
+    return _exec, kald
+
+
+def test_to_kald_i_vinduet_deler_et_bro_hop(monkeypatch):
+    """Kernen i fixet: desk og mobil poller forskudt, men inden for 4 s."""
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    monkeypatch.setattr(bj, "_nu", lambda: 1_000_000.0)
+    exec_fn, kald = _taellende_bro("bg_a|1|S||1000000|ok\n")
+    bj._operator_jobs("u1", exec_fn)
+    bj._operator_jobs("u1", exec_fn)
+    assert len(kald) == 1, f"broen blev ramt {len(kald)} gange — cachen delte ikke"
+
+
+def test_kald_efter_vinduet_gaar_til_broen_igen(monkeypatch):
+    """Cachen maa ikke goere panelet blindt: efter TTL skal der maales igen."""
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    # `_nu` kaldes baade af cachen og af `_operator_jobs` (til `sekunder`), saa
+    # tiden skal kunne laeses vilkaarligt mange gange. Den skrider frem i smaa
+    # skridt, og vi springer TTL'en ved at flytte uret mellem de to kald.
+    ur = {"t": 1_000_000.0}
+    monkeypatch.setattr(bj, "_nu", lambda: ur["t"])
+    exec_fn, kald = _taellende_bro("bg_a|1|S||1000000|ok\n")
+    bj._operator_jobs("u1", exec_fn)
+    ur["t"] += bj._CACHE_TTL_S + 0.1
+    bj._operator_jobs("u1", exec_fn)
+    assert len(kald) == 2, "et kald efter TTL skal gaa til broen igen"
+
+
+def test_en_fejl_caches_ikke(monkeypatch):
+    """`BroTier` betyder «vi VED ikke hvad der koerer derovre». Et cachet nej
+    ville goere et forbigaaende bro-hop til fire sekunders blindhed — netop
+    den tilstand panelet har et eget felt for at kunne vise."""
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    monkeypatch.setattr(bj, "_nu", lambda: 1_000_000.0)
+    exec_fn, kald = _taellende_bro("", status="error")
+    for _ in range(2):
+        with pytest.raises(bj.BroTier):
+            bj._operator_jobs("u1", exec_fn)
+    assert len(kald) == 2, "en fejl blev cachet — naeste kald skal proeve igen"
+
+
+def test_cachen_er_pr_bruger(monkeypatch):
+    """To brugere maa ikke se hinandens bro-svar: `_LISTE_CMD` koeres med
+    `_user_id`, saa svaret hoerer til den der spurgte."""
+    monkeypatch.setattr(bj, "_bro_cache", {})
+    monkeypatch.setattr(bj, "_nu", lambda: 1_000_000.0)
+    exec_fn, kald = _taellende_bro("bg_a|1|S||1000000|ok\n")
+    bj._operator_jobs("u1", exec_fn)
+    bj._operator_jobs("u2", exec_fn)
+    assert len(kald) == 2, "cachen delte et svar paa tvaers af to brugere"

@@ -101,6 +101,46 @@ def _nu() -> float:
     return datetime.now(UTC).timestamp()
 
 
+# ── Bro-svars-cache (10/10-2026) ──────────────────────────────────────────
+#
+# Målt 10/10: desk-broens job-poll var 11.351 `operator_bash`-kald i døgnet —
+# 34.079 events, 59 % af HELE begivenhedsstrømmen. Median-interval 4,98 s
+# (panelets 5-sekunders-ur), men 14 af 62 kald lå under ét sekund fra det
+# foregående: desk OG mobil poller oveni hinanden, og hvert kald er en fuld
+# tur over broen til Bjørns maskine gennem hele tool-laget.
+#
+# Cachen sidder på BRO-SVARET, ikke på den færdige liste. Det er den dyre del
+# (netværksturen), og den er identisk for alle kaldere i vinduet — også når
+# de beder om forskellige `session_id`, fordi `_LISTE_CMD` ikke kender nogen
+# samtale. Filtreringen bagefter er billig og kører uændret pr. kald.
+#
+# 4 s, ikke 5: panelet poller hvert 5. sekund, så et 5-sekunders vindue ville
+# ramme kanten og slippe halvdelen igennem. 4 s garanterer at to pollere der
+# ligger forskudt (målt: op til 0,5 s fra hinanden) deler ét kald.
+_CACHE_TTL_S = 4.0
+_bro_cache: dict[str, tuple[float, str]] = {}
+
+
+def _bro_svar(uid: str, exec_fn) -> str:
+    """Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches.
+
+    En fejl må ikke caches: `BroTier` betyder «vi VED ikke hvad der kører
+    derovre», og et cachet nej ville gøre et forbigående bro-hop til fire
+    sekunders blindhed — netop den tilstand panelet har et eget felt for at
+    kunne vise.
+    """
+    nu = _nu()
+    hit = _bro_cache.get(uid)
+    if hit is not None and (nu - hit[0]) < _CACHE_TTL_S:
+        return hit[1]
+    res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
+    if res.get("status") != "ok":
+        raise BroTier(str(res.get("error") or res.get("reason") or "broen svarede ikke"))
+    ud = str((res.get("result") or {}).get("stdout") or "")
+    _bro_cache[uid] = (nu, ud)
+    return ud
+
+
 def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
     """Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier.
 
@@ -108,10 +148,7 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
     derovre, og panelet siger det med et eget felt — ikke ved at lade som om
     listen var tom.
     """
-    res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
-    if res.get("status") != "ok":
-        raise BroTier(str(res.get("error") or res.get("reason") or "broen svarede ikke"))
-    ud = str((res.get("result") or {}).get("stdout") or "")
+    ud = _bro_svar(uid, exec_fn)
     jobs: list[dict[str, Any]] = []
     nu = _nu()
     for linje in ud.splitlines():

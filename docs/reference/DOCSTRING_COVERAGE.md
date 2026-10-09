@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8796/16624 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8799/16627 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8796/16624 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5867 | 11288 | 51% |
+| `core.services` | 5870 | 11291 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1685,15 +1685,15 @@ Generated from source. 8796/16624 functions/methods documented (52%). The list b
 - `core/services/run_event_log.py` :: `subscriber_opened` (L440)
 - `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L133)
 - `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L129)
-- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L420)
-- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L262)
-- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L310)
-- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L456)
-- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L438)
-- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L246)
-- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L371)
-- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L117)
-- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L383)
+- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L481)
+- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L323)
+- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L371)
+- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L517)
+- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L499)
+- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L307)
+- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L432)
+- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L162)
+- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L444)
 - `core/services/runtime_action_outcome_tracking.py` :: `build_runtime_action_outcome_surface` (L53)
 - `core/services/runtime_action_outcome_tracking.py` :: `recent_runtime_action_outcomes` (L77)
 - `core/services/runtime_action_outcome_tracking.py` :: `record_runtime_action_outcome` (L13)

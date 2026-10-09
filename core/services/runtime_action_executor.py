@@ -114,6 +114,51 @@ def _publish_gate_event(
     )
 
 
+_GATE_FEELING: dict[str, str] = {
+    "frustration_threshold_exceeded": "frustration",
+    "low_confidence_guard": "confidence",
+    "fatigue_threshold": "fatigue",
+}
+
+
+def _feeling_for_reason(reason: str | None) -> str:
+    """Oversæt emotional-controls' reason til det feeling-navn veto_events bærer."""
+    return _GATE_FEELING.get(str(reason or ""), "emotional_gate")
+
+
+def _log_gate_block(*, action: str, feeling: str, reason: str | None) -> None:
+    """Skriv blokeringen til veto_events — uden rækken findes intet event_id.
+
+    Emotional-gaten publicerede kun til eventbus. Den skrev ALDRIG til
+    veto_events, så en blokering efterlod intet spor i ledgeren og intet
+    ``event_id`` at armere ``override_gate`` imod. Målt 9/10-2026: gaten
+    blokerede runtime-actions uden at nogen kunne se det bagefter.
+    """
+    try:
+        from core.services.veto_gate import log_veto_event
+        log_veto_event(
+            tool_name=action, user_message="", feeling=feeling, intensity=1.0,
+            evidence_summary=f"emotional_controls: {reason or 'gate'}",
+            veto_result="blocked",
+        )
+    except Exception:  # self-safe: logning må ikke vælte runtime-actionen
+        pass
+
+
+def _gate_overstyret(action: str, feeling: str) -> bool:
+    """Er der en armeret one-shot for (action, feeling)? Forbruger den i så fald.
+
+    Samme design som veto-gaten og R2.5 (``gate_override``): gaten FYRER og
+    LOGGER først; en armeret overstyring er et SVAR på signalet, ikke en vej
+    udenom. Uden armering svarer opslaget None og gaten blokerer som før.
+    """
+    try:
+        from core.services.gate_override import consume_override
+        return bool(consume_override(action, feeling))
+    except Exception:  # self-safe: fejl i opslaget må ikke ændre gatens svar
+        return False
+
+
 def execute_runtime_action(
     *,
     action_id: str,
@@ -130,6 +175,22 @@ def execute_runtime_action(
     gated_action, gate_reason = apply_emotional_controls(
         kernel_action="execute", snapshot=snapshot,
     )
+
+    # ── veto_events-sporet (side-3e59d5dbe2, 9/10-2026) ─────────────────
+    # Blokeringen får en række — og dermed et event_id — og en armeret
+    # one-shot slipper igennem. Beregningen står ét sted, så alle tre grene
+    # nedenfor respekterer den uden selv at kende sporet.
+    feeling = _feeling_for_reason(gate_reason)
+    _blokerende = (
+        gated_action == "escalate_user"
+        or (gated_action == "verify_first" and risk in ("high", "medium"))
+        or (gated_action == "simplify_plan" and risk == "high")
+    )
+    if _blokerende:
+        if _gate_overstyret(action, feeling):
+            gated_action, gate_reason = "execute", None
+        else:
+            _log_gate_block(action=action, feeling=feeling, reason=gate_reason)
 
     if gated_action == "escalate_user":
         _publish_gate_event(

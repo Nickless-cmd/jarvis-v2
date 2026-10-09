@@ -242,6 +242,11 @@ class TurnAccumulator:
         # svaret.
         etiketter = [dict(b) for b in self.round_labels]
         krop = _med_etiketter_foer_svaret(blokke, etiketter)
+        # Og halen efter svaret flyttes op, så turens sidste tekstblok ER den
+        # sidste blok. Klienten sætter skillerummet ved det sidste
+        # værktøjskald; uden dette bliver et internt kald EFTER beskeden til
+        # «svaret», og beskeden selv til et mellemsvar (målt 8/10-2026).
+        krop = _med_interne_kald_foer_svaret(krop)
         if self.skill_surface:
             return [dict(self.skill_surface), *krop]
         return krop
@@ -264,6 +269,66 @@ def _med_etiketter_foer_svaret(
     if sidste_tekst < 0:
         return [*blokke, *etiketter]
     return [*blokke[:sidste_tekst], *etiketter, *blokke[sidste_tekst:]]
+
+
+def _med_interne_kald_foer_svaret(blokke: list[dict]) -> list[dict]:
+    """Flyt INTERNE bogførings-kald efter svaret op FØR det, så svaret står sidst.
+
+    Klienten sætter skillerummet ved det sidste værktøjskald
+    (``raekkeModel.ts``): tekst FØR det bliver «mellemsvar», og alt efter
+    læses som arbejde. Lægger Jarvis et internt kald efter sin afsluttende
+    besked, flytter skillerummet sig ned under kaldet — og så står
+    kvitteringen som det egentlige svar, mens beskeden bliver et mellemsvar.
+
+    Målt 8/10-2026: i vejr-tråden lå et ``decision_create`` efter den
+    afsluttende tekst, og kvitteringen landede efter svaret. Bjørn rettede
+    det: «vi skal have lært dit ikk at lave extra kald efter din endelig
+    besked». Reglen stod allerede i VISIBLE_CHAT_RULES.md og blev brudt
+    gentagne gange — derfor flyttes halen mekanisk i stedet for at blive
+    bedt om.
+
+    **Kun interne kald.** Et rigtigt værktøj efter teksten er arbejde der
+    faktisk skete i den rækkefølge, og rækkefølgen må ikke omskrives
+    (kontrakten fra 2026-09-02: blokkene fortæller turen som den blev til).
+    Derfor flyttes halen KUN når hvert kald i den står på listen over
+    bogførings-værktøjer — ellers er listen uændret.
+    """
+    sidste_tekst = -1
+    for i, b in enumerate(blokke):
+        if (isinstance(b, dict) and b.get("type") == "text"
+                and str(b.get("text") or "").strip()):
+            sidste_tekst = i
+    if sidste_tekst < 0:
+        return list(blokke)
+    hale = blokke[sidste_tekst + 1:]
+    if not hale:
+        return list(blokke)
+    hale_kald = [b for b in hale if b.get("type") == "tool_use"]
+    if not hale_kald:
+        return list(blokke)
+    if not all(str(b.get("name") or "") in _INTERNE_HALE_VAERKTOEJER for b in hale_kald):
+        return list(blokke)
+    # Halens indbyrdes rækkefølge bevares — kun placeringen flyttes.
+    return [*blokke[:sidste_tekst], *hale, blokke[sidste_tekst]]
+
+
+#: Værktøjer der er AFSLUTNING, ikke arbejde — de bogfører, husker eller
+#: tilbyder det næste skridt. Ligger de efter den sidste tekstblok, er det
+#: ikke fordi arbejdet fortsatte; det er fordi beskeden blev skrevet først.
+#: Sideopgaven 8/10-2026 navngav de fire første; resten er samme form.
+_INTERNE_HALE_VAERKTOEJER = frozenset({
+    "decision_create",
+    "remember_this",
+    "flag_side_task",
+    "suggest_next_task",
+    "activate_side_task",
+    "dismiss_side_task",
+    "write_handover",
+    "note_add",
+    "set_flag",
+    "clear_flag",
+    "memory_upsert_section",
+})
 
 
 def coerce_tool_input(raw: object) -> dict:

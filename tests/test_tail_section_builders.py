@@ -61,3 +61,33 @@ def test_connected_connectors_lists_only_connected_and_enabled_oauth_apps(monkey
     assert "GitHub: forbundet" in out and "github_list_issues" in out and "Gmail" not in out and "Lokal" not in out
     monkeypatch.setattr("core.services.connectors.list_for_user", lambda uid: [])
     assert T._connected_connectors_section() is None
+
+
+def test_tavse_fald_logger_og_udelader_sektionen(monkeypatch, caplog):
+    """De tre sektioner må ikke forsvinde TAVST (målt 9/10-2026).
+
+    Kaster promise_ledger, connectors eller curiosity_daemon, udelades sektionen —
+    prompten skal kunne bygges. Men fejlen skal stå i loggen: uden den mister
+    Jarvis et værn (sine løfter, sine apps, sine spørgsmål) uden at nogen kan se
+    at det skete. Det var præcis hvad instrumentet fangede i de tre fund.
+    """
+    import logging
+
+    from core.services.prompt_sections import tail_section_builders as T
+
+    def _boom(*a, **k):
+        raise RuntimeError("nede")
+
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "u1")
+    monkeypatch.setattr("core.services.promise_ledger.pending_promises", _boom)
+    monkeypatch.setattr("core.services.connectors.list_for_user", _boom)
+    monkeypatch.setattr("core.services.curiosity_daemon._open_questions", 42)  # list(42) → TypeError
+
+    with caplog.at_level(logging.WARNING):
+        assert T._pending_promises_section("s1") is None
+        assert T._connected_connectors_section() is None
+        assert T._open_questions_section() is None
+
+    assert "_pending_promises_section" in caplog.text
+    assert "_connected_connectors_section" in caplog.text
+    assert "_open_questions_section" in caplog.text

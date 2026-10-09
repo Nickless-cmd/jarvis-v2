@@ -8,6 +8,10 @@ saa kaldere og tests der importerer dem derfra virker som foer.
 """
 from __future__ import annotations
 
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
 
 def _central_notices_section() -> str | None:
     """Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem
@@ -54,6 +58,11 @@ def _pending_promises_section(session_id: str | None) -> str | None:
         from core.services.promise_ledger import pending_promises
         pend = pending_promises(sid)
     except Exception:
+        # Løfte-værnet må ikke forsvinde TAVST. Sektionen udelades (prompten skal
+        # kunne bygges), men fejlen skal kunne ses: et ledger-fejl betyder at
+        # Jarvis ikke konfronteres med sine uindfriede løfter den tur.
+        # (Målt 9/10-2026: dette fald var ét af 24 tavse i prompt_sections.)
+        LOGGER.warning("_pending_promises_section: kunne ikke læse løfter - udelades", exc_info=True)
         return None
     if not pend:
         return None
@@ -85,6 +94,9 @@ def _connected_connectors_section() -> str | None:
             return None
         items = list_for_user(uid)
     except Exception:
+        # Uden dette ser Jarvis ikke sine forbundne apps og kan tro han ikke har
+        # adgang. Sektionen udelades, men fejlen skal kunne ses.
+        LOGGER.warning("_connected_connectors_section: kunne ikke læse connectors - udelades", exc_info=True)
         return None
     # Per-connector "sådan bruger du den"-hint (tool-navne). Udvid efterhånden.
     _HINTS = {
@@ -126,6 +138,9 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
         from core.services.curiosity_daemon import _open_questions
         questions = list(_open_questions)[:limit]
     except Exception:
+        # Åbne spørgsmål dør i bufferen hvis de ikke overflades; et tavst fald her
+        # ville skjule at overfladningen holdt op med at virke.
+        LOGGER.warning("_open_questions_section: kunne ikke læse åbne spørgsmål - udelades", exc_info=True)
         return None
     if not questions:
         return None

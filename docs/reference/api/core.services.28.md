@@ -192,7 +192,8 @@ _Bounded visible prompt for a member's own chat session._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `build_member_prompt` | `(*, user_id, session_id)` | — | [src](../../../core/services/visible_member_prompt.py#L10) |
+| function | `_iso_dt` | `(value)` | ISO-tidsstempel fra chat_messages → aware datetime. None = ukendt. | [src](../../../core/services/visible_member_prompt.py#L18) |
+| function | `build_member_prompt` | `(*, user_id, session_id, user_message=…)` | — | [src](../../../core/services/visible_member_prompt.py#L30) |
 
 ## `core/services/visible_model.py`
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8819/16656 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8820/16657 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8819/16656 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5880 | 11305 | 52% |
+| `core.services` | 5881 | 11306 | 52% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2058,7 +2058,7 @@ Generated from source. 8819/16656 functions/methods documented (52%). The list b
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L205)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L35)
-- `core/services/visible_member_prompt.py` :: `build_member_prompt` (L10)
+- `core/services/visible_member_prompt.py` :: `build_member_prompt` (L30)
 - `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L398)
 - `core/services/visible_model.py` :: `available_provider_models` (L175)
 - `core/services/visible_model.py` :: `execute_visible_model` (L267)

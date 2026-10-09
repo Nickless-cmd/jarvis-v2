@@ -228,8 +228,14 @@ def build_learned_section(
     workspace_dir: Path,
     max_lines: int = _MAX_LINES,
     max_chars: int = _MAX_CHARS,
+    header: str | None = None,
 ) -> str:
-    """Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant."""
+    """Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant.
+
+    ``header`` overstyrer overskriften. Owner-vejen lader den være (Bjørn-
+    varianten); member-vejen sender samtalepartnerens eget navn, så sektionen
+    ikke lyver i en fremmeds prompt.
+    """
     rows = select_learned_lines(
         user_message, workspace_dir=workspace_dir,
         max_lines=max_lines, max_chars=max_chars,
@@ -240,4 +246,6 @@ def build_learned_section(
     for row in rows:
         suffix = f" ({row['date']})" if row["date"] else ""
         parts.append(f"• {row['text']}{suffix}")
-    return "Lært om Bjørn (relevant for det han skriver nu):\n" + "\n".join(parts)
+    if header is None:
+        header = "Lært om Bjørn (relevant for det han skriver nu):"
+    return header + "\n" + "\n".join(parts)

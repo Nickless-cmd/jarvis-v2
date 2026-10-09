@@ -182,7 +182,7 @@ _Det Jarvis har LÆRT om Bjørn — læsesiden (lærings-sløjfe 2026-09-04, blo
 | function | `note_selected` | `(texts)` | Tæl at disse linjer blev valgt ind. Kuratorens signal. Self-safe. | [src](../../../core/services/prompt_sections/learned_about_user.py#L148) |
 | function | `selection_counts` | `()` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L167) |
 | function | `select_learned_lines` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, min_coverage=…, count_selection=…)` | De mest relevante `## Lært`-linjer for det Bjørn lige skrev. | [src](../../../core/services/prompt_sections/learned_about_user.py#L178) |
-| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L225) |
+| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, header=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L225) |
 
 ## `core/services/prompt_sections/loop_compliance.py`
 _Loop-compliance self-check section._

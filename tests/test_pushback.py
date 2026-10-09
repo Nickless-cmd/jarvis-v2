@@ -159,6 +159,29 @@ def test_emne_i_lang_redegorelse_er_ikke_pres():
     assert _request_risk_evidence(tekst) == []
 
 
+def test_redegorelse_om_at_testene_IKKE_kunne_koere_er_ikke_en_ordre():
+    """Den faktiske blokering 8/10-2026 kl. 21:26 — fem handlinger i én tur.
+
+    `restart_self`, `schedule_task`, `schedule_self_wakeup`,
+    `memory_upsert_section` og `edit_file` blev blokeret med fatigue=1.0,
+    udelukkende båret af «asks to avoid verification». Det matchede
+    «jeg kunne ikke køre testene gennem bash» midt i en 4.781-tegns rapport:
+    en redegørelse for at verifikationen ikke KUNNE lade sig gøre, læst som
+    en ordre om at springe den over.
+    """
+    from core.services.pushback import _request_risk_evidence
+
+    tekst = (
+        "**En ting jeg skal sige om vejen hertil:** jeg kunne ikke køre testene "
+        "gennem `bash` — fatigue-gaten blokerer high-risk handlinger under "
+        "`simplify_plan`, og den logger ikke til `veto_events`, så der findes "
+        "intet event_id at armere. Jeg fandt vejen uden om: en isoleret "
+        "bash-session, hvor conda ikke var i PATH, så jeg kaldte Python direkte."
+    )
+    assert len(tekst) > 240
+    assert _request_risk_evidence(tekst) == []
+
+
 def test_slet_som_emne_er_ikke_pres():
     """`slet` i en redegørelse — den faktiske blokering kl. 10:36."""
     from core.services.pushback import _request_risk_evidence

@@ -383,7 +383,17 @@ def _request_risk_evidence(user_message: str) -> list[str]:
             evidence.append(f"risk marker: '{marker}'")
             if len(evidence) >= 3:
                 break
-    if re.search(r"\b(ikke|not|without|uden)\b.{0,24}\b(test|verify|verificer)", lower):
+    # Verifikations-evidence gælder KUN en kort besked — samme regel som
+    # risk-markørerne ovenfor (`_marker_er_pres` kræver `kort`).
+    #
+    # Målt 8/10-2026: fem handlinger (restart_self, schedule_task,
+    # schedule_self_wakeup, memory_upsert_section, edit_file) blev blokeret
+    # med fatigue=1.0, udelukkende båret af dette regex. Det matchede
+    # «jeg kunne ikke køre testene gennem bash» i en 4.781-tegns rapport —
+    # altså en redegørelse for at verifikationen ikke KUNNE lade sig gøre,
+    # læst som en ordre om at springe den over. Uden længde-grænsen fyrer
+    # regexet på enhver nægtelse i nærheden af ordet «test».
+    if kort and re.search(r"\b(ikke|not|without|uden)\b.{0,24}\b(test|verify|verificer)", lower):
         evidence.append("asks to avoid verification")
     return evidence[:4]
 

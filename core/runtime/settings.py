@@ -472,6 +472,13 @@ class RuntimeSettings:
     tool_warm_run_window: int = 8          # keep last N user-turns warm
     tool_warm_token_ceiling: int = 40000   # ceiling on warm tool-result tokens
     tool_warm_hysteresis: float = 0.25     # advance margin (no thrash)
+    # Sikkerhedsventilen SKAL ligge over triggeren — triggeren er
+    # `ceiling × (1+hysteresis)` = 50.000. Laa ventilen paa triggeren selv, kunne
+    # `only_on_compact`-gaten pr. konstruktion aldrig naas: begge taerskler fyrede
+    # samtidig, og gaten var dermed doed kode. Maalt 10/10-2026: alle fire ryk den
+    # dag kom via ventilen og nul via gaten — og tre af dem landede bag en
+    # compact-markoer, hvor de kostede et cache-brud uden at goere en besked kold.
+    tool_warm_hard_ceiling: int = 80000    # safety valve — must sit ABOVE the trigger
     tool_run_hot_budget: int = 30000       # within-run (later plan)
     server_authoritative_runs: bool = False
     device_awareness_enabled: bool = True
@@ -803,6 +810,9 @@ def load_settings() -> RuntimeSettings:
         ),
         tool_warm_hysteresis=float(
             data.get("tool_warm_hysteresis", defaults.tool_warm_hysteresis)
+        ),
+        tool_warm_hard_ceiling=int(
+            data.get("tool_warm_hard_ceiling", defaults.tool_warm_hard_ceiling)
         ),
         tool_run_hot_budget=int(
             data.get("tool_run_hot_budget", defaults.tool_run_hot_budget)

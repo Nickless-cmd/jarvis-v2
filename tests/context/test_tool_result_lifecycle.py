@@ -197,3 +197,57 @@ def test_evaluate_advances_once_compaction_happened(monkeypatch):
     assert trl.get_compact_epoch(sid) == 4242
     # Anden run-slutning uden ny compaction → ingen yderligere bevægelse.
     assert trl.evaluate_and_advance(sid, settings=_S()) == new_floor
+
+
+def test_hard_ceiling_ligger_over_triggeren():
+    """Sikkerhedsventilen skal ligge OVER token-triggeren, ikke paa den.
+
+    Maalt 10/10-2026: begge taerskler var 50.000 — ventilen faldt tilbage til
+    `ceiling x (1+hysteresis)`, fordi `tool_warm_hard_ceiling` ikke fandtes i
+    settings. Dermed kunne `only_on_compact`-gaten pr. konstruktion aldrig naas:
+    det naabare interval var [50.000, 50.000] = tomt. Alle fire ryk den dag kom
+    via ventilen og nul via gaten — og tre af dem landede bag en compact-markoer,
+    hvor de kostede et cache-brud uden at goere en besked kold.
+
+    Testen fastholder to ting: at loftet ligger over triggeren, og at gaten
+    faktisk kan naas i intervallet mellem dem.
+    """
+    d = RuntimeSettings()
+    trigger = d.tool_warm_token_ceiling * (1.0 + d.tool_warm_hysteresis)
+    assert d.tool_warm_hard_ceiling > trigger, (
+        f"hard_ceiling {d.tool_warm_hard_ceiling} ligger ikke over triggeren "
+        f"{trigger} — only_on_compact-gaten ville vaere doed kode"
+    )
+
+    # Mellem trigger og ventil: UDSKUDT naar der ikke er komprimeret siden sidst.
+    ok, why = trl.should_advance(
+        warm_tool_tokens=int(trigger) + 1,
+        current_epoch=0,
+        recorded_epoch=0,
+        hard_ceiling=d.tool_warm_hard_ceiling,
+        only_on_compact=True,
+    )
+    assert ok is False
+    assert "ingen compaction" in why
+
+    # Men straks compaction har skiftet epoken, slipper gaten — uden ny taerskel.
+    ok, why = trl.should_advance(
+        warm_tool_tokens=int(trigger) + 1,
+        current_epoch=7,
+        recorded_epoch=6,
+        hard_ceiling=d.tool_warm_hard_ceiling,
+        only_on_compact=True,
+    )
+    assert ok is True
+    assert "compaction" in why
+
+    # Og over ventilen fyrer den stadig, uanset epoke — den er en sikkerhedsventil.
+    ok, why = trl.should_advance(
+        warm_tool_tokens=d.tool_warm_hard_ceiling + 1,
+        current_epoch=0,
+        recorded_epoch=0,
+        hard_ceiling=d.tool_warm_hard_ceiling,
+        only_on_compact=True,
+    )
+    assert ok is True
+    assert "sikkerhedsventil" in why

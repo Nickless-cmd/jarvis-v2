@@ -29,7 +29,9 @@ reglen i CLAUDE.md. Udgivelsen af `tool.invoked` er en naturlig enhed: den har
 """
 from __future__ import annotations
 
+import contextvars
 import logging
+from contextlib import contextmanager
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,43 @@ logger = logging.getLogger(__name__)
 #: Skrives naar identiteten ikke kan fastslaas. En taelling skal kunne vise
 #: hvor stort hullet er — ikke skjule det ved at springe raekken over.
 UKENDT = "UKENDT"
+
+
+# ── Interne kald: systemets egen trafik er ikke model-kald (10/10-2026) ─────
+#
+# Job-pollen er ikke et vaerktoejskald. Den er panelets puls: serveren spoerger
+# broen «hvad koerer derovre?», og svaret gaar til et panel — ikke til en model.
+# Alligevel gik hvert poll gennem hele observations-laget: `tool.invoked`,
+# `tool.completed` (med ~12 abonnenter), outcome-memory og Centralens
+# tools-observation. Maalt 10/10: 34.079 events i doegnet = 59 % af HELE
+# begivenhedsstroemmen, fra 11.351 kald.
+#
+# Flaget saettes EET sted — hvor pollens bro-kald faktisk sker
+# (`background_jobs._bro_svar`) — og baeres ned gennem kall-stakken. Et
+# parameter ville kraeve at hver af de tre kaldere huskede det; det goer denne
+# ikke. Konteksten er per-traad, saa et poll i én traad ikke kan slaa
+# observation fra for et model-kald i en anden.
+_INTERNT_KALD: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "jarvis_internt_tool_kald", default=False,
+)
+
+
+@contextmanager
+def internt_kald():
+    """Markér kaldet som systemets eget — ikke et model-kald.
+
+    Alt observations-arbejde i tool-laget springes over mens konteksten varer.
+    """
+    _tok = _INTERNT_KALD.set(True)
+    try:
+        yield
+    finally:
+        _INTERNT_KALD.reset(_tok)
+
+
+def er_internt_kald() -> bool:
+    """Er vi inde i et af systemets egne kald? Se `internt_kald`."""
+    return _INTERNT_KALD.get()
 
 #: Argumenterne afkortes i eventet. 100 tegn har vaeret grænsen siden
 #: begyndelsen; den er BEVARET her med vilje, saa udskillelsen ikke aendrer
@@ -92,7 +131,23 @@ def udgiv_tool_invoked(name: str, arguments: dict[str, Any]) -> None:
                        name, exc)
 
 
-def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> dict[str, Any]:
+#: Shell-vaerktoejer — kun de baerer baade en kommando OG en exit-kode i
+#: resultatet. Det er den raa substans bagud-maalingen kraever: detektoren
+#: `silent_chain_break` er en REN funktion af (kommando, exit-kode).
+SHELL_TOOLS = frozenset({"bash", "bash_session_run", "operator_bash"})
+
+#: Kommandoen gemmes i completed-eventet op til denne graense. `tool.invoked`
+#: klipper ved 100 tegn — for kort til at afgoere kaede-strukturen i en rigtig
+#: kommando. Detektoren klipper selv ved 400.
+COMMAND_GRAENSE = 400
+
+
+def byg_completed_payload(
+    name: str,
+    status: str,
+    arguments: dict[str, Any],
+    result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """`tool.completed` — nu med de to felter der goer parringen mulig.
 
     Frem til 3/10-2026 bar eventet kun ``{tool, status, mutating}``. Et
@@ -108,9 +163,23 @@ def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> 
     der ikke hoerer til et model-run.
     """
     args = arguments or {}
-    return {
+    payload = {
         "tool": str(name),
         "status": str(status),
         "run_id": _fra_args(args, "_runtime_turn_id"),
         "tool_use_id": _fra_args(args, "_runtime_tool_use_id"),
     }
+    # Exit-koden (10/10-2026). `tool.completed` bar den ikke, saa Smiths
+    # tavse-kaede-detektor kunne kun maales i NUET: exit-koden findes kun i
+    # `result` og blev smidt vaek ved udgivelsen. Uden den kan «hvor ofte
+    # knækker mine kaeder?» ikke besvares bagud. Kommandoen gemmes med, fordi
+    # detektoren er en ren funktion af (kommando, exit-kode) — med begge dele
+    # kan historikken afspilles gennem den aegte funktion i stedet for et gæt.
+    if str(name) in SHELL_TOOLS and isinstance(result, dict):
+        kode = result.get("exit_code")
+        if kode is not None:
+            payload["exit_code"] = kode
+        kommando = _fra_args(args, "command")
+        if kommando:
+            payload["command"] = kommando[:COMMAND_GRAENSE]
+    return payload

@@ -157,11 +157,88 @@ def test_memory_md_promotion_routes_to_curated_topic(isolated_runtime):
 
 
 def test_user_md_still_writes_directly(isolated_runtime):
-    """Identitets-/præference-filer (USER.md) routes IKKE — kun MEMORY.md."""
+    """Identitets-/præference-filer (USER.md) routes IKKE — kun MEMORY.md.
+
+    9/10-2026 (A): skrive-vejen kræver nu et bundet user_id, så en ejerløs
+    kandidat ikke kan gætte sig til 'bjorn'. Testen binder derfor konteksten.
+    """
     from core.identity.candidate_workflow import _append_workspace_contract_line
-    r = _append_workspace_contract_line(
-        target_file="USER.md", section_heading="## Durable Preferences",
-        content_line="Foretrækker korte svar.",
-    )
+    from core.identity.workspace_context import reset_context, set_context
+
+    token = set_context(workspace_name="bjorn", user_id="bjorn")
+    try:
+        r = _append_workspace_contract_line(
+            target_file="USER.md", section_heading="## Durable Preferences",
+            content_line="Foretrækker korte svar.",
+        )
+    finally:
+        reset_context(token)
     assert r["path"].endswith("USER.md")
     assert r["write_status"] == "written"
+
+
+def test_cross_user_write_is_refused(isolated_runtime):
+    """9/10-2026 (A): en kandidat må ALDRIG skrive til en anden brugers fil.
+
+    Uden dette værn skrev et heartbeat (kontekst 'bjorn') en kandidat skabt i
+    Michelles samtale ind i Bjørns USER.md — den lækage vi byggede B for.
+    """
+    import pytest
+
+    from core.identity.candidate_workflow import _append_workspace_contract_line
+    from core.identity.workspace_context import reset_context, set_context
+
+    token = set_context(workspace_name="bjorn", user_id="bjorn")
+    try:
+        with pytest.raises(PermissionError, match="does not match active workspace"):
+            _append_workspace_contract_line(
+                target_file="USER.md",
+                section_heading="## Lært",
+                content_line="Michelle-linje der ikke må lande her.",
+                owner_workspace="michelle",
+            )
+    finally:
+        reset_context(token)
+
+
+def test_ownerless_write_without_bound_user_is_refused(isolated_runtime):
+    """9/10-2026 (A): uden bundet bruger må en ejerløs kandidat ikke gætte.
+
+    Default-konteksten ER workspace 'bjorn' med user_id="" — så «ingen kontekst»
+    kan ikke skelnes fra «Bjørns kontekst» på navnet alene. Vi kræver derfor et
+    bundet user_id og nægter frem for at gætte på 'bjorn'.
+    """
+    import pytest
+
+    from core.identity.candidate_workflow import _append_workspace_contract_line
+    from core.identity.workspace_context import reset_context, set_context
+
+    token = set_context(workspace_name="bjorn", user_id="")
+    try:
+        with pytest.raises(PermissionError, match="no owner and the context"):
+            _append_workspace_contract_line(
+                target_file="USER.md",
+                section_heading="## Lært",
+                content_line="Ejerløs linje uden bundet bruger.",
+            )
+    finally:
+        reset_context(token)
+
+
+def test_owned_candidate_writes_to_its_own_workspace(isolated_runtime):
+    """9/10-2026 (A): en kandidat med egen ejer skriver til SIN fil."""
+    from core.identity.candidate_workflow import _append_workspace_contract_line
+    from core.identity.workspace_context import reset_context, set_context
+
+    token = set_context(workspace_name="bjorn", user_id="bjorn")
+    try:
+        r = _append_workspace_contract_line(
+            target_file="USER.md",
+            section_heading="## Lært",
+            content_line="Ejer-stemplet linje der hører til Bjørn.",
+            owner_workspace="bjorn",
+        )
+    finally:
+        reset_context(token)
+    assert r["write_status"] == "written"
+    assert r["path"].endswith("workspaces/bjorn/USER.md")

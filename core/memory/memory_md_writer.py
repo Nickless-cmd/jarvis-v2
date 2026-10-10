@@ -113,7 +113,11 @@ def upsert_section(
     if not heading:
         raise ValueError("heading is required")
     level = max(1, min(6, int(level)))
-    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    # §16 (9/10-2026): læs sti-nøglet. `path.read_text()` fandt ikke en
+    # krypteret member-fil (.enc), så en skrivning til et member-workspace
+    # læste "" og overskrev dermed ikke — den DIVERGEREDE fra den rigtige fil.
+    from core.services.workspace_crypto import read_text_for_path
+    text = read_text_for_path(path) or ""
     sections = parse_sections(text)
     key = normalize_heading(heading)
     target = next((s for s in sections if s["heading"] and normalize_heading(s["heading"]) == key), None)
@@ -142,7 +146,12 @@ def upsert_section(
             prev = sections[i - 1]
             if prev["body"] and prev["body"][-1].strip():
                 prev["body"].append("")
-    _atomic_write(path, _render(sections))
+    # §16 (9/10-2026): skriv sti-nøglet og atomisk. `_atomic_write` skrev rå
+    # plaintext — i et member-workspace betød det en klartekst-fil ved siden af
+    # den krypterede (.enc). `atomic_write_text_for_path` bevarer atomiciteten
+    # (temp + rename) og vælger selv .enc for member-filer.
+    from core.services.workspace_crypto import atomic_write_text_for_path
+    atomic_write_text_for_path(path, _render(sections))
     return {"action": action, "heading": heading, "path": str(path)}
 
 

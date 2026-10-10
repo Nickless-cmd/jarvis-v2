@@ -110,3 +110,32 @@ def test_observe_er_self_safe_ved_et_doedt_resultat():
     """Et ikke-dict-resultat eller en kastende kald må ikke vælte tool-flow."""
     assert scb.observe("bash", {"command": "a && b"}, None) is None
     assert scb.observe("bash", None, {"exit_code": 1}) is None
+
+
+# ── operator_bash med i dækningen (10/10-2026) ──────────────────────────────
+
+def test_operator_bash_er_med_i_shell_vaerktoejerne():
+    """Målt 10/10: `operator_bash` var 96 % af alle shell-kald (11.238 mod bash' 509).
+
+    Uden den i sættet så detektoren 4 % af det den skal fange. Indvendingen var
+    at langt de fleste kald er desk-broens job-poll — men den er nu flagget som
+    internt kald, så `observe` kaldes slet ikke for den.
+    """
+    assert "operator_bash" in scb._SHELL_TOOLS
+
+
+def test_observe_fanger_et_knaek_gennem_broen(monkeypatch):
+    """Et model-kald via broen kan brække en `&&`-kæde som alle andre."""
+    skrevet: list[dict] = []
+    monkeypatch.setattr(
+        "core.runtime.db_lessons.upsert_lesson",
+        lambda **kw: skrevet.append(kw) or {"outcome": "created"},
+    )
+    fund = scb.observe(
+        "operator_bash",
+        {"command": "cd /media/projects && grep -c x f && pytest -q"},
+        {"exit_code": 1, "status": "ok"},
+    )
+    assert fund is not None
+    assert fund["kind"] == "silent_chain_break"
+    assert len(skrevet) == 1

@@ -47,7 +47,7 @@ _One writer for MEMORY.md-style section files (memory repair 2026-09-04, R7)._
 | function | `find_section` | `(text, heading, *, level=…)` | — | [src](../../../core/memory/memory_md_writer.py#L73) |
 | function | `_render` | `(sections)` | — | [src](../../../core/memory/memory_md_writer.py#L87) |
 | function | `upsert_section` | `(path, heading, body, *, level=…, mode=…)` | Write ``body`` under ``heading`` in ``path``. | [src](../../../core/memory/memory_md_writer.py#L97) |
-| function | `merge_duplicate_headings` | `(text)` | Merge sections whose normalized heading repeats: first keeps its place, | [src](../../../core/memory/memory_md_writer.py#L149) |
+| function | `merge_duplicate_headings` | `(text)` | Merge sections whose normalized heading repeats: first keeps its place, | [src](../../../core/memory/memory_md_writer.py#L158) |
 
 ## `core/memory/memory_size_guard.py`
 _MEMORY.md størrelses-værn (spec C, 2026-07-10)._

@@ -5,6 +5,11 @@ const TICK_MS = 33
 const MIN_CHARS = 5
 const MAX_CHARS = 28
 const SHORT_TEXT = 32
+/** Hvor langt visningen må sakke bagud, før vi springer frem til grænsen.
+ *  Loftet på MAX_CHARS pr. tick kan ikke følge en hurtigere kilde alene, og
+ *  uden en grænse hober forskellen sig op for evigt — målt 10/10-2026:
+ *  679 tegns efterslæb efter 90 frames ved 25 tegn pr. frame. */
+const BACKLOG_MAX = 330
 
 /** Paces only the current text block. The source blocks remain authoritative. */
 export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBlock[] {
@@ -35,9 +40,12 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         const shown = previousShown.length >= shortText.length ? previousShown : shortText
         const pending = currentTarget.length - shown.length
         if (pending <= 0) return previous
-        // Keep pace with the measured fast runs while showing small steps.
+        // Jævn kadence: små trin så længe vi kan følge kilden.
         const step = Math.min(MAX_CHARS, Math.max(MIN_CHARS, Math.ceil(pending / 12)))
-        let end = Math.min(currentTarget.length, shown.length + step)
+        // …og grænsen der gør at vi ALTID indhenter: er vi mere end
+        // BACKLOG_MAX bagud, springer vi frem til grænsen i stedet.
+        let end = Math.min(currentTarget.length,
+          Math.max(shown.length + step, currentTarget.length - BACKLOG_MAX))
         const code = currentTarget.charCodeAt(end - 1)
         if (end < currentTarget.length && code >= 0xD800 && code <= 0xDBFF) end++
         return { index: currentIndex, shown: currentTarget.slice(0, end) }

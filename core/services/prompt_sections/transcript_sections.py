@@ -8,6 +8,7 @@ prompt_contract.<navn> fortsat rammer de SAMME objekter. Kun ren flytning.
 """
 from __future__ import annotations
 
+import contextvars as _contextvars
 import threading as _threading_mod
 
 from core.services.tool_result_store import render_tool_result_for_prompt
@@ -765,9 +766,24 @@ def _maybe_auto_compact_session(
         # prompt_contract._run_session_compaction og forventer at baggrundstråden
         # kalder patchen. Bare-navn ville ramme dette moduls global.
         from core.services import prompt_contract as _pc
+        # Bær den synlige kørsels kontekst med i tråden (målt 10/10-2026).
+        #
+        # Tråden startede uden `copy_context()`, så den arvede ikke
+        # `run_autonomy_context._run_id`. `compact_llm._er_hans_tur()` læser
+        # netop den, svarede falsk, og komprimeringen faldt til cheap lane —
+        # hvis korte svar (29.466 af 60.000 under 60 tokens) kvalitetsgaten
+        # afviser, hvorefter den mekaniske fallback tager over.
+        # Målt i `compaction_log`: 34 af 110 komprimeringer over 30 dage.
+        #
+        # Samme mønster som `prompt_memory_recall` (baggrundsarbejde der skal
+        # se den session og det workspace det arbejder på). Tråden læser og
+        # opsummerer — den udfører ingen værktøjer, så konteksten bærer ingen
+        # autorisation videre.
+        _kompakt_ctx = _contextvars.copy_context()
         _threading_mod.Thread(
-            target=_pc._run_session_compaction,
-            args=(session_id, int(getattr(settings, "context_keep_recent", 20) or 20)),
+            target=_kompakt_ctx.run,
+            args=(_pc._run_session_compaction, session_id,
+                  int(getattr(settings, "context_keep_recent", 20) or 20)),
             kwargs={"low_water_tokens": decision.low_water_target},
             name=f"compact-{str(session_id)[:12]}", daemon=True,
         ).start()

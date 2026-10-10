@@ -346,18 +346,19 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `runtime_instruction_message` | `(text)` | A model-facing runtime instruction with explicit non-user provenance. | [src](../../../core/services/run_trailing.py#L59) |
-| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de tre slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L64) |
-| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L69) |
-| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L74) |
-| method | `RundeHale.tilfoej_naeste` | `(self, indhold, *, rolle=…)` | En besked der gaelder KUN den naeste runde. | [src](../../../core/services/run_trailing.py#L84) |
-| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L98) |
-| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne; de vedvarende bliver, og de naeste rykker ind. | [src](../../../core/services/run_trailing.py#L107) |
-| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L119) |
-| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L129) |
-| method | `RundeHale.antal_naeste` | `(self)` | — | [src](../../../core/services/run_trailing.py#L133) |
-| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L136) |
-| method | `RundeHale.telemetri` | `(self)` | Kompakt billede af halen, praecis som den sendes i denne runde. | [src](../../../core/services/run_trailing.py#L139) |
+| function | `runtime_instruction_message` | `(text)` | A model-facing runtime instruction with explicit non-user provenance. | [src](../../../core/services/run_trailing.py#L97) |
+| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de tre slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L102) |
+| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L107) |
+| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L112) |
+| method | `RundeHale.tilfoej_naeste` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder KUN den naeste runde. | [src](../../../core/services/run_trailing.py#L124) |
+| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…, art=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L145) |
+| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne; de vedvarende bliver, og de naeste rykker ind. | [src](../../../core/services/run_trailing.py#L161) |
+| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L173) |
+| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L183) |
+| method | `RundeHale.antal_naeste` | `(self)` | — | [src](../../../core/services/run_trailing.py#L187) |
+| method | `RundeHale.raadgivning_i_runden` | `(self)` | Hvor mange noter i den sendte hale der er raadgivning, ikke krav. | [src](../../../core/services/run_trailing.py#L191) |
+| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L202) |
+| method | `RundeHale.telemetri` | `(self)` | Kompakt billede af halen, praecis som den sendes i denne runde. | [src](../../../core/services/run_trailing.py#L205) |
 
 ## `core/services/runtime_action_executor.py`
 

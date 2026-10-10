@@ -101,6 +101,59 @@ def _nu() -> float:
     return datetime.now(UTC).timestamp()
 
 
+# ── Bro-svars-cache (10/10-2026) ──────────────────────────────────────────
+#
+# Målt 10/10: desk-broens job-poll var 11.351 `operator_bash`-kald i døgnet —
+# 34.079 events, 59 % af HELE begivenhedsstrømmen. Median-interval 4,98 s
+# (panelets 5-sekunders-ur), men 14 af 62 kald lå under ét sekund fra det
+# foregående: desk OG mobil poller oveni hinanden, og hvert kald er en fuld
+# tur over broen til Bjørns maskine gennem hele tool-laget.
+#
+# Cachen sidder på BRO-SVARET, ikke på den færdige liste. Det er den dyre del
+# (netværksturen), og den er identisk for alle kaldere i vinduet — også når
+# de beder om forskellige `session_id`, fordi `_LISTE_CMD` ikke kender nogen
+# samtale. Filtreringen bagefter er billig og kører uændret pr. kald.
+#
+# 10 s (hævet fra 4, 10/10-2026): begge klienter poller nu hvert 10. sekund —
+# desk OG mobil, samme ur. To pollere der tikker samtidig rammer derfor ind
+# inden for samme vindue, og ét bro-hop dækker dem begge. Ved 4 s gjorde de
+# det modsatte: de to ure drev fra hinanden, og hvert panel betalte sin egen
+# tur. Vinduet skal matche intervallet, ikke ligge under det.
+#
+# Prisen er ærlig: et svar kan være op til 10 s gammelt. Panelet viser hvad
+# der KØRER — ikke hvor mange sekunder der er gået — og varigheden regnes
+# fortsat pr. kald ud fra `start`-stemplet, så tallet er ikke frosset.
+_CACHE_TTL_S = 10.0
+_bro_cache: dict[str, tuple[float, str]] = {}
+
+
+def _bro_svar(uid: str, exec_fn) -> str:
+    """Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches.
+
+    En fejl må ikke caches: `BroTier` betyder «vi VED ikke hvad der kører
+    derovre», og et cachet nej ville gøre et forbigående bro-hop til fire
+    sekunders blindhed — netop den tilstand panelet har et eget felt for at
+    kunne vise.
+    """
+    nu = _nu()
+    hit = _bro_cache.get(uid)
+    if hit is not None and (nu - hit[0]) < _CACHE_TTL_S:
+        return hit[1]
+    # Pollen er systemets EGET kald, ikke et model-kald: uden dette skriver hvert
+    # poll `tool.invoked` + `tool.completed` + outcome-memory — maalt 34.079
+    # events i doegnet, 59 % af hele begivenhedsstroemmen. Flaget saettes HER,
+    # hvor bro-kaldet faktisk sker, saa alle tre kaldere (ruten, vagtposten,
+    # baggrundsjob-vagten) er daekket og ingen fremtidig kalder kan glemme det.
+    from core.tools.tool_call_telemetry import internt_kald
+    with internt_kald():
+        res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
+    if res.get("status") != "ok":
+        raise BroTier(str(res.get("error") or res.get("reason") or "broen svarede ikke"))
+    ud = str((res.get("result") or {}).get("stdout") or "")
+    _bro_cache[uid] = (nu, ud)
+    return ud
+
+
 def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
     """Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier.
 
@@ -108,10 +161,7 @@ def _operator_jobs(uid: str, exec_fn) -> list[dict[str, Any]]:
     derovre, og panelet siger det med et eget felt — ikke ved at lade som om
     listen var tom.
     """
-    res = exec_fn("operator_bash", {"command": _LISTE_CMD, "_user_id": uid})
-    if res.get("status") != "ok":
-        raise BroTier(str(res.get("error") or res.get("reason") or "broen svarede ikke"))
-    ud = str((res.get("result") or {}).get("stdout") or "")
+    ud = _bro_svar(uid, exec_fn)
     jobs: list[dict[str, Any]] = []
     nu = _nu()
     for linje in ud.splitlines():

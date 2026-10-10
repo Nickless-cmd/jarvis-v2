@@ -154,6 +154,32 @@ def _samtalen_gik_videre(session_id: str, efter: str) -> bool:
     return bool(raekke and int(raekke[0]) > 0)
 
 
+def _runnet_har_svaret(run_id: str) -> bool:
+    """Har kørslen SELV allerede svaret Bjørn?
+
+    Søsteren til `_samtalen_gik_videre`, og den fanger en anden fejl: den anden
+    spørger om BRUGEREN skrev nyt, denne om RUNNET selv svarede.
+
+    Målt 10/10-2026: run `visible-9a64aa1d` skrev sit svar kl. 16:48:32 og blev
+    stemplet `interrupted` ét sekund senere (`pending-tool-intent`). Bjørn skrev
+    INTET imens — han ventede — så `_samtalen_gik_videre` var falsk, og
+    dispatcheren genoptog tre sekunder senere. To svar på én besked.
+
+    Kilden er `besked_run_kobling` og ikke `chat_messages`: den binder besked→run,
+    så vi spørger præcist «skrev DETTE run en besked?». Et bredere filter (enhver
+    assistant-besked i sessionen efter døden) ville også tælle hver proaktiv
+    besked, morgenbrief og heartbeat-ping — og droppe genoptagelser Bjørn faktisk
+    ventede på. Det var grænsen der standsede denne søster 3/10.
+    """
+    try:
+        from core.services.besked_run_kobling import skrev_run
+        return skrev_run(run_id)
+    except Exception:
+        logger.warning("recovery-dispatcher: kunne ikke afgoere om %s svarede",
+                       str(run_id or "")[:24], exc_info=True)
+        return False
+
+
 def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     """Tag ÉN forfalden opgave og start dens fortsættelse.
 
@@ -231,6 +257,36 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             task_id[:24], session_id[:28])
         return {"started": 0, "released": 1, "claimed": task_id,
                 "error": "samtalen-gik-videre"}
+
+    # HAR KØRSLEN SELV SVARET? (10/10-2026)
+    #
+    # Søsteren til tjekket ovenfor, og den dækker et andet hul: brugeren behøver
+    # ikke at have skrevet noget for at et run er færdigt. Målt 10/10 skrev
+    # `visible-9a64aa1d` sit svar, blev stemplet `interrupted` ét sekund senere,
+    # og blev genoptaget tre sekunder efter — Bjørn ventede, han skrev intet.
+    #
+    # Samme lukning som ovenfor: `settle_terminal` og ikke `release_recovery_claim`
+    # (ellers tager næste tick kravet igen og dropper det igen), og `cancelled`
+    # frem for `failed_terminal`, så en opgave der ER besvaret ikke giver et varsel.
+    if _runnet_har_svaret(task_id):
+        try:
+            in_flight_runs.settle_terminal(
+                task_id, status="cancelled",
+                reason="kørslen svarede selv før den blev stemplet afbrudt",
+                expected_generation=generation, expected_owner=ejer)
+        except Exception:
+            logger.warning("recovery-dispatcher: kunne ikke lukke besvaret opgave "
+                           "%s — giver kravet tilbage", task_id[:24], exc_info=True)
+            in_flight_runs.release_recovery_claim(
+                task_id, generation, owner=ejer, reason="kunne ikke lukke besvaret opgave",
+                retry_after_s=BACKOFF_SECONDS)
+            return {"started": 0, "released": 1, "claimed": task_id,
+                    "error": "settle-fejlede"}
+        _luk_afloest_raekke(task_id, reason="kørslen svarede selv")
+        logger.info("recovery-dispatcher: %s droppet — kørslen svarede selv i %s",
+                    task_id[:24], session_id[:28])
+        return {"started": 0, "released": 1, "claimed": task_id,
+                "error": "koerslen-svarede-selv"}
 
     besked = _besked_fra(krav)
     if not besked:

@@ -81,3 +81,91 @@ def test_owner_permission_check_cannot_bypass_autonomous_policy():
         assert is_tool_allowed(role="owner", scope="", name="remember_this") is True
     finally:
         reset_autonomous(token)
+
+
+# ── Delegeret tilladelse pr. oprindelse (10/10-2026) ─────────────────────
+#
+# Bjørn: «uddelegér tools når du sætter autonome runs og recurring op, så
+# autonome runs får kun de tools de behøver». Testene låser at tilladelsen
+# følger ORIGIN — og at en ukendt oprindelse aldrig arver en udvidelse.
+
+def _as_origin(origin: str):
+    """Sæt autonom-flag + origin; returnér token til oprydning."""
+    from core.services.run_autonomy_context import set_run_identity
+
+    token = set_autonomous(True)
+    set_run_identity("autonomous-test", origin)
+    return token
+
+
+def _clear_origin() -> None:
+    from core.services.run_autonomy_context import set_run_identity
+
+    set_run_identity("", "")
+
+
+def test_recurring_task_may_send_and_read_runtime():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = _as_origin("recurring")
+    try:
+        assert is_allowed("send_ntfy") is True
+        assert is_allowed("send_discord_dm") is True
+        assert is_allowed("web_search") is True
+        assert is_allowed("bash") is True
+    finally:
+        reset_autonomous(token)
+        _clear_origin()
+
+
+def test_unknown_origin_falls_back_to_bundle_alone():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = _as_origin("")
+    try:
+        assert is_allowed("remember_this") is True
+        assert is_allowed("send_ntfy") is False
+        assert is_allowed("bash") is False
+    finally:
+        reset_autonomous(token)
+        _clear_origin()
+
+
+def test_dream_senses_but_does_not_touch_the_world():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = _as_origin("dream")
+    try:
+        assert is_allowed("look_around") is True
+        assert is_allowed("mic_listen") is True
+        assert is_allowed("bash") is False
+        assert is_allowed("send_ntfy") is False
+    finally:
+        reset_autonomous(token)
+        _clear_origin()
+
+
+def test_wakeup_may_resume_work_but_not_send_mail():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = _as_origin("wakeup")
+    try:
+        assert is_allowed("bash") is True
+        assert is_allowed("send_webchat_message") is True
+        assert is_allowed("write_file") is False
+        assert is_allowed("send_discord_dm") is False
+    finally:
+        reset_autonomous(token)
+        _clear_origin()
+
+
+def test_visible_run_ignores_origin_grants():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = set_autonomous(False)
+    try:
+        assert is_allowed("bash") is True
+        assert is_allowed("send_discord_dm") is True
+    finally:
+        reset_autonomous(token)
+        _clear_origin()

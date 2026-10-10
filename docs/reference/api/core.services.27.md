@@ -2,29 +2,6 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
-## `core/services/tool_hunt_nudge.py`
-_Han leder efter et værktøj med bash — og værktøjet findes allerede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_i_kodetraeet` | `(sti)` | Ligger stien i kodetræet? Både «docs/x.md» og «/media/.../docs/x.md». | [src](../../../core/services/tool_hunt_nudge.py#L265) |
-| function | `_leverbar_fil` | `(navn, argumenter)` | Filen han lige skrev, hvis den ligner noget Bjørn skal kunne åbne. | [src](../../../core/services/tool_hunt_nudge.py#L281) |
-| function | `_aftryk` | `(navn, argumenter)` | Identiteten af ét kald: værktøj + argumenter, uanset nøglerækkefølge. | [src](../../../core/services/tool_hunt_nudge.py#L308) |
-| function | `_noter_gentagelse` | `(noegle, navn, argumenter)` | Hvor mange gange i træk er PRÆCIS dette kald nu set? 1 = nyt. | [src](../../../core/services/tool_hunt_nudge.py#L322) |
-| function | `_gentagelses_note` | `(noegle, navn, argumenter, antal)` | Påmindelsen for denne stime, eller "". Hver tærskel fyrer én gang. | [src](../../../core/services/tool_hunt_nudge.py#L337) |
-| function | `_taeller` | `(noegle, hvad)` | Tæl én forekomst af `hvad` i turen og giv det nye tal. | [src](../../../core/services/tool_hunt_nudge.py#L359) |
-| function | `_taendt` | `()` | — | [src](../../../core/services/tool_hunt_nudge.py#L385) |
-| function | `_afgoer_udestaaende` | `(noegle, navn)` | Kaldte han det værktøj noten pegede på? Eller gav han op på at svare? | [src](../../../core/services/tool_hunt_nudge.py#L393) |
-| function | `_husk_udestaaende` | `(noegle, vaerktoej, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L407) |
-| function | `_log_svar` | `(udfald, noegle, sag)` | — | [src](../../../core/services/tool_hunt_nudge.py#L413) |
-| function | `rapport` | `(*, limit=…)` | Blev noterne fulgt? Tallet bag «fortjener den her at eskalere». | [src](../../../core/services/tool_hunt_nudge.py#L426) |
-| function | `_maa_sige` | `(noegle, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L455) |
-| function | `ryd_tur` | `(run_id)` | Turen er slut. Self-safe. Et ubesvaret nudge tælles som et nej. | [src](../../../core/services/tool_hunt_nudge.py#L463) |
-| function | `note` | `(*, navn, argumenter, run_id=…, resultat_tekst=…)` | Noten der skal hæftes på resultatet, eller `""`. | [src](../../../core/services/tool_hunt_nudge.py#L474) |
-| function | `_foerste_ukendte` | `(argumenter, svar)` | Det navn han bad om, som ikke findes. Fra argumenterne, ikke fra svaret. | [src](../../../core/services/tool_hunt_nudge.py#L586) |
-| function | `_naermeste_navne` | `(gaettet, antal=…)` | De nærmeste rigtige navne — leksikalsk, ingen model. | [src](../../../core/services/tool_hunt_nudge.py#L605) |
-| function | `_log` | `(vaerktoej, run_id, score, tekst)` | — | [src](../../../core/services/tool_hunt_nudge.py#L617) |
-
 ## `core/services/tool_intent_approval_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -583,4 +560,19 @@ _Verification gate — advisory check on destructive/mutation actions._
 | function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
 | function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
 | function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
+
+## `core/services/verification_gate_telemetry.py`
+_R2 verification gate telemetry — track whether warnings get heeded._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L52) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L64) |
+| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L97) |
+| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L134) |
+| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L180) |
+| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L211) |
+| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L266) |
+| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L304) |
+| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L384) |
 

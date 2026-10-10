@@ -742,7 +742,8 @@ def _build_visible_prompt_assembly(
     member_uid = _member_context_user_id()
     if member_uid:
         from core.services.visible_member_prompt import build_member_prompt
-        return build_member_prompt(user_id=member_uid, session_id=session_id or "")
+        return build_member_prompt(user_id=member_uid, session_id=session_id or "",
+                                   user_message=user_message)
     return build_visible_chat_prompt_assembly(
         provider=provider,
         model=model,

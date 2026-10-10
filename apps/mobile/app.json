@@ -2,12 +2,12 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.2.189",
+    "version": "0.2.192",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "dk.srvlab.jarvis.mobile",
-      "versionCode": 290,
+      "versionCode": 293,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
@@ -73,8 +73,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Jarvis kan se din lokation n\u00e5r appen er \u00e5ben, s\u00e5 han ved hvor du er.",
-          "locationAlwaysPermission": "Jarvis kan dele din pr\u00e6cise lokation i baggrunden, hvis du selv sl\u00e5r det til."
+          "locationAlwaysAndWhenInUsePermission": "Jarvis kan se din lokation når appen er åben, så han ved hvor du er.",
+          "locationAlwaysPermission": "Jarvis kan dele din præcise lokation i baggrunden, hvis du selv slår det til."
         }
       ],
       "expo-audio"

@@ -13,14 +13,16 @@ def _observe_visible_prefill(
 ) -> None:
     """Gør ollama-lanens PREFILL-cache MÅLBAR (2026-07-19, blind-spot-luk).
 
-    ollama-cloud eksponerer IKKE cache-tokens i /api/chat's usage (kun
-    prompt_eval_count) → costs.cache_hit_tokens=0 for ALLE ollama-visible-ture,
-    selvom upstream (kimi/deepseek:cloud) reelt CACHER KV-prefixet (bevist:
-    TTFT 2.1s→0.9s på identisk 42k-prefix). Vi kan ikke aflæse cachen fra
-    svaret, så vi UDLEDER den fra prefill-hastigheden: en stor prompt der
-    prefiller hurtigt = prefix genbrugt. DeepSeek's DIREKTE API rører vi ikke
-    (den rapporterer eksakt cache) — dette er KUN for ollama, og signalet er
-    LABELED 'inferred' så det aldrig forveksles med eksakte tal. Self-safe.
+    ⚠️ RETTET 10/10-2026: denne docstring påstod at ollama-cloud IKKE eksponerer
+    cache-tokens. Det er forkert. ``/api/chat``'s done-event bærer
+    ``prompt_eval_cached_count``, og den læses nu eksakt i
+    ``visible_model_ollama._cache_split`` og følger med ind i ``costs``.
+    Målt: 7.221-tokens præfiks → 0 cached koldt, 7.040 cached på gentagelse.
+
+    Signalet her er derfor ikke længere en erstatning for et manglende tal, men
+    en UAFHÆNGIG kontrol: prefill-hastigheden udledes af timing, cache-tallet
+    kommer fra svaret. Er de uenige, er det værd at se på. Det er stadig
+    LABELED 'inferred' og må aldrig forveksles med de eksakte tal. Self-safe.
     """
     try:
         if prompt_tokens < 1 or prefill_ms < 1:

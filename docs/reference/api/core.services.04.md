@@ -53,8 +53,9 @@ _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa.
 | function | `_laes` | `()` | — | [src](../../../core/services/besked_run_kobling.py#L84) |
 | function | `noter` | `(message_id, run_id)` | Husk at ``run_id`` skrev ``message_id``. Self-safe: kaster aldrig. | [src](../../../core/services/besked_run_kobling.py#L91) |
 | function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L118) |
-| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L134) |
-| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L142) |
+| function | `skrev_run` | `(run_id)` | Har DETTE run persisteret mindst én besked? | [src](../../../core/services/besked_run_kobling.py#L134) |
+| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L163) |
+| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L171) |
 
 ## `core/services/body_memory.py`
 _Body Memory — Jarvis' kropslige erindringer._
@@ -351,21 +352,22 @@ _Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshe
 | function | `_candidate_from_selfhood_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L792) |
 | function | `_candidate_from_chronicle_consolidation_proposal` | `(proposal)` | — | [src](../../../core/services/candidate_tracking.py#L846) |
 | function | `_extract_candidates_from_messages` | `(messages, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L898) |
-| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L920) |
-| function | `_candidate_already_applied` | `(candidate)` | True når denne nøgle allerede er AFGJORT og ikke må genopstå. | [src](../../../core/services/candidate_tracking.py#L1009) |
-| function | `_memory_proposal_domain` | `(canonical_key)` | Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del. | [src](../../../core/services/candidate_tracking.py#L1027) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1040) |
-| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1048) |
-| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1098) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1122) |
-| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1143) |
-| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1167) |
-| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1178) |
-| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1184) |
-| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1196) |
-| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1228) |
-| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1240) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1247) |
+| function | `_owner_workspace_for_session` | `(session_id)` | Kandidatens ophav — workspace-navnet for den samtale den blev skabt i. | [src](../../../core/services/candidate_tracking.py#L920) |
+| function | `_persist_candidates` | `(*, candidates, session_id, run_id, source_mode, actor, status_reason)` | — | [src](../../../core/services/candidate_tracking.py#L945) |
+| function | `_candidate_already_applied` | `(candidate)` | True når denne nøgle allerede er AFGJORT og ikke må genopstå. | [src](../../../core/services/candidate_tracking.py#L1035) |
+| function | `_memory_proposal_domain` | `(canonical_key)` | Sidste led af en witness-nøgle, foldet til en STABIL nøgle-del. | [src](../../../core/services/candidate_tracking.py#L1053) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1066) |
+| function | `_enrich_candidate_evidence` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1074) |
+| function | `_candidate_history` | `(candidate, *, session_id)` | — | [src](../../../core/services/candidate_tracking.py#L1124) |
+| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/candidate_tracking.py#L1148) |
+| function | `_message_matches_candidate` | `(*, canonical_key, message)` | — | [src](../../../core/services/candidate_tracking.py#L1169) |
+| function | `_evidence_class_label` | `(value)` | — | [src](../../../core/services/candidate_tracking.py#L1193) |
+| function | `_stronger_confidence` | `(current, proposed)` | — | [src](../../../core/services/candidate_tracking.py#L1204) |
+| function | `_unique_nonempty` | `(values)` | — | [src](../../../core/services/candidate_tracking.py#L1210) |
+| function | `_candidate` | `(*, candidate_type, target_file, source_kind, canonical_key, summary, reason, evidence_summary, support_summary, proposed_value, write_section, confidence)` | — | [src](../../../core/services/candidate_tracking.py#L1222) |
+| function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1254) |
+| function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1266) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1273) |
 
 ## `core/services/causal_graph.py`
 _Causal graph query API._

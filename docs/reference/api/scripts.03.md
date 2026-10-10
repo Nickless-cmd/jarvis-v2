@@ -215,6 +215,13 @@ _Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
 | function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
 | function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
 
+## `scripts/ryd_ejerloese_kandidater.py`
+_Ryd ejerløse kandidater i runtime_contract_candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/ryd_ejerloese_kandidater.py#L33) |
+
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._
 
@@ -245,6 +252,16 @@ _One-time OAuth setup for Google Calendar._
 | function | `cleanup_signal_noise` | `(*, db_path=…)` | — | [src](../../../scripts/signal_noise_cleanup.py#L103) |
 | function | `_archive_low_support_run_audit_rows` | `(conn, *, table, id_column, keep_latest, where_clause)` | — | [src](../../../scripts/signal_noise_cleanup.py#L160) |
 | function | `main` | `()` | — | [src](../../../scripts/signal_noise_cleanup.py#L191) |
+
+## `scripts/silent_chain_verify.py`
+_Bagud-maaling af tavse kaede-knaek (10/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kald` | `(db, since)` | Shell-kald der baerer en exit-kode — substansen bagud-maalingen kraever. | [src](../../../scripts/silent_chain_verify.py#L48) |
+| function | `_knaek` | `(kald)` | Afspil den aegte detektor over historikken. | [src](../../../scripts/silent_chain_verify.py#L68) |
+| function | `_lessons` | `(db)` | Hvor mange fund har detektoren selv skrevet i drift? | [src](../../../scripts/silent_chain_verify.py#L78) |
+| function | `main` | `()` | — | [src](../../../scripts/silent_chain_verify.py#L88) |
 
 ## `scripts/smoke_test_startup.py`
 _Smoke-test the jarvis-runtime startup path WITHOUT serving traffic._

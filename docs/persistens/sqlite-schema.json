@@ -3650,7 +3650,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "agent_runs": {
@@ -4660,7 +4660,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "api_connection_presence": {
@@ -28966,7 +28966,7 @@
       ]
     },
     "runtime_contract_candidates": {
-      "digest": "c9:22:13:89:2c:6a:24:5a:8e:03:cd:5a:16:f8:d9:36:c6:fc:3f:71:a9:f6:fd:4e:1b:4a:db:93:e9:de:f0:f5",
+      "digest": "21:70:39:51:19:e8:79:2e:04:c2:6d:ba:ba:20:c6:c1:18:77:69:99:71:44:11:90:48:03:dd:d9:69:dc:54:71",
       "schema": {
         "columns": [
           {
@@ -29046,6 +29046,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -46798,6 +46806,94 @@
             "parts": [
               {
                 "column": "cache_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
+    "web_push_subscriptions": {
+      "digest": "63:dd:94:ff:15:bb:fc:1d:54:cd:08:0c:43:02:93:bf:77:ce:20:e8:ad:51:02:92:28:30:1d:63:5d:46:db:09",
+      "schema": {
+        "columns": [
+          {
+            "name": "auth",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "endpoint",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "p256dh",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_web_push_user",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_web_push_user ON web_push_subscriptions(user_id)"
+          },
+          {
+            "name": "sqlite_autoindex_web_push_subscriptions_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "endpoint",
                 "descending": false,
                 "key": true
               },

@@ -205,13 +205,13 @@ _Kerne-kurator — holder USER.md `## Kerne` kort og levende (blok A, 2026-09-04
 |---|---|---|---|---|
 | function | `_should_run` | `(last_run_iso, now)` | — | [src](../../../core/services/kerne_curator.py#L33) |
 | function | `_workspace_dir` | `()` | — | [src](../../../core/services/kerne_curator.py#L45) |
-| function | `promotion_candidates` | `(workspace_dir)` | Lært-linjer der er brugt tit nok til at høre hjemme i Kerne. | [src](../../../core/services/kerne_curator.py#L50) |
-| function | `demotion_candidates` | `(workspace_dir)` | De ældste Kerne-linjer der ligger ud over loftet (tomt når under). | [src](../../../core/services/kerne_curator.py#L70) |
-| function | `_move_line` | `(*, text, to_core)` | Flyt én linje mellem `## Kerne` og `## Lært` i USER.md. Atomisk. | [src](../../../core/services/kerne_curator.py#L79) |
-| function | `promote_to_kerne` | `(text)` | Flyt en Lært-linje op i Kerne (altid i prompten). | [src](../../../core/services/kerne_curator.py#L111) |
-| function | `demote_from_kerne` | `(text)` | Flyt en Kerne-linje ned i Lært (kun når den er relevant). | [src](../../../core/services/kerne_curator.py#L116) |
-| function | `build_proposal_text` | `(workspace_dir)` | Ugens ÉNE forslag — "" når Kerne er sund og intet er modnet. | [src](../../../core/services/kerne_curator.py#L121) |
-| function | `run_kerne_curator` | `(*, force=…, now=…)` | Ugentlig kuratering. Self-throttlende og self-safe — kaster aldrig. | [src](../../../core/services/kerne_curator.py#L145) |
+| function | `promotion_candidates` | `(workspace_dir)` | Lært-linjer der er brugt tit nok til at høre hjemme i Kerne. | [src](../../../core/services/kerne_curator.py#L54) |
+| function | `demotion_candidates` | `(workspace_dir)` | De ældste Kerne-linjer der ligger ud over loftet (tomt når under). | [src](../../../core/services/kerne_curator.py#L74) |
+| function | `_move_line` | `(*, text, to_core)` | Flyt én linje mellem `## Kerne` og `## Lært` i USER.md. Atomisk. | [src](../../../core/services/kerne_curator.py#L83) |
+| function | `promote_to_kerne` | `(text)` | Flyt en Lært-linje op i Kerne (altid i prompten). | [src](../../../core/services/kerne_curator.py#L115) |
+| function | `demote_from_kerne` | `(text)` | Flyt en Kerne-linje ned i Lært (kun når den er relevant). | [src](../../../core/services/kerne_curator.py#L120) |
+| function | `build_proposal_text` | `(workspace_dir)` | Ugens ÉNE forslag — "" når Kerne er sund og intet er modnet. | [src](../../../core/services/kerne_curator.py#L125) |
+| function | `run_kerne_curator` | `(*, force=…, now=…)` | Ugentlig kuratering. Self-throttlende og self-safe — kaster aldrig. | [src](../../../core/services/kerne_curator.py#L149) |
 
 ## `core/services/keyring_store.py`
 _Per-bruger nøgle-håndtering (spec §16.3)._
@@ -440,9 +440,13 @@ _Central LLM-pris-tabel + cost-beregner._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_som_utc` | `(at)` | Læs et tidspunkt. Returnerer None når det ikke kan afgøres. | [src](../../../core/services/llm_pricing.py#L71) |
-| function | `er_myldretid` | `(at=…)` | Falder tidspunktet i DeepSeeks myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L94) |
-| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…, at=…)` | Beregn cost_usd fra tokens × pris. 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L105) |
+| function | `_uden_cloud_suffiks` | `(model)` | ``glm-5.2:cloud`` → ``glm-5.2`` · ``gemma4:31b-cloud`` → ``gemma4:31b``. | [src](../../../core/services/llm_pricing.py#L96) |
+| function | `_pris_opslag` | `(model)` | Find pris-rækken for en model — prøver de former Ollama bruger. | [src](../../../core/services/llm_pricing.py#L109) |
+| function | `er_ollama_myldretid` | `(at=…)` | Falder tidspunktet i **Ollamas** myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L124) |
+| function | `ollama_input_pris_per_m` | `(model, at=…)` | Input-pris i **USD pr. MILLION tokens** — eller ``None`` for ukendte. | [src](../../../core/services/llm_pricing.py#L143) |
+| function | `_som_utc` | `(at)` | Læs et tidspunkt. Returnerer None når det ikke kan afgøres. | [src](../../../core/services/llm_pricing.py#L191) |
+| function | `er_myldretid` | `(at=…)` | Falder tidspunktet i DeepSeeks myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L214) |
+| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…, at=…)` | Beregn cost_usd fra tokens × pris. 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L225) |
 
 ## `core/services/local_intent_gate.py`
 _Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8813/16649 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8836/16673 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -18,31 +18,31 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 70 | 97 | 72% |
+| `core.context` | 72 | 99 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
-| `core.identity` | 73 | 167 | 43% |
+| `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5879 | 11304 | 52% |
+| `core.services` | 5893 | 11318 | 52% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 526 | 1066 | 49% |
+| `core.tools` | 529 | 1069 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 263 | 578 | 45% |
+| `scripts` | 266 | 583 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2356)
+## Undocumented public functions (2358)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -265,8 +265,8 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
-- `core/context/kompaktering.py` :: `log_komprimering` (L201)
-- `core/context/kompaktering.py` :: `seneste_log` (L255)
+- `core/context/kompaktering.py` :: `log_komprimering` (L225)
+- `core/context/kompaktering.py` :: `seneste_log` (L279)
 - `core/context/output_style.py` :: `saet_stil` (L103)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
@@ -280,11 +280,11 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/eventbus/events.py` :: `Event.family` (L311)
 - `core/eventbus/events.py` :: `Event.from_record` (L321)
 - `core/eventbus/events.py` :: `Event.validate` (L332)
-- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
+- `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L319)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L278)
-- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L238)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_memory_md_candidates` (L279)
+- `core/identity/candidate_workflow.py` :: `auto_apply_safe_user_md_candidates` (L239)
 - `core/identity/candidate_workflow.py` :: `reject_runtime_contract_candidate` (L95)
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
@@ -1164,7 +1164,7 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)
 - `core/services/emergent_signal_tracking.py` :: `get_emergent_signal_daemon_state` (L228)
 - `core/services/emotion_tagging.py` :: `build_emotion_tagging_surface` (L90)
-- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L32)
+- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L33)
 - `core/services/endpoint_usage_store.py` :: `usage_stats` (L83)
 - `core/services/env_block.py` :: `is_enabled` (L48)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_prompt_section` (L185)
@@ -1569,10 +1569,10 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L167)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
-- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L48)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L69)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L74)
-- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L79)
+- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L49)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L70)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L75)
+- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L80)
 - `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L147)
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
@@ -1684,8 +1684,8 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/run_event_log.py` :: `session_for_run` (L413)
 - `core/services/run_event_log.py` :: `subscriber_closed` (L447)
 - `core/services/run_event_log.py` :: `subscriber_opened` (L440)
-- `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L133)
-- `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L129)
+- `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L187)
+- `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L183)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L481)
 - `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L323)
 - `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L371)
@@ -2058,7 +2058,7 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L205)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L35)
-- `core/services/visible_member_prompt.py` :: `build_member_prompt` (L10)
+- `core/services/visible_member_prompt.py` :: `build_member_prompt` (L30)
 - `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L398)
 - `core/services/visible_model.py` :: `available_provider_models` (L175)
 - `core/services/visible_model.py` :: `execute_visible_model` (L267)
@@ -2080,14 +2080,14 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6836)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6861)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6899)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6895)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6832)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6794)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6916)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6847)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6822)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6847)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6885)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6881)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6818)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6780)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6902)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6833)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
@@ -2371,9 +2371,11 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `scripts/requirements_gen.py` :: `third_party` (L40)
 - `scripts/reset_heartbeat_state.py` :: `main` (L36)
 - `scripts/rewrite_legacy_memory_provenance.py` :: `main` (L57)
+- `scripts/ryd_ejerloese_kandidater.py` :: `main` (L33)
 - `scripts/setup_google_calendar.py` :: `main` (L17)
 - `scripts/signal_noise_cleanup.py` :: `cleanup_signal_noise` (L103)
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)
+- `scripts/silent_chain_verify.py` :: `main` (L88)
 - `scripts/smoke_test_startup.py` :: `main` (L498)
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
 - `scripts/think_language_ab.py` :: `compare` (L161)

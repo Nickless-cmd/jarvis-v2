@@ -182,7 +182,7 @@ _Det Jarvis har LÆRT om Bjørn — læsesiden (lærings-sløjfe 2026-09-04, blo
 | function | `note_selected` | `(texts)` | Tæl at disse linjer blev valgt ind. Kuratorens signal. Self-safe. | [src](../../../core/services/prompt_sections/learned_about_user.py#L148) |
 | function | `selection_counts` | `()` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L167) |
 | function | `select_learned_lines` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, min_coverage=…, count_selection=…)` | De mest relevante `## Lært`-linjer for det Bjørn lige skrev. | [src](../../../core/services/prompt_sections/learned_about_user.py#L178) |
-| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L225) |
+| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, header=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L225) |
 
 ## `core/services/prompt_sections/loop_compliance.py`
 _Loop-compliance self-check section._
@@ -378,24 +378,24 @@ _Transcript rendering + session compaction for prompts._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_tool_results_as_input` | `()` | Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet | [src](../../../core/services/prompt_sections/transcript_sections.py#L21) |
-| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L48) |
-| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L53) |
-| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L61) |
-| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L69) |
-| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L74) |
-| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L79) |
-| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L84) |
-| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L139) |
-| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L192) |
-| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include, bivirkninger=…)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L230) |
-| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L564) |
-| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L601) |
-| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L612) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L630) |
-| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L673) |
-| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L678) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L714) |
+| function | `_tool_results_as_input` | `()` | Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet | [src](../../../core/services/prompt_sections/transcript_sections.py#L22) |
+| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L49) |
+| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L54) |
+| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L62) |
+| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L70) |
+| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L75) |
+| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L80) |
+| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L85) |
+| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L140) |
+| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L193) |
+| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include, bivirkninger=…)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L231) |
+| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L565) |
+| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L602) |
+| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L613) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L631) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L674) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L679) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L715) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

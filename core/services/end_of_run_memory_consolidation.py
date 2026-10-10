@@ -19,6 +19,7 @@ from core.identity.candidate_workflow import (
 from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.runtime.db import upsert_runtime_contract_candidate
 from core.services.candidate_hygiene import is_transient_line
+from core.services.candidate_tracking import _owner_workspace_for_session
 from core.services.text_clip import clip_text
 
 _EXCERPT_MEMORY_CHARS = 2400
@@ -494,6 +495,10 @@ def _persist_memory_candidates(
             # 2026-09-04 (blok A): «## Lært» læses relevans-udvalgt pr. tur;
             # «## Durable Preferences» blev aldrig læst af nogen prompt.
             write_section="## Lært" if target == "USER.md" else "## Curated Memory",
+            # 9/10-2026 (B før A): kandidaten husker hvem den tilhører, så
+            # apply-vejen kan skrive til den rigtige fil — ikke til den
+            # workspace der tilfældigvis er aktiv (heartbeat = 'bjorn').
+            owner_workspace=_owner_workspace_for_session(str(session_id or "")),
         )
         persisted.append(candidate)
     return persisted

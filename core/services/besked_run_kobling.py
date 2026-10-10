@@ -131,6 +131,35 @@ def run_for(message_id: str) -> str:
         return ""
 
 
+def skrev_run(run_id: str) -> bool:
+    """Har DETTE run persisteret mindst én besked?
+
+    Den omvendte vej af `run_for`: koblingen binder besked→run, og her spørger
+    vi run→besked. Bruges af recovery-dispatcheren til at afgøre om et run der
+    blev stemplet `interrupted` allerede NÅEDE at svare — den falske-
+    interrupted-klasse (målt 3/10 og 10/10-2026).
+
+    Hvorfor netop denne kilde: et bredere filter (enhver assistant-besked i
+    sessionen efter døden) ville også tælle hver proaktiv besked, morgenbrief
+    og heartbeat-ping — og droppe genoptagelser Bjørn faktisk ventede på. Det
+    var præcis grænsen der standsede denne søster 3/10. Koblingen er bundet til
+    runnet, så svaret bliver «skrev DETTE run?», ikke «blev der talt i rummet?».
+
+    Bounded som kortet selv: er koblingen skredet ud (512 poster, ældst først),
+    svarer den False — og kalderen genoptager, som den gjorde før. Fail-open mod
+    genoptagelse er med vilje: et run må hellere genoptages forgæves end dø tavst.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    try:
+        return any(v == rid for v in _laes().values())
+    except Exception:
+        logger.warning("kunne ikke afgoere om %s skrev en besked", rid[:28],
+                       exc_info=True)
+        return False
+
+
 def antal() -> int:
     """Hvor mange koblinger der huskes nu. Til test og diagnostik."""
     try:

@@ -135,6 +135,17 @@ def _basis_navn(navn: str) -> str:
     return str(navn or "").strip().split(":", 1)[0].strip()
 
 
+def _er_gratis_slot(navn: str) -> bool:
+    """Er slottet i udbyderens GRATIS pulje?
+
+    Openrouter markerer sine gratis-modeller med `:free`; alt andet er betalt.
+    Cheap lane bruger kun free pool (Bjørn 10/10-2026), så en omdøbning må ikke
+    flytte et slot fra gratis til betalt — heller ikke når modellen stadig
+    findes, nu bare bag en pris.
+    """
+    return ":free" in str(navn or "").strip().lower()
+
+
 def _er_navne_drift(fejl: str) -> bool:
     b = str(fejl or "").strip().lower()
     if not b:
@@ -163,12 +174,19 @@ def foreslaa_navn(
     if not basis:
         return None
     kendte = kendte or set()
+    var_gratis = _er_gratis_slot(model)
     for navn in fra_api or []:
         n = str(navn or "").strip()
         if not n or n == model or n in kendte:
             continue
-        if _basis_navn(n) == basis:
-            return n
+        if _basis_navn(n) != basis:
+            continue
+        # Vi bad om en GRATIS model: omdøb den ikke til dens betalte søster.
+        # Det flytter slottet ud af free pool, og det er ikke en navne-drift vi
+        # vil følge. (Bjørn 10/10-2026: «vi bruger deres free pool».)
+        if var_gratis and not _er_gratis_slot(n):
+            continue
+        return n
     return None
 
 

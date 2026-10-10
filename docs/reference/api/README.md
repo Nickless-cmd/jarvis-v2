@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16729 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16736 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,21 +43,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16729 functions/
 - [`core.services.12`](core.services.12.md) — `dream_influence_runtime` … `existential_wonder_daemon`
 - [`core.services.13`](core.services.13.md) — `experience_correction_listener` … `gate_review`
 - [`core.services.14`](core.services.14.md) — `gate_shadow` … `heartbeat_scheduler`
-- [`core.services.15`](core.services.15.md) — `hentede_vaerktoejer` … `internal_opposition_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `interruption_notice` … `mcp_client`
-- [`core.services.17`](core.services.17.md) — `mcp_manager` … `modulator_witness`
-- [`core.services.18`](core.services.18.md) — `monitor_streams` … `outreach_composer`
-- [`core.services.19`](core.services.19.md) — `override_command` … `proactive_loop_lifecycle_tracking`
-- [`core.services.20`](core.services.20.md) — `proactive_outbound_substrate` … `provider_registry_admin`
-- [`core.services.21`](core.services.21.md) — `provider_retry_policy` … `research_contract`
-- [`core.services.22`](core.services.22.md) — `research_evidence_collector` … `runtime_self_model`
-- [`core.services.23`](core.services.23.md) — `runtime_self_model_affect` … `self_review_signal_tracking`
-- [`core.services.24`](core.services.24.md) — `self_review_unified` … `side_tasks`
-- [`core.services.25`](core.services.25.md) — `signal_baseline` … `subagent_digest`
-- [`core.services.26`](core.services.26.md) — `subagent_ecology` … `tool_dansk_bro`
-- [`core.services.27`](core.services.27.md) — `tool_embeddings` … `valence_trajectory`
-- [`core.services.28`](core.services.28.md) — `value_formation` … `visible_runs`
-- [`core.services.29`](core.services.29.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `hentede_vaerktoejer` … `internal_cadence_matrix`
+- [`core.services.16`](core.services.16.md) — `internal_opposition_signal_tracking` … `mcp_auth`
+- [`core.services.17`](core.services.17.md) — `mcp_client` … `model_trust`
+- [`core.services.18`](core.services.18.md) — `modulator_witness` … `outcome_projector`
+- [`core.services.19`](core.services.19.md) — `outreach_composer` … `proactive_context_governor`
+- [`core.services.20`](core.services.20.md) — `proactive_loop_lifecycle_tracking` … `provider_model_epochs`
+- [`core.services.21`](core.services.21.md) — `provider_registry_admin` … `report_claim_guard`
+- [`core.services.22`](core.services.22.md) — `research_contract` … `runtime_self_knowledge`
+- [`core.services.23`](core.services.23.md) — `runtime_self_model` … `self_review_record_tracking`
+- [`core.services.24`](core.services.24.md) — `self_review_run_tracking` … `shell_confinement_report`
+- [`core.services.25`](core.services.25.md) — `shutdown_window_daemon` … `stream_settlement`
+- [`core.services.26`](core.services.26.md) — `structured_content_flag` … `tool_concurrency`
+- [`core.services.27`](core.services.27.md) — `tool_contract_shadow` … `user_theory_of_mind`
+- [`core.services.28`](core.services.28.md) — `user_understanding_signal_tracking` … `visible_run_terminal_recovery`
+- [`core.services.29`](core.services.29.md) — `visible_run_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

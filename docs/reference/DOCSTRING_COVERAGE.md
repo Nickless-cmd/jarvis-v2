@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8851/16729 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8857/16736 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8851/16729 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5902 | 11357 | 51% |
+| `core.runtime` | 812 | 1465 | 55% |
+| `core.services` | 5907 | 11363 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1789,8 +1789,8 @@ Generated from source. 8851/16729 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L323)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L332)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L365)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L374)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)

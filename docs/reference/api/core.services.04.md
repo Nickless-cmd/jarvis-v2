@@ -53,8 +53,9 @@ _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa.
 | function | `_laes` | `()` | — | [src](../../../core/services/besked_run_kobling.py#L84) |
 | function | `noter` | `(message_id, run_id)` | Husk at ``run_id`` skrev ``message_id``. Self-safe: kaster aldrig. | [src](../../../core/services/besked_run_kobling.py#L91) |
 | function | `run_for` | `(message_id)` | Run'et der skrev beskeden, eller "" hvis vi ikke ved det. | [src](../../../core/services/besked_run_kobling.py#L118) |
-| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L134) |
-| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L142) |
+| function | `skrev_run` | `(run_id)` | Har DETTE run persisteret mindst én besked? | [src](../../../core/services/besked_run_kobling.py#L134) |
+| function | `antal` | `()` | Hvor mange koblinger der huskes nu. Til test og diagnostik. | [src](../../../core/services/besked_run_kobling.py#L163) |
+| function | `ryd` | `()` | Tøm kortet. Kun til test — ingen produktionsvej rydder det. | [src](../../../core/services/besked_run_kobling.py#L171) |
 
 ## `core/services/body_memory.py`
 _Body Memory — Jarvis' kropslige erindringer._

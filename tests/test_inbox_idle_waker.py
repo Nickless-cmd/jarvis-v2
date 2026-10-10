@@ -147,6 +147,65 @@ def test_loft_pr_runde(inbox_db, monkeypatch):
     assert len(startet) == w.MAKS_PR_RUNDE
 
 
+# ── gaten må ikke blinde vækkeren ───────────────────────────────────────────
+
+def test_gatens_spor_blinder_ikke_vaekkeren(inbox_db, monkeypatch):
+    """MÅLT I DRIFT 10/10-2026: gaten og vækkeren delte ét felt.
+
+    `inbox_gate` skriver sit RUN-ID i `sidste_paamindelse_tur` når den minder om
+    en post den netop nægtede en mutation for. Vækkeren læste det SAMME felt som
+    «har jeg allerede vækket?» og krævede det tomt. Konsekvensen var skarp:
+    enhver post der havde fået bare én gate-påmindelse kunne ALDRIG vække — og
+    det er præcis de poster vækkeren findes for.
+
+    Målt: med gatens spor sat → `kandidater=0` og `{'vaekket': 0,
+    'aarsag': 'ingen_kandidater'}`. Samme post, spor nulstillet → `vaekket: 1`.
+    Kun sporet skilte.
+    """
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    # Gaten minder om posten, som den gør ved en nægtet mutation:
+    db_inbox.noter_paamindelse(bruger_id="bjorn", kilde_id="min", tur="visible-abc")
+
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    assert r["vaekket"] == 1, "gatens spor blinded the waker"
+    assert len(startet) == 1
+
+
+def test_vaekningens_spor_er_sit_eget(inbox_db, monkeypatch):
+    """Vækkeren skriver sit eget spor — ikke påmindelses-feltet gaten ejer."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: tekst)
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="min")
+    assert post["sidste_vaekning_tur"] == w._VAEKKET_AF
+    # Påmindelses-sporet er URØRT — det tilhører gaten.
+    assert post["sidste_paamindelse_tur"] == ""
+
+
+def test_nulstil_vaekning_roerer_ikke_paamindelser(inbox_db):
+    """Rollback af vækningens spor må ikke slette gaten's historik."""
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    db_inbox.noter_paamindelse(bruger_id="bjorn", kilde_id="min", tur="visible-abc")
+    db_inbox.noter_vaekning(bruger_id="bjorn", kilde_id="min", tur="inbox-idle-waker")
+
+    db_inbox.nulstil_vaekning(bruger_id="bjorn", kilde_id="min")
+
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="min")
+    assert post["sidste_vaekning_tur"] == ""
+    assert post["sidste_paamindelse_tur"] == "visible-abc"
+    assert post["paamindelser"] == 1
+
+
 # ── self-safe ───────────────────────────────────────────────────────────────
 
 def test_fejl_i_laesningen_vaelter_ikke_polleren(inbox_db, monkeypatch):

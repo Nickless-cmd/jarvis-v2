@@ -95,6 +95,8 @@ def _ensure_skema(conn: sqlite3.Connection) -> None:
                 paamindelser INTEGER NOT NULL DEFAULT 0,
                 sidste_paamindelse_at TEXT NOT NULL DEFAULT '',
                 sidste_paamindelse_tur TEXT NOT NULL DEFAULT '',
+                sidste_vaekning_at TEXT NOT NULL DEFAULT '',
+                sidste_vaekning_tur TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 afgjort_at TEXT NOT NULL DEFAULT '',
                 afgjort_grund TEXT NOT NULL DEFAULT '',
@@ -136,6 +138,13 @@ def _ensure_skema(conn: sqlite3.Connection) -> None:
 _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     ("expires_at", "TEXT NOT NULL DEFAULT ''"),
     ("bloker", "INTEGER NOT NULL DEFAULT 0"),
+    # Vækkerens EGET spor (10/10-2026). Målt i drift: gaten og vækkeren delte
+    # `sidste_paamindelse_tur`, og fordi gaten skriver sit run-id der når den
+    # nægter en mutation, blev enhver post der havde fået bare én
+    # gate-påmindelse permanent usynlig for vækkeren — netop de poster den
+    # findes for. To skrivere med hver sin betydning må ikke dele ét felt.
+    ("sidste_vaekning_at", "TEXT NOT NULL DEFAULT ''"),
+    ("sidste_vaekning_tur", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -179,6 +188,8 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "paamindelser": int(r["paamindelser"] or 0),
         "sidste_paamindelse_at": str(r["sidste_paamindelse_at"] or ""),
         "sidste_paamindelse_tur": str(r["sidste_paamindelse_tur"] or ""),
+        "sidste_vaekning_at": _felt(r, "sidste_vaekning_at"),
+        "sidste_vaekning_tur": _felt(r, "sidste_vaekning_tur"),
         "created_at": str(r["created_at"] or ""),
         "afgjort_at": str(r["afgjort_at"] or ""),
         "afgjort_grund": str(r["afgjort_grund"] or ""),
@@ -445,6 +456,10 @@ def genaabn_af_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
             "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
             "afgjort_at = '', afgjort_grund = '', paamindelser = 0, "
             "sidste_paamindelse_at = '', sidste_paamindelse_tur = '', "
+            # Vækningens spor ryddes SAMME sted (10/10-2026): en genåbnet post
+            # skal kunne vække igen. Uden dette arvede den vækkerens gamle spor
+            # og stod permanent usynlig — samme blindhed som gatens spor gav.
+            "sidste_vaekning_at = '', sidste_vaekning_tur = '', "
             # Fristen ryddes SAMMEN med genåbningen (5/10-2026). Ellers arvede
             # en genåbnet post den frist der netop fik den til at udløbe, og
             # den ville være død igen i samme sekund — `er_udloebet` er
@@ -606,6 +621,77 @@ def nulstil_paamindelse(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
         cur = conn.execute(
             "UPDATE inbox_items SET sidste_paamindelse_at = '', "
             "sidste_paamindelse_tur = '' "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ?",
+            (bruger_id, kilde_id, STATUS_AABEN),
+        )
+        if cur.rowcount == 0:
+            return {"status": "ikke_aaben", "id": kilde_id}
+    return {"status": "ok", "id": kilde_id}
+
+
+# ── vækningens EGET spor (10/10-2026) ───────────────────────────────────────
+#
+# Målt i drift: gaten og vækkeren delte `sidste_paamindelse_tur`. `inbox_gate`
+# skriver sit run-id der når den nægter en mutation; vækkeren krævede feltet
+# TOMT for at vække. Konsekvensen var skarp — enhver post der havde fået bare
+# én gate-påmindelse kunne ALDRIG vække, og det er præcis de poster vækkeren
+# findes for. Funktionen var derfor virkningsløs for sit eget formål.
+#
+# To skrivere med hver sin betydning må ikke dele ét felt. Parret her er
+# bevidst en SPEJLING af påmindelses-parret: samme form, samme idempotens,
+# men sit eget felt — så de to aldrig kan blinde hinanden igen.
+
+
+def noter_vaekning(*, bruger_id: str, kilde_id: str, tur: str) -> dict[str, Any]:
+    """Notér at vækkeren har fyret for posten. Samme tur to gange tæller ÉN gang.
+
+    `tur` er vækkerens faste mærke (`inbox-idle-waker`), ikke et run-id: det er
+    vækkeren der har handlet, og sporet skal kunne læses som netop det. Skrives
+    FØR run'et startes — kaster starten, ruller `nulstil_vaekning` det tilbage.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    tur = str(tur or "").strip()
+    if not bruger_id or not kilde_id or not tur:
+        return {"status": "fejl", "error": "bruger_id, kilde_id og tur kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET sidste_vaekning_at = ?, "
+            "sidste_vaekning_tur = ? "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ? "
+            "AND sidste_vaekning_tur != ?",
+            (_nu(), tur, bruger_id, kilde_id, STATUS_AABEN, tur),
+        )
+        if cur.rowcount == 0:
+            r = conn.execute(
+                "SELECT * FROM inbox_items WHERE bruger_id = ? AND kilde_id = ?",
+                (bruger_id, kilde_id),
+            ).fetchone()
+            if r is None:
+                return {"status": "ukendt", "id": kilde_id}
+            if str(r["sidste_vaekning_tur"]) == tur:
+                return {"status": "samme_tur", "id": kilde_id}
+            return {"status": "ikke_aaben", "id": kilde_id, "havde": str(r["status"])}
+    return {"status": "ok", "id": kilde_id}
+
+
+def nulstil_vaekning(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
+    """Ryd vækningens spor, så posten kan vækkes igen.
+
+    Spejling af `nulstil_paamindelse` — men på sit EGET felt. Rører hverken
+    `paamindelser` eller påmindelses-sporet: de tilhører gaten, og en rollback
+    af en vækning må ikke slette gatens historik.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET sidste_vaekning_at = '', "
+            "sidste_vaekning_tur = '' "
             "WHERE bruger_id = ? AND kilde_id = ? AND status = ?",
             (bruger_id, kilde_id, STATUS_AABEN),
         )

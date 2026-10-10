@@ -249,22 +249,24 @@ _Lageret bag indbakken: `inbox_items`._
 |---|---|---|---|---|
 | function | `_nu` | `()` | — | [src](../../../core/runtime/db_inbox.py#L69) |
 | function | `_ensure_skema` | `(conn)` | DDL ÉN gang pr. proces — se modulets docstring om den eksklusive lås. | [src](../../../core/runtime/db_inbox.py#L73) |
-| function | `_ensure_kolonner` | `(conn)` | Tilføj kolonner der kom senere. Idempotent; kaster ikke på en dublet. | [src](../../../core/runtime/db_inbox.py#L142) |
-| function | `_post_fra_raekke` | `(r)` | Rækken som en typet post. `output_bytes` bevarer sin NULL. | [src](../../../core/runtime/db_inbox.py#L158) |
-| function | `_felt` | `(r, navn)` | Læs en kolonne der måske ikke findes i DENNE række endnu. | [src](../../../core/runtime/db_inbox.py#L210) |
-| function | `opret_eller_hent` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, verificeret_ejer=…, kraever_handling=…, beskrivelse=…, output_sti=…, output_bytes=…, bloker=…, expires_at=…)` | Idempotent registrering. Findes posten, returneres DEN — urørt. | [src](../../../core/runtime/db_inbox.py#L232) |
-| function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L306) |
-| function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L321) |
-| function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L349) |
-| function | `genaabn_af_kilde` | `(*, bruger_id, kilde_id)` | Genåbn en post der blev UDSAT, når dens kilde stadig melder den aktuel. | [src](../../../core/runtime/db_inbox.py#L408) |
-| function | `opdater_beskrivelse` | `(*, bruger_id, kilde_id, beskrivelse)` | Lad kilden rette TEKSTEN på en post der ikke er afgjort. | [src](../../../core/runtime/db_inbox.py#L469) |
-| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L551) |
-| function | `nulstil_paamindelse` | `(*, bruger_id, kilde_id)` | Ryd påmindelses-sporet, så posten kan vækkes igen. | [src](../../../core/runtime/db_inbox.py#L592) |
-| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L648) |
-| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L677) |
-| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L693) |
-| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L757) |
-| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L818) |
+| function | `_ensure_kolonner` | `(conn)` | Tilføj kolonner der kom senere. Idempotent; kaster ikke på en dublet. | [src](../../../core/runtime/db_inbox.py#L151) |
+| function | `_post_fra_raekke` | `(r)` | Rækken som en typet post. `output_bytes` bevarer sin NULL. | [src](../../../core/runtime/db_inbox.py#L167) |
+| function | `_felt` | `(r, navn)` | Læs en kolonne der måske ikke findes i DENNE række endnu. | [src](../../../core/runtime/db_inbox.py#L221) |
+| function | `opret_eller_hent` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, verificeret_ejer=…, kraever_handling=…, beskrivelse=…, output_sti=…, output_bytes=…, bloker=…, expires_at=…)` | Idempotent registrering. Findes posten, returneres DEN — urørt. | [src](../../../core/runtime/db_inbox.py#L243) |
+| function | `hent` | `(*, bruger_id, kilde_id)` | Én post for ÉN bruger. Ingen bruger ⇒ None, aldrig en anden brugers. | [src](../../../core/runtime/db_inbox.py#L317) |
+| function | `liste` | `(*, bruger_id, kun_aabne=…, maks=…)` | Poster for ÉN bruger. Tom bruger ⇒ tom liste, ALDRIG alle brugeres. | [src](../../../core/runtime/db_inbox.py#L332) |
+| function | `afgoer` | `(*, bruger_id, kilde_id, ny_status, grund=…)` | Sæt en terminal status. Idempotent: en allerede afgjort post ændres IKKE. | [src](../../../core/runtime/db_inbox.py#L360) |
+| function | `genaabn_af_kilde` | `(*, bruger_id, kilde_id)` | Genåbn en post der blev UDSAT, når dens kilde stadig melder den aktuel. | [src](../../../core/runtime/db_inbox.py#L419) |
+| function | `opdater_beskrivelse` | `(*, bruger_id, kilde_id, beskrivelse)` | Lad kilden rette TEKSTEN på en post der ikke er afgjort. | [src](../../../core/runtime/db_inbox.py#L484) |
+| function | `noter_paamindelse` | `(*, bruger_id, kilde_id, tur)` | Tæl ÉN leveret påmindelse. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L566) |
+| function | `nulstil_paamindelse` | `(*, bruger_id, kilde_id)` | Ryd påmindelses-sporet, så posten kan vækkes igen. | [src](../../../core/runtime/db_inbox.py#L607) |
+| function | `noter_vaekning` | `(*, bruger_id, kilde_id, tur)` | Notér at vækkeren har fyret for posten. Samme tur to gange tæller ÉN gang. | [src](../../../core/runtime/db_inbox.py#L645) |
+| function | `nulstil_vaekning` | `(*, bruger_id, kilde_id)` | Ryd vækningens spor, så posten kan vækkes igen. | [src](../../../core/runtime/db_inbox.py#L679) |
+| function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L734) |
+| function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L763) |
+| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L779) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L843) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L904) |
 
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._

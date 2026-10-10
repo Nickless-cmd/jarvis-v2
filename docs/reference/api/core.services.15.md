@@ -279,11 +279,11 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L45) |
-| function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L66) |
-| function | `_start_run` | `(tekst, *, session_id=…)` | Start det autonome run. Adskilt, så testen kan bytte den ud ét sted. | [src](../../../core/services/inbox_idle_waker.py#L85) |
-| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L92) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L109) |
+| function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L58) |
+| function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L84) |
+| function | `_start_run` | `(tekst, *, session_id=…)` | Start det autonome run. Adskilt, så testen kan bytte den ud ét sted. | [src](../../../core/services/inbox_idle_waker.py#L103) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L110) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L127) |
 
 ## `core/services/inbox_prompt_section.py`
 _Indbakken i prompten — læseren hele kæden manglede._

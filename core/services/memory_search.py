@@ -29,6 +29,23 @@ def _ollama_base() -> str:
     `embed_base_url()` honorerer runtime-noeglen `embed_ollama_base_url` og
     peger paa den dedikerede instans paa det tomme GPU.
     """
+    # Dedikeret vaert for memory_search's TUNGE batch (maalt 10/10-2026).
+    #
+    # memory_search er den tungeste embed-forbruger: en fuld gen-indeksering
+    # sender ~2.859 chunks (MEMORY.md alene) gennem /api/embed. Den laa paa den
+    # FAELLES embed-vaert (11435), som routeren ogsaa bruger — og den koerer med
+    # -np 1 (én slot). Maalt: et embed-kald midt i stormen ventede 7,65 s, og
+    # routeren har 4 s-deadline, saa den gav op og valgte faerre vaerktoejer.
+    # Denne noegle flytter BATCHEN vaek fra den latency-kritiske sti uden at
+    # roere de andre forbrugere. Tom/udefineret → samme vaert som foer.
+    _egen = ""
+    try:
+        from core.runtime.secrets import read_runtime_key
+        _egen = str(read_runtime_key("memory_search_embed_ollama_base_url") or "").strip()
+    except Exception:  # noeglen er valgfri — mangler den, bruges den faelles vaert nedenfor
+        _egen = ""
+    if _egen:
+        return _egen.rstrip("/")
     try:
         from core.services.semantic_memory import embed_base_url
         return embed_base_url()

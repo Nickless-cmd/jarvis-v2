@@ -162,12 +162,35 @@ def _execute_ollama_model(
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
     prompt_eval_count = int(data.get("prompt_eval_count") or prompt_estimate)
     eval_count = int(data.get("eval_count") or _estimate_tokens(text))
+    cache_hit, cache_miss = _cache_split(data, prompt_eval_count)
     return VisibleModelResult(
         text=text,
         input_tokens=prompt_eval_count,
         output_tokens=eval_count,
         cost_usd=0.0,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
     )
+
+
+def _cache_split(data: dict, prompt_tokens: int) -> tuple[int, int]:
+    """(cache-hit, cache-miss) fra Ollamas ``prompt_eval_cached_count``.
+
+    Målt 10/10-2026: feltet ER i cloud-svaret. Et 7.221-tokens præfiks gav 0
+    cached koldt og 7.040 cached på gentagelse — 97%. Noten i
+    ``visible_model_observe`` sagde det modsatte; den er nu rettet.
+
+    Feltet mangler på lokale modeller og ældre daemons → 0 hit og alt som miss,
+    hvilket er den dyre side. ``hit`` klemmes til prompt-størrelsen, så et
+    misforhold mellem de to felter ikke kan give en negativ miss.
+    """
+    total = max(0, int(prompt_tokens or 0))
+    hit = int(data.get("prompt_eval_cached_count") or 0)
+    if hit < 0:
+        hit = 0
+    if hit > total:
+        hit = total
+    return hit, total - hit
 
 
 def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
@@ -335,6 +358,7 @@ def _stream_ollama_model(
     terminal_response = ""
     prompt_eval_count = prompt_estimate
     eval_count = 0
+    cache_hit_tokens = 0
     collected_tool_calls: list[dict] = []
 
     # Two-stage deadline (same pattern as visible_followup.py):
@@ -500,6 +524,9 @@ def _stream_ollama_model(
                         event.get("prompt_eval_count") or prompt_eval_count
                     )
                     eval_count = int(event.get("eval_count") or eval_count)
+                    cache_hit_tokens = int(
+                        event.get("prompt_eval_cached_count") or cache_hit_tokens
+                    )
                     break
         got_first_byte.set()  # let watchdog exit on early-break
         stream_finished.set()  # H3: stop den re-armende inter-byte-poll
@@ -564,6 +591,9 @@ def _stream_ollama_model(
             raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise RuntimeError("Ollama visible execution returned no streamed response")
 
+    cache_hit, cache_miss = _cache_split(
+        {"prompt_eval_cached_count": cache_hit_tokens}, prompt_eval_count,
+    )
     yield VisibleModelStreamDone(
         result=VisibleModelResult(
             text=text or "[tool calls only]",
@@ -571,6 +601,8 @@ def _stream_ollama_model(
             output_tokens=eval_count or _estimate_tokens(text),
             cost_usd=0.0,
             reasoning_content=reasoning_text,
+            cache_hit_tokens=cache_hit,
+            cache_miss_tokens=cache_miss,
         )
     )
 

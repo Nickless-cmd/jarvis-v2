@@ -243,7 +243,28 @@ def compute_cost_usd(
     """
     p = PRICING.get((provider, _ALIAS.get(model, model)))
     if not p:
-        return 0.0
+        # ── OLLAMA-CLOUD (10/10-2026) ────────────────────────────────────────
+        # Uden denne gren returnerede ALLE ollama-kald 0.0, og hver eneste
+        # ollama-række i `costs` stod bogført til nul — målt 10/10-2026: 38M
+        # tokens til glm-5.2 med cost_usd=0.0. Priserne fandtes hele tiden i
+        # OLLAMA_PRICING; de blev bare aldrig spurgt. To ting gør grenen
+        # nødvendig frem for at lægge ollama ind i PRICING: Ollama har sit EGET
+        # myldre-vindue (12-18 UTC mod DeepSeeks 01-04/06-10), og deres akser
+        # heder `input`/`cached` hvor DeepSeeks heder `cache_miss`/`cache_hit`.
+        # Blander man dem, priser man den forkerte halvdel af døgnet.
+        if str(provider or "").strip().lower() not in ("ollama", "ollama-a2"):
+            return 0.0
+        op = _pris_opslag(model)
+        if not op:
+            return 0.0
+        i = 1 if er_ollama_myldretid(at) else 0
+        hit = int(cache_hit_tokens or 0)
+        miss = int(cache_miss_tokens or 0)
+        if hit == 0 and miss == 0 and int(input_tokens or 0) > 0:
+            miss = int(input_tokens)
+        return (hit * op["cached"][i]
+                + miss * op["input"][i]
+                + int(output_tokens or 0) * op["output"][i])
     i = 1 if er_myldretid(at) else 0
     hit = int(cache_hit_tokens or 0)
     miss = int(cache_miss_tokens or 0)

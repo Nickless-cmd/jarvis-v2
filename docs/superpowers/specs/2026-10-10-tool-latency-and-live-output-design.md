@@ -1,7 +1,7 @@
 # Tool latency and live shell output
 
 **Date:** 2026-10-10  
-**Status:** Proposed design  
+**Status:** Implemented behind rollout flags
 **Scope:** Visible Jarvis runs in Desk, server-side `bash`, and Desk-side `operator_bash`
 
 ## Purpose
@@ -29,13 +29,13 @@ The first-pass visible-run path waits for `_build_visible_input` before it emits
 
 Prompt assembly already has a 180-second turn-scoped cache intended to make the post-tool rebuild a sub-millisecond cache hit. The current telemetry records builds but not hits or caller phase, so it cannot prove whether a slow post-tool window was a cache miss, a different process, or time outside assembly.
 
-Read-only inspection of the production event database found 67 recorded prompt builds in the previous 14 days:
+Read-only inspection of the production event database on 2026-10-10 found 64 recorded prompt builds in the previous 14 days:
 
-- median: 2,609 ms
-- p90: 5,384 ms
-- p95: 14,873 ms
+- median: 2,593 ms
+- p90: 5,106 ms
+- p95: 14,862 ms
 - maximum: 15,017 ms
-- 8 builds above 5 seconds; 5 above 10 seconds
+- 7 builds above 5 seconds; 5 above 10 seconds
 
 Five builds clustered within milliseconds around 15 seconds on 2026-10-04. That is evidence for concurrent misses or process-local cache separation, but the existing payload lacks session key, cache outcome, PID, and process role, so it is not enough to name the root cause.
 
@@ -226,6 +226,35 @@ Run commands that cover four cases:
 For each call, verify the card appears immediately, output arrives while running where applicable, the final state settles without waiting for post-tool prompt assembly, and the timing event explains the observed delay.
 
 Then run at least one real Desk turn with turn tracing enabled and compare the new post-tool/cache fields with the existing production baseline.
+
+## Implementation verification — 2026-10-10
+
+The implementation is complete behind the two rollout flags and was verified in an isolated worktree. The focused Python suites, Desk reducer/component/bridge suites, Python compilation, and the production Desk build passed. The final result is published before post-tool prompt construction, while live deltas remain an ephemeral bounded projection and the terminal result remains canonical.
+
+The four native persistent-shell acceptance cases produced these observations:
+
+| Case | First output | Process | Lock wait | Result |
+| --- | ---: | ---: | ---: | --- |
+| `true` | none | 50 ms | 0 ms | completed silently |
+| immediate `printf` | 50 ms | 50 ms | 0 ms | delta arrived before the result |
+| three lines one second apart | 50 ms | 3,055 ms | 0 ms | deltas arrived at 0.05, 1.05, and 2.05 seconds |
+| quick command queued behind `sleep 2` | 50 ms | 50 ms | 1,952 ms | queue wait was separated from execution |
+
+The production database did not yet contain `tool.execution_timing` or `prompt.assembly_cache` events because this code was not deployed. The report therefore correctly returned zero new-format calls/cache events while still summarising the old `prompt.assembly_size` baseline. A wider read-only scan found 841 historical assembly events from 2026-09-05 through 2026-10-08. Its maximum was 15,922 ms; 717 were at least 6 seconds and none were at least 20 seconds. The stored evidence therefore does not support a 33-second prompt-assembly span. A perceived 33-second wait must include scheduling, support futures, model latency, or another phase outside the old assembly event; the old event shape cannot attribute it more precisely.
+
+A real owner Desk turn against the existing production build completed normally and the live turn log measured:
+
+- prompt assembly start at +20 ms and end at +12,627 ms (`12,606 ms` duration)
+- skill relevance at 5,697 ms, including one embedding call taking 4,908 ms
+- the inner-life section at 8,225 ms
+- memory selection at 825 ms and visible-session continuity at 2,852 ms
+- prompt hand-off at +14,760 ms, first token at +15,623 ms, and completion at +15,814 ms
+
+An adjacent traced production turn measured about 12,009 ms of assembly and 13,800 ms total. These traces confirm that prompt construction itself can dominate a turn, while the remaining gap is outside assembly. They do not identify the five-way 15-second historical cluster's cause.
+
+The production trace dump did not yield a reliable cache outcome or process role: the existing tracer is process-global, and overlapping runtime traffic can reset or interleave it before the dump is written. The journal timings above are valid, but attributing them to a cache hit/miss would be guesswork. The implemented cache event records opaque key hash, caller phase, PID, and process role per event after deployment, which removes that ambiguity.
+
+Separately, host inspection found the approximately 60 named daemon threads are created together at startup and remain stable rather than accumulating. Most were blocked in futex, sleep, or event waits. This rules out a thread leak in the observed window, but a futex wait alone does not prove GIL starvation; scheduler/contention remains a hypothesis to test against the new per-call timing data.
 
 ## Rollout
 

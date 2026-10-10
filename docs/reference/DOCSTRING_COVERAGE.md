@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8817/16679 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8819/16688 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8817/16679 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 263 | 578 | 45% |
+| `scripts` | 265 | 587 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2374)
+## Undocumented public functions (2375)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2396,6 +2396,7 @@ Generated from source. 8817/16679 functions/methods documented (52%). The list b
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
 - `scripts/think_language_ab.py` :: `compare` (L161)
 - `scripts/think_language_ab.py` :: `main` (L185)
+- `scripts/tool_latency_report.py` :: `main` (L179)
 - `scripts/tool_result_cleanup.py` :: `main` (L6)
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)
 - `scripts/user_md_learned_migration.py` :: `main` (L118)

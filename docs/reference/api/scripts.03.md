@@ -275,6 +275,21 @@ _Tænke-sprog A/B — snapshot og sammenligning (30/9-2026)._
 | function | `compare` | `(a, b)` | — | [src](../../../scripts/think_language_ab.py#L161) |
 | function | `main` | `()` | — | [src](../../../scripts/think_language_ab.py#L185) |
 
+## `scripts/tool_latency_report.py`
+_Read-only report for visible tool latency and prompt assembly cache behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_number` | `(value)` | — | [src](../../../scripts/tool_latency_report.py#L25) |
+| function | `_percentile` | `(values, fraction)` | — | [src](../../../scripts/tool_latency_report.py#L31) |
+| function | `_stats` | `(values)` | — | [src](../../../scripts/tool_latency_report.py#L42) |
+| function | `_dominant_wait` | `(payload)` | — | [src](../../../scripts/tool_latency_report.py#L51) |
+| function | `aggregate` | `(events, *, slow_ms=…)` | Aggregate already-decoded event rows without changing runtime state. | [src](../../../scripts/tool_latency_report.py#L64) |
+| function | `load_events` | `(*, days, db_path=…)` | Read only the three report event kinds from a rolling UTC window. | [src](../../../scripts/tool_latency_report.py#L132) |
+| function | `_fmt_stats` | `(stats)` | — | [src](../../../scripts/tool_latency_report.py#L158) |
+| function | `_print_text` | `(report, *, days)` | — | [src](../../../scripts/tool_latency_report.py#L165) |
+| function | `main` | `()` | — | [src](../../../scripts/tool_latency_report.py#L179) |
+
 ## `scripts/tool_result_cleanup.py`
 
 | Kind | Name | Signature | Summary | Source |

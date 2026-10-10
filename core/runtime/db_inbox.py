@@ -589,6 +589,31 @@ def noter_paamindelse(*, bruger_id: str, kilde_id: str, tur: str) -> dict[str, A
             "paamindelser": int(r["paamindelser"]) if r else 0}
 
 
+def nulstil_paamindelse(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
+    """Ryd påmindelses-sporet, så posten kan vækkes igen.
+
+    Bruges af `inbox_idle_waker` når et run-start FEJLER efter sporet er sat:
+    uden dette ville posten stå som «vækket» uden at nogen blev vækket, og
+    næste runde ville springe den over. Tælleren `paamindelser` røres ikke —
+    den er den durable historik over hvor mange gange posten ER påmindet om.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET sidste_paamindelse_at = '', "
+            "sidste_paamindelse_tur = '' "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ?",
+            (bruger_id, kilde_id, STATUS_AABEN),
+        )
+        if cur.rowcount == 0:
+            return {"status": "ikke_aaben", "id": kilde_id}
+    return {"status": "ok", "id": kilde_id}
+
+
 # ── Opgave 8: udløb ─────────────────────────────────────────────────────────
 #
 # BESLUTNINGEN (trin 1): udløb bygges, og det bygges som **beregnet tilstand

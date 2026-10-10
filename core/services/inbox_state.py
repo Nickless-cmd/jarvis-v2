@@ -86,6 +86,11 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # regel. Registrerede nogen senere en beslutning inde i et run, ville den
     # kunne nægte en mutation, og så ville to gater skubbe til det samme.
     "decision", "agent_result",
+    # `scheduled` (10/10-2026): en planlagt opgave er husets, ikke en
+    # forpligtelse. Den maa oprette, aldrig naegte en mutation. Uden dette
+    # ville hver fyret `schedule_task` laegge en blokerende post i indbakken
+    # — og en planlagt efterkontrol ville gate det naeste vaerktoejskald.
+    "scheduled",
 })
 
 

@@ -31,17 +31,19 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
 | class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
 | class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L78) |
-| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L96) |
-| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L107) |
-| function | `start_call` | `(tool_use_id, *, tool, run_id, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L113) |
-| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L132) |
-| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L139) |
-| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L146) |
-| function | `_finish` | `(tool_use_id, *, status, exit_code, now)` | — | [src](../../../core/services/tool_execution_trace.py#L163) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L207) |
-| function | `bind_execution` | `(tool_use_id, output_buffer)` | — | [src](../../../core/services/tool_execution_trace.py#L212) |
-| function | `emit_current_output` | `(stream, chunk, seq=…)` | — | [src](../../../core/services/tool_execution_trace.py#L222) |
+| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L98) |
+| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L109) |
+| function | `start_call` | `(tool_use_id, *, tool, run_id, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L115) |
+| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L134) |
+| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L141) |
+| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L148) |
+| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L155) |
+| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L162) |
+| function | `_finish` | `(tool_use_id, *, status, exit_code, now)` | — | [src](../../../core/services/tool_execution_trace.py#L179) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L219) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L229) |
+| function | `bind_execution` | `(tool_use_id, output_buffer)` | — | [src](../../../core/services/tool_execution_trace.py#L234) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L244) |
 
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._

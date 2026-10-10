@@ -127,3 +127,35 @@ async def test_approval_request_is_emitted_before_prompt_work_starts(monkeypatch
         assert not builder_started.is_set()
     finally:
         await stream.aclose()
+
+
+@pytest.mark.asyncio
+async def test_approval_prompt_snapshot_precedes_persisted_approved_result(monkeypatch):
+    _patch_run(monkeypatch, {
+        "tool_name": "bash", "call_id": "call-1", "status": "approval_needed",
+        "arguments": {"command": "date"}, "result_text": "",
+        "result": {"status": "approval_needed", "message": "må jeg?", "command": "date"},
+    })
+    persisted = threading.Event()
+    built_before_persist = []
+
+    def builder(*_args, **_kwargs):
+        built_before_persist.append(not persisted.is_set())
+        return [{"role": "user", "content": "read it"}]
+
+    async def wait(**kwargs):
+        persisted.set()
+        kwargs["out"]["result_text"] = "approved output"
+        if False:
+            yield ""
+
+    monkeypatch.setattr(visible_runs, "_build_visible_input", builder)
+    monkeypatch.setattr(visible_runs, "wait_for_approval", wait)
+    monkeypatch.setattr(visible_runs, "saet_godkendelse", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(visible_runs, "_set_visible_approval_state", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(visible_runs, "_publicer_approval_requested", lambda **_kwargs: None)
+
+    with visible_followup.fault_injection(visible_followup.FAULT_CLEAN_FAIL_BEFORE_DELTA):
+        async for _chunk in visible_runs._stream_visible_run(_run()):
+            pass
+    assert built_before_persist == [True]

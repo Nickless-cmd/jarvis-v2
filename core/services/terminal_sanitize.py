@@ -48,37 +48,80 @@ def strip_terminal_codes(text: str) -> str:
 class TerminalStreamSanitizer:
     """Stateful sanitizer that does not leak escape fragments across chunks."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, max_pending_chars: int = 8192) -> None:
         self._pending = ""
+        self._max_pending_chars = max(16, int(max_pending_chars))
+        self._discarding_osc = False
+        self._discarding_osc_esc = False
 
     @staticmethod
     def _incomplete_escape_start(text: str) -> int | None:
-        start = text.rfind("\x1b")
-        if start < 0:
-            return None
-        suffix = text[start:]
-        if suffix == "\x1b":
-            return start
-        if suffix.startswith("\x1b["):
-            if not _CSI.fullmatch(suffix):
-                final = suffix[2:]
-                if not any("@" <= char <= "~" for char in final):
-                    return start
-        elif suffix.startswith("\x1b]"):
-            if "\x07" not in suffix and "\x1b\\" not in suffix:
+        cursor = 0
+        while True:
+            start = text.find("\x1b", cursor)
+            if start < 0:
+                return None
+            if start + 1 >= len(text):
                 return start
+            kind = text[start + 1]
+            if kind == "]":
+                bel = text.find("\x07", start + 2)
+                st = text.find("\x1b\\", start + 2)
+                ends = [end for end in (bel, st) if end >= 0]
+                if not ends:
+                    return start
+                end = min(ends)
+                cursor = end + (2 if text.startswith("\x1b\\", end) else 1)
+                continue
+            if kind == "[":
+                final = next((idx for idx in range(start + 2, len(text))
+                              if "@" <= text[idx] <= "~"), None)
+                if final is None:
+                    return start
+                cursor = final + 1
+                continue
+            cursor = start + 2
         return None
 
+    def _finish_discarded_osc(self, text: str) -> str:
+        if not self._discarding_osc:
+            return text
+        prefix = "\x1b" if self._discarding_osc_esc else ""
+        combined = prefix + text
+        bel = combined.find("\x07")
+        st = combined.find("\x1b\\")
+        ends = [(bel, 1), (st, 2)]
+        ends = [(idx, width) for idx, width in ends if idx >= 0]
+        if not ends:
+            self._discarding_osc_esc = combined.endswith("\x1b")
+            return ""
+        idx, width = min(ends)
+        self._discarding_osc = False
+        self._discarding_osc_esc = False
+        return combined[idx + width:]
+
     def feed(self, chunk: str) -> str:
-        text = self._pending + str(chunk or "")
+        text = self._finish_discarded_osc(str(chunk or ""))
+        if self._discarding_osc:
+            return ""
+        text = self._pending + text
         self._pending = ""
         incomplete = self._incomplete_escape_start(text)
         if incomplete is not None:
             self._pending = text[incomplete:]
             text = text[:incomplete]
+            if (self._pending.startswith("\x1b]")
+                    and len(self._pending) > self._max_pending_chars):
+                self._pending = ""
+                self._discarding_osc = True
+                self._discarding_osc_esc = False
+            elif len(self._pending) > self._max_pending_chars:
+                self._pending = self._pending[-self._max_pending_chars:]
         return strip_terminal_codes(text)
 
     def flush(self) -> str:
         # An unfinished control sequence is control data, not visible text.
         self._pending = ""
+        self._discarding_osc = False
+        self._discarding_osc_esc = False
         return ""

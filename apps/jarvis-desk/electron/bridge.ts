@@ -102,6 +102,7 @@ export async function approvalRace(
 import { randomUUID } from 'node:crypto'
 import WebSocket from 'ws'
 import { asyncSpawn } from './asyncSpawn.js'
+import { BridgeOutputLimiter } from './bridgeOutputBackpressure.js'
 
 // Module-level reference to the currently-connected bridge's config so
 // handlers (operator_speak, anything else that needs to call back into
@@ -242,7 +243,7 @@ export interface BridgeConfig {
 }
 
 interface ToolExecutionContext {
-  emitOutput: (delta: { stream: 'stdout' | 'stderr'; seq: number; chunk: string }) => void
+  emitOutput: (delta: { stream: 'stdout' | 'stderr'; seq: number; chunk: string; truncated?: boolean }) => void
 }
 type ToolHandler = (
   args: Record<string, unknown>,
@@ -2625,13 +2626,17 @@ export class JarvisXBridge {
         // gav klienten derfor op FØR serveren: kommandoen fuldførte,
         // `handler_timeout` gik tilbage, og svaret faldt på gulvet uden at
         // nogen kaldte det en fejl. Loftet SKAL ligge over serverens maksimum.
+        const outputLimiter = new BridgeOutputLimiter()
         const executionContext: ToolExecutionContext | undefined = streamOutput
           ? {
-              emitOutput: (delta) => this.send({
-                type: 'tool_output_delta',
-                correlation_id,
-                ...delta,
-              }),
+              emitOutput: (delta) => {
+                const bounded = outputLimiter.next(delta, this.ws?.bufferedAmount ?? 0)
+                if (bounded) this.send({
+                  type: 'tool_output_delta',
+                  correlation_id,
+                  ...bounded,
+                })
+              },
             }
           : undefined
         const SERVER_MAX_COMMAND_MS = 300_000

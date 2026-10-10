@@ -1881,6 +1881,7 @@ async def _stream_visible_run(
                 # newest fact.  Prompt assembly can be slow, but it must not
                 # hold a finished result hostage behind its own work.
                 _published: dict = {}
+                _approval_visible_input_pre = None
                 async for _frame in publish_first_pass_results(
                     simple_results,
                     run=run,
@@ -1888,6 +1889,20 @@ async def _stream_visible_run(
                     out=_published,
                 ):
                     yield _frame
+                    if (_published.pop("approval_snapshot_needed", False)
+                            and _approval_visible_input_pre is None):
+                        # We resume here only after the approval_request frame
+                        # has been handed outward.  Complete the stable
+                        # pre-result snapshot before the resolver may append
+                        # role=tool in another request/thread.
+                        _approval_visible_input_pre = await asyncio.to_thread(
+                            _build_visible_input,
+                            run.user_message,
+                            session_id=run.session_id,
+                            provider=run.provider,
+                            model=run.model,
+                            caller_phase="post_tool",
+                        )
                 _resolved_result_texts = _published["resolved_result_texts"]
 
                 # Capture base messages BEFORE any tool results are appended to DB.
@@ -1902,33 +1917,36 @@ async def _stream_visible_run(
                 # fingerprint still matches.  A miss/expiry/unsafe rebuild is
                 # measured separately; keep it off the event loop and retain
                 # the five-second heartbeat while that worker is active.
-                _bvi_task = asyncio.ensure_future(asyncio.to_thread(
-                    _build_visible_input,
-                    run.user_message,
-                    session_id=run.session_id,
-                    provider=run.provider,
-                    model=run.model,
-                    caller_phase="post_tool",
-                ))
-                _bvi_start = time.monotonic()
-                _bvi_beats = 0
-                while not _bvi_task.done():
-                    try:
-                        await asyncio.wait_for(asyncio.shield(_bvi_task), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        _bvi_beats += 1
+                if _approval_visible_input_pre is None:
+                    _bvi_task = asyncio.ensure_future(asyncio.to_thread(
+                        _build_visible_input,
+                        run.user_message,
+                        session_id=run.session_id,
+                        provider=run.provider,
+                        model=run.model,
+                        caller_phase="post_tool",
+                    ))
+                    _bvi_start = time.monotonic()
+                    _bvi_beats = 0
+                    while not _bvi_task.done():
                         try:
-                            touch_active_visible_run(run.run_id)
-                        except Exception:
-                            pass
-                        yield _sse("heartbeat", {
-                            "type": "heartbeat",
-                            "run_id": run.run_id,
-                            "phase": "prompt_assembly_postool",
-                            "elapsed_s": int(time.monotonic() - _bvi_start),
-                            "beat": _bvi_beats,
-                        })
-                visible_input_pre = await _bvi_task
+                            await asyncio.wait_for(asyncio.shield(_bvi_task), timeout=5.0)
+                        except asyncio.TimeoutError:
+                            _bvi_beats += 1
+                            try:
+                                touch_active_visible_run(run.run_id)
+                            except Exception:
+                                pass
+                            yield _sse("heartbeat", {
+                                "type": "heartbeat",
+                                "run_id": run.run_id,
+                                "phase": "prompt_assembly_postool",
+                                "elapsed_s": int(time.monotonic() - _bvi_start),
+                                "beat": _bvi_beats,
+                            })
+                    visible_input_pre = await _bvi_task
+                else:
+                    visible_input_pre = _approval_visible_input_pre
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
                 # Turens hale. ALT der opstaar undervejs — styringer,
                 # nudges, hook-noter, baggrunds-noter, per-runde-vink —
@@ -4452,6 +4470,21 @@ async def _stream_visible_run(
                                 run_id=run.run_id, session_id=run.session_id,
                                 result=_a_sr["result"],
                             )
+                            _a_live_registered = False
+                            try:
+                                from core.runtime.settings import load_settings as _load_settings
+                                if _load_settings().live_tool_output_enabled:
+                                    from core.services.tool_execution_trace import BoundedOutputBuffer
+                                    from core.services.visible_runs_sections.approval_wait import register_live_approval
+                                    register_live_approval(
+                                        _a_apid,
+                                        call_id=str(_a_sr.get("call_id") or ""),
+                                        run_id=str(run.run_id or ""),
+                                        output_buffer=BoundedOutputBuffer(),
+                                    )
+                                    _a_live_registered = True
+                            except Exception as _a_live_exc:
+                                logger.debug("agentic approval live-output registration failed: %s", _a_live_exc)
                             yield _sse("approval_request", {
                                 "type": "approval_request",
                                 "approval_id": _a_apid,
@@ -4466,12 +4499,17 @@ async def _stream_visible_run(
                             # HER run 6f6235b0 døde 21. aug: approval_needed i runde 15,
                             # 180s tavshed, hele svaret tabt.
                             _a_appr_out: dict = {}
-                            async for _a_appr_frame in wait_for_approval(
-                                approval_id=_a_apid, tool_name=_a_sr["tool_name"],
-                                run_id=run.run_id, round_no=_agentic_round + 1,
-                                out=_a_appr_out,
-                            ):
-                                yield _a_appr_frame
+                            try:
+                                async for _a_appr_frame in wait_for_approval(
+                                    approval_id=_a_apid, tool_name=_a_sr["tool_name"],
+                                    run_id=run.run_id, round_no=_agentic_round + 1,
+                                    out=_a_appr_out,
+                                ):
+                                    yield _a_appr_frame
+                            finally:
+                                if _a_live_registered:
+                                    from core.services.visible_runs_sections.approval_wait import unregister_live_approval
+                                    unregister_live_approval(_a_apid)
                             _a_res = _a_appr_out["result_text"]
                             if _a_res is None:
                                 _a_resolved[_a_idx] = (

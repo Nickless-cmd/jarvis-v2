@@ -701,8 +701,10 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
     live_output = bool(load_settings().live_tool_output_enabled)
     output_context = copy_context()
 
-    def _forward_output(*, stream: str, seq: int, chunk: str) -> None:
-        output_context.run(emit_current_output, stream, chunk, seq)
+    def _forward_output(
+        *, stream: str, seq: int, chunk: str, truncated: bool = False,
+    ) -> None:
+        output_context.run(emit_current_output, stream, chunk, seq, truncated)
 
     return vedhaeft(_run_operator_async(
         lambda: operator_bash_async(

@@ -12,7 +12,12 @@ _Vent på brugerens godkendelse — uden at runnet dør imens._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `wait_for_approval` | `(*, approval_id, tool_name, run_id, round_no, out, window_s=…, heartbeat_interval_s=…)` | Poll godkendelsestilstanden og yield keepalive imens. | [src](../../../core/services/visible_runs_sections/approval_wait.py#L57) |
+| function | `register_live_approval` | `(approval_id, *, call_id, run_id, output_buffer)` | Attach same-process ephemeral output state to an approval wait. | [src](../../../core/services/visible_runs_sections/approval_wait.py#L60) |
+| function | `unregister_live_approval` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/approval_wait.py#L77) |
+| function | `_live_approval` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/approval_wait.py#L82) |
+| function | `execute_approved_tool` | `(approval_id, tool, arguments, executor)` | Run an approved tool inside its original trace/output binding when local. | [src](../../../core/services/visible_runs_sections/approval_wait.py#L87) |
+| function | `_drain_live_frames` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/approval_wait.py#L109) |
+| function | `wait_for_approval` | `(*, approval_id, tool_name, run_id, round_no, out, window_s=…, heartbeat_interval_s=…)` | Poll godkendelsestilstanden og yield keepalive imens. | [src](../../../core/services/visible_runs_sections/approval_wait.py#L133) |
 
 ## `core/services/visible_runs_sections/client_tool_delegation.py`
 _Klient-tool-delegering — udskilt enhed (Boy Scout: holder visible_runs.py lille)._

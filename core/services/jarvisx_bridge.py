@@ -287,6 +287,7 @@ class BridgeConnection:
         stream: str,
         seq: int,
         chunk: str,
+        truncated: bool = False,
     ) -> None:
         entry = self._pending.get(correlation_id)
         if (
@@ -302,7 +303,10 @@ class BridgeConnection:
             if entry.on_output is None:
                 return
             try:
-                entry.on_output(stream=str(stream), seq=int(seq), chunk=str(chunk))
+                values = {"stream": str(stream), "seq": int(seq), "chunk": str(chunk)}
+                if truncated:
+                    values["truncated"] = True
+                entry.on_output(**values)
             except Exception as exc:
                 logger.debug("bridge output callback failed corr=%s: %s", correlation_id, exc)
 
@@ -913,11 +917,14 @@ class BridgeRegistry:
                             frame = json.loads(line)
                             if frame.get("type") == "output_delta":
                                 try:
-                                    on_output(
-                                        stream=str(frame.get("stream") or "stdout"),
-                                        seq=int(frame.get("seq") or 0),
-                                        chunk=str(frame.get("chunk") or ""),
-                                    )
+                                    values = {
+                                        "stream": str(frame.get("stream") or "stdout"),
+                                        "seq": int(frame.get("seq") or 0),
+                                        "chunk": str(frame.get("chunk") or ""),
+                                    }
+                                    if frame.get("truncated"):
+                                        values["truncated"] = True
+                                    on_output(**values)
                                 except Exception as exc:
                                     logger.debug("cross-process output callback failed: %s", exc)
                                 continue

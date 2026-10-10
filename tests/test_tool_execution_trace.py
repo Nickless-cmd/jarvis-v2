@@ -48,6 +48,8 @@ def test_surface_publishes_exactly_one_summary(monkeypatch):
         "first_output_ms": 60,
         "process_ms": 90,
         "process_exit_to_result_emit_ms": 10,
+        "approval_wait_ms": None,
+        "approved_dispatch_to_result_ms": None,
         "total_visible_ms": 150,
     }
 
@@ -122,3 +124,16 @@ def test_cancel_is_terminal_and_late_completion_cannot_publish(monkeypatch):
     assert len(sent) == 1
     assert sent[0][1]["status"] == "cancelled"
     assert sent[0][1]["total_visible_ms"] == 200
+
+
+def test_approval_wait_is_measured_separately_from_approved_execution(monkeypatch):
+    sent = _capture_timing(monkeypatch)
+    trace.start_call("approved", tool="bash", run_id="r4", announced_at=40.0)
+    trace.mark_dispatch("approved", now=40.01)
+    trace.mark_approval_wait("approved", now=40.02)
+    trace.mark_approved_dispatch("approved", now=42.02)
+    trace.mark_execution_complete("approved", now=42.12)
+    trace.surface_result("approved", status="ok", now=42.13)
+
+    assert sent[0][1]["approval_wait_ms"] == 2000
+    assert sent[0][1]["approved_dispatch_to_result_ms"] == 110

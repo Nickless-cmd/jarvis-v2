@@ -157,23 +157,28 @@ async def run_tool_batch(
     def _drain_output() -> list[dict]:
         if _output_buffer is None:
             return []
-        grouped: dict[tuple[str, str], dict] = {}
+        grouped: list[dict] = []
         for delta in _output_buffer.drain():
             key = (delta.tool_use_id, delta.stream)
             sanitizer = _sanitizers.setdefault(key, TerminalStreamSanitizer())
             chunk = sanitizer.feed(delta.chunk)
-            item = grouped.setdefault(key, {
-                "run_id": run.run_id,
-                "tool_use_id": delta.tool_use_id,
-                "stream": delta.stream,
-                "seq": delta.seq,
-                "chunk": "",
-                "truncated": False,
-            })
-            item["seq"] = max(int(item["seq"]), int(delta.seq))
+            item = grouped[-1] if grouped and (
+                grouped[-1]["tool_use_id"], grouped[-1]["stream"]
+            ) == key else None
+            if item is None:
+                item = {
+                    "run_id": run.run_id,
+                    "tool_use_id": delta.tool_use_id,
+                    "stream": delta.stream,
+                    "seq": delta.seq,
+                    "chunk": "",
+                    "truncated": False,
+                }
+                grouped.append(item)
+            item["seq"] = int(delta.seq)
             item["chunk"] += chunk
             item["truncated"] = bool(item["truncated"] or delta.truncated)
-        return [payload for payload in grouped.values()
+        return [payload for payload in grouped
                 if payload["chunk"] or payload["truncated"]]
 
     # ── PreToolUse-hook ──────────────────────────────────────────────────

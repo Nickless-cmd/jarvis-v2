@@ -175,3 +175,34 @@ async def test_internal_endpoint_streams_ndjson_without_forward_loop(monkeypatch
         chunks.append(chunk.decode() if isinstance(chunk, bytes) else chunk)
     assert '"type": "output_delta"' in chunks[0]
     assert '"type": "result"' in chunks[-1]
+
+
+@pytest.mark.asyncio
+async def test_internal_endpoint_bounds_flood_before_terminal_result(monkeypatch):
+    from apps.api.jarvis_api.routes import jarvisx_bridge as route
+
+    class Client:
+        host = "127.0.0.1"
+
+    class Request:
+        client = Client()
+        headers = {route._INTERNAL_TOKEN_HEADER: "token"}
+
+        async def json(self):
+            return {"user_id": "owner", "tool": "operator_bash", "args": {},
+                    "stream_output": True}
+
+    async def dispatch(*, on_output, **_kwargs):
+        for seq in range(10_000):
+            on_output(stream="stdout", seq=seq + 1, chunk="x" * 1024)
+        return {"status": "ok", "result": {"stdout": "canonical"}, "error": None}
+
+    monkeypatch.setattr(route, "internal_dispatch_token", lambda: "token")
+    monkeypatch.setattr(route.bridge_registry, "dispatch", dispatch)
+    response = await route.internal_dispatch(Request())
+    chunks = [chunk async for chunk in response.body_iterator]
+    text = "".join(chunk.decode() if isinstance(chunk, bytes) else chunk for chunk in chunks)
+    assert len(chunks) <= 130
+    assert '"truncated": true' in text
+    last = chunks[-1].decode() if isinstance(chunks[-1], bytes) else chunks[-1]
+    assert '"type": "result"' in last

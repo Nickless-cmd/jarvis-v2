@@ -597,7 +597,7 @@ def _daemon_main() -> int:
 
                 def _stream(chunk: str) -> None:
                     sequence[0] += 1
-                    _send(client, {
+                    _send_live_nonblocking(client, {
                         "type": "output_delta",
                         "stream": "combined",
                         "seq": sequence[0],
@@ -659,6 +659,15 @@ def _send(client: socket.socket, payload: dict[str, Any]) -> None:
         client.sendall((json.dumps(payload) + "\n").encode("utf-8"))
     except Exception:
         pass
+
+
+def _send_live_nonblocking(client: socket.socket, payload: dict[str, Any]) -> bool:
+    """Best-effort live projection; never hold the shell session on a slow reader."""
+    data = (json.dumps(payload) + "\n").encode("utf-8")
+    try:
+        return client.send(data, socket.MSG_DONTWAIT) == len(data)
+    except (BlockingIOError, InterruptedError, TimeoutError, OSError):  # blokeret lytter maa ikke bremse sessionen — rammen droppes
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -92,6 +92,37 @@ async def test_disabled_live_output_emits_no_delta_and_preserves_result(monkeypa
     assert out["results"][0]["result_text"] == "done"
 
 
+@pytest.mark.asyncio
+async def test_mixed_stream_chunks_keep_global_sequence_order(monkeypatch):
+    def execute(_calls, *, output_buffer, **_kwargs):
+        output_buffer.put(OutputDelta("call-mixed", "stdout", 1, "A"))
+        output_buffer.put(OutputDelta("call-mixed", "stderr", 2, "B"))
+        output_buffer.put(OutputDelta("call-mixed", "stdout", 3, "C"))
+        return [{"tool_name": "operator_bash", "status": "ok", "result_text": "done"}]
+
+    monkeypatch.setattr(simple_tool_executor, "_execute_simple_tool_calls", execute)
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: SimpleNamespace(live_tool_output_enabled=True),
+    )
+    run = SimpleNamespace(
+        run_id="run-mixed", session_id="s", autonomous=False,
+        user_message="go", local_tool_exec=False, user_id="owner", origin="",
+    )
+    out = {}
+    frames = [frame async for frame in run_tool_batch(
+        [{"id": "call-mixed", "function": {"name": "operator_bash", "arguments": "{}"}}],
+        run=run, loop=asyncio.get_running_loop(), tool_scope="chat",
+        step_counter=0, heartbeat_interval_s=5, heartbeat_phase="test", out=out,
+    )]
+    deltas = [payload for frame in frames
+              for name, payload in [_event(frame)] if name == "tool_output_delta"]
+    assert [delta["seq"] for delta in deltas] == [1, 2, 3]
+    assert [(delta["stream"], delta["chunk"]) for delta in deltas] == [
+        ("stdout", "A"), ("stderr", "B"), ("stdout", "C"),
+    ]
+
+
 def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypatch):
     from core.services import tool_execution_trace
     from core.tools import simple_tools
@@ -133,3 +164,31 @@ def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypa
         ("start", "call-a"), ("end", "call-a"),
         ("start", "call-b"), ("end", "call-b"),
     }
+
+
+def test_approval_gate_does_not_close_execution_before_approved_run(monkeypatch):
+    from core.services import tool_execution_trace
+    from core.tools import simple_tools
+    from core.services import tool_concurrency
+
+    monkeypatch.setattr(simple_tool_executor, "_prepare_call", lambda tc, **_kwargs: (
+        "run", {"name": "bash", "arguments": {}, "signature": tc["id"],
+                "soft_warn": "", "run_id": "", "inbox_varsel": ""},
+    ))
+    monkeypatch.setattr(simple_tool_executor, "_finalize_call", lambda _token, raw, **_kwargs: {
+        "tool_name": "bash", "status": raw["status"], "result": raw,
+    })
+    monkeypatch.setattr(tool_concurrency, "is_parallelizable", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(simple_tool_executor, "_tag_checkpoint_hvis_redigering", lambda *_args: None)
+    boundaries = []
+    monkeypatch.setattr(tool_execution_trace, "mark_dispatch",
+                        lambda call_id: boundaries.append(("start", call_id)))
+    monkeypatch.setattr(tool_execution_trace, "mark_execution_complete",
+                        lambda call_id: boundaries.append(("end", call_id)))
+    monkeypatch.setattr(simple_tools, "execute_tool",
+                        lambda _name, _args: {"status": "approval_needed"})
+
+    simple_tool_executor._execute_simple_tool_calls([
+        {"id": "call-approval", "function": {"name": "bash", "arguments": {}}},
+    ])
+    assert boundaries == [("start", "call-approval")]

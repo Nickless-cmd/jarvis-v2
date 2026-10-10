@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8819/16688 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8822/16697 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5882 | 11332 | 51% |
+| `core.services` | 5882 | 11335 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 21 | 33 | 63% |
+| `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 527 | 1068 | 49% |
+| `core.tools` | 528 | 1069 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2375)
+## Undocumented public functions (2378)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1290,7 +1290,7 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
-- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L418)
+- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L422)
 - `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L558)
 - `core/services/jobs_engine.py` :: `list_jobs` (L551)
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
@@ -1982,8 +1982,8 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_latest_episode` (L16)
-- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.feed` (L72)
-- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.flush` (L81)
+- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.feed` (L103)
+- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.flush` (L122)
 - `core/services/text_resonance.py` :: `build_text_resonance_surface` (L195)
 - `core/services/text_resonance.py` :: `recent_resonances` (L191)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
@@ -2007,14 +2007,16 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 - `core/services/tool_embeddings.py` :: `invalidate` (L109)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.drain` (L61)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.put` (L40)
-- `core/services/tool_execution_trace.py` :: `bind_execution` (L212)
-- `core/services/tool_execution_trace.py` :: `cancel_call` (L207)
-- `core/services/tool_execution_trace.py` :: `emit_current_output` (L222)
-- `core/services/tool_execution_trace.py` :: `mark_dispatch` (L132)
-- `core/services/tool_execution_trace.py` :: `mark_execution_complete` (L139)
-- `core/services/tool_execution_trace.py` :: `note_executor_timing` (L146)
-- `core/services/tool_execution_trace.py` :: `start_call` (L113)
-- `core/services/tool_execution_trace.py` :: `surface_result` (L197)
+- `core/services/tool_execution_trace.py` :: `bind_execution` (L234)
+- `core/services/tool_execution_trace.py` :: `cancel_call` (L229)
+- `core/services/tool_execution_trace.py` :: `emit_current_output` (L244)
+- `core/services/tool_execution_trace.py` :: `mark_approval_wait` (L148)
+- `core/services/tool_execution_trace.py` :: `mark_approved_dispatch` (L155)
+- `core/services/tool_execution_trace.py` :: `mark_dispatch` (L134)
+- `core/services/tool_execution_trace.py` :: `mark_execution_complete` (L141)
+- `core/services/tool_execution_trace.py` :: `note_executor_timing` (L162)
+- `core/services/tool_execution_trace.py` :: `start_call` (L115)
+- `core/services/tool_execution_trace.py` :: `surface_result` (L219)
 - `core/services/tool_intent_approval_runtime.py` :: `build_approval_feedback_surface` (L364)
 - `core/services/tool_intent_approval_runtime.py` :: `build_sudo_approval_window_surface` (L177)
 - `core/services/tool_intent_approval_runtime.py` :: `build_tool_intent_approval_surface` (L50)
@@ -2097,16 +2099,17 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6686)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6711)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6749)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6745)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6682)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6644)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6766)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6697)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6724)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6749)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6787)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6783)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6720)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6682)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6804)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6735)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
+- `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L108)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L157)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
@@ -2203,7 +2206,7 @@ Generated from source. 8819/16688 functions/methods documented (52%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1229)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
-- `core/tools/streaming_subprocess.py` :: `run_streaming` (L26)
+- `core/tools/streaming_subprocess.py` :: `run_streaming` (L28)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)

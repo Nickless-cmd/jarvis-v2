@@ -338,8 +338,9 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
             }
 
     try:
-        result = execute_tool_force(
-            pending["tool_name"], pending["arguments"], owner_approved=True,
+        from core.services.visible_runs_sections.approval_wait import execute_approved_tool
+        result = execute_approved_tool(
+            approval_id, pending["tool_name"], pending["arguments"], execute_tool_force,
         )
     except Exception:
         # Skyggen aabnede posten foer kaldet; den skal lukkes ogsaa naar det

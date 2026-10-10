@@ -381,16 +381,25 @@ def _execute_simple_tool_calls(
 
     _exec = execute_tool_force if force else execute_tool
     from core.services.tool_execution_trace import (
-        bind_execution, mark_dispatch, mark_execution_complete,
+        bind_execution, mark_approval_wait, mark_dispatch, mark_execution_complete,
     )
 
     def _invoke(token, tool_use_id: str):
         with bind_execution(tool_use_id, output_buffer):
             mark_dispatch(tool_use_id)
             try:
-                return _exec(token["name"], token["arguments"])
-            finally:
+                raw = _exec(token["name"], token["arguments"])
+            except BaseException:
                 mark_execution_complete(tool_use_id)
+                raise
+            # approval_needed is only the gate decision. The measured
+            # execution remains open until the owner-approved call actually
+            # runs through execute_approved_tool.
+            if not (isinstance(raw, dict) and raw.get("status") == "approval_needed"):
+                mark_execution_complete(tool_use_id)
+            else:
+                mark_approval_wait(tool_use_id)
+            return raw
 
     results: list[dict[str, object]] = []
     controller = get_visible_run_controller(run_id) if run_id else None

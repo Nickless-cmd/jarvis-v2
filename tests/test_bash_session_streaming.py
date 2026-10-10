@@ -8,6 +8,16 @@ from types import SimpleNamespace
 from core.tools import bash_session as bs
 
 
+def test_live_frame_send_drops_when_socket_would_block():
+    class StalledSocket:
+        def send(self, _data, _flags=0):
+            raise BlockingIOError
+
+    assert bs._send_live_nonblocking(
+        StalledSocket(), {"type": "output_delta", "chunk": "x"}
+    ) is False
+
+
 class FakeSocket:
     def __init__(self, chunks: list[bytes]):
         self.chunks = iter(chunks)

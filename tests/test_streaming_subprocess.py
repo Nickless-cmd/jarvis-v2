@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from core.tools.streaming_subprocess import run_streaming
 
 
@@ -46,3 +48,26 @@ def test_timeout_returns_collected_output(tmp_path):
     )
     assert result.timed_out is True
     assert result.stdout == "before"
+
+
+def test_short_output_is_delivered_before_process_exit(tmp_path):
+    seen_at = []
+    started = time.monotonic()
+    result = run_streaming(
+        ["bash", "-c", "printf early; sleep .6; printf late"],
+        cwd=str(tmp_path), timeout_s=2,
+        on_output=lambda _stream, chunk: seen_at.append((time.monotonic() - started, chunk)),
+    )
+    assert seen_at[0][0] < 0.3
+    assert seen_at[0][1] == "early"
+    assert result.first_output_ms is not None and result.first_output_ms < 300
+
+
+def test_timeout_does_not_wait_for_descendant_held_pipes(tmp_path):
+    started = time.monotonic()
+    result = run_streaming(
+        ["bash", "-c", "sleep 1.5 & wait"],
+        cwd=str(tmp_path), timeout_s=0.1, on_output=None,
+    )
+    assert result.timed_out is True
+    assert time.monotonic() - started < 0.6

@@ -17,6 +17,7 @@ import asyncio
 import pytest
 
 from core.services.visible_runs_sections import approval_wait as aw
+from core.services.tool_execution_trace import BoundedOutputBuffer, OutputDelta
 
 
 class _Clock:
@@ -141,6 +142,65 @@ class TestResultat:
             assert "result_text" in out
 
 
+@pytest.mark.asyncio
+async def test_approved_execution_live_output_is_forwarded_before_result(monkeypatch):
+    states = iter([
+        {"status": "pending"},
+        {"status": "approved", "result_text": "done"},
+    ])
+    monkeypatch.setattr(
+        "core.services.visible_runs_sections.run_control_state._get_visible_approval_state",
+        lambda _approval_id: next(states),
+    )
+    monkeypatch.setattr(
+        "core.services.visible_runs._sse",
+        lambda ev, data: f"event: {ev}\ndata: {data}\n\n",
+    )
+    output = BoundedOutputBuffer()
+    aw.register_live_approval("approval-live", call_id="call-live", run_id="run-live",
+                              output_buffer=output)
+    output.put(OutputDelta("call-live", "stdout", 1, "nu\n"))
+    out = {}
+    try:
+        frames = [frame async for frame in aw.wait_for_approval(
+            approval_id="approval-live", tool_name="bash", run_id="run-live",
+            round_no=0, out=out, window_s=1, heartbeat_interval_s=1,
+        )]
+    finally:
+        aw.unregister_live_approval("approval-live")
+    assert any("tool_output_delta" in frame and "nu\\n" in frame for frame in frames)
+    assert out["result_text"] == "done"
+
+
+def test_approved_execution_rebinds_original_call_output(monkeypatch):
+    from core.services import tool_execution_trace
+
+    output = BoundedOutputBuffer()
+    aw.register_live_approval("approval-bind", call_id="call-bind", run_id="run-bind",
+                              output_buffer=output)
+    boundaries = []
+    monkeypatch.setattr(tool_execution_trace, "mark_dispatch",
+                        lambda call_id: boundaries.append(("dispatch", call_id)))
+    monkeypatch.setattr(tool_execution_trace, "mark_execution_complete",
+                        lambda call_id: boundaries.append(("complete", call_id)))
+
+    def execute(_tool, _arguments, **_kwargs):
+        tool_execution_trace.emit_current_output("stdout", "approved\n")
+        return {"status": "ok"}
+
+    try:
+        result = aw.execute_approved_tool(
+            "approval-bind", "bash", {"command": "echo approved"}, execute,
+        )
+    finally:
+        aw.unregister_live_approval("approval-bind")
+    assert result == {"status": "ok"}
+    assert [(delta.tool_use_id, delta.chunk) for delta in output.drain()] == [
+        ("call-bind", "approved\n")
+    ]
+    assert boundaries == [("dispatch", "call-bind"), ("complete", "call-bind")]
+
+
 class TestKaldesteder:
     def test_begge_stier_bruger_den_faelles_lokke(self):
         """Mønstret lå duplikeret to steder (simpel + agentisk). Fikser man kun
@@ -148,9 +208,11 @@ class TestKaldesteder:
         dræbte 6f6235b0."""
         import inspect
         from core.services import visible_runs
-        src = inspect.getsource(visible_runs)
-        assert src.count("async for _appr_frame in wait_for_approval(") == 1
-        assert src.count("async for _a_appr_frame in wait_for_approval(") == 1
+        from core.services import visible_first_pass_results
+        first_pass = inspect.getsource(visible_first_pass_results)
+        agentic = inspect.getsource(visible_runs)
+        assert first_pass.count("wait_for_approval(") == 1
+        assert agentic.count("wait_for_approval(") == 1
 
     def test_ingen_tavs_ventelokke_tilbage(self):
         """Regression: en genindført poll-lokke uden yield ville være usynlig

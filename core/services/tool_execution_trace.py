@@ -82,6 +82,8 @@ class _CallTrace:
     announced_at: float
     dispatched_at: float | None = None
     execution_completed_at: float | None = None
+    approval_wait_started_at: float | None = None
+    approved_dispatched_at: float | None = None
     executor_timing: dict[str, Any] = field(default_factory=dict)
 
 
@@ -143,6 +145,20 @@ def mark_execution_complete(tool_use_id: str, *, now: float | None = None) -> No
             item.execution_completed_at = time.monotonic() if now is None else now
 
 
+def mark_approval_wait(tool_use_id: str, *, now: float | None = None) -> None:
+    with _TRACES_LOCK:
+        item = _TRACES.get(str(tool_use_id))
+        if item is not None and item.approval_wait_started_at is None:
+            item.approval_wait_started_at = time.monotonic() if now is None else now
+
+
+def mark_approved_dispatch(tool_use_id: str, *, now: float | None = None) -> None:
+    with _TRACES_LOCK:
+        item = _TRACES.get(str(tool_use_id))
+        if item is not None and item.approved_dispatched_at is None:
+            item.approved_dispatched_at = time.monotonic() if now is None else now
+
+
 def note_executor_timing(tool_use_id: str, timing: dict[str, Any] | None) -> None:
     if not timing:
         return
@@ -187,6 +203,12 @@ def _finish(
         "first_output_ms": measured.get("first_output_ms"),
         "process_ms": measured.get("process_ms"),
         "process_exit_to_result_emit_ms": _milliseconds(item.execution_completed_at, ended_at),
+        "approval_wait_ms": _milliseconds(
+            item.approval_wait_started_at, item.approved_dispatched_at
+        ),
+        "approved_dispatch_to_result_ms": _milliseconds(
+            item.approved_dispatched_at, ended_at
+        ),
         "total_visible_ms": _milliseconds(item.announced_at, ended_at),
     }
     from core.tools.tool_call_telemetry import udgiv_execution_timing
@@ -219,7 +241,12 @@ def bind_execution(
         _CURRENT_EXECUTION.reset(token)
 
 
-def emit_current_output(stream: str, chunk: str, seq: int | None = None) -> None:
+def emit_current_output(
+    stream: str,
+    chunk: str,
+    seq: int | None = None,
+    truncated: bool = False,
+) -> None:
     binding = _CURRENT_EXECUTION.get()
     if binding is None or binding.output_buffer is None or not chunk:
         return
@@ -230,5 +257,7 @@ def emit_current_output(stream: str, chunk: str, seq: int | None = None) -> None
         else:
             binding.next_seq = max(binding.next_seq, actual_seq + 1)
     binding.output_buffer.put(
-        OutputDelta(binding.tool_use_id, str(stream), actual_seq, str(chunk))
+        OutputDelta(
+            binding.tool_use_id, str(stream), actual_seq, str(chunk), bool(truncated)
+        )
     )

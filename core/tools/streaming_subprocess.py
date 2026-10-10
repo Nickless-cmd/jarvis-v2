@@ -5,6 +5,8 @@ import codecs
 from contextvars import copy_context
 from dataclasses import dataclass
 import logging
+import os
+import signal
 import subprocess
 import threading
 import time
@@ -36,6 +38,8 @@ def run_streaming(
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        bufsize=0,
+        start_new_session=(os.name != "nt"),
     )
     collected: dict[str, list[bytes]] = {"stdout": [], "stderr": []}
     first_output: list[float | None] = [None]
@@ -44,7 +48,7 @@ def run_streaming(
     def read_stream(stream_name: str, pipe) -> None:
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         while True:
-            chunk = pipe.read(4096)
+            chunk = os.read(pipe.fileno(), 4096)
             if not chunk:
                 break
             collected[stream_name].append(chunk)
@@ -82,10 +86,23 @@ def run_streaming(
         exit_code = process.wait(timeout=max(0.01, float(timeout_s)))
     except subprocess.TimeoutExpired:
         timed_out = True
-        process.kill()
+        if os.name != "nt":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:  # gruppen er allerede vaek — der er intet at draebe
+                pass
+        else:
+            process.kill()
         exit_code = process.wait()
     for thread in threads:
-        thread.join()
+        thread.join(timeout=0.25 if timed_out else None)
+    if timed_out:
+        for pipe in (process.stdout, process.stderr):
+            if pipe is not None:
+                try:
+                    pipe.close()
+                except OSError:  # roeret lukket af laesetraaden; luk er bedst-effort her
+                    pass
     ended = time.monotonic()
 
     return StreamingProcessResult(

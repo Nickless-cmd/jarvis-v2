@@ -99,15 +99,27 @@ async def internal_dispatch(request: Request):
 
     if bool(body.get("stream_output")):
         async def _stream_frames():
-            output_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+            output_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=128)
+            dropped = False
 
             def _on_output(*, stream: str, seq: int, chunk: str) -> None:
-                output_queue.put_nowait({
+                nonlocal dropped
+                frame = {
                     "type": "output_delta",
                     "stream": stream,
                     "seq": seq,
                     "chunk": chunk,
-                })
+                }
+                if output_queue.full():
+                    try:
+                        output_queue.get_nowait()
+                    except asyncio.QueueEmpty:  # en anden laeser toemte den foerst; der er plads igen
+                        pass
+                    dropped = True
+                if dropped:
+                    frame["truncated"] = True
+                    dropped = False
+                output_queue.put_nowait(frame)
 
             dispatch_task = asyncio.create_task(bridge_registry.dispatch(
                 user_id=user_id,
@@ -307,6 +319,7 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
                     stream=str(msg.get("stream") or "stdout"),
                     seq=int(msg.get("seq") or 0),
                     chunk=str(msg.get("chunk") or ""),
+                    truncated=bool(msg.get("truncated")),
                 )
             elif mtype == "invocation_status_report":
                 # Kun klientens EGNE kald for DENNE ejer afgoeres - bruger-id og klient-id kommer fra

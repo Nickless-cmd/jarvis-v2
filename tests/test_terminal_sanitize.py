@@ -68,3 +68,15 @@ def test_stream_sanitizer_flushes_incomplete_escape_as_inert_text():
     sanitizer = TerminalStreamSanitizer()
     assert sanitizer.feed("tekst\x1b[") == "tekst"
     assert sanitizer.flush() == ""
+
+
+def test_stream_sanitizer_holds_split_osc_string_terminator():
+    sanitizer = TerminalStreamSanitizer()
+    assert sanitizer.feed("before\x1b]0;title\x1b") == "before"
+    assert sanitizer.feed("\\after") == "after"
+
+
+def test_stream_sanitizer_bounds_unterminated_control_data():
+    sanitizer = TerminalStreamSanitizer(max_pending_chars=64)
+    assert sanitizer.feed("safe\x1b]0;" + "x" * 1000) == "safe"
+    assert len(sanitizer._pending) <= 64

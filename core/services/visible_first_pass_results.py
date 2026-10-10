@@ -103,6 +103,26 @@ async def publish_first_pass_results(
                 session_id=run.session_id,
                 result=sr["result"],
             )
+            _live_registered = False
+            try:
+                from core.runtime.settings import load_settings
+                if load_settings().live_tool_output_enabled:
+                    from core.services.tool_execution_trace import BoundedOutputBuffer
+                    from core.services.visible_runs_sections.approval_wait import (
+                        register_live_approval,
+                    )
+                    register_live_approval(
+                        approval_id,
+                        call_id=str(sr.get("call_id") or ""),
+                        run_id=str(run.run_id or ""),
+                        output_buffer=BoundedOutputBuffer(),
+                    )
+                    _live_registered = True
+            except Exception as exc:
+                logger.debug("approval live-output registration failed: %s", exc)
+            # Tell the caller to snapshot after it has handed this frame
+            # outward, but before this generator resumes into approval wait.
+            out["approval_snapshot_needed"] = True
             yield _vr._sse("approval_request", {
                 "type": "approval_request",
                 "approval_id": approval_id,
@@ -111,14 +131,21 @@ async def publish_first_pass_results(
                 "detail": sr["result"].get("path") or sr["result"].get("command", ""),
             })
             approval_out: dict = {}
-            async for frame in _vr.wait_for_approval(
-                approval_id=approval_id,
-                tool_name=sr["tool_name"],
-                run_id=run.run_id,
-                round_no=0,
-                out=approval_out,
-            ):
-                yield frame
+            try:
+                async for frame in _vr.wait_for_approval(
+                    approval_id=approval_id,
+                    tool_name=sr["tool_name"],
+                    run_id=run.run_id,
+                    round_no=0,
+                    out=approval_out,
+                ):
+                    yield frame
+            finally:
+                if _live_registered:
+                    from core.services.visible_runs_sections.approval_wait import (
+                        unregister_live_approval,
+                    )
+                    unregister_live_approval(approval_id)
             approved_text = approval_out["result_text"]
             if approved_text is None:
                 resolved[idx] = f"[{sr['tool_name']}]: Tool call denied by user."

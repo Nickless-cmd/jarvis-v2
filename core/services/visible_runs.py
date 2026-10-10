@@ -1877,6 +1877,19 @@ async def _stream_visible_run(
                     },
                 )
 
+                # Settle the cards while the completed command is still the
+                # newest fact.  Prompt assembly can be slow, but it must not
+                # hold a finished result hostage behind its own work.
+                _published: dict = {}
+                async for _frame in publish_first_pass_results(
+                    simple_results,
+                    run=run,
+                    step_counter=_step_counter,
+                    out=_published,
+                ):
+                    yield _frame
+                _resolved_result_texts = _published["resolved_result_texts"]
+
                 # Capture base messages BEFORE any tool results are appended to DB.
                 # This gives us the correct conversation up to (but not including)
                 # the assistant's tool_calls, which we add manually below.
@@ -1885,24 +1898,17 @@ async def _stream_visible_run(
                 from core.services.ollama_visible_prompt import (
                     serialize_ollama_chat_messages,
                 )
-                # 2026-06-08: _build_visible_input blocks main_loop for 6-33s
-                # while waiting on relevance/cognitive_state/frame thread-pool
-                # futures (via .result() calls in prompt_contract). When run
-                # synchronously inside this async generator it freezes the
-                # event loop — bridge dispatch coroutines submitted via
-                # run_coroutine_threadsafe can't make progress, so subsequent
-                # tool calls stall (WORKER-SUBMITTED logged but no bridge
-                # START logged, then 60s WORKER-TIMEOUT). asyncio.to_thread
-                # offloads to a worker thread, keeping the loop free.
-                # KEEPALIVE OGSÅ HER (samme tavse-vindue-rod): _build_visible_input
-                # blokerer 6-33s i en tråd. Uden heartbeat gav dét den anden halvdel af
-                # det tavse vindue der fik forbindelsen cancellet. shield + 5s-beat.
+                # Post-tool assembly reuses the turn cache when its safety
+                # fingerprint still matches.  A miss/expiry/unsafe rebuild is
+                # measured separately; keep it off the event loop and retain
+                # the five-second heartbeat while that worker is active.
                 _bvi_task = asyncio.ensure_future(asyncio.to_thread(
                     _build_visible_input,
                     run.user_message,
                     session_id=run.session_id,
                     provider=run.provider,
                     model=run.model,
+                    caller_phase="post_tool",
                 ))
                 _bvi_start = time.monotonic()
                 _bvi_beats = 0
@@ -1947,172 +1953,6 @@ async def _stream_visible_run(
                         )
                 except Exception:
                     pass
-
-                # Send tool results as SSE events.
-                # For approval_needed, block the run until the user approves/denies.
-                # DB appends happen AFTER this loop so base_messages stays clean.
-                _resolved_result_texts: dict[int, str] = {}
-
-                for _idx, sr in enumerate(simple_results):
-                    if sr["status"] == "approval_needed":
-                        if run.autonomous:
-                            # No user present — auto-deny approval-needed tools immediately
-                            _resolved_result_texts[_idx] = (
-                                f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
-                            )
-                            yield _sse("capability", {
-                                "type": "tool_denied", "tool": sr["tool_name"],
-                                # Uden id'et ville udfaldet ikke finde den linje
-                                # der blev vist da kaldet startede — og der ville
-                                # staa to linjer om samme kald.
-                                "capability_id": str(sr.get("call_id") or ""),
-                            })
-                            continue
-                        if run.trust_all:
-                            # Trust gradient (E8): even in trust mode, DESTRUCTIVE
-                            # tool calls (rm -rf, force-push, drop table, etc.)
-                            # require explicit user approval. The bash tool tags
-                            # those with classification="destructive" in its
-                            # result; same for any future tool that adopts the
-                            # convention. Reversible/normal calls auto-approve
-                            # as before.
-                            _classification = str(sr["result"].get("classification", "") or "")
-                            if _classification == "destructive":
-                                # Fall through to approval-card path below.
-                                pass
-                            else:
-                                _resolved_result_texts[_idx] = str(sr["result"].get("result_text") or "")
-                                yield _sse("capability", {"type": "tool_approved", "tool": sr["tool_name"], "auto": True})
-                                continue
-                        approval_id = f"approval-{uuid4().hex[:12]}"
-                        created_at = datetime.now(UTC).isoformat()
-                        # Under laas: den ANDEN proces kan have kort vi ikke
-                        # kender, og en rå dict-skrivning + gemning ville slette dem.
-                        saet_godkendelse(approval_id, _ar.build_request(
-                            tool_name=sr["tool_name"],
-                            arguments=sr["arguments"],
-                            result=sr["result"],
-                            run=run, created_at=created_at))
-                        # 2026-05-24 (Claude): tag the sr so the persistence
-                        # loop can later check if resolve_pending_approval
-                        # already wrote role=tool to chat (chat_persisted flag
-                        # in approval state).
-                        sr["approval_id"] = approval_id
-                        # Skygge: registrér kaldet i godkendelses-broen, så
-                        # digesten over (værktøj, argumenter) gemmes SAMTIDIG
-                        # med at kortet vises. Ændrer intet — se
-                        # `approval_bridge_shadow`.
-                        try:
-                            from core.services.approval_bridge_shadow import note_requested
-                            note_requested(approval_id, tool_name=sr["tool_name"],
-                                           arguments=sr["arguments"],
-                                           run_id=run.run_id or "",
-                                           session_id=run.session_id or "")
-                        except Exception:
-                            pass
-                        _set_visible_approval_state(approval_id, {
-                            "approval_id": approval_id,
-                            "status": "pending",
-                            **_ar.build_request(
-                                tool_name=sr["tool_name"],
-                                arguments=sr["arguments"],
-                                result=sr["result"],
-                                run=run, created_at=created_at),
-                        })
-                        _publicer_approval_requested(
-                            approval_id=approval_id, tool=sr["tool_name"],
-                            run_id=run.run_id, session_id=run.session_id,
-                            result=sr["result"],
-                        )
-                        yield _sse("approval_request", {
-                            "type": "approval_request",
-                            "approval_id": approval_id,
-                            "tool": sr["tool_name"],
-                            "message": sr["result"].get("message", ""),
-                            "detail": (
-                                sr["result"].get("path")
-                                or sr["result"].get("command", "")
-                            ),
-                        })
-                        # Vent på brugeren — MED keepalive. Uden heartbeats tolker
-                        # _translation_loop 180s tavshed som en død kilde og river det
-                        # levende run ned (se approval_wait-modulets docstring).
-                        _appr_out: dict = {}
-                        async for _appr_frame in wait_for_approval(
-                            approval_id=approval_id, tool_name=sr["tool_name"],
-                            run_id=run.run_id, round_no=0, out=_appr_out,
-                        ):
-                            yield _appr_frame
-                        _resolved = _appr_out["result_text"]
-                        if _resolved is None:
-                            _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
-                            yield _sse("capability", {
-                                "type": "tool_denied", "tool": sr["tool_name"],
-                                # Uden id'et ville udfaldet ikke finde den linje
-                                # der blev vist da kaldet startede — og der ville
-                                # staa to linjer om samme kald.
-                                "capability_id": str(sr.get("call_id") or ""),
-                            })
-                        else:
-                            _resolved_result_texts[_idx] = _resolved
-                            yield _sse("capability", {
-                                "type": "tool_result", "tool": sr["tool_name"],
-                                "status": "ok",
-                                "capability_id": str(sr.get("call_id") or ""),
-                            })
-                        continue
-                    # ── Gate-blocked tools (veto gate or decision gate) ──
-                    if sr["status"] == "gate_blocked":
-                        _gate_type = str(sr.get("result", {}).get("gate_type", "unknown"))
-                        _gate_msg = str(sr.get("result", {}).get("message", ""))
-                        _resolved_result_texts[_idx] = f"[{_gate_type}] {_gate_msg}"
-                        yield _sse("capability", {
-                            "type": "gate_blocked",
-                            "gate_type": _gate_type,
-                            "tool": sr["tool_name"],
-                            "message": _gate_msg,
-                        })
-                        yield _sse("working_step", {
-                            "type": "working_step",
-                            "run_id": run.run_id,
-                            "action": sr["tool_name"],
-                            "step": _step_counter - len(simple_results) + _idx + 1,
-                            "status": "done",
-                        })
-                        continue
-                    _resolved_result_texts[_idx] = sr["result_text"]
-                    from core.services.tool_chip_payload import build_tool_capability_payload
-                    yield _sse("capability", build_tool_capability_payload(
-                        tool=sr["tool_name"],
-                        status=sr["status"],
-                        arguments=sr.get("arguments"),
-                        result_text=sr.get("result_text", ""),
-                        # Modellens eget kald-id: uden det kan resultatet ikke
-                        # finde den linje der blev vist da kaldet startede.
-                        call_id=str(sr.get("call_id") or ""),
-                    ))
-                    yield _sse("working_step", {
-                        "type": "working_step",
-                        "run_id": run.run_id,
-                        "action": sr["tool_name"],
-                        "step": _step_counter - len(simple_results) + _idx + 1,
-                        "status": "done",
-                    })
-                    # App-self-control (spec 2026-06-15): hvis tool'et bad om et
-                    # app-skift (request_app_action), emit et inline system-event
-                    # som desk viser som godkendelseskort. run.user_message giver
-                    # den besked der skal gen-sendes efter godkendelse.
-                    try:
-                        from core.tools.app_control_tool import build_app_action_event
-                        _app_ev = build_app_action_event(
-                            sr.get("result"),
-                            user_message=run.user_message,
-                            session_id=run.session_id or "",
-                        )
-                        if _app_ev:
-                            yield _sse("app_action_request", _app_ev)
-                    except Exception:
-                        pass
 
                 # Persist tool results to session DB after all approvals are resolved.
                 # 2026-05-24 (Claude): skip when resolve_pending_approval already
@@ -4559,6 +4399,7 @@ async def _stream_visible_run(
                                 _a_resolved[_a_idx] = (
                                     f"[{_a_sr['tool_name']}]: skipped (autonomous)"
                                 )
+                                surface_tool_result(_a_sr, "denied")
                                 yield _sse("capability", {
                                     "type": "tool_denied", "tool": _a_sr["tool_name"]
                                 })
@@ -4571,6 +4412,7 @@ async def _stream_visible_run(
                                     pass  # fall through to approval-card path
                                 else:
                                     _a_resolved[_a_idx] = str(_a_sr["result"].get("result_text") or "")
+                                    surface_tool_result(_a_sr, "approved")
                                     yield _sse("capability", {"type": "tool_approved", "tool": _a_sr["tool_name"], "auto": True})
                                     continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
@@ -4635,11 +4477,13 @@ async def _stream_visible_run(
                                 _a_resolved[_a_idx] = (
                                     f"[{_a_sr['tool_name']}]: Tool call denied by user."
                                 )
+                                surface_tool_result(_a_sr, "denied")
                                 yield _sse("capability", {
                                     "type": "tool_denied", "tool": _a_sr["tool_name"]
                                 })
                             else:
                                 _a_resolved[_a_idx] = _a_res
+                                surface_tool_result(_a_sr, "ok")
                                 yield _sse("capability", {
                                     "type": "tool_result",
                                     "tool": _a_sr["tool_name"],
@@ -4651,6 +4495,7 @@ async def _stream_visible_run(
                             _a_gt = str(_a_sr.get("result", {}).get("gate_type", "unknown"))
                             _a_gm = str(_a_sr.get("result", {}).get("message", ""))
                             _a_resolved[_a_idx] = f"[{_a_gt}] {_a_gm}"
+                            surface_tool_result(_a_sr, "gate_blocked")
                             yield _sse("capability", {
                                 "type": "gate_blocked",
                                 "gate_type": _a_gt,
@@ -4659,6 +4504,7 @@ async def _stream_visible_run(
                             })
                             continue
                         _a_resolved[_a_idx] = _a_sr["result_text"]
+                        surface_tool_result(_a_sr)
                         from core.services.tool_chip_payload import build_tool_capability_payload
                         yield _sse("capability", build_tool_capability_payload(
                             tool=_a_sr["tool_name"],
@@ -6431,6 +6277,10 @@ from core.services.simple_tool_executor import _execute_local_tool_calls  # noqa
 # Shared announce→execute→heartbeat pump (Boy-Scout extraction 2026-07-19). Imported
 # at module level; visible_tool_exec imports THIS module lazily → no cycle.
 from core.services.visible_tool_exec import run_tool_batch  # noqa: E402,F401
+from core.services.visible_first_pass_results import (  # noqa: E402,F401
+    publish_first_pass_results,
+    surface_tool_result,
+)
 
 
 # Grounded capability follow-up er flyttet til

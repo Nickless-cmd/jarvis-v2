@@ -148,3 +148,52 @@ def test_billig_laert_praefence_slipper_igennem() -> None:
     with mock.patch.object(cra, "resolve_visible_model", return_value=("ollama", "glm-5.3-flash:cloud")), \
          mock.patch("core.services.llm_pricing.er_ollama_myldretid", return_value=False):
         assert cra.resolve_autonomous_model() == ("ollama", "glm-5.3-flash:cloud")
+
+
+# ── 6. Lærerens pris-gate (10/10-2026) ────────────────────────────────────────
+# Uden denne gate nulstiller en manuel oprydning sig selv: læreren rangerer på
+# ALL-TIME model_meta og skriver sin vinder til live-præferencen hvert 45. min.
+
+@pytest.mark.parametrize("model_key, forventet", [
+    ("ollama/glm-5.2:cloud", False),                 # $1,40/M — den vi ryddede væk
+    ("ollama/glm-5.3:cloud", False),                 # $1,40/M
+    ("ollama/glm-5.3-flash:cloud", True),            # $0,15/M
+    ("ollama/deepseek-v4.1-flash:cloud", True),      # $0,15 off-peak / $0,30 peak
+    ("ollama/gemma4:31b-cloud", True),               # vision, $0,14/M
+    ("ollama/qwen3:4b-instruct-2507-q4_K_M", True),  # lokal GPU — intet pr. token
+    ("ollama/helt-ny-model:cloud", False),           # ukendt pris → fail-closed
+    ("", False),                                     # tom → nej
+])
+def test_laererens_prisgate(model_key: str, forventet: bool) -> None:
+    assert cra._pref_pris_ok(model_key) is forventet
+
+
+def test_laereren_skriver_ikke_en_dyr_praefence_til_live() -> None:
+    """Selv om læreren FORESLÅR glm-5.2, må den ikke lande i live-præferencen.
+    Shadow'en skal stadig skrives, så forslaget er synligt i Mission Control."""
+    skrevet: dict = {}
+    with mock.patch.object(cra, "compute_preference",
+                           return_value={"enough": True, "preferred": "ollama/glm-5.2:cloud",
+                                         "strength": 0.5, "support": 9}), \
+         mock.patch.object(cra, "is_live_enabled", return_value=True), \
+         mock.patch.object(cra, "_kv_set", side_effect=lambda k, v: skrevet.__setitem__(k, v)), \
+         mock.patch.object(cra.gov, "gate_self_mutation",
+                           return_value=mock.Mock(action="apply")):
+        cra.run_router_adapt_tick()
+    assert cra._PREF_KEY not in skrevet, "den dyre præference blev skrevet til LIVE"
+    assert cra._SHADOW_KEY in skrevet, "shadow-diff'en skal stadig være synlig"
+
+
+def test_laereren_skriver_en_billig_praefence_til_live() -> None:
+    """Gaten må ikke dræbe den adaptive læring inden for det billige segment."""
+    skrevet: dict = {}
+    with mock.patch.object(cra, "compute_preference",
+                           return_value={"enough": True, "preferred": "ollama/glm-5.3-flash:cloud",
+                                         "strength": 0.5, "support": 9}), \
+         mock.patch.object(cra, "is_live_enabled", return_value=True), \
+         mock.patch.object(cra, "_kv_set", side_effect=lambda k, v: skrevet.__setitem__(k, v)), \
+         mock.patch.object(cra.gov, "gate_self_mutation",
+                           return_value=mock.Mock(action="apply")):
+        cra.run_router_adapt_tick()
+    assert cra._PREF_KEY in skrevet
+    assert skrevet[cra._PREF_KEY]["visible"]["model"] == "ollama/glm-5.3-flash:cloud"

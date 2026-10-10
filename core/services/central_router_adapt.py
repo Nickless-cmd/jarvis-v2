@@ -206,7 +206,11 @@ def run_router_adapt_tick(*, trigger: str = "cadence", last_visible_at: str = ""
         gate_action = verdict.action
         if (is_live_enabled() and verdict.action != "rollback"
                 and not _is_never_tier(pref["preferred"])
-                and _is_real_model_key(pref["preferred"])):
+                and _is_real_model_key(pref["preferred"])
+                # PRIS-GATE (10/10-2026): læreren er blind for pris og skrev
+                # glm-5.2 ($1,40/M) til live-præferencen. Uden denne gate
+                # nulstiller en manuel oprydning sig selv inden for 45 min.
+                and _pref_pris_ok(pref["preferred"])):
             _audit_notation(pref["preferred"])
             live = _kv_get(_PREF_KEY, {}) or {}
             if isinstance(live, dict):
@@ -370,6 +374,26 @@ def _input_pris(model: str) -> float | None:
         return ollama_input_pris_per_m(m)
     except Exception:      # pris-tabellen er ikke kritisk for at kunne køre
         return None
+
+
+def _pref_pris_ok(model_key: str) -> bool:
+    """Må læreren skrive denne model til LIVE-præferencen?
+
+    Ja hvis prisen er kendt og ≤ loftet — eller hvis modellen er lokal (kører på
+    vores egen GPU og koster intet pr. token). Ukendt pris = nej (fail-closed),
+    samme retning som pris-loftet i ``resolve_autonomous_model``.
+
+    Gaten er nødvendig fordi læreren rangerer på ALL-TIME model_meta og derfor
+    ikke selv kan vide at en model blev dyr efter 31/8-2026, hvor ollama-cloud
+    gik fra kvote-plan til usage-credits.
+    """
+    m = str(model_key or "").strip()
+    if "/" in m:
+        m = m.split("/", 1)[1]
+    if not m:
+        return False
+    pris = _input_pris(m)
+    return pris is not None and pris <= _AUTONOMOUS_MAX_INPUT_USD_PER_M
 
 
 def _pris_bevidst_base(base_provider: str, base_model: str) -> tuple[str, str]:

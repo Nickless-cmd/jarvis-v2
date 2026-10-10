@@ -157,6 +157,28 @@ def test_vellykket_komprimering_logger_spor_og_tal(isolated_runtime, monkeypatch
     log = kp.seneste_log(sid)
     assert log["vej"] == "llm" and log["fremdrift"] == 1 and log["udloeser"] == "test"
     assert log["marker_id"] == res.marker_id
+    # En vej der holdt skal ikke baere en fejl — feltet er kun til faldet.
+    assert log["fejl"] == ""
+
+
+def test_fald_til_mekanisk_baerer_sin_aarsag_i_loggen(isolated_runtime, monkeypatch) -> None:
+    """Maalt 10/10-2026: `fejl` stod tom i ALLE 110 raekker.
+
+    Faldet til den mekaniske vej blev logget som `vej='mekanisk'` — uden
+    HVORFOR. Naeste gang et resumé faldt, bar DB'en ikke sin egen aarsag, kun
+    at det skete. Denne test laaser at grunden nu staar der.
+    """
+    sid = _lang_session()
+    monkeypatch.setattr(kp, "_ground_truth_for", lambda s: "")
+    monkeypatch.setattr("core.context.compact_llm.call_compact_llm",
+                        lambda *a, **k: "[Kontekst komprimeret — detaljer ikke tilgængelige]")
+
+    res = kp.komprimer_session(sid, udloeser="test")
+
+    assert res is not None and res.vej == "mekanisk"
+    log = kp.seneste_log(sid)
+    assert log["vej"] == "mekanisk"
+    assert log["fejl"] == "tom-markoer", f"aarsagen manglede i loggen: {log['fejl']!r}"
 
 
 # ── 3. Opsummeringen: struktureret, tabstolerant, ærlig ─────────────────
@@ -168,6 +190,8 @@ def test_ubrugeligt_svar_giver_mekanisk_vej_og_aldrig_tom(monkeypatch) -> None:
     op = kp.StruktureretOpsummering(session_id="s")
     ud = op([{"role": "user", "content": "hej"}])
     assert op.vej == "mekanisk"
+    # Grunden skal staa paa objektet — det er den der baeres videre til loggen.
+    assert op.fejl == "tom-markoer", op.fejl
     assert ud.strip() and "[user] hej" in ud
 
 
@@ -205,8 +229,9 @@ def test_timeouten_afbryder_FAKTISK_ventetiden(monkeypatch) -> None:
         return "for sent"
 
     try:
-        ud = kp._kald_med_timeout(_haenger)
+        ud, fejl = kp._kald_med_timeout(_haenger)
         assert ud == ""
+        assert "timeout" in fejl, "fald-aarsagen skal baeres ud, ikke sluges"
         assert faerdig == [], "svaret kom foerst da det haengende kald var faerdigt"
     finally:
         slip.set()  # lad traaden doe, ogsaa naar assertionen fejler

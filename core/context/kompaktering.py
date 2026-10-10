@@ -75,6 +75,8 @@ class StruktureretOpsummering:
         self.session_id = session_id
         #: 'llm' eller 'mekanisk' efter kaldet; '' foer.
         self.vej = ""
+        #: hvorfor den mekaniske vej tog over; '' naar LLM-vejen holdt.
+        self.fejl = ""
         self._gt = _ground_truth_for(session_id) if session_id else ""
 
     def __call__(self, old_msgs: list[dict]) -> str:
@@ -84,6 +86,7 @@ class StruktureretOpsummering:
             extract_summary,
             fold_old_tool_results,
             summary_looks_valid,
+            summary_rejection_reason,
         )
 
         folded, _ = fold_old_tool_results(old_msgs, keep=0)
@@ -95,17 +98,28 @@ class StruktureretOpsummering:
         # Da standarden blev vendt til gratis 14/9, fik de fire ANDRE
         # komprimerings-kaldere flaget — ikke denne, der er den der faktisk
         # koerer. Den har vaeret gratis-only siden.
-        raw = _kald_med_timeout(call_compact_llm, prompt, max_tokens=2500, tillad_betalt=True)
+        raw, kald_fejl = _kald_med_timeout(
+            call_compact_llm, prompt, max_tokens=2500, tillad_betalt=True,
+        )
         text = extract_summary(raw)
         if summary_looks_valid(text):
             self.vej = "llm"
             return text
+        # HVORFOR faldt vi tilbage? Uden dette stod `fejl` tom i loggen og
+        # faldet bar ikke sin egen grund. `kald_fejl` daekker timeout/exception
+        # (saa er der ingen tekst at gate); ellers er det gaten der afviste.
+        self.fejl = kald_fejl or summary_rejection_reason(text) or "ukendt"
         self.vej = "mekanisk"
         return mekanisk_opsummering(old_msgs)
 
 
-def _kald_med_timeout(fn, *args, **kwargs) -> str:
+def _kald_med_timeout(fn, *args, **kwargs) -> tuple[str, str]:
     """Kald `fn` med en timeout der FAKTISK afbryder ventetiden.
+
+    Returnerer ``(tekst, fejl)``: ``fejl`` er ``''`` naar kaldet lykkedes, og
+    ellers den korte grund. Uden den anden halvdel stod `compaction_log.fejl`
+    tom, og et fald til den mekaniske vej bar ikke sin egen aarsag — maalt
+    10/10-2026: tom i alle 110 raekker.
 
     `with ThreadPoolExecutor(...)` kalder `shutdown(wait=True)` ved exit og
     venter dermed alligevel paa det haengende kald. Her lukkes eksekutoren uden
@@ -116,13 +130,13 @@ def _kald_med_timeout(fn, *args, **kwargs) -> str:
     ex = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="kompakt-llm")
     try:
         fut = ex.submit(fn, *args, **kwargs)
-        return str(fut.result(timeout=_TIMEOUT_SEK) or "")
+        return str(fut.result(timeout=_TIMEOUT_SEK) or ""), ""
     except cf.TimeoutError:
         logger.warning("kompaktering: opsummering over %ds — mekanisk fallback", _TIMEOUT_SEK)
-        return ""
+        return "", f"timeout-{_TIMEOUT_SEK}s"
     except Exception as exc:
         logger.warning("kompaktering: opsummering kastede (%s) — mekanisk fallback", exc)
-        return ""
+        return "", f"kald-kastede:{type(exc).__name__}"
     finally:
         ex.shutdown(wait=False, cancel_futures=True)
 
@@ -312,14 +326,20 @@ def komprimer_session(
         )
     except NotAdvancing as exc:
         foer, efter = getattr(exc, "tokens", (0, 0))
+        # Baade den terminale grund OG (hvis den findes) fald-aarsagen: et
+        # resumé der faldt til mekanisk og DEREFTER ikke gav fremdrift skal
+        # baere begge, ellers overskriver den ene den anden i loggen.
+        fejl = str(exc)
+        if opsummering.fejl:
+            fejl = f"{fejl} | fallback: {opsummering.fejl}"
         log_komprimering(sid, udloeser=udloeser, vej=opsummering.vej, tokens_foer=foer,
-                         tokens_efter=efter, fremdrift=False, fejl=str(exc))
+                         tokens_efter=efter, fremdrift=False, fejl=fejl)
         logger.warning("kompaktering: %s — ingen fremdrift (%d → %d); terminalt", sid, foer, efter)
         return None
     if res is None:
         return None
     log_komprimering(sid, udloeser=udloeser, vej=opsummering.vej or "llm",
                      tokens_foer=res.tokens_foer, tokens_efter=res.tokens_efter,
-                     fremdrift=True, marker_id=res.marker_id)
+                     fremdrift=True, marker_id=res.marker_id, fejl=opsummering.fejl)
     res.vej = opsummering.vej or "llm"
     return res

@@ -11,6 +11,7 @@ from core.context.compaction_policy import (
     round_is_open,
     select_for_compaction,
     summary_looks_valid,
+    summary_rejection_reason,
 )
 
 
@@ -300,6 +301,35 @@ def test_gate_rejects_thinking_and_meta_commentary():
     assert not summary_looks_valid("<thinking>Okay let me process this and figure out</thinking>")
     assert not summary_looks_valid("Okay, let me process this. The structure should follow the format")
     assert not summary_looks_valid("Let me process the conversation and write a good summary of it")
+
+
+def test_rejection_reason_svarer_paa_HVORFOR():
+    """`summary_looks_valid` svarer ja/nej; grunden hentes her (10/10-2026).
+
+    Maalt: `compaction_log.fejl` stod tom i alle 110 raekker, fordi faldet til
+    den mekaniske vej blev logget uden sin grund.
+    """
+    assert summary_rejection_reason("x" * 100) == ""
+    assert summary_rejection_reason("") == "for-kort:0<60"
+    assert summary_rejection_reason("short") == "for-kort:5<60"
+    assert summary_rejection_reason(
+        "[Kontekst komprimeret — detaljer ikke tilgængelige]") == "tom-markoer"
+    assert summary_rejection_reason("error: provider down " * 4) == "error-praefiks"
+    assert summary_rejection_reason(
+        "<thinking>" + "Okay let me process this and figure out what happened. " * 2
+        + "</thinking>") == "taenke-blok"
+    assert summary_rejection_reason(
+        "Let me process the conversation and write a good summary of it, right now please."
+    ) == "meta-indledning"
+
+
+def test_reason_og_gate_kan_ikke_svare_forskelligt():
+    """De to deler raekkefoelge; en divergens ville vaere en tavs fejl i loggen."""
+    for tekst in ["", "kort", "x" * 100, "error: noget gik galt her og alt forsvandt nu",
+                  "<thinking>" + "a" * 80 + "</thinking>",
+                  "Let me process this whole thing now please, step by step and carefully",
+                  "[Kontekst komprimeret — detaljer ikke tilgængelige]"]:
+        assert summary_looks_valid(tekst) == (summary_rejection_reason(tekst) == ""), repr(tekst)
 
 
 def test_extract_summary_strips_thinking_and_pulls_tag():

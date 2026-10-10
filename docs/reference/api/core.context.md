@@ -65,7 +65,8 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 | function | `_cap_transcript` | `(transcript, max_chars)` | Cap the rendered transcript so a (free/cheap) summariser model isn't handed a huge | [src](../../../core/context/compaction_policy.py#L289) |
 | function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…, max_transcript_chars=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L300) |
 | function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L333) |
-| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L344) |
+| function | `summary_rejection_reason` | `(summary_text, *, min_chars=…)` | HVORFOR gaten afviste — eller ``''`` naar den godtog. | [src](../../../core/context/compaction_policy.py#L344) |
+| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L379) |
 
 ## `core/context/compaction_signal.py`
 _Er sessionen ved at blive komprimeret — og hvornaar blev den det sidst?_
@@ -86,16 +87,16 @@ _Kontekst-komprimering: ÉN sti, med de garantier den manglede._
 | class | `NotAdvancing` | `` | Komprimeringen gjorde ikke overfladen mindre. Et genforsoeg ville vaere | [src](../../../core/context/kompaktering.py#L53) |
 | class | `StruktureretOpsummering` | `` | summarise_fn til `compact_session_history`, med sporet `vej` bagefter. | [src](../../../core/context/kompaktering.py#L61) |
 | method | `StruktureretOpsummering.__init__` | `(self, focus=…, *, session_id=…)` | — | [src](../../../core/context/kompaktering.py#L73) |
-| method | `StruktureretOpsummering.__call__` | `(self, old_msgs)` | — | [src](../../../core/context/kompaktering.py#L80) |
-| function | `_kald_med_timeout` | `(fn, *args, **kwargs)` | Kald `fn` med en timeout der FAKTISK afbryder ventetiden. | [src](../../../core/context/kompaktering.py#L107) |
-| function | `mekanisk_opsummering` | `(old_msgs)` | Deterministisk opsummering naar modellen ikke leverede. Aldrig tom. | [src](../../../core/context/kompaktering.py#L130) |
-| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L170) |
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L182) |
-| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L203) |
-| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L211) |
-| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L243) |
-| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L265) |
-| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L284) |
+| method | `StruktureretOpsummering.__call__` | `(self, old_msgs)` | — | [src](../../../core/context/kompaktering.py#L82) |
+| function | `_kald_med_timeout` | `(fn, *args, **kwargs)` | Kald `fn` med en timeout der FAKTISK afbryder ventetiden. | [src](../../../core/context/kompaktering.py#L116) |
+| function | `mekanisk_opsummering` | `(old_msgs)` | Deterministisk opsummering naar modellen ikke leverede. Aldrig tom. | [src](../../../core/context/kompaktering.py#L144) |
+| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L184) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L196) |
+| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L217) |
+| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L225) |
+| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L257) |
+| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L279) |
+| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L298) |
 
 ## `core/context/microcompact.py`
 _Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._

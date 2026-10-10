@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16670 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16675 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -66,8 +66,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16670 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `identity_pin_tools`
 - [`core.tools.02`](core.tools.02.md) — `identity_sketch_tools` … `recurring_scheduler_tools`
-- [`core.tools.03`](core.tools.03.md) — `restart_self_tools` … `wake_word_tool`
-- [`core.tools.04`](core.tools.04.md) — `web_cache` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `restart_self_tools` … `voice_journal_tool`
+- [`core.tools.04`](core.tools.04.md) — `wake_word_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

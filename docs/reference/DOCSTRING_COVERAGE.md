@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8815/16670 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8815/16675 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8815/16670 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5880 | 11324 | 51% |
+| `core.services` | 5880 | 11328 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 527 | 1067 | 49% |
+| `core.tools` | 527 | 1068 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8815/16670 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2369)
+## Undocumented public functions (2372)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1980,6 +1980,8 @@ Generated from source. 8815/16670 functions/methods documented (52%). The list b
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_latest_episode` (L16)
+- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.feed` (L72)
+- `core/services/terminal_sanitize.py` :: `TerminalStreamSanitizer.flush` (L81)
 - `core/services/text_resonance.py` :: `build_text_resonance_surface` (L195)
 - `core/services/text_resonance.py` :: `recent_resonances` (L191)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
@@ -2199,6 +2201,7 @@ Generated from source. 8815/16670 functions/methods documented (52%). The list b
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1218)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
+- `core/tools/streaming_subprocess.py` :: `run_streaming` (L26)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)

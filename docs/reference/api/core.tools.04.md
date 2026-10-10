@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/wake_word_tool.py`
+_Wake-word tool — Jarvis listens for 'Hey Jarvis' in the background._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_on_wake` | `(phrase)` | Callback fired when wake word detected. | [src](../../../core/tools/wake_word_tool.py#L33) |
+| function | `_run_listener` | `()` | Entry for the background listener thread. | [src](../../../core/tools/wake_word_tool.py#L109) |
+| function | `start_wake_word` | `(*, auto_listen=…, auto_listen_duration=…)` | Start the background wake-word listener. Idempotent. | [src](../../../core/tools/wake_word_tool.py#L118) |
+| function | `stop_wake_word` | `()` | Stop the background wake-word listener. | [src](../../../core/tools/wake_word_tool.py#L180) |
+| function | `wake_word_status` | `()` | — | [src](../../../core/tools/wake_word_tool.py#L217) |
+| function | `_exec_wake_word` | `(args)` | — | [src](../../../core/tools/wake_word_tool.py#L230) |
+
 ## `core/tools/web_cache.py`
 _Web search result cache — normalization, TTL classification, orchestration._
 

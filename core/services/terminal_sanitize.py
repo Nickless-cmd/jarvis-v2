@@ -43,3 +43,42 @@ def strip_terminal_codes(text: str) -> str:
     ud = _OSC.sub("", ud)
     ud = _OVRIGE_ESC.sub("", ud)
     return _KONTROL.sub("", ud)
+
+
+class TerminalStreamSanitizer:
+    """Stateful sanitizer that does not leak escape fragments across chunks."""
+
+    def __init__(self) -> None:
+        self._pending = ""
+
+    @staticmethod
+    def _incomplete_escape_start(text: str) -> int | None:
+        start = text.rfind("\x1b")
+        if start < 0:
+            return None
+        suffix = text[start:]
+        if suffix == "\x1b":
+            return start
+        if suffix.startswith("\x1b["):
+            if not _CSI.fullmatch(suffix):
+                final = suffix[2:]
+                if not any("@" <= char <= "~" for char in final):
+                    return start
+        elif suffix.startswith("\x1b]"):
+            if "\x07" not in suffix and "\x1b\\" not in suffix:
+                return start
+        return None
+
+    def feed(self, chunk: str) -> str:
+        text = self._pending + str(chunk or "")
+        self._pending = ""
+        incomplete = self._incomplete_escape_start(text)
+        if incomplete is not None:
+            self._pending = text[incomplete:]
+            text = text[:incomplete]
+        return strip_terminal_codes(text)
+
+    def flush(self) -> str:
+        # An unfinished control sequence is control data, not visible text.
+        self._pending = ""
+        return ""

@@ -28,6 +28,7 @@ Containment:
 from __future__ import annotations
 
 import fcntl
+import codecs
 import json
 import logging
 import os
@@ -42,7 +43,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -196,11 +197,54 @@ class _Session:
                 return True
         return False
 
-    def run(self, command: str, timeout: float = _DEFAULT_TIMEOUT) -> dict[str, Any]:
+    def run(
+        self,
+        command: str,
+        timeout: float = _DEFAULT_TIMEOUT,
+        on_output: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
         if not self.alive():
             return {"status": "error", "error": "session terminated"}
 
-        with self.lock:
+        dispatched_at = time.monotonic()
+        self.lock.acquire()
+        lock_acquired_at = time.monotonic()
+        first_output_at: float | None = None
+        had_output = False
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        captured = b""
+
+        def _timed(payload: dict[str, Any]) -> dict[str, Any]:
+            ended_at = time.monotonic()
+            payload["_timing"] = {
+                "route": "server_persistent_shell",
+                "dispatch_to_lock_ms": max(0, round((lock_acquired_at - dispatched_at) * 1000)),
+                "dispatch_to_spawn_ms": None,
+                "first_output_ms": (
+                    None
+                    if first_output_at is None
+                    else max(0, round((first_output_at - dispatched_at) * 1000))
+                ),
+                "process_ms": max(0, round((ended_at - lock_acquired_at) * 1000)),
+                "had_output": had_output,
+            }
+            return payload
+
+        def _emit(data: bytes, *, final: bool = False) -> None:
+            nonlocal captured, first_output_at, had_output
+            if data:
+                had_output = True
+                if first_output_at is None:
+                    first_output_at = time.monotonic()
+                captured = (captured + data)[-_OUTPUT_LIMIT_BYTES * 2 :]
+            text = decoder.decode(data, final=final)
+            if text and on_output is not None:
+                try:
+                    on_output(text)
+                except Exception as exc:
+                    logger.debug("bash_session live-output callback failed: %s", exc)
+
+        try:
             self.last_used = time.time()
             self.running_command = command[:160]
             # Ryd efterladt output fra en tidligere timeout/afbrudt kommando, så det ikke
@@ -225,9 +269,9 @@ class _Session:
             try:
                 os.write(self.fd, payload)
             except OSError as exc:
-                return {"status": "error", "error": f"write failed: {exc}"}
+                return _timed({"status": "error", "error": f"write failed: {exc}"})
 
-            buf = b""
+            pending = b""
             exit_code: int | None = None
             deadline = time.time() + max(1.0, float(timeout))
             marker_b = marker.encode()
@@ -244,18 +288,33 @@ class _Session:
                     break
                 if not chunk:
                     break
-                buf += chunk
-                if marker_b in buf:
-                    pre, _, post = buf.partition(marker_b)
+                pending += chunk
+                marker_at = pending.find(marker_b)
+                if marker_at >= 0 and b"\n" in pending[marker_at + len(marker_b):]:
+                    pre = pending[:marker_at]
+                    post = pending[marker_at + len(marker_b):]
+                    _emit(pre)
                     tail = post.split(b"\n", 1)[0].strip()
                     try:
                         exit_code = int(tail.decode().split()[0])
                     except Exception:
                         exit_code = None
-                    buf = pre
+                    pending = b""
                     break
-                if len(buf) > _OUTPUT_LIMIT_BYTES * 2:
-                    buf = buf[-_OUTPUT_LIMIT_BYTES * 2:]
+                if marker_at >= 0:
+                    _emit(pending[:marker_at])
+                    pending = pending[marker_at:]
+                    continue
+                keep = 0
+                max_keep = min(len(pending), len(marker_b) - 1)
+                for size in range(max_keep, 0, -1):
+                    if pending.endswith(marker_b[:size]):
+                        keep = size
+                        break
+                safe_end = len(pending) - keep
+                if safe_end:
+                    _emit(pending[:safe_end])
+                    pending = pending[safe_end:]
             else:
                 # Timeout: enten kører kommandoen stadig, ELLER shell'en står i en
                 # continuation-tilstand og har spist markøren. I begge tilfælde er den
@@ -284,30 +343,37 @@ class _Session:
                         self.terminate()
                     except Exception:
                         pass
-                    return {
+                    _emit(pending, final=True)
+                    return _timed({
                         "status": "error",
                         "session_id": self.session_id,
                         "command": command[:160],
                         "error": "session terminated (desync efter timeout — genåbnes ved næste kald)",
-                        "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
-                    }
-                return {
+                        "output": _decode(captured)[-_OUTPUT_LIMIT_BYTES:],
+                    })
+                _emit(pending, final=True)
+                return _timed({
                     "status": "timeout",
                     "session_id": self.session_id,
                     "command": command[:160],
                     "timeout_seconds": timeout,
-                    "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
+                    "output": _decode(captured)[-_OUTPUT_LIMIT_BYTES:],
                     "note": "Command did not finish within timeout (afbrudt; sessionen er "
                     "resynkroniseret og klar til næste kommando).",
-                }
+                })
 
-            return {
+            if pending:
+                _emit(pending)
+            _emit(b"", final=True)
+            return _timed({
                 "status": "ok",
                 "session_id": self.session_id,
                 "command": command[:160],
                 "exit_code": exit_code,
-                "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
-            }
+                "output": _decode(captured)[-_OUTPUT_LIMIT_BYTES:],
+            })
+        finally:
+            self.lock.release()
 
     def terminate(self) -> None:
         """Dræb shellen UDEN at tage sessionens lås.
@@ -526,8 +592,24 @@ def _daemon_main() -> int:
                     timeout = max(1.0, min(float(timeout), 300.0))
                 except Exception:
                     timeout = _DEFAULT_TIMEOUT
-                result = sess.run(cmd, timeout=timeout)
-                _send(client, result)
+                stream_output = bool(req.get("stream"))
+                sequence = [0]
+
+                def _stream(chunk: str) -> None:
+                    sequence[0] += 1
+                    _send(client, {
+                        "type": "output_delta",
+                        "stream": "combined",
+                        "seq": sequence[0],
+                        "chunk": chunk,
+                    })
+
+                result = sess.run(
+                    cmd,
+                    timeout=timeout,
+                    on_output=_stream if stream_output else None,
+                )
+                _send(client, {"type": "result", **result} if stream_output else result)
 
             elif op == "close":
                 sid = str(req.get("session_id") or "")
@@ -728,7 +810,11 @@ def _ping_daemon() -> bool:
         return False
 
 
-def _client_call_once(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, Any]:
+def _client_call_once(
+    payload: dict[str, Any],
+    timeout: float = 310.0,
+    on_output: Callable[..., None] | None = None,
+) -> dict[str, Any]:
     """Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call."""
     if not _ensure_daemon_running():
         return {"status": "error", "error": "bash session daemon unavailable"}
@@ -739,23 +825,51 @@ def _client_call_once(payload: dict[str, Any], timeout: float = 310.0) -> dict[s
         s.settimeout(timeout)
         s.sendall((json.dumps(payload) + "\n").encode("utf-8"))
         data = b""
-        while b"\n" not in data:
+        while True:
             chunk = s.recv(65536)
             if not chunk:
                 break
             data += chunk
             if len(data) > 4_000_000:
                 break
+            while b"\n" in data:
+                line, data = data.split(b"\n", 1)
+                if not line:
+                    continue
+                frame = json.loads(line.decode("utf-8"))
+                frame_type = frame.get("type")
+                if frame_type == "output_delta":
+                    if on_output is not None:
+                        try:
+                            on_output(
+                                stream=str(frame.get("stream") or "combined"),
+                                seq=int(frame.get("seq") or 0),
+                                chunk=str(frame.get("chunk") or ""),
+                            )
+                        except Exception as exc:
+                            logger.debug("bash_session client output callback failed: %s", exc)
+                    continue
+                if frame_type == "result":
+                    s.close()
+                    return {key: value for key, value in frame.items() if key != "type"}
+                # A frame without a type is the legacy terminal response.
+                if frame_type is None:
+                    s.close()
+                    return frame
         s.close()
-        line = data.split(b"\n", 1)[0]
-        if not line:
+        if not data:
             return {"status": "error", "error": "empty response from daemon"}
-        return json.loads(line.decode("utf-8"))
+        frame = json.loads(data.decode("utf-8"))
+        return {key: value for key, value in frame.items() if key != "type"}
     except Exception as exc:
         return {"status": "error", "error": f"daemon ipc failed: {exc}"}
 
 
-def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, Any]:
+def _client_call(
+    payload: dict[str, Any],
+    timeout: float = 310.0,
+    on_output: Callable[..., None] | None = None,
+) -> dict[str, Any]:
     """Send ét kald til daemonen — og helbred den selv hvis den er hængt.
 
     Rod (målt 13. sep 2026): daemonen kunne hænge mens den STADIG svarede på ping
@@ -768,7 +882,8 @@ def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, A
     run-heal returneres en eksplicit fejl, så kalderen åbner en frisk session. Det er
     samme kontrakt som desync-stien i `_Session.run`.
     """
-    result = _client_call_once(payload, timeout=timeout)
+    call_kwargs = {"on_output": on_output} if on_output is not None else {}
+    result = _client_call_once(payload, timeout=timeout, **call_kwargs)
     if result.get("status") != "error":
         return result
     err = str(result.get("error") or "")
@@ -784,7 +899,7 @@ def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, A
             "session_id": str(payload.get("session_id") or ""),
             "error": "session lost (daemonen var hængt og blev genstartet — åbn en ny session)",
         }
-    return _client_call_once(payload, timeout=timeout)
+    return _client_call_once(payload, timeout=timeout, **call_kwargs)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -819,10 +934,27 @@ def _exec_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:
         timeout = max(1.0, min(float(timeout), 300.0))
     except Exception:
         timeout = _DEFAULT_TIMEOUT
+    from core.runtime.settings import load_settings
+    from core.services.tool_execution_trace import emit_current_output, note_executor_timing
+
+    live_output = bool(load_settings().live_tool_output_enabled)
+
+    def _on_output(*, stream: str, seq: int, chunk: str) -> None:
+        emit_current_output(stream, chunk, seq=seq)
+
     svar = _client_call(
-        {"op": "run", "session_id": sid, "command": cmd, "timeout": timeout},
+        {
+            "op": "run",
+            "session_id": sid,
+            "command": cmd,
+            "timeout": timeout,
+            "stream": live_output,
+        },
         timeout=timeout + 10.0,
+        on_output=_on_output if live_output else None,
     )
+    timing = svar.pop("_timing", None)
+    note_executor_timing(str(args.get("_runtime_tool_use_id") or ""), timing)
     # K10: sig det ogsaa naar modellen kalder sessionen DIREKTE. `bash`
     # rapporterede paa sin vedvarende gren, men denne indgang gik udenom.
     from core.services.shell_confinement_report import VEDVARENDE, vedhaeft

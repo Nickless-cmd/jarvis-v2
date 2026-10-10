@@ -48,6 +48,10 @@ def start_autonomous_stream_run(
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=sid,
         autonomous=True,
+        # Oprindelsen SKAL med på run-objektet (målt 10/10-2026): uden den læste
+        # `set_run_identity` en tom origin, og self-wakeup faldt tilbage til
+        # bund-sættet i stedet for sit eget. Samme felt som start_autonomous_run.
+        origin=origin,
     )
 
     # SPORET SKRIVES FØR TRÅDEN (målt 12/9-2026). Runnet kører i en daemon-tråd,

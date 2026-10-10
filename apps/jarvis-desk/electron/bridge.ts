@@ -99,9 +99,9 @@ export async function approvalRace(
   const choice = await Promise.race([dialogPromise, timeoutPromise])
   return choice.response === acceptButtonIndex
 }
-import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import WebSocket from 'ws'
+import { asyncSpawn } from './asyncSpawn.js'
 
 // Module-level reference to the currently-connected bridge's config so
 // handlers (operator_speak, anything else that needs to call back into
@@ -241,7 +241,13 @@ export interface BridgeConfig {
   log?: (msg: string) => void
 }
 
-type ToolHandler = (args: Record<string, unknown>) => Promise<unknown> | unknown
+interface ToolExecutionContext {
+  emitOutput: (delta: { stream: 'stdout' | 'stderr'; seq: number; chunk: string }) => void
+}
+type ToolHandler = (
+  args: Record<string, unknown>,
+  context?: ToolExecutionContext,
+) => Promise<unknown> | unknown
 
 /** Lightweight glob → regex, supports **, *, ?. Handles bash-style patterns. */
 function globToRegex(pattern: string): RegExp {
@@ -429,58 +435,6 @@ function* walkDir(root: string, max: number): Generator<string> {
       }
     }
   }
-}
-
-// ── Async spawn helper — does NOT block the event loop ──────────────
-// Critical for WebSocket health: asyncSpawn does not block Node's event loop,
-// so ping/pong fails and the server closes the connection mid-command.
-interface AsyncSpawnResult {
-  stdout: string
-  stderr: string
-  status: number | null
-  signal: string | null
-  timed_out: boolean
-  error?: string
-}
-async function asyncSpawn(
-  cmd: string,
-  args: string[],
-  opts: { cwd?: string; timeout?: number; maxBuffer?: number } = {},
-): Promise<AsyncSpawnResult> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      cwd: opts.cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-    })
-    const stdoutBuf: Buffer[] = []
-    const stderrBuf: Buffer[] = []
-    child.stdout?.on('data', (d: Buffer) => stdoutBuf.push(d))
-    child.stderr?.on('data', (d: Buffer) => stderrBuf.push(d))
-
-    let timedOut = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-    if (opts.timeout && opts.timeout > 0) {
-      timer = setTimeout(() => {
-        timedOut = true
-        child.kill('SIGTERM')
-      }, opts.timeout)
-    }
-
-    child.on('close', (code, sig) => {
-      if (timer) clearTimeout(timer)
-      const maxBuf = opts.maxBuffer ?? 5 * 1024 * 1024
-      let stdout = Buffer.concat(stdoutBuf).toString('utf8')
-      let stderr = Buffer.concat(stderrBuf).toString('utf8')
-      if (stdout.length > maxBuf) stdout = stdout.slice(0, maxBuf)
-      if (stderr.length > maxBuf) stderr = stderr.slice(0, maxBuf)
-      resolve({ stdout, stderr, status: code, signal: sig, timed_out: timedOut })
-    })
-    child.on('error', (err) => {
-      if (timer) clearTimeout(timer)
-      resolve({ stdout: '', stderr: '', status: null, signal: null, timed_out: false, error: err.message })
-    })
-  })
 }
 
 /** Built-in handlers — Phase 1+2: read/write/edit/glob/grep/list_dir. */
@@ -676,7 +630,7 @@ const handlers: Record<string, ToolHandler> = {
     }
   },
 
-  operator_bash: async (args) => {
+  operator_bash: async (args, context) => {
     const command = String(args.command ?? '').trim()
     if (!command) throw new Error('command is required')
     const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
@@ -690,7 +644,7 @@ const handlers: Record<string, ToolHandler> = {
       cwd,
       timeout: timeoutS * 1000,
       maxBuffer: 5 * 1024 * 1024, // 5 MB stdout cap
-    })
+    }, context?.emitOutput)
 
     return {
       platform: osPlatform(),
@@ -699,6 +653,13 @@ const handlers: Record<string, ToolHandler> = {
       stderr: (result.stderr ?? '').slice(0, 50_000),
       exit_code: result.status,
       timed_out: result.timed_out,
+      _timing: {
+        route: 'operator_bridge',
+        dispatch_to_spawn_ms: result.dispatch_to_spawn_ms,
+        first_output_ms: result.first_output_ms,
+        process_ms: result.process_ms,
+        had_output: result.had_output,
+      },
     }
   },
 
@@ -2586,6 +2547,7 @@ export class JarvisXBridge {
       const correlation_id = String(msg.correlation_id ?? '')
       const tool = String(msg.tool ?? '')
       const args = (msg.args as Record<string, unknown>) || {}
+      const streamOutput = Boolean(msg.stream_output)
       const invokeMode = String(msg.mode ?? '').toLowerCase()
       this.log(`tool_invoke tool=${tool} mode=${invokeMode || '(legacy)'} args=${JSON.stringify(args).slice(0, 120)}`)
       // §17.6.1: kun code-mode anmodninger eksekveres LOKALT. chat/cowork må ikke
@@ -2663,6 +2625,15 @@ export class JarvisXBridge {
         // gav klienten derfor op FØR serveren: kommandoen fuldførte,
         // `handler_timeout` gik tilbage, og svaret faldt på gulvet uden at
         // nogen kaldte det en fejl. Loftet SKAL ligge over serverens maksimum.
+        const executionContext: ToolExecutionContext | undefined = streamOutput
+          ? {
+              emitOutput: (delta) => this.send({
+                type: 'tool_output_delta',
+                correlation_id,
+                ...delta,
+              }),
+            }
+          : undefined
         const SERVER_MAX_COMMAND_MS = 300_000
         const SERVER_DISPATCH_SLACK_MS = 25_000
         const HANDLER_GRACE_MS = 10_000
@@ -2674,7 +2645,7 @@ export class JarvisXBridge {
           HANDLER_CEILING_MS,  // 335 s — over serverens maksimale 325 s
         )
         const result = await Promise.race([
-          handler(args),
+          handler(args, executionContext),
           new Promise((_, reject) =>
             setTimeout(
               () =>
@@ -2689,13 +2660,21 @@ export class JarvisXBridge {
             ),
           ),
         ])
-        if (invId) this.invocationLedger().finish(invId, true, result)
+        let terminalResult = result
+        let timing: unknown = undefined
+        if (result && typeof result === 'object' && '_timing' in result) {
+          const { _timing, ...withoutTiming } = result as Record<string, unknown>
+          terminalResult = withoutTiming
+          timing = _timing
+        }
+        if (invId) this.invocationLedger().finish(invId, true, terminalResult)
         this.send({
           type: 'tool_result',
           correlation_id,
           status: 'ok',
-          result,
+          result: terminalResult,
           error: null,
+          ...(timing ? { timing } : {}),
           mode: invokeMode || 'code',
           local_execution: true,
         })

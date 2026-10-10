@@ -20,11 +20,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 import os
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # DIAGNOSTIC: enable bridge debug logging
@@ -142,6 +143,15 @@ def _ws_is_closed(ws: Any) -> bool:
 
 
 @dataclass
+class PendingBridgeCall:
+    future: asyncio.Future
+    owning_loop: asyncio.AbstractEventLoop
+    on_output: Callable[..., None] | None = None
+    terminal: bool = False
+    last_seq: int = 0
+
+
+@dataclass
 class BridgeConnection:
     """One live bridge connection. WS object is platform-dependent."""
 
@@ -168,7 +178,7 @@ class BridgeConnection:
     # the loop, set_result() fires on the wrong loop and the awaiter
     # never wakes up — tool-handler times out even though the bridge
     # replied correctly. See test_dispatch_cross_loop_safe.
-    _pending: dict[str, tuple[asyncio.Future, asyncio.AbstractEventLoop]] = field(default_factory=dict)
+    _pending: dict[str, PendingBridgeCall] = field(default_factory=dict)
     _send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     async def send_raw(self, data: dict, *, timeout_s: float = 10.0) -> None:
@@ -211,6 +221,7 @@ class BridgeConnection:
         args: dict[str, Any],
         timeout_ms: int,
         extra: dict[str, Any] | None = None,
+        stream_output: bool = False,
     ) -> None:
         """Send tool_invoke over WS and register the pending future.
 
@@ -251,9 +262,54 @@ class BridgeConnection:
             "tool": tool,
             "args": args,
             "timeout_ms": timeout_ms,
+            "stream_output": bool(stream_output),
             "mode": mode,
             **({"agent_invocation": dict(extra)} if extra else {}),
         })
+
+    def register_pending(
+        self,
+        correlation_id: str,
+        future: asyncio.Future,
+        owning_loop: asyncio.AbstractEventLoop,
+        on_output: Callable[..., None] | None = None,
+    ) -> None:
+        self._pending[correlation_id] = PendingBridgeCall(
+            future=future,
+            owning_loop=owning_loop,
+            on_output=on_output,
+        )
+
+    async def deliver_output(
+        self,
+        *,
+        correlation_id: str,
+        stream: str,
+        seq: int,
+        chunk: str,
+    ) -> None:
+        entry = self._pending.get(correlation_id)
+        if (
+            entry is None
+            or entry.terminal
+            or entry.on_output is None
+            or int(seq) <= entry.last_seq
+        ):
+            return
+        entry.last_seq = int(seq)
+
+        def _deliver() -> None:
+            if entry.on_output is None:
+                return
+            try:
+                entry.on_output(stream=str(stream), seq=int(seq), chunk=str(chunk))
+            except Exception as exc:
+                logger.debug("bridge output callback failed corr=%s: %s", correlation_id, exc)
+
+        try:
+            entry.owning_loop.call_soon_threadsafe(_deliver)
+        except RuntimeError:  # owning loop closed; late live output is disposable
+            return
 
     async def deliver_result(
         self,
@@ -262,6 +318,7 @@ class BridgeConnection:
         status: str,
         result: Any = None,
         error: Optional[str] = None,
+        timing: dict[str, Any] | None = None,
     ) -> None:
         """Complete the pending future for this correlation_id.
 
@@ -277,7 +334,8 @@ class BridgeConnection:
                 correlation_id, status,
             )
             return
-        fut, owning_loop = entry
+        entry.terminal = True
+        fut, owning_loop = entry.future, entry.owning_loop
         if fut.done():
             logger.warning(
                 "[bridge-dispatch] DELIVER_ALREADY_DONE corr=%s status=%s",
@@ -289,6 +347,8 @@ class BridgeConnection:
             correlation_id, status, len(self._pending),
         )
         payload = {"status": status, "result": result, "error": error}
+        if timing is not None:
+            payload["timing"] = timing
         if owning_loop is asyncio.get_event_loop():
             fut.set_result(payload)
         else:
@@ -304,7 +364,8 @@ class BridgeConnection:
         """Cancel all in-flight calls (e.g. on WS disconnect)."""
         payload = {"status": "error", "result": None, "error": reason}
         for cid, entry in list(self._pending.items()):
-            fut, owning_loop = entry
+            entry.terminal = True
+            fut, owning_loop = entry.future, entry.owning_loop
             if fut.done():
                 continue
             try:
@@ -600,6 +661,7 @@ class BridgeRegistry:
         args: dict[str, Any],
         timeout_s: float = _DEFAULT_TIMEOUT_S,
         allow_cross_process: bool = True,
+        on_output: Callable[..., None] | None = None,
     ) -> dict[str, Any]:
         """Send tool_invoke to user's bridge, await result or timeout.
 
@@ -618,7 +680,7 @@ class BridgeRegistry:
             return await self._dispatch_without_local_bridge(
                 user_id=user_id, tool=tool, args=args,
                 timeout_s=timeout_s, allow_cross_process=allow_cross_process,
-                stage="lookup",
+                stage="lookup", on_output=on_output,
             )
 
         correlation_id = str(uuid.uuid4())
@@ -626,7 +688,7 @@ class BridgeRegistry:
         fut: asyncio.Future = loop.create_future()
         # Pair future with its owning loop so deliver_result can marshal
         # set_result correctly when WS handler runs on a different loop.
-        bridge._pending[correlation_id] = (fut, loop)
+        bridge.register_pending(correlation_id, fut, loop, on_output)
 
         logger.debug(
             "[bridge-dispatch] START corr=%s tool=%s user=%s timeout=%.1fs pending=%d",
@@ -634,11 +696,13 @@ class BridgeRegistry:
         )
 
         try:
+            invoke_kwargs = {"stream_output": True} if on_output is not None else {}
             await bridge.send_invoke(
                 correlation_id=correlation_id,
                 tool=tool,
                 args=args,
                 timeout_ms=int(timeout_s * 1000),
+                **invoke_kwargs,
             )
             logger.info("[bridge-dispatch] SENT corr=%s", correlation_id)
         except Exception as exc:
@@ -674,13 +738,14 @@ class BridgeRegistry:
                 return await self.dispatch(
                     user_id=user_id, tool=tool, args=args,
                     timeout_s=timeout_s, allow_cross_process=allow_cross_process,
+                    on_output=on_output,
                 )
             if "bridge_closed" in str(exc) or _looks_like_closed_ws(exc):
                 logger.warning("[bridge-dispatch] STALE_WS_EVICTED corr=%s user=%s", correlation_id, user_id)
                 return await self._dispatch_without_local_bridge(
                     user_id=user_id, tool=tool, args=args,
                     timeout_s=timeout_s, allow_cross_process=allow_cross_process,
-                    stage="post_stale_evict",
+                    stage="post_stale_evict", on_output=on_output,
                 )
             logger.error("[bridge-dispatch] SEND_FAIL corr=%s err=%s", correlation_id, exc)
             return {
@@ -728,6 +793,7 @@ class BridgeRegistry:
         timeout_s: float,
         allow_cross_process: bool,
         stage: str,
+        on_output: Callable[..., None] | None = None,
     ) -> dict[str, Any]:
         """Ingen LEVENDE lokal bro for user_id (aldrig registreret, eller netop evictet
         som stale). Afgør deterministisk hvad der sker via presence:
@@ -778,6 +844,7 @@ class BridgeRegistry:
         return await self._forward_cross_process(
             user_id=user_id, tool=tool, args=args,
             timeout_s=timeout_s, target_port=target_port,
+            on_output=on_output,
         )
 
     async def _forward_cross_process(
@@ -788,6 +855,7 @@ class BridgeRegistry:
         args: dict[str, Any],
         timeout_s: float,
         target_port: Optional[int] = None,
+        on_output: Callable[..., None] | None = None,
     ) -> dict[str, Any]:
         """HTTP-forward dispatch til den proces der holder broen (dens interne endpoint).
 
@@ -815,17 +883,51 @@ class BridgeRegistry:
             import httpx
 
             timeout = httpx.Timeout(connect=3.0, read=read_timeout, write=5.0, pool=3.0)
+            request_body = {
+                "user_id": user_id,
+                "tool": tool,
+                "args": args,
+                "timeout_s": timeout_s,
+                "stream_output": on_output is not None,
+            }
             async with httpx.AsyncClient(timeout=timeout) as client:
-                resp = await client.post(
-                    url,
-                    json={
-                        "user_id": user_id,
-                        "tool": tool,
-                        "args": args,
-                        "timeout_s": timeout_s,
-                    },
-                    headers={_INTERNAL_TOKEN_HEADER: token},
-                )
+                if on_output is None:
+                    resp = await client.post(
+                        url,
+                        json=request_body,
+                        headers={_INTERNAL_TOKEN_HEADER: token},
+                    )
+                else:
+                    async with client.stream(
+                        "POST",
+                        url,
+                        json=request_body,
+                        headers={_INTERNAL_TOKEN_HEADER: token},
+                    ) as streamed:
+                        if streamed.status_code != 200:
+                            return {"status": "error", "result": None,
+                                    "error": "bridge_not_connected"}
+                        async for line in streamed.aiter_lines():
+                            if not line:
+                                continue
+                            frame = json.loads(line)
+                            if frame.get("type") == "output_delta":
+                                try:
+                                    on_output(
+                                        stream=str(frame.get("stream") or "stdout"),
+                                        seq=int(frame.get("seq") or 0),
+                                        chunk=str(frame.get("chunk") or ""),
+                                    )
+                                except Exception as exc:
+                                    logger.debug("cross-process output callback failed: %s", exc)
+                                continue
+                            if frame.get("type") == "result":
+                                return {key: value for key, value in frame.items()
+                                        if key != "type"}
+                            if "status" in frame:  # legacy unframed terminal JSON
+                                return frame
+                    return {"status": "error", "result": None,
+                            "error": "bridge_not_connected"}
             if resp.status_code != 200:
                 logger.warning(
                     "[bridge-dispatch] CROSS_PROCESS_HTTP_%s user=%s — bridge_not_connected",

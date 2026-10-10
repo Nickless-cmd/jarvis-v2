@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +37,20 @@ async def _bridge_call(
     args: dict[str, Any],
     user_id: str,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
+    on_output: Callable[..., None] | None = None,
+    tool_use_id: str = "",
 ) -> Any:
     """Common dispatch helper. Raises RuntimeError on bridge failure."""
     from core.services.jarvisx_bridge import bridge_registry
 
+    dispatch_kwargs = {"on_output": on_output} if on_output is not None else {}
     result = await bridge_registry.dispatch(
-        user_id=user_id, tool=tool, args=args, timeout_s=timeout_s,
+        user_id=user_id, tool=tool, args=args, timeout_s=timeout_s, **dispatch_kwargs,
     )
+    timing = result.get("timing")
+    if isinstance(timing, dict):
+        from core.services.tool_execution_trace import note_executor_timing
+        note_executor_timing(tool_use_id, timing)
     if result.get("status") != "ok":
         err = str(result.get("error") or "unknown")
         raise RuntimeError(f"{tool} failed: {err}")
@@ -360,6 +367,8 @@ async def operator_bash_async(
     timeout_s: float = 120.0,
     user_id: str,
     skip_approval: bool = False,
+    on_output: Callable[..., None] | None = None,
+    tool_use_id: str = "",
 ) -> dict[str, Any]:
     """Run a shell command on the operator's desktop.
 
@@ -386,6 +395,8 @@ async def operator_bash_async(
         },
         user_id=user_id,
         timeout_s=timeout_s + 25.0,
+        on_output=on_output,
+        tool_use_id=tool_use_id,
     )
     return result or {}
 

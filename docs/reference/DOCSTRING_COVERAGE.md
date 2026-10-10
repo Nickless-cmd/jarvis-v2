@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8815/16675 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8815/16677 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8815/16675 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5880 | 11328 | 51% |
+| `core.services` | 5880 | 11330 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8815/16675 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2372)
+## Undocumented public functions (2374)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1288,7 +1288,9 @@ Generated from source. 8815/16675 functions/methods documented (52%). The list b
 - `core/services/jarvis_brain.py` :: `connect_index` (L388)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L326)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
-- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L357)
+- `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
+- `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
+- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L418)
 - `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L558)
 - `core/services/jobs_engine.py` :: `list_jobs` (L551)
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
@@ -2182,23 +2184,23 @@ Generated from source. 8815/16675 functions/methods documented (52%). The list b
 - `core/tools/identity_pin_tools.py` :: `remove_pin` (L118)
 - `core/tools/native_tool_gate.py` :: `is_disabled` (L26)
 - `core/tools/notification_tools.py` :: `exec_get_notification_preferences` (L23)
-- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L682)
-- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L773)
-- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L673)
-- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L660)
-- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L764)
-- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L700)
-- `core/tools/operator_tools.py` :: `operator_multi_edit` (L229)
-- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1296)
-- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1306)
-- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1284)
-- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1259)
-- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1274)
-- `core/tools/operator_tools.py` :: `operator_read_file` (L70)
-- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1205)
-- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1246)
-- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1233)
-- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1218)
+- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L693)
+- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L784)
+- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L684)
+- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L671)
+- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L775)
+- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L711)
+- `core/tools/operator_tools.py` :: `operator_multi_edit` (L236)
+- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1307)
+- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1317)
+- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1295)
+- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1270)
+- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1285)
+- `core/tools/operator_tools.py` :: `operator_read_file` (L77)
+- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1216)
+- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1257)
+- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1244)
+- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1229)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
 - `core/tools/streaming_subprocess.py` :: `run_streaming` (L26)

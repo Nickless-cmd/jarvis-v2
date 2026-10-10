@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/subjective_time.py`
+_Subjective Time — how time FEELS, not just passes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
+| function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
+
 ## `core/services/suggest_standing_guard.py`
 _Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
 
@@ -579,21 +587,4 @@ _Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L183) |
-
-## `core/services/tool_embeddings.py`
-_Tool description embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_embed_base` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
-| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L36) |
-| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L50) |
-| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L54) |
-| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L59) |
-| function | `_compute_embedding` | `(text, *, timeout_s=…)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L70) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L89) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L109) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L115) |
-| function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L126) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L147) |
 

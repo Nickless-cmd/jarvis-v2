@@ -457,6 +457,7 @@ def _build_visible_input(
     session_id: str | None,
     provider: str = "",
     model: str = "",
+    caller_phase: str = "initial",
 ) -> list[dict]:
     # Resolve actual provider/model from router if not supplied
     actual_provider = provider
@@ -470,6 +471,7 @@ def _build_visible_input(
         model=actual_model,
         user_message=message,
         session_id=session_id,
+        caller_phase=caller_phase,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
     model_message = current_message_for_model(message)
@@ -736,7 +738,8 @@ def _member_context_user_id() -> str:
 
 
 def _build_visible_prompt_assembly(
-    *, provider: str, model: str, user_message: str, session_id: str | None
+    *, provider: str, model: str, user_message: str, session_id: str | None,
+    caller_phase: str = "initial",
 ):
     """Return the full PromptAssembly (including structured transcript)."""
     member_uid = _member_context_user_id()
@@ -751,6 +754,7 @@ def _build_visible_prompt_assembly(
         runtime_self_report_context={
             "visible_execution_readiness": visible_execution_readiness(),
         },
+        caller_phase=caller_phase,
     )
 
 

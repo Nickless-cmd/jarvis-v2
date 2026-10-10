@@ -611,9 +611,12 @@ def _device_presence_line(user_id: str) -> str:
 #
 # Hvad en længere TTL faktisk risikerer: at tidskontekst og presence er op til
 # 180s gamle INDE i én tur. Turen begyndte netop dengang, så det er den rigtige
-# afvejning. Keyed lookups only; never load-bearing.
-_ASSEMBLY_TURN_CACHE: dict = {}
-_ASSEMBLY_TURN_TTL_S = 180.0
+# afvejning. Keyed lookups only; never load-bearing. Storage and policy live in
+# the extracted cohesive unit; aliases preserve the old diagnostic seam.
+from core.services import prompt_assembly_turn_cache as _assembly_turn_cache
+
+_ASSEMBLY_TURN_CACHE = _assembly_turn_cache._CACHE
+_ASSEMBLY_TURN_TTL_S = _assembly_turn_cache.TTL_S
 
 # recall_before_act non-blocking cache (2026-07-23, latency critical-path fix). The
 # main thread used to JOIN up to 4s (typ. ~1.5s) on this recall — the single biggest
@@ -656,32 +659,54 @@ def build_visible_chat_prompt_assembly(
     session_id: str | None = None,
     name: str = "default",
     runtime_self_report_context: dict[str, object] | None = None,
+    caller_phase: str = "initial",
 ) -> PromptAssembly:
     """Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for
     the post-tool rebuild so a tool turn assembles ONCE, not twice. Keyed on the newest USER
     message id (NOT the text) so a repeated short reply never reuses a stale assembly."""
     import time as _t_cache
+    from core.services.prompt_assembly_telemetri import rapporter_cache_lookup
+
     _luid = _latest_user_msg_id(session_id)
-    if _luid <= 0:
-        # No safe turn-key → build fresh (never risk a stale cross-turn assembly).
-        return _build_visible_chat_prompt_assembly_impl(
+    _key = (
+        (str(session_id or ""), _luid, provider, model, name)
+        if _luid > 0
+        else None
+    )
+    _now = _t_cache.monotonic()
+    _lookup_started = _t_cache.monotonic()
+    _lookup = _assembly_turn_cache.lookup(_key, now=_now)
+    _lookup_ms = (_t_cache.monotonic() - _lookup_started) * 1000
+    if _lookup.outcome == "hit":
+        rapporter_cache_lookup(
+            key=_key,
+            outcome=_lookup.outcome,
+            cache_age_ms=_lookup.age_ms,
+            lookup_ms=_lookup_ms,
+            build_ms=None,
+            caller_phase=caller_phase,
+        )
+        return _lookup.value
+
+    _build_started = _t_cache.monotonic()
+    try:
+        _res = _build_visible_chat_prompt_assembly_impl(
             provider=provider, model=model, user_message=user_message,
             session_id=session_id, name=name,
             runtime_self_report_context=runtime_self_report_context,
         )
-    _key = (str(session_id or ""), _luid, provider, model, name)
-    _now = _t_cache.monotonic()
-    _hit = _ASSEMBLY_TURN_CACHE.get(_key)
-    if _hit is not None and (_now - _hit[0]) < _ASSEMBLY_TURN_TTL_S:
-        return _hit[1]
-    _res = _build_visible_chat_prompt_assembly_impl(
-        provider=provider, model=model, user_message=user_message,
-        session_id=session_id, name=name,
-        runtime_self_report_context=runtime_self_report_context,
-    )
-    if len(_ASSEMBLY_TURN_CACHE) > 64:
-        _ASSEMBLY_TURN_CACHE.clear()
-    _ASSEMBLY_TURN_CACHE[_key] = (_now, _res)
+    finally:
+        _build_ms = (_t_cache.monotonic() - _build_started) * 1000
+        rapporter_cache_lookup(
+            key=_key,
+            outcome=_lookup.outcome,
+            cache_age_ms=_lookup.age_ms,
+            lookup_ms=_lookup_ms,
+            build_ms=_build_ms,
+            caller_phase=caller_phase,
+        )
+    if _key is not None:
+        _assembly_turn_cache.store(_key, _res, now=_now)
     return _res
 
 

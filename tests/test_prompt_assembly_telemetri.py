@@ -79,3 +79,65 @@ def test_telemetri_vaelter_ikke_en_build_naar_bussen_fejler():
                              compact=True, session_id="", assembly_ms=0)
     finally:
         bus.event_bus = gammel
+
+
+def test_cache_event_is_opaque_and_has_only_the_diagnostic_contract(monkeypatch):
+    sent = []
+    monkeypatch.setattr("core.eventbus.bus.event_bus.publish", lambda kind, payload: sent.append((kind, payload)))
+    monkeypatch.setattr("core.services.central_xproc.process_role", lambda: "runtime")
+    monkeypatch.setattr(T.os, "getpid", lambda: 4242)
+
+    T.rapporter_cache_lookup(
+        key=("private-session", 7, "deepseek", "model", "default"),
+        outcome="miss",
+        cache_age_ms=None,
+        lookup_ms=1.25,
+        build_ms=12_345.5,
+        caller_phase="post_tool",
+    )
+
+    assert len(sent) == 1
+    kind, payload = sent[0]
+    assert kind == "prompt.assembly_cache"
+    assert set(payload) == {
+        "key_hash",
+        "cache_outcome",
+        "cache_age_ms",
+        "lookup_ms",
+        "build_ms",
+        "caller_phase",
+        "pid",
+        "process_role",
+    }
+    assert payload["key_hash"] != "private-session"
+    assert "private-session" not in str(payload)
+    assert payload["pid"] == 4242
+    assert payload["process_role"] == "runtime"
+
+
+def test_cache_telemetry_is_self_safe(monkeypatch):
+    monkeypatch.setattr(
+        "core.eventbus.bus.event_bus.publish",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("bus down")),
+    )
+    T.rapporter_cache_lookup(
+        key=None,
+        outcome="unsafe_no_key",
+        cache_age_ms=None,
+        lookup_ms=0.1,
+        build_ms=2.0,
+        caller_phase="initial",
+    )
+
+    monkeypatch.setattr(
+        "core.services.central_xproc.process_role",
+        lambda: (_ for _ in ()).throw(RuntimeError("role unavailable")),
+    )
+    T.rapporter_cache_lookup(
+        key=("s", 1),
+        outcome="miss",
+        cache_age_ms=None,
+        lookup_ms=0.1,
+        build_ms=2.0,
+        caller_phase="initial",
+    )

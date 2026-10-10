@@ -121,3 +121,36 @@ def test_tur_cachen_noegles_paa_besked_id_ikke_tekst() -> None:
 
     kilde = inspect.getsource(pc.build_visible_chat_prompt_assembly)
     assert "_latest_user_msg_id" in kilde, "tur-noeglen skal komme fra besked-ID'et"
+
+
+def test_visible_input_propagates_the_prompt_caller_phase(monkeypatch) -> None:
+    from core.services import visible_model
+    from core.services.prompt_contract import PromptAssembly
+
+    seen = []
+    assembly = PromptAssembly(
+        mode="visible_chat",
+        text="system",
+        included_files=[],
+        conditional_files=[],
+        derived_inputs=[],
+        excluded_files=[],
+        transcript_messages=[],
+    )
+
+    monkeypatch.setattr(
+        visible_model,
+        "_build_visible_prompt_assembly",
+        lambda **kwargs: seen.append(kwargs) or assembly,
+    )
+    monkeypatch.setattr(visible_model, "current_message_for_model", lambda message: message)
+    monkeypatch.setattr(visible_model, "current_run_source_notice", lambda: "")
+
+    visible_model._build_visible_input(
+        "hello",
+        session_id="s1",
+        provider="deepseek",
+        model="m",
+        caller_phase="post_tool",
+    )
+    assert seen[0]["caller_phase"] == "post_tool"

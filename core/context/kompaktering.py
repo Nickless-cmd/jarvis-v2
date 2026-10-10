@@ -133,14 +133,24 @@ def mekanisk_opsummering(old_msgs: list[dict]) -> str:
     Den forrige opsummering baeres med i fuld laengde (op til 12.000 tegn):
     den er selv allerede komprimeret, og klippede vi den til 400 tegn som en
     almindelig besked, ville en fejlende udbyder slette alt aeldre.
+
+    Dens HALE baeres derimod IKKE med. Markøren = resumé + hale, og halen er en
+    kopi af runder der allerede er opsummeret; foerte vi den videre, arvede den
+    nye markør en hale inde i resumé-delen oven paa sin egen friske hale. Maalt
+    10/10-2026: 25 af 231 markører var nestede, alle herfra, og 88% af deres
+    resumé-del var arvet hale.
     """
+    from core.context.compaction_policy import strip_embedded_tail
+
     dele: list[str] = []
     for m in old_msgs:
         rolle = str(m.get("role", "?"))
-        c = " ".join(str(m.get("content") or "").split())
+        raa = str(m.get("content") or "")
         if rolle == TIDLIGERE_RESUME:
+            c = " ".join(strip_embedded_tail(raa).split())
             dele.append(f"[tidligere resumé] {c[:12_000]}")
             continue
+        c = " ".join(raa.split())
         loft = 800 if rolle == "user" else 400
         dele.append(f"[{rolle}] {c[:loft]}{'…' if len(c) > loft else ''}")
     samlet = "\n".join(d for d in dele if d.strip()) or "[ingen beskeder at opsummere]"

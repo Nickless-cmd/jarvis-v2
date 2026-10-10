@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8832/16669 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8833/16670 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -18,7 +18,7 @@ Generated from source. 8832/16669 functions/methods documented (52%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 70 | 97 | 72% |
+| `core.context` | 71 | 98 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 74 | 167 | 44% |
@@ -265,8 +265,8 @@ Generated from source. 8832/16669 functions/methods documented (52%). The list b
 - `core/cli/visible_output.py` :: `normalize_visible_work_units` (L136)
 - `core/cli/visible_output.py` :: `visible_execution_section` (L4)
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
-- `core/context/kompaktering.py` :: `log_komprimering` (L201)
-- `core/context/kompaktering.py` :: `seneste_log` (L255)
+- `core/context/kompaktering.py` :: `log_komprimering` (L211)
+- `core/context/kompaktering.py` :: `seneste_log` (L265)
 - `core/context/output_style.py` :: `saet_stil` (L103)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)

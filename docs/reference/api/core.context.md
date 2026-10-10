@@ -52,19 +52,20 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CompactionDecision` | `` | — | [src](../../../core/context/compaction_policy.py#L38) |
-| function | `compaction_decision` | `(transcript_tokens, *, provider, model, attention_budget, low_water, safety_fraction, model_window_fn)` | Decide whether to compact, model-aware. | [src](../../../core/context/compaction_policy.py#L47) |
-| function | `group_rounds` | `(messages)` | A round = a user message + everything up to (not including) the next user message. | [src](../../../core/context/compaction_policy.py#L97) |
-| function | `round_is_open` | `(round_msgs)` | True when the round ends with tool_calls whose results haven't all arrived — | [src](../../../core/context/compaction_policy.py#L114) |
-| function | `_msg_tokens` | `(m)` | — | [src](../../../core/context/compaction_policy.py#L127) |
-| function | `select_for_compaction` | `(messages, *, keep_recent_tokens)` | Split messages into (old_to_summarize, kept_tail), ROUND-ATOMIC. | [src](../../../core/context/compaction_policy.py#L134) |
-| function | `_is_stub` | `(content)` | — | [src](../../../core/context/compaction_policy.py#L176) |
-| function | `fold_old_tool_results` | `(messages, keep=…)` | Fold every tool_result (role=="tool") OLDER than the newest `keep` into a short stub, | [src](../../../core/context/compaction_policy.py#L181) |
-| function | `render_transcript_for_summary` | `(messages)` | Flatten messages to a text transcript for the summarizer. tool_use/tool_result | [src](../../../core/context/compaction_policy.py#L208) |
-| function | `_cap_transcript` | `(transcript, max_chars)` | Cap the rendered transcript so a (free/cheap) summariser model isn't handed a huge | [src](../../../core/context/compaction_policy.py#L261) |
-| function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…, max_transcript_chars=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L272) |
-| function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L305) |
-| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L316) |
+| function | `strip_embedded_tail` | `(text)` | Fjern en ARVET hale fra en tidligere kompaktions-markør. | [src](../../../core/context/compaction_policy.py#L40) |
+| class | `CompactionDecision` | `` | — | [src](../../../core/context/compaction_policy.py#L62) |
+| function | `compaction_decision` | `(transcript_tokens, *, provider, model, attention_budget, low_water, safety_fraction, model_window_fn)` | Decide whether to compact, model-aware. | [src](../../../core/context/compaction_policy.py#L71) |
+| function | `group_rounds` | `(messages)` | A round = a user message + everything up to (not including) the next user message. | [src](../../../core/context/compaction_policy.py#L121) |
+| function | `round_is_open` | `(round_msgs)` | True when the round ends with tool_calls whose results haven't all arrived — | [src](../../../core/context/compaction_policy.py#L138) |
+| function | `_msg_tokens` | `(m)` | — | [src](../../../core/context/compaction_policy.py#L151) |
+| function | `select_for_compaction` | `(messages, *, keep_recent_tokens)` | Split messages into (old_to_summarize, kept_tail), ROUND-ATOMIC. | [src](../../../core/context/compaction_policy.py#L158) |
+| function | `_is_stub` | `(content)` | — | [src](../../../core/context/compaction_policy.py#L200) |
+| function | `fold_old_tool_results` | `(messages, keep=…)` | Fold every tool_result (role=="tool") OLDER than the newest `keep` into a short stub, | [src](../../../core/context/compaction_policy.py#L205) |
+| function | `render_transcript_for_summary` | `(messages)` | Flatten messages to a text transcript for the summarizer. tool_use/tool_result | [src](../../../core/context/compaction_policy.py#L232) |
+| function | `_cap_transcript` | `(transcript, max_chars)` | Cap the rendered transcript so a (free/cheap) summariser model isn't handed a huge | [src](../../../core/context/compaction_policy.py#L289) |
+| function | `build_structured_summary_prompt` | `(old_messages, *, focus=…, ground_truth=…, max_transcript_chars=…)` | Structured, thread-preserving summary prompt over the OLD messages. | [src](../../../core/context/compaction_policy.py#L300) |
+| function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L333) |
+| function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L344) |
 
 ## `core/context/compaction_signal.py`
 _Er sessionen ved at blive komprimeret — og hvornaar blev den det sidst?_
@@ -88,13 +89,13 @@ _Kontekst-komprimering: ÉN sti, med de garantier den manglede._
 | method | `StruktureretOpsummering.__call__` | `(self, old_msgs)` | — | [src](../../../core/context/kompaktering.py#L80) |
 | function | `_kald_med_timeout` | `(fn, *args, **kwargs)` | Kald `fn` med en timeout der FAKTISK afbryder ventetiden. | [src](../../../core/context/kompaktering.py#L107) |
 | function | `mekanisk_opsummering` | `(old_msgs)` | Deterministisk opsummering naar modellen ikke leverede. Aldrig tom. | [src](../../../core/context/kompaktering.py#L130) |
-| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L160) |
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L172) |
-| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L193) |
-| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L201) |
-| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L233) |
-| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L255) |
-| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L274) |
+| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L170) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L182) |
+| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L203) |
+| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L211) |
+| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L243) |
+| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L265) |
+| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L284) |
 
 ## `core/context/microcompact.py`
 _Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._
@@ -134,9 +135,9 @@ _Session-level context compaction._
 |---|---|---|---|---|
 | class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
 | function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…, kraev_fremdrift=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L33) |
-| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L212) |
-| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L216) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L241) |
+| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L211) |
+| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L215) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L240) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

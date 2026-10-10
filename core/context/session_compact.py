@@ -141,14 +141,13 @@ def compact_session_history(
     marker_content = summary_text
     if _kept:
         try:
-            from core.context.compaction_policy import render_transcript_for_summary
+            from core.context.compaction_policy import (
+                HALE_OVERSKRIFT,
+                render_transcript_for_summary,
+            )
             tail = render_transcript_for_summary(_kept)
             if tail.strip():
-                marker_content = (
-                    summary_text
-                    + "\n\n## Seneste udveksling (ordret bevaret siden compaction):\n"
-                    + tail
-                )
+                marker_content = summary_text + HALE_OVERSKRIFT + tail
         except Exception as exc:
             logger.debug("session_compact: tail-embed skipped (%s)", exc)
 

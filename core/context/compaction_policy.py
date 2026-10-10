@@ -31,6 +31,30 @@ DEFAULT_TOOL_STUB_KEEP = 5
 _STUB_PREFIX = "[tool-result ryddet"
 _UNCHANGED_PREFIX = "[fil uændret"
 
+#: Halen skrives EFTER resuméet i en kompaktions-markør (2026-07-18): de seneste
+#: runder ordret, så tråden overlever at markøren lægges sidst i sessionen. Den er
+#: markørens hale — ikke en del af resuméet.
+HALE_OVERSKRIFT = "\n\n## Seneste udveksling (ordret bevaret siden compaction):\n"
+
+
+def strip_embedded_tail(text: str) -> str:
+    """Fjern en ARVET hale fra en tidligere kompaktions-markør.
+
+    Markøren = resumé + hale. Føres markøren videre som input til en NY
+    komprimering, følger halen med — og den nye markør får sin EGEN, friske hale.
+    Resultatet er en hale inde i halen: en kopi af runder der allerede er
+    opsummeret. Målt 10/10-2026: 25 af 231 markører var nestede, ALLE fra den
+    mekaniske fallback, og i dem var 88% af resumé-delen (median 26.739 tegn) en
+    arvet hale. Vi beholder alt FØR halen og rører intet andet.
+    """
+    if not text:
+        return text
+    i = text.find(HALE_OVERSKRIFT)
+    if i == -1:
+        # Sammenfoldet variant: mekanisk opsummering kollapser whitespace.
+        i = text.find(HALE_OVERSKRIFT.strip())
+    return text[:i].rstrip() if i != -1 else text
+
 
 # ── Trigger decision ────────────────────────────────────────────────────────
 
@@ -226,6 +250,10 @@ def render_transcript_for_summary(messages: list[dict[str, Any]]) -> str:
         # Den forrige opsummering er INPUT her (18/9-2026) — ellers erstattede
         # hver komprimering den, og alt aeldre gik tabt. Navnet siger til
         # opsummereren at den skal baeres videre, ikke behandles som en replik.
+        # Dens HALE foelger ikke med: den er en kopi af runder der allerede er
+        # opsummeret, og opsummereren skal ikke kunne arve den videre.
+        if role == "tidligere_resume":
+            content = strip_embedded_tail(content)
         speaker = {
             "user": "Bjørn",
             "assistant": "Jarvis",

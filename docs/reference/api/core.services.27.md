@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_embeddings.py`
+_Tool description embedding cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_embed_base` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
+| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L36) |
+| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L50) |
+| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L54) |
+| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L59) |
+| function | `_compute_embedding` | `(text, *, timeout_s=…)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L70) |
+| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L89) |
+| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L109) |
+| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L115) |
+| function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L126) |
+| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L147) |
+
 ## `core/services/tool_execution_trace.py`
 _Process-local timing and bounded live-output state for visible tool calls._
 
@@ -584,14 +601,4 @@ _Valence Trajectory — long-term flourishing/withering signal._
 | function | `build_valence_trajectory_prompt_section` | `()` | Return a single prompt line when trajectory is notable. | [src](../../../core/services/valence_trajectory.py#L262) |
 | function | `reset_valence_trajectory` | `()` | Reset state (for testing). | [src](../../../core/services/valence_trajectory.py#L274) |
 | function | `_publish_valence_trajectory_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/valence_trajectory.py#L285) |
-
-## `core/services/value_formation.py`
-_Value Formation — emergent ethics from experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_value_from_experience` | `(*, action, outcome, reflection)` | — | [src](../../../core/services/value_formation.py#L12) |
-| function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
-| function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
-| function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
 

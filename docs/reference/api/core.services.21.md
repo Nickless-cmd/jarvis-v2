@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_retry_policy.py`
+_Provider retry policy — exponential backoff for transient failures._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
+| function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
+| function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
+
 ## `core/services/provider_self_heal.py`
 _Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
 
@@ -690,13 +699,4 @@ _Typed contracts and source normalization for explicit research runs._
 | function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
 | function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
 | function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
-
-## `core/services/research_evidence_collector.py`
-_Capture structured web-tool evidence for the active research run._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
-| function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
-| function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
 

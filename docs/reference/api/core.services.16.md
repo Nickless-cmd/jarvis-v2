@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/interruption_notice.py`
+_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
+| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
+
 ## `core/services/invocation_record.py`
 _Durabel invokations-tilstand for kald ingen bliver spurgt om._
 
@@ -650,16 +658,4 @@ _MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
 | method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L217) |
 | method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L231) |
 | method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L238) |
-
-## `core/services/mcp_manager.py`
-_MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_server_config` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L27) |
-| function | `get_client` | `(navn, *, connect=…)` | Hent (og evt. forbind) klienten for *navn*. None hvis ukendt server. | [src](../../../core/services/mcp_manager.py#L40) |
-| function | `disconnect_all` | `()` | — | [src](../../../core/services/mcp_manager.py#L58) |
-| function | `status` | `()` | Hvilke servere kendes, hvilke er godkendt, hvilke er forbundet? | [src](../../../core/services/mcp_manager.py#L68) |
-| function | `list_tools` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L88) |
-| function | `call` | `(navn, vaerktoej, arguments=…)` | — | [src](../../../core/services/mcp_manager.py#L99) |
 

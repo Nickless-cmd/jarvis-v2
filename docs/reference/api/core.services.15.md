@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hentede_vaerktoejer.py`
+_Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukkes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `frosset` | `()` | Skal værktøjsarrayet holdes helt stille efter en hentning? | [src](../../../core/services/hentede_vaerktoejer.py#L43) |
+| function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L57) |
+| function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L72) |
+| function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L90) |
+
 ## `core/services/hf_connector.py`
 _Hugging Face-connector — søg modeller/datasets via Hub API._
 
@@ -668,12 +678,4 @@ _Internal-opposition signal tracking — migrated onto signal_tracking_framework
 | function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L333) |
 | function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L338) |
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L343) |
-
-## `core/services/interruption_notice.py`
-_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
-| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
 

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/companion_presence.py`
+_Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
+| function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
+| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
+| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
+| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
+
 ## `core/services/compass_engine.py`
 _Compass Engine — weekly strategic bearing based on open loops and priorities._
 
@@ -560,16 +571,4 @@ _Cowork-feed: normaliserer items fra eksisterende kilder til én rolle-scopet_
 | function | `list_todos_feed` | `(*, user_id, is_owner)` | Todos til cowork. Owner ser alle; member får [] (todos er ikke user- | [src](../../../core/services/cowork_feed.py#L178) |
 | function | `_raw_channels` | `()` | Konfigurerede kanaler (online = konfigureret/aktiv). Live connection-state | [src](../../../core/services/cowork_feed.py#L186) |
 | function | `channel_status` | `()` | — | [src](../../../core/services/cowork_feed.py#L205) |
-
-## `core/services/creative_drift_daemon.py`
-_Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
-| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
-| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
-| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
-| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
-| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
 

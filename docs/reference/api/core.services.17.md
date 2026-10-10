@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_manager.py`
+_MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_server_config` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L27) |
+| function | `get_client` | `(navn, *, connect=…)` | Hent (og evt. forbind) klienten for *navn*. None hvis ukendt server. | [src](../../../core/services/mcp_manager.py#L40) |
+| function | `disconnect_all` | `()` | — | [src](../../../core/services/mcp_manager.py#L58) |
+| function | `status` | `()` | Hvilke servere kendes, hvilke er godkendt, hvilke er forbundet? | [src](../../../core/services/mcp_manager.py#L68) |
+| function | `list_tools` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L88) |
+| function | `call` | `(navn, vaerktoej, arguments=…)` | — | [src](../../../core/services/mcp_manager.py#L99) |
+
 ## `core/services/mcp_registry.py`
 _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
 
@@ -612,19 +624,4 @@ _Witness surface for hidden behavior modulators._
 | function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
 | function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
 | function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
-
-## `core/services/monitor_streams.py`
-_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
-| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
-| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
-| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
-| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
-| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
-| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
-| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
-| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
 

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experience_correction_listener.py`
+_Experience-episode correction enrichment — closes the negative-signal loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_looks_like_acknowledgement` | `(text)` | True hvis Jarvis selv siger at han tog fejl. | [src](../../../core/services/experience_correction_listener.py#L116) |
+| function | `_looks_like_correction` | `(text)` | Return True if the message opens with or contains a correction phrase. | [src](../../../core/services/experience_correction_listener.py#L131) |
+| function | `_mark_recent_episode_corrected` | `(session_id)` | Find the most recent un-corrected episode in this session within | [src](../../../core/services/experience_correction_listener.py#L146) |
+| function | `_extract_user_message` | `(payload)` | Return (session_id, content) if this is a role=user chat message. | [src](../../../core/services/experience_correction_listener.py#L225) |
+| function | `_previous_assistant_text` | `(session_id)` | The assistant message Bjørn is most likely correcting (newest before his). | [src](../../../core/services/experience_correction_listener.py#L239) |
+| function | `_previous_user_text` | `(session_id)` | Bjoerns seneste besked FOER dette svar — det er selve rettelsen. | [src](../../../core/services/experience_correction_listener.py#L254) |
+| function | `_record_self_ack_lesson` | `(session_id, jarvis_words)` | Jarvis indroemmede selv. Gem Bjoerns foregaaende ord som lektien. | [src](../../../core/services/experience_correction_listener.py#L270) |
+| function | `_record_correction_lesson` | `(session_id, content)` | 2026-09-04 (memory repair, R4): before, the correction text was thrown | [src](../../../core/services/experience_correction_listener.py#L284) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/experience_correction_listener.py#L298) |
+| function | `start_listener` | `()` | Idempotent — safe to call multiple times. | [src](../../../core/services/experience_correction_listener.py#L336) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/experience_correction_listener.py#L358) |
+
 ## `core/services/experience_episodes.py`
 _Experience-episode collector + retrieval — embedding-based learning substrate._
 
@@ -531,16 +548,4 @@ _Review-cluster gate — selv-review-vurdering, GRADERET._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `review_gate` | `(ctx)` | ctx: {review} hvor review har risk_level (low/med/high) + score. | [src](../../../core/services/gate_review.py#L23) |
-
-## `core/services/gate_shadow.py`
-_Track 2 — SHADOW-kørsel af de sovende post_output-gates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_enforced` | `(nerve)` | True hvis gaten er graduated til enforce (i _ENFORCED) OG ikke kill-switchet fra. | [src](../../../core/services/gate_shadow.py#L60) |
-| function | `_enforce_verdict` | `(nerve, cluster, klass, verdict)` | Håndhæv en enforced gates ikke-grønne verdict = gør det SYNLIGT som central-incident. | [src](../../../core/services/gate_shadow.py#L71) |
-| function | `POST_OUTPUT_GATES_CLUSTERS` | `()` | (nerve, cluster) i kald-rækkefølge — til test/introspektion. | [src](../../../core/services/gate_shadow.py#L98) |
-| function | `_shadow_enabled` | `()` | True medmindre gate_kernel.shadow er EKSPLICIT slået fra. Fail-open til ON | [src](../../../core/services/gate_shadow.py#L103) |
-| function | `_resolve` | `(mod_path, fn_attr)` | — | [src](../../../core/services/gate_shadow.py#L113) |
-| function | `run_post_output_shadow` | `(ctx)` | Kør de 5 sovende gates i SKYGGE via central().decide. | [src](../../../core/services/gate_shadow.py#L118) |
 

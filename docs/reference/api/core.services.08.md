@@ -66,6 +66,16 @@ _cheap_lane_selfheal — cheap-lane maa ALDRIG stale eller doe (Bjoern 16.jul)._
 | function | `reprobe` | `(provider, model)` | Minimalt sundheds-probe. Healer state ved succes, saetter frisk cooldown ved fejl. | [src](../../../core/services/cheap_lane_selfheal.py#L116) |
 | function | `run_selfheal` | `(*, max_probes=…)` | Re-probe op til max_probes fastlaaste providere. Returnér {healed, still_down}. | [src](../../../core/services/cheap_lane_selfheal.py#L159) |
 
+## `core/services/cheap_lane_success_rate.py`
+_Kroniske fejlere: slots hvis FAKTISKE success-rate ligger under gulvet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled` | `()` | — | [src](../../../core/services/cheap_lane_success_rate.py#L44) |
+| function | `find_chronic_failures` | `(*, days=…, min_calls=…, floor=…)` | Slots hvis success-rate over vinduet er UNDER `floor`, med mindst `min_calls`. | [src](../../../core/services/cheap_lane_success_rate.py#L52) |
+| function | `apply_quarantine` | `(rows, *, hours=…)` | Sæt en tidsbegrænset cooldown i `cheap_provider_runtime_state` for hver dømt slot. | [src](../../../core/services/cheap_lane_success_rate.py#L106) |
+| function | `enforce` | `(*, days=…, min_calls=…, floor=…, hours=…)` | Flag-gated indgang: find kroniske fejlere og sæt dem i karantæne. | [src](../../../core/services/cheap_lane_success_rate.py#L160) |
+
 ## `core/services/cheap_lane_trace_context.py`
 _Stable identity carried across Cheap Lane attempts and fallbacks._
 
@@ -745,15 +755,4 @@ _Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
 | function | `check_allowed` | `(user_id, *, now=…)` | Må en tanke sendes lige nu? Ren vurdering — sender ingenting. | [src](../../../core/services/companion_initiative.py#L117) |
 | function | `offer_thought` | `(user_id, text, *, title=…, now=…)` | Tilbyd en tanke. Sender kun hvis grænserne tillader det. | [src](../../../core/services/companion_initiative.py#L144) |
 | function | `recent_thoughts` | `(user_id, *, limit=…)` | Tankerne, nyeste først — også dem der blev holdt tilbage. | [src](../../../core/services/companion_initiative.py#L184) |
-
-## `core/services/companion_presence.py`
-_Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
-| function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
-| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
-| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
-| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
 

@@ -104,6 +104,74 @@ def beslut(resultat: dict[str, Any]) -> tuple[bool | None, str]:
     return True, f"score {score}"
 
 
+# ── navne-drift: opdater mod provideren frem for at fjerne ──────────────────
+#
+# Udbyderne fjerner suffikser (":free") og flytter gratis-modeller til betalte
+# slugs. Navnet ændrer sig, modellen gør ikke. Ved `model-not-found` er
+# spørgsmålet derfor ikke OM modellen lever, men hvad den HEDDER nu — og svaret
+# står allerede i udbyderens egen liste, som sweep'en henter i forvejen.
+#
+# Målt 10/10-2026: fire openrouter-slots stod disabled, mens alle fire levede i
+# providerens liste uden `:free`. Én havde fejlet 16 gange over 11 dage — hver
+# gang 24 t karantæne, hver gang tilbage, hver gang dødt igen, fordi koden slog
+# fra i stedet for at slå op. (Bjørn: «opdatere vores model katalog mod
+# provideren frem for at fjerne dem».)
+_NAVNE_DRIFT_PHRASES = (
+    "model_not_found", "model-not-found", "model not found", "model not exist",
+    "does not exist", "unknown model", "is not supported", "no longer available",
+    "no endpoints found", "invalid model", "model_archived", "is archived",
+    "has been retired", "retirement", "decommissioned",
+)
+# En travl udbyder er IKKE navne-drift. Disse vinder over alt andet: et 429 må
+# ikke få os til at omdøbe en model der er rask.
+_FORBIGAAENDE_PHRASES = (
+    "429", "rate limit", "rate_limit", "too many requests", "timeout",
+    "timed out", "temporarily", "try again", "502", "503", "504",
+)
+
+
+def _basis_navn(navn: str) -> str:
+    """Navnet uden variantsuffiks: `minimax/minimax-m3:free` → `minimax/minimax-m3`."""
+    return str(navn or "").strip().split(":", 1)[0].strip()
+
+
+def _er_navne_drift(fejl: str) -> bool:
+    b = str(fejl or "").strip().lower()
+    if not b:
+        return False
+    if any(p in b for p in _FORBIGAAENDE_PHRASES):
+        return False
+    return any(p in b for p in _NAVNE_DRIFT_PHRASES)
+
+
+def foreslaa_navn(
+    model: str,
+    fejl: str,
+    fra_api: list[str],
+    *,
+    kendte: set[str] | None = None,
+) -> str | None:
+    """Udbyderens navn for en model vi har under et forældet navn, ellers None.
+
+    Kun ved navne-drift — en rate-limit eller en timeout er ikke et nyt navn.
+    Modeller vi allerede har (i registret eller kataloget) foreslås ikke: vi
+    vil ikke omdøbe til noget der allerede står der.
+    """
+    if not _er_navne_drift(fejl):
+        return None
+    basis = _basis_navn(model)
+    if not basis:
+        return None
+    kendte = kendte or set()
+    for navn in fra_api or []:
+        n = str(navn or "").strip()
+        if not n or n == model or n in kendte:
+            continue
+        if _basis_navn(n) == basis:
+            return n
+    return None
+
+
 def egnet_til_agentarbejde(resultat: dict[str, Any]) -> bool:
     """Explore og andre opgave-agenter må kun få modeller der kan bruge et
     værktøjsresultat. En der kalder og ignorerer svaret ligner en der
@@ -149,7 +217,7 @@ def sweep_provider(
     rapport: dict[str, Any] = {
         "provider": provider, "tidspunkt": _now(),
         "proevet": 0, "slaaet_fra": [], "genoplivet": [], "nye": [],
-        "agent_egnede": [], "uaendret": 0, "fejl": "",
+        "agent_egnede": [], "uaendret": 0, "fejl": "", "omdoebt": [],
     }
     kand = kandidater_for(provider, registrerede=registrerede, fra_api=fra_api,
                           statiske=[], maks_nye=maks_nye)
@@ -191,6 +259,37 @@ def sweep_provider(
             rapport["uaendret"] += 1
         if egnet_til_agentarbejde(r):
             rapport["agent_egnede"].append(m)
+
+    # NAVNE-DRIFT: en model der ikke findes under sit gamle navn kan leve under
+    # et nyt. Vi har udbyderens liste; findes basis-navnet der, prøv det — og
+    # virker det, skriv det nye navn aktivt frem for at lade det gamle stå dødt.
+    brugte = set(registrerede)
+    for m, r in list(resultater.items()):
+        if beslut(r)[0] is not False:
+            continue
+        nyt = foreslaa_navn(m, str(r.get("error") or ""), fra_api, kendte=brugte)
+        if not nyt:
+            continue
+        ny_r = resultater.get(nyt)
+        if ny_r is None:
+            ny_r = proev(provider=provider, model=nyt,
+                         auth_profile=profil or "default", base_url=base_url)
+            resultater[nyt] = ny_r
+            rapport["proevet"] += 1
+        if beslut(ny_r)[0] is not True:
+            continue  # det nye navn dumpede også — så gælder den gamle dom
+        brugte.add(nyt)
+        skriv(provider=provider, model=nyt, aktiv=True, grund="navne-drift",
+              score=int(ny_r.get("score") or 0), detalje=ny_r, profil=profil or "default")
+        # Den gamle post bærer nu grunden: den er omdøbt, ikke død.
+        skriv(provider=provider, model=m, aktiv=False, grund=f"omdøbt til {nyt}",
+              score=int(ny_r.get("score") or 0), detalje=ny_r, profil=profil or "default")
+        # Flyttet er ikke dødt: den hører i «omdøbt», ikke i «slået fra».
+        rapport["slaaet_fra"] = [x for x in rapport["slaaet_fra"] if x["model"] != m]
+        rapport["omdoebt"].append({
+            "fra": m, "til": nyt, "score": ny_r.get("score"),
+            "pris_aendret": ":free" in m and ":free" not in nyt,
+        })
     return rapport
 
 
@@ -297,7 +396,7 @@ def _skriv_registret(*, provider: str, model: str, aktiv: bool, grund: str,
 def sammendrag(rapporter: list[dict[str, Any]]) -> str:
     """Én besked til mobilen. Kun ÆNDRINGER — en push der hver uge siger
     «alt er som før» bliver ignoreret indtil den uge hvor den ikke er det."""
-    fra, ny, genopl, fejl = [], [], [], []
+    fra, ny, genopl, fejl, omdoebt = [], [], [], [], []
     for r in rapporter:
         p = r.get("provider")
         for x in r.get("slaaet_fra") or []:
@@ -306,11 +405,16 @@ def sammendrag(rapporter: list[dict[str, Any]]) -> str:
             ny.append(f"{p}/{x['model']} ({x.get('score')})")
         for x in r.get("genoplivet") or []:
             genopl.append(f"{p}/{x['model']}")
+        for x in r.get("omdoebt") or []:
+            pris = " (nu betalt)" if x.get("pris_aendret") else ""
+            omdoebt.append(f"{p}/{x['fra']} → {x['til']}{pris}")
         if r.get("fejl"):
             fejl.append(f"{p}: {r['fejl']}")
-    if not (fra or ny or genopl or fejl):
+    if not (fra or ny or genopl or fejl or omdoebt):
         return ""
     dele = []
+    if omdoebt:
+        dele.append(f"Omdøbt ({len(omdoebt)}): " + ", ".join(omdoebt[:6]))
     if fra:
         dele.append(f"Slået fra ({len(fra)}): " + ", ".join(fra[:6]))
     if ny:

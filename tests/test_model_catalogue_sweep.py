@@ -3,7 +3,7 @@ utvetydig, og værnene skal holde. Alt kører gennem injicerede kroge; ingen
 test rører en udbyder eller en rigtig fil.
 """
 from core.services.model_catalogue_sweep import (
-    beslut, egnet_til_agentarbejde, kandidater_for, sweep_provider,
+    beslut, egnet_til_agentarbejde, foreslaa_navn, kandidater_for, sweep_provider,
 )
 
 
@@ -262,3 +262,92 @@ def test_ikke_afgjorte_modeller_roeres_ikke(monkeypatch):
                           skriv=lambda **kw: skrevet.append(kw) or True)
     assert skrevet == [], "skrev selvom dommen var uafgjort"
     assert r["ikke_afgjort"][0]["model"] == "m"
+
+
+# ── navne-drift: opdater mod provideren frem for at fjerne ──────────────────
+#
+# Bjørn 10/10-2026: «De steder det handler om model not found skal vi opdatere
+# vores model katalog mod provideren frem for at fjerne dem.» Udbyderne fjerner
+# suffikser (":free") og flytter gratis-modeller til betalte slugs — navnet
+# ændrer sig, modellen gør ikke. Fejemaskinen HENTER allerede udbyderens liste;
+# her oversættes ét navn til et andet i stedet for at slå slottet fra.
+
+def test_foreslaa_navn_finder_providerens_navn_uden_free_suffiks():
+    nyt = foreslaa_navn("minimax/minimax-m3:free", "Model not exist.",
+                        ["minimax/minimax-m3", "noget/andet"])
+    assert nyt == "minimax/minimax-m3"
+
+
+def test_foreslaa_navn_returnerer_None_naar_ingen_ligner():
+    assert foreslaa_navn("minimax/minimax-m3:free", "Model not exist.",
+                         ["noget/helt-andet"]) is None
+
+
+def test_foreslaa_navn_roerer_ikke_ved_en_rate_limit():
+    """En travl udbyder må ikke få os til at omdøbe en model der er rask."""
+    assert foreslaa_navn("minimax/minimax-m3:free",
+                         '{"status":429,"title":"Too Many Requests"}',
+                         ["minimax/minimax-m3"]) is None
+
+
+def test_foreslaa_navn_springer_modeller_over_vi_allerede_har():
+    assert foreslaa_navn("m:free", "Model not exist.", ["m"], kendte={"m"}) is None
+
+
+def test_foreslaa_navn_returnerer_ikke_modellen_selv():
+    assert foreslaa_navn("m", "Model not exist.", ["m"]) is None
+
+
+def test_sweep_omdoeber_naar_provideren_har_det_nye_navn(monkeypatch):
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller",
+                        lambda p: (["minimax/minimax-m3:free"], "default"))
+    skrevet = []
+
+    def proev(**kw):
+        if kw["model"].endswith(":free"):
+            return _r(callable=False, score=0, error="Model not exist.")
+        return _r(score=95)
+
+    r = sw.sweep_provider(
+        "openrouter",
+        hent_modeller=lambda p, prof: ["minimax/minimax-m3"],
+        proev=proev,
+        skriv=lambda **kw: (skrevet.append((kw["model"], kw["aktiv"])), True)[1],
+    )
+    assert ("minimax/minimax-m3", True) in skrevet, "det nye navn blev ikke aktiveret"
+    assert r["omdoebt"] and r["omdoebt"][0]["fra"] == "minimax/minimax-m3:free"
+    assert r["omdoebt"][0]["til"] == "minimax/minimax-m3"
+
+
+def test_sweep_omdoeber_IKKE_naar_det_nye_navn_ogsaa_dumper(monkeypatch):
+    """Finder vi et nyt navn der også dumper, er der intet vundet — så gælder
+    den gamle dom, og slottet slås fra som før."""
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller",
+                        lambda p: (["sund", "m:free"], "default"))
+    skrevet = []
+
+    def proev(**kw):
+        return _r(score=95) if kw["model"] == "sund" else _r(
+            callable=False, score=0, error="Model not exist.")
+
+    r = sw.sweep_provider(
+        "openrouter",
+        hent_modeller=lambda p, prof: ["m"],
+        proev=proev,
+        skriv=lambda **kw: (skrevet.append((kw["model"], kw["aktiv"])), True)[1],
+        maks_nye=0,
+    )
+    assert r["omdoebt"] == []
+    assert ("m:free", False) in skrevet
+
+
+def test_omdoebt_naevnes_i_beskeden():
+    b = sammendrag([{
+        "provider": "openrouter", "slaaet_fra": [], "nye": [], "genoplivet": [],
+        "fejl": "",
+        "omdoebt": [{"fra": "minimax/minimax-m3:free",
+                     "til": "minimax/minimax-m3", "score": 95}],
+    }])
+    assert "Omdøbt" in b and "minimax/minimax-m3" in b

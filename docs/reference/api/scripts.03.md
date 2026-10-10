@@ -215,6 +215,13 @@ _Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
 | function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
 | function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
 
+## `scripts/ryd_ejerloese_kandidater.py`
+_Ryd ejerløse kandidater i runtime_contract_candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/ryd_ejerloese_kandidater.py#L33) |
+
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8823/16659 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8823/16660 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8823/16659 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 266 | 582 | 45% |
+| `scripts` | 266 | 583 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2357)
+## Undocumented public functions (2358)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2371,6 +2371,7 @@ Generated from source. 8823/16659 functions/methods documented (52%). The list b
 - `scripts/requirements_gen.py` :: `third_party` (L40)
 - `scripts/reset_heartbeat_state.py` :: `main` (L36)
 - `scripts/rewrite_legacy_memory_provenance.py` :: `main` (L57)
+- `scripts/ryd_ejerloese_kandidater.py` :: `main` (L33)
 - `scripts/setup_google_calendar.py` :: `main` (L17)
 - `scripts/signal_noise_cleanup.py` :: `cleanup_signal_noise` (L103)
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)

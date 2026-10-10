@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8813/16649 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8814/16664 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5879 | 11304 | 52% |
+| `core.services` | 5879 | 11318 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 21 | 33 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 526 | 1066 | 49% |
+| `core.tools` | 527 | 1067 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2356)
+## Undocumented public functions (2366)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -628,9 +628,9 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `read_header` (L119)
 - `core/runtime/session_ledger_crypto.py` :: `protect_event` (L12)
 - `core/runtime/session_ledger_crypto.py` :: `reveal_event` (L34)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L704)
-- `core/runtime/settings.py` :: `load_settings` (L759)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1233)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L708)
+- `core/runtime/settings.py` :: `load_settings` (L764)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1238)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1998,6 +1998,16 @@ Generated from source. 8813/16649 functions/methods documented (52%). The list b
 - `core/services/tool_contract_shadow.py` :: `taellere_fra_cache` (L57)
 - `core/services/tool_embeddings.py` :: `get_embedding` (L89)
 - `core/services/tool_embeddings.py` :: `invalidate` (L109)
+- `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.drain` (L61)
+- `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.put` (L40)
+- `core/services/tool_execution_trace.py` :: `bind_execution` (L212)
+- `core/services/tool_execution_trace.py` :: `cancel_call` (L207)
+- `core/services/tool_execution_trace.py` :: `emit_current_output` (L222)
+- `core/services/tool_execution_trace.py` :: `mark_dispatch` (L132)
+- `core/services/tool_execution_trace.py` :: `mark_execution_complete` (L139)
+- `core/services/tool_execution_trace.py` :: `note_executor_timing` (L146)
+- `core/services/tool_execution_trace.py` :: `start_call` (L113)
+- `core/services/tool_execution_trace.py` :: `surface_result` (L197)
 - `core/services/tool_intent_approval_runtime.py` :: `build_approval_feedback_surface` (L364)
 - `core/services/tool_intent_approval_runtime.py` :: `build_sudo_approval_window_surface` (L177)
 - `core/services/tool_intent_approval_runtime.py` :: `build_tool_intent_approval_surface` (L50)

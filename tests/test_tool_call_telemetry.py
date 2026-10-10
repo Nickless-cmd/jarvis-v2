@@ -134,3 +134,28 @@ def test_completed_fra_et_UI_kald_har_TOMME_felter_ikke_gaettede():
     p = t.byg_completed_payload("operator_bash", "ok", {"command": "ls"})
     assert p["run_id"] == ""
     assert p["tool_use_id"] == ""
+
+
+def test_completed_payload_bevarer_sit_eksisterende_schema():
+    assert t.byg_completed_payload("bash", "ok", {
+        "_runtime_turn_id": "run-1",
+        "_runtime_tool_use_id": "tool-1",
+        "command": "true",
+    }) == {
+        "tool": "bash",
+        "status": "ok",
+        "run_id": "run-1",
+        "tool_use_id": "tool-1",
+    }
+
+
+def test_execution_timing_udgivelse_er_selvsikker(monkeypatch):
+    sent = []
+    import core.eventbus.bus as bus
+    monkeypatch.setattr(bus.event_bus, "publish", lambda kind, payload: sent.append((kind, payload)))
+    payload = {"tool": "bash", "total_visible_ms": 123}
+    t.udgiv_execution_timing(payload)
+    assert sent == [("tool.execution_timing", payload)]
+
+    monkeypatch.setattr(bus.event_bus, "publish", lambda *_: (_ for _ in ()).throw(RuntimeError("down")))
+    t.udgiv_execution_timing(payload)

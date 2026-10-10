@@ -6,6 +6,14 @@ Hvis de ved et uheld bliver sat tilbage, fanger denne test det.
 from __future__ import annotations
 
 
+def test_tool_observability_rollout_defaults_are_explicit() -> None:
+    from core.runtime.settings import RuntimeSettings
+
+    settings = RuntimeSettings()
+    assert settings.tool_execution_timing_enabled is True
+    assert settings.live_tool_output_enabled is False
+
+
 def test_tool_result_render_limits_configurable_with_defaults() -> None:
     """Tools-cluster 2026-06-22: tool-resultat-render-lofterne er konfigurerbare
     settings. Default recent=3000 (sænket fra hardcoded 4000 for at trimme bloat),

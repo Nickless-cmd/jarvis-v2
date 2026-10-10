@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_execution_trace.py`
+_Process-local timing and bounded live-output state for visible tool calls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `OutputDelta` | `` | — | [src](../../../core/services/tool_execution_trace.py#L20) |
+| class | `BoundedOutputBuffer` | `` | Thread-safe non-blocking queue that drops oldest output under pressure. | [src](../../../core/services/tool_execution_trace.py#L28) |
+| method | `BoundedOutputBuffer.__init__` | `(self, max_frames=…, max_pending_chars=…)` | — | [src](../../../core/services/tool_execution_trace.py#L31) |
+| method | `BoundedOutputBuffer.put` | `(self, delta)` | — | [src](../../../core/services/tool_execution_trace.py#L40) |
+| method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
+| class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
+| class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L78) |
+| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L96) |
+| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L107) |
+| function | `start_call` | `(tool_use_id, *, tool, run_id, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L113) |
+| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L132) |
+| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L139) |
+| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L146) |
+| function | `_finish` | `(tool_use_id, *, status, exit_code, now)` | — | [src](../../../core/services/tool_execution_trace.py#L163) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L207) |
+| function | `bind_execution` | `(tool_use_id, output_buffer)` | — | [src](../../../core/services/tool_execution_trace.py#L212) |
+| function | `emit_current_output` | `(stream, chunk, seq=…)` | — | [src](../../../core/services/tool_execution_trace.py#L222) |
+
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 
@@ -568,19 +592,4 @@ _Value Formation — emergent ethics from experience._
 | function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
 | function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
 | function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
-
-## `core/services/verification_gate.py`
-_Verification gate — advisory check on destructive/mutation actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
-| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L149) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L283) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L291) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L305) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L369) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
 

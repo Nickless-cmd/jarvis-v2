@@ -92,6 +92,15 @@ def udgiv_tool_invoked(name: str, arguments: dict[str, Any]) -> None:
                        name, exc)
 
 
+def udgiv_execution_timing(payload: dict[str, Any]) -> None:
+    """Publish one terminal timing summary without affecting the tool call."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("tool.execution_timing", payload)
+    except Exception as exc:
+        logger.warning("tool_call_telemetry: kunne ikke udgive execution timing: %s", exc)
+
+
 def byg_completed_payload(name: str, status: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """`tool.completed` — nu med de to felter der goer parringen mulig.
 

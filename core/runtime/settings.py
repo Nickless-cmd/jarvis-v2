@@ -465,6 +465,10 @@ class RuntimeSettings:
     # (2026-09-04): old tool outputs move to stable cold stubs only at compaction
     # epochs or hard ceilings, preserving DeepSeek's cacheable prefix between turns.
     tool_result_lifecycle_enabled: bool = True
+    # Visible tool observability rollout. Timing is low-volume durable metadata;
+    # raw output stays opt-in until the full bridge/Desk path is deployed.
+    tool_execution_timing_enabled: bool = True
+    live_tool_output_enabled: bool = False
     tool_warm_run_window: int = 8          # keep last N user-turns warm
     tool_warm_token_ceiling: int = 40000   # ceiling on warm tool-result tokens
     tool_warm_hysteresis: float = 0.25     # advance margin (no thrash)
@@ -748,6 +752,7 @@ _TIDLIGERE_UINDLAESTE = (
     "visible_tools_unified", "visible_tools_frozen",
     "markdown_split_lange_linjer",
     "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
+    "tool_execution_timing_enabled", "live_tool_output_enabled",
     "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
     "tool_router_k_embeddings", "tool_router_embedding_model",
     "tool_router_embedding_provider", "tool_router_embed_timeout_s",

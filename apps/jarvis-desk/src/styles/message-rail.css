@@ -1,0 +1,105 @@
+/* Beskedskinnen er sin egen enhed; app.css var over Boy Scout-grænsen. */
+.msg-rail {
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  z-index: 20;
+  width: 34px;
+}
+
+/* Kun ankre i kanten. En lang samtale kan scrolles uden at åbne en liste. */
+.msg-rail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(240px, calc(100vh - 200px));
+  padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.msg-rail-panel::-webkit-scrollbar { display: none; }
+.msg-rail-row {
+  display: grid;
+  place-items: center start;
+  flex: 0 0 16px;
+  width: 26px;
+  padding: 0 5px;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  color: var(--fg-3, #888);
+  cursor: pointer;
+}
+.msg-rail-row:hover { color: var(--fg-1, #eee); }
+.msg-rail-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.msg-rail-dash,
+.msg-rail-dash::before,
+.msg-rail-dash::after {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.msg-rail-dash {
+  position: relative;
+  width: 13px;
+  opacity: .55;
+  transition: width .15s ease, opacity .15s ease;
+}
+/* De tre forskudte streger danner bølgen på det aktuelle punkt. */
+.msg-rail-dash::before,
+.msg-rail-dash::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.msg-rail-dash::before { top: -5px; width: 9px; }
+.msg-rail-dash::after { top: 5px; width: 11px; }
+.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash { width: 18px; opacity: 1; }
+.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::before,
+.msg-rail-row:is(.is-active, :hover, :focus-visible) .msg-rail-dash::after { opacity: .7; }
+.msg-rail-row.is-active { color: var(--accent); }
+.msg-rail-row.er-sidste { color: var(--accent); }
+.msg-rail-row.er-sidste .msg-rail-dash { width: 19px; opacity: 1; }
+.msg-rail-row.har-fejl { color: var(--error-fg); }
+.msg-rail-row.er-komprimering .msg-rail-dash {
+  height: 0;
+  border-top: 2px dotted currentColor;
+  background: none;
+  border-radius: 0;
+}
+.msg-rail-row.er-komprimering .msg-rail-dash::before,
+.msg-rail-row.er-komprimering .msg-rail-dash::after { display: none; }
+.msg-rail-row.er-fastgjort { color: var(--accent); }
+
+/* Én forhåndsvisning ad gangen; den ligger uden for den scrollbare skinne. */
+.msg-rail-preview {
+  position: absolute;
+  left: calc(100% + 7px);
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 90px));
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg-2, #292929);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .32);
+  color: var(--fg-1, #eee);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.msg-rail-preview svg { flex: none; margin-top: 2px; color: var(--accent); }
+.msg-rail-preview span {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}

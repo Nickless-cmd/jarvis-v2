@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16673 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16721 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,16 +48,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16673 functions/
 - [`core.services.17`](core.services.17.md) — `mcp_registry` … `monitor_streams`
 - [`core.services.18`](core.services.18.md) — `mood_dialer` … `override_command`
 - [`core.services.19`](core.services.19.md) — `override_store` … `proactive_outbound_substrate`
-- [`core.services.20`](core.services.20.md) — `proactive_question_gate_tracking` … `provider_self_heal`
-- [`core.services.21`](core.services.21.md) — `published_files` … `research_ledger`
-- [`core.services.22`](core.services.22.md) — `research_orchestrator` … `runtime_self_model_boundary`
-- [`core.services.23`](core.services.23.md) — `runtime_self_model_builder` … `self_surprise_detection`
-- [`core.services.24`](core.services.24.md) — `self_surprise_expectation` … `signal_decay_daemon`
-- [`core.services.25`](core.services.25.md) — `signal_delta_trigger` … `subjective_time`
-- [`core.services.26`](core.services.26.md) — `suggest_standing_guard` … `tool_hunt_nudge`
-- [`core.services.27`](core.services.27.md) — `tool_intent_approval_runtime` … `verification_gate_telemetry`
-- [`core.services.28`](core.services.28.md) — `versioneret_json_svar` … `visible_runs_error_messaging`
-- [`core.services.29`](core.services.29.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `proactive_question_gate_tracking` … `provider_retry_policy`
+- [`core.services.21`](core.services.21.md) — `provider_self_heal` … `research_evidence_collector`
+- [`core.services.22`](core.services.22.md) — `research_ledger` … `runtime_self_model_affect`
+- [`core.services.23`](core.services.23.md) — `runtime_self_model_boundary` … `self_review_unified`
+- [`core.services.24`](core.services.24.md) — `self_surprise_detection` … `signal_baseline`
+- [`core.services.25`](core.services.25.md) — `signal_decay_daemon` … `subagent_ecology`
+- [`core.services.26`](core.services.26.md) — `subjective_time` … `tool_embeddings`
+- [`core.services.27`](core.services.27.md) — `tool_execution_trace` … `value_formation`
+- [`core.services.28`](core.services.28.md) — `verification_gate` … `visible_runs_approvals`
+- [`core.services.29`](core.services.29.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -66,8 +66,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16673 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `identity_pin_tools`
 - [`core.tools.02`](core.tools.02.md) — `identity_sketch_tools` … `recurring_scheduler_tools`
-- [`core.tools.03`](core.tools.03.md) — `restart_self_tools` … `wake_word_tool`
-- [`core.tools.04`](core.tools.04.md) — `web_cache` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `restart_self_tools` … `voice_journal_tool`
+- [`core.tools.04`](core.tools.04.md) — `wake_word_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

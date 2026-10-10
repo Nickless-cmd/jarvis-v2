@@ -12,7 +12,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from core.services.jarvisx_bridge import (
     BridgeConnection,
@@ -32,7 +32,7 @@ _LOCALHOST_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 
 @router.post("/api/internal/jarvisx-bridge/dispatch")
-async def internal_dispatch(request: Request) -> JSONResponse:
+async def internal_dispatch(request: Request):
     """Intern cross-process dispatch (runtime-proces → api-proces).
 
     Ligger under ``/api/internal/`` → fritaget bearer-token-middleware'en
@@ -96,6 +96,49 @@ async def internal_dispatch(request: Request) -> JSONResponse:
         pinned = await dispatch_pinned(user_id=user_id, client_id=client_id, tool=tool, args=args,
                                        timeout_s=timeout_s, extra=extra, allow_cross_process=False)
         return JSONResponse(pinned, status_code=200)
+
+    if bool(body.get("stream_output")):
+        async def _stream_frames():
+            output_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=128)
+            dropped = False
+
+            def _on_output(*, stream: str, seq: int, chunk: str) -> None:
+                nonlocal dropped
+                frame = {
+                    "type": "output_delta",
+                    "stream": stream,
+                    "seq": seq,
+                    "chunk": chunk,
+                }
+                if output_queue.full():
+                    try:
+                        output_queue.get_nowait()
+                    except asyncio.QueueEmpty:  # en anden laeser toemte den foerst; der er plads igen
+                        pass
+                    dropped = True
+                if dropped:
+                    frame["truncated"] = True
+                    dropped = False
+                output_queue.put_nowait(frame)
+
+            dispatch_task = asyncio.create_task(bridge_registry.dispatch(
+                user_id=user_id,
+                tool=tool,
+                args=args,
+                timeout_s=timeout_s,
+                allow_cross_process=False,
+                on_output=_on_output,
+            ))
+            while not dispatch_task.done() or not output_queue.empty():
+                try:
+                    frame = await asyncio.wait_for(output_queue.get(), timeout=0.075)
+                except asyncio.TimeoutError:  # polling lets the terminal task finish without output
+                    continue
+                yield json.dumps(frame, ensure_ascii=False) + "\n"
+            result = await dispatch_task
+            yield json.dumps({"type": "result", **result}, ensure_ascii=False) + "\n"
+
+        return StreamingResponse(_stream_frames(), media_type="application/x-ndjson")
 
     # allow_cross_process=False → ingen videre-forward (løkke-spærre).
     result = await bridge_registry.dispatch(
@@ -268,6 +311,15 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
                     status=str(msg.get("status") or "error"),
                     result=msg.get("result"),
                     error=msg.get("error"),
+                    timing=msg.get("timing") if isinstance(msg.get("timing"), dict) else None,
+                )
+            elif mtype == "tool_output_delta":
+                await conn.deliver_output(
+                    correlation_id=str(msg.get("correlation_id") or ""),
+                    stream=str(msg.get("stream") or "stdout"),
+                    seq=int(msg.get("seq") or 0),
+                    chunk=str(msg.get("chunk") or ""),
+                    truncated=bool(msg.get("truncated")),
                 )
             elif mtype == "invocation_status_report":
                 # Kun klientens EGNE kald for DENNE ejer afgoeres - bruger-id og klient-id kommer fra

@@ -691,10 +691,21 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
     # chat-approval-card mekanismen på et højere niveau i flowet.
     # (screenshot og clipboard gør det samme; OS-dialog er fjernet).
     from core.tools.operator_tools import operator_bash_async
+    from core.runtime.settings import load_settings
+    from core.services.tool_execution_trace import emit_current_output
+    from contextvars import copy_context
     # K10: rapporten paa svaret — containerens sandkasse gaelder ikke paa
     # operatorens maskine, og det maa ikke kun staa i hovedet paa den der
     # skrev broen. Politikken er UAENDRET; kun tavsheden er vaek.
     from core.services.shell_confinement_report import OPERATOR, vedhaeft
+    live_output = bool(load_settings().live_tool_output_enabled)
+    output_context = copy_context()
+
+    def _forward_output(
+        *, stream: str, seq: int, chunk: str, truncated: bool = False,
+    ) -> None:
+        output_context.run(emit_current_output, stream, chunk, seq, truncated)
+
     return vedhaeft(_run_operator_async(
         lambda: operator_bash_async(
             command=command,
@@ -702,6 +713,8 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
             timeout_s=timeout_s,
             user_id=user_id,
             skip_approval=True,
+            on_output=_forward_output if live_output else None,
+            tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
         ),
         tool_name="operator_bash",
         timeout_s=thread_timeout,

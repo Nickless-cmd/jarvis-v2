@@ -23,7 +23,75 @@ To ting her er lektier, ikke smag:
 
 from __future__ import annotations
 
+import hashlib
+import logging
+import os
 import sys
+
+from core.services import central_xproc, turn_trace
+
+logger = logging.getLogger(__name__)
+
+
+def _opaque_key_hash(key: tuple | None) -> str | None:
+    if key is None:
+        return None
+    return hashlib.sha256(repr(key).encode("utf-8")).hexdigest()[:16]
+
+
+def rapporter_cache_lookup(
+    *,
+    key: tuple | None,
+    outcome: str,
+    cache_age_ms: int | None,
+    lookup_ms: float,
+    build_ms: float | None,
+    caller_phase: str,
+) -> None:
+    """Publish one privacy-safe cache decision for every wrapper call."""
+    try:
+        _rapporter_cache_lookup(
+            key=key,
+            outcome=outcome,
+            cache_age_ms=cache_age_ms,
+            lookup_ms=lookup_ms,
+            build_ms=build_ms,
+            caller_phase=caller_phase,
+        )
+    except Exception as exc:
+        logger.warning("prompt cache telemetry unavailable: %s", exc)
+
+
+def _rapporter_cache_lookup(
+    *,
+    key: tuple | None,
+    outcome: str,
+    cache_age_ms: int | None,
+    lookup_ms: float,
+    build_ms: float | None,
+    caller_phase: str,
+) -> None:
+    key_hash = _opaque_key_hash(key)
+    payload = {
+        "key_hash": key_hash,
+        "cache_outcome": str(outcome),
+        "cache_age_ms": cache_age_ms,
+        "lookup_ms": round(float(lookup_ms), 3),
+        "build_ms": None if build_ms is None else round(float(build_ms), 3),
+        "caller_phase": str(caller_phase),
+        "pid": os.getpid(),
+        "process_role": central_xproc.process_role(),
+    }
+    from core.eventbus.bus import event_bus
+    try:
+        event_bus.publish("prompt.assembly_cache", payload)
+    except Exception:  # cache telemetry must never break prompt assembly
+        pass
+    turn_trace.mark(
+        "prompt_cache",
+        f"{payload['caller_phase']}:{payload['cache_outcome']}:{key_hash or 'none'}",
+        round(float(build_ms if build_ms is not None else lookup_ms)),
+    )
 
 
 def label_of(text: str) -> str:

@@ -131,6 +131,15 @@ def udgiv_tool_invoked(name: str, arguments: dict[str, Any]) -> None:
                        name, exc)
 
 
+def udgiv_execution_timing(payload: dict[str, Any]) -> None:
+    """Publish one terminal timing summary without affecting the tool call."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("tool.execution_timing", payload)
+    except Exception as exc:
+        logger.warning("tool_call_telemetry: kunne ikke udgive execution timing: %s", exc)
+
+
 #: Shell-vaerktoejer — kun de baerer baade en kommando OG en exit-kode i
 #: resultatet. Det er den raa substans bagud-maalingen kraever: detektoren
 #: `silent_chain_break` er en REN funktion af (kommando, exit-kode).

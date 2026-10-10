@@ -60,6 +60,7 @@ _KNOWN_SYSTEM_EVENT_KINDS = {
     "steer_received",
     "turn_changelog",
     "app_action_request",
+    "tool_output_delta",
     # Skills runtimen lagde i prompten (skill_relevance_surface.skill_flade_event).
     "skill_surface",
     # Unified fejl-system (2026-06-23): konsistent bruger-vendt fejl-event
@@ -881,6 +882,12 @@ async def translate_to_v2(
                     except Exception:
                         pass
                     break
+
+                elif event_name == "tool_output_delta":
+                    await _emit_message_start_if_needed()
+                    await queue.put(SystemEvent(
+                        kind="tool_output_delta", payload=payload,
+                    ).to_sse_line())
 
                 elif event_name == "heartbeat":
                     # v2 har sin egen ping — skip legacy heartbeats

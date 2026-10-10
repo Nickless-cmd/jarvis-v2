@@ -104,6 +104,21 @@ async def test_working_step_wrapped_as_system_event():
 
 
 @pytest.mark.asyncio
+async def test_tool_output_delta_is_an_explicit_system_event():
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("tool_output_delta", {
+            "run_id": "v1", "tool_use_id": "call-1", "stream": "stdout",
+            "seq": 1, "chunk": "nu\n", "truncated": False,
+        })
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(legacy(), session_id="s")))
+    matching = [payload for name, payload in events
+                if name == "system_event" and payload.get("kind") == "tool_output_delta"]
+    assert matching[0]["payload"]["chunk"] == "nu\n"
+
+
+@pytest.mark.asyncio
 async def test_legacy_heartbeat_dropped():
     """Legacy heartbeat events skal IKKE komme ud — v2 har sin egen ping."""
     async def legacy() -> AsyncIterator[str]:

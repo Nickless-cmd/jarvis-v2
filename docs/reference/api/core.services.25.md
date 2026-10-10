@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_decay_daemon.py`
+_Signal decay daemon — archive and delete stale signals across all signal tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_signal_decay_daemon` | `()` | Run signal decay if cadence elapsed. Returns stats dict. | [src](../../../core/services/signal_decay_daemon.py#L35) |
+| function | `get_signal_decay_stats` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L91) |
+| function | `build_signal_decay_surface` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L98) |
+
 ## `core/services/signal_delta_trigger.py`
 _Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
 
@@ -157,8 +166,8 @@ _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-0
 | function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen, user_present=…)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
 | function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L216) |
 | function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L341) |
-| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L359) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L483) |
+| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L359) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L505) |
 
 ## `core/services/skill_autosurface.py`
 _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
@@ -575,12 +584,4 @@ _Surface recently-completed subagents into the visible prompt._
 | function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/subagent_ecology.py#L401) |
 | function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/subagent_ecology.py#L411) |
 | function | `_safe_quiet_initiative` | `()` | — | [src](../../../core/services/subagent_ecology.py#L421) |
-
-## `core/services/subjective_time.py`
-_Subjective Time — how time FEELS, not just passes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
-| function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
 

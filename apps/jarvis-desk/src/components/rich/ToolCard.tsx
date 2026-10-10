@@ -61,6 +61,7 @@ export function ToolCard({
   const memoryOutcome = block.name.replace(/^operator_/, '') === 'remember_this'
     ? memoryWriteOutcome(block.status, block.result) : undefined
   const status = memoryOutcome === 'error' ? 'error' : block.status ?? 'running'
+  const terminalText = status === 'running' ? (block.liveOutput ?? resultat) : resultat
   const anomali = block.anomali ?? (memoryOutcome === 'unknown' ? 'uden-resultat' : undefined)
   const ask = parsePauseAsk(block.result)
   const Icon = meta.Icon
@@ -113,7 +114,10 @@ export function ToolCard({
         ? <div className="toolcard-body"><PauseAndAskCard ask={ask} /></div>
         : expanded && (
         <div className="toolcard-body">
-          {renderBody(fam, args, resultat)}
+          {renderBody(fam, args, terminalText)}
+          {block.liveOutputTruncated && (
+            <div className="toolcard-afkortet">live output afkortet</div>
+          )}
           {block.resultAfkortet && !resten && (
             <div className="toolcard-afkortet">
               {henter

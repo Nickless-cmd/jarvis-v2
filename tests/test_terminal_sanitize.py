@@ -5,6 +5,7 @@ tokens uden mening for en model, og bare kontroltegn kan faa det den LAESER
 til at afvige fra det et menneske SAA i terminalen.
 """
 from core.services.terminal_sanitize import strip_terminal_codes as s
+from core.services.terminal_sanitize import TerminalStreamSanitizer
 
 
 def test_farvekoder_fjernes():
@@ -53,3 +54,29 @@ def test_hele_vejen_gennem_finalize():
     assert "\x1b" not in r["result_text"]
     assert "GROEN" in r["result_text"]
     assert "\x1b" not in r["result_text_full"], "ogsaa den fulde tekst der gemmes"
+
+
+def test_stream_sanitizer_holds_split_ansi_sequence_until_complete():
+    sanitizer = TerminalStreamSanitizer()
+    assert sanitizer.feed("før\x1b[3") == "før"
+    assert sanitizer.feed("1mrød\x1b[0") == "rød"
+    assert sanitizer.feed("m efter") == " efter"
+    assert sanitizer.flush() == ""
+
+
+def test_stream_sanitizer_flushes_incomplete_escape_as_inert_text():
+    sanitizer = TerminalStreamSanitizer()
+    assert sanitizer.feed("tekst\x1b[") == "tekst"
+    assert sanitizer.flush() == ""
+
+
+def test_stream_sanitizer_holds_split_osc_string_terminator():
+    sanitizer = TerminalStreamSanitizer()
+    assert sanitizer.feed("before\x1b]0;title\x1b") == "before"
+    assert sanitizer.feed("\\after") == "after"
+
+
+def test_stream_sanitizer_bounds_unterminated_control_data():
+    sanitizer = TerminalStreamSanitizer(max_pending_chars=64)
+    assert sanitizer.feed("safe\x1b]0;" + "x" * 1000) == "safe"
+    assert len(sanitizer._pending) <= 64

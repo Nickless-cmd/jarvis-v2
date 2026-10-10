@@ -143,6 +143,43 @@ async def run_tool_batch(
     )
 
     _local = bool(getattr(run, "local_tool_exec", False))
+    from core.runtime.settings import load_settings
+    from core.services.tool_execution_trace import (
+        BoundedOutputBuffer, cancel_call, start_call,
+    )
+    from core.services.terminal_sanitize import TerminalStreamSanitizer
+
+    _live_output = bool(load_settings().live_tool_output_enabled) and not _local
+    _output_buffer = BoundedOutputBuffer() if _live_output else None
+    _sanitizers: dict[tuple[str, str], TerminalStreamSanitizer] = {}
+    _active_trace_ids: list[str] = []
+
+    def _drain_output() -> list[dict]:
+        if _output_buffer is None:
+            return []
+        grouped: list[dict] = []
+        for delta in _output_buffer.drain():
+            key = (delta.tool_use_id, delta.stream)
+            sanitizer = _sanitizers.setdefault(key, TerminalStreamSanitizer())
+            chunk = sanitizer.feed(delta.chunk)
+            item = grouped[-1] if grouped and (
+                grouped[-1]["tool_use_id"], grouped[-1]["stream"]
+            ) == key else None
+            if item is None:
+                item = {
+                    "run_id": run.run_id,
+                    "tool_use_id": delta.tool_use_id,
+                    "stream": delta.stream,
+                    "seq": delta.seq,
+                    "chunk": "",
+                    "truncated": False,
+                }
+                grouped.append(item)
+            item["seq"] = int(delta.seq)
+            item["chunk"] += chunk
+            item["truncated"] = bool(item["truncated"] or delta.truncated)
+        return [payload for payload in grouped
+                if payload["chunk"] or payload["truncated"]]
 
     # ── PreToolUse-hook ──────────────────────────────────────────────────
     # Her — foer annoncering og foer eksekvering — er det eneste sted «block»
@@ -187,6 +224,10 @@ async def run_tool_batch(
         if _tc_name:
             step_counter += 1
             _tc_args = _parse_tc_args(_tc)
+            _tool_id = str(_tc.get("id") or "")
+            if _tool_id:
+                start_call(_tool_id, tool=_tc_name, run_id=run.run_id)
+                _active_trace_ids.append(_tool_id)
             yield _sse("working_step", {
                 "type": "working_step",
                 "run_id": run.run_id,
@@ -292,6 +333,7 @@ async def run_tool_batch(
                 session_id=run.session_id,
                 user_message=run.user_message,
                 user_present=_bruger_til_stede(run),
+                **({"output_buffer": _output_buffer} if _output_buffer is not None else {}),
             ),
         )
 
@@ -302,7 +344,7 @@ async def run_tool_batch(
     # Vent i SMAA spring og bank i store. Hjerteslaget skal stadig falde hvert
     # heartbeat_interval_s — det er klientens livstegn — men afbrydelsen skal
     # kunne ses imellem slagene.
-    _puls = min(1.0, heartbeat_interval_s)
+    _puls = 0.075 if _live_output else min(1.0, heartbeat_interval_s)
     _ventet = 0.0
     while not _tool_task.done():
         try:
@@ -314,7 +356,11 @@ async def run_tool_batch(
                 out["results"] = []
                 out["step_counter"] = step_counter
                 out["afbrudt"] = True
+                for _tool_id in _active_trace_ids:
+                    cancel_call(_tool_id)
                 return
+            for _payload in _drain_output():
+                yield _sse("tool_output_delta", _payload)
             _ventet += _puls
             if _ventet < heartbeat_interval_s:
                 continue
@@ -335,6 +381,8 @@ async def run_tool_batch(
             _hb["elapsed_s"] = int(time.monotonic() - _start)
             _hb["beat"] = _beats
             yield _sse("heartbeat", _hb)
+    for _payload in _drain_output():
+        yield _sse("tool_output_delta", _payload)
     # Fang kastet frem for at lade det springe PostToolUse over. Undtagelsen
     # rejses igen til sidst, saa kalderen ser praecis det samme som foer —
     # forskellen er KUN at hook-parringen holder.

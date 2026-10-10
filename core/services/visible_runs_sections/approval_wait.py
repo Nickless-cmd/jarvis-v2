@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from typing import AsyncIterator
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,81 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL_S = 10.0
 DEFAULT_APPROVAL_WINDOW_S = 300.0
 _POLL_INTERVAL_S = 0.25
+_LIVE_APPROVALS: dict[str, dict] = {}
+_LIVE_APPROVALS_LOCK = threading.Lock()
+
+
+def register_live_approval(
+    approval_id: str,
+    *,
+    call_id: str,
+    run_id: str,
+    output_buffer,
+) -> None:
+    """Attach same-process ephemeral output state to an approval wait."""
+    with _LIVE_APPROVALS_LOCK:
+        _LIVE_APPROVALS[str(approval_id)] = {
+            "call_id": str(call_id),
+            "run_id": str(run_id),
+            "output_buffer": output_buffer,
+            "sanitizers": {},
+        }
+
+
+def unregister_live_approval(approval_id: str) -> None:
+    with _LIVE_APPROVALS_LOCK:
+        _LIVE_APPROVALS.pop(str(approval_id), None)
+
+
+def _live_approval(approval_id: str) -> dict | None:
+    with _LIVE_APPROVALS_LOCK:
+        return _LIVE_APPROVALS.get(str(approval_id))
+
+
+def execute_approved_tool(approval_id: str, tool: str, arguments: dict, executor):
+    """Run an approved tool inside its original trace/output binding when local."""
+    live = _live_approval(approval_id)
+    if live is None:
+        return executor(tool, arguments, owner_approved=True)
+    from core.services.tool_execution_trace import (
+        bind_execution,
+        mark_approved_dispatch,
+        mark_dispatch,
+        mark_execution_complete,
+    )
+
+    call_id = str(live["call_id"])
+    with bind_execution(call_id, live["output_buffer"]):
+        mark_dispatch(call_id)
+        mark_approved_dispatch(call_id)
+        try:
+            return executor(tool, arguments, owner_approved=True)
+        finally:
+            mark_execution_complete(call_id)
+
+
+def _drain_live_frames(approval_id: str) -> list[dict]:
+    live = _live_approval(approval_id)
+    if live is None:
+        return []
+    from core.services.terminal_sanitize import TerminalStreamSanitizer
+
+    frames = []
+    for delta in live["output_buffer"].drain():
+        key = (delta.tool_use_id, delta.stream)
+        sanitizer = live["sanitizers"].setdefault(key, TerminalStreamSanitizer())
+        chunk = sanitizer.feed(delta.chunk)
+        if chunk or delta.truncated:
+            frames.append({
+                "type": "tool_output_delta",
+                "run_id": live["run_id"],
+                "tool_use_id": delta.tool_use_id,
+                "stream": delta.stream,
+                "seq": delta.seq,
+                "chunk": chunk,
+                "truncated": bool(delta.truncated),
+            })
+    return frames
 
 
 async def wait_for_approval(
@@ -92,6 +168,8 @@ async def wait_for_approval(
     )
 
     while loop.time() < deadline:
+        for payload in _drain_live_frames(approval_id):
+            yield _sse("tool_output_delta", payload)
         state = _get_visible_approval_state(approval_id)
         status = str(state.get("status") or "")
         if status == "approved":
@@ -135,4 +213,6 @@ async def wait_for_approval(
             run_id, approval_id, loop.time() - started,
         )
 
+    for payload in _drain_live_frames(approval_id):
+        yield _sse("tool_output_delta", payload)
     out["result_text"] = resolved

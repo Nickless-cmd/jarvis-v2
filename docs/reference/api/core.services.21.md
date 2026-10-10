@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_self_heal.py`
+_Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_notify_bjorn` | `(message)` | Eskalér via eksisterende notifikations-sti (Discord/ntfy). | [src](../../../core/services/provider_self_heal.py#L22) |
+| function | `_remove_from_router` | `(provider, model)` | Fjern (provider, model) fra provider_router.json. Self-safe. | [src](../../../core/services/provider_self_heal.py#L31) |
+| function | `_observe_central` | `(payload)` | — | [src](../../../core/services/provider_self_heal.py#L46) |
+| function | `check_and_heal` | `(*, down_providers)` | 3+ providers nede samtidig → eskalér til Bjørn. Returnér True hvis eskaleret. | [src](../../../core/services/provider_self_heal.py#L54) |
+| function | `_current_down_providers` | `()` | Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []. | [src](../../../core/services/provider_self_heal.py#L66) |
+| function | `tick_provider_self_heal_daemon` | `()` | Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn | [src](../../../core/services/provider_self_heal.py#L76) |
+| function | `handle_model_drift` | `(*, provider, model, status_code)` | 404 på en model = model-drift → fjern auto fra pool + log. Returnér True hvis fjernet. | [src](../../../core/services/provider_self_heal.py#L91) |
+
 ## `core/services/published_files.py`
 _Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
 
@@ -686,15 +699,4 @@ _Capture structured web-tool evidence for the active research run._
 | function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
 | function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
 | function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
-
-## `core/services/research_ledger.py`
-_Research-runnet synligt i session-ledgeren (spec Fase A4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/research_ledger.py#L42) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/research_ledger.py#L46) |
-| function | `record_research_event` | `(session_id, *, event_id, event, payload=…)` | Skriv én research-hændelse i session-ledgeren. Kaster aldrig. | [src](../../../core/services/research_ledger.py#L51) |
-| function | `record_run_started` | `(session_id, *, run_id, tier, query)` | Runnet er startet: tier og den oprindelige forespørgsel. | [src](../../../core/services/research_ledger.py#L96) |
-| function | `record_run_completed` | `(session_id, *, run_id, sources, quality, timed_out, tool_calls=…)` | Runnet er slut: hvad det blev — kilder, kvalitetsdom, timeout, forbrug. | [src](../../../core/services/research_ledger.py#L106) |
 

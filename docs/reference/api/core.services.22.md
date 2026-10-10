@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_ledger.py`
+_Research-runnet synligt i session-ledgeren (spec Fase A4)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/research_ledger.py#L42) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/research_ledger.py#L46) |
+| function | `record_research_event` | `(session_id, *, event_id, event, payload=…)` | Skriv én research-hændelse i session-ledgeren. Kaster aldrig. | [src](../../../core/services/research_ledger.py#L51) |
+| function | `record_run_started` | `(session_id, *, run_id, tier, query)` | Runnet er startet: tier og den oprindelige forespørgsel. | [src](../../../core/services/research_ledger.py#L96) |
+| function | `record_run_completed` | `(session_id, *, run_id, sources, quality, timed_out, tool_calls=…)` | Runnet er slut: hvad det blev — kilder, kvalitetsdom, timeout, forbrug. | [src](../../../core/services/research_ledger.py#L106) |
+
 ## `core/services/research_orchestrator.py`
 _Adaptive research coordinator around the existing visible and agent runtimes._
 
@@ -633,21 +644,4 @@ _Runtime self-model — affective awareness (flow, wonder, longing, relation)._
 | function | `_derive_relation_continuity_self_awareness` | `(*, temporal_feel, mineness, longing, relation_sources)` | Derive a small runtime truth when relation continuity touches the self-stream. | [src](../../../core/services/runtime_self_model_affect.py#L892) |
 | function | `_relation_continuity_self_narrative` | `(*, relation_continuity_state, relation_self_relation, relation_continuity_source, relation_anchor)` | Compact relation continuity narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L1026) |
 | function | `build_relation_continuity_self_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for relation continuity as self-truth. | [src](../../../core/services/runtime_self_model_affect.py#L1053) |
-
-## `core/services/runtime_self_model_boundary.py`
-_Runtime self-model — self-boundary clarity + world-contact awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_boundary.py#L28) |
-| function | `_internal_pressure_snapshot` | `()` | Pull internal pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L55) |
-| function | `_external_pressure_snapshot` | `()` | Pull external pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L123) |
-| function | `_derive_self_boundary_clarity` | `(*, internal, external)` | Synthesise internal + external pressure into a boundary-clarity surface. | [src](../../../core/services/runtime_self_model_boundary.py#L140) |
-| function | `_self_boundary_narrative` | `(*, pressure_source, primary_internal, context_pressure, in_tension)` | Compact self-boundary narrative. Empty when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L209) |
-| function | `build_self_boundary_clarity_prompt_section` | `()` | Compact prompt section for self-boundary clarity. None when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L236) |
-| function | `_self_boundary_clarity_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L264) |
-| function | `_derive_world_contact` | `(*, tool_intent, browser_body, system_code)` | Synthesise tool/browser/system into a unified world-contact field. | [src](../../../core/services/runtime_self_model_boundary.py#L295) |
-| function | `_world_contact_narrative` | `(*, contact_state, parts, concerns)` | Felt-sense world-contact narrative — signal-first, 6-14 words. | [src](../../../core/services/runtime_self_model_boundary.py#L389) |
-| function | `build_world_contact_prompt_section` | `()` | Felt-sense prompt section for unified world awareness. None when idle. | [src](../../../core/services/runtime_self_model_boundary.py#L409) |
-| function | `_world_contact_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L436) |
 

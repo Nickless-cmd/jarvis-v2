@@ -2,6 +2,55 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_execution_trace.py`
+_Process-local timing and bounded live-output state for visible tool calls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `OutputDelta` | `` | — | [src](../../../core/services/tool_execution_trace.py#L20) |
+| class | `BoundedOutputBuffer` | `` | Thread-safe non-blocking queue that drops oldest output under pressure. | [src](../../../core/services/tool_execution_trace.py#L28) |
+| method | `BoundedOutputBuffer.__init__` | `(self, max_frames=…, max_pending_chars=…)` | — | [src](../../../core/services/tool_execution_trace.py#L31) |
+| method | `BoundedOutputBuffer.put` | `(self, delta)` | — | [src](../../../core/services/tool_execution_trace.py#L40) |
+| method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
+| class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
+| class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L78) |
+| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L98) |
+| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L109) |
+| function | `start_call` | `(tool_use_id, *, tool, run_id, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L115) |
+| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L134) |
+| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L141) |
+| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L148) |
+| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L155) |
+| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L162) |
+| function | `_finish` | `(tool_use_id, *, status, exit_code, now)` | — | [src](../../../core/services/tool_execution_trace.py#L179) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L219) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L229) |
+| function | `bind_execution` | `(tool_use_id, output_buffer)` | — | [src](../../../core/services/tool_execution_trace.py#L234) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L244) |
+
+## `core/services/tool_hunt_nudge.py`
+_Han leder efter et værktøj med bash — og værktøjet findes allerede._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_i_kodetraeet` | `(sti)` | Ligger stien i kodetræet? Både «docs/x.md» og «/media/.../docs/x.md». | [src](../../../core/services/tool_hunt_nudge.py#L265) |
+| function | `_leverbar_fil` | `(navn, argumenter)` | Filen han lige skrev, hvis den ligner noget Bjørn skal kunne åbne. | [src](../../../core/services/tool_hunt_nudge.py#L281) |
+| function | `_aftryk` | `(navn, argumenter)` | Identiteten af ét kald: værktøj + argumenter, uanset nøglerækkefølge. | [src](../../../core/services/tool_hunt_nudge.py#L308) |
+| function | `_noter_gentagelse` | `(noegle, navn, argumenter)` | Hvor mange gange i træk er PRÆCIS dette kald nu set? 1 = nyt. | [src](../../../core/services/tool_hunt_nudge.py#L322) |
+| function | `_gentagelses_note` | `(noegle, navn, argumenter, antal)` | Påmindelsen for denne stime, eller "". Hver tærskel fyrer én gang. | [src](../../../core/services/tool_hunt_nudge.py#L337) |
+| function | `_taeller` | `(noegle, hvad)` | Tæl én forekomst af `hvad` i turen og giv det nye tal. | [src](../../../core/services/tool_hunt_nudge.py#L359) |
+| function | `_taendt` | `()` | — | [src](../../../core/services/tool_hunt_nudge.py#L385) |
+| function | `_afgoer_udestaaende` | `(noegle, navn)` | Kaldte han det værktøj noten pegede på? Eller gav han op på at svare? | [src](../../../core/services/tool_hunt_nudge.py#L393) |
+| function | `_husk_udestaaende` | `(noegle, vaerktoej, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L407) |
+| function | `_log_svar` | `(udfald, noegle, sag)` | — | [src](../../../core/services/tool_hunt_nudge.py#L413) |
+| function | `rapport` | `(*, limit=…)` | Blev noterne fulgt? Tallet bag «fortjener den her at eskalere». | [src](../../../core/services/tool_hunt_nudge.py#L426) |
+| function | `_maa_sige` | `(noegle, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L455) |
+| function | `ryd_tur` | `(run_id)` | Turen er slut. Self-safe. Et ubesvaret nudge tælles som et nej. | [src](../../../core/services/tool_hunt_nudge.py#L463) |
+| function | `note` | `(*, navn, argumenter, run_id=…, resultat_tekst=…)` | Noten der skal hæftes på resultatet, eller `""`. | [src](../../../core/services/tool_hunt_nudge.py#L474) |
+| function | `_foerste_ukendte` | `(argumenter, svar)` | Det navn han bad om, som ikke findes. Fra argumenterne, ikke fra svaret. | [src](../../../core/services/tool_hunt_nudge.py#L586) |
+| function | `_naermeste_navne` | `(gaettet, antal=…)` | De nærmeste rigtige navne — leksikalsk, ingen model. | [src](../../../core/services/tool_hunt_nudge.py#L605) |
+| function | `_log` | `(vaerktoej, run_id, score, tekst)` | — | [src](../../../core/services/tool_hunt_nudge.py#L617) |
+
 ## `core/services/tool_intent_approval_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -545,34 +594,4 @@ _Value Formation — emergent ethics from experience._
 | function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
 | function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
 | function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
-
-## `core/services/verification_gate.py`
-_Verification gate — advisory check on destructive/mutation actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
-| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L149) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L283) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L291) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L305) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L369) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
-
-## `core/services/verification_gate_telemetry.py`
-_R2 verification gate telemetry — track whether warnings get heeded._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L52) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L64) |
-| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L97) |
-| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L134) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L180) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L211) |
-| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L266) |
-| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L304) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L384) |
 

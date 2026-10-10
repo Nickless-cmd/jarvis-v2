@@ -276,6 +276,11 @@ def test_visible_run_native_tool_calls_persist_cost_before_done(
     ollama_prompt = importlib.import_module("core.services.ollama_visible_prompt")
 
     recorded_costs: list[dict[str, object]] = []
+    surfaced_calls: list[str] = []
+    monkeypatch.setattr(
+        "core.services.tool_execution_trace.surface_result",
+        lambda call_id, **_fields: surfaced_calls.append(call_id),
+    )
     monkeypatch.setattr(
         # 1/10-2026: hovedbogen skrives gennem `visible_run_cost`, saa
         # `visible_runs.record_cost` findes ikke laengere. Patch det rigtige
@@ -452,6 +457,8 @@ def test_visible_run_native_tool_calls_persist_cost_before_done(
     assert tool_exec_calls[1][0]["function"]["name"] == "search_memory"
     assert recorded_costs, "cost skal være gemt før klienten stopper ved done"
     assert recorded_costs[0]["run_id"] == run.run_id
+    assert surfaced_calls.count("call-1") == 1
+    assert surfaced_calls.count("call-2") == 1
 
 
 def test_visible_run_executes_dynamic_external_read_from_user_message_path(

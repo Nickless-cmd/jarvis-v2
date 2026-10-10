@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/subjective_time.py`
+_Subjective Time — how time FEELS, not just passes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
+| function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
+
 ## `core/services/suggest_standing_guard.py`
 _Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
 
@@ -346,6 +354,12 @@ _Fjern terminal-styrekoder fra tool-output før det når modellen._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
+| class | `TerminalStreamSanitizer` | `` | Stateful sanitizer that does not leak escape fragments across chunks. | [src](../../../core/services/terminal_sanitize.py#L48) |
+| method | `TerminalStreamSanitizer.__init__` | `(self, *, max_pending_chars=…)` | — | [src](../../../core/services/terminal_sanitize.py#L51) |
+| method | `TerminalStreamSanitizer._incomplete_escape_start` | `(text)` | — | [src](../../../core/services/terminal_sanitize.py#L58) |
+| method | `TerminalStreamSanitizer._finish_discarded_osc` | `(self, text)` | — | [src](../../../core/services/terminal_sanitize.py#L86) |
+| method | `TerminalStreamSanitizer.feed` | `(self, chunk)` | — | [src](../../../core/services/terminal_sanitize.py#L103) |
+| method | `TerminalStreamSanitizer.flush` | `(self)` | — | [src](../../../core/services/terminal_sanitize.py#L122) |
 
 ## `core/services/text_clip.py`
 _core/services/text_clip.py_
@@ -589,27 +603,4 @@ _Tool description embedding cache._
 | function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L115) |
 | function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L126) |
 | function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L147) |
-
-## `core/services/tool_hunt_nudge.py`
-_Han leder efter et værktøj med bash — og værktøjet findes allerede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_i_kodetraeet` | `(sti)` | Ligger stien i kodetræet? Både «docs/x.md» og «/media/.../docs/x.md». | [src](../../../core/services/tool_hunt_nudge.py#L265) |
-| function | `_leverbar_fil` | `(navn, argumenter)` | Filen han lige skrev, hvis den ligner noget Bjørn skal kunne åbne. | [src](../../../core/services/tool_hunt_nudge.py#L281) |
-| function | `_aftryk` | `(navn, argumenter)` | Identiteten af ét kald: værktøj + argumenter, uanset nøglerækkefølge. | [src](../../../core/services/tool_hunt_nudge.py#L308) |
-| function | `_noter_gentagelse` | `(noegle, navn, argumenter)` | Hvor mange gange i træk er PRÆCIS dette kald nu set? 1 = nyt. | [src](../../../core/services/tool_hunt_nudge.py#L322) |
-| function | `_gentagelses_note` | `(noegle, navn, argumenter, antal)` | Påmindelsen for denne stime, eller "". Hver tærskel fyrer én gang. | [src](../../../core/services/tool_hunt_nudge.py#L337) |
-| function | `_taeller` | `(noegle, hvad)` | Tæl én forekomst af `hvad` i turen og giv det nye tal. | [src](../../../core/services/tool_hunt_nudge.py#L359) |
-| function | `_taendt` | `()` | — | [src](../../../core/services/tool_hunt_nudge.py#L385) |
-| function | `_afgoer_udestaaende` | `(noegle, navn)` | Kaldte han det værktøj noten pegede på? Eller gav han op på at svare? | [src](../../../core/services/tool_hunt_nudge.py#L393) |
-| function | `_husk_udestaaende` | `(noegle, vaerktoej, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L407) |
-| function | `_log_svar` | `(udfald, noegle, sag)` | — | [src](../../../core/services/tool_hunt_nudge.py#L413) |
-| function | `rapport` | `(*, limit=…)` | Blev noterne fulgt? Tallet bag «fortjener den her at eskalere». | [src](../../../core/services/tool_hunt_nudge.py#L426) |
-| function | `_maa_sige` | `(noegle, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L455) |
-| function | `ryd_tur` | `(run_id)` | Turen er slut. Self-safe. Et ubesvaret nudge tælles som et nej. | [src](../../../core/services/tool_hunt_nudge.py#L463) |
-| function | `note` | `(*, navn, argumenter, run_id=…, resultat_tekst=…)` | Noten der skal hæftes på resultatet, eller `""`. | [src](../../../core/services/tool_hunt_nudge.py#L474) |
-| function | `_foerste_ukendte` | `(argumenter, svar)` | Det navn han bad om, som ikke findes. Fra argumenterne, ikke fra svaret. | [src](../../../core/services/tool_hunt_nudge.py#L586) |
-| function | `_naermeste_navne` | `(gaettet, antal=…)` | De nærmeste rigtige navne — leksikalsk, ingen model. | [src](../../../core/services/tool_hunt_nudge.py#L605) |
-| function | `_log` | `(vaerktoej, run_id, score, tekst)` | — | [src](../../../core/services/tool_hunt_nudge.py#L617) |
 

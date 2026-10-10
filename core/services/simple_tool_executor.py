@@ -364,6 +364,7 @@ def _execute_simple_tool_calls(
     session_id: str | None = None,
     user_message: str = "",
     user_present: bool = True,
+    output_buffer=None,
 ) -> list[dict[str, object]]:
     """Execute native tool_calls directly via simple_tools. Returns results.
 
@@ -379,6 +380,26 @@ def _execute_simple_tool_calls(
     from core.services.tool_concurrency import is_parallelizable, concurrency_mode, _MAX_CONCURRENCY
 
     _exec = execute_tool_force if force else execute_tool
+    from core.services.tool_execution_trace import (
+        bind_execution, mark_approval_wait, mark_dispatch, mark_execution_complete,
+    )
+
+    def _invoke(token, tool_use_id: str):
+        with bind_execution(tool_use_id, output_buffer):
+            mark_dispatch(tool_use_id)
+            try:
+                raw = _exec(token["name"], token["arguments"])
+            except BaseException:
+                mark_execution_complete(tool_use_id)
+                raise
+            # approval_needed is only the gate decision. The measured
+            # execution remains open until the owner-approved call actually
+            # runs through execute_approved_tool.
+            if not (isinstance(raw, dict) and raw.get("status") == "approval_needed"):
+                mark_execution_complete(tool_use_id)
+            else:
+                mark_approval_wait(tool_use_id)
+            return raw
 
     results: list[dict[str, object]] = []
     controller = get_visible_run_controller(run_id) if run_id else None
@@ -420,7 +441,7 @@ def _execute_simple_tool_calls(
                                              payload["name"], payload["arguments"])
             except Exception:
                 logger.warning("edit_message_undo: before-snapshot failed", exc_info=True)
-            raw = _exec(payload["name"], payload["arguments"])
+            raw = _invoke(payload, str(tc.get("id") or ""))
             if undo_before is not None:
                 try:
                     from core.undo.message_edits import capture_after
@@ -451,7 +472,8 @@ def _execute_simple_tool_calls(
                 # per task so each worker re-enters its OWN copy — a single Context
                 # cannot be .run() concurrently from multiple threads.
                 ctx_i = copy_context()
-                fut = pool.submit(ctx_i.run, _exec, p["name"], p["arguments"])
+                tool_use_id = str(calls[idx].get("id") or "")
+                fut = pool.submit(ctx_i.run, _invoke, p, tool_use_id)
                 fut_to_idx[fut] = idx
             for fut in as_completed(fut_to_idx):
                 idx = fut_to_idx[fut]

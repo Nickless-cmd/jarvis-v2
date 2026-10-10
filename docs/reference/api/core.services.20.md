@@ -228,10 +228,23 @@ _Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `label_of` | `(text)` | Stykkets navn, udledt af dets FOERSTE LINJE — som ikke kan komme ud af | [src](../../../core/services/prompt_assembly_telemetri.py#L29) |
-| function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L37) |
-| function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L57) |
-| function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L65) |
+| function | `_opaque_key_hash` | `(key)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L36) |
+| function | `rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | Publish one privacy-safe cache decision for every wrapper call. | [src](../../../core/services/prompt_assembly_telemetri.py#L42) |
+| function | `_rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L65) |
+| function | `label_of` | `(text)` | Stykkets navn, udledt af dets FOERSTE LINJE — som ikke kan komme ud af | [src](../../../core/services/prompt_assembly_telemetri.py#L97) |
+| function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L105) |
+| function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L125) |
+| function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L133) |
+
+## `core/services/prompt_assembly_turn_cache.py`
+_Small process-local cache for reusing one prompt assembly within a turn._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CacheLookup` | `` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L20) |
+| function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
+| function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
+| function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
 
 ## `core/services/prompt_cache_probe.py`
 _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
@@ -269,41 +282,41 @@ _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige tur
 | function | `build_visible_stable_prefix` | `(*, provider=…, model=…, name=…, compact=…)` | Build ONLY the stable cacheable prefix of a visible chat prompt. | [src](../../../core/services/prompt_contract.py#L472) |
 | function | `_device_awareness_on` | `()` | — | [src](../../../core/services/prompt_contract.py#L570) |
 | function | `_device_presence_line` | `(user_id)` | Hvilken enhed Bjørn er ved (routing-awareness). Killswitch-gatet, best-effort. | [src](../../../core/services/prompt_contract.py#L578) |
-| function | `_latest_user_msg_id` | `(session_id)` | Cheap indexed lookup of the newest USER message id for the session. It's the SAME | [src](../../../core/services/prompt_contract.py#L630) |
-| function | `build_visible_chat_prompt_assembly` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for | [src](../../../core/services/prompt_contract.py#L651) |
-| function | `_build_visible_chat_prompt_assembly_impl` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | — | [src](../../../core/services/prompt_contract.py#L688) |
-| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3396) |
-| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3548) |
-| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3678) |
-| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3685) |
-| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3805) |
-| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3820) |
-| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3850) |
-| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L3929) |
-| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3937) |
-| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3947) |
-| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L4008) |
-| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L4040) |
-| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L4044) |
-| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4124) |
-| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4141) |
-| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4164) |
-| function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_contract.py#L4200) |
-| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4228) |
-| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4238) |
-| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4290) |
-| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…, acc=…)` | Byg de 17 support-sektioner. | [src](../../../core/services/prompt_contract.py#L4300) |
-| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4359) |
-| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4375) |
-| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4416) |
-| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4527) |
-| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4555) |
-| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4589) |
-| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4607) |
-| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4626) |
-| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4639) |
-| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4650) |
-| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4675) |
+| function | `_latest_user_msg_id` | `(session_id)` | Cheap indexed lookup of the newest USER message id for the session. It's the SAME | [src](../../../core/services/prompt_contract.py#L633) |
+| function | `build_visible_chat_prompt_assembly` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…, caller_phase=…)` | Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for | [src](../../../core/services/prompt_contract.py#L654) |
+| function | `_build_visible_chat_prompt_assembly_impl` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | — | [src](../../../core/services/prompt_contract.py#L713) |
+| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3421) |
+| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3573) |
+| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3703) |
+| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3710) |
+| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3830) |
+| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3845) |
+| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3875) |
+| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L3954) |
+| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3962) |
+| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3972) |
+| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L4033) |
+| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L4065) |
+| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L4069) |
+| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4149) |
+| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4166) |
+| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4189) |
+| function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_contract.py#L4225) |
+| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4253) |
+| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4263) |
+| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4315) |
+| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…, acc=…)` | Byg de 17 support-sektioner. | [src](../../../core/services/prompt_contract.py#L4325) |
+| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4384) |
+| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4400) |
+| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4441) |
+| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4552) |
+| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4580) |
+| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4614) |
+| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4632) |
+| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4651) |
+| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4664) |
+| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4675) |
+| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4700) |
 
 ## `core/services/prompt_dump.py`
 _core/services/prompt_dump.py_
@@ -652,17 +665,4 @@ _Provider retry policy — exponential backoff for transient failures._
 | function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
 | function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
 | function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
-
-## `core/services/provider_self_heal.py`
-_Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_notify_bjorn` | `(message)` | Eskalér via eksisterende notifikations-sti (Discord/ntfy). | [src](../../../core/services/provider_self_heal.py#L22) |
-| function | `_remove_from_router` | `(provider, model)` | Fjern (provider, model) fra provider_router.json. Self-safe. | [src](../../../core/services/provider_self_heal.py#L31) |
-| function | `_observe_central` | `(payload)` | — | [src](../../../core/services/provider_self_heal.py#L46) |
-| function | `check_and_heal` | `(*, down_providers)` | 3+ providers nede samtidig → eskalér til Bjørn. Returnér True hvis eskaleret. | [src](../../../core/services/provider_self_heal.py#L54) |
-| function | `_current_down_providers` | `()` | Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []. | [src](../../../core/services/provider_self_heal.py#L66) |
-| function | `tick_provider_self_heal_daemon` | `()` | Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn | [src](../../../core/services/provider_self_heal.py#L76) |
-| function | `handle_model_drift` | `(*, provider, model, status_code)` | 404 på en model = model-drift → fjern auto fra pool + log. Returnér True hvis fjernet. | [src](../../../core/services/provider_self_heal.py#L91) |
 

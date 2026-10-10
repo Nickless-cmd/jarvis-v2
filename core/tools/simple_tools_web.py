@@ -555,6 +555,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             "session_id": sid,
             "command": command,
             "timeout": 120.0,  # bump from 15s — most ops need more
+            "_runtime_tool_use_id": args.get("_runtime_tool_use_id"),
         })
         # If the session died between resolve and run (rare but possible),
         # transparently retry with a fresh session once.
@@ -570,6 +571,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
                     "session_id": sid2,
                     "command": command,
                     "timeout": 120.0,
+                    "_runtime_tool_use_id": args.get("_runtime_tool_use_id"),
                 })
         # Normalize bash_session_run shape -> bash shape
         if run_result.get("status") in ("ok", None) and "exit_code" in run_result:
@@ -679,15 +681,24 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
                           "reason": f"{type(_sb_exc).__name__}: {_sb_exc}"}
         logger.warning("bash_sandbox: kunne ikke afgøre indespærring — "
                        "kommandoen kører frit: %s", _sb_exc)
-    try:
-        result = subprocess.run(
-            _argv,
-            capture_output=True,
-            text=True,
-            timeout=MAX_BASH_SECONDS,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
+    from core.runtime.settings import load_settings
+    from core.services.tool_execution_trace import emit_current_output, note_executor_timing
+    from core.tools.streaming_subprocess import run_streaming
+
+    live_output = bool(load_settings().live_tool_output_enabled)
+    result = run_streaming(
+        _argv,
+        cwd=str(PROJECT_ROOT),
+        timeout_s=MAX_BASH_SECONDS,
+        on_output=emit_current_output if live_output else None,
+    )
+    note_executor_timing(str(args.get("_runtime_tool_use_id") or ""), {
+        "route": "server_fallback",
+        "first_output_ms": result.first_output_ms,
+        "process_ms": result.process_ms,
+        "had_output": bool(result.stdout or result.stderr),
+    })
+    if result.timed_out:
         return {"error": f"Command timed out after {MAX_BASH_SECONDS}s", "status": "error"}
 
     output = result.stdout.strip()
@@ -700,7 +711,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
 
     svar = {
         "text": output or "[no output]",
-        "exit_code": result.returncode,
+        "exit_code": result.exit_code,
         "status": "ok",
     }
     if _kanal_note:

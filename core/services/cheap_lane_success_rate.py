@@ -104,12 +104,42 @@ def find_chronic_failures(
     return ud
 
 
+def _allerede_doemt(current: dict) -> bool:
+    """Er slottet allerede i karantæne for PRÆCIS denne grund, med tid tilbage?
+
+    Målt i drift 10/10-2026: `enforce()` kaldes fra `call_balanced` — ved hvert
+    balanceret kald (~4.360 i timen), ikke ved run-end. Uden denne gate skrev hver
+    kørsel `cooldown_until = nu + 24t` igen, så karantænen blev fornyet i det
+    uendelige og en provider der RETTEDE sig aldrig kunne komme tilbage af sig
+    selv. Dommen skal falde én gang og derefter lade tiden gå.
+
+    Kun samme grund tæller: en karantæne sat af `rate-limited` eller en manuel
+    nedlukning er ikke et værn mod en fejl-dom.
+    """
+    if str(current.get("last_error_code") or "") != "low-success-rate":
+        return False
+    until = str(current.get("cooldown_until") or "").strip()
+    if not until:
+        return False
+    try:
+        udloeber = datetime.fromisoformat(until)
+    except (TypeError, ValueError):  # et ugyldigt tidsstempel er ikke en gyldig karantaene
+        return False
+    if udloeber.tzinfo is None:
+        udloeber = udloeber.replace(tzinfo=UTC)
+    return udloeber > datetime.now(UTC)
+
+
 def apply_quarantine(rows: list[dict], *, hours: int = _DEFAULT_QUARANTINE_HOURS) -> int:
     """Sæt en tidsbegrænset cooldown i `cheap_provider_runtime_state` for hver dømt slot.
 
     Det er præcis den kilde selection-stien læser gennem `quota_snapshot` — så dommen
     virker på BEGGE stier uden at nogen skal kalde os. Self-safe pr. slot: én dårlig
     række må ikke stoppe de øvrige.
+
+    Et slot der ALLEREDE er dømt for samme grund med tid tilbage springes over —
+    se `_allerede_doemt`. Uden det fornyede dommeren sin egen karantæne ved hvert
+    kald og gjorde den i praksis permanent.
     """
     if not rows:
         return 0
@@ -124,6 +154,8 @@ def apply_quarantine(rows: list[dict], *, hours: int = _DEFAULT_QUARANTINE_HOURS
             continue
         try:
             current = get_cheap_provider_runtime_state(provider=provider, model=model) or {}
+            if _allerede_doemt(current):
+                continue
             try:
                 metadata = json.loads(str(current.get("metadata_json") or "{}"))
             except (TypeError, ValueError):

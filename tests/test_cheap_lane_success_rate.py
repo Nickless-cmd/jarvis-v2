@@ -145,3 +145,79 @@ def test_enforce_er_self_safe_naar_db_er_nede(isolated_runtime, monkeypatch):
                         lambda **kw: (_ for _ in ()).throw(RuntimeError("db nede")))
     ud = sr.enforce()
     assert ud["quarantined"] == 0
+
+
+# ── dommeren maa ikke forny sig selv (maalt i drift 10/10-2026) ──────────────
+#
+# `enforce()` kaldes fra `call_balanced` — ved HVERT balanceret kald, ikke ved
+# run-end som docstringen foerst paastod. Maalt: 21 koersler paa 45 minutter, og
+# der gaar ~4.360 kald gennem `call_balanced` i timen. Hver koersel skrev
+# `cooldown_until = nu + 24t` igen, saa karantaenen blev fornyet i det uendelige:
+# en provider der RETTEDE sig kunne aldrig komme tilbage af sig selv — hvilket
+# var hele pointen med den tidsbegraensede karantaene.
+
+
+def test_karantaenen_fornyes_ikke_naar_slottet_allerede_er_doemt(isolated_runtime):
+    """Anden koersel paa et allerede doemt slot maa ikke skrive cooldown igen."""
+    from core.runtime.db import get_cheap_provider_runtime_state
+    from core.runtime.db_core import set_runtime_state_value
+    from core.services.cheap_lane_success_rate import enforce
+
+    _kald("freeai", "qwen7b", ok=2, n=30)
+    set_runtime_state_value("cheap_lane_success_rate_exclusion_enabled", "on")
+
+    foerste = enforce()
+    assert foerste["quarantined"] == 1
+    st1 = get_cheap_provider_runtime_state(provider="freeai", model="qwen7b") or {}
+    cooldown1 = st1.get("cooldown_until")
+
+    anden = enforce()
+    st2 = get_cheap_provider_runtime_state(provider="freeai", model="qwen7b") or {}
+
+    assert anden["quarantined"] == 0, "en allerede doemt slot skal ikke doemmes igen"
+    assert st2.get("cooldown_until") == cooldown1, "cooldown maa ikke skubbes frem"
+
+
+def test_udloebet_karantaene_doemmes_paa_ny(isolated_runtime):
+    """Er cooldown UDLOEBET, skal dommen falde igen — ellers kan en doed
+    provider snige sig tilbage uden en ny maaling."""
+    from core.runtime.db import get_cheap_provider_runtime_state
+    from core.runtime.db_core import set_runtime_state_value
+    from core.services.cheap_lane_success_rate import enforce
+
+    _kald("freeai", "qwen7b", ok=2, n=30)
+    set_runtime_state_value("cheap_lane_success_rate_exclusion_enabled", "on")
+
+    enforce()
+    # Simulér at karantaenen er udloebet: saet cooldown til datiden.
+    from core.runtime.db import upsert_cheap_provider_runtime_state
+    upsert_cheap_provider_runtime_state(
+        provider="freeai", model="qwen7b", status="quarantined",
+        cooldown_until="2020-01-01T00:00:00+00:00",
+        last_error_code="low-success-rate",
+    )
+
+    ud = enforce()
+    st = get_cheap_provider_runtime_state(provider="freeai", model="qwen7b") or {}
+
+    assert ud["quarantined"] == 1, "en udloebet karantaene skal fornyes"
+    assert st.get("cooldown_until") != "2020-01-01T00:00:00+00:00"
+
+
+def test_en_anden_grund_doemmes_igen(isolated_runtime):
+    """Karantaene af en ANDEN aarsag (fx rate-limited) maa ikke blokere dommen."""
+    from core.runtime.db import upsert_cheap_provider_runtime_state
+    from core.runtime.db_core import set_runtime_state_value
+    from core.services.cheap_lane_success_rate import enforce
+
+    _kald("freeai", "qwen7b", ok=2, n=30)
+    set_runtime_state_value("cheap_lane_success_rate_exclusion_enabled", "on")
+    upsert_cheap_provider_runtime_state(
+        provider="freeai", model="qwen7b", status="cooldown-active",
+        cooldown_until="2099-01-01T00:00:00+00:00",
+        last_error_code="rate-limited",
+    )
+
+    ud = enforce()
+
+    assert ud["quarantined"] == 1, "en fremmed grund er ikke vaern mod en fejl-dom"

@@ -20,6 +20,25 @@ describe('ToolCard', () => {
     render(<ToolCard block={bashBlock} density="full" />)
     expect(screen.getByText(/fil\.txt/)).toBeInTheDocument()
   })
+  it('viser inert live terminal-output mens kortet kører', () => {
+    render(<ToolCard block={block({
+      name: 'bash', input: { command: 'slow' }, status: 'running',
+      result: 'gammelt', liveOutput: '<b>live</b>\n', liveOutputSeq: 2,
+      liveOutputTruncated: true,
+    })} density="full" />)
+    expect(screen.getByText('<b>live</b>')).toBeInTheDocument()
+    expect(document.querySelector('b')).toBeNull()
+    expect(screen.queryByText('gammelt')).toBeNull()
+    expect(screen.getByText('live output afkortet')).toBeInTheDocument()
+  })
+  it('viser kun det kanoniske resultat når kaldet er færdigt', () => {
+    render(<ToolCard block={block({
+      name: 'bash', input: { command: 'slow' }, status: 'done',
+      result: 'final', liveOutput: 'live', liveOutputSeq: 2,
+    })} density="full" />)
+    expect(screen.getByText('final')).toBeInTheDocument()
+    expect(screen.queryByText('live')).toBeNull()
+  })
   it('shows pretty label + summary collapsed, not raw tool name', () => {
     render(<ToolCard block={block({ name: 'web_search', input: { query: 'vejr københavn' } })} density="compact" />)
     expect(screen.getByText('Websøgning')).toBeInTheDocument()

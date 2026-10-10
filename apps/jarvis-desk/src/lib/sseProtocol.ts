@@ -200,6 +200,13 @@ export type ContentBlock =
       partialJson?: string
       status?: 'running' | 'done' | 'error'
       result?: string
+      /** Flygtigt terminal-output mens kaldet kører. Slutresultatet er stadig
+       *  kanonisk og rydder disse felter ved settlement. */
+      liveOutput?: string
+      /** Seneste accepterede sekvensnummer; ældre/replayede frames ignoreres. */
+      liveOutputSeq?: number
+      /** Serveren droppede frames, eller klientens rullende 64-KiB loft ramte. */
+      liveOutputTruncated?: boolean
       /** Serveren sendte kun begyndelsen af et langt resultat; resten hentes
        *  med GET /chat/messages/{id}/tool-result/{tool_use_id}. */
       resultAfkortet?: boolean

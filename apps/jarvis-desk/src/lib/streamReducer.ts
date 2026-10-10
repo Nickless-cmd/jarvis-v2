@@ -1,5 +1,7 @@
 import type { StreamEvent, ContentBlock } from './sseProtocol'
 
+const LIVE_TOOL_OUTPUT_MAX_CHARS = 65_536
+
 export type StreamStatus =
   | 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done' | 'reconnecting'
 
@@ -286,7 +288,14 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         if (idx >= 0) {
           const b = blocks[idx]
           if (b && b.type === 'tool_use') {
-            blocks[idx] = { ...b, status: cb.is_error || cb.status === 'error' ? 'error' : 'done', result: cb.content ?? b.result }
+            blocks[idx] = {
+              ...b,
+              status: cb.is_error || cb.status === 'error' ? 'error' : 'done',
+              result: cb.content ?? b.result,
+              liveOutput: undefined,
+              liveOutputSeq: undefined,
+              liveOutputTruncated: undefined,
+            }
           }
         }
         return { ...state, blocks }
@@ -317,6 +326,34 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      if (event.kind === 'tool_output_delta') {
+        const p = event.payload as {
+          run_id?: unknown
+          tool_use_id?: unknown
+          seq?: unknown
+          chunk?: unknown
+          truncated?: unknown
+        }
+        if (typeof p.run_id !== 'string' || p.run_id !== state.activeRunId
+          || typeof p.tool_use_id !== 'string' || typeof p.seq !== 'number'
+          || !Number.isFinite(p.seq) || typeof p.chunk !== 'string') return state
+        const idx = state.blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === p.tool_use_id)
+        if (idx < 0) return state
+        const current = state.blocks[idx]
+        if (!current || current.type !== 'tool_use'
+          || (current.status ?? 'running') !== 'running'
+          || p.seq <= (current.liveOutputSeq ?? 0)) return state
+        const combined = (current.liveOutput ?? '') + p.chunk
+        const clientTruncated = combined.length > LIVE_TOOL_OUTPUT_MAX_CHARS
+        const blocks = state.blocks.slice()
+        blocks[idx] = {
+          ...current,
+          liveOutput: clientTruncated ? combined.slice(-LIVE_TOOL_OUTPUT_MAX_CHARS) : combined,
+          liveOutputSeq: p.seq,
+          liveOutputTruncated: current.liveOutputTruncated || p.truncated === true || clientTruncated,
+        }
+        return { ...state, blocks }
+      }
       if (event.kind === 'provisional_text_delta') {
         const runId = String(event.payload?.run_id ?? '')
         if (!runId || (state.status === 'working' && state.activeRunId && runId !== state.activeRunId)
@@ -393,7 +430,14 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const mapped = udfaldsStatus(tr.status)
         const blocks = state.blocks.slice()
         const b = blocks[idx]
-        if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: mapped ?? b.status, result: tr.result ?? b.result }
+        if (b && b.type === 'tool_use') blocks[idx] = {
+          ...b,
+          status: mapped ?? b.status,
+          result: tr.result ?? b.result,
+          liveOutput: undefined,
+          liveOutputSeq: undefined,
+          liveOutputTruncated: undefined,
+        }
         return { ...state, blocks }
       }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
@@ -409,7 +453,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (idx < 0) return { ...state, workingStep: step }
       const blocks = state.blocks.slice()
       const b = blocks[idx]
-      if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: (p.status as 'running' | 'done' | 'error') ?? b.status, result: p.result ?? b.result }
+      if (b && b.type === 'tool_use') {
+        const nextStatus = (p.status as 'running' | 'done' | 'error') ?? b.status
+        const terminal = nextStatus === 'done' || nextStatus === 'error'
+        blocks[idx] = {
+          ...b,
+          status: nextStatus,
+          result: p.result ?? b.result,
+          liveOutput: terminal ? undefined : b.liveOutput,
+          liveOutputSeq: terminal ? undefined : b.liveOutputSeq,
+          liveOutputTruncated: terminal ? undefined : b.liveOutputTruncated,
+        }
+      }
       return { ...state, blocks, workingStep: step }
     }
 

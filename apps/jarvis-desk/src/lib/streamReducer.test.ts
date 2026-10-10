@@ -234,6 +234,72 @@ describe('streamReducer', () => {
   })
 })
 
+describe('streamReducer — live tool output', () => {
+  const start: StreamEvent = {
+    type: 'message_start',
+    message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  }
+  const toolStart: StreamEvent = {
+    type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 't1', name: 'bash', input: {} },
+  }
+  const delta = (seq: number, chunk: string, over: Record<string, unknown> = {}): StreamEvent => ({
+    type: 'system_event', kind: 'tool_output_delta',
+    payload: { run_id: 'r1', tool_use_id: 't1', stream: 'stdout', seq, chunk, ...over },
+  })
+
+  it('tilføjer kun stigende deltas til det matchende kørende kort', () => {
+    const s = reduce([start, toolStart, delta(2, 'B'), delta(2, 'dup'), delta(1, 'old'), delta(3, 'C')])
+    const card = s.blocks[0]
+    expect(card?.type === 'tool_use' ? card.liveOutput : '').toBe('BC')
+    expect(card?.type === 'tool_use' ? card.liveOutputSeq : 0).toBe(3)
+  })
+
+  it('ignorerer ukendt id, forkert run og output efter terminal status', () => {
+    const running = reduce([start, toolStart])
+    const unknown = streamReducer(running, delta(1, 'x', { tool_use_id: 'missing' }))
+    const wrongRun = streamReducer(running, delta(1, 'x', { run_id: 'r2' }))
+    expect(unknown).toBe(running)
+    expect(wrongRun).toBe(running)
+
+    const done = streamReducer(running, {
+      type: 'system_event', kind: 'tool_result',
+      payload: { tool_use_id: 't1', status: 'ok', result: 'final' },
+    })
+    expect(streamReducer(done, delta(2, 'late'))).toBe(done)
+  })
+
+  it('holder kun de nyeste 64 KiB og husker både klient- og servertruncation', () => {
+    const tooMuch = 'a'.repeat(65_536) + 'tail'
+    const s = reduce([start, toolStart, delta(1, tooMuch)])
+    const card = s.blocks[0]
+    expect(card?.type).toBe('tool_use')
+    if (card?.type !== 'tool_use') throw new Error('toolkortet mangler')
+    expect(card.liveOutput).toHaveLength(65_536)
+    expect(card.liveOutput?.endsWith('tail')).toBe(true)
+    expect(card.liveOutputTruncated).toBe(true)
+
+    const server = reduce([start, toolStart, delta(1, 'partial', { truncated: true })])
+    expect(server.blocks[0]?.type === 'tool_use' ? server.blocks[0].liveOutputTruncated : false).toBe(true)
+  })
+
+  it('det kanoniske slutresultat erstatter og rydder live-tilstanden', () => {
+    const s = reduce([
+      start, toolStart, delta(1, 'live'),
+      { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 't1', status: 'ok', result: 'final' } },
+    ])
+    const card = s.blocks[0]
+    expect(card?.type).toBe('tool_use')
+    if (card?.type === 'tool_use') {
+      expect(card.status).toBe('done')
+      expect(card.result).toBe('final')
+      expect(card.liveOutput).toBeUndefined()
+      expect(card.liveOutputSeq).toBeUndefined()
+      expect(card.liveOutputTruncated).toBeUndefined()
+    }
+  })
+})
+
 describe('streamReducer — tool_result status (Phase 2)', () => {
   it('tool_result system_event sætter tool_use-blok status til done', () => {
     const s = reduce([

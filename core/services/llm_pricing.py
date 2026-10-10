@@ -36,6 +36,126 @@ VERIFICERET: Final[str] = "2026-09-14"
 #: myldretid ligger i det andet.
 MYLDRE_VINDUER: Final[tuple[tuple[int, int], ...]] = ((1, 4), (6, 10))
 
+#: Ollamas myldretid i UTC, mandag–fredag. **Et ANDET vindue end DeepSeeks.**
+#:
+#: Ollamas egen prisliste siger ordret (målt 10/10-2026): «Off-peak pricing
+#: apply outside 12:00 and 18:00 UTC on weekdays and all day on weekends.»
+#: Dansk tid er det 14–20 om sommeren. Blander man de to tabeller, klassificerer
+#: man 262 af vores egne kald forkert — målt på 2.973 cloud-kald siden 1/9, hvor
+#: DeepSeeks vindue ville kalde 13% for myldretid mod Ollamas 22%.
+OLLAMA_MYLDRE_VINDUER: Final[tuple[tuple[int, int], ...]] = ((12, 18),)
+
+# Ollama Cloud-priser, USD pr. 1M tokens. Kilde: ollama.com/pricing, målt
+# 10/10-2026. Aksen er (off_peak, peak) som i PRICING ovenfor, så konsumenterne
+# kan dele kode — men bemærk at kun deepseek har en forskel; glm-modellerne har
+# fast pris, og Ollama fører dem derfor som én linje.
+OLLAMA_PRICING: dict[str, dict[str, tuple[float, float]]] = {
+    "deepseek-v4.1-flash": {
+        "input": (0.15 / _M, 0.30 / _M),
+        "cached": (0.003 / _M, 0.006 / _M),
+        "output": (0.60 / _M, 1.20 / _M),
+    },
+    "deepseek-v4-pro": {
+        "input": (0.66 / _M, 1.32 / _M),
+        "cached": (0.022 / _M, 0.044 / _M),
+        "output": (1.98 / _M, 3.96 / _M),
+    },
+    "glm-5.3-flash": {
+        "input": (0.15 / _M, 0.15 / _M),
+        "cached": (0.03 / _M, 0.03 / _M),
+        "output": (0.50 / _M, 0.50 / _M),
+    },
+    "glm-5.3": {
+        "input": (1.40 / _M, 1.40 / _M),
+        "cached": (0.26 / _M, 0.26 / _M),
+        "output": (4.40 / _M, 4.40 / _M),
+    },
+    "glm-5.2": {
+        "input": (1.40 / _M, 1.40 / _M),
+        "cached": (0.26 / _M, 0.26 / _M),
+        "output": (4.40 / _M, 4.40 / _M),
+    },
+    "gemma4": {
+        "input": (0.14 / _M, 0.14 / _M),
+        "cached": (0.05 / _M, 0.05 / _M),
+        "output": (0.40 / _M, 0.40 / _M),
+    },
+    "gpt-oss:120b": {
+        "input": (0.15 / _M, 0.15 / _M),
+        "cached": (0.014 / _M, 0.014 / _M),
+        "output": (0.60 / _M, 0.60 / _M),
+    },
+    "gpt-oss:20b": {
+        "input": (0.07 / _M, 0.07 / _M),
+        "cached": (0.035 / _M, 0.035 / _M),
+        "output": (0.30 / _M, 0.30 / _M),
+    },
+}
+
+
+def _uden_cloud_suffiks(model: str) -> str:
+    """``glm-5.2:cloud`` → ``glm-5.2`` · ``gemma4:31b-cloud`` → ``gemma4:31b``.
+
+    Ollama bruger BEGGE suffikser: ``:cloud`` på de fleste, ``-cloud`` på nogle
+    (fx ``gemma4:31b-cloud``). Kun den ene blev strippet først, og vision-modellen
+    faldt derfor ud af pris-tabellen — målt 10/10-2026.
+    """
+    tekst = str(model or "").strip().lower()
+    if tekst.endswith((":cloud", "-cloud")):
+        return tekst[:-6]
+    return tekst
+
+
+def _pris_opslag(model: str) -> dict[str, tuple[float, float]] | None:
+    """Find pris-rækken for en model — prøver de former Ollama bruger.
+
+    Rækkefølgen er fuld nøgle → uden cloud-suffiks → familienavn før kolon.
+    Sidste trin fanger ``gemma4:31b-cloud``, hvor prislisten fører modellen som
+    blot ``gemma4``. Uden det ville en billig model blive læst som «ukendt pris»
+    og klemt af pris-loftet — den modsatte fejl af den tilsigtede.
+    """
+    m = str(model or "").strip().lower()
+    for kandidat in (m, _uden_cloud_suffiks(m), m.split(":")[0]):
+        if kandidat in OLLAMA_PRICING:
+            return OLLAMA_PRICING[kandidat]
+    return None
+
+
+def er_ollama_myldretid(at: datetime | str | None = None) -> bool:
+    """Falder tidspunktet i **Ollamas** myldretid? Ukendt tid → True (det dyre).
+
+    ``None`` betyder «nu» (samme konvention som ``er_myldretid``); et UGYLDIGT
+    tidsstempel er det der prises som myldretid. Samme fejlretning som
+    ``er_myldretid``: underrapportering er den tavse fejl. Og samme skelnen:
+    ``er_myldretid`` svarer på DeepSeeks spørgsmål — de to vinduer er ikke i
+    nærheden af hinanden i døgnet, og et svar fra den forkerte tabel er værre
+    end intet svar.
+    """
+    d = _som_utc(at)
+    if d is None:
+        return True
+    d = d.astimezone(timezone.utc)
+    if d.weekday() >= 5:
+        return False
+    return any(fra <= d.hour < til for fra, til in OLLAMA_MYLDRE_VINDUER)
+
+
+def ollama_input_pris_per_m(model: str, at: datetime | str | None = None) -> float | None:
+    """Input-pris i **USD pr. MILLION tokens** — eller ``None`` for ukendte.
+
+    Enheden står i navnet med vilje: ``PRICING``/``OLLAMA_PRICING`` fører priser
+    pr. token, og et loft der regner i pr. million ville læse en token-pris som
+    «næsten gratis» og slippe alt igennem. Det er præcis den tavse enhedsfejl
+    huset har jagtet hele dagen — så navnet bærer enheden.
+
+    ``None``, ikke 0.0, for ukendte: et loft der læste «ukendt» som «gratis»
+    ville slippe den model igennem det skulle fange.
+    """
+    p = _pris_opslag(model)
+    if not p:
+        return None
+    return float(p["input"][1 if er_ollama_myldretid(at) else 0]) * _M
+
 # (provider, model) -> akse -> (off_peak, peak) USD pr. token
 PRICING: dict[tuple[str, str], dict[str, tuple[float, float]]] = {
     ("deepseek", "deepseek-v4-flash"): {

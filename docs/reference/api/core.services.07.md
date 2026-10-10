@@ -22,9 +22,11 @@ _core/services/central_router_adapt.py_
 | function | `get_live_preference` | `(lane=…)` | KONSUMENT-API (til den fremtidige routing-wire): den LIVE præference for en lane, eller None. | [src](../../../core/services/central_router_adapt.py#L240) |
 | function | `_note_health_suppressed` | `(model_key)` | Best-effort: gør det synligt når en lært præference undertrykkes pga. dårlig recent-health. | [src](../../../core/services/central_router_adapt.py#L264) |
 | function | `resolve_visible_model` | `(*, provider_override=…, model_override=…, default_provider, default_model, autonomous=…)` | KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den | [src](../../../core/services/central_router_adapt.py#L276) |
-| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L333) |
-| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L360) |
-| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L372) |
+| function | `_input_pris` | `(model)` | Input-pris (USD/M tokens) for en cloud-model — eller None hvis ukendt. | [src](../../../core/services/central_router_adapt.py#L355) |
+| function | `_pris_bevidst_base` | `(base_provider, base_model)` | Skift basen til den faste billige model når Ollama fakturerer dobbelt. | [src](../../../core/services/central_router_adapt.py#L375) |
+| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L395) |
+| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L434) |
+| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L446) |
 
 ## `core/services/central_router_explore.py`
 _core/services/central_router_explore.py_

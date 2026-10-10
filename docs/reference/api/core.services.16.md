@@ -440,9 +440,13 @@ _Central LLM-pris-tabel + cost-beregner._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_som_utc` | `(at)` | Læs et tidspunkt. Returnerer None når det ikke kan afgøres. | [src](../../../core/services/llm_pricing.py#L71) |
-| function | `er_myldretid` | `(at=…)` | Falder tidspunktet i DeepSeeks myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L94) |
-| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…, at=…)` | Beregn cost_usd fra tokens × pris. 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L105) |
+| function | `_uden_cloud_suffiks` | `(model)` | ``glm-5.2:cloud`` → ``glm-5.2`` · ``gemma4:31b-cloud`` → ``gemma4:31b``. | [src](../../../core/services/llm_pricing.py#L96) |
+| function | `_pris_opslag` | `(model)` | Find pris-rækken for en model — prøver de former Ollama bruger. | [src](../../../core/services/llm_pricing.py#L109) |
+| function | `er_ollama_myldretid` | `(at=…)` | Falder tidspunktet i **Ollamas** myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L124) |
+| function | `ollama_input_pris_per_m` | `(model, at=…)` | Input-pris i **USD pr. MILLION tokens** — eller ``None`` for ukendte. | [src](../../../core/services/llm_pricing.py#L143) |
+| function | `_som_utc` | `(at)` | Læs et tidspunkt. Returnerer None når det ikke kan afgøres. | [src](../../../core/services/llm_pricing.py#L191) |
+| function | `er_myldretid` | `(at=…)` | Falder tidspunktet i DeepSeeks myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L214) |
+| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…, at=…)` | Beregn cost_usd fra tokens × pris. 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L225) |
 
 ## `core/services/local_intent_gate.py`
 _Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._

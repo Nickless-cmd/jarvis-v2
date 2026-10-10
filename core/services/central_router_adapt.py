@@ -329,6 +329,68 @@ _AUTONOMOUS_FALLBACK_MODEL = "deepseek-v4.1-flash:cloud"
 # deepseek HARD GUARD below: never let one of these be the autonomous preference.
 _AUTONOMOUS_MODEL_BLOCKLIST = ("kimi-k2.7-code", "-code:")
 
+# ── PRIS-VÆRN for autonome runs (10/10-2026, Bjørn) ──────────────────────────────
+# Baggrunden: den LÆRTE routing-præference stod på ``ollama/glm-5.2:cloud``
+# ($1,40/M input) og sendte 788 autonome kald dertil — 9× den konfigurerede base.
+# Ingen af guard'ene ovenfor kunne fange den: de dømmer på udbyder-navn
+# ('deepseek') og kode-suffiks ('-code:'), ikke på pris. Efter 31/8-2026 er
+# ollama-cloud ikke længere «gratis» (den gamle kvote-plan er afløst af
+# usage-credits), så et dyrt lært valg brænder nu rigtige penge — tavst, fordi
+# ``costs``-tabellen bogfører $0 for udbydere uden priser.
+#
+# Værnets job er derfor ikke at vælge den bedste model. Det er at holde
+# BAGGRUNDEN i det billige segment, uanset hvad routeren lærer.
+#
+#: Højeste input-pris (USD/M tokens) et autonomt run må lande på. Sat over
+#: deepseek-v4.1-flash's peak-pris (0,30) og glm-5.3-flash (0,15), under
+#: glm-5.2/5.3 (1,40) og kimi-k3 (3,00). Priser: core/services/llm_pricing.py.
+_AUTONOMOUS_MAX_INPUT_USD_PER_M = 0.35
+
+#: I Ollamas myldretid (12–18 UTC hverdage) koster deepseek det DOBBELTE.
+#: Her vælger vi den faste billige i stedet — begge er $0,15/M off-peak, så
+#: skiftet koster intet i kvalitets-kontinuitet uden for vinduet.
+_AUTONOMOUS_PEAK_MODEL = "glm-5.3-flash:cloud"
+
+
+def _input_pris(model: str) -> float | None:
+    """Input-pris (USD/M tokens) for en cloud-model — eller None hvis ukendt.
+
+    None, ikke 0.0. Et pris-loft der læste «ukendt» som «gratis» ville slippe
+    præcis den model igennem det skulle fange — samme fejlretning som
+    ``compute_cost_usd`` vender den anden vej.
+    """
+    try:
+        from core.services.llm_pricing import ollama_input_pris_per_m
+        m = str(model or "").strip().lower()
+        # Lokal model (ingen cloud-suffiks) kører på vores egen GPU og koster
+        # intet pr. token. Uden denne linje ville loftet læse en lokal model som
+        # «ukendt» og klemme den til en BETALT sky — den stik modsatte fejl.
+        if ":cloud" not in m and "-cloud" not in m:
+            return 0.0
+        return ollama_input_pris_per_m(m)
+    except Exception:      # pris-tabellen er ikke kritisk for at kunne køre
+        return None
+
+
+def _pris_bevidst_base(base_provider: str, base_model: str) -> tuple[str, str]:
+    """Skift basen til den faste billige model når Ollama fakturerer dobbelt.
+
+    Kun ollama-provideren rammes: den betalte deepseek.com-API har sit eget
+    (og smallere) vindue, og dens priser står i ``PRICING``. Er basen ikke
+    deepseek-v4.1-flash, rører vi den ikke — et andet valg er truffet med vilje.
+    """
+    if str(base_provider or "").strip().lower() != _AUTONOMOUS_FALLBACK_PROVIDER:
+        return base_provider, base_model
+    if "deepseek-v4.1-flash" not in str(base_model or "").lower():
+        return base_provider, base_model
+    try:
+        from core.services.llm_pricing import er_ollama_myldretid
+        if er_ollama_myldretid():
+            return base_provider, _AUTONOMOUS_PEAK_MODEL
+    except Exception:      # kan vinduet ikke afgøres, bliver basen stående
+        pass
+    return base_provider, base_model
+
 
 def resolve_autonomous_model(*, autonomous_provider: str = "",
                              autonomous_model: str = "") -> tuple[str, str]:
@@ -340,6 +402,9 @@ def resolve_autonomous_model(*, autonomous_provider: str = "",
     'deepseek'-provider klemmes tilbage til baggrunds-basen. Kaster ALDRIG — fail-safe."""
     base_provider = (str(autonomous_provider or "").strip() or _AUTONOMOUS_FALLBACK_PROVIDER)
     base_model = (str(autonomous_model or "").strip() or _AUTONOMOUS_FALLBACK_MODEL)
+    # PRIS-BEVIDST BASE: i Ollamas myldretid fakturerer deepseek det dobbelte.
+    # Skiftet koster intet uden for vinduet — begge modeller er $0,15/M der.
+    base_provider, base_model = _pris_bevidst_base(base_provider, base_model)
     try:
         p, m = resolve_visible_model(
             default_provider=base_provider, default_model=base_model, autonomous=True,
@@ -351,6 +416,15 @@ def resolve_autonomous_model(*, autonomous_provider: str = "",
         # _AUTONOMOUS_MODEL_BLOCKLIST) → klem tilbage til den pålidelige base.
         _ml = str(m or "").strip().lower()
         if any(bad in _ml for bad in _AUTONOMOUS_MODEL_BLOCKLIST):
+            return base_provider, base_model
+        # PRIS-LOFT: den lærte præference kan pege på hvad som helst — her
+        # klemmer vi alt over loftet tilbage til basen. Ukendt pris klemmer
+        # OGSÅ (fail-closed): et loft der læste «ukendt» som «gratis» ville
+        # slippe præcis den model igennem det skulle fange. Vil
+        # eksplorations-armen prøve en ny cloud-model, skal den prises i
+        # OLLAMA_PRICING først — en bevidst handling, ikke en glidning.
+        _pris = _input_pris(m)
+        if _pris is None or _pris > _AUTONOMOUS_MAX_INPUT_USD_PER_M:
             return base_provider, base_model
         return (str(p or "").strip() or base_provider), (str(m or "").strip() or base_model)
     except Exception:

@@ -26,6 +26,14 @@ _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # Historical-record trees (docs/README freshness policy): "not current truth" — their
 # docs cite aspirational/example paths by design, so they are excluded from drift checking.
 _SKIP_DOC_PARTS = {"_archive", "superpowers", "design-history"}
+# Historical-record docs for the SOFT prose check. A decision note (docs/notes/README.md) is a
+# record with a status — `foreslaaet` is decided on paper but NOT built, `arkiveret` is frozen —
+# so its paths are aspirational or past by design, and the 21 flat pre-2026 files are "old
+# history" by the same README. COMMIT_HISTORY.md is a changelog. Same pattern as
+# docs_audit._HISTORY_NAMES: a doc that describes what was or will be is not measured against
+# what is. Kept separate from _SKIP_DOC_PARTS so the HARD link check still covers these trees.
+_PROSE_SKIP_PARTS = {"notes"}
+_PROSE_SKIP_NAMES = {"COMMIT_HISTORY.md"}
 
 
 def find_docs(root: Path = DOCS) -> list[Path]:
@@ -122,11 +130,14 @@ def stale_generated(only_dirs: list[str] | None = None, repo: Path = REPO) -> li
 # ---- SOFT: bare code-path mentions in prose that don't resolve ----
 def prose_drift(docs_root: Path = DOCS, repo: Path = REPO) -> list[dict]:
     """SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't
-    resolve to an existing file. Skips the generated api-reference tree."""
+    resolve to an existing file. Skips the generated api-reference tree and historical-record
+    docs (_PROSE_SKIP_PARTS/_PROSE_SKIP_NAMES) whose paths are aspirational or past by design."""
     out: list[dict] = []
     skip = repo / "docs" / "reference" / "api"
     for doc in find_docs(docs_root):
         if skip in doc.parents:
+            continue
+        if (_PROSE_SKIP_PARTS & set(doc.parts)) or doc.name in _PROSE_SKIP_NAMES:
             continue
         text = doc.read_text(errors="ignore")
         rel_doc = str(doc.relative_to(repo))

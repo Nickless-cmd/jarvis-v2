@@ -1219,7 +1219,15 @@ def rebuild_index_from_files() -> int:
                            WHERE id=?""",
                         (
                             rel, kind, fm["visibility"], fm["domain"], fm["title"],
-                            fm.get("updated_at"), fm.get("last_used_at"),
+                            # 11/10-2026: UPDATE-grenen sendte `fm.get("updated_at")`
+                            # direkte. Kolonnen er NOT NULL, så en fil uden
+                            # `updated_at` i frontmatter kastede
+                            # "NOT NULL constraint failed: brain_index.updated_at"
+                            # og HELE reindex-passet døde — ikke bare den ene fil.
+                            # INSERT-grenen ovenfor faldt allerede tilbage til
+                            # created_at; nu gør UPDATE det samme.
+                            fm.get("updated_at") or fm["created_at"],
+                            fm.get("last_used_at"),
                             fm.get("salience_base", 1.0),
                             fm.get("salience_bumps", 0),
                             int(fm.get("recall_count", 0)),

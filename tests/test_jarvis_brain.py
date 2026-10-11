@@ -469,3 +469,38 @@ def test_rebuild_index_picks_up_manual_file(tmp_path, monkeypatch):
     assert n == 1
     e = jarvis_brain.read_entry(eid)
     assert e.title == "Manual"
+
+
+def test_rebuild_index_opdaterer_fil_uden_updated_at(tmp_path, monkeypatch):
+    """11/10-2026: en fil UDEN `updated_at` i frontmatter kunne ikke opdateres.
+
+    UPDATE-grenen sendte `fm.get("updated_at")` direkte, og kolonnen er NOT NULL —
+    så anden kørsel (file_hash ændret) kastede IntegrityError og dræbte HELE
+    reindex-passet, ikke bare den ene fil. INSERT-grenen faldt allerede tilbage
+    til created_at; nu gør UPDATE det samme.
+    """
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    fakta_dir = jarvis_brain.brain_dir() / "fakta"
+    fakta_dir.mkdir(parents=True, exist_ok=True)
+    eid = jarvis_brain.new_brain_id()
+    # Bevidst UDEN updated_at — kun created_at.
+    md = (
+        "---\n"
+        f"id: {eid}\n"
+        "kind: fakta\nvisibility: personal\ndomain: d\n"
+        "title: UdenUpdatedAt\ncreated_at: 2026-05-02T10:00:00+00:00\n"
+        "salience_base: 1.0\nsalience_bumps: 0\nstatus: active\n"
+        "trigger: spontaneous\n"
+        "---\n\nfoerste krop\n"
+    )
+    sti = fakta_dir / "manual.md"
+    sti.write_text(md, encoding="utf-8")
+    # Foerste pass: INSERT-grenen (har fallback) — filen kommer ind.
+    assert jarvis_brain.rebuild_index_from_files() == 1
+    # AEndr kroppen → file_hash skifter → UPDATE-grenen rammes.
+    sti.write_text(md.replace("foerste krop", "aendret krop"), encoding="utf-8")
+    # Kastede IntegrityError foer fixet — og tog hele passet med sig.
+    assert jarvis_brain.rebuild_index_from_files() == 1
+    assert jarvis_brain.read_entry(eid).title == "UdenUpdatedAt"

@@ -32,7 +32,12 @@ logger = logging.getLogger(__name__)
 
 _FLAG = "cheap_lane_success_rate_exclusion_enabled"
 _DEFAULT_DAYS = 3
-_DEFAULT_MIN_CALLS = 20
+#: Mindste antal kald i vinduet før en slot kan dømmes. Sænket 20 → 8 (11/10-2026):
+#: tærsklen på 20 lod fire ollama-slots stå udømt med 0 % over 9-12 kald, fordi de
+#: fejlede på én gang og derefter gled langsomt ud af vinduet. Målt i det levende
+#: vindue: 20 dømte 9 slots, 8 dømmer 19 — alle 10 nye med 0 % success. Under 8
+#: begynder dommen at ramme 0/5-0/6, hvor et enkelt provider-udfald er nok.
+_DEFAULT_MIN_CALLS = 8
 _DEFAULT_FLOOR = 0.10
 _DEFAULT_QUARANTINE_HOURS = 24
 
@@ -194,8 +199,10 @@ def enforce(*, days: int = _DEFAULT_DAYS, min_calls: int = _DEFAULT_MIN_CALLS,
             floor: float = _DEFAULT_FLOOR, hours: int = _DEFAULT_QUARANTINE_HOURS) -> dict:
     """Flag-gated indgang: find kroniske fejlere og sæt dem i karantæne.
 
-    Returnerer altid et dict — aldrig en rejsning. Kaldes fra balancerens
-    run-end-punkt, hvor `reconcile_successes` allerede HELER; denne DOEMER.
+    Returnerer altid et dict — aldrig en rejsning. Kaldes fra `call_balanced` —
+    ved HVERT balanceret kald, ikke ved run-end (målt 10/10-2026). Gaten
+    `_allerede_doemt` gør gentagne kald billige: et slot der allerede er dømt for
+    samme grund skrives ikke igen, så karantænen fornyer sig ikke selv.
     """
     if not _enabled():
         return {"enabled": False, "quarantined": 0, "rows": []}

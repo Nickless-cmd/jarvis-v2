@@ -61,6 +61,39 @@ def test_doemmer_ikke_paa_for_faa_kald(isolated_runtime):
     assert find_chronic_failures(days=3, min_calls=20, floor=0.10) == []
 
 
+# ── tærsklen er sænket fra 20 til 8 (målt 11/10-2026) ────────────────────────
+#
+# Tærsklen på 20 lod fire ollama-slots stå udømt med 0 % over 9-12 kald, fordi de
+# fejlede alle på én gang og derefter gled langsomt ud af 3-dages-vinduet. Målt i
+# det levende vindue: tærskel 20 dømte 9 slots, tærskel 8 dømmer 19 — og alle 10
+# nye har 0 % success. Tærskel 5 ville dømme 23 og begynde at ramme 0/5-0/6, hvor
+# et enkelt provider-udfald på få kald er nok til en dom. Asymmetrien taler for
+# det lave tal: at dømme for sent spilder kald (hele grunden til dommeren), mens
+# at dømme for tidligt koster 24 t på ét af ~110 slots.
+
+
+def test_fanger_en_slot_der_doer_tidligt(isolated_runtime):
+    """0/9 skal fanges af DEFAULT-tærsklen. Før 11/10-2026 faldt den ud (9 < 20)."""
+    from core.services.cheap_lane_success_rate import find_chronic_failures
+
+    _kald("ollama", "gemma4:31b-cloud", ok=0, n=9)
+
+    fundet = find_chronic_failures()
+
+    assert [r["model"] for r in fundet] == ["gemma4:31b-cloud"]
+    assert fundet[0]["rate"] == 0.0
+
+
+def test_doemmer_stadig_ikke_paa_stoej(isolated_runtime):
+    """0/6 er for tyndt: et enkelt provider-udfald på få kald må ikke dømme.
+    Tærsklen må ikke glide ned i støj-niveauet."""
+    from core.services.cheap_lane_success_rate import find_chronic_failures
+
+    _kald("ny-provider", "m", ok=0, n=6)
+
+    assert find_chronic_failures() == []
+
+
 def test_taerskelen_er_haard_ved_gulvet(isolated_runtime):
     """Præcis på gulvet er ikke UNDER gulvet — 10,0 % overlever, 6,7 % dør."""
     from core.services.cheap_lane_success_rate import find_chronic_failures

@@ -71,11 +71,11 @@ _Kroniske fejlere: slots hvis FAKTISKE success-rate ligger under gulvet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_enabled` | `()` | — | [src](../../../core/services/cheap_lane_success_rate.py#L44) |
-| function | `find_chronic_failures` | `(*, days=…, min_calls=…, floor=…)` | Slots hvis success-rate over vinduet er UNDER `floor`, med mindst `min_calls`. | [src](../../../core/services/cheap_lane_success_rate.py#L53) |
-| function | `_allerede_doemt` | `(current)` | Er slottet allerede i karantæne for PRÆCIS denne grund, med tid tilbage? | [src](../../../core/services/cheap_lane_success_rate.py#L107) |
-| function | `apply_quarantine` | `(rows, *, hours=…)` | Sæt en tidsbegrænset cooldown i `cheap_provider_runtime_state` for hver dømt slot. | [src](../../../core/services/cheap_lane_success_rate.py#L133) |
-| function | `enforce` | `(*, days=…, min_calls=…, floor=…, hours=…)` | Flag-gated indgang: find kroniske fejlere og sæt dem i karantæne. | [src](../../../core/services/cheap_lane_success_rate.py#L193) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/cheap_lane_success_rate.py#L49) |
+| function | `find_chronic_failures` | `(*, days=…, min_calls=…, floor=…)` | Slots hvis success-rate over vinduet er UNDER `floor`, med mindst `min_calls`. | [src](../../../core/services/cheap_lane_success_rate.py#L58) |
+| function | `_allerede_doemt` | `(current)` | Er slottet allerede i karantæne for PRÆCIS denne grund, med tid tilbage? | [src](../../../core/services/cheap_lane_success_rate.py#L112) |
+| function | `apply_quarantine` | `(rows, *, hours=…)` | Sæt en tidsbegrænset cooldown i `cheap_provider_runtime_state` for hver dømt slot. | [src](../../../core/services/cheap_lane_success_rate.py#L138) |
+| function | `enforce` | `(*, days=…, min_calls=…, floor=…, hours=…)` | Flag-gated indgang: find kroniske fejlere og sæt dem i karantæne. | [src](../../../core/services/cheap_lane_success_rate.py#L198) |
 
 ## `core/services/cheap_lane_trace_context.py`
 _Stable identity carried across Cheap Lane attempts and fallbacks._

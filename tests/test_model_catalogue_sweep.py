@@ -3,7 +3,7 @@ utvetydig, og værnene skal holde. Alt kører gennem injicerede kroge; ingen
 test rører en udbyder eller en rigtig fil.
 """
 from core.services.model_catalogue_sweep import (
-    beslut, egnet_til_agentarbejde, kandidater_for, sweep_provider,
+    beslut, egnet_til_agentarbejde, foreslaa_navn, kandidater_for, sweep_provider,
 )
 
 
@@ -262,3 +262,122 @@ def test_ikke_afgjorte_modeller_roeres_ikke(monkeypatch):
                           skriv=lambda **kw: skrevet.append(kw) or True)
     assert skrevet == [], "skrev selvom dommen var uafgjort"
     assert r["ikke_afgjort"][0]["model"] == "m"
+
+
+# ── navne-drift: opdater mod provideren frem for at fjerne ──────────────────
+#
+# Bjørn 10/10-2026: «De steder det handler om model not found skal vi opdatere
+# vores model katalog mod provideren frem for at fjerne dem.» Udbyderne fjerner
+# suffikser (":free") og flytter gratis-modeller til betalte slugs — navnet
+# ændrer sig, modellen gør ikke. Fejemaskinen HENTER allerede udbyderens liste;
+# her oversættes ét navn til et andet i stedet for at slå slottet fra.
+
+def test_foreslaa_navn_finder_providerens_nye_navn():
+    nyt = foreslaa_navn("vendor/model-v2:beta", "Model not exist.",
+                        ["vendor/model-v2:stable", "noget/andet"])
+    assert nyt == "vendor/model-v2:stable"
+
+
+def test_foreslaa_navn_omdoeber_ikke_gratis_til_betalt():
+    """Bjørn 10/10-2026: «vi bruger deres free pool». Flytter en gratis model
+    til en betalt slug, er det IKKE en navne-drift vi følger — slottet skal
+    blive i free pool (eller slås fra), ikke begynde at betale."""
+    assert foreslaa_navn("minimax/minimax-m3:free", "Model not exist.",
+                         ["minimax/minimax-m3"]) is None
+    assert foreslaa_navn("nvidia/nemotron-3-nano-30b-a3b:free",
+                         "unavailable for free. The paid version is available now",
+                         ["nvidia/nemotron-3-nano-30b-a3b"]) is None
+
+
+def test_foreslaa_navn_returnerer_None_naar_ingen_ligner():
+    assert foreslaa_navn("minimax/minimax-m3:free", "Model not exist.",
+                         ["noget/helt-andet"]) is None
+
+
+def test_foreslaa_navn_roerer_ikke_ved_en_rate_limit():
+    """En travl udbyder må ikke få os til at omdøbe en model der er rask."""
+    assert foreslaa_navn("vendor/model-v2:beta",
+                         '{"status":429,"title":"Too Many Requests"}',
+                         ["vendor/model-v2:stable"]) is None
+
+
+def test_foreslaa_navn_springer_modeller_over_vi_allerede_har():
+    assert foreslaa_navn("m:free", "Model not exist.", ["m"], kendte={"m"}) is None
+
+
+def test_foreslaa_navn_returnerer_ikke_modellen_selv():
+    assert foreslaa_navn("m", "Model not exist.", ["m"]) is None
+
+
+def test_sweep_omdoeber_naar_provideren_har_det_nye_navn(monkeypatch):
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller",
+                        lambda p: (["vendor/model-v2:beta"], "default"))
+    skrevet = []
+
+    def proev(**kw):
+        if kw["model"].endswith(":beta"):
+            return _r(callable=False, score=0, error="Model not exist.")
+        return _r(score=95)
+
+    r = sw.sweep_provider(
+        "openrouter",
+        hent_modeller=lambda p, prof: ["vendor/model-v2:stable"],
+        proev=proev,
+        skriv=lambda **kw: (skrevet.append((kw["model"], kw["aktiv"])), True)[1],
+    )
+    assert ("vendor/model-v2:stable", True) in skrevet, "det nye navn blev ikke aktiveret"
+    assert r["omdoebt"] and r["omdoebt"][0]["fra"] == "vendor/model-v2:beta"
+    assert r["omdoebt"][0]["til"] == "vendor/model-v2:stable"
+
+
+def test_sweep_omdoeber_IKKE_gratis_til_betalt(monkeypatch):
+    """Bjørn 10/10-2026: cheap lane bruger openrouters free pool. Er en gratis
+    model flyttet til en betalt slug, omdøbes slottet IKKE — det bliver i free
+    pool (slået fra), ikke flyttet til at betale."""
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller",
+                        lambda p: (["minimax/minimax-m3:free"], "default"))
+    skrevet = []
+
+    r = sw.sweep_provider(
+        "openrouter",
+        hent_modeller=lambda p, prof: ["minimax/minimax-m3"],
+        proev=lambda **kw: _r(callable=False, score=0, error="Model not exist."),
+        skriv=lambda **kw: (skrevet.append((kw["model"], kw["aktiv"])), True)[1],
+    )
+    assert r["omdoebt"] == [], "en gratis model blev omdøbt til en betalt"
+    assert ("minimax/minimax-m3", True) not in skrevet
+
+
+def test_sweep_omdoeber_IKKE_naar_det_nye_navn_ogsaa_dumper(monkeypatch):
+    """Finder vi et nyt navn der også dumper, er der intet vundet — så gælder
+    den gamle dom, og slottet slås fra som før."""
+    import core.services.model_catalogue_sweep as sw
+    monkeypatch.setattr(sw, "_registrerede_modeller",
+                        lambda p: (["sund", "vendor/model-v2:beta"], "default"))
+    skrevet = []
+
+    def proev(**kw):
+        return _r(score=95) if kw["model"] == "sund" else _r(
+            callable=False, score=0, error="Model not exist.")
+
+    r = sw.sweep_provider(
+        "openrouter",
+        hent_modeller=lambda p, prof: ["vendor/model-v2:stable"],
+        proev=proev,
+        skriv=lambda **kw: (skrevet.append((kw["model"], kw["aktiv"])), True)[1],
+        maks_nye=0,
+    )
+    assert r["omdoebt"] == []
+    assert ("vendor/model-v2:beta", False) in skrevet
+
+
+def test_omdoebt_naevnes_i_beskeden():
+    b = sammendrag([{
+        "provider": "openrouter", "slaaet_fra": [], "nye": [], "genoplivet": [],
+        "fejl": "",
+        "omdoebt": [{"fra": "minimax/minimax-m3:free",
+                     "til": "minimax/minimax-m3", "score": 95}],
+    }])
+    assert "Omdøbt" in b and "minimax/minimax-m3" in b

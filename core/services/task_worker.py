@@ -374,7 +374,7 @@ def _suggested_agency_files(*, scope: str, edge: dict[str, Any]) -> list[str]:
     if "mission control" in haystack or "hidden" in haystack:
         suggestions.extend([
             "core/services/agency_map.py",
-            "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+            "apps/api/jarvis_api/routes/mission_control_introspection.py",
         ])
     return list(dict.fromkeys(suggestions))
 
@@ -386,7 +386,7 @@ def _suggested_observability_files(*, scope: str, service: str) -> list[str]:
     suggestions.extend([
         "core/services/system_cartographer.py",
         "core/services/agency_map.py",
-        "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+        "apps/api/jarvis_api/routes/mission_control_introspection.py",
     ])
     if service == "identity_composer":
         suggestions.insert(0, "core/services/identity_composer.py")
@@ -401,7 +401,7 @@ def _suggested_theater_files(*, scope: str) -> list[str]:
         "core/services/theater_audit.py",
         "core/services/system_cartographer.py",
         "core/services/agency_map.py",
-        "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+        "apps/api/jarvis_api/routes/mission_control_introspection.py",
     ])
     if scope.endswith("cognitive_state_assembly.py"):
         suggestions.extend([

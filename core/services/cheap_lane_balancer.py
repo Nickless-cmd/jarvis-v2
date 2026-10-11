@@ -845,6 +845,16 @@ def call_balanced(
     states = _load_state()
     if reconcile_successes(states, _time.time()):
         _save_state(states)
+    # Kroniske fejlere (10/10-2026). Reconcilen ovenfor HELER en slot der er kommet
+    # igen; dommeren her DOEMER den der aldrig gjorde. Den skriver en tidsbegraenset
+    # cooldown til cheap_provider_runtime_state — samme kilde selection-stien laeser
+    # gennem quota_snapshot — saa dommen virker paa BEGGE stier. Flag-gated (default
+    # OFF) og self-safe: fejler den, fortsaetter routing uaendret.
+    try:
+        from core.services.cheap_lane_success_rate import enforce as _sr_enforce
+        _sr_enforce()
+    except Exception as exc:  # dommeren maa aldrig vaelte routing-stien
+        logger.debug("success-rate-dommer kunne ikke koere: %s", exc)
     pool = build_slot_pool()
     if not pool:
         # Fund 4: tom pool → garanteret bund, aldrig rejse.

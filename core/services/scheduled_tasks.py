@@ -200,6 +200,32 @@ def _fire_due_tasks() -> None:
                         runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
                         logger.info("scheduled_tasks: fired %s → delivered (via=%s)", task_id, result.get("via", "direct"))
 
+                        # DURABEL INDBakke-POST (10/10-2026). Bjørn: «så skal vi
+                        # sørge for dit reminder tool faktisk når din inbox.»
+                        # Uden dette forsvandt opgaven fra visningen i samme
+                        # øjeblik den fyrede — indbakken viste den kun som «PÅ
+                        # VEJ» laest fra `scheduled_tasks`, og der fandtes intet
+                        # spor af at noget var lovet og indfriet. Self-safe: en
+                        # fejlet skrivning maa ikke forhindre fyringen.
+                        try:
+                            from core.services.scheduled_inbox import registrer_fyret_opgave
+                            from core.services.inbox_state import bruger_for_workspace
+                            from core.identity.workspace_context import current_workspace_name
+
+                            _ib = registrer_fyret_opgave(
+                                bruger_id=bruger_for_workspace(current_workspace_name() or "bjorn"),
+                                task_id=task_id,
+                                focus=focus,
+                            )
+                            if _ib.get("status") != "ok":
+                                logger.warning(
+                                    "scheduled_tasks: %s blev IKKE registreret i indbakken: %s",
+                                    task_id, _ib.get("error"))
+                        except Exception as ib_exc:
+                            logger.warning(
+                                "scheduled_tasks: indbakke-registrering fejlede for %s: %s",
+                                task_id, ib_exc)
+
                         # Also push to initiative queue so Jarvis can act on it autonomously
                         try:
                             from core.services.initiative_queue import push_initiative
@@ -317,6 +343,22 @@ def _poller_loop() -> None:
                 observe_operational_liveness("scheduled_tasks", "error", None)
             except Exception:
                 pass
+        # INDBakken VÆKKER (10/10-2026). Bjørn: «skal inbox kunne vække dig, på
+        # den hvis du ikk er i et aktivt run?» Svaret var nej: `inbox_gate`
+        # blokerer kun mutationer INDE i et run, og intet startede et run fordi
+        # en post fandtes. En `kraever_handling`-post uden dispatcher ventede
+        # til næste heartbeat eller hans næste besked. Vækkeren er konservativ
+        # (kun gatende poster, kun når intet kører, én vækning pr. post) og
+        # self-safe — den må aldrig vælte polleren.
+        try:
+            from core.services.inbox_idle_waker import vaek_paa_aabne_poster
+            from core.services.inbox_state import bruger_for_workspace
+            from core.identity.workspace_context import current_workspace_name
+
+            vaek_paa_aabne_poster(
+                bruger_id=bruger_for_workspace(current_workspace_name() or "bjorn"))
+        except Exception as exc:
+            logger.debug("scheduled_tasks: inbox-vaekker fejlede: %s", exc)
         _poller_stop.wait(_POLL_INTERVAL_SECONDS)
 
 

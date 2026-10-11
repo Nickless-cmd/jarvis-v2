@@ -114,23 +114,27 @@ it('en tanke EFTER det sidste kald staar til sidst i folden', async () => {
   expect(r.indexOf('Læste a.py')).toBeLessThan(r.indexOf('thinking-summary'))
 })
 
-it('runde-linjen har hverken prikker eller klokke mens den kører — de er flyttet', async () => {
-  // Bjørn 30/9-2026: de tre prikker og min/sec-tælleren sad i runde-linjen, men
-  // runden slukkes undervejs mens arbejdet fortsætter. Begge hører derfor til
-  // arbejdslinjen nederst nu (se `Arbejdslinje.test.tsx`), og her skal de ikke
-  // længere findes — hverken mens runden kører eller efter.
-  const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+it('turens ur staar paa linjen naar den faar et starttidspunkt', async () => {
+  // Bjørn 11/10-2026: klokken er flyttet TILBAGE hertil fra arbejdslinjen —
+  // men det er nu TURENS tid (`turStart`), ikke rundens egen levetid. Uden et
+  // starttidspunkt (fx en runde der ikke er turens sidste) staar der intet tal.
+  const s = await render(
+    <InlineToolGroup items={[item({ running: true }), item()]} turStart={Date.now() - 3000} />,
+  )
   expect(s.getByText('Læser 2 filer')).toBeTruthy()
+  expect(s.getByTestId('runde-tid')).toBeTruthy()
+  // Prikkerne kommer derimod IKKE tilbage: pulsen i spidsen bærer «der sker noget».
   expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
-  expect(s.queryByTestId('runde-tid')).toBeNull()
+  const uden = await render(<InlineToolGroup items={[item(), item()]} />)
+  expect(uden.queryByTestId('runde-tid')).toBeNull()
 })
 
-it('caret\'en kommer FOERST når runden er færdig — mens den kører er der ingen', async () => {
-  // Prikkerne delte cellen med caret'en. Da de flyttede, stod cellen tom mens
-  // runden kørte — og et tomt løfte er værre end ingen dør: chevronen vises
-  // nu kun når der faktisk ER noget at folde ud.
+it("caret'en afslutter linjen — ogsaa mens runden kører", async () => {
+  // Bjørn 11/10-2026: `>` er linjens afslutning, ikke bare rundens dør når den
+  // er færdig. Før stod den kun på færdige runder, fordi prikkerne delte
+  // cellen med den.
   const kører = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-  expect(kører.queryByTestId('tool-status-caret')).toBeNull()
+  expect(kører.getByTestId('tool-status-caret')).toBeTruthy()
   const færdig = await render(<InlineToolGroup items={[item(), item()]} />)
   expect(færdig.getByTestId('tool-status-caret')).toBeTruthy()
 })
@@ -203,18 +207,21 @@ it('uden sætning står den mekaniske tekst', async () => {
  * Her skal derfor INTET tal stå — hverken mens runden kører eller efter.
  * «0s»-reglen er væk med den: den fandtes kun fordi klokken stod her.
  */
-it('runde-linjen viser INGEN tid — klokken er flyttet til arbejdslinjen', async () => {
-  jest.useFakeTimers()
-  try {
-    const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-    await act(async () => { jest.advanceTimersByTime(3000) })
-    await s.rerender(<InlineToolGroup items={[item(), item()]} />)
-    expect(s.queryByTestId('runde-tid')).toBeNull()
-    expect(s.queryByText('3s')).toBeNull()
-    expect(s.queryByText('0s')).toBeNull()
-  } finally {
-    jest.useRealTimers()
-  }
+it('turens ur foelger starttidspunktet — ikke hvornaar linjen blev monteret', async () => {
+  // Det var hele pointen med at flytte uret ud af komponenten: baerer linjen
+  // sit eget ur (`useRef(Date.now())`), starter det forfra hver gang den
+  // monteres, og tiden springer tilbage midt i turen. Med `turStart` udefra
+  // maaler den TUREN — ogsaa naar runden skifter.
+  const start = Date.now()
+  const s = await render(
+    <InlineToolGroup items={[item({ running: true }), item()]} turStart={start - 3000} />,
+  )
+  // `RullendeUr` deler tallet i ét hjul pr. CIFER, så der findes ingen enkelt
+  // tekst-node «3s» — tallet læses gennem komponentens eget accessibilityLabel.
+  expect(s.getByLabelText('3s')).toBeTruthy()
+  await s.rerender(<InlineToolGroup items={[item(), item()]} turStart={start - 9000} />)
+  expect(s.getByLabelText('9s')).toBeTruthy()
+  expect(s.queryByLabelText('0s')).toBeNull()
 })
 
 /**

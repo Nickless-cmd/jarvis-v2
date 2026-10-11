@@ -1255,6 +1255,17 @@ export function ChatScreen({
               finalAnswerStarted={stream.state.finalAnswerStarted}
               arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
               arbejdslinjeTokens={brugteTokens}
+              // Turens ur findes KUN mens turen kører (Bjørn 11/10-2026: «tid
+              // skal kun vises i den aktuelle linje, ikk i de færdige»).
+              //
+              // `working` dur IKKE som vagt her, hvor nærliggende den end er:
+              // den tænder også på serverens EFTERSLÆB (`serverBusy`), så i
+              // vinduet mellem `message_stop` og runnets `mark_done` stod uret
+              // på en linje hvor alt arbejde var færdigt — og tikkede videre.
+              // Målt 11/10: med én `done`-blok og `working` tegnes BÅDE linjen
+              // og uret. `status` er det skarpe signal — den er 'working' kun
+              // mens turen kører, uanset om det enkelte kald er færdigt.
+              turStart={stream.state.status === 'working' ? stream.state.turStart : null}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.

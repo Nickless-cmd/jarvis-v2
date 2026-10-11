@@ -205,3 +205,49 @@ def test_theater_refactor_prepares_brief(monkeypatch) -> None:
     assert brief["audit_file"]["risk_score"] == 250
     assert brief["refactor_contract"]["state_before_prose"] is True
     assert "core/services/cognitive_state_assembly.py" in brief["suggested_files"]
+
+
+# ── brief-generatorerne må ikke foreslå filer der ikke findes ────────────────
+#
+# Målt 11/10-2026: alle tre generatorer foreslog
+# `apps/ui/src/components/mission-control/AgencyMapTab.jsx` — en fil der blev
+# revet ud 6/7-2026 sammen med hele web-UI'ets Mission Control (`b8c985510`,
+# Fase E: «MC lever nu i Centralen/Central-CLI»). Hver brief pegede altså på en
+# død sti, og intet fangede det: fire opgaver stod blokeret i fem måneder med et
+# mål ingen kunne bygge.
+#
+# Den levende flade er API-routelaget: `build_*_surface()` defineres i
+# `core/services/` og eksponeres som route i
+# `apps/api/jarvis_api/routes/mission_control_introspection.py` (144
+# surface-kald), som desk'ens cowork-zone læser gennem `/mc/*`.
+#
+# Vagten er testen: hver sti en generator foreslår skal findes på disken.
+
+
+def test_brief_generatorerne_foreslaar_kun_filer_der_findes() -> None:
+    """En brief der peger på en fil der ikke findes, sender en agent i ørkenen."""
+    from pathlib import Path
+
+    _, task_worker = _import_modules()
+    repo_rod = Path(__file__).resolve().parents[1]
+
+    forslag: list[str] = []
+    forslag += task_worker._suggested_agency_files(
+        scope="core/services/memory_emotional_context.py",
+        edge={
+            "id": "hidden-runtime-mc",
+            "target": "Hidden Runtime -> Mission Control",
+            "title": "Hidden Runtime -> Mission Control",
+        },
+    )
+    forslag += task_worker._suggested_observability_files(
+        scope="core/services/memory_emotional_context.py",
+        service="memory_emotional_context",
+    )
+    forslag += task_worker._suggested_theater_files(
+        scope="core/services/cognitive_state_assembly.py",
+    )
+
+    assert forslag, "generatorerne skal foreslå mindst én fil"
+    manglende = sorted({p for p in forslag if not (repo_rod / p).exists()})
+    assert manglende == [], f"briefene peger på filer der ikke findes: {manglende}"

@@ -749,3 +749,52 @@ describe('final_answer_start saetter arbejdsfasen til ende', () => {
     expect(s.finalAnswerStarted).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Turens ur (11/10-2026)
+//
+// Linjen skal vise HELE turens tid — ikke rundens. Uret kan derfor ikke bo i
+// komponenten: arbejdslinjen remonteres når `workingStep` tømmes mellem to
+// værktøjskald, og `useRef(Date.now())` starter så forfra hver gang. Start-
+// tidspunktet hører til TUREN og skal overleve både en ny runde og en
+// genforbindelse midt i streamen.
+// ─────────────────────────────────────────────────────────────────────────
+const turStart = (id: string) => ({
+  type: 'message_start' as const,
+  message: { id, model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } }
+})
+
+it('turens ur starter ved message_start', () => {
+  const nu = jest.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  const s = streamReducer(initialStreamState(), turStart('run-1'))
+  expect(s.turStart).toBe(1_000_000)
+  nu.mockRestore()
+})
+
+it('en genforbindelse midt i turen nulstiller IKKE uret', () => {
+  const nu = jest.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  const a = streamReducer(initialStreamState(), turStart('run-1'))
+  nu.mockReturnValue(1_700_000)
+  const b = streamReducer(a, turStart('run-1'))
+  expect(b.turStart).toBe(1_000_000)
+  nu.mockRestore()
+})
+
+it('et message_start UDEN run-id midt i turen nulstiller IKKE uret', () => {
+  const nu = jest.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  const a = streamReducer(initialStreamState(), turStart('run-1'))
+  nu.mockReturnValue(1_700_000)
+  const b = streamReducer(a, turStart(''))
+  expect(b.turStart).toBe(1_000_000)
+  nu.mockRestore()
+})
+
+it('en NY tur får et NYT ur', () => {
+  const nu = jest.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  let s = streamReducer(initialStreamState(), turStart('run-1'))
+  s = streamReducer(s, { type: 'message_stop' })
+  nu.mockReturnValue(1_500_000)
+  s = streamReducer(s, turStart('run-2'))
+  expect(s.turStart).toBe(1_500_000)
+  nu.mockRestore()
+})

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16721 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16740 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,28 +36,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16721 functions/
 - [`core.services.05`](core.services.05.md) — `central_body_mood_feel` … `central_inner_life_ablation`
 - [`core.services.06`](core.services.06.md) — `central_inner_life_digest` … `central_route_headroom`
 - [`core.services.07`](core.services.07.md) — `central_router_adapt` … `cheap_lane_health_reconcile`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_history` … `companion_presence`
-- [`core.services.09`](core.services.09.md) — `compass_engine` … `creative_drift_daemon`
-- [`core.services.10`](core.services.10.md) — `creative_impulse_daemon` … `deepseek_modelnavne`
-- [`core.services.11`](core.services.11.md) — `delegation_advisor` … `dream_influence_runtime`
-- [`core.services.12`](core.services.12.md) — `dream_insight_daemon` … `experience_correction_listener`
-- [`core.services.13`](core.services.13.md) — `experience_episodes` … `gate_shadow`
-- [`core.services.14`](core.services.14.md) — `gate_skill` … `hentede_vaerktoejer`
-- [`core.services.15`](core.services.15.md) — `hf_connector` … `interruption_notice`
-- [`core.services.16`](core.services.16.md) — `invocation_record` … `mcp_manager`
-- [`core.services.17`](core.services.17.md) — `mcp_registry` … `monitor_streams`
-- [`core.services.18`](core.services.18.md) — `mood_dialer` … `override_command`
-- [`core.services.19`](core.services.19.md) — `override_store` … `proactive_outbound_substrate`
-- [`core.services.20`](core.services.20.md) — `proactive_question_gate_tracking` … `provider_retry_policy`
-- [`core.services.21`](core.services.21.md) — `provider_self_heal` … `research_evidence_collector`
-- [`core.services.22`](core.services.22.md) — `research_ledger` … `runtime_self_model_affect`
-- [`core.services.23`](core.services.23.md) — `runtime_self_model_boundary` … `self_review_unified`
-- [`core.services.24`](core.services.24.md) — `self_surprise_detection` … `signal_baseline`
-- [`core.services.25`](core.services.25.md) — `signal_decay_daemon` … `subagent_ecology`
-- [`core.services.26`](core.services.26.md) — `subjective_time` … `tool_embeddings`
-- [`core.services.27`](core.services.27.md) — `tool_execution_trace` … `value_formation`
-- [`core.services.28`](core.services.28.md) — `verification_gate` … `visible_runs_approvals`
-- [`core.services.29`](core.services.29.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_history` … `companion_initiative`
+- [`core.services.09`](core.services.09.md) — `companion_presence` … `cowork_feed`
+- [`core.services.10`](core.services.10.md) — `creative_drift_daemon` … `deep_reflection_slot`
+- [`core.services.11`](core.services.11.md) — `deepseek_modelnavne` … `dream_influence_proposal_tracking`
+- [`core.services.12`](core.services.12.md) — `dream_influence_runtime` … `existential_wonder_daemon`
+- [`core.services.13`](core.services.13.md) — `experience_correction_listener` … `gate_review`
+- [`core.services.14`](core.services.14.md) — `gate_shadow` … `heartbeat_scheduler`
+- [`core.services.15`](core.services.15.md) — `hentede_vaerktoejer` … `internal_cadence_matrix`
+- [`core.services.16`](core.services.16.md) — `internal_opposition_signal_tracking` … `mcp_auth`
+- [`core.services.17`](core.services.17.md) — `mcp_client` … `model_trust`
+- [`core.services.18`](core.services.18.md) — `modulator_witness` … `outcome_projector`
+- [`core.services.19`](core.services.19.md) — `outreach_composer` … `proactive_context_governor`
+- [`core.services.20`](core.services.20.md) — `proactive_loop_lifecycle_tracking` … `provider_model_epochs`
+- [`core.services.21`](core.services.21.md) — `provider_registry_admin` … `report_claim_guard`
+- [`core.services.22`](core.services.22.md) — `research_contract` … `runtime_self_knowledge`
+- [`core.services.23`](core.services.23.md) — `runtime_self_model` … `self_review_record_tracking`
+- [`core.services.24`](core.services.24.md) — `self_review_run_tracking` … `shell_confinement_report`
+- [`core.services.25`](core.services.25.md) — `shutdown_window_daemon` … `stream_settlement`
+- [`core.services.26`](core.services.26.md) — `structured_content_flag` … `tool_concurrency`
+- [`core.services.27`](core.services.27.md) — `tool_contract_shadow` … `user_theory_of_mind`
+- [`core.services.28`](core.services.28.md) — `user_understanding_signal_tracking` … `visible_run_terminal_recovery`
+- [`core.services.29`](core.services.29.md) — `visible_run_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

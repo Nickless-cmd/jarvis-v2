@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8845/16721 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8861/16740 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8845/16721 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 811 | 1464 | 55% |
-| `core.services` | 5896 | 11349 | 51% |
+| `core.runtime` | 814 | 1467 | 55% |
+| `core.services` | 5909 | 11365 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -628,9 +628,9 @@ Generated from source. 8845/16721 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `read_header` (L119)
 - `core/runtime/session_ledger_crypto.py` :: `protect_event` (L12)
 - `core/runtime/session_ledger_crypto.py` :: `reveal_event` (L34)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L708)
-- `core/runtime/settings.py` :: `load_settings` (L764)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1238)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L715)
+- `core/runtime/settings.py` :: `load_settings` (L771)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1248)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1287,7 +1287,7 @@ Generated from source. 8845/16721 functions/methods documented (52%). The list b
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
 - `core/services/jarvis_brain.py` :: `connect_index` (L388)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L326)
-- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
+- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L350)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L422)
@@ -1789,8 +1789,8 @@ Generated from source. 8845/16721 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L323)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L332)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L365)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L374)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)

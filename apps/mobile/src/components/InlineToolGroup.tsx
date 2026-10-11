@@ -5,6 +5,8 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
+import { AnimeretPuls } from './AnimeretPuls'
+import { RullendeTokens, RullendeUr } from './RullendeTal'
 import { DiffArk } from './DiffArk'
 import { Krop } from './Krop'
 import { ThinkingSummary } from './ThinkingSummary'
@@ -70,6 +72,30 @@ interface Props {
    * `visShimmer`.
    */
   svarBegyndt?: boolean
+  /**
+   * Arbejdslinjens sætning — hvad der kører LIGE NU, i Jarvis' stemme.
+   *
+   * Bygget af `arbejdslinjeTekst(state.workingStep, state.workingAction)`, og
+   * den ERSTATTER rundens sætning mens kaldet kører. Kommandoen forsvinder
+   * igen når forklaringen lander: ét felt med to tilstande, ikke to linjer der
+   * siger næsten det samme (Bjørn 11/10-2026).
+   */
+  arbejdslinje?: string | null
+  /**
+   * Turens starttid i ms — hele TURENS tid, ikke rundens.
+   *
+   * Kommer fra `StreamState.turStart`. Udeladt = ingen klokke, hvilket er
+   * tilfældet for runder der ikke er turens sidste.
+   */
+  turStart?: number | null
+  /**
+   * Kontekstens token-tal — HELE konteksten turen bærer.
+   *
+   * Flyttet med over fra arbejdslinjen (Bjørn 11/10-2026). Den blev ikke
+   * nævnt i den nye linjes rækkefølge, men den er information og ikke pynt —
+   * at fjerne den ville være at slette noget der ikke blev bedt om at forsvinde.
+   */
+  tokensTal?: number
 }
 
 /**
@@ -106,6 +132,7 @@ export const SVAR_KLIP = 4000
  */
 export const InlineToolGroup = memo(function InlineToolGroup({
   items, etiket, aabenFraStart, tanker, streaming = false, sidste = false, svarBegyndt = false,
+  arbejdslinje = null, turStart = null, tokensTal = 0,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -117,6 +144,16 @@ export const InlineToolGroup = memo(function InlineToolGroup({
   // flere kald kan stå åbne samtidig — man læser typisk to svar mod hinanden.
   const [aabneSvar, setAabneSvar] = useState<Record<number, boolean>>({})
   const running = items.some((i) => i.running)
+  // Turens ur. Det TIKKER her og ikke i stream-tilstanden: et ur i tilstanden
+  // ville tegne hele træet om hvert kvart sekund, hvor kun denne linje skal
+  // skifte. Starttidspunktet kommer udefra (`turStart`), så tallet er turens —
+  // ikke linjens egen levetid, som var fejlen da det boede i arbejdslinjen.
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (turStart == null) return
+    const iv = setInterval(() => tick((n) => n + 1), 250)
+    return () => clearInterval(iv)
+  }, [turStart])
   // Shimmeren skal leve gennem hullet MELLEM runder.
   //
   // Et afsluttet værktøjskald afslutter ikke nødvendigvis Jarvis' runde: han
@@ -156,6 +193,12 @@ export const InlineToolGroup = memo(function InlineToolGroup({
   // Ét kald har ingen detalje at folde ud — så er caret'en et tomt løfte.
   // MEN bærer runden en tanke, er der noget at folde ud alligevel: tanken.
   const expandable = items.length > 1 || harTanker
+  // ÉT felt med to tilstande: kommandoen mens kaldet kører, rundens sætning når
+  // forklaringen lander. `summarizeRound` skriver allerede DATID når intet
+  // kører («Redigerede 3 filer»), så skiftet er netop `running` — der skal
+  // ikke bygges en datids-tabel ved siden af.
+  const hoved = running && arbejdslinje ? arbejdslinje : tekst
+  const sek = turStart == null ? 0 : Math.floor((Date.now() - turStart) / 1000)
 
   const toggle = () => {
     if (!expandable) return
@@ -173,13 +216,17 @@ export const InlineToolGroup = memo(function InlineToolGroup({
         testID="tool-group"
       >
         <View style={styles.row}>
-          {/* `</>` står fast — også når runden er færdig (Bjørn 19/9-2026:
-              «må gerne komme tilbage»). Claude Desktop viser den kun mens der
-              arbejdes; her er det et bevidst valg, i desk og mobil. */}
+          {/* Mærket i spidsen skifter (Bjørn 11/10-2026): mens runden kører
+              står PULSEN her — samme animerede bevægelse som arbejdslinjen
+              havde — og `</>` kommer tilbage på de færdige runder. `</>` er
+              rundens mærke, ikke bare et «arbejder nu»-tegn; den forsvandt
+              ikke med sammenlægningen. */}
           <View style={styles.spark} testID="tool-spark">
-            <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+            {running
+              ? <AnimeretPuls size={15} farve={tokens.color.accent} />
+              : <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />}
           </View>
-          <LabelSkift tekst={tekst} arbejder={visShimmer} style={styles.summary} farve={tokens.color.fg2} fastIkon />
+          <LabelSkift tekst={hoved} arbejder={visShimmer} style={styles.summary} farve={tokens.color.fg2} fastIkon />
           {/* Summen i selve linjen — foldet som standard ville tallene ellers
               kun ses af den der folder ud. Et nul vises ikke. */}
           {sum ? (
@@ -188,10 +235,22 @@ export const InlineToolGroup = memo(function InlineToolGroup({
               {sum.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{sum.fjernet}</Text> : null}
             </View>
           ) : null}
-          {/* Prikkerne er flyttet til arbejdslinjen (Bjørn 30/9-2026), så
-              cellen viser nu KUN rundens dør — og først når runden er
-              færdig, for før det er der intet at folde ud. */}
-          {!running && expandable ? (
+          {/* Turens tid — HELE turen, ikke runden. Den står efter diffen og
+              før caret'en (Bjørn 11/10-2026), og den fortsætter uændret når
+              runden skifter: det er turen der måles, ikke kaldet. */}
+          {turStart != null ? (
+            <View style={styles.celle} testID="runde-tid">
+              <RullendeUr sek={sek} farve={tokens.color.fg2} tegnFarve={tokens.color.fg3} />
+            </View>
+          ) : null}
+          {tokensTal > 0 ? (
+            <View style={styles.celle} testID="runde-tokens">
+              <RullendeTokens tokens={tokensTal} farve={tokens.color.fg2} tegnFarve={tokens.color.fg3} />
+            </View>
+          ) : null}
+          {/* Caret'en afslutter linjen — også mens runden kører. Før stod den
+              kun på færdige runder, fordi prikkerne delte cellen med den. */}
+          {expandable || running ? (
             <View style={styles.celle} testID="tool-status-caret">
               <Animated.View style={{ transform: [{ rotate: drej.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
                 <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />

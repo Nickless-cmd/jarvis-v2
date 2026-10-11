@@ -20046,7 +20046,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "b6:3a:0e:c4:d6:e1:3d:3f:d7:ac:8b:f9:31:46:c9:31:89:b0:7e:c8:73:9f:34:b0:f3:2c:e1:75:07:ac:11:59",
+      "digest": "4f:1b:9c:7c:cd:4d:16:4e:4c:a4:eb:5e:54:89:0a:0f:3b:7b:72:4c:12:34:e1:92:92:98:79:8d:1f:6e:e5:ca",
       "schema": {
         "columns": [
           {
@@ -20179,6 +20179,22 @@
           },
           {
             "name": "sidste_paamindelse_tur",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sidste_vaekning_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sidste_vaekning_tur",
             "type": "TEXT",
             "nullable": false,
             "default": "''",
@@ -45240,7 +45256,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "user_flags": {

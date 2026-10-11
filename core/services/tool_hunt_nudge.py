@@ -180,9 +180,11 @@ _NOTE_UKENDT = (
     "spørg frem for at gætte videre: `pause_and_ask`."
 )
 _NOTE_VAAGN = (
-    "⚠ `{hvad}` kører videre efter turen — og intet bringer dig tilbage til "
-    "det. Sæt en `schedule_self_wakeup`, eller sig til Bjørn hvornår han skal "
-    "kigge."
+    "⚠ `{hvad}` kører videre efter turen. `schedule_task` og `dispatch_agent` "
+    "fyrer selv et run når de udløber — men `run_in_background` og "
+    "`operator_bash_background` gør IKKE. Skal du selv tilbage til noget af "
+    "det, så sæt en `schedule_self_wakeup`, eller sig til Bjørn hvornår han "
+    "skal kigge."
 )
 #: Værktøjer der sætter noget i gang som lever videre efter turen.
 _BAGGRUND: Final[frozenset[str]] = frozenset({

@@ -115,3 +115,79 @@ def test_job_listen_laeses_hoejst_ÉN_gang_pr_kald():
     assert call_count["n"] <= 1, (
         f"list_jobs blev kaldt {call_count['n']} gange — forventet højst 1"
     )
+
+
+def test_hver_registreret_handler_har_en_kadence():
+    """12/10-2026: `governance_bootstrap` registrerer 21 handlers, men TRE af
+    dem — `memory_decay_sweep`, `dream_distillation_sweep` og
+    `concept_baseline_evaluation` — havde INGEN kadence i `_SCHEDULE`. Deres
+    handlers sov derfor for evigt.
+
+    Fejlen var usynlig: et job der aldrig bliver lagt i koe fejler heller
+    aldrig, saa intet raabte op. Modulens egen docstring advarede om praecis
+    dette («historically nothing periodically enqueued them»), og alligevel
+    blev de tre glemt da de to andre fik deres kadence.
+
+    Denne test binder de to ender sammen: en registreret handler uden kadence
+    er en fil ingen laeser.
+    """
+    import re
+    from pathlib import Path
+
+    from core.services.periodic_jobs_scheduler import _SCHEDULE
+
+    rod = Path(__file__).resolve().parents[1]
+    src = (rod / "core/services/governance_bootstrap.py").read_text(encoding="utf-8")
+    blok = re.search(r"handlers = \{(.*?)\n    \}", src, re.S)
+    assert blok, "fandt ikke handlers-dict'en i governance_bootstrap"
+    jobtyper = set(re.findall(r'"([a-z_]+)":', blok.group(1)))
+    assert jobtyper, "handlers-dict'en var tom"
+
+    uden_kadence = sorted(jobtyper - set(_SCHEDULE))
+    assert not uden_kadence, (
+        f"registrerede handlers UDEN kadence i _SCHEDULE: {uden_kadence} — "
+        "deres handlers vil sove for evigt"
+    )
+
+
+def test_de_tre_glemte_cyklusser_lægges_i_koe_nar_de_er_forfaldne():
+    """Ingen historik = alle tre er forfaldne og skal i koe."""
+    glemte = {
+        "memory_decay_sweep",
+        "dream_distillation_sweep",
+        "concept_baseline_evaluation",
+    }
+    ud = []
+    def fake_list(*a, **kw):
+        return []
+    def fake_enqueue(**kw):
+        ud.append(kw["job_type"])
+        return "job-x"
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
+         patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
+        result = check_and_enqueue_due_periodic_jobs()
+    mangler = sorted(glemte - set(result["enqueued"]))
+    assert not mangler, f"disse blev IKKE lagt i koe: {mangler}"
+
+
+def test_de_tre_glemte_cyklusser_gentages_ikke_nar_de_lige_har_koert():
+    """En daglig kadence skal respektere en frisk koersel — ellers fyrer de
+    hvert 30. sekund."""
+    glemte = [
+        "memory_decay_sweep",
+        "dream_distillation_sweep",
+        "concept_baseline_evaluation",
+    ]
+    def fake_list(*a, **kw):
+        return [_job(jt, hours_ago=2) for jt in glemte]
+    ud = []
+    def fake_enqueue(**kw):
+        ud.append(kw["job_type"])
+        return "job-x"
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
+         patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
+        result = check_and_enqueue_due_periodic_jobs()
+    for jt in glemte:
+        assert jt not in result["enqueued"], (
+            f"{jt} blev lagt i koe trods en frisk koersel for 2 timer siden"
+        )

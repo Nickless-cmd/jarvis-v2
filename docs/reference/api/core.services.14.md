@@ -151,7 +151,7 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
-| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L46) |
+| function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L52) |
 
 ## `core/services/goal_signal_tracking.py`
 

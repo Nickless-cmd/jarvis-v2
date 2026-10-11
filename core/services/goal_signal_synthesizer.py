@@ -29,11 +29,17 @@ def _gather_signals() -> dict[str, str]:
     except Exception as exc:
         logger.debug("synthesizer: chronicle fetch failed: %s", exc)
     try:
-        from core.services.dream_distillation_daemon import recent_dream_excerpts  # type: ignore
-        out["dreams"] = "\n".join(str(d)[:200] for d in (recent_dream_excerpts() or [])[:5])
-    except Exception:
-        # dream_distillation_daemon may not have this exact API — skip silently
-        pass
+        # 12/10-2026: kaldte `recent_dream_excerpts`, som ikke findes i modulet —
+        # den tavse `except` skjulte det, saa synthesizeren har ALDRIG laest en
+        # droem. Den rigtige kilde er `get_dream_residue_for_prompt()`, som
+        # returnerer den aktive droemmerest som en faerdig tekstblok (samme
+        # funktion prompt-laget og dreaming_session bruger).
+        from core.services.dream_distillation_daemon import get_dream_residue_for_prompt
+        out["dreams"] = get_dream_residue_for_prompt(max_chars=1200) or ""
+    except Exception as exc:
+        # Droemmeresten er en berigelse — fejler den, koerer synthesizeren videre
+        # paa kronik + aabne spoergsmaal, men fejlen skal kunne ses i loggen.
+        logger.debug("synthesizer: dream residue fetch failed: %s", exc)
     try:
         from core.services.curiosity_daemon import _open_questions
         questions = list(_open_questions or [])

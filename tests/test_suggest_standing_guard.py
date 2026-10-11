@@ -125,6 +125,28 @@ def test_noten_beder_om_stillingtagen_ikke_om_gentagelse():
 
 # ── Kontakten ──────────────────────────────────────────────────────────────
 
+def test_tier_naar_pause_and_ask_blev_kaldt():
+    """Et spoergsmaal ER en stillingtagen (Bjorn 11/10-2026).
+
+    Foer denne dato talte kun `suggest_next_task`. Saa naar Jarvis havde et
+    spoergsmaal, skubbede vagten ham mod komponisten — og spoergsmaalet endte
+    i Bjorns skrivefelt som om det var hans egen besked. Det er praecis den
+    fejl Bjorn bad om at faa rettet."""
+    assert mangler_stilling(
+        called_tool_names=["bash", "pause_and_ask"],
+        final_text="Jeg har brug for dit valg.",
+    ) is False
+
+
+def test_noten_naevner_baade_naeste_skridt_og_spoergsmaal():
+    """Noten skal pege paa den RIGTIGE vej for hvert tilfaelde: et spoergsmaal
+    hoerer i pause_and_ask, ikke i komponisten."""
+    note = build_nudge()
+    assert "suggest_next_task" in note
+    assert "pause_and_ask" in note
+    assert "anbefalet" in note
+
+
 def test_kontakten_er_taendt_som_standard():
     assert suggest_standing_guard_enabled() is True
 

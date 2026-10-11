@@ -104,7 +104,7 @@ Jarvis files reviewed:
 - `core/tools/tool_scoping.py`
 - `core/tools/simple_tools_definitions.py`
 - `core/tools/simple_tools_native.py`
-- `apps/api/jarvis_api/routes/agent_loop.py`
+- `agent_loop.py` (under `apps/api/jarvis_api/routes/`) — **afviklet 7/10-2026** (commit `96dde0e3e`); efterfølgeren `core/services/agent_loop_core.py` lever
 - `docs/streaming-production-grade-spec.md`
 
 ## What DeepSeek Harness does well
@@ -1271,7 +1271,7 @@ shadow. Nothing has replaced existing behaviour.
 | retry policy and turn-wide budgets | `core/services/retry_runtime.py` | `tests/test_retry_runtime.py` (36) |
 | reconstructable prepared request | `core/services/prepared_request.py` | `tests/test_prepared_request.py` (26) |
 | one terminal run outcome | `core/services/outcome_projector.py` | `tests/test_outcome_projector.py` (28) |
-| compaction that cannot loop | `core/services/compaction_runtime.py` | `tests/test_compaction_runtime.py` (28) |
+| compaction that cannot loop | *ikke bygget under dette navn (målt 11/10-2026)* | — |
 | shadow comparison against the running code | `core/services/settlement_shadow.py` | `tests/test_settlement_shadow.py` (21) |
 | extracted run-outcome state machine (Boy Scout) | `core/services/visible_run_outcome_state.py` | `tests/test_visible_run_outcome_state.py` (15) |
 

@@ -161,13 +161,15 @@ _Generate docs/reference/CAPABILITIES.md from the live tool registry. Regenerabl
 | function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | Parse a file's AST and return the set of modules it imports. | [src](../../../scripts/capability_audit.py#L138) |
 | function | `compute_reachability` | `(graph, entry_modules)` | BFS the import graph from entry_modules. | [src](../../../scripts/capability_audit.py#L191) |
 | function | `score_service` | `(signals)` | Classify a service into a colored liveness label from its signals. | [src](../../../scripts/capability_audit.py#L217) |
-| function | `git_last_touch` | `(path)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L248) |
-| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L286) |
-| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L295) |
-| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L313) |
-| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L412) |
-| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L473) |
-| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L485) |
+| class | `GitTouchIndex` | `` | Repo-wide git history built from ONE ``git log`` call. | [src](../../../scripts/capability_audit.py#L249) |
+| function | `build_git_touch_index` | `(repo_root=…)` | Build the repo-wide touch index in a single ``git log --name-status -M`` pass. | [src](../../../scripts/capability_audit.py#L262) |
+| function | `git_last_touch` | `(path, index)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L310) |
+| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L345) |
+| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L354) |
+| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L372) |
+| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L471) |
+| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L533) |
+| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L545) |
 
 ## `scripts/central_connectivity_audit.py`
 _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Centralen._
@@ -288,21 +290,21 @@ _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS). | [src](../../../scripts/docs_drift_check.py#L31) |
-| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L36) |
-| function | `broken_links` | `(docs_root=…)` | HARD check: scan markdown links in every doc and return {doc, kind, target} for each | [src](../../../scripts/docs_drift_check.py#L42) |
-| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L60) |
-| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L67) |
-| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L77) |
-| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L83) |
-| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L96) |
-| function | `stale_generated` | `(only_dirs=…, repo=…)` | HARD check: re-run each generator in-memory and compare its expected output to the | [src](../../../scripts/docs_drift_check.py#L100) |
-| function | `prose_drift` | `(docs_root=…, repo=…)` | SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't | [src](../../../scripts/docs_drift_check.py#L123) |
-| function | `requirements_drift` | `(repo=…)` | SOFT check: scan imported third-party modules (via requirements_gen) and return | [src](../../../scripts/docs_drift_check.py#L140) |
-| function | `staged_paths` | `(repo=…)` | Return the list of staged file paths (git diff --cached --name-only); [] on any error. | [src](../../../scripts/docs_drift_check.py#L161) |
-| function | `hard_drift` | `(staged=…, repo=…)` | Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs | [src](../../../scripts/docs_drift_check.py#L171) |
-| function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L178) |
-| function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L192) |
+| function | `find_docs` | `(root=…)` | List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS). | [src](../../../scripts/docs_drift_check.py#L44) |
+| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L49) |
+| function | `broken_links` | `(docs_root=…)` | HARD check: scan markdown links in every doc and return {doc, kind, target} for each | [src](../../../scripts/docs_drift_check.py#L55) |
+| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L73) |
+| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L80) |
+| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L90) |
+| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L96) |
+| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L109) |
+| function | `stale_generated` | `(only_dirs=…, repo=…)` | HARD check: re-run each generator in-memory and compare its expected output to the | [src](../../../scripts/docs_drift_check.py#L113) |
+| function | `prose_drift` | `(docs_root=…, repo=…)` | SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't | [src](../../../scripts/docs_drift_check.py#L136) |
+| function | `requirements_drift` | `(repo=…)` | SOFT check: scan imported third-party modules (via requirements_gen) and return | [src](../../../scripts/docs_drift_check.py#L156) |
+| function | `staged_paths` | `(repo=…)` | Return the list of staged file paths (git diff --cached --name-only); [] on any error. | [src](../../../scripts/docs_drift_check.py#L177) |
+| function | `hard_drift` | `(staged=…, repo=…)` | Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs | [src](../../../scripts/docs_drift_check.py#L187) |
+| function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L194) |
+| function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L208) |
 
 ## `scripts/drain_before_restart.py`
 _Vent til ingen tur er levende, så en genstart ikke kapper en._

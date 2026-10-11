@@ -46,6 +46,15 @@ genoptagelsen har hvert sit loft.
 Kan noget ikke afgøres, fyrer vagten ikke. En vagt der kaster ville vælte
 hver tur den rører; en vagt der fyrer på et gæt ville fylde komponisten med
 støj. Begge er værre end at tie.
+
+## Spoergsmaalet hoerer ogsaa her (Bjorn 11/10-2026)
+
+Vagten taeller nu BAADE `suggest_next_task` og `pause_and_ask` som stilling
+taget. Foer denne dato gjaldt kun den foerste — saa naar Jarvis havde et
+spoergsmaal, skubbede vagten ham mod komponisten, og spoergsmaalet endte i
+Bjorns skrivefelt som om det var hans egen besked. Et spoergsmaal ER en
+stillingtagen: turen sluttede med et spoergsmaal, ikke med et svar der mangler
+et naeste skridt. Noten maa derfor ikke fyre naar spoergsmaalet er stillet.
 """
 from __future__ import annotations
 
@@ -57,8 +66,19 @@ logger = logging.getLogger(__name__)
 
 _ENV = "JARVIS_SUGGEST_STANDING_GUARD"
 
-#: Værktøjet der LÆGGER forslaget. Er det kaldt, er stillingen taget.
-SUGGEST_TOOL_NAMES: tuple[str, ...] = ("suggest_next_task",)
+#: Værktøjerne der TAGER stilling til næste skridt. Er ét af dem kaldt, er
+#: stillingen taget, og noten maa ikke fyre.
+#:
+#: `suggest_next_task` peger paa næste TRÆK i Bjorns ord; `pause_and_ask`
+#: stiller spoergsmaalet til ham og afslutter turen (Bjorn 11/10-2026:
+#: «spoergsmaal skal gaa til pause and ask»). Foer denne dato talte kun den
+#: foerste som stillingtagen — saa naar Jarvis havde et spoergsmaal, skubbede
+#: vagten ham mod komponisten i stedet, og spoergsmaalet endte i Bjorns
+#: skrivefelt som om det var hans egen besked.
+STILLING_TOOL_NAMES: tuple[str, ...] = ("suggest_next_task", "pause_and_ask")
+
+#: Bagudkompatibelt navn — kaldestedet og testene bruger det gamle navn.
+SUGGEST_TOOL_NAMES: tuple[str, ...] = STILLING_TOOL_NAMES
 
 
 def suggest_standing_guard_enabled() -> bool:
@@ -100,8 +120,9 @@ def mangler_stilling(
       completion er en anden vagts sag.
     * ingen kaldte værktøjer — turen udførte intet arbejde, så der er intet
       næste skridt at pege på. En ren samtale-tur får ikke noten.
-    * `suggest_next_task` kaldt — stillingen ER taget. Noten ville være en
-      gentagelse.
+    * `suggest_next_task` eller `pause_and_ask` kaldt — stillingen ER taget.
+      Noten ville være en gentagelse. Et spoergsmaal stiller turen lige saa
+      afsluttet som et forslag goer.
     """
     try:
         if nudged_already:
@@ -115,7 +136,7 @@ def mangler_stilling(
         navne = [str(n).strip() for n in (called_tool_names or []) if str(n).strip()]
         if not navne:
             return False
-        if any(n in SUGGEST_TOOL_NAMES for n in navne):
+        if any(n in STILLING_TOOL_NAMES for n in navne):
             return False
         return True
     except Exception:
@@ -133,5 +154,8 @@ def build_nudge() -> str:
         "i Bjørns komponist. Dette er ikke en anmodning om at gentage dit svar. "
         "Tag stilling i ÉN handling: er der et næste skridt, kald "
         "`suggest_next_task` med det i Bjørns ord — én linje, højst ti ord, "
-        "dansk. Er tråden færdig, afslut uden at gentage dig."
+        "dansk. Skal BJØRN derimod beslutte noget, kald `pause_and_ask` — et "
+        "spørgsmål hører ikke i komponisten, og den anbefalede mulighed står "
+        "først med «(anbefalet)» i teksten. Er tråden færdig, afslut uden at "
+        "gentage dig."
     )

@@ -585,7 +585,7 @@ def _write_line(path: Path, line: str) -> None:
 ### 15.4 🟢 Fund 15 — Config-switch til at slå broen fra
 
 ```python
-# core/config/runtime.json
+# ~/.jarvis-v2/config/runtime.json (uden for repoet)
 {
     "eventbus_central_bridge": {
         "enabled": true,           # false = broen starter ikke

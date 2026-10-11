@@ -62,7 +62,7 @@ Jarvis taber stykker af sin egen historie hver gang compaction kører. Det er id
 - Ændring af compact-format — behold `## Beslutninger / ## Fakta / ## Åbne punkter`
 
 ## Implementation notes (til i morgen)
-- Fil: `core/tools/compact_validator.py` (ny)
+- Fil: `core/context/compact_ground_truth.py` — planen her blev bygget under dette navn, ikke `compact_validator`
 - Integration: hook i `auto_compact.py` efter compact kører
 - Git-log fetch eksisterer allerede via `git_log` tool
 - DB query eksisterer allerede via `db_query`

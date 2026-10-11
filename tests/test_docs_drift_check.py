@@ -63,3 +63,54 @@ def test_gate_gaar_igennem_uden_drift(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["docs_drift_check.py", "--check"])
     assert d.main() == 0
     assert "clean" in capsys.readouterr().out
+
+
+# ── Historiske træer holdes ude af prose-checken, men IKKE af link-checken (11/10-2026) ──
+def test_prose_drift_skips_historical_records(tmp_path):
+    """A decision note (docs/notes/) and a changelog describe what was or will be — their
+    paths are aspirational/past by design, so the SOFT prose check must not flag them."""
+    docs = tmp_path / "docs"
+    (docs / "notes" / "foreslaaet" / "arkitektur").mkdir(parents=True)
+    (docs / "live.md").write_text("see `core/services/gone.py`")
+    (docs / "notes" / "foreslaaet" / "arkitektur" / "2026-01-01-x.md").write_text(
+        "see `core/services/gone.py`")
+    (docs / "COMMIT_HISTORY.md").write_text("see `core/services/gone.py`")
+    out = d.prose_drift(docs, tmp_path)
+    flagged = {o["doc"].split("/")[-1] for o in out}
+    assert "live.md" in flagged                # a live doc is still checked
+    assert "2026-01-01-x.md" not in flagged    # note: skipped
+    assert "COMMIT_HISTORY.md" not in flagged  # changelog: skipped
+
+
+def test_broken_links_still_covers_historical_trees(tmp_path):
+    """The HARD link check must NOT inherit the prose filter: a broken link in a note is
+    still a broken link — the filter is deliberately scoped to the SOFT prose family."""
+    docs = tmp_path / "docs"
+    (docs / "notes").mkdir(parents=True)
+    (docs / "notes" / "n.md").write_text("[gone](does_not_exist.md)")
+    out = d.broken_links(docs)
+    assert any(o["doc"].endswith("n.md") for o in out)
+
+
+# ── To falske positiver i _PATH_RE (målt og rettet 11/10-2026) ──────────────
+def test_prose_path_re_does_not_truncate_tsx(tmp_path):
+    """`ts` stood before `tsx` in the alternation, so `CodeView.tsx` was cut to a
+    nonexistent `CodeView.ts` — a false positive on a file that does exist."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "live.md").write_text("see `apps/jarvis-desk/src/views/CodeView.tsx`")
+    (tmp_path / "apps" / "jarvis-desk" / "src" / "views").mkdir(parents=True)
+    (tmp_path / "apps" / "jarvis-desk" / "src" / "views" / "CodeView.tsx").write_text("x")
+    out = d.prose_drift(docs, tmp_path)
+    assert out == [], out
+
+
+def test_prose_path_re_ignores_paths_nested_in_longer_paths(tmp_path):
+    """A path embedded in someone ELSE's absolute path is not ours to judge:
+    `/home/bs/.../packages/core/session/README.md` matched `core/session/README.md`."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "live.md").write_text(
+        "- `/home/bs/Skrivebord/deepseek-harness/packages/core/session/README.md`")
+    out = d.prose_drift(docs, tmp_path)
+    assert out == [], out

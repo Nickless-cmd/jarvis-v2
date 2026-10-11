@@ -77,6 +77,35 @@ def test_de_tre_visuelle_vaerktoejer_er_alle_NAEVNT_og_pinned():
         )
 
 
+def test_spoergsmaal_gaar_til_pause_and_ask_ikke_komponisten():
+    """Maalt 11/10-2026: `pause_and_ask` blev naevnt NUL steder i hele
+    prompt_sections/. Reglen fandtes kun for den ENE halvdel — den der peger
+    paa komponisten — og en vagt bakkede den op. Saa naar Jarvis havde et
+    spoergsmaal, endte det i Bjorns skrivefelt som om det var hans egen besked.
+    Bjorn 11/10-2026: «spoergsmaal skal gaa til pause and ask».
+
+    Rangeringen er ogsaa en del af reglen: der findes INTET saerskilt
+    anbefalet-felt — raekkefoelgen af options ER rangeringen, saa den
+    anbefalede skal staa foerst med «(anbefalet)» i teksten."""
+    for s in ("weak", "strong"):
+        t = _output_discipline_instruction(strength=s)
+        assert "pause_and_ask" in t, f"{s}: spoergsmaal-vejen mangler"
+        assert "QUESTION does NOT" in t, f"{s}: forbuddet mod spoergsmaal mangler"
+        assert "anbefalet" in t, f"{s}: rangeringen mangler"
+
+
+def test_pause_and_ask_er_pinned_som_prompten_kraever():
+    """Samme regel som de tre visuelle: beder prompten om et vaerktoej, SKAL det
+    staa i pinned-filen — ellers kan anvisningen ikke indfries, og Jarvis maa
+    hente det midt i turen."""
+    from core.services.tool_tagger import get_pinned_set, invalidate_cache
+
+    invalidate_cache()
+    tekst = _output_discipline_instruction(strength="weak")
+    assert "pause_and_ask" in tekst
+    assert "pause_and_ask" in get_pinned_set()
+
+
 def test_forslaget_loves_at_overleve_en_genstart():
     """Linjen siger det, OG koden gør det (`test_composer_suggest`). Et loefte
     i prompten uden daekning i koden er vaerre end ingen linje."""

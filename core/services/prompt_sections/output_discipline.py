@@ -54,6 +54,19 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "  It waits in his composer and survives an app restart. Since 28/9-2026 there is",
         "  no local model behind it: skip it and the field stays EMPTY. Skip only when the",
         "  thread is genuinely done.",
+        # Maalt 11/10-2026: `pause_and_ask` blev naevnt NUL steder i hele
+        # prompt_sections/. Reglen fandtes altsaa kun for den ENE halvdel — og
+        # den halvdel pegede paa komponisten, bakket op af en vagt. Saa naar
+        # Jarvis havde et SPOERGSMAAL, faldt han tilbage paa den ene vej
+        # mekanikken stoettede: spoergsmaalet endte i Bjorns skrivefelt som om
+        # det var Bjorns egen besked. Bjorn 11/10-2026: «spoergsmaal skal gaa til
+        # pause and ask». Den anden halvdel af reglen staar her nu.
+        "- A QUESTION does NOT go in suggest_next_task. Never put a question in his",
+        "  composer — the field is for the next STEP, in his voice. When the next move",
+        "  needs HIS decision, call pause_and_ask and END your turn there: it is the only",
+        "  form that stops and waits for him. Order the options by your recommendation —",
+        "  the one you recommend FIRST, with «(anbefalet)» at the end of that option's",
+        "  text. There is no separate field: the ORDER is the ranking.",
     ]
     if str(strength) == "strong":
         lines += [

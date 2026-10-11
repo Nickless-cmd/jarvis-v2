@@ -73,13 +73,14 @@ def followups(monkeypatch):
     stubbe en leveringsfejl.
     """
     lagt: list = []
-    from core.services import notification_bridge
+    from core.services import inbox_state
 
-    def _send(content, *, source="", push=True, **_kw):
-        lagt.append({"source": source, "text": content})
-        return {"status": "ok", "message": {"id": "msg-test"}}
+    def _registrer(*, bruger_id, kildetype, kilde_id, beskrivelse="", **_kw):
+        lagt.append({"source": kildetype, "text": beskrivelse, "kilde_id": kilde_id})
+        return {"status": "ok", "post": {"post_id": "ci-test"}}
 
-    monkeypatch.setattr(notification_bridge, "send_session_notification", _send)
+    monkeypatch.setattr(inbox_state, "registrer_kilde", _registrer)
+    monkeypatch.setattr(inbox_state, "laese_bruger", lambda: "bjorn")
     return lagt
 
 
@@ -145,7 +146,7 @@ def test_roed_koersel_giver_en_followup(isoleret_state, api, followups):
     ud = w.tik()
     assert ud["status"] == "ok" and ud["nye"] == 1
     assert len(followups) == 1
-    assert followups[0]["source"] == "ci-status-watch"
+    assert followups[0]["source"] == "daemon"
     assert "fix: mobile" in followups[0]["text"]
 
 
@@ -182,11 +183,10 @@ def test_levering_der_fejler_meldes_som_fejl(isoleret_state, api, monkeypatch):
     Uden `delivery_succeeded`-tjekket ville vi melde «sendt» om en alarm der
     ikke findes — og runnene er allerede markeret sete, saa den kom aldrig
     igen."""
-    from core.services import notification_bridge
-    monkeypatch.setattr(notification_bridge, "send_session_notification",
-                        lambda *a, **kw: {"status": "error"})
-    monkeypatch.setattr(notification_bridge, "delivery_succeeded",
-                        lambda _r: False)
+    from core.services import inbox_state
+    monkeypatch.setattr(inbox_state, "registrer_kilde",
+                        lambda **kw: {"status": "error", "error": "skriv-fejlede"})
+    monkeypatch.setattr(inbox_state, "laese_bruger", lambda: "bjorn")
     w._grundlinje()
     api["runs"] = [_run(oprettet=w._nu() + timedelta(seconds=30))]
     ud = w.tik()

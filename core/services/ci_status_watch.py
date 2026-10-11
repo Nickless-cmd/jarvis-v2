@@ -271,27 +271,32 @@ def tik() -> dict[str, Any]:
     # naa frem er ikke en alarm — og det var hele grunden til at vagtposten
     # blev bygget (ci var roedt i to doegn uden at nogen saa det).
     #
-    # `send_session_notification` er den etablerede vej for en
-    # baggrundsproces der vil sige noget. `push=False`: denne vej sendte
-    # ikke mobil-push foer.
+    # 11/10-2026: leveringsvejen flyttet fra `send_session_notification` til
+    # Jarvis' EGEN indbakke. Foer skrev alarmen i den SYN LIGE samtale, saa
+    # Bjoern fik CI-stoej midt i chatten for en fejl der kun vedkommer Jarvis.
+    # Indbakken er den flade Jarvis selv laeser (`inbox_prompt_section`), og en
+    # CI-alarm er en HUSETS begivenhed — kildetype `daemon` kan derfor ikke
+    # naegte en mutation. `kilde_id` er konstant, saa posten opdateres i stedet
+    # for at hobe sig op; `daemon` staar i IKKE_GATENDE_KILDETYPER, saa en
+    # kvitteret post genaabnes naar der kommer et nyt roedt run.
     try:
-        from core.services.notification_bridge import (
-            delivery_succeeded,
-            send_session_notification,
-        )
+        from core.services.inbox_state import laese_bruger, registrer_kilde
 
-        levering = send_session_notification(
-            tekst[:2000],
-            source="ci-status-watch",
-            push=False,
+        bruger = laese_bruger()
+        if not bruger:
+            return {"status": "fejl", "nye": len(nye), "grund": "ingen-bruger"}
+        levering = registrer_kilde(
+            bruger_id=bruger,
+            kildetype="daemon",
+            kilde_id="ci-status-watch",
+            beskrivelse=tekst[:1000],
         )
     except Exception as exc:
-        logger.warning("ci_status_watch: kunne ikke sende besked: %s", exc)
+        logger.warning("ci_status_watch: kunne ikke levere besked: %s", exc)
         return {"status": "fejl", "nye": len(nye), "grund": str(exc)[:120]}
-    # "queued" ER en succes — se `_DELIVERY_OK_STATUSES`.
-    if not delivery_succeeded(levering):
-        # Uden det her tjek ville vi melde «sendt» om en alarm der aldrig
-        # blev leveret — og runnene er allerede markeret sete, saa de ville
+    if str(levering.get("status") or "") != "ok":
+        # Uden det her tjek ville vi melde «leveret» om en alarm der aldrig
+        # blev skrevet — og runnene er allerede markeret sete, saa de ville
         # ikke komme igen.
         return {
             "status": "fejl",

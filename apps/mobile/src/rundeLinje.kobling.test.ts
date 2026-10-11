@@ -41,9 +41,17 @@ it('listen fører arbejdslinjen og turens ur ind i runden', () => {
   expect(ml).toMatch(/turStart=\{item\.sidsteRunde \? turStart : null\}/)
 })
 
-it('skærmen giver turens starttid videre fra streamen', () => {
+it('skærmen giver turens starttid videre fra streamen — men KUN mens turen kører', () => {
   // Uden dette led bliver `turStart` regnet og gemt uden at nå skærmen.
-  expect(kilde('screens/ChatScreen.tsx')).toMatch(/turStart=\{stream\.state\.turStart\}/)
+  //
+  // Bjørn 11/10-2026: «tid skal kun vises i den aktuelle linje, ikk i de
+  // færdige». Vagtens første udgave bandt uret til `working` — men den prop
+  // tænder OGSÅ på serverens efterslæb (`serverBusy`), så mellem
+  // `message_stop` og runnets `mark_done` stod uret på en linje hvor alt
+  // arbejde var færdigt. Målt 11/10: med én `done`-blok og `working` tegnes
+  // BÅDE linjen og uret. `status` er det skarpe signal.
+  expect(kilde('screens/ChatScreen.tsx'))
+    .toMatch(/turStart=\{stream\.state\.status === 'working' \? stream\.state\.turStart : null\}/)
 })
 
 it('mærket i spidsen skifter: puls mens runden kører, </> når den er færdig', () => {

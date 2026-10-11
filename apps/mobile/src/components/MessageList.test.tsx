@@ -121,6 +121,43 @@ it('kommandoen staar ikke tilbage naar streamen er slut', async () => {
   expect(s.queryByTestId('runde-tid')).toBeNull()
 })
 
+it('turens ur staar KUN paa den runde der koerer — ogsaa naar starttidspunktet er sat', async () => {
+  // Bjørn 11/10-2026: «tid skal kun vises i den aktuelle linje, ikk i de
+  // færdige». Vagtens første udgave bed kun paa at `turStart` var UDELADT —
+  // men ChatScreen sender den, saa efter `message_stop` stod det frosne ur
+  // tilbage paa den færdige linje. Testen her sender derfor et
+  // starttidspunkt MED, mens turen er slut: det er forskellen mellem at maale
+  // noget og at maale ingenting.
+  //
+  // DEN ANDEN HALVDEL ER DEN DER BAERER TESTEN. Maalt 11/10: ved
+  // `working={false}` tegnes linjen SLET IKKE — den færdige runde kommer fra
+  // `persisted`, ikke fra live-blokkene. Den negative assertion alene bestod
+  // derfor af den «rigtige» grund uden at bevise noget. Den positive kontrol
+  // (kørende tur ⇒ uret FINDES) er hvad der gør den til en vagt.
+  //
+  // Serverens EFTERSLAEB er ikke daekket her — det er en anden vej til
+  // `working` (se `ChatScreen`), og den vagt ligger i
+  // `rundeLinje.kobling.test.ts`.
+  const start = Date.now()
+  const faerdig: ContentBlock[] = [
+    { type: 'tool_use', id: 't1', name: 'bash', input: { command: 'npm test' }, status: 'done', result: 'ok' },
+  ]
+  const slut = await render(
+    <MessageList messages={[]} blocks={faerdig} working={false} turStart={start - 5000} />
+  )
+  expect(slut.queryByTestId('tool-group')).toBeNull()
+  expect(slut.queryByTestId('runde-tid')).toBeNull()
+
+  const kører: ContentBlock[] = [
+    { type: 'tool_use', id: 't2', name: 'bash', input: { command: 'npm test' }, status: 'running' },
+  ]
+  const live = await render(
+    <MessageList messages={[]} blocks={kører} working turStart={start - 3000} />
+  )
+  expect(live.getByTestId('tool-group')).toBeTruthy()
+  expect(live.getByTestId('runde-tid')).toBeTruthy()
+})
+
 it('viser turn header fra turen starter, før første blok kommer', async () => {
   const s = await render(<MessageList messages={[]} blocks={[]} working />)
   expect(s.getByTestId('turn-header')).toBeTruthy()

@@ -127,6 +127,25 @@ class TestLaesning:
         r = await ob.read_async(shell_id="bg_" + "c" * 12, user_id="u1", since=7)
         assert r["output"] == "" and r["offset"] == 7
 
+    @pytest.mark.asyncio
+    async def test_flere_jobs_laeses_i_et_bridge_kald(self, monkeypatch):
+        f = _bash(monkeypatch, {
+            "stdout": (
+                "__JBG_META__ bg_aaaaaaaaaaaa 2 1 -\nYQ==\n__JBG_END__\n"
+                "__JBG_META__ bg_bbbbbbbbbbbb 4 0 3\nYm9vbQ==\n__JBG_END__\n"
+            )
+        })
+        result = await ob.read_many_async(
+            offsets={"bg_aaaaaaaaaaaa": 1, "bg_bbbbbbbbbbbb": 0},
+            user_id="owner",
+        )
+        assert result["jobs"]["bg_aaaaaaaaaaaa"]["output"] == "a"
+        assert result["jobs"]["bg_aaaaaaaaaaaa"]["running"] is True
+        assert result["jobs"]["bg_bbbbbbbbbbbb"]["output"] == "boom"
+        assert result["jobs"]["bg_bbbbbbbbbbbb"]["exit_code"] == 3
+        assert f["user_id"] == "owner"
+        assert f["command"].count("__JBG_META__") == 1
+
 
 class TestKill:
     @pytest.mark.asyncio

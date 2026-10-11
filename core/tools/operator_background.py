@@ -23,6 +23,7 @@ forskellige processer laese den samme shell uden at dele hukommelse.
 """
 from __future__ import annotations
 
+import base64
 import re
 import shlex
 import uuid
@@ -138,6 +139,69 @@ async def read_async(*, shell_id: str, user_id: str, since: int = 0,
             break
     return {"output": tekst, "offset": stoerrelse, "running": koerer,
             "shell_id": shell_id}
+
+
+async def read_many_async(
+    *,
+    offsets: dict[str, int],
+    user_id: str,
+    max_bytes_per_job: int = 32768,
+    timeout_s: float = 20.0,
+) -> dict[str, Any]:
+    """Read bounded incremental output for several operator jobs in one hop."""
+    from core.tools.operator_tools import operator_bash_async
+
+    valid = {
+        str(shell_id): max(0, int(offset or 0))
+        for shell_id, offset in offsets.items()
+        if _valid(str(shell_id))
+    }
+    if not valid:
+        return {"jobs": {}}
+    limit = max(1, min(int(max_bytes_per_job or 32768), 1024 * 1024))
+    specs = " ".join(shlex.quote(f"{shell_id}:{offset}")
+                     for shell_id, offset in valid.items())
+    cmd = (
+        f"for spec in {specs}; do "
+        'id=${spec%%:*}; off=${spec#*:}; '
+        f'L={_ROOT}/$id.log; P={_ROOT}/$id.pid; C={_ROOT}/$id.rc; '
+        'sz=$(wc -c < "$L" 2>/dev/null || echo 0); '
+        f'next=$((off + {limit})); [ "$next" -gt "$sz" ] && next=$sz; '
+        'pid=$(cat "$P" 2>/dev/null); '
+        'if kill -0 "$pid" 2>/dev/null; then running=1; else running=0; fi; '
+        'rc=-; [ -f "$C" ] && rc=$(cat "$C" 2>/dev/null); '
+        'printf "__JBG_META__ %s %s %s %s\\n" "$id" "$next" "$running" "$rc"; '
+        f'dd if="$L" bs=1 skip="$off" count={limit} 2>/dev/null | base64 -w0; '
+        'printf "\\n__JBG_END__\\n"; done'
+    )
+    response = await operator_bash_async(
+        command=cmd, user_id=user_id, timeout_s=timeout_s,
+    )
+    if not isinstance(response, dict) or response.get("status") == "error":
+        raise RuntimeError(str((response or {}).get("error") or "operator bridge failed"))
+    raw = str(response.get("stdout") or "")
+    jobs: dict[str, dict[str, Any]] = {}
+    pattern = re.compile(
+        r"__JBG_META__ (bg_[0-9a-f]{12}) (\d+) ([01]) (-?\d+|-)\n"
+        r"(.*?)\n__JBG_END__(?:\n|$)",
+        re.DOTALL,
+    )
+    for match in pattern.finditer(raw):
+        shell_id, offset, running, exit_code, encoded = match.groups()
+        try:
+            output = base64.b64decode(encoded.strip(), validate=True).decode(
+                "utf-8", errors="replace"
+            )
+        except (ValueError, base64.binascii.Error):  # én korrupt ramme må ikke skjule de øvrige jobs
+            continue
+        jobs[shell_id] = {
+            "output": output,
+            "offset": int(offset),
+            "running": running == "1",
+            "exit_code": None if exit_code == "-" else int(exit_code),
+            "truncated": len(output.encode("utf-8")) >= limit,
+        }
+    return {"jobs": jobs}
 
 
 async def kill_async(*, shell_id: str, user_id: str,

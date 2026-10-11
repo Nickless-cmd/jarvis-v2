@@ -404,6 +404,39 @@ def tail_process_log(name: str, *, lines: int = _TAIL_DEFAULT_LINES) -> dict[str
     }
 
 
+def read_process_log_since(
+    name: str, offset: int, max_bytes: int = 32768,
+) -> dict[str, Any]:
+    """Read one bounded byte range from a supervised process log."""
+    name = _safe_name(name)
+    start = max(0, int(offset or 0))
+    limit = max(1, min(int(max_bytes or 32768), 1024 * 1024))
+    log_path = _PROC_DIR / f"{name}.log"
+    if not log_path.is_file():
+        return {"status": "error", "error": f"no log for '{name}'",
+                "name": name, "offset": start, "output": ""}
+    try:
+        size = log_path.stat().st_size
+        rotated = start > size
+        if rotated:
+            start = 0
+        with log_path.open("rb") as fh:
+            fh.seek(start)
+            data = fh.read(limit)
+        next_offset = start + len(data)
+        return {
+            "status": "ok",
+            "name": name,
+            "output": data.decode("utf-8", errors="replace"),
+            "offset": next_offset,
+            "byte_size": size,
+            "truncated": rotated or next_offset < size,
+        }
+    except Exception as exc:  # læsefejlen returneres som det offentlige fejlresultat
+        return {"status": "error", "error": f"read failed: {exc}",
+                "name": name, "offset": start, "output": ""}
+
+
 def remove_process(name: str) -> dict[str, Any]:
     """Remove an entry from the registry. Refuses if still alive."""
     name = _safe_name(name)

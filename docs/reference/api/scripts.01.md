@@ -161,13 +161,15 @@ _Generate docs/reference/CAPABILITIES.md from the live tool registry. Regenerabl
 | function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | Parse a file's AST and return the set of modules it imports. | [src](../../../scripts/capability_audit.py#L138) |
 | function | `compute_reachability` | `(graph, entry_modules)` | BFS the import graph from entry_modules. | [src](../../../scripts/capability_audit.py#L191) |
 | function | `score_service` | `(signals)` | Classify a service into a colored liveness label from its signals. | [src](../../../scripts/capability_audit.py#L217) |
-| function | `git_last_touch` | `(path)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L248) |
-| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L286) |
-| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L295) |
-| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L313) |
-| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L412) |
-| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L473) |
-| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L485) |
+| class | `GitTouchIndex` | `` | Repo-wide git history built from ONE ``git log`` call. | [src](../../../scripts/capability_audit.py#L249) |
+| function | `build_git_touch_index` | `(repo_root=…)` | Build the repo-wide touch index in a single ``git log --name-status -M`` pass. | [src](../../../scripts/capability_audit.py#L262) |
+| function | `git_last_touch` | `(path, index)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L310) |
+| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L345) |
+| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L354) |
+| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L372) |
+| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L471) |
+| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L533) |
+| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L545) |
 
 ## `scripts/central_connectivity_audit.py`
 _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Centralen._

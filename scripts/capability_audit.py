@@ -245,35 +245,94 @@ def score_service(signals: Mapping[str, object] | ServiceSignals) -> str:
     return "⚫ ORPHAN"
 
 
-def git_last_touch(path: Path) -> tuple[int | None, str]:
-    """Return (age in days, short commit) of the most recent git change to path.
+@dataclass(frozen=True)
+class GitTouchIndex:
+    """Repo-wide git history built from ONE ``git log`` call.
 
-    Uses ``git log --follow``. Skips the bulk services-move commit in favor of
-    the next real change when it is the latest touch on a ``core/services/`` file.
-    Returns ``(None, "n/a")`` when there is no history.
+    ``touches`` maps a repo-relative path to its commits, newest first, as
+    ``(unix timestamp, "shorthash subject")``. ``renamed_from`` maps a path to the
+    path it was renamed from, so a rename chain can be walked backwards the way
+    ``git log --follow`` used to do per file.
     """
-    rel = path.relative_to(REPO_ROOT)
+
+    touches: Mapping[str, tuple[tuple[int, str], ...]]
+    renamed_from: Mapping[str, str]
+
+
+def build_git_touch_index(repo_root: Path = REPO_ROOT) -> GitTouchIndex:
+    """Build the repo-wide touch index in a single ``git log --name-status -M`` pass.
+
+    Replaces one ``git log --follow`` per file, which cost ~0.24 s each and ~4-5
+    minutes for the ~1161 files under ``core/services/``. ``-M`` adds rename
+    detection in the same pass, so a renamed file's history can be chained back to
+    its pre-rename path without a second call. A failed git call yields an empty
+    index, so every path then reports ``(None, "n/a")`` rather than raising.
+    """
     log_proc = subprocess.run(
-        ["git", "log", "--follow", "--format=%at%x1f%h %s", "--", str(rel)],
-        cwd=REPO_ROOT,
+        ["git", "log", "--format=\x01%at\x1f%h %s", "--name-status", "-M"],
+        cwd=repo_root,
         check=False,
         capture_output=True,
         text=True,
     )
-    entries: list[tuple[int, str]] = []
+    touches: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    renamed_from: dict[str, str] = {}
+    current: tuple[int, str] | None = None
+
     for line in log_proc.stdout.splitlines():
-        if "\x1f" not in line:
+        if line.startswith("\x01"):
+            body = line[1:]
+            if "\x1f" not in body:
+                current = None
+                continue
+            timestamp_str, commit = body.split("\x1f", 1)
+            try:
+                current = (int(timestamp_str), commit.strip())
+            except ValueError:
+                current = None
             continue
-        timestamp_str, commit = line.split("\x1f", 1)
-        if not timestamp_str.strip():
+        if current is None or not line.strip():
             continue
-        entries.append((int(timestamp_str), commit.strip()))
+        parts = line.split("\t")
+        status = parts[0]
+        if status.startswith("R") and len(parts) == 3:
+            touches[parts[2]].append(current)
+            renamed_from.setdefault(parts[2], parts[1])
+        elif len(parts) == 2:
+            touches[parts[1]].append(current)
+
+    return GitTouchIndex(
+        touches={path: tuple(entries) for path, entries in touches.items()},
+        renamed_from=renamed_from,
+    )
+
+
+def git_last_touch(path: Path, index: GitTouchIndex) -> tuple[int | None, str]:
+    """Return (age in days, short commit) of the most recent git change to path.
+
+    Reads the shared ``index`` (see ``build_git_touch_index``) instead of running
+    ``git log --follow`` per file. A renamed path is chained back to the path it
+    came from, so pre-rename history is kept. Skips the bulk services-move commit
+    in favor of the next real change when it is the latest touch on a
+    ``core/services/`` file. Returns ``(None, "n/a")`` when there is no history.
+    """
+    rel = str(path.relative_to(REPO_ROOT))
+    entries: list[tuple[int, str]] = list(index.touches.get(rel, ()))
+    seen = {rel}
+    chain = rel
+    while chain in index.renamed_from:
+        chain = index.renamed_from[chain]
+        if chain in seen:
+            break
+        seen.add(chain)
+        entries.extend(index.touches.get(chain, ()))
+
     if not entries:
         return None, "n/a"
 
     timestamp, commit = entries[0]
     if (
-        str(rel).startswith("core/services/")
+        rel.startswith("core/services/")
         and SERVICES_MOVE_COMMIT_PREFIX in commit
         and len(entries) > 1
     ):
@@ -431,13 +490,14 @@ def analyze_services() -> list[ServiceSignals]:
     reachable, parents = compute_reachability(graph, entry_modules())
     service_paths = sorted(path for path in SERVICE_DIR.glob("*.py") if path.name != "__init__.py")
     test_modules = {name for name in module_map if name.startswith("tests.")}
+    touch_index = build_git_touch_index(REPO_ROOT)
 
     signals_list: list[ServiceSignals] = []
     for path in service_paths:
         module_name = module_name_from_path(path)
         service_rel = str(path.relative_to(REPO_ROOT))
         source = path.read_text(encoding="utf-8")
-        last_modified_days, last_modified_commit = git_last_touch(path)
+        last_modified_days, last_modified_commit = git_last_touch(path, touch_index)
         direct_test_importers = sorted(
             reverse_graph.get(module_name, set()).intersection(test_modules)
         )

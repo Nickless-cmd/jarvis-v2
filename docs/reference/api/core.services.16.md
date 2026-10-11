@@ -402,6 +402,30 @@ _Livscyklus-hooks server-side — paritet med jarvis-code._
 | function | `_advar_om_uvirksom_dom` | `(event, dom)` | Sig det hoejt naar en hook doemmer paa en haendelse der ikke kan handle. | [src](../../../core/services/lifecycle_hooks.py#L332) |
 | function | `fire` | `(event, context, user_id=…)` | Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L345) |
 
+## `core/services/live_job_events.py`
+_Bounded, process-local live projection of background-job events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_timestamp` | `()` | — | [src](../../../core/services/live_job_events.py#L23) |
+| class | `JobEvent` | `` | — | [src](../../../core/services/live_job_events.py#L28) |
+| method | `JobEvent.as_dict` | `(self)` | — | [src](../../../core/services/live_job_events.py#L37) |
+| class | `JobSubscription` | `` | — | [src](../../../core/services/live_job_events.py#L49) |
+| method | `JobSubscription.__init__` | `(self, owner, *, session_id, initial_events, needs_snapshot, queue_size)` | — | [src](../../../core/services/live_job_events.py#L50) |
+| method | `JobSubscription.close` | `(self)` | — | [src](../../../core/services/live_job_events.py#L71) |
+| method | `JobSubscription._deliver` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L77) |
+| method | `JobSubscription._enqueue` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L85) |
+| class | `LiveJobEventHub` | `` | — | [src](../../../core/services/live_job_events.py#L128) |
+| method | `LiveJobEventHub.__init__` | `(self, *, replay_size=…)` | — | [src](../../../core/services/live_job_events.py#L129) |
+| method | `LiveJobEventHub.publish` | `(self, event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L137) |
+| method | `LiveJobEventHub.subscribe` | `(self, *, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L164) |
+| method | `LiveJobEventHub._unsubscribe` | `(self, subscription)` | — | [src](../../../core/services/live_job_events.py#L194) |
+| method | `LiveJobEventHub.snapshot_cursor` | `(self)` | — | [src](../../../core/services/live_job_events.py#L198) |
+| function | `publish` | `(event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L206) |
+| function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L223) |
+| function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L229) |
+| function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L233) |
+
 ## `core/services/liveness_registry.py`
 _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
@@ -645,18 +669,4 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_split_slaaet_til` | `()` | Skal lange prosa-linjer braekkes op i afsnit? | [src](../../../core/services/markdown_structure.py#L250) |
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L264) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L307) |
-
-## `core/services/mcp_auth.py`
-_OAuth/bearer til remote MCP-servere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L33) |
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L38) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L45) |
-| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
-| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
-| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
-| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L96) |
-| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L122) |
 

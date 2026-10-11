@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8868/16753 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8868/16768 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8868/16753 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5911 | 11373 | 51% |
+| `core.services` | 5911 | 11388 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8868/16753 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2383)
+## Undocumented public functions (2392)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1302,6 +1302,15 @@ Generated from source. 8868/16753 functions/methods documented (52%). The list b
 - `core/services/life_projects.py` :: `abandon_life_project` (L50)
 - `core/services/life_projects.py` :: `build_life_projects_surface` (L36)
 - `core/services/life_projects.py` :: `create_life_project` (L12)
+- `core/services/live_job_events.py` :: `JobEvent.as_dict` (L37)
+- `core/services/live_job_events.py` :: `JobSubscription.close` (L71)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.publish` (L137)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.snapshot_cursor` (L198)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.subscribe` (L164)
+- `core/services/live_job_events.py` :: `publish` (L206)
+- `core/services/live_job_events.py` :: `reset_for_tests` (L233)
+- `core/services/live_job_events.py` :: `snapshot_cursor` (L229)
+- `core/services/live_job_events.py` :: `subscribe` (L223)
 - `core/services/living_executive.py` :: `build_living_executive_surface` (L83)
 - `core/services/living_executive.py` :: `choose_impulse` (L108)
 - `core/services/living_executive.py` :: `execute_impulse` (L137)

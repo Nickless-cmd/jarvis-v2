@@ -86,25 +86,31 @@ it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
 })
 
 /**
- * Den merged linje: token-tallet og kommandoen skal FØRES hele vejen — fra
- * `ChatScreen`s `usage` gennem rækken og ned i runde-linjen. Uden den kobling
- * ville tallet blive regnet, sendt og glemt: husets hyppigste fejl, en prop
- * der aldrig når skærmen.
+ * Den merged linje: KOMMANDOEN skal FØRES hele vejen — fra `ChatScreen`s
+ * `workingStep` gennem rækken og ned i runde-linjen. Uden den kobling ville
+ * sætningen blive regnet, sendt og glemt: husets hyppigste fejl, en prop der
+ * aldrig når skærmen.
  *
  * Bjørn 11/10-2026: arbejdslinjen er smeltet ind i runde-linjen, så der ikke
- * staar to linjer om samme arbejde. MUT: fjern `tokensTal={...}` fra
- * `InlineToolGroup` → linjen faar 0 og skjuler tallet → fanger.
+ * staar to linjer om samme arbejde.
+ *
+ * Bjørn 11/10-2026, senere samme dag: «Kan du fjerne token count fra
+ * linjen?» — tallet er ude, og prop-kæden med det. Denne test bærer den
+ * beslutning: MUT: sæt `RullendeTokens` tilbage i `InlineToolGroup` →
+ * `runde-tokens` dukker op igen → fanger.
  */
-it('fører token-tallet og kommandoen ned i den merged runde-linje', async () => {
+it('fører kommandoen ned i den merged runde-linje — og token-tallet er ude', async () => {
   const arbejde: ContentBlock[] = [
     { type: 'tool_use', id: 't1', name: 'bash', input: { command: 'npm test' }, status: 'running' },
   ]
   const s = await render(
-    <MessageList messages={[]} blocks={arbejde} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+    <MessageList messages={[]} blocks={arbejde} working arbejdslinje="Kører npm test" />
   )
-  expect(s.getByTestId('runde-tokens')).toBeTruthy()
-  expect(s.getByLabelText('45.2k')).toBeTruthy()
+  // Den positive kontrol: linjen tegnes, og sætningen staar der.
   expect(s.getByText('Kører npm test')).toBeTruthy()
+  // Tallet maa hverken have en celle eller en tekst.
+  expect(s.queryByTestId('runde-tokens')).toBeNull()
+  expect(s.queryByLabelText('45.2k')).toBeNull()
 })
 
 it('kommandoen staar ikke tilbage naar streamen er slut', async () => {
@@ -115,7 +121,7 @@ it('kommandoen staar ikke tilbage naar streamen er slut', async () => {
     { type: 'tool_use', id: 't1', name: 'bash', input: { command: 'npm test' }, status: 'done', result: 'ok' },
   ]
   const s = await render(
-    <MessageList messages={[]} blocks={arbejde} working={false} arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+    <MessageList messages={[]} blocks={arbejde} working={false} arbejdslinje="Kører npm test" />
   )
   expect(s.queryByText('Kører npm test')).toBeNull()
   expect(s.queryByTestId('runde-tid')).toBeNull()

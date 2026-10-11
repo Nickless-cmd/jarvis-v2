@@ -75,6 +75,25 @@ it('kommandoen vises mens runden kører — forklaringen når den er færdig', (
   expect(kilde('components/InlineToolGroup.tsx')).toMatch(/running && arbejdslinje \? arbejdslinje :/)
 })
 
+it('token-tallet er ude af linjen — og prop-kæden med det', () => {
+  // Bjørn 11/10-2026: «Kan du fjerne token count fra linjen?»
+  //
+  // Tallet blev ført hele vejen — `ChatScreen` regnede det, `MessageList`
+  // gav det videre, `InlineToolGroup` tegnede det som en celle efter uret.
+  // Nu maa INGEN af de tre led bære det: en efterladt prop er husets
+  // hyppigste fejl — den regnes, sendes og glemmes, og ingen ser den.
+  //
+  // Testen læser kilden med vilje: den skal ogsaa fange et HALVT tilbageskridt,
+  // hvor cellen er væk men prop'en staar tilbage.
+  const g = kilde('components/InlineToolGroup.tsx')
+  expect(g).not.toMatch(/RullendeTokens/)
+  expect(g).not.toMatch(/tokensTal/)
+  const ml = kilde('components/MessageList.tsx')
+  expect(ml).not.toMatch(/arbejdslinjeTokens/)
+  expect(ml).not.toMatch(/tokensTal/)
+  expect(kilde('screens/ChatScreen.tsx')).not.toMatch(/arbejdslinjeTokens/)
+})
+
 it("turens ur står EFTER diffen og FØR caret'en", () => {
   const g = kilde('components/InlineToolGroup.tsx')
   const iDiff = g.indexOf('styles.tal')

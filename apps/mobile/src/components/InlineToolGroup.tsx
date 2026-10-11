@@ -6,7 +6,7 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
 import { AnimeretPuls } from './AnimeretPuls'
-import { RullendeTokens, RullendeUr } from './RullendeTal'
+import { RullendeUr } from './RullendeTal'
 import { DiffArk } from './DiffArk'
 import { Krop } from './Krop'
 import { ThinkingSummary } from './ThinkingSummary'
@@ -88,14 +88,6 @@ interface Props {
    * tilfældet for runder der ikke er turens sidste.
    */
   turStart?: number | null
-  /**
-   * Kontekstens token-tal — HELE konteksten turen bærer.
-   *
-   * Flyttet med over fra arbejdslinjen (Bjørn 11/10-2026). Den blev ikke
-   * nævnt i den nye linjes rækkefølge, men den er information og ikke pynt —
-   * at fjerne den ville være at slette noget der ikke blev bedt om at forsvinde.
-   */
-  tokensTal?: number
 }
 
 /**
@@ -136,7 +128,7 @@ export const SVAR_KLIP = 4000
  */
 export const InlineToolGroup = memo(function InlineToolGroup({
   items, etiket, aabenFraStart, tanker, streaming = false, sidste = false, svarBegyndt = false,
-  arbejdslinje = null, turStart = null, tokensTal = 0,
+  arbejdslinje = null, turStart = null,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -257,11 +249,6 @@ export const InlineToolGroup = memo(function InlineToolGroup({
           {turStart != null ? (
             <View style={styles.celle} testID="runde-tid">
               <RullendeUr sek={sek} farve={tokens.color.fg2} tegnFarve={tokens.color.fg3} />
-            </View>
-          ) : null}
-          {tokensTal > 0 ? (
-            <View style={styles.celle} testID="runde-tokens">
-              <RullendeTokens tokens={tokensTal} farve={tokens.color.fg2} tegnFarve={tokens.color.fg3} />
             </View>
           ) : null}
           {/* Caret'en afslutter linjen — også mens runden kører. Før stod den

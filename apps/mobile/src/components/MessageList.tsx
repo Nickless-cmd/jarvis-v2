@@ -79,14 +79,6 @@ interface MessageListProps {
    */
   arbejdslinje?: string | null
   /**
-   * Token-tallet til arbejdslinjen — `usage.input + cacheHit + cacheMiss +
-   * output`, altså HELE konteksten turen bærer og ikke kun svaret.
-   *
-   * Samme fire led som desk summerer (`ChatView.tsx:138`), så de to klienter
-   * viser samme tal for samme tur. Udeladt eller 0 = tallet vises ikke.
-   */
-  arbejdslinjeTokens?: number
-  /**
    * Turens starttid i ms — hele TURENS tid, ikke rundens.
    *
    * Føres videre til runde-linjen, hvor uret bor (Bjørn 11/10-2026). Den kom
@@ -161,11 +153,10 @@ type Row = (
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje.
    *
    *  Bjørn 11/10-2026: arbejdslinjen er smeltet IND i denne række. Den var før
-   *  sin egen række nederst, og de to viste næsten det samme. `arbejdslinje`,
-   *  `turStart` og `tokensTal` bæres derfor her — og sættes KUN på turens
-   *  sidste runde, så tallet ikke gentages på hver linje i tråden. */
+   *  sin egen række nederst, og de to viste næsten det samme. `arbejdslinje`
+   *  og `turStart` bæres derfor her — og sættes KUN på turens sidste runde. */
   | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[]; sidsteRunde?: boolean
-      arbejdslinje?: string | null; turStart?: number | null; tokensTal?: number }
+      arbejdslinje?: string | null; turStart?: number | null }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
   | { kind: 'skill'; key: string; kald: SkillKald }
   /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
@@ -578,7 +569,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, turStart, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, turStart, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -1040,7 +1031,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             streaming={working} sidste={item.sidsteRunde} svarBegyndt={finalAnswerStarted}
             arbejdslinje={item.sidsteRunde ? arbejdslinje : null}
             turStart={item.sidsteRunde ? turStart : null}
-            tokensTal={item.sidsteRunde ? arbejdslinjeTokens : 0}
           />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }

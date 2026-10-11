@@ -1207,14 +1207,6 @@ export function ChatScreen({
   )
   const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message) || Boolean(pendingPauseAsk)
 
-  // Arbejdslinjens token-tal: HELE konteksten turen bærer — input, cache-hit,
-  // cache-miss og output — ikke kun svaret. Samme fire led som desk summerer
-  // (`ChatView.tsx:138`), så de to klienter viser samme tal for samme tur.
-  // Læses direkte fra streamen: `input` sættes ved `message_start`, `output`
-  // regnes løbende, så tallet vokser mens der arbejdes.
-  const brugteTokens = stream.state.usage.input + stream.state.usage.cacheHit
-    + stream.state.usage.cacheMiss + stream.state.usage.output
-
   return (
     <View style={styles.root}>
       <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
@@ -1254,7 +1246,6 @@ export function ChatScreen({
               }
               finalAnswerStarted={stream.state.finalAnswerStarted}
               arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
-              arbejdslinjeTokens={brugteTokens}
               // Turens ur findes KUN mens turen kører (Bjørn 11/10-2026: «tid
               // skal kun vises i den aktuelle linje, ikk i de færdige»).
               //

@@ -1,14 +1,13 @@
 {
-  "generated": "2026-10-11T11:38:37.550118+00:00",
+  "generated": "2026-10-11T12:52:47.862031+00:00",
   "count": 605,
   "by_category": {
     "færdig": 508,
-    "needs_review": 76,
-    "droppet": 4,
-    "forældet": 17
+    "needs_review": 93,
+    "droppet": 4
   },
-  "dead_paths_total": 754,
-  "dead_docs": 190,
+  "dead_paths_total": 631,
+  "dead_docs": 176,
   "gap_list": [
     {
       "subsystem": "core/services",
@@ -3847,8 +3846,8 @@
       "path": "docs/reference/API_REFERENCE.md",
       "category": "færdig",
       "confidence": 0.7,
-      "basis": "1/1 refs alive, 1d old",
-      "days": 1,
+      "basis": "1/1 refs alive, 2d old",
+      "days": 2,
       "liveness": {
         "resolved": 1,
         "total": 1,
@@ -5068,8 +5067,8 @@
       "path": "docs/reference/api/apps.api.jarvis_api.routes.03.md",
       "category": "færdig",
       "confidence": 0.7,
-      "basis": "47/47 refs alive, 1d old",
-      "days": 1,
+      "basis": "47/47 refs alive, 2d old",
+      "days": 2,
       "liveness": {
         "resolved": 47,
         "total": 47,
@@ -6289,8 +6288,8 @@
       "path": "docs/reference/api/core.services.05.md",
       "category": "færdig",
       "confidence": 0.7,
-      "basis": "81/81 refs alive, 1d old",
-      "days": 1,
+      "basis": "81/81 refs alive, 2d old",
+      "days": 2,
       "liveness": {
         "resolved": 81,
         "total": 81,
@@ -9280,8 +9279,8 @@
       "path": "docs/reference/api/core.tools.04.md",
       "category": "færdig",
       "confidence": 0.7,
-      "basis": "36/36 refs alive, 0d old",
-      "days": 0,
+      "basis": "36/36 refs alive, 1d old",
+      "days": 1,
       "liveness": {
         "resolved": 36,
         "total": 36,
@@ -9432,8 +9431,8 @@
       "path": "docs/reference/api/scripts.01.md",
       "category": "færdig",
       "confidence": 0.7,
-      "basis": "82/83 refs alive, 1d old",
-      "days": 1,
+      "basis": "82/83 refs alive, 0d old",
+      "days": 0,
       "liveness": {
         "resolved": 82,
         "total": 83,
@@ -14604,7 +14603,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 90,
+      "days": 91,
       "liveness": {
         "resolved": 0,
         "total": 12,
@@ -14838,7 +14837,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 1,
         "total": 1,
@@ -14856,7 +14855,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 5,
         "total": 8,
@@ -14889,7 +14888,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 0,
         "total": 4,
@@ -14924,7 +14923,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 2,
         "total": 15,
@@ -14984,7 +14983,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 6,
         "total": 18,
@@ -15059,7 +15058,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 9,
         "total": 19,
@@ -15123,7 +15122,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 6,
         "total": 28,
@@ -15214,7 +15213,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 2,
         "total": 45,
@@ -15364,7 +15363,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 88,
+      "days": 89,
       "liveness": {
         "resolved": 6,
         "total": 21,
@@ -15492,7 +15491,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 87,
+      "days": 88,
       "liveness": {
         "resolved": 3,
         "total": 4,
@@ -15517,7 +15516,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 87,
+      "days": 88,
       "liveness": {
         "resolved": 5,
         "total": 5,
@@ -16026,7 +16025,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 30,
+      "days": 31,
       "liveness": {
         "resolved": 42,
         "total": 45,
@@ -16397,7 +16396,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 23,
+      "days": 24,
       "liveness": {
         "resolved": 19,
         "total": 19,
@@ -16573,7 +16572,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 21,
+      "days": 22,
       "liveness": {
         "resolved": 12,
         "total": 14,
@@ -16722,7 +16721,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 2,
+      "days": 3,
       "liveness": {
         "resolved": 39,
         "total": 43,
@@ -16826,7 +16825,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 0,
+      "days": 1,
       "liveness": {
         "resolved": 64,
         "total": 64,
@@ -16927,7 +16926,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 38,
+      "days": 39,
       "liveness": {
         "resolved": 3,
         "total": 3,
@@ -16947,7 +16946,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 38,
+      "days": 39,
       "liveness": {
         "resolved": 10,
         "total": 11,
@@ -16979,7 +16978,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 38,
+      "days": 39,
       "liveness": {
         "resolved": 2,
         "total": 2,
@@ -20774,7 +20773,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 92,
+      "days": 93,
       "liveness": {
         "resolved": 3,
         "total": 4,
@@ -21337,7 +21336,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 87,
+      "days": 88,
       "liveness": {
         "resolved": 0,
         "total": 1,
@@ -21359,7 +21358,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 86,
+      "days": 87,
       "liveness": {
         "resolved": 1,
         "total": 2,
@@ -21648,7 +21647,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 23,
+      "days": 24,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -21755,7 +21754,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 16,
+      "days": 17,
       "liveness": {
         "resolved": 6,
         "total": 6,
@@ -21867,7 +21866,7 @@
       "category": "færdig",
       "confidence": 0.75,
       "basis": "superpowers artifact shipped (refs/symbols present in tree)",
-      "days": 2,
+      "days": 3,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22021,148 +22020,58 @@
     },
     {
       "path": ".claude/skills/banner-design/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 6 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 6,
-        "ratio": 0.0,
-        "dead": [
-          ".claude/skills/ai-artist/scripts/search.py",
-          ".claude/skills/ai-multimodal/scripts/gemini_batch_process.py",
-          ".claude/skills/chrome-devtools/scripts/screenshot.js",
-          "docs/brand-guidelines.md",
-          "references/banner-sizes-and-styles.md",
-          "references/nano-banana-pro-examples.md"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        ".claude/skills/ai-artist/scripts/search.py",
-        ".claude/skills/ai-multimodal/scripts/gemini_batch_process.py",
-        ".claude/skills/chrome-devtools/scripts/screenshot.js",
-        "docs/brand-guidelines.md",
-        "references/banner-sizes-and-styles.md",
-        "references/nano-banana-pro-examples.md"
-      ],
-      "dead_paths": [
-        ".claude/skills/ai-artist/scripts/search.py",
-        ".claude/skills/ai-multimodal/scripts/gemini_batch_process.py",
-        ".claude/skills/chrome-devtools/scripts/screenshot.js",
-        "docs/brand-guidelines.md",
-        "references/banner-sizes-and-styles.md",
-        "references/nano-banana-pro-examples.md"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/brand/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 19 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 19,
-        "ratio": 0.0,
-        "dead": [
-          "assets/design-tokens.css",
-          "assets/design-tokens.json",
-          "docs/brand-guidelines.md",
-          "references/approval-checklist.md",
-          "references/asset-organization.md",
-          "references/brand-guideline-template.md",
-          "references/color-palette-management.md",
-          "references/consistency-checklist.md",
-          "references/logo-usage-rules.md",
-          "references/messaging-framework.md",
-          "references/typography-specifications.md",
-          "references/update.md",
-          "references/visual-identity.md",
-          "references/voice-framework.md",
-          "scripts/extract-colors.cjs",
-          "scripts/inject-brand-context.cjs",
-          "scripts/sync-brand-to-tokens.cjs",
-          "scripts/validate-asset.cjs",
-          "templates/brand-guidelines-starter.md"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "assets/design-tokens.css",
-        "assets/design-tokens.json",
-        "docs/brand-guidelines.md",
-        "references/approval-checklist.md",
-        "references/asset-organization.md",
-        "references/brand-guideline-template.md",
-        "references/color-palette-management.md",
-        "references/consistency-checklist.md",
-        "references/logo-usage-rules.md",
-        "references/messaging-framework.md",
-        "references/typography-specifications.md",
-        "references/update.md",
-        "references/visual-identity.md",
-        "references/voice-framework.md",
-        "scripts/extract-colors.cjs",
-        "scripts/inject-brand-context.cjs",
-        "scripts/sync-brand-to-tokens.cjs",
-        "scripts/validate-asset.cjs",
-        "templates/brand-guidelines-starter.md"
-      ],
-      "dead_paths": [
-        "assets/design-tokens.css",
-        "assets/design-tokens.json",
-        "docs/brand-guidelines.md",
-        "references/approval-checklist.md",
-        "references/asset-organization.md",
-        "references/brand-guideline-template.md",
-        "references/color-palette-management.md",
-        "references/consistency-checklist.md",
-        "references/logo-usage-rules.md",
-        "references/messaging-framework.md",
-        "references/typography-specifications.md",
-        "references/update.md",
-        "references/visual-identity.md",
-        "references/voice-framework.md",
-        "scripts/extract-colors.cjs",
-        "scripts/inject-brand-context.cjs",
-        "scripts/sync-brand-to-tokens.cjs",
-        "scripts/validate-asset.cjs",
-        "templates/brand-guidelines-starter.md"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-artifacts-builder/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 2 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 2,
-        "ratio": 0.0,
-        "dead": [
-          "scripts/bundle-artifact.sh",
-          "scripts/init-artifact.sh"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "scripts/bundle-artifact.sh",
-        "scripts/init-artifact.sh"
-      ],
-      "dead_paths": [
-        "scripts/bundle-artifact.sh",
-        "scripts/init-artifact.sh"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-brand-guidelines/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22178,7 +22087,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22194,7 +22103,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22207,32 +22116,26 @@
     },
     {
       "path": ".claude/skills/composio-competitive-ads-extractor/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 1 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 1,
-        "ratio": 0.0,
-        "dead": [
-          "~/competitor-ads/notion/analysis.md"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "~/competitor-ads/notion/analysis.md"
-      ],
-      "dead_paths": [
-        "~/competitor-ads/notion/analysis.md"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-connect/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22248,7 +22151,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22264,7 +22167,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22280,7 +22183,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22293,35 +22196,26 @@
     },
     {
       "path": ".claude/skills/composio-document-skills/docx/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 2 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 2,
-        "ratio": 0.0,
-        "dead": [
-          "ooxml/scripts/pack.py",
-          "ooxml/scripts/unpack.py"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "ooxml/scripts/pack.py",
-        "ooxml/scripts/unpack.py"
-      ],
-      "dead_paths": [
-        "ooxml/scripts/pack.py",
-        "ooxml/scripts/unpack.py"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-document-skills/pdf/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22334,56 +22228,26 @@
     },
     {
       "path": ".claude/skills/composio-document-skills/pptx/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 9 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 9,
-        "ratio": 0.0,
-        "dead": [
-          "ooxml/scripts/pack.py",
-          "ooxml/scripts/unpack.py",
-          "ooxml/scripts/validate.py",
-          "scripts/html2pptx.js",
-          "scripts/inventory.py",
-          "scripts/rearrange.py",
-          "scripts/replace.py",
-          "scripts/thumbnail.py",
-          "skills/pptx/ooxml/scripts/unpack.py"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "ooxml/scripts/pack.py",
-        "ooxml/scripts/unpack.py",
-        "ooxml/scripts/validate.py",
-        "scripts/html2pptx.js",
-        "scripts/inventory.py",
-        "scripts/rearrange.py",
-        "scripts/replace.py",
-        "scripts/thumbnail.py",
-        "skills/pptx/ooxml/scripts/unpack.py"
-      ],
-      "dead_paths": [
-        "ooxml/scripts/pack.py",
-        "ooxml/scripts/unpack.py",
-        "ooxml/scripts/validate.py",
-        "scripts/html2pptx.js",
-        "scripts/inventory.py",
-        "scripts/rearrange.py",
-        "scripts/replace.py",
-        "scripts/thumbnail.py",
-        "skills/pptx/ooxml/scripts/unpack.py"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-document-skills/xlsx/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22399,7 +22263,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22415,7 +22279,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22431,7 +22295,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22444,41 +22308,26 @@
     },
     {
       "path": ".claude/skills/composio-internal-comms/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 4 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 4,
-        "ratio": 0.0,
-        "dead": [
-          "examples/3p-updates.md",
-          "examples/company-newsletter.md",
-          "examples/faq-answers.md",
-          "examples/general-comms.md"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "examples/3p-updates.md",
-        "examples/company-newsletter.md",
-        "examples/faq-answers.md",
-        "examples/general-comms.md"
-      ],
-      "dead_paths": [
-        "examples/3p-updates.md",
-        "examples/company-newsletter.md",
-        "examples/faq-answers.md",
-        "examples/general-comms.md"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-invoice-organizer/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22494,7 +22343,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22510,7 +22359,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22523,35 +22372,23 @@
     },
     {
       "path": ".claude/skills/composio-mcp-builder/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 5 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 5,
+        "total": 1,
         "ratio": 0.0,
         "dead": [
-          "./reference/evaluation.md",
-          "./reference/mcp_best_practices.md",
-          "./reference/node_mcp_server.md",
-          "./reference/python_mcp_server.md",
           "dist/index.js"
         ]
       },
       "superseded_by": null,
       "ref_paths": [
-        "./reference/evaluation.md",
-        "./reference/mcp_best_practices.md",
-        "./reference/node_mcp_server.md",
-        "./reference/python_mcp_server.md",
         "dist/index.js"
       ],
       "dead_paths": [
-        "./reference/evaluation.md",
-        "./reference/mcp_best_practices.md",
-        "./reference/node_mcp_server.md",
-        "./reference/python_mcp_server.md",
         "dist/index.js"
       ]
     },
@@ -22560,7 +22397,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22576,7 +22413,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22589,53 +22426,26 @@
     },
     {
       "path": ".claude/skills/composio-skill-creator/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 8 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 8,
-        "ratio": 0.0,
-        "dead": [
-          "references/api_docs.md",
-          "references/finance.md",
-          "references/mnda.md",
-          "references/policies.md",
-          "references/schema.md",
-          "scripts/init_skill.py",
-          "scripts/package_skill.py",
-          "scripts/rotate_pdf.py"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "references/api_docs.md",
-        "references/finance.md",
-        "references/mnda.md",
-        "references/policies.md",
-        "references/schema.md",
-        "scripts/init_skill.py",
-        "scripts/package_skill.py",
-        "scripts/rotate_pdf.py"
-      ],
-      "dead_paths": [
-        "references/api_docs.md",
-        "references/finance.md",
-        "references/mnda.md",
-        "references/policies.md",
-        "references/schema.md",
-        "scripts/init_skill.py",
-        "scripts/package_skill.py",
-        "scripts/rotate_pdf.py"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-skill-share/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22648,32 +22458,26 @@
     },
     {
       "path": ".claude/skills/composio-slack-gif-creator/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 1 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 1,
-        "ratio": 0.0,
-        "dead": [
-          "core/easing.py"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "core/easing.py"
-      ],
-      "dead_paths": [
-        "core/easing.py"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-tailored-resume-generator/SKILL.md",
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22689,7 +22493,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22705,7 +22509,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22721,7 +22525,7 @@
       "category": "needs_review",
       "confidence": 0.0,
       "basis": "ambiguous signals — needs read",
-      "days": 189,
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 0,
@@ -22734,342 +22538,126 @@
     },
     {
       "path": ".claude/skills/composio-video-downloader/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 1 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 1,
-        "ratio": 0.0,
-        "dead": [
-          "scripts/download_video.py"
-        ]
+        "total": 0,
+        "ratio": null,
+        "dead": []
       },
       "superseded_by": null,
-      "ref_paths": [
-        "scripts/download_video.py"
-      ],
-      "dead_paths": [
-        "scripts/download_video.py"
-      ]
+      "ref_paths": [],
+      "dead_paths": []
     },
     {
       "path": ".claude/skills/composio-webapp-testing/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 1 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
+      "liveness": {
+        "resolved": 0,
+        "total": 0,
+        "ratio": null,
+        "dead": []
+      },
+      "superseded_by": null,
+      "ref_paths": [],
+      "dead_paths": []
+    },
+    {
+      "path": ".claude/skills/design/SKILL.md",
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
+      "liveness": {
+        "resolved": 0,
+        "total": 0,
+        "ratio": null,
+        "dead": []
+      },
+      "superseded_by": null,
+      "ref_paths": [],
+      "dead_paths": []
+    },
+    {
+      "path": ".claude/skills/design-system/SKILL.md",
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
+      "liveness": {
+        "resolved": 0,
+        "total": 0,
+        "ratio": null,
+        "dead": []
+      },
+      "superseded_by": null,
+      "ref_paths": [],
+      "dead_paths": []
+    },
+    {
+      "path": ".claude/skills/slides/SKILL.md",
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
+      "liveness": {
+        "resolved": 0,
+        "total": 0,
+        "ratio": null,
+        "dead": []
+      },
+      "superseded_by": null,
+      "ref_paths": [],
+      "dead_paths": []
+    },
+    {
+      "path": ".claude/skills/ui-styling/SKILL.md",
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
         "total": 1,
         "ratio": 0.0,
         "dead": [
-          "scripts/with_server.py"
-        ]
-      },
-      "superseded_by": null,
-      "ref_paths": [
-        "scripts/with_server.py"
-      ],
-      "dead_paths": [
-        "scripts/with_server.py"
-      ]
-    },
-    {
-      "path": ".claude/skills/design/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 32 code refs dead + 189d old",
-      "days": 189,
-      "liveness": {
-        "resolved": 0,
-        "total": 32,
-        "ratio": 0.0,
-        "dead": [
-          "references/banner-sizes-and-styles.md",
-          "references/cip-deliverable-guide.md",
-          "references/cip-design.md",
-          "references/cip-prompt-engineering.md",
-          "references/cip-style-guide.md",
-          "references/design-routing.md",
-          "references/icon-design.md",
-          "references/logo-color-psychology.md",
-          "references/logo-design.md",
-          "references/logo-prompt-engineering.md",
-          "references/logo-style-guide.md",
-          "references/slides-copywriting-formulas.md",
-          "references/slides-create.md",
-          "references/slides-html-template.md",
-          "references/slides-layout-patterns.md",
-          "references/slides-strategies.md",
-          "references/slides.md",
-          "references/social-photos-design.md",
-          "scripts/cip/core.py",
-          "scripts/cip/generate.py",
-          "scripts/cip/render-html.py",
-          "scripts/cip/search.py",
-          "scripts/icon/generate.py",
-          "scripts/logo/core.py",
-          "scripts/logo/generate.py",
-          "scripts/logo/search.py",
-          "~/.claude/skills/design/scripts/cip/generate.py",
-          "~/.claude/skills/design/scripts/cip/render-html.py",
-          "~/.claude/skills/design/scripts/cip/search.py",
-          "~/.claude/skills/design/scripts/icon/generate.py",
-          "~/.claude/skills/design/scripts/logo/generate.py",
-          "~/.claude/skills/design/scripts/logo/search.py"
-        ]
-      },
-      "superseded_by": null,
-      "ref_paths": [
-        "references/banner-sizes-and-styles.md",
-        "references/cip-deliverable-guide.md",
-        "references/cip-design.md",
-        "references/cip-prompt-engineering.md",
-        "references/cip-style-guide.md",
-        "references/design-routing.md",
-        "references/icon-design.md",
-        "references/logo-color-psychology.md",
-        "references/logo-design.md",
-        "references/logo-prompt-engineering.md",
-        "references/logo-style-guide.md",
-        "references/slides-copywriting-formulas.md",
-        "references/slides-create.md",
-        "references/slides-html-template.md",
-        "references/slides-layout-patterns.md",
-        "references/slides-strategies.md",
-        "references/slides.md",
-        "references/social-photos-design.md",
-        "scripts/cip/core.py",
-        "scripts/cip/generate.py",
-        "scripts/cip/render-html.py",
-        "scripts/cip/search.py",
-        "scripts/icon/generate.py",
-        "scripts/logo/core.py",
-        "scripts/logo/generate.py",
-        "scripts/logo/search.py",
-        "~/.claude/skills/design/scripts/cip/generate.py",
-        "~/.claude/skills/design/scripts/cip/render-html.py",
-        "~/.claude/skills/design/scripts/cip/search.py",
-        "~/.claude/skills/design/scripts/icon/generate.py",
-        "~/.claude/skills/design/scripts/logo/generate.py",
-        "~/.claude/skills/design/scripts/logo/search.py"
-      ],
-      "dead_paths": [
-        "references/banner-sizes-and-styles.md",
-        "references/cip-deliverable-guide.md",
-        "references/cip-design.md",
-        "references/cip-prompt-engineering.md",
-        "references/cip-style-guide.md",
-        "references/design-routing.md",
-        "references/icon-design.md",
-        "references/logo-color-psychology.md",
-        "references/logo-design.md",
-        "references/logo-prompt-engineering.md",
-        "references/logo-style-guide.md",
-        "references/slides-copywriting-formulas.md",
-        "references/slides-create.md",
-        "references/slides-html-template.md",
-        "references/slides-layout-patterns.md",
-        "references/slides-strategies.md",
-        "references/slides.md",
-        "references/social-photos-design.md",
-        "scripts/cip/core.py",
-        "scripts/cip/generate.py",
-        "scripts/cip/render-html.py",
-        "scripts/cip/search.py",
-        "scripts/icon/generate.py",
-        "scripts/logo/core.py",
-        "scripts/logo/generate.py",
-        "scripts/logo/search.py",
-        "~/.claude/skills/design/scripts/cip/generate.py",
-        "~/.claude/skills/design/scripts/cip/render-html.py",
-        "~/.claude/skills/design/scripts/cip/search.py",
-        "~/.claude/skills/design/scripts/icon/generate.py",
-        "~/.claude/skills/design/scripts/logo/generate.py",
-        "~/.claude/skills/design/scripts/logo/search.py"
-      ]
-    },
-    {
-      "path": ".claude/skills/design-system/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 15 code refs dead + 189d old",
-      "days": 189,
-      "liveness": {
-        "resolved": 0,
-        "total": 15,
-        "ratio": 0.0,
-        "dead": [
-          "assets/css/slide-animations.css",
-          "assets/design-tokens.css",
-          "assets/design-tokens.json",
-          "assets/designs/slides/claudekit-pitch-251223.html",
-          "docs/brand-guidelines.md",
-          "references/component-specs.md",
-          "references/component-tokens.md",
-          "references/primitive-tokens.md",
-          "references/semantic-tokens.md",
-          "references/states-and-variants.md",
-          "references/tailwind-integration.md",
-          "references/token-architecture.md",
-          "scripts/generate-tokens.cjs",
-          "scripts/search-slides.py",
-          "scripts/validate-tokens.cjs"
-        ]
-      },
-      "superseded_by": null,
-      "ref_paths": [
-        "assets/css/slide-animations.css",
-        "assets/design-tokens.css",
-        "assets/design-tokens.json",
-        "assets/designs/slides/claudekit-pitch-251223.html",
-        "docs/brand-guidelines.md",
-        "references/component-specs.md",
-        "references/component-tokens.md",
-        "references/primitive-tokens.md",
-        "references/semantic-tokens.md",
-        "references/states-and-variants.md",
-        "references/tailwind-integration.md",
-        "references/token-architecture.md",
-        "scripts/generate-tokens.cjs",
-        "scripts/search-slides.py",
-        "scripts/validate-tokens.cjs"
-      ],
-      "dead_paths": [
-        "assets/css/slide-animations.css",
-        "assets/design-tokens.css",
-        "assets/design-tokens.json",
-        "assets/designs/slides/claudekit-pitch-251223.html",
-        "docs/brand-guidelines.md",
-        "references/component-specs.md",
-        "references/component-tokens.md",
-        "references/primitive-tokens.md",
-        "references/semantic-tokens.md",
-        "references/states-and-variants.md",
-        "references/tailwind-integration.md",
-        "references/token-architecture.md",
-        "scripts/generate-tokens.cjs",
-        "scripts/search-slides.py",
-        "scripts/validate-tokens.cjs"
-      ]
-    },
-    {
-      "path": ".claude/skills/slides/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 5 code refs dead + 189d old",
-      "days": 189,
-      "liveness": {
-        "resolved": 0,
-        "total": 5,
-        "ratio": 0.0,
-        "dead": [
-          "references/copywriting-formulas.md",
-          "references/create.md",
-          "references/html-template.md",
-          "references/layout-patterns.md",
-          "references/slide-strategies.md"
-        ]
-      },
-      "superseded_by": null,
-      "ref_paths": [
-        "references/copywriting-formulas.md",
-        "references/create.md",
-        "references/html-template.md",
-        "references/layout-patterns.md",
-        "references/slide-strategies.md"
-      ],
-      "dead_paths": [
-        "references/copywriting-formulas.md",
-        "references/create.md",
-        "references/html-template.md",
-        "references/layout-patterns.md",
-        "references/slide-strategies.md"
-      ]
-    },
-    {
-      "path": ".claude/skills/ui-styling/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 10 code refs dead + 189d old",
-      "days": 189,
-      "liveness": {
-        "resolved": 0,
-        "total": 10,
-        "ratio": 0.0,
-        "dead": [
-          "references/canvas-design-system.md",
-          "references/shadcn-accessibility.md",
-          "references/shadcn-components.md",
-          "references/shadcn-theming.md",
-          "references/tailwind-customization.md",
-          "references/tailwind-responsive.md",
-          "references/tailwind-utilities.md",
-          "scripts/shadcn_add.py",
-          "scripts/tailwind_config_gen.py",
           "src/index.css"
         ]
       },
       "superseded_by": null,
       "ref_paths": [
-        "references/canvas-design-system.md",
-        "references/shadcn-accessibility.md",
-        "references/shadcn-components.md",
-        "references/shadcn-theming.md",
-        "references/tailwind-customization.md",
-        "references/tailwind-responsive.md",
-        "references/tailwind-utilities.md",
-        "scripts/shadcn_add.py",
-        "scripts/tailwind_config_gen.py",
         "src/index.css"
       ],
       "dead_paths": [
-        "references/canvas-design-system.md",
-        "references/shadcn-accessibility.md",
-        "references/shadcn-components.md",
-        "references/shadcn-theming.md",
-        "references/tailwind-customization.md",
-        "references/tailwind-responsive.md",
-        "references/tailwind-utilities.md",
-        "scripts/shadcn_add.py",
-        "scripts/tailwind_config_gen.py",
         "src/index.css"
       ]
     },
     {
       "path": ".claude/skills/ui-ux-pro-max/SKILL.md",
-      "category": "forældet",
-      "confidence": 0.8,
-      "basis": "all 5 code refs dead + 189d old",
-      "days": 189,
+      "category": "needs_review",
+      "confidence": 0.0,
+      "basis": "ambiguous signals — needs read",
+      "days": 0,
       "liveness": {
         "resolved": 0,
-        "total": 5,
+        "total": 1,
         "ratio": 0.0,
         "dead": [
-          "React/Next.js",
-          "design-system/MASTER.md",
-          "design-system/pages/checkout.md",
-          "design-system/pages/dashboard.md",
-          "skills/ui-ux-pro-max/scripts/search.py"
+          "React/Next.js"
         ]
       },
       "superseded_by": null,
       "ref_paths": [
-        "React/Next.js",
-        "design-system/MASTER.md",
-        "design-system/pages/checkout.md",
-        "design-system/pages/dashboard.md",
-        "skills/ui-ux-pro-max/scripts/search.py"
+        "React/Next.js"
       ],
       "dead_paths": [
-        "React/Next.js",
-        "design-system/MASTER.md",
-        "design-system/pages/checkout.md",
-        "design-system/pages/dashboard.md",
-        "skills/ui-ux-pro-max/scripts/search.py"
+        "React/Next.js"
       ]
     }
   ]

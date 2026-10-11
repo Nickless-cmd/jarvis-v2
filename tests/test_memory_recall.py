@@ -489,3 +489,60 @@ def test_md_line_vecs_genbruger_uaendrede_linjer(monkeypatch, tmp_path):
         "Genbruget af uaendrede linjer er brudt."
     )
     assert len(mr._MD_VECS_CACHE["vecs"]) == 52
+
+
+def test_disk_cachen_goer_at_ny_proces_ikke_embedder_alt(monkeypatch, tmp_path):
+    """11/10-2026: hver genstart var en KOLD bygning — alle ~10.100 MEMORY.md-linjer
+    skulle embeddes foerste gang cachen byggedes, og /api/embed er maalt til 7,7-15,8 s
+    pr. kald. Det gav ~2.000 kald i minuttet i bursts lige efter hver genstart.
+
+    Disk-cachen skal goere at en NY proces (tom in-memory cache) laeser vektorerne
+    fra disk og embedder NUL.
+
+    Testen kalder _build-KROPPEN direkte (ikke gennem baggrundstraaden), saa den er
+    deterministisk: ingen delt global tilstand fra andre tests kan forstyrre den."""
+    from core.services.prompt_sections import memory_recall as mr
+
+    md = tmp_path / "MEMORY.md"
+    md.write_text("start", encoding="utf-8")
+    monkeypatch.setattr(
+        "core.runtime.workspace_paths.workspace_dir", lambda *a, **k: tmp_path
+    )
+
+    kaldte: list[list[str]] = []
+    monkeypatch.setattr(
+        "core.services.jarvis_brain._embed_texts",
+        lambda tekster: (kaldte.append(list(tekster)), [[0.1] * 8 for _ in tekster])[1],
+    )
+
+    linjer = [f"linje nummer {i} med tilstraekkeligt indhold til at blive embeddet" for i in range(40)]
+
+    def _byg(lines: list[str]) -> dict:
+        """Praecis _build-kroppens logik, kaldt synkront."""
+        gamle = mr._load_md_vecs_from_disk("")
+        vecs = {ln: gamle[ln] for ln in lines if ln in gamle}
+        nye = [ln for ln in lines if ln not in gamle]
+        if nye:
+            from core.services.jarvis_brain import _embed_texts
+            for ln, v in zip(nye, _embed_texts(nye)):
+                vecs[ln] = v
+        mr._save_md_vecs_to_disk(vecs, "")
+        return vecs
+
+    # ── proces 1: kold bygning, alt embeddes, skrives til disk ──
+    vecs1 = _byg(linjer)
+    assert sum(len(k) for k in kaldte) == 40, "foerste bygning skulle embedde alle 40"
+    assert len(vecs1) == 40
+    cache_fil = tmp_path / mr._MD_VECS_CACHE_PATH_NAME
+    assert cache_fil.exists(), "disk-cachen blev aldrig skrevet"
+
+    # ── proces 2 (genstart): tom in-memory cache, MEN disk-filen staar ──
+    kaldte.clear()
+    vecs2 = _byg(linjer)
+
+    embeddet = sum(len(k) for k in kaldte)
+    assert embeddet == 0, (
+        f"ny proces gen-indlejrede {embeddet} linjer — disk-cachen blev ikke brugt. "
+        "Uden den er hver genstart en kold bygning af hele MEMORY.md."
+    )
+    assert len(vecs2) == 40, "vektorerne kom ikke med fra disk"

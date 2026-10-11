@@ -213,17 +213,20 @@ _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_md_line_vecs` | `(user_id=…)` | Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden. | [src](../../../core/services/prompt_sections/memory_recall.py#L42) |
-| function | `_resolve_user_id` | `(session_id=…)` | Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst | [src](../../../core/services/prompt_sections/memory_recall.py#L98) |
-| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L115) |
-| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L133) |
-| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L141) |
-| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L178) |
-| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L213) |
-| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L244) |
-| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L271) |
-| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L307) |
-| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L367) |
+| function | `_md_vecs_cache_path` | `(user_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L50) |
+| function | `_load_md_vecs_from_disk` | `(user_id=…)` | Laes linjevektorer fra disk. Tom dict = ingen brugbar cache → fuld bygning. | [src](../../../core/services/prompt_sections/memory_recall.py#L59) |
+| function | `_save_md_vecs_to_disk` | `(vecs, user_id=…)` | Skriv linjevektorer til disk. Self-safe — en fejl her maa aldrig ramme turen. | [src](../../../core/services/prompt_sections/memory_recall.py#L79) |
+| function | `_md_line_vecs` | `(user_id=…)` | Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden. | [src](../../../core/services/prompt_sections/memory_recall.py#L100) |
+| function | `_resolve_user_id` | `(session_id=…)` | Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst | [src](../../../core/services/prompt_sections/memory_recall.py#L165) |
+| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L182) |
+| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L200) |
+| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L208) |
+| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L245) |
+| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L280) |
+| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L311) |
+| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L338) |
+| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L374) |
+| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L434) |
 
 ## `core/services/prompt_sections/memory_scoring.py`
 _core/services/prompt_sections/memory_scoring.py_

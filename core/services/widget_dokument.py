@@ -105,6 +105,8 @@ def pak(html: str, *, titel: str = "") -> str:
     ).replace("</", "<\\/")
     return (
         "<!doctype html>\n<html><head><meta charset=\"utf-8\">\n"
+        '<meta name="viewport" content="width=device-width, initial-scale=1, '
+        'maximum-scale=5, user-scalable=yes">\n'
         f'<meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
         f"<title>{t}</title>\n"
         "<style>\n"

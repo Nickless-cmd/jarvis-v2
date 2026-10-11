@@ -1,5 +1,5 @@
-import { act, render } from '@testing-library/react-native'
-import { WidgetFlade, dokumentets_egen, MAX_WIDGET_BYTES, WidgetPrompt } from './WidgetFlade'
+import { act, fireEvent, render } from '@testing-library/react-native'
+import { WidgetFlade, dokumentets_egen, MAX_WIDGET_BYTES, medMobilViewport, WidgetPrompt } from './WidgetFlade'
 
 /**
  * Mobilen har ingen `sandbox`-attribut, saa graensen er bygget af FLAG. Disse
@@ -20,8 +20,14 @@ async function props(html = '<p>hej</p>') {
 describe('WidgetFlade', () => {
   it('dokumentet faar INGEN baseUrl — origin skal vaere about:blank', async () => {
     const p = await props()
-    expect(p.source).toEqual({ html: '<p>hej</p>' })
+    expect(String((p.source as { html: string }).html)).toContain('<p>hej</p>')
     expect((p.source as Record<string, unknown>).baseUrl).toBeUndefined()
+  })
+
+  it('opgraderer ogsaa gamle gemte widgets til mobil viewport', async () => {
+    const gammel = '<!doctype html><html><head><title>x</title></head><body>x</body></html>'
+    const p = await props(gammel)
+    expect((p.source as { html: string }).html).toContain('width=device-width')
   })
 
   // DENNE TEST PINNEDE FEJLEN (6/10-2026). Foerste udgave kaldte `guard()` UDEN
@@ -37,8 +43,14 @@ describe('WidgetFlade', () => {
     expect(guard({ url: 'about:blank' })).toBe(true)
     expect(guard({ url: 'about:blank' })).toBe(true)
     // Og enhver vej ud, ogsaa som det FOERSTE kald.
-    expect(guard({ url: 'https://api.srvlab.dk/' })).toBe(false)
-    expect(guard({ url: 'intent://scan/#Intent;scheme=zxing;end' })).toBe(false)
+    let https = true
+    let intent = true
+    await act(async () => {
+      https = guard({ url: 'https://api.srvlab.dk/' })
+      intent = guard({ url: 'intent://scan/#Intent;scheme=zxing;end' })
+    })
+    expect(https).toBe(false)
+    expect(intent).toBe(false)
   })
 
   it('fil-adgang, storage, cookies og flere vinduer er LUKKET eksplicit', async () => {
@@ -73,6 +85,19 @@ describe('WidgetFlade', () => {
     expect(tom.getByText(/tomt dokument/)).toBeTruthy()
     const stor = await render(<WidgetFlade html={'x'.repeat(MAX_WIDGET_BYTES + 1)} />)
     expect(stor.getByText(/for stor/)).toBeTruthy()
+  })
+})
+
+describe('medMobilViewport', () => {
+  it('laegger viewport i et gammelt komplet dokument', () => {
+    const d = medMobilViewport('<html><head><title>x</title></head><body>x</body></html>')
+    expect(d).toContain('name="viewport"')
+    expect(d).toContain('maximum-scale=5')
+  })
+
+  it('fordobler ikke viewporten i nye dokumenter', () => {
+    const d = medMobilViewport('<html><head><meta name="viewport" content="width=device-width"></head></html>')
+    expect(d.match(/name="viewport"/gi)).toHaveLength(1)
   })
 })
 
@@ -153,6 +178,49 @@ describe('widget-rammens bredde', () => {
     const screen = await render(<WidgetFlade html="<!doctype html><p>hej</p>" />)
     const ramme = (screen.getByTestId('widget-webview') as unknown as { parent: unknown }).parent
     expect(typeof flad(ramme).height).toBe('number')
+  })
+
+  it('lader ikke et hoejt desktop-layout fylde resten af traaden', async () => {
+    const screen = await render(<WidgetFlade html="<!doctype html><p>hej</p>" />)
+    const web = screen.getByTestId('widget-webview')
+    await act(async () => {
+      (web.props.onMessage as (e: unknown) => void)({
+        nativeEvent: { data: JSON.stringify({ type: 'jarvis-widget-hoejde', hoejde: 1200 }) },
+      })
+    })
+    const ramme = (screen.getByTestId('widget-webview') as unknown as { parent: unknown }).parent
+    expect(flad(ramme).height).toBeLessThanOrEqual(420)
+  })
+})
+
+describe('widget i fuld skaerm', () => {
+  it('aabner en stor interaktiv WebView med scroll og Android-knib', async () => {
+    const screen = await render(<WidgetFlade html="<button>koer</button>" titel="Runde" />)
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('widget-expand'))
+    })
+
+    const web = screen.getByTestId('widget-fullscreen-webview')
+    expect(web.props.scrollEnabled).toBe(true)
+    expect(web.props.nestedScrollEnabled).toBe(true)
+    expect(web.props.scalesPageToFit).toBe(true)
+    expect(web.props.setBuiltInZoomControls).toBe(true)
+    expect(web.props.setDisplayZoomControls).toBe(false)
+    expect(web.props.accessibilityLabel).toBe('Runde i fuld skærm')
+  })
+
+  it('kan lukkes igen med en tydelig knap', async () => {
+    const screen = await render(<WidgetFlade html="<p>hej</p>" />)
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('widget-expand'))
+    })
+    expect(screen.getByTestId('widget-fullscreen-webview')).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('widget-close'))
+    })
+    expect(screen.queryByTestId('widget-fullscreen-webview')).toBeNull()
   })
 })
 

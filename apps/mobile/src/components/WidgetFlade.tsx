@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { WebView } from 'react-native-webview'
+import { Maximize2, X } from 'lucide-react-native'
+import { tokens } from '../theme/tokens'
 
 /**
  * En widget paa telefonen: model-skrevet HTML i en WebView der ikke kan naa
@@ -71,6 +73,24 @@ true;
  *  sin margen; 20 pr. side rammer den samme kant som teksten staar paa. */
 const SIDE_LUFT = 20
 
+/** Previewet bor midt i en samtale. Selv en widget der bruger `100vh` eller
+ *  rapporterer et stort desktop-canvas maa ikke skubbe resten af svaret en hel
+ *  skaerm vaek. Hele fladen findes bag udvid-knappen. */
+const INLINE_MAKS_HOEJDE = 420
+const MOBIL_VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">'
+
+/** Allerede udgivne widgets bliver ikke pakket igen paa serveren. Giv derfor
+ *  ogsaa gamle dokumenter mobilens virkelige CSS-bredde lokalt. Uden denne
+ *  meta antager Android WebView en desktopside paa omtrent 980 px og skalerer
+ *  hele fladen ned til ulæselig størrelse. */
+export function medMobilViewport(html: string): string {
+  if (/<meta\b[^>]*\bname\s*=\s*["']?viewport\b/i.test(html)) return html
+  if (/<head(?:\s[^>]*)?>/i.test(html)) {
+    return html.replace(/<head(?:\s[^>]*)?>/i, (head) => `${head}\n${MOBIL_VIEWPORT}`)
+  }
+  return `${MOBIL_VIEWPORT}\n${html}`
+}
+
 /** Er adressen dokumentet selv — eller et forsoeg paa at navigere ud?
  *
  *  `source={{ html }}` indlaeses som `about:blank` (Android:
@@ -84,6 +104,7 @@ export function dokumentets_egen(url: unknown): boolean {
 
 export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
   const [hoejde, setHoejde] = useState(160)
+  const [fuld, setFuld] = useState(false)
   // EN DEFINIT BREDDE, IKKE EN PROCENT (Bjoern 6/10-2026: «Og saa virker
   // widget ikk i mobilen» — og paa spoergsmaalet om hvad der stod paa
   // skaermen: «Ingenting»).
@@ -150,117 +171,123 @@ export function WidgetFlade({ html, titel }: { html: string; titel?: string }) {
     return <Text style={styles.fejl}>Widget kunne ikke vises: for stor</Text>
   }
 
+  const haandterBesked = (e: { nativeEvent: { data?: string } }) => {
+    try {
+      const d = JSON.parse(String(e.nativeEvent.data || '{}'))
+
+      if (d?.type === 'jarvis-widget-hoejde') {
+        const h = Number(d.hoejde)
+        if (!Number.isFinite(h) || h <= 0) return
+        setMalet(true)
+        setHoejde(Math.min(Math.max(Math.round(h), 48), INLINE_MAKS_HOEJDE))
+        return
+      }
+
+      if (d?.type === 'jarvis-widget-prompt') {
+        const nu = Date.now()
+        if (sendte.current.antal >= MAX_PROMPTS) return
+        if (nu - sendte.current.sidst < MIN_MS_MELLEM) return
+        const tekst = typeof d.tekst === 'string' ? d.tekst.trim() : ''
+        if (!tekst || tekst.length > MAX_PROMPT_TEGN) return
+        const maerke = typeof d.maerke === 'string' ? d.maerke.trim() : ''
+        if (!maerke.startsWith('[fra widget')) return
+        sendte.current = { antal: sendte.current.antal + 1, sidst: nu }
+        onPrompt?.(`${maerke} ${tekst}`)
+      }
+    } catch {
+      // En uparsebar besked er hverken en hoejde eller en prompt.
+    }
+  }
+
+  const flade = (testID: string, iFuldSkaerm: boolean) => (
+    <WebView
+      testID={testID}
+      accessibilityLabel={iFuldSkaerm ? `${titel || 'Widget'} i fuld skærm` : (titel || 'widget')}
+      source={{ html: medMobilViewport(html) }}
+      originWhitelist={[]}
+      onShouldStartLoadWithRequest={(req) => {
+        const ok = dokumentets_egen(req?.url)
+        if (!ok) setTilstand(`blokeret: ${String(req?.url ?? '')}`)
+        return ok
+      }}
+      androidLayerType="hardware"
+      onLoadStart={(e) =>
+        setTilstand((n) => (n === 'indlaeser' ? `starter: ${String(e?.nativeEvent?.url ?? '?')}` : n))
+      }
+      onLoadEnd={() =>
+        setTilstand((n) =>
+          n === 'indlaeser' || n.startsWith('starter')
+            ? 'loadet — men dokumentet svarede ikke'
+            : n,
+        )
+      }
+      onError={(e) => setTilstand(`fejl: ${String(e?.nativeEvent?.description || 'ukendt')}`)}
+      onHttpError={(e) => setTilstand(`http ${e?.nativeEvent?.statusCode ?? '?'}`)}
+      onRenderProcessGone={() => setTilstand('webview-processen doede')}
+      javaScriptEnabled
+      injectedJavaScript={HOEJDE_SCRIPT}
+      onMessage={haandterBesked}
+      domStorageEnabled={false}
+      allowFileAccess={false}
+      allowFileAccessFromFileURLs={false}
+      allowUniversalAccessFromFileURLs={false}
+      allowsInlineMediaPlayback={false}
+      mediaPlaybackRequiresUserAction
+      setSupportMultipleWindows={false}
+      incognito
+      cacheEnabled={false}
+      thirdPartyCookiesEnabled={false}
+      scrollEnabled={iFuldSkaerm}
+      nestedScrollEnabled={iFuldSkaerm}
+      scalesPageToFit
+      setBuiltInZoomControls
+      setDisplayZoomControls={false}
+      style={iFuldSkaerm ? styles.fullWeb : styles.web}
+      backgroundColor="transparent"
+    />
+  )
+
   return (
-    <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
-      {!malet ? (
-        <Text style={styles.tilstand} testID="widget-tilstand">
-          {tilstand === 'indlaeser' ? 'Widget indlaeses…' : `Widget: ${tilstand}`}
-        </Text>
-      ) : null}
-      <WebView
-        testID="widget-webview"
-        accessibilityLabel={titel || 'widget'}
-        // INTET baseUrl — se komponentens docstring.
-        source={{ html }}
-        originWhitelist={[]}
-        // GATEN SER PAA ADRESSEN, IKKE PAA HVOR MANGE GANGE DEN ER KALDT.
-        //
-        // Foerste udgave talte: «foerste kald = dokumentet, alt derefter =
-        // navigation». Det var forkert. Android indlaeser `source={{html}}` med
-        // `loadDataWithBaseURL("about:blank", …)` og fyrer navigations-tjekket
-        // MERE END EN GANG for den ene indlaesning — saa taelleren slap den
-        // foerste igennem og blokerede selve dokumentet. Bjoern saa en tom
-        // ramme hvor widget'en skulle staa (6/10-2026).
-        //
-        // `about:blank` og `data:` ER dokumentet. Alt andet er navigation ud af
-        // sandkassen og afvises. Det er baade rigtigere og strammere end at
-        // taelle: en gate der siger HVAD den tillader kan ikke narres af
-        // hvor mange gange den bliver spurgt.
-        //
-        // Bemaerk at `originWhitelist` ikke daekker det: biblioteket laegger
-        // selv `about:blank` foerst i listen (`compileWhitelist` i
-        // WebViewShared), saa en tom liste tillader stadig dokumentet. Gaten
-        // her er den der afgoer sagen.
-        onShouldStartLoadWithRequest={(req) => {
-          const ok = dokumentets_egen(req?.url)
-          // Afvises noget, SKAL det staa paa skaermen — ellers ligner en
-          // blokeret indlaesning en tom widget.
-          if (!ok) setTilstand(`blokeret: ${String(req?.url ?? '')}`)
-          return ok
-        }}
-        // En WebView i en virtualiseret FlatList tegner blankt paa Android med
-        // standardens `androidLayerType="none"`. `MessageList` ER en FlatList.
-        androidLayerType="hardware"
-        // HVOR loadet STARTER. Kommer der aldrig en hoejde tilbage, siger
-        // linjen hvilken adresse der blev indlaest — det er den ene oplysning
-        // der afgoer om dokumentet overhovedet blev fundet.
-        onLoadStart={(e) =>
-          setTilstand((n) => (n === 'indlaeser' ? `starter: ${String(e?.nativeEvent?.url ?? '?')}` : n))
-        }
-        onLoadEnd={() =>
-          // MA A IKKE SLETTE EN FEJL. Biblioteket kalder onError FOER onLoadEnd,
-          // saa et ukritisk `setTilstand('klar')` her gjorde enhver fejl usynlig.
-          setTilstand((n) =>
-            n === 'indlaeser' || n.startsWith('starter')
-              ? 'loadet — men dokumentet svarede ikke'
-              : n,
-          )
-        }
-        onError={(e) => setTilstand(`fejl: ${String(e?.nativeEvent?.description || 'ukendt')}`)}
-        onHttpError={(e) => setTilstand(`http ${e?.nativeEvent?.statusCode ?? '?'}`)}
-        onRenderProcessGone={() => setTilstand('webview-processen doede')}
-        javaScriptEnabled
-        injectedJavaScript={HOEJDE_SCRIPT}
-        onMessage={(e) => {
-          try {
-            const d = JSON.parse(String(e.nativeEvent.data || '{}'))
-
-            if (d?.type === 'jarvis-widget-hoejde') {
-              const h = Number(d.hoejde)
-              if (!Number.isFinite(h) || h <= 0) return
-              // Dokumentet lever: det har koert JS og maalt sig selv. Nu — og
-              // foerst nu — maa statuslinjen forsvinde.
-              setMalet(true)
-              setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
-              return
-            }
-
-            if (d?.type === 'jarvis-widget-prompt') {
-              const nu = Date.now()
-              if (sendte.current.antal >= MAX_PROMPTS) return
-              if (nu - sendte.current.sidst < MIN_MS_MELLEM) return
-              const tekst = typeof d.tekst === 'string' ? d.tekst.trim() : ''
-              if (!tekst || tekst.length > MAX_PROMPT_TEGN) return
-              // MAERKET kommer fra serveren. Mangler det, sender vi IKKE: en
-              // umaerket besked ville laeses som Bjoerns egne ord.
-              const maerke = typeof d.maerke === 'string' ? d.maerke.trim() : ''
-              if (!maerke.startsWith('[fra widget')) return
-              sendte.current = { antal: sendte.current.antal + 1, sidst: nu }
-              onPrompt?.(`${maerke} ${tekst}`)
-            }
-          } catch {
-            // En uparsebar besked er hverken en hoejde eller en prompt.
-          }
-        }}
-        // Alt herunder er lukket MED VILJE og staar eksplicit, saa en aendret
-        // standard i biblioteket ikke kan aabne noget.
-        domStorageEnabled={false}
-        allowFileAccess={false}
-        allowFileAccessFromFileURLs={false}
-        allowUniversalAccessFromFileURLs={false}
-        allowsInlineMediaPlayback={false}
-        mediaPlaybackRequiresUserAction
-        setSupportMultipleWindows={false}
-        incognito
-        cacheEnabled={false}
-        thirdPartyCookiesEnabled={false}
-        scrollEnabled={false}
-        // Gennemsigtig, saa dokumentets egen gennemsigtige baggrund lader
-        // traadens flade skinne igennem i baade lyst og moerkt tema.
-        style={styles.web}
-        backgroundColor="transparent"
-      />
-    </View>
+    <>
+      <View style={[styles.ramme, { height: hoejde, width: bredde }]}>
+        {!malet ? (
+          <Text style={styles.tilstand} testID="widget-tilstand">
+            {tilstand === 'indlaeser' ? 'Widget indlaeses…' : `Widget: ${tilstand}`}
+          </Text>
+        ) : null}
+        {flade('widget-webview', false)}
+        <Pressable
+          testID="widget-expand"
+          accessibilityRole="button"
+          accessibilityLabel="Åbn widget i fuld skærm"
+          hitSlop={8}
+          onPress={() => setFuld(true)}
+          style={styles.udvid}
+        >
+          <Maximize2 size={18} color={tokens.color.fg1} strokeWidth={2} />
+        </Pressable>
+      </View>
+      <Modal visible={fuld} animationType="fade" onRequestClose={() => setFuld(false)}>
+        {fuld ? (
+          <View style={styles.fullRoot}>
+            <View style={styles.fullTop}>
+              <Text style={styles.fullTitel} numberOfLines={1}>{titel || 'Widget'}</Text>
+              <Pressable
+                testID="widget-close"
+                accessibilityRole="button"
+                accessibilityLabel="Luk widget"
+                hitSlop={10}
+                onPress={() => setFuld(false)}
+                style={styles.luk}
+              >
+                <X size={22} color={tokens.color.fg1} strokeWidth={2} />
+              </Pressable>
+            </View>
+            {flade('widget-fullscreen-webview', true)}
+          </View>
+        ) : null}
+      </Modal>
+    </>
   )
 }
 
@@ -276,6 +303,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   web: { flex: 1, backgroundColor: 'transparent' },
+  udvid: {
+    position: 'absolute', top: 8, right: 8, zIndex: 2,
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(20,20,20,0.84)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  fullRoot: { flex: 1, backgroundColor: tokens.color.bg0 },
+  fullTop: {
+    minHeight: 60, paddingHorizontal: tokens.spacing.lg,
+    flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tokens.color.line,
+  },
+  fullTitel: { flex: 1, color: tokens.color.fg1, fontSize: 15, fontWeight: '700' },
+  luk: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.bg2,
+  },
+  fullWeb: { flex: 1, backgroundColor: 'transparent' },
   tilstand: {
     position: 'absolute', top: 6, left: 10, zIndex: 1,
     fontSize: 12, opacity: 0.75,

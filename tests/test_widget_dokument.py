@@ -94,6 +94,19 @@ def test_baggrunden_er_gennemsigtig_saa_den_foelger_klientens_tema():
     assert "background:transparent" in d and "color-scheme: light dark" in d
 
 
+def test_dokumentet_bruger_mobilens_bredde_og_tillader_knib_zoom():
+    """Uden viewport-meta antager Android WebView en ca. 980 px desktopside.
+    Hele widgetten bliver saa skaleret ned til telefonens bredde og er ulæselig.
+    Zoom maa samtidig forblive bruger-styret i fuldskærmsvisningen.
+    """
+    d = pak("<button>tryk</button>")
+    assert 'name="viewport"' in d
+    assert "width=device-width" in d
+    assert "initial-scale=1" in d
+    assert "maximum-scale=5" in d
+    assert "user-scalable=yes" in d
+
+
 def test_dokumentet_kan_ikke_scrolle_internt():
     """Widget'en maa ikke ende i en frame med sit eget rullepanel (7/10-2026).
 

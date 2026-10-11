@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16741 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16748 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,16 +48,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16741 functions/
 - [`core.services.17`](core.services.17.md) — `mcp_client` … `model_trust`
 - [`core.services.18`](core.services.18.md) — `modulator_witness` … `outcome_projector`
 - [`core.services.19`](core.services.19.md) — `outreach_composer` … `proactive_context_governor`
-- [`core.services.20`](core.services.20.md) — `proactive_loop_lifecycle_tracking` … `provider_model_epochs`
-- [`core.services.21`](core.services.21.md) — `provider_registry_admin` … `report_claim_guard`
-- [`core.services.22`](core.services.22.md) — `research_contract` … `runtime_self_knowledge`
-- [`core.services.23`](core.services.23.md) — `runtime_self_model` … `self_review_record_tracking`
-- [`core.services.24`](core.services.24.md) — `self_review_run_tracking` … `shell_confinement_report`
-- [`core.services.25`](core.services.25.md) — `shutdown_window_daemon` … `stream_settlement`
-- [`core.services.26`](core.services.26.md) — `structured_content_flag` … `tool_concurrency`
-- [`core.services.27`](core.services.27.md) — `tool_contract_shadow` … `user_theory_of_mind`
-- [`core.services.28`](core.services.28.md) — `user_understanding_signal_tracking` … `visible_run_terminal_recovery`
-- [`core.services.29`](core.services.29.md) — `visible_run_trace` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `proactive_loop_lifecycle_tracking` … `provider_error_guard`
+- [`core.services.21`](core.services.21.md) — `provider_health_check` … `remembered_fact_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `repeated_requests` … `runtime_operational_memory`
+- [`core.services.23`](core.services.23.md) — `runtime_resource_signal` … `self_review_cadence_signal_tracking`
+- [`core.services.24`](core.services.24.md) — `self_review_outcome_tracking` … `shared_language`
+- [`core.services.25`](core.services.25.md) — `shared_language_extended` … `stream_failure_kind`
+- [`core.services.26`](core.services.26.md) — `stream_sentinel` … `tool_catalog`
+- [`core.services.27`](core.services.27.md) — `tool_chip_payload` … `user_temperature_engine`
+- [`core.services.28`](core.services.28.md) — `user_temperature_runtime` … `visible_run_segment_settlement`
+- [`core.services.29`](core.services.29.md) — `visible_run_steers` … `world_facts`
+- [`core.services.30`](core.services.30.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8862/16741 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8863/16748 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8862/16741 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5910 | 11366 | 51% |
+| `core.services` | 5911 | 11373 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8862/16741 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2380)
+## Undocumented public functions (2383)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1539,17 +1539,19 @@ Generated from source. 8862/16741 functions/methods documented (52%). The list b
 - `core/services/projection_chat_messages.py` :: `register` (L198)
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
+- `core/services/prompt_assembly_runtime.py` :: `build_with_turn_cache` (L36)
+- `core/services/prompt_assembly_runtime.py` :: `latest_user_msg_id` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `clear` (L46)
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3573)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3421)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3710)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3539)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3387)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3676)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L158)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L106)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L133)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4664)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4630)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -1570,6 +1572,7 @@ Generated from source. 8862/16741 functions/methods documented (52%). The list b
 - `core/services/prompt_section_impact.py` :: `observe_answer_impact` (L50)
 - `core/services/prompt_section_impact.py` :: `observe_last_prompt_answer_impact` (L86)
 - `core/services/prompt_section_impact.py` :: `remember_prompt_sections` (L75)
+- `core/services/prompt_section_stale_cache.py` :: `clear` (L109)
 - `core/services/prompt_sections/cross_session_arc.py` :: `invalidate_cache` (L192)
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L167)

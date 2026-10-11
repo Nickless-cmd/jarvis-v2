@@ -75,3 +75,29 @@ def test_concurrent_misses_are_measured_without_singleflight(monkeypatch):
     assert {event["process_role"] for event in cache_events} == {"api"}
     assert all(isinstance(event["pid"], int) for event in cache_events)
     assert all("secret" not in str(event) for event in cache_events)
+
+
+def test_ny_brugerbesked_faar_frisk_assembly_selv_med_samme_tekst(monkeypatch):
+    from core.services import prompt_contract
+
+    cache.clear()
+    ids = iter((101, 102))
+    builds: list[str] = []
+    monkeypatch.setattr(prompt_contract, "_latest_user_msg_id", lambda _sid: next(ids))
+    monkeypatch.setattr(
+        prompt_contract,
+        "_build_visible_chat_prompt_assembly_impl",
+        lambda **kwargs: builds.append(kwargs["user_message"]) or object(),
+    )
+    monkeypatch.setattr(
+        "core.services.prompt_assembly_telemetri.rapporter_cache_lookup",
+        lambda **_kwargs: None,
+    )
+
+    for _ in range(2):
+        prompt_contract.build_visible_chat_prompt_assembly(
+            provider="deepseek", model="deepseek-flash", user_message="ja",
+            session_id="s1",
+        )
+
+    assert builds == ["ja", "ja"]

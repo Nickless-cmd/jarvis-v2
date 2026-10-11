@@ -333,12 +333,21 @@ class InnerVisiblePromptBridgeDecision:
     subordinate: bool
 
 
-def _safe_build_cognitive_state_for_prompt(*, compact: bool) -> str | None:
+def _safe_build_cognitive_state_for_prompt(
+    *, compact: bool, session_id: str | None = None,
+) -> str | None:
     try:
         from core.services.cognitive_state_assembly import (
             build_cognitive_state_for_prompt,
         )
-        return build_cognitive_state_for_prompt(compact=compact)
+        from core.services import prompt_section_stale_cache as _snapshot_cache
+        return _snapshot_cache.get_or_refresh(
+            _snapshot_cache.context_key(
+                "cognitive_state", session_id=session_id,
+                variant="compact" if compact else "full",
+            ),
+            lambda: build_cognitive_state_for_prompt(compact=compact),
+        )
     except Exception:
         return None
 
@@ -613,6 +622,7 @@ def _device_presence_line(user_id: str) -> str:
 # 180s gamle INDE i én tur. Turen begyndte netop dengang, så det er den rigtige
 # afvejning. Keyed lookups only; never load-bearing. Storage and policy live in
 # the extracted cohesive unit; aliases preserve the old diagnostic seam.
+from core.services import prompt_assembly_runtime as _assembly_runtime
 from core.services import prompt_assembly_turn_cache as _assembly_turn_cache
 
 _ASSEMBLY_TURN_CACHE = _assembly_turn_cache._CACHE
@@ -630,25 +640,7 @@ from core.services.prompt_memory_recall import (
 )
 
 
-def _latest_user_msg_id(session_id: str | None) -> int:
-    """Cheap indexed lookup of the newest USER message id for the session. It's the SAME
-    for round 0 and the post-tool rebuild of one turn (tool_calls are assistant/tool rows,
-    not user rows) → intra-turn reuse hits. A NEW user message (even identical text like
-    'ja') gets a new id → a new cache key → NO stale cross-turn reuse. Returns 0 on any
-    error (caller then skips the cache and builds fresh — never serve stale)."""
-    sid = (session_id or "").strip()
-    if not sid:
-        return 0
-    try:
-        from core.services.chat_sessions import connect
-        with connect() as conn:
-            row = conn.execute(
-                "SELECT MAX(id) AS m FROM chat_messages WHERE session_id = ? AND role = 'user'",
-                (sid,),
-            ).fetchone()
-        return int(row["m"]) if row and row["m"] is not None else 0
-    except Exception:
-        return 0
+_latest_user_msg_id = _assembly_runtime.latest_user_msg_id
 
 
 def build_visible_chat_prompt_assembly(
@@ -664,50 +656,14 @@ def build_visible_chat_prompt_assembly(
     """Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for
     the post-tool rebuild so a tool turn assembles ONCE, not twice. Keyed on the newest USER
     message id (NOT the text) so a repeated short reply never reuses a stale assembly."""
-    import time as _t_cache
-    from core.services.prompt_assembly_telemetri import rapporter_cache_lookup
-
-    _luid = _latest_user_msg_id(session_id)
-    _key = (
-        (str(session_id or ""), _luid, provider, model, name)
-        if _luid > 0
-        else None
+    return _assembly_runtime.build_with_turn_cache(
+        builder=_build_visible_chat_prompt_assembly_impl,
+        latest_message_id=_latest_user_msg_id(session_id),
+        provider=provider, model=model, user_message=user_message,
+        session_id=session_id, name=name,
+        runtime_self_report_context=runtime_self_report_context,
+        caller_phase=caller_phase,
     )
-    _now = _t_cache.monotonic()
-    _lookup_started = _t_cache.monotonic()
-    _lookup = _assembly_turn_cache.lookup(_key, now=_now)
-    _lookup_ms = (_t_cache.monotonic() - _lookup_started) * 1000
-    if _lookup.outcome == "hit":
-        rapporter_cache_lookup(
-            key=_key,
-            outcome=_lookup.outcome,
-            cache_age_ms=_lookup.age_ms,
-            lookup_ms=_lookup_ms,
-            build_ms=None,
-            caller_phase=caller_phase,
-        )
-        return _lookup.value
-
-    _build_started = _t_cache.monotonic()
-    try:
-        _res = _build_visible_chat_prompt_assembly_impl(
-            provider=provider, model=model, user_message=user_message,
-            session_id=session_id, name=name,
-            runtime_self_report_context=runtime_self_report_context,
-        )
-    finally:
-        _build_ms = (_t_cache.monotonic() - _build_started) * 1000
-        rapporter_cache_lookup(
-            key=_key,
-            outcome=_lookup.outcome,
-            cache_age_ms=_lookup.age_ms,
-            lookup_ms=_lookup_ms,
-            build_ms=_build_ms,
-            caller_phase=caller_phase,
-        )
-    if _key is not None:
-        _assembly_turn_cache.store(_key, _res, now=_now)
-    return _res
 
 
 def _build_visible_chat_prompt_assembly_impl(
@@ -890,7 +846,8 @@ def _build_visible_chat_prompt_assembly_impl(
         _skip_cog_build = False
     future_cognitive_state = None if (_cog_live or _skip_cog_build) else _measured_submit(
         "cognitive_state",
-        _safe_build_cognitive_state_for_prompt, compact=compact,
+        _safe_build_cognitive_state_for_prompt,
+        compact=compact, session_id=session_id,
     )
     # Skill-opslaget koster ~750 ms (semantisk match mod alle installerede
     # skills). Det submittes HER så det overlapper memory_selection (~1500 ms)
@@ -1364,7 +1321,11 @@ def _build_visible_chat_prompt_assembly_impl(
     # from the diagnostic awareness budget below so it is never evicted.
     try:
         from core.services.visible_inner_life import build_inner_life_section
-        _awareness_add(1, "indre liv", build_inner_life_section())
+        from core.services import prompt_section_stale_cache as _snapshot_cache
+        _awareness_add(1, "indre liv", _snapshot_cache.get_or_refresh(
+            _snapshot_cache.context_key("inner_life", session_id=session_id),
+            build_inner_life_section,
+        ))
     except Exception as _e:
         _sec_err("indre liv", _e)
     # Levende selvmodel (2026-09-19): hans træk med dato og kilde. Bag flaget
@@ -2591,11 +2552,16 @@ def _build_visible_chat_prompt_assembly_impl(
 
     budget_profile = "visible_compact" if compact else "visible_full"
 
-    continuity_content = (
-        _visible_session_continuity_instruction()
-        if relevance.include_continuity
-        else None
-    )
+    if relevance.include_continuity:
+        from core.services import prompt_section_stale_cache as _snapshot_cache
+        continuity_content = _snapshot_cache.get_or_refresh(
+            _snapshot_cache.context_key(
+                "visible_session_continuity", session_id=session_id,
+            ),
+            _visible_session_continuity_instruction,
+        )
+    else:
+        continuity_content = None
     # 2026-05-22 (Claude): defer visible session continuity to tail. Live
     # cache diff found it broke prefix at byte ~16,299 with churning
     # latest_finished_at timestamps + recent-session topic list. The model

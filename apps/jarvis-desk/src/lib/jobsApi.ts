@@ -15,6 +15,7 @@ import { apiFetch, type ApiConfig } from './api'
  */
 export interface BackgroundJob {
   id: string
+  job_key?: string
   /** 'supervisor' = serverens egne services. 'operator' = Bjørns maskine.
    *  'agent' = en scout-agent (17/9-2026) — kan stoppes, ikke pauses.
    *  'shell' / 'shell_operator' = en ÅBEN shell-session (26/9-2026), på
@@ -34,6 +35,12 @@ export interface BackgroundJob {
   /** false = der findes ingen måde at stoppe den herfra. Udeladt = kan stoppes
    *  (den hidtidige adfærd for supervisor, operator og agent). */
   can_stop?: boolean
+  error?: string
+  finished_at?: string
+  liveOutput?: string
+  liveOutputSeq?: number
+  liveOutputTruncated?: boolean
+  stale?: boolean
 }
 
 export interface JobsSvar {

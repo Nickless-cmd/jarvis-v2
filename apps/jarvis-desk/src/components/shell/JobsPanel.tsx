@@ -4,6 +4,8 @@ import {
   listJobs, stopJob, pauseJob, resumeJob, varighed, kildeNavn,
   type BackgroundJob,
 } from '../../lib/jobsApi'
+import { startJobsStream } from '../../lib/jobsStream'
+import { applyJobEvent, emptyLiveJobs, fromSnapshot, jobKey } from '../../lib/liveJobs'
 import { removeProcess } from '../../lib/processesApi'
 import type { ApiConfig } from '../../lib/api'
 import {
@@ -12,6 +14,46 @@ import {
 } from '../../lib/agentContractApi'
 import type { AgentReference } from '../../lib/environmentEvidence'
 import { AgentJobRows } from './AgentJobRows'
+
+function JobOutput({ job }: { job: BackgroundJob }) {
+  const pre = useRef<HTMLPreElement>(null)
+  const [follow, setFollow] = useState(true)
+  const [newOutput, setNewOutput] = useState(false)
+  const text = job.liveOutput || (job.error && job.status !== 'running'
+    ? job.error : 'Kører stadig · intet output endnu')
+
+  useEffect(() => {
+    const node = pre.current
+    if (!node) return
+    if (follow) {
+      node.scrollTop = node.scrollHeight
+      setNewOutput(false)
+    } else if (job.liveOutput) {
+      setNewOutput(true)
+    }
+  }, [job.liveOutput, follow])
+
+  return (
+    <div className="jobs-output-wrap">
+      {job.liveOutputTruncated && <div className="jobs-output-note">Ældre output er klippet</div>}
+      {job.error && job.status !== 'running' && (
+        <div className="jobs-output-error">{job.error}</div>
+      )}
+      <pre
+        ref={pre} className="jobs-output" tabIndex={0}
+        onScroll={(event) => {
+          const node = event.currentTarget
+          setFollow(node.scrollHeight - node.scrollTop - node.clientHeight < 12)
+        }}
+      >{text}</pre>
+      {newOutput && (
+        <button type="button" className="jobs-nyt-output" onClick={() => setFollow(true)}>
+          Nyt output
+        </button>
+      )}
+    </div>
+  )
+}
 
 /**
  * Kørende baggrundsjob — formen er Claude Codes egen «Background tasks».
@@ -58,7 +100,7 @@ export function JobsPanel({
    *  Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt». */
   sessionId?: string | null
 }) {
-  const [jobs, setJobs] = useState<BackgroundJob[]>([])
+  const [liveJobs, setLiveJobs] = useState(emptyLiveJobs)
   // Kontrakt-projektionen (G): agentrun fra DB, uafhængigt af /api/jobs og af klientbroen.
   const [kontrakt, setKontrakt] = useState<ContractOverview | null>(null)
   const [kontraktFejl, setKontraktFejl] = useState(false)
@@ -68,11 +110,13 @@ export function JobsPanel({
   // kun viste dem ville se ud som om samtalen ejede dem.
   const [uspecificeret, setUspecificeret] = useState(0)
   const [fejl, setFejl] = useState('')
+  const [streamFejl, setStreamFejl] = useState('')
   // Egen tilstand, IKKE `fejl`. En besked lagt i fejl-feltet blev slettet et
   // oejeblik senere af den naeste hentning (som rydder fejl ved succes), saa
   // forklaringen paa hvad der ikke kunne ryddes naaede aldrig skaermen.
   const [besked, setBesked] = useState('')
   const [faerdigeAabne, setFaerdigeAabne] = useState(false)
+  const [aabneJobs, setAabneJobs] = useState<Set<string>>(() => new Set())
   const [travl, setTravl] = useState('')
 
   // Hvert opslag gaar over broen til Bjoerns maskine og koerer en kommando
@@ -88,7 +132,8 @@ export function JobsPanel({
     // tom agentliste — det siges højt nedenfor.
     const jobsKald = listJobs(config, true, sessionId)
       .then((svar) => {
-        setJobs(svar.jobs); setBroOk(svar.bridge_ok); setFejl('')
+        setLiveJobs((old) => fromSnapshot(svar, old.cursor, old))
+        setBroOk(svar.bridge_ok); setFejl('')
         setUspecificeret(svar.uspecificeret ?? 0)
       })
       .catch(() => setFejl('kunne ikke hente jobs'))
@@ -100,12 +145,36 @@ export function JobsPanel({
 
   useEffect(() => {
     hent()
-    // 10 s, ikke 5 (10/10-2026). Hvert opslag er en fuld tur over broen til
-    // Bjoerns maskine; maalt var job-pollen ~800 bro-kald i timen doegnet
-    // rundt. Panelet viser hvad der KOERER — det skal ikke taelle sekunder.
-    const id = setInterval(() => { if (!document.hidden) hent() }, 10_000)
-    return () => clearInterval(id)
-  }, [hent])
+    if (!config) return
+    const stream = startJobsStream(config, {
+      sessionId,
+      onEvent: (event) => {
+        setLiveJobs((old) => applyJobEvent(old, event))
+        if (event.type === 'source_status') setBroOk(event.payload?.healthy !== false)
+        if (event.type === 'snapshot') {
+          setBroOk(event.bridge_ok !== false)
+          setUspecificeret(event.uspecificeret ?? 0)
+        }
+        if (event.type === 'job_finished' && event.payload?.status === 'error') {
+          setFaerdigeAabne(true)
+        }
+      },
+      onError: () => {
+        setStreamFejl('Live jobstrøm afbrudt — viser seneste øjebliksbillede.')
+        hent()
+      },
+    })
+    const synlig = () => { if (!document.hidden) hent() }
+    document.addEventListener('visibilitychange', synlig)
+    return () => {
+      document.removeEventListener('visibilitychange', synlig)
+      stream.abort()
+    }
+  }, [config, hent, sessionId])
+
+  const jobs = liveJobs.order
+    .map((key) => liveJobs.byKey[key])
+    .filter((job): job is BackgroundJob => job !== undefined)
 
   // En kontrakt-agent står i registeret og dermed også som «scout» i /api/jobs. Rækken kommer fra kontrakten
   // (rigere og med styring); duplikatet fra jobs-listen fjernes, så ét run ikke står to gange.
@@ -172,15 +241,25 @@ export function JobsPanel({
   }
 
   const kort = (j: BackgroundJob, faerdig: boolean) => (
-    <li className={`jobs-kort${faerdig ? ' er-faerdig' : ''}`} key={`${j.kilde}:${j.id}`}>
+    <li className={`jobs-kort${faerdig ? ' er-faerdig' : ''}`} key={jobKey(j)}>
       <div className="jobs-kort-tekst">
         {/* B (Bjørn 29/9-2026): titlen er hvad jobbet LAVER. Id'et er ude af
             raekken — det staar i tooltip sammen med den tekniske kommando og
             i aria-label, saa to ens job stadig kan skelnes. Formen er CC's:
             titel · type · ur. */}
-        <span className="jobs-navn" title={j.kommando ? `${j.id} · ${j.kommando}` : j.id}>
+        <button
+          type="button" className="jobs-navn jobs-output-toggle"
+          aria-expanded={aabneJobs.has(jobKey(j))}
+          aria-label={`${aabneJobs.has(jobKey(j)) ? 'Skjul' : 'Vis'} output for ${j.navn}`}
+          title={j.kommando ? `${j.id} · ${j.kommando}` : j.id}
+          onClick={() => setAabneJobs((old) => {
+            const next = new Set(old)
+            if (next.has(jobKey(j))) next.delete(jobKey(j)); else next.add(jobKey(j))
+            return next
+          })}
+        >
           {j.navn}
-        </span>
+        </button>
         <span className="jobs-meta">
           {/* Linje 2 som i CC: HVOR den kører + hvor længe. At skelne server
               fra hans egen maskine er hele pointen med den samlede liste. */}
@@ -234,6 +313,7 @@ export function JobsPanel({
           )}
         </div>
       )}
+      {aabneJobs.has(jobKey(j)) && <JobOutput job={j} />}
     </li>
   )
 
@@ -254,6 +334,7 @@ export function JobsPanel({
       </div>
 
       {fejl && <div className="jobs-fejl">{fejl}</div>}
+      {streamFejl && <div className="jobs-fejl">{streamFejl}</div>}
       {besked && <div className="jobs-besked">{besked}</div>}
       {!broOk && (
         /* Ikke «ingenting kører». Vi kan ikke SE hans maskine lige nu, og de

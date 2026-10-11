@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 const listJobs = vi.fn()
 const stopJob = vi.fn()
 const pauseJob = vi.fn()
 const resumeJob = vi.fn()
+const startJobsStream = vi.fn()
+let streamHandlers: { onEvent: (event: unknown) => void; onError: (error: Error) => void }
+const abortJobsStream = vi.fn()
+vi.mock('../../lib/jobsStream', () => ({
+  startJobsStream: (...args: unknown[]) => startJobsStream(...args),
+}))
 vi.mock('../../lib/jobsApi', async () => {
   const rigtig = await vi.importActual<typeof import('../../lib/jobsApi')>('../../lib/jobsApi')
   return {
@@ -61,6 +67,12 @@ const FAERDIG = {
 }
 
 beforeEach(() => {
+  streamHandlers = undefined as unknown as typeof streamHandlers
+  abortJobsStream.mockReset()
+  startJobsStream.mockReset().mockImplementation((_config, handlers) => {
+    streamHandlers = handlers
+    return { abort: abortJobsStream }
+  })
   getKontraktOverblik.mockReset().mockResolvedValue({
     status: 'ok', agents: [], groups: [], contract_version: 'agent-contract-v1',
     capability: { enabled: true, reason: '', contract_version: 'agent-contract-v1' },
@@ -204,40 +216,53 @@ describe('tilstande der ikke er «kører» eller «exit N»', () => {
 })
 
 describe('JobsPanel — belastningen på broen', () => {
-  it('starter ikke et nyt opslag mens det forrige er undervejs', async () => {
-    // Hvert opslag koerer en kommando paa Bjoerns maskine over broen. Er den
-    // langsom, ville en poll hvert 10. sekund lægge kald i kø hos ham.
-    vi.useFakeTimers()
-    let slip: ((v: unknown) => void) | null = null
-    listJobs.mockImplementation(() => new Promise((r) => { slip = r }))
-    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
-    expect(listJobs).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(25000)      // to polls (10 s og 20 s) ville vaere fyret
-    expect(listJobs).toHaveBeenCalledTimes(1)
-
-    slip!({ jobs: [], bridge_ok: true })
-    await vi.advanceTimersByTimeAsync(10000)
-    expect(listJobs).toHaveBeenCalledTimes(2)     // og saa maa den igen
-    vi.useRealTimers()
+  it('åbner én stream og stopper den ved unmount', async () => {
+    const view = render(<JobsPanel config={cfg} isOwner onClose={() => {}} sessionId="chat-7" />)
+    await waitFor(() => expect(startJobsStream).toHaveBeenCalledTimes(1))
+    expect(startJobsStream.mock.calls[0]?.[1]).toMatchObject({ sessionId: 'chat-7' })
+    view.unmount()
+    expect(abortJobsStream).toHaveBeenCalledTimes(1)
   })
 
-  it('poller hvert 10. sekund — ikke hvert 5.', async () => {
-    // Maalt 10/10-2026: hvert opslag er en fuld tur over broen til Bjoerns
-    // maskine. 5 s gav ~800 bro-kald i timen doegnet rundt. Denne test er
-    // skarp paa TALLET: ved 9 s maa der ikke vaere sket noget nyt, ved 10 s skal der.
+  it('poller ikke længere hvert 10. sekund', async () => {
     vi.useFakeTimers()
-    listJobs.mockImplementation(() => Promise.resolve({ jobs: [], bridge_ok: true }))
+    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
-    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(30_000)
     expect(listJobs).toHaveBeenCalledTimes(1)
+  })
 
-    await vi.advanceTimersByTimeAsync(9000)
-    expect(listJobs).toHaveBeenCalledTimes(1)     // 9 s: endnu ingen ny poll
+  it('stream-output opdaterer kortet og terminal fejl viser årsagen', async () => {
+    listJobs.mockResolvedValue({ jobs: [{ ...SERVER, job_key: 'tool:x', kilde: 'tool' }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await waitFor(() => expect(startJobsStream).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole('button', { name: /Vis output for grid-bot/ }))
+    act(() => streamHandlers.onEvent({
+      cursor: 2, type: 'job_output', job_key: 'tool:x', source: 'tool', session_id: '',
+      payload: { seq: 1, chunk: 'bygger nu\n' },
+    }))
+    expect(await screen.findByText('bygger nu')).toBeInTheDocument()
+    act(() => streamHandlers.onEvent({
+      cursor: 3, type: 'job_finished', job_key: 'tool:x', source: 'tool', session_id: '',
+      payload: { status: 'error', exit_code: 2, result_text: 'exit code 2: fil mangler' },
+    }))
+    expect(await screen.findByText('exit code 2: fil mangler')).toBeInTheDocument()
+  })
 
-    await vi.advanceTimersByTimeAsync(1000)
-    expect(listJobs).toHaveBeenCalledTimes(2)     // 10 s: nu
-    vi.useRealTimers()
+  it('viser at et stille job stadig kører, når output foldes ud', async () => {
+    listJobs.mockResolvedValue({ jobs: [{ ...SERVER, job_key: 'tool:x', kilde: 'tool' }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: /Vis output for grid-bot/ }))
+    expect(screen.getByText('Kører stadig · intet output endnu')).toBeInTheDocument()
+  })
+
+  it('en terminal streamfejl laver præcis én snapshot-recovery', async () => {
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await waitFor(() => expect(startJobsStream).toHaveBeenCalledTimes(1))
+    expect(listJobs).toHaveBeenCalledTimes(1)
+    act(() => streamHandlers.onError(new Error('nede')))
+    await waitFor(() => expect(listJobs).toHaveBeenCalledTimes(2))
+    expect(screen.getByText(/live jobstrøm afbrudt/i)).toBeInTheDocument()
   })
 })
 

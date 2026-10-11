@@ -26,7 +26,6 @@ import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
-import { Arbejdslinje } from './Arbejdslinje'
 import { ImageGenerationCard } from './ImageGenerationCard'
 import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
@@ -87,6 +86,14 @@ interface MessageListProps {
    * viser samme tal for samme tur. Udeladt eller 0 = tallet vises ikke.
    */
   arbejdslinjeTokens?: number
+  /**
+   * Turens starttid i ms — hele TURENS tid, ikke rundens.
+   *
+   * Føres videre til runde-linjen, hvor uret bor (Bjørn 11/10-2026). Den kom
+   * før fra `Arbejdslinje`, der holdt sit eget ur — og derfor nulstillede
+   * tiden hver gang linjen blev monteret igen.
+   */
+  turStart?: number | null
   /**
    * Har serveren bekræftet at arbejdsfasen er slut (`final_answer_start`)?
    *
@@ -151,11 +158,14 @@ type Row = (
   | { kind: 'image-generation'; key: string }
   | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
-  /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
-  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[]; sidsteRunde?: boolean }
-  /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
-   *  Findes kun mens der streames; rækken tilføjes ikke efter. */
-  | { kind: 'arbejdslinje'; key: string; tekst: string; tokens: number }
+  /** Én RUNDE værktøjsarbejde, foldet sammen til én linje.
+   *
+   *  Bjørn 11/10-2026: arbejdslinjen er smeltet IND i denne række. Den var før
+   *  sin egen række nederst, og de to viste næsten det samme. `arbejdslinje`,
+   *  `turStart` og `tokensTal` bæres derfor her — og sættes KUN på turens
+   *  sidste runde, så tallet ikke gentages på hver linje i tråden. */
+  | { kind: 'tool-group'; key: string; items: ToolItem[]; tanker?: TankeRaekke[]; sidsteRunde?: boolean
+      arbejdslinje?: string | null; turStart?: number | null; tokensTal?: number }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
   | { kind: 'skill'; key: string; kald: SkillKald }
   /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
@@ -568,7 +578,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, arbejdslinjeTokens = 0, turStart, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -898,13 +908,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // En besked kan blive til flere rækker (afsnit, runder, tanker), og en
   // runde-række bærer nøglen `group-<første kalds nøgle>`.
   const rows: Row[] = medNyeLinje(medHoveder, nyeFra)
-  // Arbejdslinjen lægges SIDST — den inverterede liste tegner index 0 i
-  // bunden, så den havner under alt andet i beskeden og forsvinder med
-  // streamen. Bjørn 29/9-2026: «fra streaming starter til den slutter og
-  // så forsvinder igen i bunden af din besked».
-  if (working && arbejdslinje) {
-    rows.push({ kind: 'arbejdslinje', key: 'arbejdslinje', tekst: arbejdslinje, tokens: arbejdslinjeTokens })
-  }
+  // Arbejdslinjen er smeltet ind i turens SIDSTE runde-række (Bjørn
+  // 11/10-2026): to linjer om samme arbejde blev én. Den skubbes derfor ikke
+  // længere som sin egen række — `arbejdslinje`, `turStart` og token-tallet
+  // føres ind i gruppen i stedet (se `tool-group`-grenen nedenfor).
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -1031,6 +1038,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           const gruppe = <InlineToolGroup
             items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} tanker={item.tanker}
             streaming={working} sidste={item.sidsteRunde} svarBegyndt={finalAnswerStarted}
+            arbejdslinje={item.sidsteRunde ? arbejdslinje : null}
+            turStart={item.sidsteRunde ? turStart : null}
+            tokensTal={item.sidsteRunde ? arbejdslinjeTokens : 0}
           />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }
@@ -1048,7 +1058,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'nye-beskeder') return <NyeBeskederRow />
         if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
         if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
-        if (item.kind === 'arbejdslinje') return <Arbejdslinje tekst={item.tekst} tokens={item.tokens} />
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }

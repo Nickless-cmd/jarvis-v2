@@ -37,6 +37,21 @@ export interface StreamState {
   workingAction: string | null
 
   /**
+   * Når TUREN begyndte — ikke runden. Millisekunder, eller null før første tur.
+   *
+   * Linjen nederst viser hele turens tid, og den skal overleve at linjen
+   * remonteres mellem to værktøjskald. Et ur inde i komponenten
+   * (`useRef(Date.now())`) starter forfra hver gang den monteres — det gjorde
+   * tiden til RUNDENS, og den nulstillede midt i turen hver gang et værktøj
+   * skiftede. Starttidspunktet hører til turen og bor derfor her.
+   *
+   * Sættes ved `message_start` når en NY tur begynder, og bevares gennem en
+   * genforbindelse: et ur der springer tilbage midt i svaret er værre end
+   * ingen ur.
+   */
+  turStart: number | null
+
+  /**
    * Serveren har bekræftet at ARBEJDSFASEN er slut — `final_answer_start`.
    *
    * Det er ikke «der er kommet tekst efter værktøjet»: rundeopsummeringen
@@ -98,6 +113,7 @@ export function initialStreamState(): StreamState {
     provisionalMissingBlockIndex: null,
     workingStep: null,
     workingAction: null,
+    turStart: null,
     finalAnswerStarted: false,
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
@@ -174,6 +190,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // Begge rettet samme dag — de to klienter må ikke drive fra hinanden.
       const _indkommende = event.message.id || ''
       const _sammeRun = !_indkommende || _indkommende === state.activeRunId
+      // Turens ur starter KUN på en ny tur. `_sammeRun` alene dur ikke som
+      // signal: den FØRSTE `message_start` i en tur bærer et tomt run-id, så
+      // den ville tælle som «samme kørsel» og aldrig starte uret. Derfor også
+      // status: stod vi ikke og arbejdede, begynder der en ny tur nu.
+      const _nyTur = !_sammeRun || state.status !== 'working'
       return {
         ...state,
         status: 'working',
@@ -196,6 +217,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         skillFlade: _sammeRun ? state.skillFlade : undefined,
         workingStep: null,
         workingAction: null,
+        turStart: _nyTur ? Date.now() : state.turStart,
         // En NY kørsel har ikke begyndt sit slutsvar endnu. Samme run beholder
         // flaget — en genforbindelse midt i svaret må ikke tænde shimmeren igen.
         finalAnswerStarted: _sammeRun ? state.finalAnswerStarted : false,

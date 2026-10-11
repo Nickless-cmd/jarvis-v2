@@ -1255,6 +1255,7 @@ export function ChatScreen({
               finalAnswerStarted={stream.state.finalAnswerStarted}
               arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
               arbejdslinjeTokens={brugteTokens}
+              turStart={stream.state.turStart}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.

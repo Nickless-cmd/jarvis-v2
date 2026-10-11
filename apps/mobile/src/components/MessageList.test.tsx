@@ -86,31 +86,39 @@ it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
 })
 
 /**
- * Arbejdslinjens token-tal skal FØRES hele vejen — fra `ChatScreen`s `usage`
- * gennem rækken og ned i linjen. Uden den kobling ville tallet blive regnet,
- * sendt og glemt: husets hyppigste fejl, en prop der aldrig når skærmen.
+ * Den merged linje: token-tallet og kommandoen skal FØRES hele vejen — fra
+ * `ChatScreen`s `usage` gennem rækken og ned i runde-linjen. Uden den kobling
+ * ville tallet blive regnet, sendt og glemt: husets hyppigste fejl, en prop
+ * der aldrig når skærmen.
  *
- * Bjørn 30/9-2026: «lad os give den token country og min/sec tælleren fra
- * runde linjen». MUT: fjern `tokens: arbejdslinjeTokens` fra rækken → linjen
- * faar 0 og skjuler tallet → fanger.
+ * Bjørn 11/10-2026: arbejdslinjen er smeltet ind i runde-linjen, så der ikke
+ * staar to linjer om samme arbejde. MUT: fjern `tokensTal={...}` fra
+ * `InlineToolGroup` → linjen faar 0 og skjuler tallet → fanger.
  */
-it('fører token-tallet ned i arbejdslinjen', async () => {
+it('fører token-tallet og kommandoen ned i den merged runde-linje', async () => {
+  const arbejde: ContentBlock[] = [
+    { type: 'tool_use', id: 't1', name: 'bash', input: { command: 'npm test' }, status: 'running' },
+  ]
   const s = await render(
-    <MessageList messages={[]} blocks={[]} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+    <MessageList messages={[]} blocks={arbejde} working arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
   )
-  expect(s.getByTestId('arbejdslinje')).toBeTruthy()
+  expect(s.getByTestId('runde-tokens')).toBeTruthy()
   expect(s.getByLabelText('45.2k')).toBeTruthy()
-  expect(s.getByText(/tokens/)).toBeTruthy()
   expect(s.getByText('Kører npm test')).toBeTruthy()
 })
 
-it('tegner INGEN arbejdslinje når streamen er slut', async () => {
-  // Linjen forsvinder med streamen — den skal ikke stå tilbage som en tom
-  // bjælke (Bjørn 29/9-2026). Tallet alene maa ikke holde den i live.
+it('kommandoen staar ikke tilbage naar streamen er slut', async () => {
+  // Arbejdslinjen forsvandt med streamen (Bjørn 29/9-2026). Nu hvor den er
+  // smeltet ind i runde-linjen, skal KOMMANDOEN ikke blive hængende der — kun
+  // rundens egen sætning, i datid.
+  const arbejde: ContentBlock[] = [
+    { type: 'tool_use', id: 't1', name: 'bash', input: { command: 'npm test' }, status: 'done', result: 'ok' },
+  ]
   const s = await render(
-    <MessageList messages={[]} blocks={[]} working={false} arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
+    <MessageList messages={[]} blocks={arbejde} working={false} arbejdslinje="Kører npm test" arbejdslinjeTokens={45200} />
   )
-  expect(s.queryByTestId('arbejdslinje')).toBeNull()
+  expect(s.queryByText('Kører npm test')).toBeNull()
+  expect(s.queryByTestId('runde-tid')).toBeNull()
 })
 
 it('viser turn header fra turen starter, før første blok kommer', async () => {

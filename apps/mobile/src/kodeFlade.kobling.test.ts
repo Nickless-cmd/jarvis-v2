@@ -367,7 +367,10 @@ it('runde-etiketten naar hele vejen fra stream til skaerm', () => {
   //    1:1, 19/9-2026 — før stod den som overskrift over linjen)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/const tekst = etiket \? etiket : summary/)
-  expect(g).toMatch(/<LabelSkift tekst=\{tekst\}/)
+  // 5b. 11/10-2026: linjen bærer nu ÉT felt med to tilstande — kommandoen mens
+  //     kaldet kører, rundens sætning når forklaringen lander. Etiketten går
+  //     stadig hele vejen ud, blot gennem `hoved`.
+  expect(g).toMatch(/<LabelSkift tekst=\{hoved\}/)
   expect(g).not.toMatch(/tool-group-etiket/)
   // 6. den GEMTE vej: listen slår også op i beskedernes tool_use_summary-blokke
   expect(kilde('components/MessageList.tsx')).toMatch(/gemteEtiketter\(messages\)/)

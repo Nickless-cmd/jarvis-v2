@@ -205,15 +205,17 @@ it('uden sætning står den mekaniske tekst', async () => {
 })
 
 /**
- * Klokken er flyttet til arbejdslinjen (Bjørn 30/9-2026).
+ * Klokken er flyttet ud af den enkelte runde (Bjørn 30/9-2026).
  *
  * Runde-linjen bar sin egen min/sec-tæller. Men runden er kort og slukkes
  * undervejs, mens arbejdet fortsætter — så et tal der forsvinder midt i
- * arbejdet er værre end ingen tal. Tælleren bor nu i arbejdslinjen nederst i
- * beskeden, sammen med prikkerne og token-tallet (`Arbejdslinje.test.tsx`).
+ * arbejdet er værre end ingen tal.
  *
- * Her skal derfor INTET tal stå — hverken mens runden kører eller efter.
- * «0s»-reglen er væk med den: den fandtes kun fordi klokken stod her.
+ * Bjørn 11/10-2026: tallet flyttede IND i runde-linjen igen — men som TURENS
+ * ur (`turStart`), ikke rundens eget. Det er hele forskellen: bærer linjen
+ * sit eget ur, starter det forfra hver gang den monteres. Tallet læses
+ * gennem `RullendeUr`s accessibilityLabel, fordi hvert ciffer er sit eget
+ * hjul (`RullendeTal.test.tsx`).
  */
 it('turens ur foelger starttidspunktet — ikke hvornaar linjen blev monteret', async () => {
   // Det var hele pointen med at flytte uret ud af komponenten: baerer linjen

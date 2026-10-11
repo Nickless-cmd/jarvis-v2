@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native'
-import { CIF_HOEJDE, RullendeTokens, RullendeUr } from './RullendeTal'
+import { CIF_HOEJDE, RullendeUr } from './RullendeTal'
 
 /**
  * Hjulenes lodrette position i px, i træets rækkefølge (venstre → højre).
@@ -35,7 +35,7 @@ const hjuL = (s: { root: unknown }): number[] => {
 }
 
 /**
- * De rullende hjul i mobilens arbejdslinje (Bjørn 4/10-2026).
+ * Det rullende ur i mobilens runde-linje (Bjørn 4/10-2026).
  *
  * Testene her ser det et stillbillede IKKE kan: at hvert ciffer faktisk er et
  * HJUL med hele sin stribe — ikke bare et tegn der skiftes ud. Det er den
@@ -80,23 +80,13 @@ describe('RullendeTal', () => {
     expect(s.getAllByText('0')).toHaveLength(6)
   })
 
-  it('token-tallet er kort — «45.2k»', async () => {
-    const s = await render(<RullendeTokens tokens={45200} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByLabelText('45.2k')).toBeTruthy()
-  })
-
-  it('viser rå tal under 1000', async () => {
-    const s = await render(<RullendeTokens tokens={456} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByLabelText('456')).toBeTruthy()
-  })
-
-  it('ikke-cifre (punktum og k) står som tegn — ikke som hjul', async () => {
-    // De skal stå stille. Er de hjul, ruller de med, og tallet bliver læsbart
+  it('ikke-cifre (m og s) står som tegn — ikke som hjul', async () => {
+    // De skal stå stille. Er de hjul, ruller de med, og tiden bliver læsbart
     // forkert. MUT: rul dem som cifre → teksten findes ikke som selvstændig
     // Text-knude → fanger.
-    const s = await render(<RullendeTokens tokens={45200} farve="#fff" tegnFarve="#888" />)
-    expect(s.getByText('.')).toBeTruthy()
-    expect(s.getByText('k')).toBeTruthy()
+    const s = await render(<RullendeUr sek={72} farve="#fff" tegnFarve="#888" />)
+    expect(s.getByText('m')).toBeTruthy()
+    expect(s.getByText('s')).toBeTruthy()
   })
 
   /**

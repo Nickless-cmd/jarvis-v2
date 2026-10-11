@@ -263,20 +263,25 @@ _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable,
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | Return all *.md files under root (recursive, sorted), excluding any under an _archive dir. | [src](../../../scripts/docs_audit.py#L22) |
-| function | `extract_references` | `(text)` | Pull code references out of markdown text: repo paths (core/apps/scripts .py/.ts/.tsx/.md/.json) | [src](../../../scripts/docs_audit.py#L27) |
-| function | `liveness` | `(refs, repo_root=…)` | Check how many of refs["paths"] still exist on disk under repo_root. | [src](../../../scripts/docs_audit.py#L35) |
-| function | `git_last_touch` | `(path, repo_root=…)` | Return (days_since_last_commit, iso_commit_date) for path via `git log -1`. | [src](../../../scripts/docs_audit.py#L45) |
-| function | `title_and_headings` | `(text)` | Parse markdown headings from text. Returns (title, headings): title is the first `#` heading | [src](../../../scripts/docs_audit.py#L60) |
-| function | `detect_superseded` | `(docs)` | docs: [{path,title,headings,days}]. Older doc is superseded by a NEWER doc that shares the | [src](../../../scripts/docs_audit.py#L75) |
-| function | `feature_shipped` | `(refs, repo_root=…)` | A superpowers spec/plan 'shipped' if any referenced path exists, or a key symbol is in the tree. | [src](../../../scripts/docs_audit.py#L93) |
-| function | `classify_heuristic` | `(*, path, refs, live, days, superseded_by, is_superpowers, shipped)` | Classify a doc from its signals into a category. Returns (category, confidence, basis): | [src](../../../scripts/docs_audit.py#L108) |
-| function | `_yaml_val` | `(v)` | — | [src](../../../scripts/docs_audit.py#L135) |
-| function | `stamp_frontmatter` | `(text, fields)` | Idempotent, surgical YAML frontmatter merge: replaces only the given keys, preserves the rest | [src](../../../scripts/docs_audit.py#L140) |
-| function | `render_manifest_md` | `(entries)` | Render the audit entries as a DOCS_MANIFEST markdown document: a generated-header line with | [src](../../../scripts/docs_audit.py#L154) |
-| function | `build_gap_list` | `(entries)` | Coarse subsystem coverage: which _SUBSYSTEMS have NO færdig doc referencing them. | [src](../../../scripts/docs_audit.py#L166) |
-| function | `audit` | `()` | Run the full docs audit: scan every doc, extract refs/headings/git-age, detect supersession, | [src](../../../scripts/docs_audit.py#L178) |
-| function | `main` | `()` | CLI entry point: run audit(), write docs/docs_audit_raw.json, print a summary and gap list. | [src](../../../scripts/docs_audit.py#L207) |
+| function | `find_docs` | `(root=…)` | Return all *.md files under root (recursive, sorted), excluding _archive dirs and | [src](../../../scripts/docs_audit.py#L59) |
+| function | `extract_references` | `(text)` | Pull code references out of markdown text: repo paths (any prefix, see _PATH_RE) and | [src](../../../scripts/docs_audit.py#L67) |
+| function | `_ref_kind` | `(p, repo_root=…)` | Classify a reference: "runtime" (~/.jarvis-v2/…), "repo" (lives in the tree) or | [src](../../../scripts/docs_audit.py#L77) |
+| function | `_tail` | `(p)` | Strip leading `/`, `./` and `../` — the part we can match on without knowing which | [src](../../../scripts/docs_audit.py#L87) |
+| function | `_tree_index` | `(repo_root=…)` | basename → [repo-relative paths]. `git ls-files` when available (respects .gitignore, | [src](../../../scripts/docs_audit.py#L96) |
+| function | `_resolves` | `(p, doc_rel, repo_root, index, runtime_root)` | Does the reference point at something that exists? Tries, in order: the runtime home, | [src](../../../scripts/docs_audit.py#L119) |
+| function | `liveness` | `(refs, repo_root=…, doc_rel=…, runtime_root=…, index=…)` | Check how many of refs["paths"] still resolve. Absolute paths outside the tree are left | [src](../../../scripts/docs_audit.py#L143) |
+| function | `dead_paths` | `(refs, repo_root=…, doc_rel=…, runtime_root=…, index=…)` | The references that point at nothing we can find. Absolute paths outside the tree are | [src](../../../scripts/docs_audit.py#L158) |
+| function | `git_last_touch` | `(path, repo_root=…)` | Return (days_since_last_commit, iso_commit_date) for path via `git log -1`. | [src](../../../scripts/docs_audit.py#L166) |
+| function | `title_and_headings` | `(text)` | Parse markdown headings from text. Returns (title, headings): title is the first `#` heading | [src](../../../scripts/docs_audit.py#L181) |
+| function | `detect_superseded` | `(docs)` | docs: [{path,title,headings,days}]. Older doc is superseded by a NEWER doc that shares the | [src](../../../scripts/docs_audit.py#L196) |
+| function | `feature_shipped` | `(refs, repo_root=…)` | A superpowers spec/plan 'shipped' if any referenced path exists, or a key symbol is in the tree. | [src](../../../scripts/docs_audit.py#L214) |
+| function | `classify_heuristic` | `(*, path, refs, live, days, superseded_by, is_superpowers, shipped)` | Classify a doc from its signals into a category. Returns (category, confidence, basis): | [src](../../../scripts/docs_audit.py#L229) |
+| function | `_yaml_val` | `(v)` | — | [src](../../../scripts/docs_audit.py#L256) |
+| function | `stamp_frontmatter` | `(text, fields)` | Idempotent, surgical YAML frontmatter merge: replaces only the given keys, preserves the rest | [src](../../../scripts/docs_audit.py#L261) |
+| function | `render_manifest_md` | `(entries)` | Render the audit entries as a DOCS_MANIFEST markdown document: a generated-header line with | [src](../../../scripts/docs_audit.py#L275) |
+| function | `build_gap_list` | `(entries)` | Coarse subsystem coverage: which _SUBSYSTEMS have NO færdig doc referencing them. | [src](../../../scripts/docs_audit.py#L287) |
+| function | `audit` | `()` | Run the full docs audit: scan every doc under docs/ AND .claude/skills/, extract | [src](../../../scripts/docs_audit.py#L299) |
+| function | `main` | `()` | CLI entry point: run audit(), write docs/docs_audit_raw.json, print a summary — category | [src](../../../scripts/docs_audit.py#L332) |
 
 ## `scripts/docs_drift_check.py`
 _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._

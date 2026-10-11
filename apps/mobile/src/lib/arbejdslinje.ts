@@ -166,11 +166,3 @@ export function formatTid(sek: number): string {
   const r = s % 60
   return t > 0 ? `${t}h ${m}m ${r}s` : m > 0 ? `${m}m ${r}s` : `${r}s`
 }
-
-/**
- * Kort token-tal: 1234 → «1.2k». Desk's regel, ord for ord
- * (`LivenessIndicator.tsx`), så de to klienter skriver samme tal ens.
- */
-export function kortTokens(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
-import { formatTid, kortTokens } from '../lib/arbejdslinje'
+import { formatTid } from '../lib/arbejdslinje'
 
 /**
- * Rullende tal til arbejdslinjen i mobilen (Bjørn 4/10-2026).
+ * Rullende tal til runde-linjen i mobilen (Bjørn 4/10-2026).
  *
  * «de rullende tal for tid og token count i arbejds linjen i mobilen … ska
  *  osse laves»
+ *
+ * Token-hjulene gik ud 11/10-2026, da Bjørn bad om at få token-tallet ud af
+ * linjen. Tilbage er uret, der bærer hele turen i `InlineToolGroup`.
  *
  * Samme mekanik som desks `RullendeTal.tsx`: hvert CIFER er sit eget hjul,
  * klippet til én ciffer-højde, og hjulet ruller som et mekanisk
@@ -40,9 +43,11 @@ type Retning = 'op' | 'ned'
 
 /** Én ciffer-højde i px. `lineHeight` på hvert ciffer skal matche.
  *
- *  Eksporteret med vilje: nabo-teksten i `Arbejdslinje` SKAL have samme kasse
- *  (se `talTekst`), ellers centrerer rækken en lavere tekstkasse mod denne og
- *  cifferet løftes. Det er samme fejlklasse som desks 3 px-løft. */
+ *  Eksporteret med vilje: testen regner hjulenes position ud af den
+ *  (`-CIF_HOEJDE * ciffer`) og kan derfor se hvilket ciffer der FAKTISK står.
+ *  Alle tekstkasser i linjen skal desuden have denne højde, ellers centrerer
+ *  rækken en lavere kasse mod denne og cifferet løftes — samme fejlklasse som
+ *  desks 3 px-løft. */
 export const CIF_HOEJDE = 16
 
 /** Hjulets bredde i px — desk måler 8,05 px ved fontSize 13.
@@ -51,21 +56,17 @@ export const CIF_HOEJDE = 16
  * tabular ciffer ~8,1 px bredt, så 8 klippede det yderste af stregen. */
 const CIF_BREDDE = 9
 
-/** Tekststørrelsen for HELE linjen (Bjørn 4/10-2026).
+/** Tekststørrelsen for linjens tal (Bjørn 4/10-2026).
  *
  * «min/sek og token count og den sidste linje skal være samme tekststørrelse
  * — den efter token count er den rette størrelse for hele linjen.»
  *
- * Sætningen i `Arbejdslinje` er 13,5, så hjulene og «tokens» er det også.
- * Eksporteret så nabo-teksten kan bruge PRÆCIS samme tal: to steder der kan
- * drive fra hinanden er den fejlklasse hele denne fil kæmper imod. */
-export const TAL_FONT = 13.5
+ * Sætningen rundt om hjulene er 13,5, så hjulene er det også: to steder der
+ * kan drive fra hinanden er den fejlklasse hele denne fil kæmper imod. */
+const TAL_FONT = 13.5
 
 /** Rulningens varighed: desk's `.45s`. */
 const RUL_MS = 450
-
-/** Token-hjulenes kortere overgang: desk's `.22s`. */
-const HURTIG_MS = 220
 
 /** Desk's kurve, `cubic-bezier(.22, 1, .36, 1)`. */
 const KURVE = Easing.bezier(0.22, 1, 0.36, 1)
@@ -79,13 +80,11 @@ function CifferHjul({
   cyklus,
   vaerdi,
   retning,
-  hurtig,
   farve,
 }: {
   cyklus: number
   vaerdi: number
   retning: Retning
-  hurtig?: boolean
   farve: string
 }) {
   // Start-positionen sættes ved OPRETTELSEN, ikke først i effekten. Ellers
@@ -120,7 +119,7 @@ function CifferHjul({
       indeks.current = i
       const a = Animated.timing(pos, {
         toValue: -i * CIF_HOEJDE,
-        duration: hurtig ? HURTIG_MS : RUL_MS,
+        duration: RUL_MS,
         easing: KURVE,
         useNativeDriver: true,
       })
@@ -141,7 +140,7 @@ function CifferHjul({
       indeks.current = 0
       pos.setValue(0)
     })
-  }, [vaerdi, cyklus, retning, hurtig, pos])
+  }, [vaerdi, cyklus, retning, pos])
 
   useEffect(() => () => { loeb.current?.stop() }, [])
 
@@ -159,19 +158,17 @@ function CifferHjul({
   )
 }
 
-/** Ruller hvert CIFER i `tekst`. Ikke-cifre (':', '.', 'k') står stille. */
+/** Ruller hvert CIFER i `tekst`. Ikke-cifre ('h', 'm', 's', mellemrum) står stille. */
 function Ruller({
   tekst,
   retning,
   cyklusser,
-  hurtig,
   farve,
   tegnFarve,
 }: {
   tekst: string
   retning: Retning
   cyklusser?: (number | null)[]
-  hurtig?: boolean
   farve: string
   tegnFarve: string
 }) {
@@ -196,7 +193,6 @@ function Ruller({
             cyklus={cyklusser?.[i] ?? 10}
             vaerdi={Number(c)}
             retning={retning}
-            hurtig={hurtig}
             farve={farve}
           />
         ) : (
@@ -227,22 +223,6 @@ export function RullendeUr({ sek, farve, tegnFarve }: { sek: number; farve: stri
       testID="rullende-ur"
     >
       <Ruller tekst={label} retning="op" farve={farve} tegnFarve={tegnFarve} />
-    </View>
-  )
-}
-
-/** Kontekst-størrelsen som rullende tal — «12.8k», eller «456» under 1000. */
-export function RullendeTokens({ tokens, farve, tegnFarve }: { tokens: number; farve: string; tegnFarve: string }) {
-  const forrige = useRef(tokens)
-  const retning: Retning = tokens >= forrige.current ? 'op' : 'ned'
-  useEffect(() => {
-    forrige.current = tokens
-  }, [tokens])
-
-  const tekst = kortTokens(tokens)
-  return (
-    <View style={stil.raekke} accessibilityLabel={tekst} testID="rullende-tokens">
-      <Ruller tekst={tekst} retning={retning} hurtig farve={farve} tegnFarve={tegnFarve} />
     </View>
   )
 }

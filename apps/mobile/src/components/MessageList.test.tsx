@@ -96,7 +96,7 @@ it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
  *
  * Bjørn 11/10-2026, senere samme dag: «Kan du fjerne token count fra
  * linjen?» — tallet er ude, og prop-kæden med det. Denne test bærer den
- * beslutning: MUT: sæt `RullendeTokens` tilbage i `InlineToolGroup` →
+ * beslutning: MUT: sæt en token-celle tilbage i `InlineToolGroup` →
  * `runde-tokens` dukker op igen → fanger.
  */
 it('fører kommandoen ned i den merged runde-linje — og token-tallet er ude', async () => {

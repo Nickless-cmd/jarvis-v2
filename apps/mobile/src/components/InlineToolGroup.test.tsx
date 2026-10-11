@@ -139,13 +139,21 @@ it("caret'en afslutter linjen — ogsaa mens runden kører", async () => {
   expect(færdig.getByTestId('tool-status-caret')).toBeTruthy()
 })
 
-it('</> står fast — også når runden er færdig (Bjørn 19/9-2026)', async () => {
+it('cellen skifter ikke bredde når mærket skifter — linjen må ikke hoppe', async () => {
+  // Måler `tool-spark`-CELLEN, ikke glyfen: puls og `</>` har forskellig form,
+  // men skal bo i samme kasse. Ellers ville hele linjen rykke hver gang mærket
+  // skifter — og det sker nu gennem hele turen.
+  //
+  // Hed oprindeligt «</> står fast» (Bjørns valg 19/9-2026). Mærket skifter nu
+  // med `arbejder`; kassen gør ikke.
   const bredde = (s: Awaited<ReturnType<typeof render>>) => {
     const st = s.getByTestId('tool-spark').props.style
     return Object.assign({}, ...(Array.isArray(st) ? st.filter(Boolean) : [st])).width
   }
-  const koer = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-  expect(bredde(koer)).toBe(20)
+  const arbejder = await render(
+    <InlineToolGroup items={[item()]} streaming sidste svarBegyndt={false} />,
+  )
+  expect(bredde(arbejder)).toBe(20)
   const faerdig = await render(<InlineToolGroup items={[item(), item()]} />)
   expect(bredde(faerdig)).toBe(20)
 })
@@ -623,5 +631,48 @@ describe('shimmeren lever gennem hullet mellem runder', () => {
       <InlineToolGroup items={[item({ running: true })]} streaming sidste svarBegyndt />,
     )
     expect(glimter(s)).toBe(true)
+  })
+})
+
+describe('maerket i spidsen lever HELE den aktive linje', () => {
+  const pulser = (s: Awaited<ReturnType<typeof render>>) =>
+    vejTil(s.toJSON(), 'runde-puls') !== null
+
+  it('pulsen bliver i linjen i hullet mellem to kald — ogsaa naar forklaringen lander', async () => {
+    // Bjørn 11/10-2026: «animation vises et split sekund og saa skiftes den
+    // naar forklaring kommer». Mellem to kald er `running` false mens
+    // forklaringen lander — og maerket faldt til `</>`. Pulsen hoerer til
+    // HELE den aktive linje, ikke til det enkelte kald.
+    //
+    // MUT: giv maerket `running` i stedet for `arbejder` → pulsen forsvinder
+    // praecis i det vindue Bjørn pegede paa → fanger.
+    const s = await render(
+      <InlineToolGroup items={[item()]} streaming sidste svarBegyndt={false} />,
+    )
+    expect(pulser(s)).toBe(true)
+  })
+
+  it('`</>` kommer tilbage naar slutsvaret begynder', async () => {
+    const s = await render(<InlineToolGroup items={[item()]} streaming sidste svarBegyndt />)
+    expect(pulser(s)).toBe(false)
+  })
+
+  it('en FAERDIG runde i traaden baerer `</>` — ikke pulsen', async () => {
+    const s = await render(<InlineToolGroup items={[item()]} />)
+    expect(pulser(s)).toBe(false)
+  })
+
+  it('en runde der IKKE er turens sidste baerer `</>`', async () => {
+    const s = await render(
+      <InlineToolGroup items={[item()]} streaming sidste={false} svarBegyndt={false} />,
+    )
+    expect(pulser(s)).toBe(false)
+  })
+
+  it('et KOERENDE kald pulser — ogsaa naar slutsvaret er begyndt', async () => {
+    const s = await render(
+      <InlineToolGroup items={[item({ running: true })]} streaming sidste svarBegyndt />,
+    )
+    expect(pulser(s)).toBe(true)
   })
 })

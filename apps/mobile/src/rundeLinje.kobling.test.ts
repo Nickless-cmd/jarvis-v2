@@ -17,9 +17,10 @@ import { join } from 'path'
  *
  *     animation → rundens hoved → +/- → turens tid → >
  *
- * mens runden kører, og `</>` i spidsen når den er færdig. Kommandoen vises
- * kun mens kaldet kører; når forklaringen lander, ERSTATTER den kommandoen —
- * og står i datid.
+ * mens runden kører, og `</>` i spidsen når den er færdig. Animationen bliver i
+ * linjen HELE turen — også i hullet mellem to kald, hvor forklaringen lander
+ * (Bjørn 11/10-2026). Kommandoen vises kun mens kaldet kører; når forklaringen
+ * lander, ERSTATTER den kommandoen — og står i datid.
  *
  * Testen læser kilden frem for at rendere: `InlineToolGroup` trækker tema,
  * reduceret-bevægelse og diff-arket med sig, og en test der skal mocke det hele
@@ -54,9 +55,14 @@ it('skærmen giver turens starttid videre fra streamen — men KUN mens turen k�
     .toMatch(/turStart=\{stream\.state\.status === 'working' \? stream\.state\.turStart : null\}/)
 })
 
-it('mærket i spidsen skifter: puls mens runden kører, </> når den er færdig', () => {
+it('mærket i spidsen skifter: puls mens linjen arbejder, </> når den er færdig', () => {
   const g = kilde('components/InlineToolGroup.tsx')
-  expect(g).toMatch(/running\s*\?\s*<AnimeretPuls/)
+  // Signalet er `arbejder` — IKKE `running`. `running` er sand kun mens et
+  // kald udfører, så mærket faldt til `</>` i hullet mellem to kald hvor
+  // forklaringen lander (Bjørn 11/10-2026: «animation vises et split sekund
+  // og så skiftes den når forklaring kommer»).
+  expect(g).toMatch(/arbejder\s*\?\s*<AnimeretPuls/)
+  expect(g).toMatch(/const arbejder = streaming && sidste && \(running \|\| !svarBegyndt\)/)
   // `</>` skal BLIVE på de færdige runder — den er rundens mærke, ikke bare
   // et «arbejder nu»-tegn.
   expect(g).toMatch(/<Code2/)

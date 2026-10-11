@@ -113,8 +113,12 @@ export const SVAR_KLIP = 4000
  * sådan i mobil appen osse»). Tallene er læst i deres CSS/JS; se desk'
  * `LabelSkift.tsx` og ~/cc-tool-linje-prompt-til-claude.md.
  *
- * - **`</>`** står fast foran linjen, også når runden er færdig (Bjørns
- *   valg 19/9-2026 — Claude Desktop viser den kun mens der arbejdes).
+ * - **Mærket i spidsen** skifter: PULSEN mens linjen arbejder, `</>` på de
+ *   færdige runder. `</>` stod oprindeligt fast foran linjen (Bjørns valg
+ *   19/9-2026, som Claude Desktop); den er rundens mærke og kommer tilbage
+ *   når arbejdet er slut (Bjørn 11/10-2026). Signalet er `arbejder` — se
+ *   `visShimmer`-blokken: `running` alene slukkede pulsen i hullet mellem to
+ *   kald, hvor forklaringen lander.
  * - **Labelen** glitrer mens der arbejdes og skifter med kildens overgange.
  * - **Klokken og de tre prikker er flyttet til arbejdslinjen** nederst i
  *   beskeden (Bjørn 30/9-2026). Runden er kort og slukkes undervejs; tal og
@@ -154,6 +158,8 @@ export const InlineToolGroup = memo(function InlineToolGroup({
     const iv = setInterval(() => tick((n) => n + 1), 250)
     return () => clearInterval(iv)
   }, [turStart])
+  // «Arbejder lige nu» — ÉT signal til BÅDE shimmeren og mærket i spidsen.
+  //
   // Shimmeren skal leve gennem hullet MELLEM runder.
   //
   // Et afsluttet værktøjskald afslutter ikke nødvendigvis Jarvis' runde: han
@@ -166,7 +172,12 @@ export const InlineToolGroup = memo(function InlineToolGroup({
   // kommet tekst efter værktøjet»: rundeopsummeringen lander med resultatet og
   // ville slukke shimmeren i det vindue den skal dække. Desk fik reglen
   // 3/10 (`RaekkeTranskript.tsx:341`); mobilen havde den ikke.
-  const visShimmer = streaming && sidste && (running || !svarBegyndt)
+  //
+  // Bjørn 11/10-2026: mærket i spidsen læste `running` alene og faldt til
+  // `</>` i netop det hul — «animation vises et split sekund og så skiftes
+  // den når forklaring kommer». To signaler til samme tilstand drev fra
+  // hinanden. Nu læser begge dette ene, og en test binder dem sammen.
+  const arbejder = streaming && sidste && (running || !svarBegyndt)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
 
@@ -216,17 +227,22 @@ export const InlineToolGroup = memo(function InlineToolGroup({
         testID="tool-group"
       >
         <View style={styles.row}>
-          {/* Mærket i spidsen skifter (Bjørn 11/10-2026): mens runden kører
+          {/* Mærket i spidsen skifter (Bjørn 11/10-2026): mens linjen ARBEJDER
               står PULSEN her — samme animerede bevægelse som arbejdslinjen
-              havde — og `</>` kommer tilbage på de færdige runder. `</>` er
-              rundens mærke, ikke bare et «arbejder nu»-tegn; den forsvandt
-              ikke med sammenlægningen. */}
+              havde — og `</>` kommer tilbage på de færdige runder.
+              `</>` er rundens mærke, ikke bare et «arbejder nu»-tegn; den
+              forsvandt ikke med sammenlægningen.
+
+              Vagt: signalet er `arbejder`, ikke `running`. `running` er sand
+              KUN mens et kald udfører, så mærket skiftede til `</>` i hullet
+              mellem to kald hvor forklaringen lander — pulsen stod et
+              splitsekund. Det er `arbejder` der bærer HELE den aktive linje. */}
           <View style={styles.spark} testID="tool-spark">
-            {running
-              ? <AnimeretPuls size={15} farve={tokens.color.accent} />
+            {arbejder
+              ? <AnimeretPuls size={15} farve={tokens.color.accent} testID="runde-puls" />
               : <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />}
           </View>
-          <LabelSkift tekst={hoved} arbejder={visShimmer} style={styles.summary} farve={tokens.color.fg2} fastIkon />
+          <LabelSkift tekst={hoved} arbejder={arbejder} style={styles.summary} farve={tokens.color.fg2} fastIkon />
           {/* Summen i selve linjen — foldet som standard ville tallene ellers
               kun ses af den der folder ud. Et nul vises ikke. */}
           {sum ? (

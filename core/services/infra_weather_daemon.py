@@ -119,14 +119,20 @@ def _network_latency() -> dict[str, Any]:
 
 
 def _api_cost_today() -> float:
-    """Sum of today's API costs via the costs ledger."""
-    try:
-        from core.costing.ledger import telemetry_summary
-        summary = telemetry_summary()
-        return float(summary.get("total_cost_usd", 0.0))
-    except Exception:
-        pass
-    # Fallback: direct DB query
+    """Sum of TODAY's API costs.
+
+    BUG (målt 11/10-2026): denne funktion kaldte `telemetry_summary()`, som
+    summerer HELE `costs`-tabellen — 842.239 rækker, $158,89 og stigende for
+    evigt. Værdien blev sammenlignet mod `_API_COST_CRITICAL_USD = 15.0`, så
+    infra_weather stod permanent på `critical` med reason `api-cost=$158.89`,
+    uanset at dagens reelle forbrug var $0,94. Alarmen blev sendt hver 6. time
+    (cooldown), og prompt-sektionen råbte «Infra-vejr: ⛈ critical» i hver tur.
+
+    `telemetry_summary()` er et livstids-tal til telemetri-visning, ikke et
+    dags-tal. Den direkte DB-query nedenfor er den korrekte kilde — den var
+    allerede fallback, men blev aldrig nået fordi summary-kaldet lykkedes.
+    """
+    # Direkte DB-query: dagens rækker, filtreret på dato.
     try:
         from core.runtime.db import connect
         with connect() as conn:

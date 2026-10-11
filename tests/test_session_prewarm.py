@@ -76,6 +76,35 @@ def test_successful_warm_records_stats(monkeypatch):
     assert recorded.get("cache_hit_tokens") == 900
 
 
+def test_warm_kanoniserer_flash_alias_foer_baade_builder_og_api(monkeypatch):
+    """Warmer og live-lane skal bruge samme model-id, ellers deler de ikke prefix."""
+    _reset_throttle()
+    monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)
+    monkeypatch.setattr(sp, "_deepseek_key", lambda: "key", raising=True)
+
+    seen: dict = {}
+    import core.services.visible_model as vm
+
+    def _messages(*_args, **kwargs):
+        seen["builder_model"] = kwargs["model"]
+        return [{"role": "system", "content": "sys"}]
+
+    def _post(_key, payload, **_kwargs):
+        seen["api_model"] = payload["model"]
+        return {"usage": {"prompt_tokens": 1, "prompt_cache_miss_tokens": 1}}
+
+    monkeypatch.setattr(vm, "_build_visible_chat_messages_for_github", _messages, raising=True)
+    monkeypatch.setattr(sp, "_post_deepseek", _post, raising=True)
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_kw: None)
+
+    result = sp.warm_session_prefix(
+        "chat-alias", provider="deepseek", model="deepseek-v4-flash", force=True,
+    )
+
+    assert result["status"] == "ok"
+    assert seen == {"builder_model": "deepseek-flash", "api_model": "deepseek-flash"}
+
+
 def test_warm_never_raises_on_builder_error(monkeypatch):
     _reset_throttle()
     monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)

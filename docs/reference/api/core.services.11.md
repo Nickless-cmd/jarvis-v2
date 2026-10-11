@@ -7,8 +7,9 @@ _Hvad DeepSeeks modeller HEDDER — ét sted._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `er_flash` | `(model)` | Serveres denne model af `deepseek-flash`? | [src](../../../core/services/deepseek_modelnavne.py#L60) |
-| function | `er_thinking_model` | `(model, *, provider=…)` | Kræver modellen `reasoning_content` på tidligere assistant-ture? | [src](../../../core/services/deepseek_modelnavne.py#L65) |
+| function | `er_flash` | `(model)` | Serveres denne model af `deepseek-flash`? | [src](../../../core/services/deepseek_modelnavne.py#L70) |
+| function | `kanoniser_model` | `(provider, model)` | Returnér providerens stabile model-id ved chat-grænsen. | [src](../../../core/services/deepseek_modelnavne.py#L75) |
+| function | `er_thinking_model` | `(model, *, provider=…)` | Kræver modellen `reasoning_content` på tidligere assistant-ture? | [src](../../../core/services/deepseek_modelnavne.py#L89) |
 
 ## `core/services/delegation_advisor.py`
 _Delegation advisor — inline vs which subagent role._

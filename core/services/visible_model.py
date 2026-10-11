@@ -268,6 +268,8 @@ def execute_visible_model(
     *, message: str, provider: str, model: str, session_id: str | None = None,
     thinking_mode: str | None = None,
 ) -> VisibleModelResult:
+    from core.services.deepseek_modelnavne import kanoniser_model
+    model = kanoniser_model(provider, model)
     # WS5: enforce v4-pro cost-gate at the execution seam (fail-safe → flash).
     model = gate_visible_model_tier(provider, model)
     if provider == "openai":
@@ -332,6 +334,8 @@ def stream_visible_model(
     controller=None,
     thinking_mode: str = "think",
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    from core.services.deepseek_modelnavne import kanoniser_model
+    model = kanoniser_model(provider, model)
     # WS5: enforce v4-pro cost-gate at the streaming seam (fail-safe → flash).
     model = gate_visible_model_tier(provider, model)
     if provider == "openai":

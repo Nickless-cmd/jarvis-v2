@@ -41,6 +41,16 @@ FLASH_NAVNE: Final[frozenset[str]] = frozenset({
     "deepseek-v4-flash-vision-exp",
 })
 
+# Accepterede tekst-aliaser der serveres som den samme Flash-model. Vision-navnet
+# holdes ude af normaliseringen: et eksplicit vision-kald må fortsat kunne ses som
+# sådan i observability, selv om providerens backend i dag er den samme.
+FLASH_CHAT_ALIASES: Final[frozenset[str]] = frozenset({
+    "deepseek-flash",
+    "deepseek-v4-flash",
+    "deepseek-chat",
+    "deepseek-reasoner",
+})
+
 #: Modeller hvis API KRÆVER at tidligere assistant-ture bærer
 #: `reasoning_content`. Uden strip af de øvrige afvises requesten.
 #:
@@ -60,6 +70,20 @@ THINKING_MODELLER: Final[frozenset[str]] = frozenset({
 def er_flash(model: str) -> bool:
     """Serveres denne model af `deepseek-flash`?"""
     return (model or "").strip() in FLASH_NAVNE
+
+
+def kanoniser_model(provider: str, model: str) -> str:
+    """Returnér providerens stabile model-id ved chat-grænsen.
+
+    DeepSeek cacher per præfiks, og model-aliaser må derfor ikke drive mellem
+    session-warmeren og den synlige request. Andre providere/modeller bevares
+    byte-for-byte bortset fra omkringliggende whitespace.
+    """
+    provider_norm = (provider or "").strip().lower()
+    model_norm = (model or "").strip()
+    if provider_norm == "deepseek" and model_norm in FLASH_CHAT_ALIASES:
+        return KANONISK_FLASH
+    return model_norm
 
 
 def er_thinking_model(model: str, *, provider: str = "deepseek") -> bool:

@@ -17,12 +17,39 @@ import pytest
 
 from core.services.deepseek_modelnavne import (
     KANONISK_FLASH,
+    kanoniser_model,
     er_flash,
     er_thinking_model,
 )
 from core.services.llm_pricing import compute_cost_usd
 
 BEGGE = ("deepseek-flash", "deepseek-v4-flash")
+
+
+@pytest.mark.parametrize("model", BEGGE + ("deepseek-chat", "deepseek-reasoner"))
+def test_flash_aliaser_kanoniseres_ved_provider_graensen(model):
+    assert kanoniser_model("deepseek", model) == KANONISK_FLASH
+
+
+def test_kanonisering_roerer_ikke_pro_eller_andre_udbydere():
+    assert kanoniser_model("deepseek", "deepseek-v4-pro") == "deepseek-v4-pro"
+    assert kanoniser_model("ollama", "deepseek-v4-flash") == "deepseek-v4-flash"
+
+
+def test_synlig_stream_sender_det_kanoniske_navn_til_adapteren(monkeypatch):
+    from core.services import visible_model
+
+    seen: dict = {}
+
+    def _stream(**kwargs):
+        seen.update(kwargs)
+        return iter(())
+
+    monkeypatch.setattr(visible_model, "_stream_openai_compatible_model", _stream)
+    list(visible_model.stream_visible_model(
+        message="hej", provider="deepseek", model="deepseek-v4-flash",
+    ))
+    assert seen["model"] == KANONISK_FLASH
 
 
 # ── Thinking-testen ─────────────────────────────────────────────────────────

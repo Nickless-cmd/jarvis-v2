@@ -122,6 +122,9 @@ def warm_session_prefix(
         from core.services.deepseek_modelnavne import KANONISK_FLASH
         model = str(load_settings().visible_model_name or "").strip() or KANONISK_FLASH
 
+    from core.services.deepseek_modelnavne import kanoniser_model
+    model = kanoniser_model(provider, model)
+
     t0 = time.monotonic()
     out: dict[str, Any] = {"status": "skipped", "session_id": session_id}
     try:

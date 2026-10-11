@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8860/16739 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8861/16740 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8860/16739 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5908 | 11364 | 51% |
+| `core.services` | 5909 | 11365 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1287,7 +1287,7 @@ Generated from source. 8860/16739 functions/methods documented (52%). The list b
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
 - `core/services/jarvis_brain.py` :: `connect_index` (L388)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L326)
-- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
+- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L350)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L422)

@@ -167,8 +167,11 @@ def _call_local_ollama(prompt: str) -> dict | None:
     try:
         import httpx
         from core.services.semantic_memory import _ollama_base_url
-        base = _ollama_base_url()
-        model = _resolve_local_chat_model() or "qwen2.5:7b-instruct"
+        model, router_base = _resolve_local_chat_target()
+        model = model or "qwen2.5:7b-instruct"
+        # Routerens host først: embed-hosten (11435) har ingen chat-modeller.
+        # Fallback bevarer den gamle vej hvis routeren intet siger om base_url.
+        base = router_base or _ollama_base_url()
         # Verificér model-tilgængelighed (kort timeout) — undgå hæng på manglende model.
         try:
             tags = httpx.get(f"{base}/api/tags", timeout=5.0).json().get("models") or []
@@ -208,17 +211,34 @@ def _call_local_ollama(prompt: str) -> dict | None:
         return None
 
 
-def _resolve_local_chat_model() -> str | None:
-    """Find configured local-lane chat model from provider router (best-effort)."""
+def _resolve_local_chat_target() -> tuple[str | None, str | None]:
+    """Find configured local-lane chat model + HOST from provider router.
+
+    Returnerer `(model, base_url)`. Base_url er afgørende og ikke kosmetik:
+    `_ollama_base_url()` peger med vilje på den dedikerede EMBED-host
+    (127.0.0.1:11435, kun `nomic-embed-text`), mens routerens "local"-lane peger
+    på GPU-ollama'en (127.0.0.1:11434) hvor chat-modellerne ligger.
+
+    Målt i drift 11/10-2026: koden kastede `base_url` væk og beholdt kun modellen,
+    så hvert brain-job spurgte embed-hosten om en chat-model, fik
+    "har: ['nomic-embed-text:latest']" og sprang over. Summary-filen stod frosset
+    i 17 dage (24/9 → 11/10) mens indekset voksede med ~150 poster i døgnet.
+    """
     try:
         from core.runtime.provider_router import resolve_provider_router_target
         target = resolve_provider_router_target(lane="local")
         if str(target.get("provider", "")).lower() == "ollama":
             m = str(target.get("model") or "").strip()
-            return m or None
+            b = str(target.get("base_url") or "").strip()
+            return (m or None, b or None)
     except Exception:
         pass
-    return None
+    return (None, None)
+
+
+def _resolve_local_chat_model() -> str | None:
+    """Bagudkompatibel wrapper: kun modellen. Se `_resolve_local_chat_target`."""
+    return _resolve_local_chat_target()[0]
 
 
 def _parse_json_loose(text: str) -> dict | None:
@@ -361,6 +381,13 @@ def run_theme_consolidation_if_active() -> int:
 # ---------------------------------------------------------------------------
 
 
+#: Tegn-loft for posterne i summary-prompten. Målt 11/10-2026: uden loft listede
+#: prompten alle 15.434 aktive poster = 1.312.557 tegn (~328.139 tokens), hvilket
+#: intet kontekstvindue rummer — modellen svarede aldrig, og summary-filen frøs fra
+#: 24/9. 12.000 tegn (~3.000 tokens) rummer ~156 poster, de mest saliente først.
+_SUMMARY_MAX_CHARS = 12000
+
+
 _SUMMARY_PROMPT = """\
 Du genererer en kompakt opsummering af Jarvis' egen vidensjournal.
 Den vises i toppen af hans bevidsthed som "ting jeg ved nu".
@@ -397,7 +424,8 @@ def regenerate_summary(*, target_visibility: str = "personal") -> int:
     try:
         rows = conn.execute(
             "SELECT title, kind, domain, visibility FROM brain_index "
-            "WHERE status='active' ORDER BY domain, kind"
+            "WHERE status='active' "
+            "ORDER BY salience_base DESC, salience_bumps DESC, updated_at DESC"
         ).fetchall()
     finally:
         conn.close()
@@ -406,10 +434,24 @@ def regenerate_summary(*, target_visibility: str = "personal") -> int:
     if not eligible:
         return 0
 
-    bullet_lines = "\n".join(
-        f"- [{kind}/{domain}] {title}" for title, kind, domain, _ in eligible
-    )
-    prompt = _SUMMARY_PROMPT.format(entries_summary=bullet_lines)
+    # LOFT (målt 11/10-2026): uden dette listede prompten ALLE aktive poster.
+    # Med 15.434 aktive blev den 1.312.557 tegn (~328.139 tokens) — langt over
+    # noget kontekstvindue, så modellen svarede aldrig og summary-filen frøs fra
+    # 24/9. En "kompakt opsummering" kan ikke bygges ved at liste alt: vi tager
+    # de mest saliente poster og stopper når tegn-budgettet er brugt.
+    valgte: list[str] = []
+    brugt = 0
+    for title, kind, domain, _vis in eligible:
+        linje = f"- [{kind}/{domain}] {title}"
+        if brugt + len(linje) + 1 > _SUMMARY_MAX_CHARS:
+            break
+        valgte.append(linje)
+        brugt += len(linje) + 1
+
+    if not valgte:
+        return 0
+
+    prompt = _SUMMARY_PROMPT.format(entries_summary="\n".join(valgte))
 
     # Privacy routing
     if target_visibility == "public_safe":
@@ -431,7 +473,9 @@ def regenerate_summary(*, target_visibility: str = "personal") -> int:
     tmp = out_path.with_suffix(".tmp")
     tmp.write_text(summary_md, encoding="utf-8")
     tmp.replace(out_path)
-    return len(eligible)
+    # Antallet der FAKTISK kom med — ikke alle eligible. Med loftet er de to tal
+    # ikke længere ens, og returværdien skal ikke lyve om hvad der blev opsummeret.
+    return len(valgte)
 
 
 # ---------------------------------------------------------------------------

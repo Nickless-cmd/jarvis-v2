@@ -428,3 +428,185 @@ def test_model_is_available_empty():
     from core.services.jarvis_brain_daemon import _model_is_available
     assert _model_is_available([], "qwen2.5") is False
     assert _model_is_available(["qwen2.5:7b-instruct"], "") is False
+
+
+# --- 2026-10-11: chat-kaldet skal ramme routerens HOST, ikke embed-hosten ---
+#
+# MÅLT I DRIFT 11/10-2026: `_call_local_ollama` hentede sin base fra
+# `_ollama_base_url()`, som med vilje peger på den DEDIKEREDE EMBED-host
+# (127.0.0.1:11435, kun `nomic-embed-text`). Men routerens "local"-lane siger
+# 127.0.0.1:11434, hvor chat-modellen faktisk ligger. Koden kastede `base_url`
+# væk og beholdt kun `model` — så daemonen spurgte embed-hosten om en chat-model,
+# fik svaret "har: ['nomic-embed-text:latest']", og sprang jobbet over.
+# Konsekvens: summary-filen stod frosset i 17 dage (24/9 → 11/10).
+
+
+def test_chat_kaldet_rammer_routerens_host_ikke_embed_hosten(monkeypatch):
+    """Chat + model-tjek skal gå til routerens base_url — ikke embed-hosten."""
+    import httpx
+    from core.services import jarvis_brain_daemon as dmn
+    from core.services import semantic_memory
+    from core.runtime import provider_router
+
+    ramte: dict[str, str] = {}
+
+    monkeypatch.setattr(
+        provider_router,
+        "resolve_provider_router_target",
+        lambda *, lane: {
+            "provider": "ollama",
+            "model": "deepseek-v4.1-flash:cloud",
+            "base_url": "http://127.0.0.1:11434",
+        },
+    )
+    # Embed-hosten: den forkerte vej. Hvis koden falder tilbage hertil, fejler testen.
+    monkeypatch.setattr(
+        semantic_memory, "_ollama_base_url", lambda: "http://127.0.0.1:11435"
+    )
+
+    class _Tags:
+        status_code = 200
+
+        def json(self):
+            return {"models": [{"name": "deepseek-v4.1-flash:cloud"}]}
+
+    class _Chat:
+        status_code = 200
+
+        def json(self):
+            return {"message": {"content": '{"ok": true}'}}
+
+    def fake_get(url, **kw):
+        ramte["get"] = url
+        return _Tags()
+
+    def fake_post(url, **kw):
+        ramte["post"] = url
+        return _Chat()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    res = dmn._call_local_ollama("sig noget")
+
+    assert res == {"ok": True}, "chat-kaldet skulle lykkes"
+    assert "11434" in ramte["get"], f"tags blev hentet fra {ramte['get']}"
+    assert "11434" in ramte["post"], f"chat gik til {ramte['post']}"
+    assert "11435" not in ramte["post"], "chat må ALDRIG gå til embed-hosten"
+
+
+def test_chat_falder_tilbage_til_embed_hosten_uden_router_base(monkeypatch):
+    """Uden base_url fra routeren bevares den gamle vej — ingen regression."""
+    import httpx
+    from core.services import jarvis_brain_daemon as dmn
+    from core.services import semantic_memory
+    from core.runtime import provider_router
+
+    ramte: dict[str, str] = {}
+    monkeypatch.setattr(
+        provider_router,
+        "resolve_provider_router_target",
+        lambda *, lane: {"provider": "ollama", "model": "m"},
+    )
+    monkeypatch.setattr(
+        semantic_memory, "_ollama_base_url", lambda: "http://127.0.0.1:11435"
+    )
+
+    class _Tags:
+        status_code = 200
+
+        def json(self):
+            return {"models": [{"name": "m"}]}
+
+    class _Chat:
+        status_code = 200
+
+        def json(self):
+            return {"message": {"content": '{"ok": true}'}}
+
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: (ramte.update(get=url), _Tags())[1])
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: (ramte.update(post=url), _Chat())[1])
+
+    dmn._call_local_ollama("sig noget")
+
+    assert "11435" in ramte["post"], "uden router-base skal den gamle vej bevares"
+
+
+# --- 2026-10-11: prompten skal have et LOFT, ikke liste alle poster ---
+#
+# MÅLT I DRIFT 11/10-2026: `regenerate_summary` indsatte ALLE aktive poster som
+# bullet-lines. Med 15.434 aktive poster blev prompten 1.312.557 tegn (~328.139
+# tokens) — langt over noget kontekstvindue. Modellen kunne ikke svare, og
+# summary-filen stod frosset fra 24/9. Host-fejlen var den ene årsag; dette er
+# den anden. En "kompakt opsummering" kan ikke bygges ved at liste alt.
+
+
+def test_summary_prompten_har_et_loft(isolated, monkeypatch):
+    """Selv med mange poster skal prompten holdes under et rimeligt loft."""
+    from core.services import jarvis_brain_daemon as dmn
+
+    for i in range(400):
+        isolated.write_entry(
+            kind="fakta",
+            title=f"Post nummer {i} " + ("x" * 120),
+            content="y",
+            visibility="personal",
+            domain="d",
+        )
+
+    fanget: dict[str, str] = {}
+
+    def fake_local(prompt: str):
+        fanget["prompt"] = prompt
+        return {"summary": "**Engineering:**\n- noget"}
+
+    monkeypatch.setattr(dmn, "_call_local_ollama", fake_local)
+
+    n = dmn.regenerate_summary(target_visibility="personal")
+
+    assert n > 0, "summaryen skulle genereres"
+    assert "prompt" in fanget, "LLM'en blev slet ikke kaldt"
+    assert len(fanget["prompt"]) <= 20000, (
+        f"prompten var {len(fanget['prompt'])} tegn — loftet holder ikke"
+    )
+    # Loftet må ikke betyde "ingen poster": der skal stadig være indhold at opsummere.
+    assert "- [" in fanget["prompt"], "prompten skal stadig indeholde poster"
+
+
+def test_summary_loftet_vaelger_de_mest_saliente(isolated, monkeypatch):
+    """Når loftet skærer, skal de mest saliente poster overleve — ikke tilfældige."""
+    from core.services import jarvis_brain_daemon as dmn
+
+    for i in range(300):
+        isolated.write_entry(
+            kind="fakta", title=f"Stoej {i} " + ("x" * 120), content="y",
+            visibility="personal", domain="d",
+        )
+    isolated.write_entry(
+        kind="fakta", title="VIGTIG-TOP-POST", content="y",
+        visibility="personal", domain="d",
+    )
+
+    # `write_entry` tager ikke salience — sæt den direkte i indekset.
+    conn = isolated.connect_index()
+    conn.execute(
+        "UPDATE brain_index SET salience_base = 0.2 "
+        "WHERE title LIKE 'Stoej %' AND status='active'"
+    )
+    conn.execute(
+        "UPDATE brain_index SET salience_base = 1.0 "
+        "WHERE title = 'VIGTIG-TOP-POST' AND status='active'"
+    )
+    conn.commit()
+    conn.close()
+
+    fanget: dict[str, str] = {}
+
+    monkeypatch.setattr(
+        dmn, "_call_local_ollama",
+        lambda prompt: (fanget.update(prompt=prompt), {"summary": "x"})[1],
+    )
+
+    dmn.regenerate_summary(target_visibility="personal")
+
+    assert "VIGTIG-TOP-POST" in fanget["prompt"], "den mest saliente post blev skåret væk"

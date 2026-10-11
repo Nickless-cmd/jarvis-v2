@@ -156,10 +156,23 @@ _EMBED_CACHE_LOCK = _threading.Lock()
 #: halvdelen smidt ud for hver 256 linjer — cachen naaede aldrig at hjaelpe.
 #: Journalen over to timer: 522 traeffere mod 59.574 forbi, altsaa 0,9 %.
 #:
-#: 8.192 giver hovedrum over de 5.095. Prisen er hukommelse: 768 float32 pr.
-#: vektor = 3 kB, saa et fuldt loft er ~25 MB. Det er billigt mod 219 sekunder
-#: serielle HTTP-kald, som var hvad det kostede at undvaere.
-_EMBED_CACHE_MAX = 8192
+#: 8.192 gav hovedrum over de 5.095 — men det holdt ikke. Maalt 11/10-2026:
+#: MEMORY.md er vokset til 16.642 linjer, hvoraf 10.102 embeddes. Loftet stod
+#: stille mens filen blev dobbelt saa stor, saa arbejdssaettet var igen STOERRE
+#: end cachen og FIFO-halvtoemningen kastede tusindvis af gyldige vektorer ud
+#: ved hvert mtime-skift. Symptomet var ~2.000 embed-kald i minuttet i bursts.
+#:
+#: Et fast loft driver derfor igen naar filen vokser. Den varige halvdel af
+#: fixet ligger i `memory_recall._build`: den genbruger nu vektorer for
+#: UAENDREDE linjer (noeglen er linje-teksten, og en vektor er deterministisk
+#: for sin tekst), saa en skrivning til MEMORY.md kun koster de 1-3 nye linjer.
+#: Loftet er her som sikkerhedsnet for den FOERSTE bygning efter en genstart,
+#: hvor cachen er kold og alle linjer skal embeddes.
+#:
+#: Prisen er hukommelse: 768 float32 pr. vektor = 3 kB, saa et fuldt loft er
+#: ~98 MB. Maalt 11/10: containeren har 15 GB ledigt og intet cgroup-loft, og
+#: de to uvicorn-processer bruger 3,6 GB hver — 98 MB er stoej.
+_EMBED_CACHE_MAX = 32768
 
 
 def _tt_embed(label: str, dur_ms: int) -> None:

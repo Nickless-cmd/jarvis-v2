@@ -1867,7 +1867,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L675)
+- `core/services/semantic_memory.py` :: `get_stats` (L688)
 - `core/services/sensory_archive.py` :: `count` (L480)
 - `core/services/sensory_archive.py` :: `get` (L476)
 - `core/services/sensory_archive.py` :: `list_recent` (L455)

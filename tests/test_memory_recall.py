@@ -421,3 +421,71 @@ def test_md_line_vecs_empty_cache_falls_back(monkeypatch):
     monkeypatch.setattr(mr, "_md_line_vecs", lambda user_id="": {})
     # empty cache → no crash, returns False (literal match handles it)
     assert mr._is_semantic_dup_of_memory("some candidate text with words", "") is False
+
+
+def test_md_line_vecs_genbruger_uaendrede_linjer(monkeypatch, tmp_path):
+    """11/10-2026: `_build` gen-indlejrede ALLE MEMORY.md-linjer ved hvert mtime-skift.
+
+    Målt: MEMORY.md var 16.642 linjer (10.102 embeddet), og hver skrivning til
+    filen udløste en fuld gen-indlejring — ~2.000 embed-kald i minuttet i bursts.
+
+    Nøglen er linje-TEKSTEN, og en vektor er deterministisk for sin tekst. Så en
+    linje der ikke er ændret har præcis samme vektor og skal IKKE embeddes igen.
+    Denne test låser det: efter en skrivning der tilføjer 2 linjer, må KUN de 2
+    embeddes — ikke alle 52.
+    """
+    import os
+    import time
+
+    import numpy as np
+
+    from core.services.prompt_sections import memory_recall as mr
+
+    kaldte: list[list[str]] = []
+
+    def _fake_embed(texts):
+        kaldte.append(list(texts))
+        return [np.zeros(4, dtype=np.float32) for _ in texts]
+
+    monkeypatch.setattr("core.services.jarvis_brain._embed_texts", _fake_embed)
+
+    md = tmp_path / "MEMORY.md"
+    md.write_text("start", encoding="utf-8")
+    monkeypatch.setattr(
+        "core.runtime.workspace_paths.workspace_dir", lambda *a, **k: tmp_path
+    )
+
+    def _vent() -> None:
+        for _ in range(500):
+            if not mr._MD_VECS_CACHE.get("building"):
+                return
+            time.sleep(0.01)
+        raise AssertionError("baggrunds-traaden byggede aldrig faerdig")
+
+    linjer = [f"linje nummer {i} med tilstraekkeligt indhold til at blive embeddet" for i in range(50)]
+    monkeypatch.setattr(mr, "_memory_md_lines", lambda user_id="": list(linjer))
+
+    # ── foerste bygning: alle 50 embeddes (kold cache) ──
+    mr._MD_VECS_CACHE.update(mtime=None, vecs={}, building=False)
+    kaldte.clear()
+    mr._md_line_vecs("")
+    _vent()
+    assert sum(len(k) for k in kaldte) == 50, "foerste bygning skulle embedde alle 50"
+    assert len(mr._MD_VECS_CACHE["vecs"]) == 50
+
+    # ── filen skrives: ny mtime + 2 nye linjer ──
+    md.write_text("aendret", encoding="utf-8")
+    os.utime(md, (time.time() + 5, time.time() + 5))  # garanteret ny mtime
+    linjer2 = linjer + ["helt ny linje et", "helt ny linje to"]
+    monkeypatch.setattr(mr, "_memory_md_lines", lambda user_id="": list(linjer2))
+
+    kaldte.clear()
+    mr._md_line_vecs("")
+    _vent()
+
+    embeddet = sum(len(k) for k in kaldte)
+    assert embeddet == 2, (
+        f"gen-indlejrede {embeddet} linjer — kun de 2 nye skulle embeddes. "
+        "Genbruget af uaendrede linjer er brudt."
+    )
+    assert len(mr._MD_VECS_CACHE["vecs"]) == 52

@@ -95,8 +95,21 @@ def test_en_fejlet_tekst_cachces_IKKE(monkeypatch):
 
 def test_loftet_daekker_arbejdssaettet():
     """256 var under MEMORY.md's 5.095 linjer, saa cachen smed ud hele tiden
-    og naaede aldrig at hjaelpe — maalt hitrate 0,9 %."""
-    assert sm._EMBED_CACHE_MAX >= 5095
+    og naaede aldrig at hjaelpe — maalt hitrate 0,9 %.
+
+    Maalt 11/10-2026: MEMORY.md var vokset til 16.642 linjer, hvoraf 10.102
+    embeddes. 8.192 holdt derfor IKKE — arbejdssaettet var igen stoerre end
+    cachen, og FIFO-halvtoemningen gav ~2.000 embed-kald i minuttet i bursts.
+
+    Loftet er kun sikkerhedsnet for den FOERSTE bygning efter en genstart (kold
+    cache). Den varige halvdel er genbruget i `memory_recall._build`, som goer
+    en skrivning til kun at koste de 1-3 nye linjer — se
+    `test_md_line_vecs_genbruger_uaendrede_linjer`.
+    """
+    assert sm._EMBED_CACHE_MAX >= 12000, (
+        "loftet skal daekke MEMORY.md's embeddede linjer (maalt 10.102 d. 11/10-2026) "
+        "med margin — ellers halvtoemmer FIFO'en midt i en bygning"
+    )
 
 
 def test_fallback_til_seriel_er_HOEJLYDT(monkeypatch, caplog):

@@ -61,10 +61,21 @@ def _md_line_vecs(user_id: str = "") -> dict:
     def _build() -> None:
         try:
             lines = _memory_md_lines(user_id)
-            vecs: dict = {}
-            if lines:
+            with _MD_VECS_LOCK:
+                gamle = dict(_MD_VECS_CACHE.get("vecs") or {})
+            # Genbrug pr. linje-TEKST (11/10-2026). Noeglen er teksten, og en
+            # vektor er deterministisk for sin tekst — saa en linje der ikke er
+            # aendret har praecis samme vektor og skal ikke embeddes igen.
+            #
+            # Maalt foer: hver skrivning til MEMORY.md (16.642 linjer, 10.102
+            # embeddet) gen-indlejrede ALLE linjer. Med ~22 skrivninger i timen
+            # og /api/embed maalt til 7,7-15,8 s pr. kald gav det ~2.000 kald i
+            # minuttet i bursts. Efter: kun de 1-3 linjer der faktisk er nye.
+            vecs: dict = {ln: gamle[ln] for ln in lines if ln in gamle}
+            nye = [ln for ln in lines if ln not in gamle]
+            if nye:
                 from core.services.jarvis_brain import _embed_texts
-                for ln, v in zip(lines, _embed_texts(lines)):
+                for ln, v in zip(nye, _embed_texts(nye)):
                     vecs[ln] = v
             with _MD_VECS_LOCK:
                 _MD_VECS_CACHE.update(mtime=mtime, vecs=vecs, building=False)

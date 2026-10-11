@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8878/16794 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8878/16793 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8878/16794 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5915 | 11405 | 51% |
+| `core.services` | 5915 | 11404 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1363,7 +1363,7 @@ Generated from source. 8878/16794 functions/methods documented (52%). The list b
 - `core/services/memory_density.py` :: `list_recent` (L196)
 - `core/services/memory_density.py` :: `mark_promoted` (L185)
 - `core/services/memory_emotional_context.py` :: `get_mood_for_heading` (L61)
-- `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L104)
+- `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L189)
 - `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L95)
 - `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L59)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L27)

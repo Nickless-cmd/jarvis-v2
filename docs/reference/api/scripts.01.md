@@ -290,21 +290,21 @@ _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS). | [src](../../../scripts/docs_drift_check.py#L39) |
-| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L44) |
-| function | `broken_links` | `(docs_root=…)` | HARD check: scan markdown links in every doc and return {doc, kind, target} for each | [src](../../../scripts/docs_drift_check.py#L50) |
-| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L68) |
-| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L75) |
-| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L85) |
-| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L91) |
-| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L104) |
-| function | `stale_generated` | `(only_dirs=…, repo=…)` | HARD check: re-run each generator in-memory and compare its expected output to the | [src](../../../scripts/docs_drift_check.py#L108) |
-| function | `prose_drift` | `(docs_root=…, repo=…)` | SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't | [src](../../../scripts/docs_drift_check.py#L131) |
-| function | `requirements_drift` | `(repo=…)` | SOFT check: scan imported third-party modules (via requirements_gen) and return | [src](../../../scripts/docs_drift_check.py#L151) |
-| function | `staged_paths` | `(repo=…)` | Return the list of staged file paths (git diff --cached --name-only); [] on any error. | [src](../../../scripts/docs_drift_check.py#L172) |
-| function | `hard_drift` | `(staged=…, repo=…)` | Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs | [src](../../../scripts/docs_drift_check.py#L182) |
-| function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L189) |
-| function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L203) |
+| function | `find_docs` | `(root=…)` | List all *.md files under `root`, excluding historical-record trees (_SKIP_DOC_PARTS). | [src](../../../scripts/docs_drift_check.py#L44) |
+| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L49) |
+| function | `broken_links` | `(docs_root=…)` | HARD check: scan markdown links in every doc and return {doc, kind, target} for each | [src](../../../scripts/docs_drift_check.py#L55) |
+| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L73) |
+| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L80) |
+| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L90) |
+| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L96) |
+| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L109) |
+| function | `stale_generated` | `(only_dirs=…, repo=…)` | HARD check: re-run each generator in-memory and compare its expected output to the | [src](../../../scripts/docs_drift_check.py#L113) |
+| function | `prose_drift` | `(docs_root=…, repo=…)` | SOFT check: find bare code-path mentions (core/apps/scripts/...) in prose that don't | [src](../../../scripts/docs_drift_check.py#L136) |
+| function | `requirements_drift` | `(repo=…)` | SOFT check: scan imported third-party modules (via requirements_gen) and return | [src](../../../scripts/docs_drift_check.py#L156) |
+| function | `staged_paths` | `(repo=…)` | Return the list of staged file paths (git diff --cached --name-only); [] on any error. | [src](../../../scripts/docs_drift_check.py#L177) |
+| function | `hard_drift` | `(staged=…, repo=…)` | Collect only the gate-blocking (HARD) drift: broken links plus stale generated docs | [src](../../../scripts/docs_drift_check.py#L187) |
+| function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L194) |
+| function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L208) |
 
 ## `scripts/drain_before_restart.py`
 _Vent til ingen tur er levende, så en genstart ikke kapper en._

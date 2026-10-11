@@ -20,7 +20,12 @@ REPO = Path(__file__).resolve().parents[1]
 DOCS = REPO / "docs"
 REPORT_OUT = DOCS / "drift_report.json"
 
-_PATH_RE = re.compile(r"(?:core|apps|scripts)/[\w./-]+\.(?:py|ts|tsx|md|json)")
+# Two guards, both measured 11/10-2026 on false positives:
+# (1) `(?<![\w./-])` — a path embedded in a LONGER path is not ours to judge.
+#     `/home/bs/Skrivebord/deepseek-harness/packages/core/session/README.md` is
+#     DeepSeek's file, not ours, yet `core/session/README.md` matched inside it.
+# (2) `tsx?` — `ts` before `tsx` truncated `CodeView.tsx` to a nonexistent `.ts`.
+_PATH_RE = re.compile(r"(?<![\w./-])(?:core|apps|scripts)/[\w./-]+\.(?:py|tsx?|md|json)")
 _MDLINK_RE = re.compile(r"\]\(([^)]+)\)")
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # Historical-record trees (docs/README freshness policy): "not current truth" — their

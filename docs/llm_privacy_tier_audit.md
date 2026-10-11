@@ -1,7 +1,7 @@
 ---
 status: færdig
 audited: 2026-07-08
-ground_truth: 28/28 refs alive, 81d old
+ground_truth: 26/28 refs alive (re-målt 11/10-2026) — TikTok-laget fjernet i cba51b681
 ---
 # LLM Privacy Tier Audit
 
@@ -50,9 +50,9 @@ Sidst gennemgået: 2026-04-18
 | `core/services/cognitive_state_narrativizer.py` | `_call_narrativizer_llm` | compact runtime state narrative | 🟡 CONTROLLED-CLOUD | narrativisering af kognitiv state |
 | `core/services/prompt_relevance_backend.py` | `run_bounded_nl_prompt_relevance` | prompt text / user message | 🔒 LOCAL-REQUIRED | sender actual `text` / `user_message` |
 | `core/services/prompt_relevance_backend.py` | `run_bounded_nl_memory_entry_selection` | user message + memory entries | 🔒 LOCAL-REQUIRED | vælger memory ud fra brugerinput |
-| `core/services/tiktok_research_daemon.py` | `_generate_concepts_for_type` | fixed content-pool prompt | 🌐 PUBLIC-SAFE | kun generiske TikTok-prompts, ingen brugerdata |
-| `core/services/tiktok_content_daemon.py` | `_generate_quote` | fixed slot prompt | 🌐 PUBLIC-SAFE | motivation/dark-humor/cosmic one-liners |
-| `core/services/tiktok_content_daemon.py` | `_refill_pool` | fixed content-pool prompts | 🌐 PUBLIC-SAFE | kun marketing-content, ingen runtime-state |
+> **Fjernet 11/10-2026:** tre rækker her klassificerede TikTok-daemonernes prompts som
+> PUBLIC-SAFE. Laget blev droppet og daemonerne slettet (commit `cba51b681`), så de er
+> historik nu — ikke længere en del af auditten.
 
 ## Opsummering
 

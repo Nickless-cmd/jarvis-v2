@@ -89,3 +89,73 @@ def test_render_manifest_md_has_rows():
     entries = [{"path": "a.md", "category": "færdig", "basis": "b", "superseded_by": None}]
     md = da.render_manifest_md(entries)
     assert "a.md" in md and "færdig" in md
+
+
+# ── 11/10-2026: udvidelsen. Audit'et meldte «gaps: []» mens 241 levende docs bar
+# døde stier. Mønsteret fangede kun core|apps|scripts, og opløsningen kendte kun
+# repo-roden — så `../tests/x.py`, `tests/…`, `docs/…` og skills-relative stier
+# blev aldrig set. Testene her låser den brede fangst og den rigtige opløsning.
+
+def test_extract_references_catches_more_prefixes():
+    refs = da.extract_references("Se `tests/test_x.py`, `docs/guide.md` og `src/App.tsx`.")
+    assert "tests/test_x.py" in refs["paths"]
+    assert "docs/guide.md" in refs["paths"]
+    assert "src/App.tsx" in refs["paths"]
+
+
+def test_extract_references_ignores_urls():
+    # Et link er en kildehenvisning, ikke en påstand om at filen ligger i træet.
+    refs = da.extract_references("Se https://github.com/x/y/blob/main/core/gone.py for detaljer")
+    assert "core/gone.py" not in refs["paths"]
+
+
+def test_liveness_relative_to_doc_dir(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "real.py").write_text("x")
+    live = da.liveness({"paths": ["../tests/real.py"]}, repo_root=tmp_path,
+                       doc_rel="docs/sub/x.md")
+    assert live["resolved"] == 1 and live["ratio"] == 1.0
+
+
+def test_liveness_suffix_match_against_tree(tmp_path):
+    # `src/App.tsx` er en ÆGTE fil — den ligger bare under apps/mobile. Uden
+    # suffix-opløsningen ville den stå som død.
+    (tmp_path / "apps" / "mobile" / "src").mkdir(parents=True)
+    (tmp_path / "apps" / "mobile" / "src" / "App.tsx").write_text("x")
+    live = da.liveness({"paths": ["src/App.tsx"]}, repo_root=tmp_path, doc_rel="docs/x.md")
+    assert live["resolved"] == 1
+
+
+def test_liveness_runtime_home(tmp_path):
+    runtime = tmp_path / "home"
+    (runtime / "config").mkdir(parents=True)
+    (runtime / "config" / "runtime.json").write_text("{}")
+    live = da.liveness({"paths": ["~/.jarvis-v2/config/runtime.json"]},
+                       repo_root=tmp_path / "repo", runtime_root=runtime)
+    assert live["resolved"] == 1
+
+
+def test_dead_paths_reports_missing(tmp_path):
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "alive.py").write_text("x")
+    dead = da.dead_paths({"paths": ["core/alive.py", "core/gone.py"]},
+                         repo_root=tmp_path, doc_rel="docs/x.md")
+    assert dead == ["core/gone.py"]
+
+
+def test_absolute_system_path_is_unverifiable_not_dead(tmp_path):
+    # /etc og /tmp ligger uden for træet. Vi kan ikke sige de er døde — kun at
+    # vi ikke kan se dem herfra.
+    dead = da.dead_paths({"paths": ["/etc/nginx/nginx.conf"]}, repo_root=tmp_path, doc_rel="x.md")
+    assert dead == []
+
+
+def test_audit_surfaces_dead_paths(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "loegn.md").write_text("# T\n\nSe `core/gone.py`.\n")
+    monkeypatch.setattr(da, "DOCS_ROOT", tmp_path / "docs")
+    monkeypatch.setattr(da, "SKILLS_ROOT", tmp_path / ".claude" / "skills")
+    monkeypatch.setattr(da, "REPO_ROOT", tmp_path)
+    res = da.audit()
+    assert res["dead_paths_total"] == 1
+    assert res["docs"][0]["dead_paths"] == ["core/gone.py"]

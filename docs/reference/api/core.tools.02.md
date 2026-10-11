@@ -249,11 +249,12 @@ _Baggrunds-shells paa operatoerens maskine — paritet med jarvis-code._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_new_id` | `()` | — | [src](../../../core/tools/operator_background.py#L35) |
-| function | `_valid` | `(shell_id)` | Kun vores egne id'er. Uden det kunne et id smugle sti-fragmenter ind i | [src](../../../core/tools/operator_background.py#L39) |
-| function | `start_async` | `(*, command, user_id, cwd=…, titel=…, timeout_s=…)` | Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}. | [src](../../../core/tools/operator_background.py#L45) |
-| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L103) |
-| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L143) |
+| function | `_new_id` | `()` | — | [src](../../../core/tools/operator_background.py#L36) |
+| function | `_valid` | `(shell_id)` | Kun vores egne id'er. Uden det kunne et id smugle sti-fragmenter ind i | [src](../../../core/tools/operator_background.py#L40) |
+| function | `start_async` | `(*, command, user_id, cwd=…, titel=…, timeout_s=…)` | Start en loesrevet baggrunds-shell. Returnerer {shell_id, pid}. | [src](../../../core/tools/operator_background.py#L46) |
+| function | `read_async` | `(*, shell_id, user_id, since=…, timeout_s=…)` | Laes NYT output siden byte-offset `since`. | [src](../../../core/tools/operator_background.py#L104) |
+| function | `read_many_async` | `(*, offsets, user_id, max_bytes_per_job=…, timeout_s=…)` | Read bounded incremental output for several operator jobs in one hop. | [src](../../../core/tools/operator_background.py#L144) |
+| function | `kill_async` | `(*, shell_id, user_id, timeout_s=…)` | Draeb en baggrunds-shell. Idempotent: en allerede doed shell er ikke en fejl. | [src](../../../core/tools/operator_background.py#L207) |
 
 ## `core/tools/operator_bash_session.py`
 _operator_bash_session — vedvarende-FØLELSE bash-session på operatorens maskine._

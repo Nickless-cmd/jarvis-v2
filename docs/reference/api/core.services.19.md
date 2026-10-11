@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/outcome_learning.py`
+_Outcome Learning — record observations, let old evidence decay._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/outcome_learning.py#L37) |
+| function | `_load` | `()` | — | [src](../../../core/services/outcome_learning.py#L41) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/outcome_learning.py#L55) |
+| function | `record_outcome` | `(*, context, outcome, weight=…, metadata=…)` | Record a single observation. outcome is free-form ('success', 'error', | [src](../../../core/services/outcome_learning.py#L67) |
+| function | `_decay_factor` | `(recorded_at, now)` | — | [src](../../../core/services/outcome_learning.py#L93) |
+| function | `pattern_strength` | `(context, *, outcome=…)` | Return decayed totals for a given context, optionally per-outcome. | [src](../../../core/services/outcome_learning.py#L102) |
+| function | `top_patterns` | `(*, limit=…, outcome=…)` | Return the N strongest patterns (highest decayed strength). | [src](../../../core/services/outcome_learning.py#L134) |
+| function | `prune_old_records` | `(*, min_weight=…)` | Drop records whose decayed weight is below min_weight. Returns count dropped. | [src](../../../core/services/outcome_learning.py#L161) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — occasional pruning. Doesn't run full prune every tick. | [src](../../../core/services/outcome_learning.py#L179) |
+| function | `build_outcome_learning_surface` | `()` | — | [src](../../../core/services/outcome_learning.py#L189) |
+| function | `_summary_line` | `(count, total, top)` | — | [src](../../../core/services/outcome_learning.py#L213) |
+| function | `_emit_outcome_learning_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/outcome_learning.py#L225) |
+
 ## `core/services/outcome_projector.py`
 _`OutcomeProjector` — ét terminalt udfald pr. run, uden at opfinde sandhed._
 
@@ -615,34 +633,4 @@ _Private temporal-promotion signal tracking — migrated onto signal_tracking_fr
 | function | `_pressure_from_state_tone` | `(state_tone)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L331) |
 | function | `_title_target` | `(title)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L337) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L345) |
-
-## `core/services/proactive_candidates.py`
-_Proactive candidates — the ONE queue for "Jarvis wants to tell a user something"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `er_telemetri` | `(source, kind=…)` | Er dette intern telemetri frem for en besked Bjørn skal se? | [src](../../../core/services/proactive_candidates.py#L128) |
-| function | `_owner_uid` | `()` | Owner'ens discord-id — samme kanoniske vej som `proactivity_bridge._owner_uid`. | [src](../../../core/services/proactive_candidates.py#L133) |
-| function | `_bruger_for` | `(user_id, source, session_id=…, kind=…)` | Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig). | [src](../../../core/services/proactive_candidates.py#L150) |
-| function | `_kerne` | `(text)` | Anmodningen selv — ikke skabelonen den er pakket ind i. | [src](../../../core/services/proactive_candidates.py#L191) |
-| function | `_kerne_similarity` | `(a, b)` | Jaccard mellem to kærners ord (0-1). | [src](../../../core/services/proactive_candidates.py#L203) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L211) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L215) |
-| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L224) |
-| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L231) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L235) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L266) |
-| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L274) |
-| function | `add_candidate` | `(*, source, text, priority=…, kind=…, user_id=…, session_id=…)` | Queue a message for a user. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L283) |
-| function | `list_pending` | `(*, limit=…, priorities=…, user_id=…)` | Pending kandidater. `user_id` er et FILTER på kolonnen: | [src](../../../core/services/proactive_candidates.py#L369) |
-| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L394) |
-| function | `expire_stale` | `(*, days=…, aabne_days=…)` | Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned` | [src](../../../core/services/proactive_candidates.py#L415) |
-| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L436) |
-| function | `counts_per_user` | `()` | Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres. | [src](../../../core/services/proactive_candidates.py#L443) |
-| function | `relevant_for` | `(user_message, *, user_id=…, session_id=…, limit=…, min_coverage=…)` | Pending items for THIS user, lexically relevant to what they just wrote. | [src](../../../core/services/proactive_candidates.py#L455) |
-| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L482) |
-| function | `build_since_last_line` | `(user_message, *, session_id=…, user_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L493) |
-| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L512) |
-| function | `bridge_candidates` | `(user_id=…)` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L540) |
-| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L562) |
 

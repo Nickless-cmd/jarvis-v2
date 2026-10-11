@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_degeneration.py`
+_Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_degeneration` | `(text)` | → (er_degenereret, menneskelæsbar_grund). Self-safe → (False, '') ved enhver fejl. | [src](../../../core/services/stream_degeneration.py#L29) |
+
 ## `core/services/stream_failure_kind.py`
 _Struktureret failure-taksonomi for streaming/followup (spec §11.1 B11, I5)._
 
@@ -616,14 +623,4 @@ _Tick-scoped in-memory cache — lives exactly one heartbeat tick._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L462) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L471) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L478) |
-
-## `core/services/tool_calling_evidence.py`
-_Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_db_noegle` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L71) |
-| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L79) |
-| function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L84) |
-| function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L138) |
 

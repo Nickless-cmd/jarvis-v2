@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8869/16772 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8873/16786 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8869/16772 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5912 | 11392 | 51% |
+| `core.services` | 5915 | 11405 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 531 | 1072 | 49% |
+| `core.tools` | 532 | 1073 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8869/16772 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2392)
+## Undocumented public functions (2394)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1311,6 +1311,8 @@ Generated from source. 8869/16772 functions/methods documented (52%). The list b
 - `core/services/live_job_events.py` :: `reset_for_tests` (L233)
 - `core/services/live_job_events.py` :: `snapshot_cursor` (L229)
 - `core/services/live_job_events.py` :: `subscribe` (L223)
+- `core/services/live_job_sources.py` :: `LiveJobSourcePump.add_subscriber` (L194)
+- `core/services/live_job_sources.py` :: `LiveJobSourcePump.remove_subscriber` (L205)
 - `core/services/living_executive.py` :: `build_living_executive_surface` (L83)
 - `core/services/living_executive.py` :: `choose_impulse` (L108)
 - `core/services/living_executive.py` :: `execute_impulse` (L137)

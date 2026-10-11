@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_calling_evidence.py`
+_Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_db_noegle` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L71) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L79) |
+| function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L84) |
+| function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L138) |
+
 ## `core/services/tool_catalog.py`
 _Compact tool catalog for system prompt._
 
@@ -533,19 +543,4 @@ _User Emotional Resonance — detect and respond to the user's mood._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L344) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L353) |
 | function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L363) |
-
-## `core/services/user_model_daemon.py`
-_User model daemon — Theory of Mind: a living model of the user's state and patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_persist_user_model` | `()` | — | [src](../../../core/services/user_model_daemon.py#L44) |
-| function | `tick_user_model_daemon` | `(recent_messages, *, skip_event_gate=…)` | Analyze recent interaction and update user model. | [src](../../../core/services/user_model_daemon.py#L52) |
-| function | `get_user_model_summary` | `()` | — | [src](../../../core/services/user_model_daemon.py#L130) |
-| function | `build_user_model_surface` | `()` | — | [src](../../../core/services/user_model_daemon.py#L134) |
-| function | `build_user_model_prompt_line` | `(*, max_chars=…)` | Én linje til den SYNLIGE prompt — "" når dæmonen intet har målt endnu. | [src](../../../core/services/user_model_daemon.py#L142) |
-| function | `_analyze_messages` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L167) |
-| function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L184) |
-| function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L195) |
-| function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L223) |
 

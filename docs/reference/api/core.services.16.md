@@ -426,6 +426,25 @@ _Bounded, process-local live projection of background-job events._
 | function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L229) |
 | function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L233) |
 
+## `core/services/live_job_sources.py`
+_Incremental adapters from canonical background jobs to live job events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run` | `(coro)` | Run one bridge coroutine from the pump's synchronous worker context. | [src](../../../core/services/live_job_sources.py#L16) |
+| class | `LiveJobSourcePump` | `` | Sample server/operator logs while a live Desk subscriber exists. | [src](../../../core/services/live_job_sources.py#L39) |
+| method | `LiveJobSourcePump.__init__` | `(self, *, snapshot_reader, user_id, operator_reader=…)` | — | [src](../../../core/services/live_job_sources.py#L42) |
+| method | `LiveJobSourcePump._publish` | `(self, event_type, source, job, payload)` | — | [src](../../../core/services/live_job_sources.py#L65) |
+| method | `LiveJobSourcePump._reconcile` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L75) |
+| method | `LiveJobSourcePump._terminal` | `(job, *, running=…)` | — | [src](../../../core/services/live_job_sources.py#L110) |
+| method | `LiveJobSourcePump._finish` | `(self, key, job, exit_code)` | — | [src](../../../core/services/live_job_sources.py#L115) |
+| method | `LiveJobSourcePump._sample_server` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L126) |
+| method | `LiveJobSourcePump._sample_operator` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L145) |
+| method | `LiveJobSourcePump.sample_once` | `(self)` | Force one reconciliation and one sample of both machine sources. | [src](../../../core/services/live_job_sources.py#L188) |
+| method | `LiveJobSourcePump.add_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L194) |
+| method | `LiveJobSourcePump.remove_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L205) |
+| method | `LiveJobSourcePump._loop` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L211) |
+
 ## `core/services/liveness_registry.py`
 _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
@@ -652,21 +671,4 @@ _Malware-scanning af uploads/vedhæftninger (spec §15.3.1)._
 | function | `clamav_available` | `()` | — | [src](../../../core/services/malware_scan.py#L35) |
 | function | `scan_file` | `(path)` | Scan en fil med clamscan. Returnerer ScanReport. Blokerer aldrig på | [src](../../../core/services/malware_scan.py#L39) |
 | function | `is_upload_allowed` | `(path, *, block_on_unavailable=…)` | Politik-helper: må denne upload gemmes/behandles? (§15.3.1) | [src](../../../core/services/malware_scan.py#L68) |
-
-## `core/services/markdown_structure.py`
-_Rekonstruér markdown-blokstruktur fra inline-markører._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_split_protected` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L33) |
-| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L85) |
-| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L96) |
-| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L156) |
-| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L167) |
-| function | `_is_structured_line` | `(line)` | En eksisterende markdownblok må ikke omskrives som flad prosa. | [src](../../../core/services/markdown_structure.py#L175) |
-| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L180) |
-| function | `_split_lange_linjer` | `(text)` | Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit. | [src](../../../core/services/markdown_structure.py#L224) |
-| function | `_split_slaaet_til` | `()` | Skal lange prosa-linjer braekkes op i afsnit? | [src](../../../core/services/markdown_structure.py#L250) |
-| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L264) |
-| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L307) |
 

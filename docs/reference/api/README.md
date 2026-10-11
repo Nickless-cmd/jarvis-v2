@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16772 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16786 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -44,21 +44,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16772 functions/
 - [`core.services.13`](core.services.13.md) — `experience_correction_listener` … `gate_review`
 - [`core.services.14`](core.services.14.md) — `gate_shadow` … `heartbeat_scheduler`
 - [`core.services.15`](core.services.15.md) — `hentede_vaerktoejer` … `internal_cadence_matrix`
-- [`core.services.16`](core.services.16.md) — `internal_opposition_signal_tracking` … `markdown_structure`
-- [`core.services.17`](core.services.17.md) — `mcp_auth` … `model_probe`
-- [`core.services.18`](core.services.18.md) — `model_trust` … `outcome_learning`
-- [`core.services.19`](core.services.19.md) — `outcome_projector` … `proactive_candidates`
-- [`core.services.20`](core.services.20.md) — `proactive_context_governor` … `provider_circuit_breaker`
-- [`core.services.21`](core.services.21.md) — `provider_error_guard` … `release_marker_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `remembered_fact_signal_tracking` … `runtime_learning_signals`
-- [`core.services.23`](core.services.23.md) — `runtime_operational_memory` … `self_repair_engine`
-- [`core.services.24`](core.services.24.md) — `self_review_cadence_signal_tracking` … `shared_cache`
-- [`core.services.25`](core.services.25.md) — `shared_language` … `stream_degeneration`
-- [`core.services.26`](core.services.26.md) — `stream_failure_kind` … `tool_calling_evidence`
-- [`core.services.27`](core.services.27.md) — `tool_catalog` … `user_model_daemon`
-- [`core.services.28`](core.services.28.md) — `user_scope` … `visible_run_recovery_dispatcher`
-- [`core.services.29`](core.services.29.md) — `visible_run_segment_exit` … `workspace_crypto`
-- [`core.services.30`](core.services.30.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `internal_opposition_signal_tracking` … `malware_scan`
+- [`core.services.17`](core.services.17.md) — `markdown_structure` … `model_pair_resolver`
+- [`core.services.18`](core.services.18.md) — `model_probe` … `outbound_nudges`
+- [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
+- [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relationship_texture`
+- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_hooks`
+- [`core.services.23`](core.services.23.md) — `runtime_learning_signals` … `self_narrative_self_model_review_bridge`
+- [`core.services.24`](core.services.24.md) — `self_repair_engine` … `share_guard_store`
+- [`core.services.25`](core.services.25.md) — `shared_cache` … `state_flag_store`
+- [`core.services.26`](core.services.26.md) — `stream_degeneration` … `tiny_webchat_execution_pilot`
+- [`core.services.27`](core.services.27.md) — `tool_calling_evidence` … `user_md_update_proposal_tracking`
+- [`core.services.28`](core.services.28.md) — `user_model_daemon` … `visible_run_recovery_coordinator`
+- [`core.services.29`](core.services.29.md) — `visible_run_recovery_dispatcher` … `witness_signal_tracking`
+- [`core.services.30`](core.services.30.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

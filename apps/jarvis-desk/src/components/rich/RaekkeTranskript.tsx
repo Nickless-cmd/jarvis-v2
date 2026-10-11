@@ -259,7 +259,12 @@ function Element({ e, streaming, config, beskedId }: {
         koerer={streaming && b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl, config,
-          { partialJson: b.partialJson, running: streaming && b.result == null && (b.status ?? 'running') === 'running' },
+          {
+            partialJson: b.partialJson,
+            running: streaming && b.result == null && (b.status ?? 'running') === 'running',
+            output: b.liveOutput,
+            truncated: b.liveOutputTruncated,
+          },
           { beskedId, toolUseId: b.id })}
         kind={postFor(b.name).familie}
         mrkat={erUnderagent(b.name) ? 'subagent' : undefined}

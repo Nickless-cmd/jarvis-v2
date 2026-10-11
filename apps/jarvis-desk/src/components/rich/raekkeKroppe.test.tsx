@@ -272,7 +272,7 @@ describe('rækkevisningens værktøjskroppe', () => {
     const { container } = render(<>{kropFor('operator_bash', {}, undefined, false, undefined,
       { partialJson: '{"command":"for i in 1 2; do sleep 1; done"', running: true })}</>)
     expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('for i in 1 2; do sleep 1; done')
-    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører…')
+    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører stadig · intet output endnu')
     expect(container.textContent).not.toContain('exit code 0')
     expect(container.textContent).not.toContain('operator_bash')
   })

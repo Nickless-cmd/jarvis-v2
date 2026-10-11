@@ -363,9 +363,10 @@ export function udDel(result: string | undefined): string {
 /* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
 export function Terminal({
-  cmd, ud, exit, pending = false, vaerktoej = 'bash', config, beskedId, toolUseId,
+  cmd, ud, exit, pending = false, liveAfkortet = false,
+  vaerktoej = 'bash', config, beskedId, toolUseId,
 }: {
-  cmd: string; ud: string; exit: number; pending?: boolean
+  cmd: string; ud: string; exit: number; pending?: boolean; liveAfkortet?: boolean
   /** Afgoer om der beholdes en HALE — shell gemmer exit-koden til sidst. */
   vaerktoej?: string
   /** Til spill-laget: uden dem er der ingen vej til resten, og knappen vises ikke. */
@@ -397,8 +398,9 @@ export function Terminal({
       </div>
       {visHele && <pre className="rv-kommando-fuld">{cmd}</pre>}
       <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>
-        {raa ? <Ansi tekst={u.hoved} /> : (pending ? 'Kører…' : '')}
+        {raa ? <Ansi tekst={u.hoved} /> : (pending ? 'Kører stadig · intet output endnu' : '')}
       </pre>
+      {liveAfkortet && <div className="rv-udeladt">live output afkortet</div>}
       {note && <div className="rv-udeladt">{note}</div>}
       {u.hale && <pre><Ansi tekst={u.hale} /></pre>}
       {u.klippet && spill.kan && (
@@ -1008,7 +1010,13 @@ export function kropFor(
   resultRaa: string | undefined,
   fejl: boolean,
   config?: ApiConfig,
-  live?: { partialJson?: string; running?: boolean },
+  live?: {
+    partialJson?: string
+    running?: boolean
+    output?: string
+    truncated?: boolean
+    elapsedMs?: number
+  },
   billedKontekst?: { beskedId?: string; toolUseId?: string },
 ): ReactNode {
   const input = { ...inputFraStroem(live?.partialJson), ...inputRaa }
@@ -1041,7 +1049,9 @@ export function kropFor(
 
   if (familie === 'terminal') {
     const cmd = streng(input.command) || streng(input.cmd) || kommandoFraStroem(live?.partialJson) || 'Klargør kommando…'
-    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running}
+    const terminalUd = live?.running ? (live.output ?? ud) : ud
+    return <Terminal cmd={cmd} ud={terminalUd} exit={exitKode(result, fejl)} pending={live?.running}
+      liveAfkortet={live?.truncated}
       vaerktoej={navn} config={config}
       beskedId={billedKontekst?.beskedId} toolUseId={billedKontekst?.toolUseId} />
   }

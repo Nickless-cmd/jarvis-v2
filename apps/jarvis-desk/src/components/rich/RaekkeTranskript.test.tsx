@@ -512,7 +512,32 @@ describe('RaekkeTranskript', () => {
     fireEvent.click(container.querySelector('.rv-arbejdsknap')!)
     fireEvent.click(container.querySelector('.rv-r[data-foldbar]')!)
     expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('sleep 5')
-    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører…')
+    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører stadig · intet output endnu')
+  })
+
+  it('viser live stdout i den åbne række før tool-resultatet findes', () => {
+    const med: ContentBlock[] = [{
+      type: 'tool_use', id: 'b1', name: 'operator_bash',
+      input: { command: 'python slow.py' }, status: 'running',
+      liveOutput: 'trin 1\ntrin 2\n', liveOutputSeq: 2,
+    }]
+    const { container } = render(<RaekkeTranskript blocks={med} streaming />)
+    fireEvent.click(container.querySelector('.rv-arbejdsknap')!)
+    fireEvent.click(container.querySelector('.rv-r[data-foldbar]')!)
+    expect(container.querySelector('.rv-term pre')?.textContent).toContain('trin 2')
+    expect(container.querySelector('.rv-term pre')?.textContent).not.toContain('Kører…')
+  })
+
+  it('viser at den levende hale er afkortet', () => {
+    const med: ContentBlock[] = [{
+      type: 'tool_use', id: 'b1', name: 'bash', input: { command: 'yes' },
+      status: 'running', liveOutput: 'seneste hale', liveOutputSeq: 99,
+      liveOutputTruncated: true,
+    }]
+    const { container } = render(<RaekkeTranskript blocks={med} streaming />)
+    fireEvent.click(container.querySelector('.rv-arbejdsknap')!)
+    fireEvent.click(container.querySelector('.rv-r[data-foldbar]')!)
+    expect(container.textContent).toContain('live output afkortet')
   })
 
   it('tegner progress-blokke som en række', () => {

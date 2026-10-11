@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8873/16786 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8875/16790 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8873/16786 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 685 | 921 | 74% |
+| `apps.api.jarvis_api.routes` | 687 | 925 | 74% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -1303,14 +1303,14 @@ Generated from source. 8873/16786 functions/methods documented (52%). The list b
 - `core/services/life_projects.py` :: `build_life_projects_surface` (L36)
 - `core/services/life_projects.py` :: `create_life_project` (L12)
 - `core/services/live_job_events.py` :: `JobEvent.as_dict` (L37)
-- `core/services/live_job_events.py` :: `JobSubscription.close` (L71)
-- `core/services/live_job_events.py` :: `LiveJobEventHub.publish` (L137)
-- `core/services/live_job_events.py` :: `LiveJobEventHub.snapshot_cursor` (L198)
-- `core/services/live_job_events.py` :: `LiveJobEventHub.subscribe` (L164)
-- `core/services/live_job_events.py` :: `publish` (L206)
-- `core/services/live_job_events.py` :: `reset_for_tests` (L233)
-- `core/services/live_job_events.py` :: `snapshot_cursor` (L229)
-- `core/services/live_job_events.py` :: `subscribe` (L223)
+- `core/services/live_job_events.py` :: `JobSubscription.close` (L73)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.publish` (L139)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.snapshot_cursor` (L201)
+- `core/services/live_job_events.py` :: `LiveJobEventHub.subscribe` (L166)
+- `core/services/live_job_events.py` :: `publish` (L209)
+- `core/services/live_job_events.py` :: `reset_for_tests` (L236)
+- `core/services/live_job_events.py` :: `snapshot_cursor` (L232)
+- `core/services/live_job_events.py` :: `subscribe` (L226)
 - `core/services/live_job_sources.py` :: `LiveJobSourcePump.add_subscriber` (L194)
 - `core/services/live_job_sources.py` :: `LiveJobSourcePump.remove_subscriber` (L205)
 - `core/services/living_executive.py` :: `build_living_executive_surface` (L83)

@@ -54,12 +54,14 @@ class JobSubscription:
         session_id: str,
         initial_events: list[JobEvent],
         needs_snapshot: bool,
+        snapshot_cursor: int,
         queue_size: int,
     ) -> None:
         self._owner = owner
         self.session_id = str(session_id or "")
         self.initial_events = initial_events
         self.needs_snapshot = bool(needs_snapshot)
+        self.snapshot_cursor = int(snapshot_cursor)
         self.queue: asyncio.Queue[JobEvent] = asyncio.Queue(maxsize=max(1, queue_size))
         self._closed = False
         self._truncated_pending = False
@@ -186,6 +188,7 @@ class LiveJobEventHub:
                 session_id=session_id,
                 initial_events=initial,
                 needs_snapshot=needs_snapshot,
+                snapshot_cursor=self._cursor,
                 queue_size=queue_size,
             )
             self._subscribers.add(subscription)

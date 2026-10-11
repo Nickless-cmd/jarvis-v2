@@ -8,16 +8,22 @@ Behavior-preserving: pure code movement, no logic changes.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
+import threading
 from typing import Any
 
 from core.runtime.jarvisx_auth import require_owner
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from apps.api.jarvis_api.routes.jarvisx_common import _require_owner, logger
 
 router = APIRouter(prefix="/api", tags=["jarvisx"])
+_JOB_PUMPS: dict[str, Any] = {}
+_JOB_PUMPS_LOCK = threading.Lock()
 
 
 # ── Process supervisor surface ────────────────────────────────────
@@ -72,10 +78,112 @@ def list_background_jobs(
     siger hvor mange af de viste job der ikke kan henføres til en samtale.
     """
     from core.identity.workspace_context import current_user_id
+
+    return _jobs_snapshot(
+        uid=current_user_id() or "",
+        session_id=session_id,
+        include_done=include_done,
+    )
+
+
+def _jobs_snapshot(*, uid: str, session_id: str, include_done: bool) -> dict[str, Any]:
     from core.services.background_jobs import liste
+
+    return liste(
+        uid=uid,
+        exec_fn=_operator_exec_for_jobs,
+        kun_aktive=not include_done,
+        session_id=session_id,
+    )
+
+
+def _job_source_pump(uid: str):
+    """One source sampler per operator identity, shared by all Desk streams."""
+    from core.services.live_job_sources import LiveJobSourcePump
+
+    key = str(uid or "")
+    with _JOB_PUMPS_LOCK:
+        pump = _JOB_PUMPS.get(key)
+        if pump is None:
+            pump = LiveJobSourcePump(
+                snapshot_reader=lambda: _jobs_snapshot(
+                    uid=key, session_id="", include_done=True,
+                ),
+                user_id=key,
+            )
+            _JOB_PUMPS[key] = pump
+        return pump
+
+
+def _sse_frame(event: str, data: dict[str, Any], cursor: int | None = None) -> str:
+    lines = []
+    if cursor is not None:
+        lines.append(f"id: {cursor}")
+    lines.append(f"event: {event}")
+    lines.append("data: " + json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    return "\n".join(lines) + "\n\n"
+
+
+@router.get("/jobs/stream")
+async def stream_background_jobs(
+    session_id: str = Query(default=""),
+    after: int | None = Query(default=None, ge=0),
+    last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+) -> StreamingResponse:
+    """Replayable live stream for the session-scoped Desk jobs projection."""
+    _require_owner()
+    from core.identity.workspace_context import current_user_id
+    from core.services import live_job_events
+
+    resume = after
+    if resume is None and last_event_id:
+        try:
+            resume = max(0, int(last_event_id))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="ugyldigt Last-Event-ID") from exc
+
     uid = current_user_id() or ""
-    return liste(uid=uid, exec_fn=_operator_exec_for_jobs,
-                 kun_aktive=not include_done, session_id=session_id)
+    subscription = live_job_events.subscribe(session_id=session_id, after=resume)
+    pump = _job_source_pump(uid)
+    pump.add_subscriber()
+
+    async def generate():
+        try:
+            if subscription.needs_snapshot:
+                snapshot = _jobs_snapshot(
+                    uid=uid, session_id=session_id, include_done=True,
+                )
+                payload = {
+                    "type": "snapshot",
+                    **snapshot,
+                    "cursor": subscription.snapshot_cursor,
+                }
+                yield _sse_frame("snapshot", payload, subscription.snapshot_cursor)
+            for event in subscription.initial_events:
+                yield _sse_frame(event.event_type, event.as_dict(), event.cursor)
+            while True:
+                try:
+                    event = await asyncio.wait_for(subscription.queue.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield _sse_frame(
+                        "heartbeat",
+                        {"type": "heartbeat", "cursor": live_job_events.snapshot_cursor()},
+                    )
+                    continue
+                yield _sse_frame(event.event_type, event.as_dict(), event.cursor)
+        finally:
+            subscription.close()
+            pump.remove_subscriber()
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 def _operator_exec_for_jobs(navn: str, args: dict[str, Any]) -> dict[str, Any]:

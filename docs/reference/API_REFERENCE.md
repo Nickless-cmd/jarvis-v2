@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-09 from app.routes (live) — 630 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-11 from app.routes (live) — 631 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -75,6 +75,7 @@
 | POST | `/api/internal/jarvisx-bridge/dispatch` |  | jarvisx_bridge |
 | GET | `/api/internal/runtime-surface/{name}` | dict | internal_runtime_surface |
 | GET | `/api/jobs` | dict | jarvisx_processes |
+| GET | `/api/jobs/stream` |  | jarvisx_processes |
 | POST | `/api/jobs/{kilde}/{job_id}/pause` | dict | jarvisx_processes |
 | POST | `/api/jobs/{kilde}/{job_id}/resume` | dict | jarvisx_processes |
 | POST | `/api/jobs/{kilde}/{job_id}/stop` | dict | jarvisx_processes |

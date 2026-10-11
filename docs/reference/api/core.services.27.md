@@ -19,7 +19,7 @@ _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
-| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
+| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
 
 ## `core/services/tool_concurrency.py`
 _Tool-concurrency policy (harness Part C)._
@@ -79,20 +79,30 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | method | `BoundedOutputBuffer.put` | `(self, delta)` | — | [src](../../../core/services/tool_execution_trace.py#L40) |
 | method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
 | class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
-| class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L78) |
-| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L98) |
-| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L109) |
-| function | `start_call` | `(tool_use_id, *, tool, run_id, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L115) |
-| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L134) |
-| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L141) |
-| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L148) |
-| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L155) |
-| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L162) |
-| function | `_finish` | `(tool_use_id, *, status, exit_code, now)` | — | [src](../../../core/services/tool_execution_trace.py#L179) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L219) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L229) |
-| function | `bind_execution` | `(tool_use_id, output_buffer)` | — | [src](../../../core/services/tool_execution_trace.py#L234) |
-| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L244) |
+| class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L81) |
+| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L102) |
+| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L113) |
+| function | `start_call` | `(tool_use_id, *, tool, run_id, session_id=…, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L119) |
+| function | `_tool_source` | `(tool_name)` | — | [src](../../../core/services/tool_execution_trace.py#L145) |
+| function | `_publish_job_event` | `(event_type, item, payload)` | — | [src](../../../core/services/tool_execution_trace.py#L149) |
+| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L164) |
+| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L171) |
+| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L178) |
+| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L185) |
+| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L192) |
+| function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L209) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L271) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L292) |
+| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L297) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L320) |
+
+## `core/services/tool_failure_surface.py`
+_Turn raw tool failures into short, actionable text for visible surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_field` | `(raw_result, name)` | — | [src](../../../core/services/tool_failure_surface.py#L7) |
+| function | `normalise_tool_failure` | `(status, result_text, raw_result, *, timeout_s=…)` | Keep existing detail, otherwise derive a concrete cause from raw output. | [src](../../../core/services/tool_failure_surface.py#L11) |
 
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._
@@ -538,11 +548,4 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L184) |
 | function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L195) |
 | function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L223) |
-
-## `core/services/user_scope.py`
-_Per-bruger data-scope (SECURITY #154, streng GDPR)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
 

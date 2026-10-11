@@ -226,7 +226,12 @@ async def run_tool_batch(
             _tc_args = _parse_tc_args(_tc)
             _tool_id = str(_tc.get("id") or "")
             if _tool_id:
-                start_call(_tool_id, tool=_tc_name, run_id=run.run_id)
+                start_call(
+                    _tool_id,
+                    tool=_tc_name,
+                    run_id=run.run_id,
+                    session_id=getattr(run, "session_id", "") or "",
+                )
                 _active_trace_ids.append(_tool_id)
             yield _sse("working_step", {
                 "type": "working_step",

@@ -70,6 +70,9 @@ class BoundedOutputBuffer:
 class _ExecutionBinding:
     tool_use_id: str
     output_buffer: BoundedOutputBuffer | None
+    run_id: str = ""
+    session_id: str = ""
+    tool_name: str = ""
     next_seq: int = 1
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -79,6 +82,7 @@ class _CallTrace:
     tool_use_id: str
     tool: str
     run_id: str
+    session_id: str
     announced_at: float
     dispatched_at: float | None = None
     execution_completed_at: float | None = None
@@ -117,18 +121,44 @@ def start_call(
     *,
     tool: str,
     run_id: str,
+    session_id: str = "",
     announced_at: float | None = None,
 ) -> None:
-    if not tool_use_id or not _timing_enabled():
+    if not tool_use_id:
         return
     item = _CallTrace(
         tool_use_id=str(tool_use_id),
         tool=str(tool),
         run_id=str(run_id),
+        session_id=str(session_id or ""),
         announced_at=time.monotonic() if announced_at is None else announced_at,
     )
     with _TRACES_LOCK:
         _TRACES[item.tool_use_id] = item
+    _publish_job_event(
+        "job_started",
+        item,
+        {"run_id": item.run_id, "tool_use_id": item.tool_use_id, "tool": item.tool},
+    )
+
+
+def _tool_source(tool_name: str) -> str:
+    return "tool_operator" if str(tool_name).startswith("operator_") else "tool"
+
+
+def _publish_job_event(event_type: str, item: _CallTrace, payload: dict[str, Any]) -> None:
+    try:
+        from core.services.live_job_events import publish
+
+        publish(
+            event_type,
+            job_key=item.tool_use_id,
+            session_id=item.session_id,
+            source=_tool_source(item.tool),
+            payload=payload,
+        )
+    except Exception as exc:
+        logger.debug("live job event could not be published: %s", exc)
 
 
 def mark_dispatch(tool_use_id: str, *, now: float | None = None) -> None:
@@ -182,6 +212,9 @@ def _finish(
     status: str,
     exit_code: int | None,
     now: float | None,
+    result_text: str = "",
+    raw_result: object = None,
+    timeout_s: float | None = None,
 ) -> None:
     ended_at = time.monotonic() if now is None else now
     with _TRACES_LOCK:
@@ -211,6 +244,25 @@ def _finish(
         ),
         "total_visible_ms": _milliseconds(item.announced_at, ended_at),
     }
+    from core.services.tool_failure_surface import normalise_tool_failure
+
+    concrete_text = normalise_tool_failure(
+        status, result_text, raw_result, timeout_s=timeout_s,
+    )
+    _publish_job_event(
+        "job_finished",
+        item,
+        {
+            "run_id": item.run_id,
+            "tool_use_id": item.tool_use_id,
+            "tool": item.tool,
+            "status": str(status),
+            "exit_code": exit_code,
+            "result_text": concrete_text,
+        },
+    )
+    if not _timing_enabled():
+        return
     from core.tools.tool_call_telemetry import udgiv_execution_timing
 
     udgiv_execution_timing(payload)
@@ -222,8 +274,19 @@ def surface_result(
     status: str,
     exit_code: int | None = None,
     now: float | None = None,
+    result_text: str = "",
+    raw_result: object = None,
+    timeout_s: float | None = None,
 ) -> None:
-    _finish(tool_use_id, status=status, exit_code=exit_code, now=now)
+    _finish(
+        tool_use_id,
+        status=status,
+        exit_code=exit_code,
+        now=now,
+        result_text=result_text,
+        raw_result=raw_result,
+        timeout_s=timeout_s,
+    )
 
 
 def cancel_call(tool_use_id: str, *, now: float | None = None) -> None:
@@ -232,9 +295,22 @@ def cancel_call(tool_use_id: str, *, now: float | None = None) -> None:
 
 @contextmanager
 def bind_execution(
-    tool_use_id: str, output_buffer: BoundedOutputBuffer | None
+    tool_use_id: str,
+    output_buffer: BoundedOutputBuffer | None,
+    *,
+    run_id: str = "",
+    session_id: str = "",
+    tool_name: str = "",
 ) -> Iterator[None]:
-    token = _CURRENT_EXECUTION.set(_ExecutionBinding(str(tool_use_id), output_buffer))
+    with _TRACES_LOCK:
+        traced = _TRACES.get(str(tool_use_id))
+    token = _CURRENT_EXECUTION.set(_ExecutionBinding(
+        str(tool_use_id),
+        output_buffer,
+        str(run_id or (traced.run_id if traced else "")),
+        str(session_id or (traced.session_id if traced else "")),
+        str(tool_name or (traced.tool if traced else "")),
+    ))
     try:
         yield
     finally:
@@ -248,7 +324,7 @@ def emit_current_output(
     truncated: bool = False,
 ) -> None:
     binding = _CURRENT_EXECUTION.get()
-    if binding is None or binding.output_buffer is None or not chunk:
+    if binding is None or not chunk:
         return
     with binding.lock:
         actual_seq = binding.next_seq if seq is None else int(seq)
@@ -256,8 +332,28 @@ def emit_current_output(
             binding.next_seq += 1
         else:
             binding.next_seq = max(binding.next_seq, actual_seq + 1)
-    binding.output_buffer.put(
-        OutputDelta(
-            binding.tool_use_id, str(stream), actual_seq, str(chunk), bool(truncated)
-        )
+    delta = OutputDelta(
+        binding.tool_use_id, str(stream), actual_seq, str(chunk), bool(truncated)
     )
+    if binding.output_buffer is not None:
+        binding.output_buffer.put(delta)
+    try:
+        from core.services.live_job_events import publish
+
+        publish(
+            "job_output",
+            job_key=binding.tool_use_id,
+            session_id=binding.session_id,
+            source=_tool_source(binding.tool_name),
+            payload={
+                "run_id": binding.run_id,
+                "tool_use_id": binding.tool_use_id,
+                "tool": binding.tool_name,
+                "stream": delta.stream,
+                "seq": delta.seq,
+                "chunk": delta.chunk,
+                "truncated": delta.truncated,
+            },
+        )
+    except Exception as exc:
+        logger.debug("live tool output could not be published: %s", exc)

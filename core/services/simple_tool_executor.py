@@ -385,7 +385,13 @@ def _execute_simple_tool_calls(
     )
 
     def _invoke(token, tool_use_id: str):
-        with bind_execution(tool_use_id, output_buffer):
+        with bind_execution(
+            tool_use_id,
+            output_buffer,
+            run_id=str(run_id or ""),
+            session_id=str(session_id or ""),
+            tool_name=str(token["name"]),
+        ):
             mark_dispatch(tool_use_id)
             try:
                 raw = _exec(token["name"], token["arguments"])

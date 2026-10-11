@@ -18,13 +18,24 @@ logger = logging.getLogger(__name__)
 def surface_tool_result(sr: dict, status: str | None = None) -> None:
     """Close one measured call immediately before its terminal UI fact."""
     from core.services.tool_execution_trace import surface_result
+    from core.services.tool_failure_surface import normalise_tool_failure
 
     result = sr.get("result") or {}
+    resolved_status = status or str(sr.get("status") or "unknown")
+    concrete_text = normalise_tool_failure(
+        resolved_status,
+        str(sr.get("result_text") or ""),
+        result,
+    )
+    if concrete_text:
+        sr["result_text"] = concrete_text
     exit_code = result.get("exit_code")
     surface_result(
         str(sr.get("call_id") or ""),
-        status=status or str(sr.get("status") or "unknown"),
+        status=resolved_status,
         exit_code=exit_code if isinstance(exit_code, int) else None,
+        result_text=concrete_text,
+        raw_result=result,
     )
 
 

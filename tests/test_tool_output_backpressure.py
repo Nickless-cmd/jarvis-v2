@@ -166,6 +166,49 @@ def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypa
     }
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "expected_source"),
+    [("bash", "tool"), ("operator_bash", "tool_operator")],
+)
+def test_output_fans_out_to_visible_buffer_and_job_hub(
+    tool_name, expected_source,
+):
+    from core.services import live_job_events, tool_execution_trace
+
+    live_job_events.reset_for_tests()
+    after = live_job_events.snapshot_cursor()
+    subscription = live_job_events.subscribe(session_id="session-1", after=after)
+    output = BoundedOutputBuffer()
+
+    with tool_execution_trace.bind_execution(
+        "call-live",
+        output,
+        run_id="run-live",
+        session_id="session-1",
+        tool_name=tool_name,
+    ):
+        tool_execution_trace.emit_current_output("stderr", "arbejder", seq=7)
+
+    assert output.drain() == [
+        OutputDelta("call-live", "stderr", 7, "arbejder"),
+    ]
+    event = subscription.queue.get_nowait()
+    assert event.event_type == "job_output"
+    assert event.job_key == "call-live"
+    assert event.session_id == "session-1"
+    assert event.source == expected_source
+    assert event.payload == {
+        "run_id": "run-live",
+        "tool_use_id": "call-live",
+        "tool": tool_name,
+        "stream": "stderr",
+        "seq": 7,
+        "chunk": "arbejder",
+        "truncated": False,
+    }
+    subscription.close()
+
+
 def test_approval_gate_does_not_close_execution_before_approved_run(monkeypatch):
     from core.services import tool_execution_trace
     from core.tools import simple_tools

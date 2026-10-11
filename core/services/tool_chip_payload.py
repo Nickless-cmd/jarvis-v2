@@ -40,9 +40,17 @@ def build_tool_capability_payload(
     arg_value_cap: int = 600,
     result_cap: int = 4000,
     call_id: str = "",
+    raw_result: object = None,
+    timeout_s: float | None = None,
 ) -> dict[str, Any]:
     args_out = trim_arguments(arguments, arg_value_cap=arg_value_cap)
     rt = str(result_text or "")
+    if not rt and str(status).lower() in {"error", "failed", "timeout"}:
+        from core.services.tool_failure_surface import normalise_tool_failure
+
+        rt = normalise_tool_failure(
+            status, rt, raw_result, timeout_s=timeout_s,
+        )
     if len(rt) > result_cap:
         rt = rt[:result_cap] + "\n…(trunkeret)"
     ud: dict[str, Any] = {

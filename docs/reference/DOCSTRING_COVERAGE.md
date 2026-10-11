@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8868/16768 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8869/16772 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8868/16768 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5911 | 11388 | 51% |
+| `core.services` | 5912 | 11392 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 123 | 198 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2019,16 +2019,16 @@ Generated from source. 8868/16768 functions/methods documented (52%). The list b
 - `core/services/tool_embeddings.py` :: `invalidate` (L109)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.drain` (L61)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.put` (L40)
-- `core/services/tool_execution_trace.py` :: `bind_execution` (L234)
-- `core/services/tool_execution_trace.py` :: `cancel_call` (L229)
-- `core/services/tool_execution_trace.py` :: `emit_current_output` (L244)
-- `core/services/tool_execution_trace.py` :: `mark_approval_wait` (L148)
-- `core/services/tool_execution_trace.py` :: `mark_approved_dispatch` (L155)
-- `core/services/tool_execution_trace.py` :: `mark_dispatch` (L134)
-- `core/services/tool_execution_trace.py` :: `mark_execution_complete` (L141)
-- `core/services/tool_execution_trace.py` :: `note_executor_timing` (L162)
-- `core/services/tool_execution_trace.py` :: `start_call` (L115)
-- `core/services/tool_execution_trace.py` :: `surface_result` (L219)
+- `core/services/tool_execution_trace.py` :: `bind_execution` (L297)
+- `core/services/tool_execution_trace.py` :: `cancel_call` (L292)
+- `core/services/tool_execution_trace.py` :: `emit_current_output` (L320)
+- `core/services/tool_execution_trace.py` :: `mark_approval_wait` (L178)
+- `core/services/tool_execution_trace.py` :: `mark_approved_dispatch` (L185)
+- `core/services/tool_execution_trace.py` :: `mark_dispatch` (L164)
+- `core/services/tool_execution_trace.py` :: `mark_execution_complete` (L171)
+- `core/services/tool_execution_trace.py` :: `note_executor_timing` (L192)
+- `core/services/tool_execution_trace.py` :: `start_call` (L119)
+- `core/services/tool_execution_trace.py` :: `surface_result` (L271)
 - `core/services/tool_intent_approval_runtime.py` :: `build_approval_feedback_surface` (L364)
 - `core/services/tool_intent_approval_runtime.py` :: `build_sudo_approval_window_surface` (L177)
 - `core/services/tool_intent_approval_runtime.py` :: `build_tool_intent_approval_surface` (L50)

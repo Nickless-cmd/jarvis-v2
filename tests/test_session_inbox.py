@@ -235,6 +235,45 @@ def test_feed_raekken_er_stadig_KILDE_MAERKET(tmp_path, monkeypatch):
     assert feed[0]["titel"] == "Jeg har ryddet op i databasen."
 
 
+def test_eventet_baerer_den_MAERKEDE_tekst_ikke_den_raa(tmp_path, monkeypatch):
+    """11/10-2026: Bjørn fik «5 skygge-eksperimenter venter på review» i sit
+    chatview — umærket, som om Jarvis havde sagt det midt i arbejdet.
+
+    Fejlen var en halv omlægning: feeden fik `_maerket(_raa)`, men
+    `message`-objektet i `channel.chat_message_appended` bar `_raa` — den rå
+    tekst. Eventet er den vej der ender i chatview, så mærkningen nåede aldrig
+    frem til den flade Bjørn faktisk kigger på.
+
+    Testen måler EVENTET, ikke feeden: de to flader kan drive fra hinanden, og
+    det var præcis hvad der skete.
+    """
+    from unittest.mock import patch
+
+    from core.services import session_inbox
+    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
+
+    events: list[dict] = []
+    monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [
+        {"id": 1, "session_id": s, "content": "Jeg har ryddet op i databasen.",
+         "source": "jarvis-notify", "user_id": "u-bjorn"}])
+    monkeypatch.setattr(session_inbox, "_connect", _tom_connect)
+    with patch("core.services.notifikationer.opret", return_value="n1"), \
+         patch("core.services.chat_sessions.get_chat_session",
+               return_value={"id": "s1"}), \
+         patch("core.eventbus.bus.event_bus.publish",
+               side_effect=lambda kind, payload=None, **kw: events.append(
+                   {"kind": kind, "payload": payload or kw})):
+        session_inbox.flush_session("s1")
+
+    assert len(events) == 1, f"forventede ét event, fik {len(events)}"
+    msg = events[0]["payload"].get("message") or {}
+    indhold = str(msg.get("content") or "")
+    assert SYSTEM_MAERKE in indhold, (
+        "eventet bar den RAA tekst — den lander umærket i chatview: "
+        f"{indhold[:80]!r}")
+    assert "ryddet op i databasen" in indhold, "indholdet forsvandt"
+
+
 def test_UDEN_modtager_skrives_der_hverken_i_feed_eller_chat(tmp_path, monkeypatch, caplog):
     """Vi falder IKKE tilbage på en ejer: det ville lægge husets besked i én
     bestemt brugers feed. Posten markeres leveret, så køen ikke looper."""

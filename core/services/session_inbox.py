@@ -305,15 +305,25 @@ def flush_session(session_id: str) -> dict[str, Any]:
                 # Foerste linje som titel, resten som tekst. Feeden viser
                 # titlen i listen; uden den ville hver raekke hedde det samme.
                 _titel = (_linjer[0] if _linjer else "Jarvis")[:120]
+                _maerket_tekst = _maerket(_raa)
                 _feed.opret(
                     user_id=_uid,
                     slags=f"session_inbox:{item.get('source') or 'ukendt'}",
                     kilde="egen",
                     titel=_titel,
-                    tekst=_maerket(_raa),
+                    tekst=_maerket_tekst,
                     session_id=session_id,
                 )
-                message = {"id": "", "role": "assistant", "content": _raa}
+                # 11/10-2026: `message` bar `_raa` — den UMAERKEDE tekst — mens
+                # feeden fik den maerkede. Eventet herunder er den vej der
+                # ender i chatview, saa maerkningen naaede aldrig frem til den
+                # flade Bjoern faktisk kigger paa: «5 skygge-eksperimenter
+                # venter paa review» stod i traaden som om Jarvis havde sagt
+                # det midt i arbejdet. De to flader skal baere SAMME tekst;
+                # ellers kan de drive fra hinanden igen uden at nogen test ser
+                # det. Maalet er ikke at skjule beskeden, men at den ikke kan
+                # forveksles med et svar.
+                message = {"id": "", "role": "assistant", "content": _maerket_tekst}
             event_bus.publish(
                 "channel.chat_message_appended",
                 {

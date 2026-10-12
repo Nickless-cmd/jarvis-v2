@@ -406,3 +406,34 @@ def test_a_record_pointing_at_ANOTHER_agents_valid_worktree_never_removes_it(wt)
     out = wt.W_.sweep(now=datetime.now(UTC) + timedelta(days=10))
     assert out["removed"] == [] and os.path.isdir(w2["path"])
     assert os.path.exists(os.path.join(w2["path"], "ny.py"))
+
+
+def test_nedrivning_fjerner_den_tomme_foraelder(wt):
+    """12/10-2026: ``materialize()`` opretter ``agent-<hash>/``, men oprydningen fjernede
+    kun barnet. Maalt: to tomme skaller stod tilbage fra 8/10 — samme fejlklasse som
+    ``workspaces/t`` (en oprettelsesvej uden en tilsvarende oprydning)."""
+    w = _retained(wt)
+    parent = os.path.dirname(w["path"])
+    assert os.path.isdir(parent) and parent != str(wt.W_.worktree_root())
+    d = wt.W_.decide(owner_user_id="bjorn", worktree_id=w["worktree_id"], decision="integrated")
+    t0 = datetime.fromisoformat(d["decided_at"].replace("Z", "+00:00"))
+    out = wt.W_.sweep(now=t0 + timedelta(days=7, minutes=1))
+    assert out["removed"] == [w["worktree_id"]]
+    assert not os.path.exists(w["path"])
+    assert not os.path.exists(parent), "den tomme foraelder agent-<hash>/ blev efterladt"
+    assert os.path.isdir(str(wt.W_.worktree_root())), "roden selv maa ikke forsvinde"
+
+
+def test_en_ikke_tom_foraelder_bevares(wt):
+    """Sikkerheden: oprydningen maa ALDRIG tage indhold med. Deler to assignments en
+    foraelder, er den ikke tom naar den ene rives ned — ``os.rmdir`` fejler, og det er
+    meningen. Samme klasse som de to rigtige worktrees der stadig ligger der."""
+    w = _retained(wt)
+    parent = os.path.dirname(w["path"])
+    fremmed = os.path.join(parent, "andet-arbejde.txt")
+    open(fremmed, "w").write("bevar mig")
+    d = wt.W_.decide(owner_user_id="bjorn", worktree_id=w["worktree_id"], decision="integrated")
+    t0 = datetime.fromisoformat(d["decided_at"].replace("Z", "+00:00"))
+    wt.W_.sweep(now=t0 + timedelta(days=7, minutes=1))
+    assert not os.path.exists(w["path"])
+    assert os.path.isdir(parent) and os.path.exists(fremmed)

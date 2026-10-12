@@ -1,7 +1,7 @@
 # Routines: first-class, private autonomous work
 
 **Date:** 2026-10-12
-**Status:** Revised after runtime review; awaiting final approval
+**Status:** Approved design
 **Scope:** Jarvis runtime, API, migration, and Jarvis Desk
 
 ## 1. Purpose

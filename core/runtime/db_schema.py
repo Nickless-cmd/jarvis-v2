@@ -374,6 +374,19 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_events_kind_created "
             "ON events (kind, created_at)"
         )
+        # (created_at) alene — 12/10-2026. `idx_events_kind_created` dækker KUN
+        # queries hvor `kind` står i WHERE. Læsere der filtrerer på TID uden kind
+        # tvinger stadig en fuld tabel-scan, og de er de dyreste i runtime:
+        # emergence._fetch_recent_events (21 dage, hver 30. heartbeat-tick, kaldt
+        # fra cadence_producers) læste 461.054 preads pr. kald = 1,84 GB.
+        # Målt på lille test-DB: SCAN + TEMP B-TREE uden indeks, SEARCH med.
+        # På den levende DB: 403.215 -> 540 preads for samme query-form (747x).
+        # To indekser er nødvendige — (kind, created_at) kan ikke søge på tid
+        # alene, og (created_at) kan ikke søge på kind alene. Pris ~74 MB.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_created_at "
+            "ON events (created_at)"
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_state_kv (

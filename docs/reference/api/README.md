@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16838 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16870 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,15 +50,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16838 functions/
 - [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
 - [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relationship_texture`
-- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_cognitive_conductor`
-- [`core.services.23`](core.services.23.md) — `runtime_decision_engine` … `self_model_signal_tracking`
-- [`core.services.24`](core.services.24.md) — `self_monitor` … `shadow_counters`
-- [`core.services.25`](core.services.25.md) — `shadow_experiment_registry` … `spild`
-- [`core.services.26`](core.services.26.md) — `staged_edits` … `thought_leak_guard`
-- [`core.services.27`](core.services.27.md) — `thought_stream_daemon` … `upload_sandbox`
-- [`core.services.28`](core.services.28.md) — `user_activity` … `visible_run_guard_notices`
-- [`core.services.29`](core.services.29.md) — `visible_run_interruption` … `web_push_subscriptions`
-- [`core.services.30`](core.services.30.md) — `weekly_manifest` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_awareness_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `runtime_browser_body` … `self_model_history`
+- [`core.services.24`](core.services.24.md) — `self_model_predictive` … `session_wakeup`
+- [`core.services.25`](core.services.25.md) — `settlement_shadow` … `spaced_repetition`
+- [`core.services.26`](core.services.26.md) — `spatial_entity_ledger` … `think_language`
+- [`core.services.27`](core.services.27.md) — `thought_action_proposal_daemon` … `unfinished_intent`
+- [`core.services.28`](core.services.28.md) — `untrusted_fencing` … `visible_run_cost`
+- [`core.services.29`](core.services.29.md) — `visible_run_firstpass` … `wakeup_dispatcher`
+- [`core.services.30`](core.services.30.md) — `web_push_gateway` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

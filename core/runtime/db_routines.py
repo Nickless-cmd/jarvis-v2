@@ -7,6 +7,7 @@ no dependency on chat sessions or their inboxes.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import sqlite3
 import uuid
@@ -312,33 +313,151 @@ def transition_routine(
     now = _now()
     with connect() as conn:
         _ensure_tables(conn)
-        row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
-        if row is None:
-            raise KeyError(routine_id)
-        current_version = int(row["version"])
-        if expected_version is not None and current_version != int(expected_version):
-            raise ValueError("stale routine version")
-        new_version = current_version + 1
-        stopped_at = now if to_status == "stopped" else row["stopped_at"]
-        archived_at = now if to_status == "archived" else row["archived_at"]
-        deleted_at = now if to_status == "deleted" else row["deleted_at"]
-        changed = conn.execute(
-            "UPDATE routines SET status=?,version=?,updated_at=?,stopped_at=?,archived_at=?,"
-            "deleted_at=? WHERE routine_id=? AND version=?",
-            (to_status, new_version, now, stopped_at, archived_at, deleted_at,
-             routine_id, current_version),
-        )
-        if changed.rowcount != 1:
-            raise ValueError("stale routine version")
-        previous = conn.execute(
-            "SELECT definition_snapshot_enc FROM routine_versions WHERE routine_id=? AND version=?",
-            (routine_id, current_version),
-        ).fetchone()
-        conn.execute(
-            "INSERT INTO routine_versions (routine_id,version,definition_snapshot_enc,created_at) "
-            "VALUES (?,?,?,?)", (routine_id, new_version, previous[0], now),
-        )
-        updated = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            if row is None:
+                raise KeyError(routine_id)
+            current_version = int(row["version"])
+            if expected_version is not None and current_version != int(expected_version):
+                raise ValueError("stale routine version")
+            stopped_at = now if to_status == "stopped" else row["stopped_at"]
+            archived_at = now if to_status == "archived" else row["archived_at"]
+            deleted_at = now if to_status == "deleted" else row["deleted_at"]
+            changed = conn.execute(
+                "UPDATE routines SET status=?,updated_at=?,stopped_at=?,archived_at=?,"
+                "deleted_at=? WHERE routine_id=? AND version=?",
+                (to_status, now, stopped_at, archived_at, deleted_at,
+                 routine_id, current_version),
+            )
+            if changed.rowcount != 1:
+                raise ValueError("stale routine version")
+            updated = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return _routine_values(updated)
+
+
+def update_routine_definition(
+    routine_id: str, *, expected_version: int, changes: Mapping[str, object],
+    reactivate: bool = False,
+) -> dict[str, Any]:
+    """Atomically write a new immutable definition version."""
+    allowed = {
+        "name", "instruction", "capability_scope", "trigger_kind", "trigger_config",
+        "permission_policy", "delivery_policy", "inbox_policy", "retention_policy",
+        "failure_policy", "workspace_name", "workspace_kind", "workspace_root",
+        "jarvis_restart_allowed",
+    }
+    unknown = set(changes) - allowed
+    if unknown:
+        raise ValueError(f"unknown routine fields: {sorted(unknown)}")
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            if row is None:
+                raise KeyError(routine_id)
+            if int(row["version"]) != int(expected_version):
+                raise ValueError("stale routine version")
+            owner = str(row["owner_user_id"])
+            current = _routine_values(row, decrypt_for=owner)
+            workspace = dict(current["workspace"])
+            for field in ("name", "kind", "root"):
+                change_key = f"workspace_{field}"
+                if change_key in changes:
+                    workspace[field] = str(changes[change_key])
+            instruction = changes.get("instruction", current["instruction"])
+            if isinstance(instruction, str):
+                instruction = instruction.encode("utf-8")
+            values = {
+                "name": changes.get("name", current["name"]),
+                "instruction": instruction,
+                "capability_scope": changes.get("capability_scope", current["capability_scope"]),
+                "workspace": workspace,
+                "trigger_kind": changes.get("trigger_kind", current["trigger_kind"]),
+                "trigger_config": changes.get("trigger_config", current["trigger_config"]),
+                "permission_policy": changes.get("permission_policy", current["permission_policy"]),
+                "delivery_policy": changes.get("delivery_policy", current["delivery_policy"]),
+                "inbox_policy": changes.get("inbox_policy", current["inbox_policy"]),
+                "retention_policy": changes.get("retention_policy", current["retention_policy"]),
+                "failure_policy": changes.get("failure_policy", current["failure_policy"]),
+                "jarvis_restart_allowed": changes.get(
+                    "jarvis_restart_allowed", current["jarvis_restart_allowed"]
+                ),
+            }
+            version = int(row["version"]) + 1
+            status = "active" if reactivate else str(row["status"])
+            now = _now()
+            changed = conn.execute(
+                "UPDATE routines SET name_enc=?,instruction_enc=?,capability_scope=?,workspace_enc=?,"
+                "trigger_kind=?,trigger_config_enc=?,permission_policy_enc=?,delivery_policy_enc=?,"
+                "inbox_policy_enc=?,retention_policy_enc=?,failure_policy_enc=?,"
+                "jarvis_restart_allowed=?,status=?,version=?,updated_at=? "
+                "WHERE routine_id=? AND version=?",
+                (seal(owner, str(values["name"]).encode("utf-8")), seal(owner, instruction),
+                 values["capability_scope"], seal(owner, _json_bytes(workspace)),
+                 values["trigger_kind"], seal(owner, _json_bytes(values["trigger_config"])),
+                 seal(owner, _json_bytes(values["permission_policy"])),
+                 seal(owner, _json_bytes(values["delivery_policy"])),
+                 seal(owner, _json_bytes(values["inbox_policy"])),
+                 seal(owner, _json_bytes(values["retention_policy"])),
+                 seal(owner, _json_bytes(values["failure_policy"])),
+                 int(bool(values["jarvis_restart_allowed"])), status, version, now,
+                 routine_id, expected_version),
+            )
+            if changed.rowcount != 1:
+                raise ValueError("stale routine version")
+            conn.execute(
+                "INSERT INTO routine_versions (routine_id,version,definition_snapshot_enc,created_at) "
+                "VALUES (?,?,?,?)",
+                (routine_id, version, seal(owner, _json_bytes(_definition_snapshot(values))), now),
+            )
+            updated = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return _routine_values(updated, decrypt_for=owner)
+
+
+def stop_routine(routine_id: str, *, expected_version: int | None = None) -> dict[str, Any]:
+    """Stop a definition and revoke/cancel all unfinished work atomically."""
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            if row is None:
+                raise KeyError(routine_id)
+            if expected_version is not None and int(row["version"]) != int(expected_version):
+                raise ValueError("stale routine version")
+            if row["status"] != "stopped":
+                now = _now()
+                conn.execute(
+                    "UPDATE routines SET status='stopped',stopped_at=?,updated_at=? WHERE routine_id=?",
+                    (now, now, routine_id),
+                )
+                conn.execute(
+                    "UPDATE routine_runs SET status='cancelled',finished_at=?,updated_at=? "
+                    "WHERE routine_id=? AND status='queued'", (now, now, routine_id),
+                )
+                conn.execute(
+                    "UPDATE routine_runs SET status='cancelling',lease_holder=NULL,"
+                    "lease_generation=lease_generation+1,updated_at=? "
+                    "WHERE routine_id=? AND status='running'", (now, routine_id),
+                )
+            updated = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
     return _routine_values(updated)
 
 
@@ -396,8 +515,109 @@ def get_run(run_id: str, *, decrypt_for: str | None = None) -> dict[str, Any] | 
     result = dict(row)
     if decrypt_for is not None:
         result["execution_context"] = _open_json(decrypt_for, row["execution_context_enc"])
-        result["definition_snapshot"] = _open_json(decrypt_for, row["definition_snapshot_enc"])
+        snapshot = _open_json(decrypt_for, row["definition_snapshot_enc"])
+        snapshot["instruction"] = base64.b64decode(snapshot.pop("instruction_b64"))
+        result["definition_snapshot"] = snapshot
+        if row["result_enc"] is not None:
+            result["result"] = open_sealed(decrypt_for, bytes(row["result_enc"]))
+    for key in tuple(result):
+        if key.endswith("_enc"):
+            result.pop(key)
     return result
+
+
+def list_runs(routine_id: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT * FROM routine_runs WHERE routine_id=? ORDER BY created_at,run_id",
+            (routine_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def cancel_run(run_id: str) -> dict[str, Any]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone()
+        if row is None:
+            raise KeyError(run_id)
+        now = _now()
+        if row["status"] == "queued":
+            conn.execute(
+                "UPDATE routine_runs SET status='cancelled',finished_at=?,updated_at=? WHERE run_id=?",
+                (now, now, run_id),
+            )
+        elif row["status"] == "running":
+            conn.execute(
+                "UPDATE routine_runs SET status='cancelling',lease_holder=NULL,"
+                "lease_generation=lease_generation+1,updated_at=? WHERE run_id=?",
+                (now, run_id),
+            )
+        return dict(conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone())
+
+
+def list_stopped_routines(*, before: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT * FROM routines WHERE status='stopped' AND stopped_at IS NOT NULL "
+            "AND stopped_at < ? ORDER BY stopped_at,routine_id", (before,),
+        ).fetchall()
+    return [_routine_values(row, decrypt_for=str(row["owner_user_id"])) for row in rows]
+
+
+def delete_routine_content(routine_id: str, *, reason_code: str = "user_deleted") -> bool:
+    """Erase all private material and retain only a content-free audit tombstone."""
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute(
+                "SELECT owner_user_id FROM routines WHERE routine_id=?", (routine_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return False
+            owner_hash = hashlib.sha256(str(row["owner_user_id"]).encode("utf-8")).hexdigest()
+            run_ids = [item[0] for item in conn.execute(
+                "SELECT run_id FROM routine_runs WHERE routine_id=?", (routine_id,),
+            ).fetchall()]
+            for run_id in run_ids:
+                conn.execute("DELETE FROM routine_deliveries WHERE run_id=?", (run_id,))
+                conn.execute("DELETE FROM routine_run_events WHERE run_id=?", (run_id,))
+            conn.execute("DELETE FROM routine_runs WHERE routine_id=?", (routine_id,))
+            conn.execute("DELETE FROM routine_versions WHERE routine_id=?", (routine_id,))
+            conn.execute("DELETE FROM routine_legacy_links WHERE routine_id=?", (routine_id,))
+            conn.execute("DELETE FROM routine_inbox_preferences WHERE routine_id=?", (routine_id,))
+            conn.execute("DELETE FROM routines WHERE routine_id=?", (routine_id,))
+            conn.execute(
+                "INSERT OR IGNORE INTO routine_tombstones "
+                "(routine_id,owner_user_id_hash,deleted_at,reason_code) VALUES (?,?,?,?)",
+                (routine_id, owner_hash, _now(), reason_code),
+            )
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def read_run_events(run_id: str, *, decrypt_for: str | None = None) -> list[dict[str, Any]]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        run = conn.execute("SELECT owner_user_id FROM routine_runs WHERE run_id=?", (run_id,)).fetchone()
+        if run is None:
+            raise KeyError(run_id)
+        rows = conn.execute(
+            "SELECT * FROM routine_run_events WHERE run_id=? ORDER BY seq", (run_id,),
+        ).fetchall()
+    events = [dict(row) for row in rows]
+    if decrypt_for is not None:
+        for event in events:
+            event["payload"] = _open_json(decrypt_for, event.pop("payload_enc"))
+    return events
 
 
 def claim_run(run_id: str, *, holder: str) -> dict[str, Any] | None:

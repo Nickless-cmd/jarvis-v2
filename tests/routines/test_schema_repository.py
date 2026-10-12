@@ -133,19 +133,19 @@ def test_invalid_status_is_rejected_by_sqlite(isolated_runtime, routine_row, tab
 
 
 def test_routine_version_is_monotonic_and_snapshotted(routine_row):
-    from core.runtime.db_routines import get_routine, transition_routine
+    from core.runtime.db_routines import get_routine, update_routine_definition
 
-    first = transition_routine(
+    first = update_routine_definition(
         routine_row["routine_id"],
-        to_status="paused",
         expected_version=1,
+        changes={"name": "Ny version"},
     )
     assert first["version"] == 2
     with pytest.raises(ValueError, match="stale routine version"):
-        transition_routine(
+        update_routine_definition(
             routine_row["routine_id"],
-            to_status="active",
             expected_version=1,
+            changes={"name": "Tabt version"},
         )
     assert get_routine(routine_row["routine_id"])["version"] == 2
 

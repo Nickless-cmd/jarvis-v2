@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/untrusted_fencing.py`
+_Indhegning af utroet indhold — porteret fra jarvis-code._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_neutralisér` | `(tekst)` | Afvaebn hegn-markoerer INDE i nyttelasten. | [src](../../../core/services/untrusted_fencing.py#L46) |
+| function | `fence` | `(kilde, indhold)` | Pak indhold ind som utroet data. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L63) |
+| function | `kilde_for_tool` | `(navn)` | Hvilken slags kilde er dette vaerktoejs resultat? Ren. | [src](../../../core/services/untrusted_fencing.py#L71) |
+| function | `should_fence` | `(navn)` | Skal dette vaerktoejs resultat hegnes ind? Ren. | [src](../../../core/services/untrusted_fencing.py#L88) |
+| function | `_hegn_blok` | `(kilde, blok)` | Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke. | [src](../../../core/services/untrusted_fencing.py#L101) |
+| function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L112) |
+
+## `core/services/upload_sandbox.py`
+_Uploadede filer og arkiver — pakket ud ét sted, og aldrig eksekverbart._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ExtractResult` | `` | — | [src](../../../core/services/upload_sandbox.py#L47) |
+| method | `ExtractResult.as_dict` | `(self)` | — | [src](../../../core/services/upload_sandbox.py#L55) |
+| function | `looks_like_archive` | `(path)` | Er filen et arkiv? Afgøres på INDHOLD, ikke på navn. | [src](../../../core/services/upload_sandbox.py#L61) |
+| function | `harden_upload` | `(path)` | Gør en uploadet fil ulæselig for andre og umulig at eksekvere. | [src](../../../core/services/upload_sandbox.py#L76) |
+| function | `sandbox_root_for` | `(attachment_id)` | Mappen et bestemt arkiv pakkes ud i. Én pr. vedhæftning. | [src](../../../core/services/upload_sandbox.py#L89) |
+| function | `_is_inside` | `(root, candidate)` | Ligger `candidate` under `root` — også efter symlink-opløsning? | [src](../../../core/services/upload_sandbox.py#L95) |
+| function | `_reject_name` | `(name)` | Tom streng hvis navnet er i orden, ellers grunden til at det ikke er. | [src](../../../core/services/upload_sandbox.py#L109) |
+| function | `_write_entry` | `(dest, data_iter, remaining)` | Skriv én post og returnér antal skrevne bytes. Rejser ValueError ved loft. | [src](../../../core/services/upload_sandbox.py#L122) |
+| function | `_chunks` | `(fileobj, size=…)` | — | [src](../../../core/services/upload_sandbox.py#L136) |
+| function | `safe_extract` | `(archive_path, attachment_id)` | Pak et arkiv ud i sin egen sandkasse — post for post. | [src](../../../core/services/upload_sandbox.py#L144) |
+| function | `scan_tree` | `(root)` | Kør ClamAV på en udpakket sandkasse. (ren, begrundelse). | [src](../../../core/services/upload_sandbox.py#L234) |
+
 ## `core/services/user_activity.py`
 _Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og hvordan"._
 
@@ -602,29 +631,4 @@ _Bogfoer en koersels omkostning — ét sted._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `bogfoer_koerslens_omkostning` | `(run, *, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, cost_usd=…)` | Skriv koerslens raekke i hovedbogen. | [src](../../../core/services/visible_run_cost.py#L37) |
-
-## `core/services/visible_run_firstpass.py`
-_Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
-| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
-| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
-
-## `core/services/visible_run_guard_notices.py`
-_Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `forbindelsen_glippede` | `()` | P6 graceful-degrade: forbindelsen svigtede gentagne gange. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L85) |
-| function | `loekken_tvang_en_afslutning` | `()` | Løkken tvang en afslutning med et ventende tool-intent. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L94) |
-| function | `tool_call_loekke` | `(runder)` | Flere runder med værktøjskald og intet synligt svar. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L103) |
-| function | `ingen_tekst_i_runder` | `(runder)` | Runder uden tekst overhovedet — KLASSE 1, den holder runnet i gang. | [src](../../../core/services/visible_run_guard_notices.py#L112) |
-| function | `tomt_loefte_advarsel` | `()` | Advarslen til NÆSTE runde om et tomt løfte. Klasse 2 — MÆRKET. | [src](../../../core/services/visible_run_guard_notices.py#L128) |
-| function | `systemmaerket` | `(tekst)` | Mærk en vilkårlig runtime-besked som fra systemet. Klasse 1 og 2. | [src](../../../core/services/visible_run_guard_notices.py#L151) |
-| function | `er_menneske_note` | `(tekst)` | Er dette en klasse-3-note — altså til Bjørn og ikke til modellen? | [src](../../../core/services/visible_run_guard_notices.py#L183) |
-| function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
-| function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
-| function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
 

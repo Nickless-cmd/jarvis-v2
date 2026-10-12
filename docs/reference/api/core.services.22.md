@@ -341,6 +341,49 @@ _Canonical, fail-closed identity resolution for Routine entry points._
 | class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L9) |
 | function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L13) |
 
+## `core/services/routine_run_recorder.py`
+_Session-neutral append-only recorder for observable Routine run events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineRunRecorder` | `` | — | [src](../../../core/services/routine_run_recorder.py#L9) |
+| method | `RoutineRunRecorder.append` | `(self, run_id, *, kind, payload, terminal=…, event_id=…, generation=…)` | — | [src](../../../core/services/routine_run_recorder.py#L10) |
+| method | `RoutineRunRecorder.list` | `(self, run_id, *, decrypt_for=…)` | — | [src](../../../core/services/routine_run_recorder.py#L24) |
+
+## `core/services/routine_service.py`
+_Authorized lifecycle service for versioned Routine definitions and runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StaleRoutineVersion` | `` | An edit lost the optimistic version race. | [src](../../../core/services/routine_service.py#L22) |
+| class | `InvalidRoutineTransition` | `` | A requested lifecycle transition is not valid from the current state. | [src](../../../core/services/routine_service.py#L26) |
+| class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L31) |
+| method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L54) |
+| class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L59) |
+| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L82) |
+| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L107) |
+| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L123) |
+| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L130) |
+| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L131) |
+| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L134) |
+| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L140) |
+| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L145) |
+| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L159) |
+| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L175) |
+| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L187) |
+| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L221) |
+| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L238) |
+| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L241) |
+| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L244) |
+| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L247) |
+| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L250) |
+| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L264) |
+| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L286) |
+| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key)` | — | [src](../../../core/services/routine_service.py#L297) |
+| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L315) |
+| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L327) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L337) |
+
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._
 
@@ -587,65 +630,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L642) |
 | function | `_machine_state_summary` | `(*, constrained, active, recovered)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L656) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L687) |
-
-## `core/services/runtime_browser_body.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_browser_body` | `(*, profile_name=…, active_task_id=…, active_flow_id=…)` | — | [src](../../../core/services/runtime_browser_body.py#L12) |
-| function | `record_tab_snapshot` | `(*, body_id, tab_id, url, title=…, status=…, summary=…, selected=…)` | — | [src](../../../core/services/runtime_browser_body.py#L50) |
-| function | `get_browser_body` | `(body_id)` | — | [src](../../../core/services/runtime_browser_body.py#L90) |
-| function | `list_browser_bodies` | `(limit=…)` | — | [src](../../../core/services/runtime_browser_body.py#L97) |
-| function | `update_browser_body` | `(body_id, *, status=…, active_task_id=…, active_flow_id=…, focused_tab_id=…, tabs=…, last_url=…, last_title=…, summary=…)` | — | [src](../../../core/services/runtime_browser_body.py#L101) |
-| function | `_find_browser_body_by_profile` | `(profile_name)` | — | [src](../../../core/services/runtime_browser_body.py#L139) |
-| function | `_decode_browser_body` | `(body)` | — | [src](../../../core/services/runtime_browser_body.py#L146) |
-| function | `set_browser_status` | `(status, *, url=…, title=…)` | Update the default browser body status — called from browser tool handlers. | [src](../../../core/services/runtime_browser_body.py#L156) |
-
-## `core/services/runtime_cognitive_conductor.py`
-_Cognitive conductor — Jarvis' bounded mental state assembler._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_classify_temporal_depth` | `(*, brain_count, open_loop_count, continuity_mode)` | Classify the dominant time horizon of the current mental state. | [src](../../../core/services/runtime_cognitive_conductor.py#L47) |
-| function | `_select_mode` | `(*, visible_active, question_gate_active, approval_pending, brain_count, open_loop_count, liveness_state, contradiction_active, experiment_carry=…, cognitive_episode=…)` | Select the bounded mental mode from runtime state. | [src](../../../core/services/runtime_cognitive_conductor.py#L69) |
-| function | `_select_salient_items` | `(*, brain_excerpts, open_loop_items, private_signal_items, inner_forces, gate_items, relation_items, world_model_items, remembered_fact_items, user_understanding_items, contradiction_items, meaning_items, metabolism_items, release_items, self_review_items, dream_items, experiment_carry=…)` | Select the most salient items across all sources. | [src](../../../core/services/runtime_cognitive_conductor.py#L128) |
-| function | `_collect_private_signal_items` | `(*, tension_surface, private_state)` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L276) |
-| function | `_select_affordances` | `(*, active_capabilities, gated_items, mode, contradiction_active)` | Build the current affordance map — what's possible, appropriate, or gated NOW. | [src](../../../core/services/runtime_cognitive_conductor.py#L322) |
-| function | `build_cognitive_frame` | `(*, self_knowledge=…, heartbeat_state=…)` | Build the current bounded cognitive frame (short-TTL cached). | [src](../../../core/services/runtime_cognitive_conductor.py#L385) |
-| function | `_build_cognitive_frame_uncached` | `(*, self_knowledge=…, heartbeat_state=…)` | Build the current bounded cognitive frame. | [src](../../../core/services/runtime_cognitive_conductor.py#L420) |
-| function | `_build_frame_summary` | `(*, mode, salient, temporal, continuity_pressure, private_signal_pressure, brain_count, open_loop_count, experiment_carry=…)` | Build a compact one-line summary of the cognitive frame. | [src](../../../core/services/runtime_cognitive_conductor.py#L760) |
-| function | `build_cognitive_frame_prompt_section` | `()` | Build a compact cognitive frame section for prompt inclusion. | [src](../../../core/services/runtime_cognitive_conductor.py#L791) |
-| function | `_safe_brain_context` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L887) |
-| function | `_safe_self_knowledge` | `(*, heartbeat_state=…)` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L895) |
-| function | `_safe_open_loops` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L907) |
-| function | `_safe_question_gates` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L915) |
-| function | `_safe_initiative_tension` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L923) |
-| function | `_safe_private_state` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L931) |
-| function | `_safe_visible_status` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L939) |
-| function | `_safe_experiential_support` | `()` | Read experiential carry-forward support surface. | [src](../../../core/services/runtime_cognitive_conductor.py#L947) |
-| function | `_safe_liveness_snapshot` | `(*, heartbeat_state=…)` | Get a lightweight liveness snapshot without triggering full liveness build. | [src](../../../core/services/runtime_cognitive_conductor.py#L971) |
-| function | `_safe_cognitive_core_experiments` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1000) |
-| function | `_derive_cognitive_experiment_carry` | `(surface)` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1015) |
-| function | `_safe_relation_state` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1114) |
-| function | `_safe_cognitive_episode_surface` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1124) |
-| function | `_safe_theory_of_mind_surface` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1132) |
-| function | `_safe_learning_policy_surface` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1140) |
-| function | `_safe_perception_surface` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1148) |
-| function | `_safe_emotional_memory_surface` | `(*, context_features=…)` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1156) |
-| function | `_extract_context_features_from_episode` | `(cognitive_episode)` | Pull retrieval-relevant fields from a cognitive_episode surface entry. | [src](../../../core/services/runtime_cognitive_conductor.py#L1170) |
-| function | `_safe_relation_continuity` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1194) |
-| function | `_safe_self_narrative_continuity` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1204) |
-| function | `_safe_world_model` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1214) |
-| function | `_safe_remembered_facts` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1224) |
-| function | `_safe_user_understanding` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1234) |
-| function | `_safe_executive_contradiction` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1244) |
-| function | `_safe_meaning_significance` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1254) |
-| function | `_safe_metabolism` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1264) |
-| function | `_safe_release_markers` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1274) |
-| function | `_safe_attachment_topology` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1284) |
-| function | `_safe_loyalty_gradient` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1294) |
-| function | `_safe_diary_synthesis` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1304) |
-| function | `_safe_chronicle_consolidation` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1314) |
-| function | `_safe_self_review` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1324) |
-| function | `_safe_dream_family` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1379) |
 

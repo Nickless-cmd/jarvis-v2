@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/theory_of_mind.py`
+_Theory of Mind — Step A.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
+| function | `_connect` | `()` | — | [src](../../../core/services/theory_of_mind.py#L123) |
+| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L133) |
+| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L149) |
+| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L168) |
+| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L239) |
+| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L244) |
+| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L286) |
+| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L312) |
+| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L337) |
+| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L363) |
+| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L390) |
+| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L454) |
+| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L471) |
+
 ## `core/services/theory_of_mind_engine.py`
 _Active theory-of-mind engine for Jarvis._
 
@@ -530,12 +550,4 @@ _Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
 | function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L94) |
 | function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L103) |
 | function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L114) |
-
-## `core/services/unconscious_modulation.py`
-_Unconscious modulation — sub-symbolic sampling-parameter shift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
-| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
 

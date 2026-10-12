@@ -333,6 +333,23 @@ _Owner-bound authenticated encryption for Routine content._
 | function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
 | function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
 
+## `core/services/routine_delivery.py`
+_Fenced delivery outbox for Routine results._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L13) |
+| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L18) |
+| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L29) |
+| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L40) |
+| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L42) |
+| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L46) |
+| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L58) |
+| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L71) |
+| method | `RoutineDeliveryService.__init__` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L72) |
+| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L75) |
+| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L79) |
+
 ## `core/services/routine_diagnostics.py`
 _Content-free operational failure projections for owner and Jarvis._
 
@@ -611,16 +628,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L591) |
 | function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L604) |
 | function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L626) |
-
-## `core/services/runtime_action_outcome_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_runtime_action_outcome` | `(*, action_id, mode, reason, score, payload, result)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L13) |
-| function | `build_runtime_action_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L53) |
-| function | `recent_runtime_action_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L77) |
-| function | `_persist_runtime_action_outcome` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L86) |
-| function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L105) |
-| function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L130) |
-| function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L141) |
 

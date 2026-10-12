@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_action_outcome_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_runtime_action_outcome` | `(*, action_id, mode, reason, score, payload, result)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L13) |
+| function | `build_runtime_action_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L53) |
+| function | `recent_runtime_action_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L77) |
+| function | `_persist_runtime_action_outcome` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L86) |
+| function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L105) |
+| function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L130) |
+| function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L141) |
+
 ## `core/services/runtime_action_registry.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -726,20 +738,4 @@ _Prompten maa ikke forveksle et rygte med en kendsgerning._
 | function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
 | function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
 | function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
-
-## `core/services/self_model_blind_spots.py`
-_Self-Model Blind Spots — LLM-drevet opdagelse af egne usete fejlmønstre._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/self_model_blind_spots.py#L32) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_model_blind_spots.py#L36) |
-| function | `_load_known_patterns` | `()` | Pull already-identified blind spots + known weaknesses. | [src](../../../core/services/self_model_blind_spots.py#L60) |
-| function | `_load_recent_failed_runs` | `(limit=…)` | Pull recent failed visible runs with summary + run_id. | [src](../../../core/services/self_model_blind_spots.py#L76) |
-| function | `_build_discovery_prompt` | `(*, known_patterns, failed_runs)` | — | [src](../../../core/services/self_model_blind_spots.py#L105) |
-| function | `_extract_blind_spots` | `(raw_text)` | Parse LLM response. Tolerates preamble/fences — finds first {...} block. | [src](../../../core/services/self_model_blind_spots.py#L135) |
-| function | `discover_blind_spots` | `()` | Run discovery: analyze recent failed runs for unseen patterns. | [src](../../../core/services/self_model_blind_spots.py#L168) |
-| function | `acknowledge_blind_spot` | `(*, blind_spot_id)` | Mark a blind spot as acknowledged (Jarvis has now integrated it). | [src](../../../core/services/self_model_blind_spots.py#L261) |
-| function | `list_blind_spots` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_model_blind_spots.py#L292) |
-| function | `build_blind_spots_surface` | `()` | MC surface for self-model blind spots. | [src](../../../core/services/self_model_blind_spots.py#L311) |
 

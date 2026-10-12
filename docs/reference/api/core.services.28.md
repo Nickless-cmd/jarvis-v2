@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/unconscious_modulation.py`
+_Unconscious modulation — sub-symbolic sampling-parameter shift._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
+| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
+
 ## `core/services/unconscious_temperature_field.py`
 _Unconscious temperature field — backwards-compat wrapper for Lag 10._
 
@@ -627,13 +635,4 @@ _Stream the existing tool-free final synthesis without buffering its deltas._
 | class | `SynthesisDelta` | `` | — | [src](../../../core/services/visible_post_tool_synthesis.py#L17) |
 | class | `SynthesisDone` | `` | — | [src](../../../core/services/visible_post_tool_synthesis.py#L22) |
 | function | `stream_final_synthesis` | `(*, provider, model, base_messages, exchanges, min_chars=…)` | Yield clean text deltas, then the exact text the caller should persist. | [src](../../../core/services/visible_post_tool_synthesis.py#L26) |
-
-## `core/services/visible_preview_crypto.py`
-_Encrypt durable previews for visible member runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `member_for_run` | `(run)` | — | [src](../../../core/services/visible_preview_crypto.py#L7) |
-| function | `protect_preview` | `(text, member)` | — | [src](../../../core/services/visible_preview_crypto.py#L19) |
-| function | `reveal_preview` | `(text, user_id)` | — | [src](../../../core/services/visible_preview_crypto.py#L23) |
 

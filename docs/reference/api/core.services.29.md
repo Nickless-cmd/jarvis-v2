@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_preview_crypto.py`
+_Encrypt durable previews for visible member runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `member_for_run` | `(run)` | — | [src](../../../core/services/visible_preview_crypto.py#L7) |
+| function | `protect_preview` | `(text, member)` | — | [src](../../../core/services/visible_preview_crypto.py#L19) |
+| function | `reveal_preview` | `(text, user_id)` | — | [src](../../../core/services/visible_preview_crypto.py#L23) |
+
 ## `core/services/visible_run_abandonment.py`
 _Hvad der sker naar et run doer midt-flugt._
 
@@ -515,17 +524,4 @@ _Voice anchor — combined static seed + auto-refreshed external exemplars._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `read_voice_anchor` | `()` | Return concatenated VOICE.md + VOICE_RECENT.md, or empty string. | [src](../../../core/services/voice_anchor.py#L20) |
-
-## `core/services/voice_curator.py`
-_Voice curator — refresh VOICE_RECENT.md from EXTERNAL output only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `refresh_voice_recent` | `()` | Rebuild workspace/VOICE_RECENT.md from external output. | [src](../../../core/services/voice_curator.py#L35) |
-| function | `_pick_diverse` | `(*, chat, chronicle, journals)` | Pick up to _TARGET_TOTAL exemplars, max _MAX_PER_SOURCE per source. | [src](../../../core/services/voice_curator.py#L66) |
-| function | `_format_recent` | `(exemplars)` | Render exemplars as a markdown blob for VOICE_RECENT.md. | [src](../../../core/services/voice_curator.py#L97) |
-| function | `_fetch_chat_exemplars` | `(*, limit)` | Pull recent assistant replies from chat_messages (all sessions). | [src](../../../core/services/voice_curator.py#L113) |
-| function | `_fetch_chronicle_exemplars` | `(*, limit)` | Pull recent chronicle narratives as voice exemplars. | [src](../../../core/services/voice_curator.py#L151) |
-| function | `_fetch_journal_exemplars` | `(*, limit)` | Pull recent journal entry bodies as voice exemplars. | [src](../../../core/services/voice_curator.py#L172) |
-| function | `_strip_frontmatter` | `(text)` | Drop a leading `---\n...\n---\n` YAML block if present. | [src](../../../core/services/voice_curator.py#L205) |
 

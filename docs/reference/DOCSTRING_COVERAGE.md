@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8901/16885 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8901/16891 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8901/16885 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 820 | 1501 | 54% |
-| `core.services` | 5930 | 11460 | 51% |
+| `core.services` | 5930 | 11466 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8901/16885 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2444)
+## Undocumented public functions (2446)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1706,6 +1706,8 @@ Generated from source. 8901/16885 functions/methods documented (52%). The list b
 - `core/services/routine_authorization.py` :: `require_authorized` (L95)
 - `core/services/routine_crypto.py` :: `open_sealed` (L23)
 - `core/services/routine_crypto.py` :: `seal` (L17)
+- `core/services/routine_delivery.py` :: `RoutineDeliveryService.claim_for_run` (L75)
+- `core/services/routine_delivery.py` :: `RoutineDeliveryService.settle` (L79)
 - `core/services/routine_diagnostics.py` :: `project_failure` (L39)
 - `core/services/routine_diagnostics.py` :: `render_projection` (L62)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.effective_policy` (L33)

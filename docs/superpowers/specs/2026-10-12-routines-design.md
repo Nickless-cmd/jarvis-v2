@@ -34,6 +34,8 @@ session.
   owner.
 - Prevent routine content from being written into any ordinary chat or code
   session.
+- Project user-selected routine lifecycle and attention events into Jarvis'
+  durable, user-scoped inbox without using a session inbox.
 - Preserve privacy between household users, including from the owner.
 - Migrate incrementally without a big-bang replacement of the existing
   schedulers and autonomous producers.
@@ -87,6 +89,8 @@ session.
 9. Editing is versioned. A running run finishes against its immutable snapshot;
    later runs use the new version.
 10. Delivery retry never repeats the work performed by the run.
+11. Routine inbox notices are projections of routine events, not a second
+    lifecycle truth, and never route through `session_inbox` or a chat session.
 
 ## 6. Domain model
 
@@ -109,6 +113,8 @@ Required fields:
 - `trigger_config`;
 - `permission_policy`;
 - `delivery_policy`;
+- `inbox_policy`, inherited from the user's defaults and overridable per
+  routine;
 - `retention_policy`;
 - `jarvis_restart_allowed`, default `false`;
 - `status`: `draft`, `active`, `paused`, `stopped`, `archived`, or `deleted`;
@@ -259,6 +265,44 @@ Existing `scheduled_tasks`, `recurring_tasks`, heartbeat, dream, council and
 other producers may initially call this service through adapters. Once adapted,
 they no longer choose a chat destination.
 
+### 9.1 Durable inbox projection
+
+Relevant routine events may create durable posts in Jarvis' existing,
+user-scoped inbox (`inbox_items` through `inbox_state`). They must never use
+`session_inbox`, because that subsystem is tied to conversation delivery and
+would violate routine/session isolation.
+
+The selectable event set includes:
+
+- created and activated;
+- edited;
+- paused and resumed;
+- stopped and restarted;
+- archived and restored;
+- deleted;
+- run failed or cancelled unexpectedly;
+- approval or other user action required;
+- delivery permanently failed;
+- retention action due or performed.
+
+Inbox routing is user-determined:
+
+- each user has default event selections for newly created routines;
+- each routine may override those defaults;
+- system-owner routine policy is configurable only by the owner;
+- event selection controls whether an inbox post is created, while source
+  semantics still determine whether the post is informational or requires
+  action;
+- the listed lifecycle and attention events are enabled by product default,
+  but the user may change their defaults or override one routine.
+
+The Routine event remains the source of truth. The inbox post is an idempotent
+receipt keyed by routine event ID and contains only a safe summary, status,
+timestamp, and deep link to the authorized routine/run view. It does not embed
+instructions, tool payloads, or run output. A delete notice links only to the
+content-free tombstone. Closing or dropping an inbox post does not mutate the
+routine.
+
 ## 10. Jarvis Desk
 
 ### 10.1 Navigation
@@ -299,7 +343,11 @@ The form includes:
 - delivery target;
 - approval policy;
 - stopped-retention behavior;
-- opt-in `Jarvis may restart after stop`.
+- opt-in `Jarvis may restart after stop`;
+- inbox event selections, seeded from the user's defaults.
+
+The Routine library provides an **Inbox defaults** control for future routines.
+Changing the default does not silently rewrite existing per-routine choices.
 
 Creation uses **Save and activate**. Editing paused/stopped routines offers
 ordinary **Save** and a separate **Save and reactivate**.
@@ -360,6 +408,8 @@ Keep responsibilities isolated:
 - **Diagnostic projector:** content-free operational failure surface.
 - **Legacy migrator:** dry-run classification and idempotent import.
 - **Routine API:** user-facing endpoints that depend on the service layer.
+- **Routine inbox projector:** idempotent, user-scoped projection into the
+  existing durable inbox; never a chat/session delivery path.
 
 The API should expose list/create/get/update/delete, lifecycle actions, run-now,
 run cancellation, run list/detail/events, and owner-only redacted diagnostics.
@@ -370,13 +420,14 @@ not.
 
 1. Add schema, repositories, authorization, diagnostic projection, and dry-run
    migration report.
-2. Add a read-only Routine API/UI over the migration projection.
-3. Enable user-created routines and manual **Run now**.
-4. Adapt scheduled and recurring tasks to enqueue routine runs.
-5. Adapt system producers, starting with the least risky and observable.
-6. Verify source/destination counts, then hide migrated autonomous sessions from
+2. Add the inbox projector and user-default/per-routine event policy.
+3. Add a read-only Routine API/UI over the migration projection.
+4. Enable user-created routines and manual **Run now**.
+5. Adapt scheduled and recurring tasks to enqueue routine runs.
+6. Adapt system producers, starting with the least risky and observable.
+7. Verify source/destination counts, then hide migrated autonomous sessions from
    Chat navigation.
-7. Deprecate and later remove legacy autonomous chat routing after a stable
+8. Deprecate and later remove legacy autonomous chat routing after a stable
    observation window.
 
 Every phase remains reversible until legacy routing is finally removed.
@@ -400,11 +451,16 @@ Every phase remains reversible until legacy routing is finally removed.
 - Idempotent trigger, lease loss, crash recovery, stop/cancel, and concurrent
   scheduler tests.
 - Delivery retry tests proving work is not repeated.
+- Inbox projection tests for every selectable lifecycle/attention event,
+  idempotency, user defaults, per-routine overrides, and informational versus
+  action-required semantics.
 
 ### Isolation
 
 - Static and runtime assertions that Routine paths do not append to ordinary
   chat/code sessions.
+- Static and runtime assertions that routine notices use the durable inbox and
+  never `session_inbox`.
 - Cross-user execution-context and workspace isolation tests.
 - Approval-policy tests for risky tools.
 
@@ -420,6 +476,7 @@ Every phase remains reversible until legacy routing is finally removed.
 
 - The same library opens from Chat and Code.
 - Create/edit use dedicated tabs.
+- Create/edit expose inbox event choices inherited from user defaults.
 - Run detail renders observable events without chain-of-thought.
 - Lifecycle controls match server state and survive reload.
 - Dark, light, high-contrast, keyboard, narrow-window, and accessibility tests.

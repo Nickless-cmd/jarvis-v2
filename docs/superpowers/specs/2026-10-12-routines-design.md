@@ -139,6 +139,7 @@ Each trigger creates one run with:
   routine;
 - an idempotency key unique to the logical trigger;
 - routine version plus an encrypted immutable definition snapshot;
+- an encrypted immutable `execution_context_snapshot` as defined in §13.1;
 - status: `queued`, `running`, `succeeded`, `failed`, `cancelling`, `cancelled`,
   or `skipped`;
 - trigger source and timestamps;
@@ -474,6 +475,87 @@ Keep responsibilities isolated:
 - **Routine API:** user-facing endpoints that depend on the service layer.
 - **Routine inbox projector:** idempotent, user-scoped projection into the
   existing durable inbox; never a chat/session delivery path.
+
+### 13.1 Runner mechanism
+
+The runner uses one agentic execution engine, not a second routine-specific
+loop. Today that engine is embedded in
+`core.services.visible_runs._stream_visible_run`: provider/model execution is
+delegated to `core.services.visible_model`, later rounds to
+`core.services.visible_followup`, and server-side tool batches to
+`core.services.visible_tool_exec` and
+`core.services.simple_tool_executor`; prompt construction is delegated to
+`core.services.prompt_contract`. Implementation must extract the
+session-neutral model/tool/agentic-round kernel behind that flow and make both
+the visible-run adapter and the routine runner call it. The runner must not
+call `start_visible_run()` or `_stream_visible_run()` as its execution API and
+must not create a parallel agentic loop. `heartbeat_runtime` remains a trigger
+and bounded-decision producer; its `_execute_heartbeat_model()` /
+`_execute_heartbeat_internal_action()` path is not a routine execution engine.
+
+The shared kernel includes provider dispatch and streaming, bounded agentic
+rounds, tool definition/scoping and server-side execution, approvals, usage
+accounting, and session-neutral prompt sections. The routine adapter must not
+inherit visible-run session behavior: no `chat_session_id`, chat transcript,
+session model pin or owner override, session lifecycle hook, midway nudge,
+SSE/client destination, `local_tool_broker` path, session persistence, or
+`append_chat_message()`. Results leave the kernel only through the run recorder
+and, after execution, the delivery outbox. This is the concrete cut that
+prevents both a second runner and a half-reused visible runner.
+
+The kernel executes a `RoutineExecutionContext`, persisted as the encrypted
+`routine_runs.execution_context_snapshot` and materialized for the claimed
+generation. It contains `run_id`, `routine_id`, routine version and immutable
+instruction snapshot reference/hash, owner and access scope, trigger inputs,
+workspace binding (`workspace_name`, `workspace_kind`, `workspace_root`),
+capability/tool scope, permission and approval policy, resolved provider/model,
+prompt-assembly inputs, and the lease generation. It inherits from session
+execution only the owner-scoped workspace identity, tool/trust scope, and the
+session-neutral identity, memory, skill, and runtime inputs used by prompt
+assembly. It explicitly has no session ID, transcript, chat destination,
+attachments, pending chat approval, or session-derived continuity. Prompt
+assembly therefore gets a routine entry point over the shared prompt sections;
+passing a fabricated session ID to `build_visible_chat_prompt_assembly()` is a
+violation. The snapshot is execution input, not a second lifecycle truth: its
+values are resolved from the version snapshot and run fields in §6 when the
+claim in §9 is created.
+
+The Routine repository issues the lease as part of one atomic
+`queued -> running` claim. The claim records an opaque worker holder,
+increments a monotonically increasing generation/fencing token, and sets
+`lease_expires_at`. The default lease is 90 seconds and the holder renews it
+every 30 seconds, matching the existing fenced contract in
+`core.runtime.db_agent_lease`; both values remain configurable together. Every
+tool dispatch and every run/event/status write must prove the current,
+unexpired generation. A worker that cannot renew stops before the next tool or
+write. After expiry, the reconciler in §12 reclaims with a compare-and-swap on
+the expired generation and advances the generation. It may requeue only when
+the event/receipt record proves that no effect is in flight; an open or unknown
+tool outcome is recorded as a failed run with an outcome-unknown diagnostic
+and is never blindly replayed.
+
+Cancellation is durable, not merely an in-process flag. The Routine service
+atomically moves a running run to `cancelling`; the runner checks that state and
+its lease immediately before every tool dispatch and between model rounds, and
+must emit no new tool request after observing it. It asks the existing tool
+execution layer to cancel an in-flight call where supported, then waits a
+bounded interval for its receipt/result. A completed receipt is recorded; an
+effect whose outcome cannot be established is recorded as unknown and is not
+retried. No further model round runs after cancellation. The current holder, or
+the §12 reconciler after lease revocation/loss, then records the cancellation
+settlement and moves `cancelling -> cancelled`.
+
+For every claimed generation, the run recorder must append, in order where
+applicable, `execution_claimed` (holder, generation, expiry),
+`execution_started` (context snapshot hash, routine version, provider/model),
+`tool_requested` before each dispatch, `tool_result` after each settled or
+unknown outcome, and output fragments/final result permitted by §6.3. Lease
+loss/reclaim appends `execution_stopped` for the old generation followed by the
+next generation's claim. The run as a whole has exactly one terminal
+`execution_completed`, `execution_failed`, or `execution_cancelled` event. Tool
+arguments/results and instruction content remain encrypted and owner-scoped;
+events contain observable inputs, actions, outputs, timings, usage, and stable
+diagnostics, never private chain-of-thought.
 
 The API should expose list/create/get/update/delete, lifecycle actions, run-now,
 run cancellation, run list/detail/events, and owner-only redacted diagnostics.

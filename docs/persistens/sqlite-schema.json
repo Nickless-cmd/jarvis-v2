@@ -9153,7 +9153,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -18306,7 +18306,7 @@
       "created_at_formats": []
     },
     "events": {
-      "digest": "05:47:66:70:ca:04:ba:63:72:de:c3:be:8d:51:d1:a3:8d:4d:b1:22:5a:f9:18:f6:3f:5b:20:93:4b:91:d5:00",
+      "digest": "90:ec:6a:88:4b:f2:12:71:55:cc:3e:75:fb:54:1e:b3:b6:0f:03:e7:2f:d0:1c:9a:d7:f7:22:37:10:67:ec:74",
       "schema": {
         "columns": [
           {
@@ -18342,7 +18342,32 @@
             "hidden": 0
           }
         ],
-        "indexes": []
+        "indexes": [
+          {
+            "name": "idx_events_kind_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_events_kind_created ON events (kind, created_at)"
+          }
+        ]
       },
       "created_at_formats": [
         "iso_utc_offset"

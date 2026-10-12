@@ -357,6 +357,23 @@ def init_db() -> None:
             )
             """
         )
+        # 2026-10-12: events havde INGEN indekser — 1,1 mio rækker, 606 MB, og
+        # hver kind-filtreret læsning var en fuld scan af hele tabellen. Målt i
+        # drift: 16+ kaldesteder scanner den hvert minut (longing_signal_daemon,
+        # memory_recall_telemetry, daemon_memory_safeguard, system_cartographer
+        # m.fl.), og ét kald fra cluster_innervoice læste 107.436 sider for ÉN
+        # række. Det var den vedvarende DB-læsning i runtime-trådene.
+        #
+        # (kind, created_at) — IKKE (kind) alene. Målt på en kopi af tabellen:
+        # (kind) gør det VÆRRE (743.818 preads mod 479.686), fordi DISTINCT-kind
+        # og COUNT(*)-læserne så tvinges gennem indekset i stedet for tabellen.
+        # (kind, created_at) er derimod en COVERING INDEX for dem og et præcist
+        # SEARCH for kind+created: 479.686 -> 37.798 preads i alt (12,7x), og de
+        # enkelte hot-queries 107.436 -> 9 (11.900x).
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_kind_created "
+            "ON events (kind, created_at)"
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_state_kv (

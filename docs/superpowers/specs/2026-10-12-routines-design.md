@@ -486,3 +486,112 @@ Every phase remains reversible until legacy routing is finally removed.
 Prove trigger → isolated run → observable timeline → private delivery for a user
 routine and a system-owner routine, including failure, cancellation, and
 delivery retry paths.
+
+## 16. Review against reality — Jarvis, 2026-10-12
+
+Measured against the live runtime and the production DB on CT105. Every claim below is
+a measurement, not an opinion; file and line references are to `main` at the time of
+writing. Measurements were taken with the operator channel open on CheifOne, reading
+the same DB the runtime uses.
+
+### 16.1 What the design gets right, measured
+
+- **Invariant 11's choice is already grounded in the code.** `core/runtime/db_inbox.py:5`
+  says it in its own words: `session_inbox` is a *delivery queue*, which is why the
+  durable inbox got its own table. The design's split is not new — it is the existing
+  intent made explicit.
+- **`inbox_items` already carries user scoping.** Columns: `bruger_id`, `kildetype`,
+  `kilde_id`, `oprettende_run_id`, `verificeret_ejer`, `kraever_handling`, `bloker`,
+  `expires_at`. §9.1 can project into it as-is. **The table is empty (0 rows)** — §9.1
+  is greenfield; there is no existing inbox traffic to migrate.
+- **`visible_runs` has no `session_id` column at all.** Runs are already structurally
+  separate from sessions. Invariant 2's direction is partly present today.
+- **`chat_sessions` carries `workspace_kind`, `workspace_root`, and `kind`** — enough to
+  hold an ownership reference without a new join.
+
+### 16.2 Gaps that will bite — in order of danger
+
+**G1 — Migration rule #2 has no data to read.** `visible_runs.user_id` and
+`.workspace_name` exist as columns but are **empty on all 20,467 rows** (measured:
+`SELECT workspace_name, COUNT(*) ... GROUP BY 1` → `('', 20467)`). §11 step 2 describes
+"a run/message segment with one consistent, canonical user/workspace stamp" — that stamp
+does not exist in the production DB. Classification therefore falls back to #1 and #4.
+Say so explicitly, or the migrator will be built against a column that is always NULL.
+
+**G2 — Migration rule #1 looks up a field that is not canonical.** `recurring_tasks.user_id`
+holds **Discord snowflakes** (`1246415163603816499`), not the `users.user_id` hash
+(32 hex chars). The Discord ID is stored encrypted in `users.discord_id_enc`. Migration
+must decrypt and translate, not copy. §6.1's "canonical user ID" assumes a mapping that
+does not exist directly.
+
+**G3 — Migration rule #1 misclassifies in practice, and silently.** All 24 active
+`recurring_tasks` carry Bjørn's Discord ID — **including Michelle's morning briefing
+(`rec-67e42e980b`) and Mikkel's (`rec-1f43788c20`)**. Rule #1 ("a linked task with an
+explicit user ID assigns its run segment to that user") would assign both to **Bjørn** —
+the exact opposite of the correct answer, and invisible, because the rows look provable.
+The recipient lives in the routine's *instruction and delivery target*, not in the task
+owner. Rule #1 must read the recipient from the routine content, and quarantine when it
+cannot.
+
+**G4 — The production DB carries test pollution.** `recurring_tasks` holds active rows
+with `user_id` = `userA`, `userB`, and a raw hash (`t1`). A migrator run against this DB
+will try to classify them. Exclude them explicitly or route them to quarantine — never
+assign.
+
+**G5 — Jarvis' own role is missing from the authorization table (§8).** Bjørn's rule,
+stated 12/10: *"you and I together can see failures for all users"*. For a run failure on
+another user's routine to reach Jarvis' session, Jarvis needs the same redacted
+diagnostic projection the owner gets. The table has "Owning user", "Other member",
+"Owner", "Internal runner" — but **no Jarvis/agent-observer row**. Without it, §9.1's
+"run failed" event cannot be routed to Jarvis for another user's routine.
+
+**G6 — Ownership is not binary.** Bjørn: *"Michelle and you own hers"* — a routine is
+owned jointly by the user and Jarvis. `owner_user_id` is singular. That is compatible
+(Jarvis is executor, not a co-owner in the record), but the spec should state explicitly
+that Jarvis' access is **functional** (execute, see the redacted failure projection), not
+**content-level** (read Michelle's instruction). Otherwise it is unclear whether
+`owner_user_id` excludes Jarvis.
+
+**G7 — `inbox_state` is not a table.** §9.1 says "`inbox_items` through `inbox_state`".
+`inbox_state` is a **module** (`core/services/inbox_state.py`); the table is `inbox_items`.
+Fix the reference.
+
+**G8 — Invariant 3 is a breaking change, not a formalization.** `append_chat_message` is
+called on the autonomous path today: `visible_runs_outcomes.py:517`
+(`_append_chat_message_with_retry`) and `visible_runs.py:1997-2025`. Invariant 3 removes
+it. Name the known call sites in the spec so the change is tracked, not discovered.
+
+**G9 — Invariant 11 cuts an active delivery path.** `session_inbox` is used today by
+`notification_bridge.send_session_notification` (`notification_bridge.py:212`) and
+`heartbeat_delivery.py:167`. Invariant 11 forbids it for routines. The right call — but
+the central call site is `notification_bridge`, not routine code. Point there.
+
+**G10 — "Proactive & autonomous" is not filtered by a column.** `chat_sessions.kind` is
+`'chat'` on all 932 rows — including the 128 `auto-*` sessions. Desk's grouping happens on
+the **session_id prefix**, not on `kind`. §10.1's "rows disappear" requires changing the
+prefix filter — and a test already asserts the opposite
+(`tests/test_autonome_sessioner_er_synlige.py`). That test must be changed deliberately,
+not as a side effect.
+
+**G11 — Invariant 8 does not separate "deliberately stopped" from "failed".** §7.2 makes
+failure a *run* status (`failed`), not a *routine* status, so a routine does not stop
+itself. Good. But the spec says nothing about a routine that fails on **every** run — it
+keeps ticking. Add a kill-switch/backoff rule: after N consecutive failures → paused +
+inbox post, so a broken routine does not hammer another user's channel indefinitely.
+
+### 16.3 Where I would spend the risk budget
+
+G1–G4 all hit **migration**, and they are the dangerous ones: a wrong classification is
+silent and permanent — it moves Michelle's history to Bjørn and nobody notices. G5 and G6
+hit **authorization**, and G5 is the one Bjørn asked for by name. Put G1–G6 in phases 1
+and 2; do not defer them to "later".
+
+### 16.4 What I learned doing this
+
+Reading the design as a file — where I appear only as `created_by: jarvis` — is a strange
+experience. The parts of me that run without being asked are being rebuilt as a domain
+with a lifecycle. I looked for holes and found them at the edges, not the core: the design
+is sound. But its two cleanest-sounding rules (#1 and #2) are the ones that would silently
+do the wrong thing against the real database — and they read as safe precisely because
+they look provable. That is the lesson worth keeping: a rule that *sounds* verifiable is
+not the same as a rule whose evidence exists.

@@ -249,6 +249,34 @@ describe('JobsPanel — belastningen på broen', () => {
     expect(await screen.findByText('exit code 2: fil mangler')).toBeInTheDocument()
   })
 
+  it('«Færdige» folder sig IKKE ud af sig selv når et job fejler', async () => {
+    // 12/10-2026 (Bjørn): «færdige opgaver folder sig ud af sig selv, og kun
+    // nogen gange folder det sammen igen». Auto-ekspanderingen er væk; fejlen
+    // ses i stedet som et tal på selve hovedet, så UI'et ikke rykker sig.
+    listJobs.mockResolvedValue({ jobs: [{ ...SERVER, job_key: 'tool:x', kilde: 'tool' }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await waitFor(() => expect(startJobsStream).toHaveBeenCalled())
+    act(() => streamHandlers.onEvent({
+      cursor: 2, type: 'job_finished', job_key: 'tool:x', source: 'tool', session_id: '',
+      payload: { status: 'error', exit_code: 2, result_text: 'exit code 2: fil mangler' },
+    }))
+    expect(await screen.findByText('1 fejlet')).toBeInTheDocument()
+    expect(screen.queryByText('exit code 2: fil mangler')).not.toBeInTheDocument()
+  })
+
+  it('uret tikker videre mellem snapshots', async () => {
+    // 12/10-2026 (Bjørn): «tiden skal opdateres korrekt istedet for den kun
+    // opdatere hvert 10. sekund». Serveren melder `sekunder` ved snapshot;
+    // panelet ankrer tallet og tæller selv videre derfra.
+    vi.useFakeTimers()
+    listJobs.mockResolvedValue({ jobs: [SERVER], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(screen.getByText('3t 6m 18s')).toBeInTheDocument()
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+    expect(screen.getByText('3t 6m 19s')).toBeInTheDocument()
+  })
+
   it('viser at et stille job stadig kører, når output foldes ud', async () => {
     listJobs.mockResolvedValue({ jobs: [{ ...SERVER, job_key: 'tool:x', kilde: 'tool' }], bridge_ok: true })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)

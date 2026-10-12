@@ -46,6 +46,31 @@ describe('liveJobs', () => {
     })
   })
 
+  it('genopliver IKKE et faerdigt job naar stroemmen replayer job_started', () => {
+    // Maalt 12/10-2026: stroemmen genoptager fra sin cursor efter et afbrudt
+    // forloeb, og et sent `job_started` satte status tilbage til 'running'.
+    // Tre server-shells blinkede frem i panelet mens ingen skrev noget.
+    let state = emptyLiveJobs()
+    state = applyJobEvent(state, event('job_started', { tool: 'bash' }, 1))
+    state = applyJobEvent(state, event('job_finished', {
+      status: 'error', exit_code: 2, result_text: 'exit code 2: fil mangler',
+    }, 2))
+    state = applyJobEvent(state, event('job_started', { tool: 'bash' }, 3))
+    expect(state.byKey['tool:x']).toMatchObject({ status: 'error', exit_code: 2 })
+  })
+
+  it('lader et job med en ANDEN noegle starte uanset guarden', () => {
+    let state = emptyLiveJobs()
+    state = applyJobEvent(state, event('job_started', { tool: 'bash' }, 1))
+    state = applyJobEvent(state, event('job_finished', { status: 'exited', exit_code: 0 }, 2))
+    state = applyJobEvent(state, {
+      cursor: 3, type: 'job_started', job_key: 'tool:y', session_id: 's', source: 'tool',
+      payload: { tool: 'bash', tool_use_id: 'y' },
+    })
+    expect(state.byKey['tool:y']).toMatchObject({ status: 'running' })
+    expect(state.byKey['tool:x']).toMatchObject({ status: 'exited' })
+  })
+
   it('et snapshot erstatter listen og brostatus', () => {
     const state = fromSnapshot({ jobs: [running], bridge_ok: false, uspecificeret: 2 }, 20)
     const next = applyJobEvent(state, {

@@ -125,6 +125,15 @@ export function JobsPanel({
   // der to-tre kald i koe paa hans maskine for ét aabent panel.
   const undervejs = useRef(false)
 
+  // Live ur (12/10-2026, Bjørn: «tiden skal opdateres korrekt istedet for den
+  // kun opdatere hvert 10. sekund»). Serveren melder `sekunder`, men kun når
+  // der kommer et snapshot — altså hvert tiende sekund. Panelet ankrer derfor
+  // hvert NYT sekundtal fra serveren til det øjeblik det ankom, og tæller selv
+  // videre derfra. To ure der hver for sig opfinder tiden ville drive fra
+  // hinanden; her flyttes ankeret kun når SERVEREN siger et nyt tal.
+  const [tik, setTik] = useState(0)
+  const anker = useRef<Record<string, { sek: number; ved: number }>>({})
+
   const hent = useCallback(() => {
     if (!config || undervejs.current) return
     undervejs.current = true
@@ -155,9 +164,11 @@ export function JobsPanel({
           setBroOk(event.bridge_ok !== false)
           setUspecificeret(event.uspecificeret ?? 0)
         }
-        if (event.type === 'job_finished' && event.payload?.status === 'error') {
-          setFaerdigeAabne(true)
-        }
+        // 12/10-2026 (Bjørn): auto-ekspanderingen af «Færdige» ved en fejl er
+        // FJERNET. Den foldede sektionen ud af sig selv midt i læsningen og
+        // foldede aldrig selv sammen igen — brugerens valg tabte til maskinens.
+        // En fejl skal stadig ses: antallet står nu på selve hovedet
+        // (`fejledeAntal`), så signalet er der uden at rykke UI'et.
       },
       onError: () => {
         setStreamFejl('Live jobstrøm afbrudt — viser seneste øjebliksbillede.')
@@ -187,8 +198,36 @@ export function JobsPanel({
   const agenterKoerer = agentRaekker.filter((r) => !r.attention)
   const agenterOpmaerksomhed = agentRaekker.filter((r) => r.attention)
   const koererTotal = koerende.length + agenterKoerer.length
+  // Antallet af færdige med fejl. Det står på «Færdige»-hovedet, så en fejl kan
+  // ses uden at sektionen folder ud af sig selv (12/10-2026).
+  const fejledeAntal = faerdige.filter(
+    (j) => (typeof j.exit_code === 'number' && j.exit_code !== 0) || Boolean(j.error),
+  ).length
+  // Færdige der skal være SYNLIGE: hele listen når sektionen er åben, ellers
+  // kun dem brugeren selv har foldet output ud på.
+  const synligeFaerdige = faerdige.filter((j) => faerdigeAabne || aabneJobs.has(jobKey(j)))
 
   useEffect(() => { onCount?.(koererTotal) }, [koererTotal, onCount])
+
+  // Ankeret flyttes KUN når serveren melder et nyt sekundtal for jobbet — ikke
+  // ved hvert event. Ellers ville et output-chunk nulstille ankeret til
+  // serverens gamle tal, og uret ville hoppe baglæns.
+  useEffect(() => {
+    const nu = Date.now()
+    for (const j of Object.values(liveJobs.byKey)) {
+      if (typeof j.sekunder !== 'number') continue
+      const k = jobKey(j)
+      const a = anker.current[k]
+      if (!a || a.sek !== j.sekunder) anker.current[k] = { sek: j.sekunder, ved: nu }
+    }
+  }, [liveJobs])
+
+  // Sekund-tik mens der kører noget. Uden den stod uret stille mellem snapshots.
+  useEffect(() => {
+    if (koerende.length === 0) return
+    const id = window.setInterval(() => setTik((t) => t + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [koerende.length])
 
   const aabnAgent = (r: ContractAgentRow) => onOpenAgent?.({
     agentId: r.agent_id, role: r.role, goal: r.goal, status: r.bucket, dispatchToolUseId: '',
@@ -240,6 +279,14 @@ export function JobsPanel({
     } finally { setTravl('') }
   }
 
+  /** Sekunder jobbet har kørt — serverens tal plus tiden siden det ankom. */
+  const levendeSek = (j: BackgroundJob): number | null => {
+    const a = anker.current[jobKey(j)]
+    if (!a) return typeof j.sekunder === 'number' ? j.sekunder : null
+    void tik // `tik` ER re-renderet; uden den står uret stille mellem snapshots.
+    return a.sek + (Date.now() - a.ved) / 1000
+  }
+
   const kort = (j: BackgroundJob, faerdig: boolean) => (
     <li className={`jobs-kort${faerdig ? ' er-faerdig' : ''}`} key={jobKey(j)}>
       <div className="jobs-kort-tekst">
@@ -275,7 +322,7 @@ export function JobsPanel({
             )
           ) : (
             <>
-              <span className="jobs-tid">{varighed(j.sekunder)}</span>
+              <span className="jobs-tid">{varighed(levendeSek(j))}</span>
               {j.status === 'paused' && <span className="jobs-exit">pauset</span>}
             </>
           )}
@@ -391,6 +438,11 @@ export function JobsPanel({
           >
             {faerdigeAabne ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             Færdige <span className="jobs-count">{faerdige.length}</span>
+            {fejledeAntal > 0 && (
+              <span className="jobs-exit er-fejl" title={`${fejledeAntal} færdige med fejl`}>
+                {fejledeAntal} fejlet
+              </span>
+            )}
           </button>
           {isOwner && (
             <button
@@ -402,8 +454,16 @@ export function JobsPanel({
           )}
         </div>
       )}
-      {faerdigeAabne && faerdige.length > 0 && (
-        <ul className="jobs-liste">{faerdige.map((j) => kort(j, true))}</ul>
+      {synligeFaerdige.length > 0 && (
+        /* Et færdigt job hvis output brugeren SELV har foldet ud, bliver
+           stående synligt — også når sektionen er lukket. Ellers ville en fejl
+           forsvinde ned i en kollapset sektion i samme øjeblik den skete, og
+           brugerens egen handling ville blive ophævet af maskinen.
+           12/10-2026: dette ERSTATTER auto-ekspanderingen, der foldede hele
+           sektionen ud af sig selv og aldrig selv sammen igen. */
+        <ul className="jobs-liste">
+          {synligeFaerdige.map((j) => kort(j, true))}
+        </ul>
       )}
     </aside>
   )

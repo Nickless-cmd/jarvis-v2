@@ -26,6 +26,14 @@ export function jobKey(job: BackgroundJob): string {
   return job.job_key || job.id
 }
 
+/** Er jobbet slut? Kun `running` og `paused` er levende tilstande — alt andet
+ *  (exited, error, failed, cancelled, timeout, lost) er en afsluttet række.
+ *  Ukendte statusser tælles som sluttede: vi genopliver ikke på et gæt. */
+export function erTerminal(status: unknown): boolean {
+  const s = String(status ?? '')
+  return s !== '' && s !== 'running' && s !== 'paused'
+}
+
 export function emptyLiveJobs(): LiveJobsState {
   return { byKey: {}, order: [], cursor: 0, bridgeOk: true, uspecificeret: 0 }
 }
@@ -97,6 +105,14 @@ export function applyJobEvent(state: LiveJobsState, event: LiveJobEvent): LiveJo
   let order = state.order
   if (event.type === 'job_started') {
     const old = byKey[key]
+    // Et job der allerede er SLUTTET må ikke genoplives af et replay.
+    // Strømmen genoptager fra sin cursor efter et afbrudt forløb, og serveren
+    // kan derfor sende `job_started` for et job hvis slutning vi allerede har
+    // set. Uden denne vagt hoppede færdige server-jobs tilbage i «Kører» et
+    // øjeblik — målt 12/10-2026: tre shells blinkede frem mens ingen skrev.
+    if (old && erTerminal(old.status)) {
+      return { ...state, cursor: Math.max(state.cursor, event.cursor || 0) }
+    }
     byKey[key] = { ...startedJob(event), ...old, status: 'running', stale: false }
     if (!old) order = [...order, key]
   } else if (event.type === 'job_output') {

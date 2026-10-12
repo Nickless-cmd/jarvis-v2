@@ -67,16 +67,16 @@ _Tool description embedding cache._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_embed_base` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
-| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L36) |
-| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L50) |
-| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L54) |
-| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L59) |
-| function | `_compute_embedding` | `(text, *, timeout_s=…)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L70) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L89) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L109) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L115) |
-| function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L126) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L147) |
+| function | `_connect` | `()` | Egen database (tool_embeddings.sqlite) — IKKE poolen, som peger på jarvis.db. | [src](../../../core/services/tool_embeddings.py#L36) |
+| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L60) |
+| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L64) |
+| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L69) |
+| function | `_compute_embedding` | `(text, *, timeout_s=…)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L80) |
+| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L99) |
+| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L119) |
+| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L125) |
+| function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L136) |
+| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L157) |
 
 ## `core/services/tool_execution_trace.py`
 _Process-local timing and bounded live-output state for visible tool calls._

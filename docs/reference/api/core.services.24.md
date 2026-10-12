@@ -481,16 +481,16 @@ _Session inbox — gates daemon notifications during active sessions._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/session_inbox.py#L59) |
-| function | `_connect` | `()` | — | [src](../../../core/services/session_inbox.py#L90) |
-| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L100) |
-| function | `enqueue` | `(*, session_id, content, source, urgent=…, user_id=…, workspace_name=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L145) |
-| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L186) |
-| function | `_maerket` | `(indhold)` | Kilde-mærk en leveret notifikation. Fail mod at MÆRKE. | [src](../../../core/services/session_inbox.py#L205) |
-| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L225) |
-| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L354) |
-| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L379) |
-| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L463) |
-| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L480) |
+| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/session_inbox.py#L90) |
+| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L111) |
+| function | `enqueue` | `(*, session_id, content, source, urgent=…, user_id=…, workspace_name=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L156) |
+| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L197) |
+| function | `_maerket` | `(indhold)` | Kilde-mærk en leveret notifikation. Fail mod at MÆRKE. | [src](../../../core/services/session_inbox.py#L216) |
+| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L236) |
+| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L365) |
+| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L390) |
+| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L474) |
+| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L491) |
 
 ## `core/services/session_milestones.py`
 _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter._

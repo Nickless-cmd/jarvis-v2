@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8899/16814 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8907/16814 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 817 | 1471 | 55% |
-| `core.services` | 5929 | 11418 | 51% |
+| `core.services` | 5937 | 11418 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -785,7 +785,7 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/attention_contour.py` :: `describe_attention` (L114)
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
 - `core/services/auto_code_review.py` :: `review_pending_commit` (L77)
-- `core/services/auto_remember_subscriber.py` :: `stop_auto_remember_subscriber` (L457)
+- `core/services/auto_remember_subscriber.py` :: `stop_auto_remember_subscriber` (L467)
 - `core/services/automation_dsl.py` :: `build_automation_dsl_surface` (L228)
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)
 - `core/services/automation_dsl.py` :: `list_automations` (L190)
@@ -1072,7 +1072,7 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
 - `core/services/daemon_manager.py` :: `get_daemon_names` (L793)
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L840)
-- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
+- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L308)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
@@ -1277,7 +1277,7 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
 - `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L116)
-- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L427)
+- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L439)
 - `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L53)
 - `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
 - `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L41)
@@ -1387,7 +1387,7 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L52)
 - `core/services/metabolism_state_signal_tracking.py` :: `refresh_runtime_metabolism_state_signal_statuses` (L48)
 - `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L38)
-- `core/services/metacognition_signal_tracker.py` :: `stop_metacognition_tracker` (L359)
+- `core/services/metacognition_signal_tracker.py` :: `stop_metacognition_tracker` (L370)
 - `core/services/metacognitive_integration.py` :: `build_metacognitive_integration_surface` (L494)
 - `core/services/mirror_engine.py` :: `build_mirror_surface` (L56)
 - `core/services/missions_pipeline.py` :: `build_missions_surface` (L350)
@@ -1878,8 +1878,8 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/sensory_archive.py` :: `search` (L467)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L354)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L480)
+- `core/services/session_inbox.py` :: `pending_count` (L365)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L491)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
@@ -1936,9 +1936,9 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/spaced_repetition.py` :: `build_spaced_repetition_surface` (L174)
 - `core/services/spaced_repetition.py` :: `get_profile` (L170)
 - `core/services/spaced_repetition.py` :: `list_due_reviews` (L103)
-- `core/services/spatial_entity_ledger.py` :: `list_observed_entities` (L218)
-- `core/services/spatial_entity_ledger.py` :: `recently_observed` (L252)
-- `core/services/spatial_entity_ledger.py` :: `stop_spatial_entity_ledger` (L371)
+- `core/services/spatial_entity_ledger.py` :: `list_observed_entities` (L229)
+- `core/services/spatial_entity_ledger.py` :: `recently_observed` (L263)
+- `core/services/spatial_entity_ledger.py` :: `stop_spatial_entity_ledger` (L382)
 - `core/services/staged_edits.py` :: `StagedBatch.from_dict` (L98)
 - `core/services/staged_edits.py` :: `StagedBatch.to_dict` (L89)
 - `core/services/staged_edits.py` :: `StagedEdit.from_dict` (L67)
@@ -2002,8 +2002,8 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/text_resonance.py` :: `recent_resonances` (L191)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
-- `core/services/theory_of_mind.py` :: `recent_facts` (L286)
-- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)
+- `core/services/theory_of_mind.py` :: `recent_facts` (L297)
+- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L482)
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)
 - `core/services/thought_action_proposal_daemon.py` :: `build_proposal_surface` (L142)
 - `core/services/thought_action_proposal_daemon.py` :: `get_pending_proposals` (L138)
@@ -2017,8 +2017,8 @@ Generated from source. 8899/16814 functions/methods documented (52%). The list b
 - `core/services/tool_contract_shadow.py` :: `pr_vaerktoej` (L41)
 - `core/services/tool_contract_shadow.py` :: `taellere` (L37)
 - `core/services/tool_contract_shadow.py` :: `taellere_fra_cache` (L57)
-- `core/services/tool_embeddings.py` :: `get_embedding` (L89)
-- `core/services/tool_embeddings.py` :: `invalidate` (L109)
+- `core/services/tool_embeddings.py` :: `get_embedding` (L99)
+- `core/services/tool_embeddings.py` :: `invalidate` (L119)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.drain` (L61)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.put` (L40)
 - `core/services/tool_execution_trace.py` :: `bind_execution` (L297)

@@ -93,3 +93,7 @@ class RoutineDeliveryService:
                 raise StaleDeliveryLease("delivery lease is no longer current") from exc
             raise
         return _view(row)
+
+    def record_terminal_failure(self, *, run_id: str) -> None:
+        """Record no execution failure state; delivery owns its retry budget."""
+        _ = run_id

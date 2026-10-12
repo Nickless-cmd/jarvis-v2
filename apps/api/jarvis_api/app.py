@@ -324,6 +324,12 @@ def create_app() -> FastAPI:
             logger.warning("kunne ikke starte recovery-dispatcheren", exc_info=True)
         if runtime_services_enabled:
             try:
+                from core.services.routine_runtime import start_routine_runtime
+                start_routine_runtime()
+                logger.info("routine runtime started")
+            except Exception:
+                logger.warning("routine runtime could not start", exc_info=True)
+            try:
                 # Lytterne bor her, men desk'ens chat kører i API-processen.
                 # Relæet leverer den anden proces' events til lokale lyttere
                 # (core/eventbus/krydsproces.py, målt 19/9-2026).
@@ -726,6 +732,8 @@ def create_app() -> FastAPI:
         _trin: list[tuple[str, object]] = []
         if runtime_services_enabled:
             _trin += [
+                ("stop_routine_runtime",
+                 _senere("core.services.routine_runtime", "stop_routine_runtime")),
                 ("stop_heartbeat_scheduler", stop_heartbeat_scheduler),
                 ("stop_notification_bridge", stop_notification_bridge),
                 ("stop_scheduled_tasks_service", stop_scheduled_tasks_service),

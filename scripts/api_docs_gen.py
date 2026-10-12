@@ -17,6 +17,9 @@ _SKIP = {"__pycache__", "tests", "node_modules"}
 _PINNED_PAGES = {
     ("core.services", "agentic_execution"): "core.services.routine-execution",
     ("core.services", "routine_prompt"): "core.services.routine-execution",
+    ("core.services", "routine_runner"): "core.services.routine-execution",
+    ("core.services", "routine_reconciler"): "core.services.routine-execution",
+    ("core.services", "routine_runtime"): "core.services.routine-execution",
 }
 
 

@@ -11,7 +11,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Mapping
 
 from core.runtime.db_core import connect
@@ -97,6 +97,7 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
             trigger_source TEXT NOT NULL,
             lease_holder TEXT,
             lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation >= 0),
+            lease_expires_at TEXT,
             provider TEXT NOT NULL DEFAULT '',
             model TEXT NOT NULL DEFAULT '',
             usage_enc BLOB,
@@ -113,6 +114,18 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_routine_runs_claim
             ON routine_runs(status, created_at);
+
+        CREATE TABLE IF NOT EXISTS routine_tool_effects (
+            effect_id TEXT PRIMARY KEY,
+            run_id TEXT NOT NULL REFERENCES routine_runs(run_id),
+            call_id TEXT NOT NULL,
+            tool_name_enc BLOB NOT NULL,
+            lease_generation INTEGER NOT NULL CHECK(lease_generation >= 1),
+            status TEXT NOT NULL CHECK(status IN ('dispatching','succeeded','failed','outcome_unknown')),
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            UNIQUE(run_id, call_id)
+        );
 
         CREATE TABLE IF NOT EXISTS routine_run_events (
             event_id TEXT PRIMARY KEY,
@@ -187,6 +200,9 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(routine_runs)")}
+    if "lease_expires_at" not in columns:
+        conn.execute("ALTER TABLE routine_runs ADD COLUMN lease_expires_at TEXT")
 
 
 def _definition_snapshot(values: Mapping[str, Any]) -> dict[str, Any]:
@@ -591,6 +607,7 @@ def delete_routine_content(routine_id: str, *, reason_code: str = "user_deleted"
             ).fetchall()]
             for run_id in run_ids:
                 conn.execute("DELETE FROM routine_deliveries WHERE run_id=?", (run_id,))
+                conn.execute("DELETE FROM routine_tool_effects WHERE run_id=?", (run_id,))
                 conn.execute("DELETE FROM routine_run_events WHERE run_id=?", (run_id,))
             conn.execute("DELETE FROM routine_runs WHERE routine_id=?", (routine_id,))
             conn.execute("DELETE FROM routine_versions WHERE routine_id=?", (routine_id,))
@@ -625,7 +642,9 @@ def read_run_events(run_id: str, *, decrypt_for: str | None = None) -> list[dict
     return events
 
 
-def claim_run(run_id: str, *, holder: str) -> dict[str, Any] | None:
+def claim_run(
+    run_id: str, *, holder: str, now: datetime | None = None, lease_seconds: int = 90,
+) -> dict[str, Any] | None:
     holder = str(holder or "").strip()
     if not holder:
         raise ValueError("holder is required")
@@ -638,16 +657,262 @@ def claim_run(run_id: str, *, holder: str) -> dict[str, Any] | None:
             return dict(row)
         if row["status"] != "queued" or row["lease_holder"]:
             return None
-        now = _now()
+        claimed_at = now or datetime.now(UTC)
+        now_text = claimed_at.isoformat()
+        expires_at = (claimed_at + timedelta(seconds=lease_seconds)).isoformat()
         changed = conn.execute(
             "UPDATE routine_runs SET status='running',lease_holder=?,lease_generation=lease_generation+1,"
-            "started_at=COALESCE(started_at,?),updated_at=? WHERE run_id=? AND status='queued' "
+            "lease_expires_at=?,started_at=COALESCE(started_at,?),updated_at=? "
+            "WHERE run_id=? AND status='queued' "
             "AND lease_holder IS NULL",
-            (holder, now, now, run_id),
+            (holder, expires_at, now_text, now_text, run_id),
         )
         if changed.rowcount != 1:
             return None
         return dict(conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone())
+
+
+def renew_run_lease(
+    run_id: str, *, holder: str, expected_generation: int,
+    now: datetime | None = None, lease_seconds: int = 90,
+) -> dict[str, Any]:
+    current = now or datetime.now(UTC)
+    with connect() as conn:
+        _ensure_tables(conn)
+        changed = conn.execute(
+            "UPDATE routine_runs SET lease_expires_at=?,updated_at=? WHERE run_id=? "
+            "AND status='running' AND lease_holder=? AND lease_generation=?",
+            ((current + timedelta(seconds=lease_seconds)).isoformat(), current.isoformat(),
+             run_id, holder, expected_generation),
+        )
+        if changed.rowcount != 1:
+            raise ValueError("stale routine lease")
+        return dict(conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone())
+
+
+def reclaim_run(
+    run_id: str, *, expected_generation: int, holder: str,
+    now: datetime | None = None, lease_seconds: int = 90,
+) -> dict[str, Any]:
+    current = now or datetime.now(UTC)
+    with connect() as conn:
+        _ensure_tables(conn)
+        changed = conn.execute(
+            "UPDATE routine_runs SET lease_holder=?,lease_generation=lease_generation+1,"
+            "lease_expires_at=?,updated_at=? WHERE run_id=? AND status='running' "
+            "AND lease_generation=?",
+            (holder, (current + timedelta(seconds=lease_seconds)).isoformat(), current.isoformat(),
+             run_id, expected_generation),
+        )
+        if changed.rowcount != 1:
+            raise ValueError("stale routine lease")
+        return dict(conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone())
+
+
+def assert_current_run_lease(
+    run_id: str, *, expected_generation: int, holder: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone()
+    current = now or datetime.now(UTC)
+    if (
+        row is None
+        or row["status"] != "running"
+        or int(row["lease_generation"]) != int(expected_generation)
+        or (holder is not None and row["lease_holder"] != holder)
+        or not row["lease_expires_at"]
+        or str(row["lease_expires_at"]) <= current.isoformat()
+    ):
+        raise ValueError("stale routine lease")
+    return dict(row)
+
+
+def next_queued_run() -> dict[str, Any] | None:
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT * FROM routine_runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1"
+        ).fetchone()
+    return None if row is None else dict(row)
+
+
+def record_tool_effect_started(
+    *, run_id: str, call_id: str, tool_name: str, expected_generation: int,
+    holder: str | None = None, now: datetime | None = None,
+) -> dict[str, Any]:
+    effect_id = _id("effect")
+    current = now or datetime.now(UTC)
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            run = conn.execute(
+                "SELECT * FROM routine_runs WHERE run_id=?", (run_id,),
+            ).fetchone()
+            if (
+                run is None
+                or run["status"] != "running"
+                or int(run["lease_generation"]) != int(expected_generation)
+                or (holder is not None and run["lease_holder"] != holder)
+                or not run["lease_expires_at"]
+                or str(run["lease_expires_at"]) <= current.isoformat()
+            ):
+                raise ValueError("stale routine lease")
+            conn.execute(
+                "INSERT INTO routine_tool_effects "
+                "(effect_id,run_id,call_id,tool_name_enc,lease_generation,status,started_at) "
+                "VALUES (?,?,?,?,?,'dispatching',?)",
+                (effect_id, run_id, call_id,
+                 seal(str(run["owner_user_id"]), tool_name.encode("utf-8")),
+                 expected_generation, current.isoformat()),
+            )
+            effect = conn.execute(
+                "SELECT * FROM routine_tool_effects WHERE effect_id=?", (effect_id,),
+            ).fetchone()
+            conn.commit()
+            return dict(effect)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def settle_tool_effect(
+    *, run_id: str, call_id: str, expected_generation: int, succeeded: bool,
+    holder: str | None = None, now: datetime | None = None,
+) -> dict[str, Any]:
+    current = now or datetime.now(UTC)
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            run = conn.execute(
+                "SELECT * FROM routine_runs WHERE run_id=?", (run_id,),
+            ).fetchone()
+            if (
+                run is None
+                or run["status"] != "running"
+                or int(run["lease_generation"]) != int(expected_generation)
+                or (holder is not None and run["lease_holder"] != holder)
+                or not run["lease_expires_at"]
+                or str(run["lease_expires_at"]) <= current.isoformat()
+            ):
+                raise ValueError("stale routine lease")
+            changed = conn.execute(
+                "UPDATE routine_tool_effects SET status=?,finished_at=? "
+                "WHERE run_id=? AND call_id=? AND status='dispatching' "
+                "AND lease_generation=?",
+                ("succeeded" if succeeded else "failed", current.isoformat(),
+                 run_id, call_id, expected_generation),
+            )
+            if changed.rowcount != 1:
+                raise ValueError("stale routine lease")
+            effect = conn.execute(
+                "SELECT * FROM routine_tool_effects WHERE run_id=? AND call_id=?",
+                (run_id, call_id),
+            ).fetchone()
+            conn.commit()
+            return dict(effect)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def list_open_tool_effects(run_id: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT effect_id,run_id,call_id,lease_generation,status,started_at,finished_at "
+            "FROM routine_tool_effects WHERE run_id=? AND status='dispatching' ORDER BY started_at",
+            (run_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def reconcile_expired_runs(*, now: datetime) -> list[dict[str, Any]]:
+    outcomes: list[dict[str, Any]] = []
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            rows = conn.execute(
+                "SELECT * FROM routine_runs WHERE status='running' AND lease_expires_at<=?",
+                (now.isoformat(),),
+            ).fetchall()
+            for row in rows:
+                open_effect = conn.execute(
+                    "SELECT 1 FROM routine_tool_effects WHERE run_id=? AND status='dispatching' LIMIT 1",
+                    (row["run_id"],),
+                ).fetchone()
+                if open_effect:
+                    conn.execute(
+                        "UPDATE routine_tool_effects SET status='outcome_unknown',finished_at=? "
+                        "WHERE run_id=? AND status='dispatching'",
+                        (now.isoformat(), row["run_id"]),
+                    )
+                    conn.execute(
+                        "UPDATE routine_runs SET status='failed',diagnostic_code='tool_outcome_unknown',"
+                        "lease_holder=NULL,lease_expires_at=NULL,finished_at=?,updated_at=? WHERE run_id=?",
+                        (now.isoformat(), now.isoformat(), row["run_id"]),
+                    )
+                    outcomes.append({"run_id": row["run_id"], "status": "failed",
+                                     "diagnostic_code": "tool_outcome_unknown"})
+                else:
+                    conn.execute(
+                        "UPDATE routine_runs SET status='queued',diagnostic_code='lease_expired',"
+                        "lease_holder=NULL,lease_expires_at=NULL,lease_generation=lease_generation+1,"
+                        "updated_at=? WHERE run_id=?",
+                        (now.isoformat(), row["run_id"]),
+                    )
+                    outcomes.append({"run_id": row["run_id"], "status": "queued",
+                                     "diagnostic_code": "lease_expired"})
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    for outcome in outcomes:
+        if outcome["status"] == "failed":
+            append_run_event(
+                run_id=str(outcome["run_id"]), kind="failed",
+                payload={"diagnostic_code": "tool_outcome_unknown"}, terminal=True,
+            )
+    return outcomes
+
+
+def update_execution_failure_count(routine_id: str, *, success: bool) -> int:
+    with connect() as conn:
+        _ensure_tables(conn)
+        if success:
+            conn.execute(
+                "UPDATE routines SET consecutive_failures=0,updated_at=? WHERE routine_id=?",
+                (_now(), routine_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE routines SET consecutive_failures=consecutive_failures+1,updated_at=? "
+                "WHERE routine_id=?", (_now(), routine_id),
+            )
+        row = conn.execute(
+            "SELECT consecutive_failures FROM routines WHERE routine_id=?", (routine_id,),
+        ).fetchone()
+    if row is None:
+        raise KeyError(routine_id)
+    return int(row[0])
+
+
+def get_execution_failure_count(routine_id: str) -> int:
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT consecutive_failures FROM routines WHERE routine_id=?", (routine_id,),
+        ).fetchone()
+    if row is None:
+        raise KeyError(routine_id)
+    return int(row[0])
 
 
 def append_run_event(

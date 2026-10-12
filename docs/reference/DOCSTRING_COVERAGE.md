@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8903/16906 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8904/16965 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8903/16906 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 820 | 1501 | 54% |
-| `core.services` | 5932 | 11481 | 51% |
+| `core.runtime` | 820 | 1511 | 54% |
+| `core.services` | 5933 | 11530 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8903/16906 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2454)
+## Undocumented public functions (2490)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -521,26 +521,36 @@ Generated from source. 8903/16906 functions/methods documented (52%). The list b
 - `core/runtime/db_private_states.py` :: `record_private_promotion_decision` (L217)
 - `core/runtime/db_private_states.py` :: `record_private_self_model` (L64)
 - `core/runtime/db_private_states.py` :: `record_private_state` (L143)
-- `core/runtime/db_routines.py` :: `append_run_event` (L653)
-- `core/runtime/db_routines.py` :: `cancel_run` (L544)
-- `core/runtime/db_routines.py` :: `claim_delivery_for_run` (L742)
-- `core/runtime/db_routines.py` :: `claim_run` (L628)
-- `core/runtime/db_routines.py` :: `count_runs` (L823)
-- `core/runtime/db_routines.py` :: `create_delivery` (L715)
-- `core/runtime/db_routines.py` :: `create_routine` (L233)
-- `core/runtime/db_routines.py` :: `create_run` (L469)
-- `core/runtime/db_routines.py` :: `get_inbox_preference` (L850)
-- `core/runtime/db_routines.py` :: `get_routine` (L293)
-- `core/runtime/db_routines.py` :: `get_run` (L514)
-- `core/runtime/db_routines.py` :: `list_routines` (L300)
-- `core/runtime/db_routines.py` :: `list_runs` (L534)
-- `core/runtime/db_routines.py` :: `list_stopped_routines` (L565)
-- `core/runtime/db_routines.py` :: `put_quarantine` (L863)
-- `core/runtime/db_routines.py` :: `read_run_events` (L612)
-- `core/runtime/db_routines.py` :: `set_inbox_preference` (L831)
-- `core/runtime/db_routines.py` :: `settle_delivery` (L785)
-- `core/runtime/db_routines.py` :: `transition_routine` (L314)
-- `core/runtime/db_routines.py` :: `transition_run` (L686)
+- `core/runtime/db_routines.py` :: `append_run_event` (L918)
+- `core/runtime/db_routines.py` :: `assert_current_run_lease` (L712)
+- `core/runtime/db_routines.py` :: `cancel_run` (L560)
+- `core/runtime/db_routines.py` :: `claim_delivery_for_run` (L1007)
+- `core/runtime/db_routines.py` :: `claim_run` (L645)
+- `core/runtime/db_routines.py` :: `count_runs` (L1088)
+- `core/runtime/db_routines.py` :: `create_delivery` (L980)
+- `core/runtime/db_routines.py` :: `create_routine` (L249)
+- `core/runtime/db_routines.py` :: `create_run` (L485)
+- `core/runtime/db_routines.py` :: `get_execution_failure_count` (L907)
+- `core/runtime/db_routines.py` :: `get_inbox_preference` (L1115)
+- `core/runtime/db_routines.py` :: `get_routine` (L309)
+- `core/runtime/db_routines.py` :: `get_run` (L530)
+- `core/runtime/db_routines.py` :: `list_open_tool_effects` (L824)
+- `core/runtime/db_routines.py` :: `list_routines` (L316)
+- `core/runtime/db_routines.py` :: `list_runs` (L550)
+- `core/runtime/db_routines.py` :: `list_stopped_routines` (L581)
+- `core/runtime/db_routines.py` :: `next_queued_run` (L732)
+- `core/runtime/db_routines.py` :: `put_quarantine` (L1128)
+- `core/runtime/db_routines.py` :: `read_run_events` (L629)
+- `core/runtime/db_routines.py` :: `reclaim_run` (L693)
+- `core/runtime/db_routines.py` :: `reconcile_expired_runs` (L835)
+- `core/runtime/db_routines.py` :: `record_tool_effect_started` (L741)
+- `core/runtime/db_routines.py` :: `renew_run_lease` (L675)
+- `core/runtime/db_routines.py` :: `set_inbox_preference` (L1096)
+- `core/runtime/db_routines.py` :: `settle_delivery` (L1050)
+- `core/runtime/db_routines.py` :: `settle_tool_effect` (L782)
+- `core/runtime/db_routines.py` :: `transition_routine` (L330)
+- `core/runtime/db_routines.py` :: `transition_run` (L951)
+- `core/runtime/db_routines.py` :: `update_execution_failure_count` (L886)
 - `core/runtime/db_runtime_browser.py` :: `ensure_runtime_browser_tables` (L13)
 - `core/runtime/db_runtime_browser.py` :: `get_runtime_browser_body` (L41)
 - `core/runtime/db_runtime_browser.py` :: `list_runtime_browser_bodies` (L149)
@@ -1723,8 +1733,34 @@ Generated from source. 8903/16906 functions/methods documented (52%). The list b
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_override` (L19)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_user_defaults` (L12)
 - `core/services/routine_inbox.py` :: `project_event_to_inbox` (L68)
+- `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
+- `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L22)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.list` (L24)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L89)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.claim` (L71)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_failure_count` (L156)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_run` (L107)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.list_open_tool_effects` (L141)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.next_queued_run` (L113)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.reclaim` (L77)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.record_tool_dispatch_started` (L117)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L99)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L129)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L144)
+- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L326)
+- `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L244)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L332)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L329)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L322)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L287)
+- `core/services/routine_runtime.py` :: `RoutineRuntime.claim_count_after_stop` (L74)
+- `core/services/routine_runtime.py` :: `RoutineRuntime.reconciler_is_alive` (L71)
+- `core/services/routine_runtime.py` :: `RoutineRuntime.start` (L49)
+- `core/services/routine_runtime.py` :: `RoutineRuntime.stop` (L62)
+- `core/services/routine_runtime.py` :: `RoutineRuntime.worker_is_alive` (L68)
+- `core/services/routine_runtime.py` :: `start_routine_runtime` (L82)
+- `core/services/routine_runtime.py` :: `stop_routine_runtime` (L91)
 - `core/services/routine_service.py` :: `RoutineService.archive` (L252)
 - `core/services/routine_service.py` :: `RoutineService.archive_stopped_before` (L345)
 - `core/services/routine_service.py` :: `RoutineService.cancel_run` (L335)

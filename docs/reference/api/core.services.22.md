@@ -349,6 +349,7 @@ _Fenced delivery outbox for Routine results._
 | method | `RoutineDeliveryService.__init__` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L72) |
 | method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L75) |
 | method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L79) |
+| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L97) |
 
 ## `core/services/routine_diagnostics.py`
 _Content-free operational failure projections for owner and Jarvis._

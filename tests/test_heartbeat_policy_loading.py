@@ -3,9 +3,73 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 
+def test_heartbeat_hjem_er_shared_og_ikke_en_brugers_workspace(isolated_runtime) -> None:
+    """12/10-2026 (Bjørn): «heartbeat er ikk kun en bruger.. det er dig».
+
+    Målt før fixet: heartbeat-loopen er GLOBAL, men stien fulgte
+    `ensure_default_workspace()`, som er kontekstafhængig. Resultatet var ni
+    spredte HEARTBEAT_STATE.json — `workspaces/t/` blev skrevet 12/10 06:41,
+    og `t` er ikke engang en bruger i users.json. Det var ikke
+    per-bruger-isolation; det var splittelse.
+
+    Kontrakten: heartbeatets tilstand og policy bor i shared/, uanset hvem
+    der er aktiv. Testen fejler hvis nogen binder dem til en bruger igen.
+    """
+    from core.runtime.workspace_paths import (
+        heartbeat_home,
+        heartbeat_policy_path,
+        heartbeat_state_path,
+        shared_dir,
+    )
+
+    assert heartbeat_home() == shared_dir()
+    assert heartbeat_state_path() == shared_dir() / "runtime" / "HEARTBEAT_STATE.json"
+    assert heartbeat_policy_path() == shared_dir() / "HEARTBEAT.md"
+
+
+def test_heartbeat_stien_flytter_sig_ikke_naar_en_anden_bruger_er_aktiv(
+    isolated_runtime,
+) -> None:
+    """Den skarpe del: stien må ikke afhænge af brugerkonteksten.
+
+    Uden dette kunne et run i Michelles session skrive heartbeatets tilstand
+    til hendes workspace — mens loopen er global. Det er præcis den fejl der
+    gav ni spredte filer.
+    """
+    from core.identity.workspace_context import set_context, reset_context
+    from core.runtime.workspace_paths import heartbeat_state_path
+
+    foer = heartbeat_state_path()
+    token = set_context(user_id="1313522677369143429", workspace_name="michelle")
+    try:
+        efter = heartbeat_state_path()
+    finally:
+        reset_context(token)
+
+    assert foer == efter, (
+        "heartbeat-stien flyttede sig da brugerkonteksten skiftede — "
+        "den er bundet til en bruger igen"
+    )
+
+
 def test_load_heartbeat_policy_reads_ping_fields_from_workspace_file(
     isolated_runtime,
 ) -> None:
+    # 12/10-2026: policyen læses nu fra shared/ (Jarvis' egen rytme), ikke fra
+    # en brugers workspace. Testen skriver derfor filen hvor systemet læser.
+    from core.runtime.workspace_paths import heartbeat_policy_path
+    hb = heartbeat_policy_path()
+    hb.parent.mkdir(parents=True, exist_ok=True)
+    hb.write_text(
+        "status: enabled\n"
+        "interval minutes: 15\n"
+        "allow propose: true\n"
+        "allow execute: true\n"
+        "allow ping: true\n"
+        "ping channel: webchat\n"
+        "kill switch: enabled\n",
+        encoding="utf-8",
+    )
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
 
     policy = heartbeat_runtime.load_heartbeat_policy()

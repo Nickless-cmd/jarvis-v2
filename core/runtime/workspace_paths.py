@@ -62,6 +62,38 @@ def workspace_dir(user_id: str | None = None) -> Path:
     workspace_name = _user_id_to_workspace_name(user_id)
     return _jarvis_home() / "workspaces" / workspace_name
 
+def heartbeat_home() -> Path:
+    """Heartbeatets hjem — Jarvis' EGEN rytme, ikke en brugers.
+
+    Målt 12/10-2026: heartbeat-loopen er GLOBAL (startes én gang i app.py),
+    men stien fulgte `ensure_default_workspace()`, som er kontekstafhængig.
+    Resultatet var ni spredte `HEARTBEAT_STATE.json` — `workspaces/t/` blev
+    skrevet 12/10 kl. 06:41, og `t` er ikke engang en bruger i users.json.
+    Det var ikke per-bruger-isolation; det var splittelse.
+
+    `shared_dir()` er dokumenteret til præcis dette: «Jarvis' own state. All
+    users see the same instance.» Resten af entity-state (DAEMON_STATE,
+    dreaming_session, creative_impulse, action_router) bor allerede der —
+    heartbeat var det ene der strandede i owner-workspacet.
+
+    Bemærk modsætningen til `workspace_dir_or_owner()`: den falder til
+    owner'ens workspace for entity-læsninger UDEN kontekst. For heartbeat er
+    det forkert — det er ikke «owner'ens rytme», det er Jarvis'. Derfor en
+    egen resolver frem for at genbruge den.
+    """
+    return shared_dir()
+
+
+def heartbeat_state_path() -> Path:
+    """Den fulde sti til heartbeatets tilstand. ÉT svar, ét sted."""
+    return heartbeat_home() / "runtime" / "HEARTBEAT_STATE.json"
+
+
+def heartbeat_policy_path() -> Path:
+    """Den fulde sti til heartbeatets policy (HEARTBEAT.md)."""
+    return heartbeat_home() / "HEARTBEAT.md"
+
+
 def workspace_dir_or_owner() -> Path:
     """workspace_dir() with an owner fallback, then shared/ as last resort.
 

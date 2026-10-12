@@ -497,6 +497,21 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
 
     ensure_layered_memory_dirs(name=name)
 
+    # 12/10-2026: HEARTBEAT.md er Jarvis' EGEN rytme, ikke en brugers — den
+    # læses nu via `heartbeat_policy_path()` (shared/). Uden dette ville et
+    # frisk workspace få en HEARTBEAT.md som ingen læser, og policyen ville
+    # mangle i shared. Skriv den derfor også til shared hvis den mangler.
+    try:
+        from core.runtime.workspace_paths import heartbeat_policy_path
+        hb_shared = heartbeat_policy_path()
+        if not hb_shared.exists():
+            src = TEMPLATE_DIR / "HEARTBEAT.md"
+            if src.exists():
+                hb_shared.parent.mkdir(parents=True, exist_ok=True)
+                hb_shared.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    except Exception:  # shared-mappen kan mangle i en isoleret kontekst — ikke fatal
+        pass
+
     # --- Update known-sizes baseline for all identity-critical files ---
     new_sizes: dict[str, int] = {}
     for filename in _IDENTITY_CRITICAL_FILES:

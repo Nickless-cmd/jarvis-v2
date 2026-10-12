@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8889/16804 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8892/16807 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 8889/16804 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 814 | 1467 | 55% |
+| `core.runtime` | 817 | 1470 | 55% |
 | `core.services` | 5925 | 11414 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
@@ -1181,10 +1181,10 @@ Generated from source. 8889/16804 functions/methods documented (52%). The list b
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L163)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L127)
-- `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L43)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L61)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L27)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L124)
+- `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L40)
 - `core/services/experiment_runner.py` :: `list_experiments` (L177)
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L67)
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L71)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 
 from core.services.affective_meta_state import (
     build_affective_meta_state_surface,
@@ -15,12 +14,10 @@ from core.services.runtime_surface_cache import (
     get_timed_runtime_surface,
     peek_cached_runtime_surface,
 )
-from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.db import get_heartbeat_runtime_state
 from core.runtime.db import recent_heartbeat_runtime_ticks
+from core.runtime.workspace_paths import heartbeat_state_path
 
-
-HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 
 # ─── Module-level prior state for continuity carry-forward ───
 # Fallback only when no shared heartbeat/runtime comparison basis exists.
@@ -207,7 +204,9 @@ def _resolve_prior_experiential_snapshot(
 
 
 def _load_heartbeat_artifact_snapshot(*, name: str = "default") -> dict[str, object] | None:
-    state_path = ensure_default_workspace(name=name) / HEARTBEAT_STATE_REL_PATH
+    # 12/10-2026: heartbeatets tilstand er Jarvis' egen — læs den fra samme
+    # resolver som skriveren bruger, ellers læser vi en fil ingen skriver til.
+    state_path = heartbeat_state_path()
     if not state_path.exists():
         return None
     try:

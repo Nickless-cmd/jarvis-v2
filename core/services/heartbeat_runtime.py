@@ -116,6 +116,7 @@ from core.identity.candidate_workflow import (
 )
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.config import PROJECT_ROOT
+from core.runtime.workspace_paths import heartbeat_home, heartbeat_state_path
 from core.runtime.db import (
     get_heartbeat_runtime_state,
     record_heartbeat_runtime_tick,
@@ -150,7 +151,6 @@ from core.services.boredom_curiosity_bridge import (
     build_boredom_curiosity_bridge_surface,
 )
 
-HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
 def _inner_life_action_hints() -> list[str]:
     """Tynd delegation til `heartbeat_action_hints` (Boy Scout: denne fil er 7.6k linjer).
@@ -2186,7 +2186,12 @@ def _run_heartbeat_tick_locked(
 
 
 def load_heartbeat_policy(name: str = "default") -> dict[str, object]:
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: policyen er Jarvis' EGEN rytme, ikke en brugers. Den lå før i
+    # `ensure_default_workspace(name)` — kontekstafhængig, så den fulgte hvem
+    # der var aktiv. Målt: alle ni HEARTBEAT.md er 429 bytes og kun to varianter
+    # (shared/ og bjorn/ er byte-identiske), så der er ingen per-bruger-policy
+    # at tabe. `name` bevares i signaturen for kaldestedernes skyld.
+    workspace_dir = heartbeat_home()
     heartbeat_path = workspace_dir / "HEARTBEAT.md"
     text = heartbeat_path.read_text(encoding="utf-8") if heartbeat_path.exists() else ""
     kv = _parse_heartbeat_key_values(text)
@@ -6371,7 +6376,10 @@ def _merge_runtime_state(
             last_result=str(persisted.get("last_result") or ""),
         ),
         "source": "/mc/jarvis::heartbeat",
-        "state_file": str((Path(policy["workspace"]) / HEARTBEAT_STATE_REL_PATH)),
+        # 12/10-2026: rapportér den sti der FAKTISK skrives til. Før viste den
+        # `policy["workspace"]` — som nu er shared, men som før var owner'ens
+        # mappe, altså et svar der kunne pege et andet sted end skriveren.
+        "state_file": str(heartbeat_state_path()),
         "updated_at": str(persisted.get("updated_at") or ""),
     }
 
@@ -6439,7 +6447,11 @@ def _resolve_tick_activity_state(
 def _write_heartbeat_state_artifact(
     *, workspace_dir: Path, payload: dict[str, object]
 ) -> None:
-    state_path = workspace_dir / HEARTBEAT_STATE_REL_PATH
+    # 12/10-2026: `workspace_dir` ignoreres bevidst — heartbeatets tilstand er
+    # Jarvis' egen, ikke en brugers. Parameteren bevares så kaldestederne ikke
+    # skal ændres, men stien kommer nu fra ÉN resolver. Uden dette skrev den
+    # til `workspaces/t/` (12/10 06:41) — en mappe der ikke er en bruger.
+    state_path = heartbeat_state_path()
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n",

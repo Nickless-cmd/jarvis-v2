@@ -149,6 +149,10 @@ class RoutineService:
         values = _command_values(rest[0])
         if values["access_scope"] == AccessScope.SYSTEM_OWNER.value and actor.role != "owner":
             raise RoutineForbidden("system-owner routines require the owner role")
+        values["inbox_policy"] = {
+            **db_routines.get_inbox_preference(actor.canonical_user_id),
+            **dict(values.get("inbox_policy") or {}),
+        }
         row = db_routines.create_routine(
             owner_user_id=actor.canonical_user_id,
             status="active",
@@ -165,6 +169,10 @@ class RoutineService:
             raise RoutineForbidden("only Jarvis may create a routine proposal")
         values = _command_values(command)
         values["created_by"] = "jarvis"
+        values["inbox_policy"] = {
+            **db_routines.get_inbox_preference(for_owner.canonical_user_id),
+            **dict(values.get("inbox_policy") or {}),
+        }
         row = db_routines.create_routine(
             owner_user_id=for_owner.canonical_user_id,
             status="draft",

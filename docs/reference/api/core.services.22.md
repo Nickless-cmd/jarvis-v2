@@ -333,6 +333,18 @@ _Owner-bound authenticated encryption for Routine content._
 | function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
 | function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
 
+## `core/services/routine_diagnostics.py`
+_Content-free operational failure projections for owner and Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `OperationalFailure` | `` | — | [src](../../../core/services/routine_diagnostics.py#L11) |
+| function | `_opaque` | `(prefix, value)` | — | [src](../../../core/services/routine_diagnostics.py#L27) |
+| function | `_bounded_count` | `(value)` | — | [src](../../../core/services/routine_diagnostics.py#L32) |
+| function | `project_failure` | `(exc, metadata)` | — | [src](../../../core/services/routine_diagnostics.py#L39) |
+| function | `render_projection` | `(projection)` | — | [src](../../../core/services/routine_diagnostics.py#L62) |
+| function | `publish_failure` | `(projection)` | Publish the same fixed-schema projection to operational inbox and app chat. | [src](../../../core/services/routine_diagnostics.py#L72) |
+
 ## `core/services/routine_identity.py`
 _Canonical, fail-closed identity resolution for Routine entry points._
 
@@ -340,6 +352,18 @@ _Canonical, fail-closed identity resolution for Routine entry points._
 |---|---|---|---|---|
 | class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L9) |
 | function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L13) |
+
+## `core/services/routine_inbox.py`
+_User-controlled projections of Routine lifecycle events into durable inbox._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineInboxService` | `` | — | [src](../../../core/services/routine_inbox.py#L11) |
+| method | `RoutineInboxService.set_user_defaults` | `(self, principal, policy)` | — | [src](../../../core/services/routine_inbox.py#L12) |
+| method | `RoutineInboxService.set_override` | `(self, principal, routine_id, override)` | — | [src](../../../core/services/routine_inbox.py#L19) |
+| method | `RoutineInboxService.effective_policy` | `(self, principal, routine_id)` | — | [src](../../../core/services/routine_inbox.py#L33) |
+| method | `RoutineInboxService.project_event_to_inbox` | `(self, event)` | — | [src](../../../core/services/routine_inbox.py#L47) |
+| function | `project_event_to_inbox` | `(event)` | — | [src](../../../core/services/routine_inbox.py#L68) |
 
 ## `core/services/routine_run_recorder.py`
 _Session-neutral append-only recorder for observable Routine run events._
@@ -368,21 +392,21 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L134) |
 | method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L140) |
 | method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L145) |
-| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L159) |
-| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L175) |
-| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L187) |
-| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L221) |
-| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L238) |
-| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L241) |
-| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L244) |
-| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L247) |
-| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L250) |
-| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L264) |
-| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L286) |
-| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key)` | — | [src](../../../core/services/routine_service.py#L297) |
-| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L315) |
-| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L327) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L337) |
+| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L163) |
+| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L183) |
+| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L195) |
+| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L229) |
+| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L246) |
+| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L249) |
+| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L252) |
+| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L255) |
+| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L258) |
+| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L272) |
+| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L294) |
+| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key)` | — | [src](../../../core/services/routine_service.py#L305) |
+| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L323) |
+| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L335) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L345) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._
@@ -599,35 +623,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L105) |
 | function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L130) |
 | function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L141) |
-
-## `core/services/runtime_action_registry.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuntimeActionSpec` | `` | — | [src](../../../core/services/runtime_action_registry.py#L12) |
-| function | `list_runtime_action_specs` | `()` | — | [src](../../../core/services/runtime_action_registry.py#L109) |
-| function | `get_runtime_action_spec` | `(action_id)` | — | [src](../../../core/services/runtime_action_registry.py#L113) |
-
-## `core/services/runtime_awareness_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_awareness_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L42) |
-| function | `refresh_runtime_awareness_signal_statuses` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L66) |
-| function | `build_runtime_awareness_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L95) |
-| function | `_machine_available_signal` | `(*, heartbeat)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L137) |
-| function | `_extract_runtime_awareness_candidates` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L157) |
-| function | `_visible_runtime_signal` | `(*, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L202) |
-| function | `_local_lane_signal` | `(*, local_lane)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L267) |
-| function | `_heartbeat_runtime_signal` | `(*, heartbeat, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L308) |
-| function | `_runtime_task_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L335) |
-| function | `_runtime_flow_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L375) |
-| function | `_runtime_hook_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L415) |
-| function | `_browser_body_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L464) |
-| function | `_layered_memory_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L504) |
-| function | `_persist_runtime_awareness_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L556) |
-| function | `_latest_runtime_awareness_signal` | `(canonical_key)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L635) |
-| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L642) |
-| function | `_machine_state_summary` | `(*, constrained, active, recovered)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L656) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L687) |
 

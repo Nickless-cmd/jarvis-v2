@@ -281,6 +281,11 @@ def create_routine(
             "INSERT INTO routine_versions (routine_id,version,definition_snapshot_enc,created_at) "
             "VALUES (?,1,?,?)", (rid, snapshot, now),
         )
+        conn.execute(
+            "INSERT INTO routine_inbox_preferences "
+            "(owner_user_id,routine_id,policy_enc,created_at,updated_at) VALUES (?,?,?,?,?)",
+            (owner, rid, seal(owner, _json_bytes(inbox_policy)), now, now),
+        )
         row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (rid,)).fetchone()
     return _routine_values(row, decrypt_for=owner)
 
@@ -732,6 +737,127 @@ def create_delivery(
         return dict(conn.execute(
             "SELECT * FROM routine_deliveries WHERE delivery_id=?", (delivery_id,),
         ).fetchone())
+
+
+def claim_delivery_for_run(run_id: str, *, holder: str) -> dict[str, Any] | None:
+    holder = str(holder or "").strip()
+    if not holder:
+        raise ValueError("holder is required")
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute(
+                "SELECT * FROM routine_deliveries WHERE run_id=? ORDER BY created_at LIMIT 1",
+                (run_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+            if row["status"] == "claimed" and row["lease_holder"] == holder:
+                conn.commit()
+                return dict(row)
+            due = not row["next_attempt_at"] or str(row["next_attempt_at"]) <= _now()
+            if row["status"] not in {"pending", "retry"} or not due:
+                conn.rollback()
+                return None
+            now = _now()
+            changed = conn.execute(
+                "UPDATE routine_deliveries SET status='claimed',lease_holder=?,"
+                "lease_generation=lease_generation+1,updated_at=? WHERE delivery_id=? "
+                "AND status IN ('pending','retry')",
+                (holder, now, row["delivery_id"]),
+            )
+            if changed.rowcount != 1:
+                conn.rollback()
+                return None
+            claimed = conn.execute(
+                "SELECT * FROM routine_deliveries WHERE delivery_id=?", (row["delivery_id"],),
+            ).fetchone()
+            conn.commit()
+            return dict(claimed)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def settle_delivery(
+    delivery_id: str, *, holder: str, outcome: str,
+    next_attempt_at: str | None = None, receipt: bytes | None = None,
+) -> dict[str, Any]:
+    if outcome not in {"delivered", "retry", "failed"}:
+        raise ValueError("invalid delivery outcome")
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute(
+                "SELECT * FROM routine_deliveries WHERE delivery_id=?", (delivery_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(delivery_id)
+            if row["status"] != "claimed" or str(row["lease_holder"] or "") != holder:
+                raise ValueError("stale delivery lease")
+            receipt_enc = row["receipt_enc"]
+            if receipt is not None:
+                receipt_enc = seal(str(row["owner_user_id"]), receipt)
+            retry_count = int(row["retry_count"]) + (1 if outcome == "retry" else 0)
+            conn.execute(
+                "UPDATE routine_deliveries SET status=?,receipt_enc=?,retry_count=?,"
+                "next_attempt_at=?,lease_holder=NULL,updated_at=? WHERE delivery_id=?",
+                (outcome, receipt_enc, retry_count,
+                 next_attempt_at if outcome == "retry" else None, _now(), delivery_id),
+            )
+            updated = conn.execute(
+                "SELECT * FROM routine_deliveries WHERE delivery_id=?", (delivery_id,),
+            ).fetchone()
+            conn.commit()
+            return dict(updated)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def count_runs(routine_id: str) -> int:
+    with connect() as conn:
+        _ensure_tables(conn)
+        return int(conn.execute(
+            "SELECT COUNT(*) FROM routine_runs WHERE routine_id=?", (routine_id,),
+        ).fetchone()[0])
+
+
+def set_inbox_preference(
+    owner_user_id: str, *, routine_id: str = "", policy: Mapping[str, object],
+) -> dict[str, object]:
+    owner = str(owner_user_id or "").strip()
+    if not owner:
+        raise ValueError("owner_user_id is required")
+    now = _now()
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.execute(
+            "INSERT INTO routine_inbox_preferences "
+            "(owner_user_id,routine_id,policy_enc,created_at,updated_at) VALUES (?,?,?,?,?) "
+            "ON CONFLICT(owner_user_id,routine_id) DO UPDATE SET "
+            "policy_enc=excluded.policy_enc,updated_at=excluded.updated_at",
+            (owner, routine_id, seal(owner, _json_bytes(policy)), now, now),
+        )
+    return dict(policy)
+
+
+def get_inbox_preference(owner_user_id: str, *, routine_id: str = "") -> dict[str, object]:
+    owner = str(owner_user_id or "").strip()
+    if not owner:
+        return {}
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT policy_enc FROM routine_inbox_preferences "
+            "WHERE owner_user_id=? AND routine_id=?", (owner, routine_id),
+        ).fetchone()
+    return {} if row is None else dict(_open_json(owner, row[0]))
 
 
 def put_quarantine(

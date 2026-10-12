@@ -401,23 +401,28 @@ _SQLite repository for first-class, owner-scoped Routines._
 | function | `_definition_snapshot` | `(values)` | — | [src](../../../core/runtime/db_routines.py#L192) |
 | function | `_routine_values` | `(row, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L212) |
 | function | `create_routine` | `(*, owner_user_id, access_scope, name, instruction, capability_scope, trigger_kind, trigger_config, permission_policy, delivery_policy, inbox_policy, retention_policy, failure_policy, created_by=…, status=…, workspace_name=…, workspace_kind=…, workspace_root=…, jarvis_restart_allowed=…, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L233) |
-| function | `get_routine` | `(routine_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L288) |
-| function | `list_routines` | `(*, owner_user_id, include_deleted=…, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L295) |
-| function | `transition_routine` | `(routine_id, *, to_status, expected_version=…)` | — | [src](../../../core/runtime/db_routines.py#L309) |
-| function | `update_routine_definition` | `(routine_id, *, expected_version, changes, reactivate=…)` | Atomically write a new immutable definition version. | [src](../../../core/runtime/db_routines.py#L344) |
-| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L429) |
-| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L464) |
-| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L509) |
-| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L529) |
-| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L539) |
-| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L560) |
-| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L570) |
-| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L607) |
-| function | `claim_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L623) |
-| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L648) |
-| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L681) |
-| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L710) |
-| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L737) |
+| function | `get_routine` | `(routine_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L293) |
+| function | `list_routines` | `(*, owner_user_id, include_deleted=…, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L300) |
+| function | `transition_routine` | `(routine_id, *, to_status, expected_version=…)` | — | [src](../../../core/runtime/db_routines.py#L314) |
+| function | `update_routine_definition` | `(routine_id, *, expected_version, changes, reactivate=…)` | Atomically write a new immutable definition version. | [src](../../../core/runtime/db_routines.py#L349) |
+| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L434) |
+| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L469) |
+| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L514) |
+| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L534) |
+| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L544) |
+| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L565) |
+| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L575) |
+| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L612) |
+| function | `claim_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L628) |
+| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L653) |
+| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L686) |
+| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L715) |
+| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L742) |
+| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L785) |
+| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L823) |
+| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L831) |
+| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L850) |
+| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L863) |
 
 ## `core/runtime/db_runtime_browser.py`
 _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._

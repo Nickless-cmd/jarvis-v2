@@ -90,7 +90,7 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # forpligtelse. Den maa oprette, aldrig naegte en mutation. Uden dette
     # ville hver fyret `schedule_task` laegge en blokerende post i indbakken
     # — og en planlagt efterkontrol ville gate det naeste vaerktoejskald.
-    "scheduled",
+    "scheduled", "routine_event",
 })
 
 

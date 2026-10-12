@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/theory_of_mind_engine.py`
+_Active theory-of-mind engine for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
+| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
+| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
+| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
+| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
+| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
+| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
+| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
+| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
+
+## `core/services/think_language.py`
+_Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current` | `()` | Aktivt tænke-sprog. Ukendt værdi eller fejl → 'da' (fail-soft). | [src](../../../core/services/think_language.py#L53) |
+| function | `is_english` | `()` | True når tænkningen skal føres på engelsk. | [src](../../../core/services/think_language.py#L63) |
+| function | `set_language` | `(lang)` | Sæt tænke-sprog. Ukendt værdi afvises — returnerer det aktive sprog. | [src](../../../core/services/think_language.py#L68) |
+| function | `directive` | `()` | Instruktionen til prompt-halen — tom streng når dansk er aktivt. | [src](../../../core/services/think_language.py#L77) |
+
 ## `core/services/thought_action_proposal_daemon.py`
 _Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
 
@@ -512,25 +538,4 @@ _Unconscious modulation — sub-symbolic sampling-parameter shift._
 |---|---|---|---|---|
 | function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
 | function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
-
-## `core/services/unconscious_temperature_field.py`
-_Unconscious temperature field — backwards-compat wrapper for Lag 10._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L13) |
-| function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L28) |
-
-## `core/services/unfinished_intent.py`
-_Unfinished-intent detector for visible-run output._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `UnfinishedIntent` | `` | Resultat af detector: hvilken pattern matched. | [src](../../../core/services/unfinished_intent.py#L30) |
-| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L126) |
-| function | `_er_negeret` | `(tail, m)` | True hvis pausenøgleordet er indledt af en negation («uden at …»). | [src](../../../core/services/unfinished_intent.py#L152) |
-| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L157) |
-| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L264) |
-| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L273) |
-| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L281) |
 

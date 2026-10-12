@@ -1149,3 +1149,22 @@ def put_quarantine(
         return dict(conn.execute(
             "SELECT * FROM routine_migration_quarantine WHERE quarantine_id=?", (quarantine_id,),
         ).fetchone())
+
+
+def get_legacy_routine_id(*, source_kind: str, source_id: str) -> str | None:
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT routine_id FROM routine_legacy_links WHERE source_kind=? AND source_id=?",
+            (source_kind, source_id),
+        ).fetchone()
+    return None if row is None or not row[0] else str(row[0])
+
+
+def run_exists_for_trigger(*, routine_id: str, idempotency_key: str) -> bool:
+    with connect() as conn:
+        _ensure_tables(conn)
+        return conn.execute(
+            "SELECT 1 FROM routine_runs WHERE routine_id=? AND idempotency_key=?",
+            (routine_id, idempotency_key),
+        ).fetchone() is not None

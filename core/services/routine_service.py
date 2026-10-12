@@ -65,6 +65,7 @@ class RunView:
     status: str
     lease_holder: str | None
     lease_generation: int
+    idempotency_key: str
     created_at: str
     definition_snapshot: dict[str, object] | None = None
     execution_context: dict[str, object] | None = None
@@ -114,6 +115,7 @@ def _run_view(row: Mapping[str, Any]) -> RunView:
         status=str(row["status"]),
         lease_holder=row.get("lease_holder"),
         lease_generation=int(row["lease_generation"]),
+        idempotency_key=str(row["idempotency_key"]),
         created_at=str(row["created_at"]),
         definition_snapshot=row.get("definition_snapshot"),
         execution_context=row.get("execution_context"),
@@ -302,7 +304,10 @@ class RoutineService:
         require_authorized(actor, Action.DELETE, row)
         return db_routines.delete_routine_content(routine_id)
 
-    def enqueue_run(self, *args: Any, trigger_key: str) -> RunView:
+    def enqueue_run(
+        self, *args: Any, trigger_key: str,
+        execution_context: Mapping[str, object] | None = None,
+    ) -> RunView:
         actor, rest = self._actor_and_rest(args)
         if len(rest) != 1:
             raise TypeError("enqueue_run expects routine_id")
@@ -318,6 +323,7 @@ class RoutineService:
             routine_id=routine_id,
             idempotency_key=trigger_key,
             trigger_source="system" if actor.actor_kind != "user" else "manual",
+            execution_context=execution_context,
         ))
 
     def get_run(self, *args: Any, decrypt: bool = False) -> RunView | None:

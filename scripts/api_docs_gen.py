@@ -20,6 +20,7 @@ _PINNED_PAGES = {
     ("core.services", "routine_runner"): "core.services.routine-execution",
     ("core.services", "routine_reconciler"): "core.services.routine-execution",
     ("core.services", "routine_runtime"): "core.services.routine-execution",
+    ("core.services", "routine_trigger_adapters"): "core.services.routine-execution",
     ("core.services", "routine_migration"): "core.services.routine-migration",
     ("scripts", "migrate_routines"): "scripts.routine-migration",
 }

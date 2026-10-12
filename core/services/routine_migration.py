@@ -18,7 +18,7 @@ from core.services.encryption import decrypt, encrypt
 from core.services.routine_crypto import seal
 
 
-SYSTEM_PRODUCERS = frozenset({"heartbeat_runtime", "dream", "council"})
+from core.services.routine_trigger_adapters import SYSTEM_PRODUCERS
 _QUARANTINE_PRINCIPAL = "__migration_quarantine__"
 
 

@@ -92,6 +92,25 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     """
     import threading
 
+    from core.services.routine_trigger_adapters import (
+        SYSTEM_PRODUCERS,
+        UnmigratedRoutineSource,
+        enqueue_system,
+        routine_cutover_enabled,
+    )
+    managed_origin = str(origin or "").strip()
+    if routine_cutover_enabled() and managed_origin in SYSTEM_PRODUCERS:
+        enqueue_system(
+            managed_origin,
+            f"legacy-call-{uuid4().hex}",
+            trigger_inputs={"prompt": str(message or "")},
+        )
+        return
+    if routine_cutover_enabled() and managed_origin in {"scheduled", "recurring"}:
+        raise UnmigratedRoutineSource(
+            "scheduled and recurring cutover requires the structured source id"
+        )
+
     # Rotér pr. oprindelse+dag (2026-07-06): et autonomt run uden eksplicit session
     # lander IKKE længere i den ene udødelige "Autonomous"-silo (8373 beskeder, kontekst-
     # fejl, usynlig), men i en afgrænset, kategoriseret `auto-{origin}-{dato}`-session.

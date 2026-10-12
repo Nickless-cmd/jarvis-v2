@@ -35,6 +35,14 @@ def fire_scheduled_task(
       - Unknown user_id (not in users.json) → warn and skip
       - Otherwise: set_context to the user, run, reset_context.
     """
+    from core.services.routine_trigger_adapters import (
+        enqueue_scheduled,
+        routine_cutover_enabled,
+    )
+    if routine_cutover_enabled():
+        enqueue_scheduled(str(task.get("task_id") or ""))
+        return
+
     uid = (task.get("scheduled_for_user_id") or "").strip() if task.get("scheduled_for_user_id") else ""
     if not uid:
         logger.warning(

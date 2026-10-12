@@ -5159,15 +5159,14 @@ def _execute_heartbeat_internal_action(
                         "priority": priority,
                     },
                 )
-                # Trigger an actual autonomous visible run so Jarvis can act
-                try:
-                    from core.services.visible_runs import (
-                        start_autonomous_run,
-                    )
-
-                    start_autonomous_run(focus, origin="heartbeat")
-                except Exception:
-                    pass
+                # Extracted dispatch boundary: feature gating chooses exactly
+                # one of the Routine and legacy autonomous execution paths.
+                from core.services.routine_trigger_adapters import (
+                    dispatch_heartbeat_initiative,
+                )
+                dispatch_heartbeat_initiative(
+                    focus=focus, initiative_id=initiative_id or tick_id,
+                )
                 return {
                     "status": "executed",
                     "summary": f"Acted on initiative: {focus[:120]}",

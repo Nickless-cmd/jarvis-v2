@@ -360,8 +360,17 @@ def trigger_dream_session() -> dict[str, Any]:
         # Fire the autonomous run in a background thread
         def _fire() -> None:
             try:
-                from core.services.visible_runs import start_autonomous_run
-                start_autonomous_run(message=prompt, session_id=None, origin="dream")
+                from core.services.routine_trigger_adapters import dispatch_system
+
+                def _legacy() -> None:
+                    from core.services.visible_runs import start_autonomous_run
+
+                    start_autonomous_run(message=prompt, session_id=None, origin="dream")
+
+                dispatch_system(
+                    "dream", session_id,
+                    trigger_inputs={"prompt": prompt}, legacy=_legacy,
+                )
             except Exception as exc:
                 logger.error("dreaming_session: background fire failed: %s", exc)
 

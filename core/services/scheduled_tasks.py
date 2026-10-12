@@ -151,6 +151,23 @@ def _fire_due_tasks() -> None:
             focus = str(task.get("focus") or "")
             now_iso = datetime.now(UTC).isoformat()
 
+            from core.services.routine_trigger_adapters import (
+                enqueue_scheduled,
+                routine_cutover_enabled,
+            )
+            if routine_cutover_enabled():
+                try:
+                    enqueue_scheduled(task_id)
+                    runtime_db.mark_scheduled_task_fired(
+                        task_id, fired_at=now_iso, updated_at=now_iso,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "scheduled_tasks: routine enqueue failed for %s: %s",
+                        task_id, type(exc).__name__,
+                    )
+                continue
+
             # Expire tasks that have been undeliverable for too long
             run_at_str = str(task.get("run_at") or "")
             try:
@@ -389,5 +406,4 @@ def build_scheduled_tasks_surface() -> dict[str, object]:
         "summary": "Module loaded; entry points available.",
         "authority": "derived-read-only",
     }
-
 

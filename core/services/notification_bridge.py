@@ -161,6 +161,9 @@ def send_session_notification(
     Bjørn observed externally. urgent=True bypasses the queue for
     emergencies (errors, security alerts, etc.).
     """
+    if str(source or "").startswith("routine"):
+        return {"status": "blocked", "error": "routine-session-delivery-forbidden"}
+
     from core.services.chat_sessions import (
         append_chat_message,
         get_chat_session,

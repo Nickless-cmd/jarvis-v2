@@ -457,8 +457,6 @@ def _fire_due() -> None:
     # as a notification — useless. Triggering an autonomous run lets Jarvis
     # use his tools (discord_channel.send, web_search etc.) to actually carry
     # out the task. The focus becomes the user-message of an autonomous run.
-    from core.services.visible_runs import start_autonomous_run
-
     for task in due:
         task_id = str(task["task_id"])
         focus = str(task["focus"])
@@ -483,10 +481,18 @@ def _fire_due() -> None:
         # egne data. Bruger den offentlige hybrid-resolver (legacy + SQLite).
         token = _enter_owner_context(str(task.get("user_id") or ""))
         try:
-            # Use autonomous run as the PRIMARY execution path.
-            # Push to initiative queue only as a fallback signal — but do NOT
-            # let both paths produce a user-visible message independently.
-            start_autonomous_run(message=focus, session_id=None, origin="recurring")
+            from core.services.routine_trigger_adapters import dispatch_recurring
+
+            def _legacy() -> None:
+                from core.services.visible_runs import start_autonomous_run
+
+                start_autonomous_run(message=focus, session_id=None, origin="recurring")
+
+            dispatch_recurring(
+                task_id,
+                occurrence_id=str(task.get("next_fire_at") or task_id),
+                legacy=_legacy,
+            )
             _advance(task_id, interval_minutes, now,
                      str(task.get('next_fire_at') or ''), ugedage)
             logger.info(
@@ -554,5 +560,3 @@ def start_recurring_tasks_service() -> None:
 def stop_recurring_tasks_service() -> None:
     _poller_stop.set()
     logger.info("recurring_tasks: service stopped")
-
-

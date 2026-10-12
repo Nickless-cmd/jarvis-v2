@@ -36,6 +36,23 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     "memory_usage", "resurface_old_memory", "remember_this",
     "memory_upsert_section", "write_memory_topic", "record_sensory_memory",
     "note_add", "note_list", "note_search",
+    # Indbakkens bogfoering (12/10-2026). Gaten naegter enhver mutation saa
+    # laenge en af MINE EGNE poster har faaet nok leverede paamindelser — og
+    # frigiver den KUN ved `inbox_done`/`inbox_drop` paa dens poster.
+    #
+    # Uden dem her er gaten en FAELDE, og det er maalt: `_prepare_call`
+    # tjekker denne politik FOER inbox_gaten, saa et autonomt run kunne SE
+    # posten (`inbox` er tilladt), men aldrig lukke den — og dermed heller
+    # ikke sende, skrive eller mutere resten af runnet. 12/10-2026 blev en
+    # recurring-brief blokeret og kunne ikke frigives; indholdet var klaret,
+    # kvitteringen var umulig.
+    #
+    # Begge er bogfoering paa Jarvis' EGNE poster — samme klasse som
+    # `remember_this` og `mark_wakeup_consumed`, som allerede er tilladte.
+    # `done` kraever et terminalt udfald, `drop` kraever en begrundelse, og
+    # begge spores. En AUTONOM afvisning af en post principalen har sat
+    # `bloker` paa er naegtet i vaerktoejet selv — se `inbox_tools`.
+    "inbox_done", "inbox_drop",
     # Internal plans. Scheduling external jobs and sending messages are excluded.
     "goal_create", "goal_decompose", "goal_get", "goal_list", "goal_update",
     "goal_update_status", "todo_add", "todo_list", "todo_remove", "todo_set",

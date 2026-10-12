@@ -52,6 +52,17 @@ _SCHEDULE: dict[str, timedelta] = {
     # egen 24-timers klokke), saa en forfalden review meldes inden for 6 timer
     # uden at kunne naevnes to gange paa en dag.
     "shadow_review_reminder": timedelta(hours=6),
+    # 12/10-2026: TRE af governance_bootstraps 21 handlers stod uden kadence.
+    # `chronicle_refresh` og `weekly_manifest_refresh` fik deres i maj, men
+    # `memory_decay_sweep`, `dream_distillation_sweep` og
+    # `concept_baseline_evaluation` blev glemt — deres handlers sov for evigt,
+    # praecis det docstringen ovenfor advarede om. Alle tre er daglige:
+    # memory_decay self-throttler selv paa 24t, dream-distillation har sin egen
+    # kill-switch + min-content-gate (billig uden materiale), og
+    # concept_baseline_evaluation skriver sin egen docstring «Daily».
+    "memory_decay_sweep": timedelta(hours=24),
+    "dream_distillation_sweep": timedelta(hours=24),
+    "concept_baseline_evaluation": timedelta(hours=24),
 }
 
 

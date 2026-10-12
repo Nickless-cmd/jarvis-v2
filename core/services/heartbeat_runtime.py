@@ -114,8 +114,8 @@ from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
     auto_apply_safe_user_md_candidates,
 )
-from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.config import PROJECT_ROOT
+from core.runtime.workspace_paths import heartbeat_home, heartbeat_state_path
 from core.runtime.db import (
     get_heartbeat_runtime_state,
     record_heartbeat_runtime_tick,
@@ -150,7 +150,6 @@ from core.services.boredom_curiosity_bridge import (
     build_boredom_curiosity_bridge_surface,
 )
 
-HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
 def _inner_life_action_hints() -> list[str]:
     """Tynd delegation til `heartbeat_action_hints` (Boy Scout: denne fil er 7.6k linjer).
@@ -557,7 +556,11 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         continuity_source=continuity_source,
     )
     _write_heartbeat_state_artifact(
-        workspace_dir=ensure_default_workspace(name=name),
+        # 12/10-2026: var `ensure_default_workspace(name)` — den BOOTSTRAPPEDE
+        # en mappe som side-effekt, og `_write_heartbeat_state_artifact`
+        # ignorerer parameteren. Maalt: `tick_with_phases(name="t")` skabte
+        # `workspaces/t/` i produktionen.
+        workspace_dir=heartbeat_home(),
         payload={
             "state": merged,
             "policy": policy,
@@ -672,6 +675,16 @@ def _build_cognitive_surfaces() -> dict[str, object]:
         lambda: __import__(
             "core.services.gut_engine", fromlist=["build_gut_surface"]
         ).build_gut_surface(),
+    )
+    # Counterfactual decision delta (12/10-2026): hvor ofte flyttede den lærte gut-bias
+    # gatens afgørelse? Læser den persistente gate_verdict-ledger. Uden denne flade ville
+    # tællingen være endnu en skrive-sti uden læser.
+    _safe_surface(
+        surfaces,
+        "gut_counterfactual",
+        lambda: __import__(
+            "core.services.gut_engine", fromlist=["build_gut_counterfactual_surface"]
+        ).build_gut_counterfactual_surface(),
     )
     _safe_surface(
         surfaces,
@@ -1551,7 +1564,9 @@ def _run_heartbeat_tick_locked(
             pass
 
     now = datetime.now(UTC)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: se noten ved `_write_heartbeat_state_artifact` — kaldet
+    # bootstrappede en workspace-mappe uden at nogen brugte den.
+    workspace_dir = heartbeat_home()
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     merged_before = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
@@ -2176,7 +2191,12 @@ def _run_heartbeat_tick_locked(
 
 
 def load_heartbeat_policy(name: str = "default") -> dict[str, object]:
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: policyen er Jarvis' EGEN rytme, ikke en brugers. Den lå før i
+    # `ensure_default_workspace(name)` — kontekstafhængig, så den fulgte hvem
+    # der var aktiv. Målt: alle ni HEARTBEAT.md er 429 bytes og kun to varianter
+    # (shared/ og bjorn/ er byte-identiske), så der er ingen per-bruger-policy
+    # at tabe. `name` bevares i signaturen for kaldestedernes skyld.
+    workspace_dir = heartbeat_home()
     heartbeat_path = workspace_dir / "HEARTBEAT.md"
     text = heartbeat_path.read_text(encoding="utf-8") if heartbeat_path.exists() else ""
     kv = _parse_heartbeat_key_values(text)
@@ -6361,7 +6381,10 @@ def _merge_runtime_state(
             last_result=str(persisted.get("last_result") or ""),
         ),
         "source": "/mc/jarvis::heartbeat",
-        "state_file": str((Path(policy["workspace"]) / HEARTBEAT_STATE_REL_PATH)),
+        # 12/10-2026: rapportér den sti der FAKTISK skrives til. Før viste den
+        # `policy["workspace"]` — som nu er shared, men som før var owner'ens
+        # mappe, altså et svar der kunne pege et andet sted end skriveren.
+        "state_file": str(heartbeat_state_path()),
         "updated_at": str(persisted.get("updated_at") or ""),
     }
 
@@ -6429,7 +6452,11 @@ def _resolve_tick_activity_state(
 def _write_heartbeat_state_artifact(
     *, workspace_dir: Path, payload: dict[str, object]
 ) -> None:
-    state_path = workspace_dir / HEARTBEAT_STATE_REL_PATH
+    # 12/10-2026: `workspace_dir` ignoreres bevidst — heartbeatets tilstand er
+    # Jarvis' egen, ikke en brugers. Parameteren bevares så kaldestederne ikke
+    # skal ændres, men stien kommer nu fra ÉN resolver. Uden dette skrev den
+    # til `workspaces/t/` (12/10 06:41) — en mappe der ikke er en bruger.
+    state_path = heartbeat_state_path()
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
@@ -6610,7 +6637,11 @@ def record_phased_tick(
     `heartbeat_phases`) — men det her er den der styrer kadencen selv.
     """
     policy = load_heartbeat_policy(name=name)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: DETTE var lækagen. `tick_with_phases(name="t")` i en test
+    # naaede herind og skabte `workspaces/t/` i produktionen — en mappe der
+    # ikke er en bruger. `workspace_dir` bruges kun til state-artefakten, som
+    # nu har sin egen resolver.
+    workspace_dir = heartbeat_home()
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     faser = (result.get("phases") or {}) if isinstance(result, dict) else {}
     handling = (faser.get("act") or {}) if isinstance(faser, dict) else {}
@@ -6653,7 +6684,8 @@ def record_phased_tick(
 
 def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResult:
     policy = load_heartbeat_policy(name=name)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: se noten ved `_write_heartbeat_state_artifact`.
+    workspace_dir = heartbeat_home()
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC).isoformat()
     tick = _record_heartbeat_outcome(

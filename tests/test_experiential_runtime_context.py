@@ -279,8 +279,11 @@ def test_experiential_runtime_context_uses_heartbeat_artifact_as_prior_truth(
     monkeypatch,
 ) -> None:
     experiential = isolated_runtime.experiential_runtime_context
-    workspace = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
-    state_path = workspace / "runtime/HEARTBEAT_STATE.json"
+    # 12/10-2026: heartbeatets tilstand er Jarvis' EGEN — den læses nu via
+    # `heartbeat_state_path()` (shared/), ikke via ensure_default_workspace().
+    # Testen skal skrive hvor systemet læser, ellers måler den en død fil.
+    from core.runtime.workspace_paths import heartbeat_state_path
+    state_path = heartbeat_state_path()
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(

@@ -143,7 +143,88 @@ def sqlite_kald_er_laesning(sql: str) -> bool:
 
 # Write-redirect til en rigtig fil (ikke /dev/null eller fd-dup) → mutation.
 _WRITE_REDIRECT = re.compile(r">>?\s*(?!/dev/null|&)\S")
-_SEG_SPLIT = re.compile(r"&&|\|\||;|\|")
+
+
+def _uden_anfoersel(tekst: str) -> str:
+    """Erstat hvert anførselstegns-span med `Q`.
+
+    Målt 12/10-2026: `grep "a\\|b" fil` blev delt ved `\\|` INDE i
+    anførselstegnene, så andet segment hed `b" fil` — en ukendt kommando, og
+    hele kaldet blev talt som mutation. To læsende grep-kald blev nægtet af
+    den grund. Samme blindhed ramte redirect-tjekket: `grep "a > b" fil` så
+    ud som en skrivning.
+
+    Masken bevarer token-strukturen, så `.split()` og subkommando-detektion
+    virker uændret: `grep "a\\|b" fil` bliver `grep Q fil`.
+    """
+    ud: list[str] = []
+    i = 0
+    n = len(tekst)
+    while i < n:
+        ch = tekst[i]
+        if ch in ("'", '"'):
+            quote = ch
+            i += 1
+            while i < n and tekst[i] != quote:
+                if tekst[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                i += 1
+            i += 1  # den afsluttende quote
+            ud.append("Q")
+            continue
+        ud.append(ch)
+        i += 1
+    return "".join(ud)
+
+
+def _opdel_segmenter(c: str) -> list[str]:
+    """Opdel på shell-separatorer UDEN FOR anførselstegn.
+
+    `&&`, `||`, `;` og `|` skiller kun når de står uden for quotes. Den RÅ
+    tekst bevares i segmenterne, så `shlex.split` i sqlite3-grenen fortsat
+    ser de rigtige anførselstegn.
+    """
+    ud: list[str] = []
+    buf: list[str] = []
+    i = 0
+    n = len(c)
+    while i < n:
+        ch = c[i]
+        if ch in ("'", '"'):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            while i < n and c[i] != quote:
+                if c[i] == "\\" and i + 1 < n:
+                    buf.append(c[i])
+                    buf.append(c[i + 1])
+                    i += 2
+                    continue
+                buf.append(c[i])
+                i += 1
+            if i < n:
+                buf.append(c[i])
+                i += 1
+            continue
+        if ch == "\\" and i + 1 < n:
+            # Escaped separator uden for quotes: `\\|` er en LITERAL pipe.
+            buf.append(ch)
+            buf.append(c[i + 1])
+            i += 2
+            continue
+        if ch in ("&", "|", ";"):
+            if ch in ("&", "|") and i + 1 < n and c[i + 1] == ch:
+                i += 2
+            else:
+                i += 1
+            ud.append("".join(buf))
+            buf = []
+            continue
+        buf.append(ch)
+        i += 1
+    ud.append("".join(buf))
+    return ud
 
 
 def shell_command_is_mutating(command: str) -> bool:
@@ -154,10 +235,13 @@ def shell_command_is_mutating(command: str) -> bool:
     c = (command or "").strip()
     if not c:
         return False
-    if _WRITE_REDIRECT.search(c):
-        return True
-    for seg in _SEG_SPLIT.split(c):
-        toks = seg.split()
+    for seg in _opdel_segmenter(c):
+        # Redirect-tjekket er ogsaa anfoerselstegns-foelsomt: `grep "a > b" fil`
+        # skriver intet, og foer ramte den gren den som en mutation.
+        maske = _uden_anfoersel(seg)
+        if _WRITE_REDIRECT.search(maske):
+            return True
+        toks = maske.split()
         i = 0
         # spring env-assignments + wrappere over (FOO=bar sudo nohup time exec)
         while i < len(toks) and (

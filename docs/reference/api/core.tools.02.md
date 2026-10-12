@@ -19,7 +19,8 @@ _De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
 | function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L148) |
 | function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L170) |
 | function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L193) |
-| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L213) |
+| function | `_blokeret_for_autonom` | `(post_id, bruger)` | Grund til at NÆGTE en autonom afvisning — ellers tom streng. | [src](../../../core/tools/inbox_tools.py#L213) |
+| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L252) |
 
 ## `core/tools/jarvis_brain_tools.py`
 _Visible Jarvis' værktøjer til hjernen._

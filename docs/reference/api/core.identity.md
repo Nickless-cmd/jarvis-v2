@@ -249,7 +249,7 @@ _User Registry — per-user workspace mapping for multi-user Jarvis._
 | function | `_opdater_system_regeltekster` | `(workspace_dir, *, name)` | Gen-opdater system-regelteksterne fra templaten når indholdet afviger. | [src](../../../core/identity/workspace_bootstrap.py#L300) |
 | function | `_check_workspace_file_health` | `(workspace_dir, filename, known_sizes)` | Check a workspace file for suspicious shrinkage or stub-level size. | [src](../../../core/identity/workspace_bootstrap.py#L368) |
 | function | `bootstrap_workspace` | `(name=…)` | — | [src](../../../core/identity/workspace_bootstrap.py#L426) |
-| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L518) |
+| function | `bootstrap_user_workspace` | `(workspace_name, *, display_name=…)` | Bootstrap a per-user workspace. Unlike bootstrap_workspace(), | [src](../../../core/identity/workspace_bootstrap.py#L533) |
 
 ## `core/identity/workspace_context.py`
 _Workspace Context — thread-local/async-safe current-user binding._

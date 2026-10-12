@@ -150,8 +150,18 @@ async def stream_background_jobs(
     async def generate():
         try:
             if subscription.needs_snapshot:
-                snapshot = _jobs_snapshot(
-                    uid=uid, session_id=session_id, include_done=True,
+                # Bro-kaldet må IKKE køre på event-loopet. `_operator_exec` sender
+                # opgaven ind i loopet og venter bagefter på den med
+                # `cf_fut.result(timeout=150)` — kaldes det HERFRA, venter loopet på
+                # sig selv, og API'et accepterer ingen forbindelser i op til 150 s.
+                # Målt 11/10-2026: hovedtråden stod i futex_do_wait mens accept-køen
+                # voksede til 466, og Desk kunne ikke komme ind. Trådpoolen er den
+                # eneste vej ud.
+                snapshot = await asyncio.to_thread(
+                    _jobs_snapshot,
+                    uid=uid,
+                    session_id=session_id,
+                    include_done=True,
                 )
                 payload = {
                     "type": "snapshot",

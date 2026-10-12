@@ -38,11 +38,72 @@ import threading as _md_threading
 _MD_VECS_CACHE: dict[str, object] = {"mtime": None, "vecs": {}, "building": False}
 _MD_VECS_LOCK = _md_threading.Lock()
 
+#: Disk-cache for MEMORY.md-linjevektorer. Uden den starter hver proces fra NUL:
+#: efter en genstart skal alle ~10.100 linjer embeddes foerste gang cachen bygges,
+#: og det er praecis den kolde byrde der gav ~2.000 embed-kald i minuttet i bursts.
+#: Navnet ligger ved siden af memory_search's indeks-cache (samme moenster, samme
+#: begrundelse). `model`-noeglen er en guard: vektorer fra to modeller maa ALDRIG
+#: blandes, saa et modelskift invaliderer hele filen.
+_MD_VECS_CACHE_PATH_NAME = "runtime/memory_md_vecs.pkl"
+
+
+def _md_vecs_cache_path(user_id: str = ""):
+    try:
+        from core.runtime.workspace_paths import workspace_dir
+        ws = workspace_dir(user_id) if user_id else workspace_dir()
+        return ws / _MD_VECS_CACHE_PATH_NAME
+    except Exception:  # ingen workspace-kontekst → ingen disk-cache (som foer)
+        return None
+
+
+def _load_md_vecs_from_disk(user_id: str = "") -> dict:
+    """Laes linjevektorer fra disk. Tom dict = ingen brugbar cache → fuld bygning.
+
+    Self-safe: enhver fejl → {} (som foer). Model-guard som i memory_search."""
+    try:
+        import pickle
+        from core.services.semantic_memory import _EMBED_MODEL
+        path = _md_vecs_cache_path(user_id)
+        if path is None or not path.exists():
+            return {}
+        with open(path, "rb") as fh:
+            data = pickle.load(fh)
+        if data.get("model") != _EMBED_MODEL:
+            return {}
+        vecs = data.get("vecs")
+        return dict(vecs) if isinstance(vecs, dict) else {}
+    except Exception:  # ulaeselig/foraeldet cache er ikke en fejl — byg forfra
+        return {}
+
+
+def _save_md_vecs_to_disk(vecs: dict, user_id: str = "") -> None:
+    """Skriv linjevektorer til disk. Self-safe — en fejl her maa aldrig ramme turen."""
+    try:
+        import pickle
+        from datetime import UTC, datetime
+        from core.services.semantic_memory import _EMBED_MODEL
+        path = _md_vecs_cache_path(user_id)
+        if path is None or not vecs:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".pkl.tmp")
+        with open(tmp, "wb") as fh:
+            pickle.dump({
+                "vecs": vecs, "model": _EMBED_MODEL,
+                "built_at": datetime.now(UTC).isoformat(),
+            }, fh)
+        tmp.replace(path)  # atomisk — en halvskrevet fil kan aldrig laeses
+    except Exception:  # disk-cachen er en optimering — fejl maa ikke ramme turen
+        pass
+
 
 def _md_line_vecs(user_id: str = "") -> dict:
     """Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden.
     Returnerer den nuværende cache (kan være tom mens den (gen)bygges → kalder falder
-    tilbage til literalt match, blokerer aldrig hot-path'en)."""
+    tilbage til literalt match, blokerer aldrig hot-path'en).
+
+    Disk-cachen (11/10-2026) goer at en NY proces ikke starter fra nul: foerste kald
+    efter en genstart laeser de ~10.100 vektorer fra disk i stedet for at embedde dem."""
     try:
         from core.runtime.workspace_paths import workspace_dir
         md = (workspace_dir(user_id) if user_id else workspace_dir()) / "MEMORY.md"
@@ -61,13 +122,30 @@ def _md_line_vecs(user_id: str = "") -> dict:
     def _build() -> None:
         try:
             lines = _memory_md_lines(user_id)
-            vecs: dict = {}
-            if lines:
+            with _MD_VECS_LOCK:
+                gamle = dict(_MD_VECS_CACHE.get("vecs") or {})
+            # Foerste bygning i denne proces: fyld fra disk foer vi embedder noget.
+            # Uden dette var hver genstart en kold bygning af alle ~10.100 linjer.
+            if not gamle:
+                gamle = _load_md_vecs_from_disk(user_id)
+            # Genbrug pr. linje-TEKST (11/10-2026). Noeglen er teksten, og en
+            # vektor er deterministisk for sin tekst — saa en linje der ikke er
+            # aendret har praecis samme vektor og skal ikke embeddes igen.
+            #
+            # Maalt foer: hver skrivning til MEMORY.md (16.642 linjer, 10.102
+            # embeddet) gen-indlejrede ALLE linjer. Med ~22 skrivninger i timen
+            # og /api/embed maalt til 7,7-15,8 s pr. kald gav det ~2.000 kald i
+            # minuttet i bursts. Efter: kun de 1-3 linjer der faktisk er nye.
+            vecs: dict = {ln: gamle[ln] for ln in lines if ln in gamle}
+            nye = [ln for ln in lines if ln not in gamle]
+            if nye:
                 from core.services.jarvis_brain import _embed_texts
-                for ln, v in zip(lines, _embed_texts(lines)):
+                for ln, v in zip(nye, _embed_texts(nye)):
                     vecs[ln] = v
             with _MD_VECS_LOCK:
                 _MD_VECS_CACHE.update(mtime=mtime, vecs=vecs, building=False)
+            # Skriv til disk EFTER cachen er opdateret — hot-path'en venter ikke.
+            _save_md_vecs_to_disk(vecs, user_id)
         except Exception:
             with _MD_VECS_LOCK:
                 _MD_VECS_CACHE["building"] = False

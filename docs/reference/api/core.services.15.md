@@ -267,12 +267,13 @@ _Indbakkens to-trins forudsætning i mutationspunktet._
 | function | `_gate_tændt` | `()` | — | [src](../../../core/services/inbox_gate.py#L72) |
 | function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
 | function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
-| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L129) |
-| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L196) |
-| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L209) |
-| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L227) |
-| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L235) |
-| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L244) |
+| function | `_gaar_til_en_anden` | `(navn, argumenter)` | Er dette en udgående besked til en ANDEN bruger end Bjørn? | [src](../../../core/services/inbox_gate.py#L129) |
+| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L151) |
+| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L218) |
+| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L231) |
+| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L249) |
+| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L257) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L266) |
 
 ## `core/services/inbox_idle_waker.py`
 _Indbakken skal kunne VÆKKE — ikke kun gate._

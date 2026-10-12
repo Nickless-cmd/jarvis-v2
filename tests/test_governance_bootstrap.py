@@ -68,3 +68,63 @@ def test_ulaeselig_gate_stopper_ikke_jobbet(monkeypatch):
 
     ud = handler({})
     assert ud["result"]["reviewed"] == 1
+
+
+def _alle_handlers(monkeypatch) -> dict:
+    """Registrér alle handlers og returnér dem, uden at kalde dem."""
+    from core.services import jobs_engine
+
+    opsamlet: dict = {}
+    monkeypatch.setattr(
+        jobs_engine, "register_handler",
+        lambda kind, fn: opsamlet.__setitem__(kind, fn),
+    )
+    GB.ensure_default_job_handlers()
+    return opsamlet
+
+
+def test_ingen_handler_importerer_et_navn_der_ikke_findes(monkeypatch):
+    """12/10-2026: `dream_distillation_sweep` kaldte `tick_dream_distillation_daemon`,
+    som ikke findes i modulet — den hedder `run_dream_distillation_daemon`. Fejlen
+    var tavs: handleren fangede ImportError'en og returnerede `status: error`, saa
+    jobbet saa ud som om det koerte. Den blev foerst synlig da sweep'en fik en
+    kadence og faktisk fyrede.
+
+    Denne test kalder HVER registreret handler og kraever at ingen af dem fejler
+    med en ImportError/AttributeError — altsaa at navnene de importerer findes.
+    Handlere der fejler af andre grunde (manglende data, netvaerk) er ikke i sig
+    selv en fejl her; det er den DOEDE REFERENCE vi fanger.
+    """
+    handlers = _alle_handlers(monkeypatch)
+    assert handlers, "ingen handlers blev registreret"
+
+    doede: list[str] = []
+    for job_type, fn in sorted(handlers.items()):
+        try:
+            ud = fn({"reason": "test"})
+        except Exception as exc:  # pragma: no cover - handleren maa ikke kaste
+            doede.append(f"{job_type}: kastede {type(exc).__name__}: {exc}")
+            continue
+        fejl = str((ud or {}).get("error") or "")
+        if "cannot import name" in fejl or "has no attribute" in fejl:
+            doede.append(f"{job_type}: {fejl[:160]}")
+
+    assert not doede, "handlers med doede referencer:\n" + "\n".join(doede)
+
+
+def test_dream_distillation_handler_kalder_den_rigtige_funktion(monkeypatch):
+    """Navnet er `run_dream_distillation_daemon`, ikke `tick_...`."""
+    from core.services import dream_distillation_daemon as D
+
+    handler = _hent_handler(monkeypatch, "dream_distillation_sweep")
+    kaldt: dict = {}
+
+    def _falsk(*, trigger: str = "", last_visible_at: str = "") -> dict:
+        kaldt["trigger"] = trigger
+        return {"status": "written", "residue": "test"}
+
+    monkeypatch.setattr(D, "run_dream_distillation_daemon", _falsk)
+    ud = handler({})
+    assert ud["status"] == "ok", ud
+    assert ud["result"]["status"] == "written"
+    assert kaldt["trigger"] == "periodic-scheduled"

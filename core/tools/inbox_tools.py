@@ -210,6 +210,45 @@ def _exec_inbox_done(arguments: dict[str, Any] | None = None, **_kw) -> dict[str
     return {"status": "ok", "id": post_id, "type": str(r.get("type") or "")}
 
 
+def _blokeret_for_autonom(post_id: str, bruger: str) -> str:
+    """Grund til at NÆGTE en autonom afvisning — ellers tom streng.
+
+    `bloker` er principalens eksplicitte KRÆVE (4/10-2026): huset kan
+    informere, Jarvis kan binde sig selv, og Bjørn kan kræve — men kun ved en
+    eksplicit handling. Uden dette værn kunne en kørsel UDEN VIDNER ophæve
+    netop den kræve, og så var den ikke en kræve.
+
+    Egne poster må altid lukkes: det er «det du selv har lovet kommer tilbage
+    til dig», og gaten ville ellers være en fælde uden udgang. `inbox_done`
+    er heller ikke ramt — den kræver et terminalt udfald.
+
+    Fald-retningen er NÆGT: at afvise er irreversibelt, posten kan altid
+    lukkes senere, og `done`-vejen er stadig åben. En fejlende læsning må
+    ikke åbne hullet.
+    """
+    try:
+        from core.services.run_autonomy_context import is_autonomous
+        autonom = is_autonomous()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_tools: kunne ikke laese autonomi-flaget: %s", exc)
+        return ("en autonom koersel kan ikke afvise en post naar "
+                "autonomi-flaget ikke kan laeses")
+    if not autonom:
+        return ""
+    try:
+        from core.runtime import db_inbox
+        post = db_inbox.hent(bruger_id=bruger, kilde_id=post_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_tools: kunne ikke afgoere bloker for %s: %s",
+                       post_id, exc)
+        return ("en autonom koersel kan ikke afvise en post naar dens "
+                "bloker-status ikke kan laeses")
+    if post and post.get("bloker"):
+        return ("posten er markeret `bloker` af principalen — kun en synlig "
+                "tur kan afvise den (eller `inbox_done` hvis den ER udfoert)")
+    return ""
+
+
 def _exec_inbox_drop(arguments: dict[str, Any] | None = None, **_kw) -> dict[str, Any]:
     a = arguments or {}
     post_id = str(a.get("id") or "").strip()
@@ -222,6 +261,9 @@ def _exec_inbox_drop(arguments: dict[str, Any] | None = None, **_kw) -> dict[str
     bruger = _bruger()
     if not bruger:
         return {"status": "error", "error": "ingen autentificeret bruger"}
+    naegt = _blokeret_for_autonom(post_id, bruger)
+    if naegt:
+        return {"status": "error", "error": naegt, "id": post_id}
     from core.services.inbox_state import drop
     r = drop(bruger, post_id, grund)
     if r.get("status") == "ukendt":

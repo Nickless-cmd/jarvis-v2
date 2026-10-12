@@ -223,6 +223,26 @@ def materialize(*, worktree_id: str) -> dict[str, Any]:
     return get(worktree_id=worktree_id) or {}
 
 
+def _prune_empty_parent(path: str) -> None:
+    """Fjern den nu tomme foraelder (``agent-<hash>/``) efter et worktree er revet ned.
+
+    12/10-2026: ``materialize()`` opretter foraelderen via ``os.makedirs(dirname)``, men
+    oprydningen fjernede kun barnet og ``.gitdir``-soesteren. Maalt: to tomme
+    ``agent-<hash>/``-skaller stod tilbage fra 8/10 — samme fejlklasse som ``workspaces/t``:
+    en oprettelsesvej uden en tilsvarende oprydning. Fjerner KUN naar mappen er tom OG
+    ligger under worktree-roden; ``os.rmdir`` fejler paa en ikke-tom mappe, saa intet
+    indhold kan gaa tabt, og roden selv roeres aldrig.
+    """
+    parent = os.path.dirname(os.path.realpath(path))
+    root = os.path.realpath(str(worktree_root()))
+    if parent == root or not parent.startswith(root + os.sep):
+        return
+    try:
+        os.rmdir(parent)
+    except OSError:
+        pass  # ikke tom, eller allerede væk — begge er fine
+
+
 def _discard_partial(wt: dict[str, Any]) -> None:
     try:
         g.remove_worktree(wt["repo_path"], wt["path"], wt["branch"])
@@ -230,6 +250,7 @@ def _discard_partial(wt: dict[str, Any]) -> None:
         shutil.rmtree(wt["path"], ignore_errors=True)
         logger.warning("delvist worktree %s ryddet med rmtree", wt["worktree_id"], exc_info=True)
     agd.remove(wt["repo_path"], wt["path"])
+    _prune_empty_parent(wt["path"])
 
 
 def provision(*, owner_user_id: str, assignment_id: str, repo_path: str, base_ref: str = "HEAD",
@@ -342,6 +363,7 @@ def _verified_remove(wt: dict[str, Any]) -> bool:
         logger.warning("oprydning af %s fejlede", wt["worktree_id"], exc_info=True)
         return False
     agd.remove(wt["repo_path"], wt["path"])
+    _prune_empty_parent(wt["path"])
     return True
 
 

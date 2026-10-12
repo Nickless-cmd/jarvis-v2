@@ -145,14 +145,16 @@ _Verification gate — advisory check on destructive/mutation actions._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
-| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L149) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L283) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L291) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L305) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L369) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L421) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L447) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L529) |
+| function | `_uden_anfoersel` | `(tekst)` | Erstat hvert anførselstegns-span med `Q`. | [src](../../../core/services/verification_gate.py#L148) |
+| function | `_opdel_segmenter` | `(c)` | Opdel på shell-separatorer UDEN FOR anførselstegn. | [src](../../../core/services/verification_gate.py#L181) |
+| function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L230) |
+| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L367) |
+| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L375) |
+| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L389) |
+| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L453) |
+| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L505) |
+| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L531) |
+| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L613) |
 
 ## `core/services/verification_gate_telemetry.py`
 _R2 verification gate telemetry — track whether warnings get heeded._

@@ -40,6 +40,18 @@ def start_autonomous_stream_run(
         autonomous_provider=settings.autonomous_model_provider,
         autonomous_model=settings.autonomous_model_name,
     )
+    # PRE-FLIGHT GUT-GATE (12/10-2026). Samme beslutningspunkt som i `start_autonomous_run`:
+    # gaten skal kunne stoppe runnet FØR det fødes. Fail-open — kan gaten ikke kaldes,
+    # starter runnet som før.
+    try:
+        from core.services.gut_engine import preflight_allows
+    except Exception:  # gaten er rådgivende — kan den ikke importeres, starter runnet
+        preflight_allows = None  # type: ignore[assignment]
+    if preflight_allows is not None and not preflight_allows(message):
+        logger.info("autonomt stream-run stoppet af gut-gaten (pre-flight): %s",
+                    (message or "")[:80])
+        return
+
     run = vr.VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,

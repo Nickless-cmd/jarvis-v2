@@ -927,7 +927,10 @@ def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
 
     # Cadence state from HEARTBEAT_STATE.json
     try:
-        state_path = WORKSPACE_DIR / "runtime" / "HEARTBEAT_STATE.json"
+        # 12/10-2026: samme resolver som skriveren — ikke WORKSPACE_DIR, som
+        # tilfældigt pegede rigtigt men ikke er heartbeatets kontrakt.
+        from core.runtime.workspace_paths import heartbeat_state_path
+        state_path = heartbeat_state_path()
         raw = _json.loads(state_path.read_text(encoding="utf-8"))
         state = raw.get("state", {})
         result["cadence"] = {
@@ -987,7 +990,9 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
     import json as _json
 
     try:
-        state_path = WORKSPACE_DIR / "runtime" / "HEARTBEAT_STATE.json"
+        # 12/10-2026: samme resolver som skriveren (se _exec_heartbeat_status).
+        from core.runtime.workspace_paths import heartbeat_state_path
+        state_path = heartbeat_state_path()
         raw = _json.loads(state_path.read_text(encoding="utf-8"))
         state = raw.get("state", {})
         recent = raw.get("recent_ticks", [])

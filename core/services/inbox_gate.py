@@ -126,6 +126,28 @@ def _aegte_kald(
     return navn, args
 
 
+def _gaar_til_en_anden(navn: str, argumenter: dict[str, Any] | None) -> bool:
+    """Er dette en udgående besked til en ANDEN bruger end Bjørn?
+
+    12/10-2026 (Bjørn: «den skal være undtaget»). Målt samme dag: Michelles og
+    Mikkels morgenbrief fejlede kl. 05:30 fordi gaten nægtede `send_discord_dm`
+    — min egen åbne post havde fået to påmindelser. Konsekvensen var at en post
+    i MIN indbakke lammede den proaktive kanal til ANDRE mennesker i 8,5 timer.
+
+    Det er ikke gatens formål. Gaten beskytter Bjørn mod uverificerede
+    mutationer i HANS navn; en DM til Michelle er ikke en mutation i hans navn,
+    og hun kan hverken se eller lukke posten der blokerede den. At nægte den
+    straffer den forkerte part.
+
+    Grænsen er derfor `recipient`: er den sat, går beskeden til en anden og
+    slipper igennem. Er den tom, er modtageren Bjørn selv (`send_dm_to_owner`)
+    — og så gælder gaten uændret, for det er præcis den kanal den skal vogte.
+    """
+    if str(navn or "") != "send_discord_dm":
+        return False
+    return bool(str((argumenter or {}).get("recipient") or "").strip())
+
+
 def _gatende_poster(bruger_id: str) -> list[dict[str, Any]] | None:
     """Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open).
 
@@ -276,6 +298,11 @@ def evaluer_inbox_mutation(
     # læsbar frem for at hvile på en anden funktions interne detalje.
     if er_bagdoer(navn):
         return {**tomt, "grund": "bagdoer"}
+    # 12/10-2026: udgående besked til en ANDEN bruger er ikke en mutation i
+    # Bjørns navn — se `_gaar_til_en_anden`. Den skal slippe, ellers kan en
+    # post i MIN indbakke lamme kanalen til Michelle og Mikkel (målt 8,5 timer).
+    if _gaar_til_en_anden(navn, args):
+        return {**tomt, "grund": "udgaaende til en anden bruger"}
     if not er_mutation(navn, args):
         # Læse-værktøjer slipper ALTID igennem: han skal kunne komme fri, og
         # `inbox`/`inbox_done`/`inbox_drop` er selv læse/bogførings-kald.

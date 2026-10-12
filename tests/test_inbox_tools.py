@@ -288,3 +288,56 @@ def test_en_ANDEN_brugers_post_kan_ikke_lukkes(inbox_db):
         assert inbox_tools._exec_inbox_done({"id": "job-andens"})["status"] == "error"
     assert db_inbox.hent(bruger_id="en-anden",
                          kilde_id="job-andens")["status"] == db_inbox.STATUS_AABEN
+
+
+# ── Udvejen er aabnet — men ikke for principalens KRÆVE (12/10-2026) ──────
+#
+# `inbox_done`/`inbox_drop` blev tilføjet til den autonome politik, så gaten
+# ikke længere er en fælde. Men `bloker` er Bjørns eksplicitte kræve, og en
+# kørsel UDEN VIDNER må ikke kunne ophæve den — så var den ikke en kræve.
+
+def test_en_AUTONOM_koersel_kan_ikke_afvise_principalens_bloker(inbox_db):
+    from core.services import run_autonomy_context as rac
+
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="flag", kilde_id="flag-bjorn",
+        verificeret_ejer=db_inbox.EJER_BRUGER, kraever_handling=True,
+        beskrivelse="Bjoern kraever dette", bloker=True)
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="job", kilde_id="job-jarvis",
+        verificeret_ejer=db_inbox.EJER_JARVIS, kraever_handling=True,
+        beskrivelse="noget jeg selv har lovet")
+
+    token = rac.set_autonomous(True)
+    try:
+        with _som_bjorn():
+            # Principalens post: naegtet.
+            r = inbox_tools._exec_inbox_drop({"id": "flag-bjorn", "reason": "orker ikke"})
+            assert r["status"] == "error", "en autonom koersel ophaevede bloker"
+            assert "bloker" in r["error"]
+            # Egne poster: fri. Ellers er gaten stadig en faelde.
+            assert inbox_tools._exec_inbox_drop(
+                {"id": "job-jarvis", "reason": "ikke relevant"})["status"] == "ok"
+            # `done` er ikke ramt — den kraever et terminalt udfald.
+            assert inbox_tools._exec_inbox_done({"id": "flag-bjorn"})["status"] == "ok"
+    finally:
+        rac.reset_autonomous(token)
+
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="flag-bjorn")["status"] == db_inbox.STATUS_DONE
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="job-jarvis")["status"] == db_inbox.STATUS_DROP
+
+
+def test_en_SYNLIG_tur_kan_stadig_afvise_bloker(inbox_db):
+    """Værnet skal kun ramme den autonome vej. Sidder Bjørn selv foran
+    skærmen, er afvisningen hans egen handling."""
+    db_inbox.opret_eller_hent(
+        bruger_id=BJORN, kildetype="flag", kilde_id="flag-bjorn",
+        verificeret_ejer=db_inbox.EJER_BRUGER, kraever_handling=True,
+        beskrivelse="Bjoern kraever dette", bloker=True)
+    with _som_bjorn():
+        assert inbox_tools._exec_inbox_drop(
+            {"id": "flag-bjorn", "reason": "jeg ombestemte mig"})["status"] == "ok"
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="flag-bjorn")["status"] == db_inbox.STATUS_DROP

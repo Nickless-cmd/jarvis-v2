@@ -364,3 +364,35 @@ def test_fil_mutation_uden_readback_taeller_som_mutation():
         s = _scan([_evt("write_file", extra_payload=payload)])
         assert len(s["mutations"]) == 1, payload
         assert len(s["light_verifies"]) == 0, payload
+
+
+# ── Anførselstegn er ikke separatorer (12/10-2026) ────────────────────────
+#
+# `_SEG_SPLIT` delte den RÅ streng på `|`, ogsaa inde i anfoerselstegn.
+# `grep "a\\|b" fil` blev derfor laest som `grep "a\\` + `b" fil` — en ukendt
+# kommando — og hele det laesende kald blev talt som mutation. To af mine egne
+# grep-kald blev naegtet af den grund. Samme blindhed ramte redirect-tjekket:
+# `grep "a > b" fil` saa ud som en skrivning.
+
+def test_anfoerselstegn_skiller_ikke_segmenter():
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating('grep -rn "inbox_gate\\|inbox_done" core/') is False
+    assert shell_command_is_mutating('grep "a\\|b" fil') is False
+    assert shell_command_is_mutating('echo "foo | bar"') is False
+    assert shell_command_is_mutating('grep "a > b" fil') is False
+    assert shell_command_is_mutating("grep 'x;y' fil") is False
+    # Escaped separator UDEN for quotes er ogsaa en literal.
+    assert shell_command_is_mutating("grep a\\|b fil") is False
+
+
+def test_aegte_separatorer_og_redirects_fanges_stadig():
+    """Vagt mod at rettelsen sjaesker gaten: uden for quotes skiller de, og
+    en redirect skriver uanset hvad der staar i quotes."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating("cat fil | grep x") is False
+    assert shell_command_is_mutating("grep -c x fil | wc -l") is False
+    assert shell_command_is_mutating("cd /x && grep -rn y core/") is False
+    assert shell_command_is_mutating("echo hi > fil") is True
+    assert shell_command_is_mutating('echo "a" > fil') is True
+    assert shell_command_is_mutating('cat "a b" >> "c d"') is True
+    assert shell_command_is_mutating("rm -rf /tmp/x && echo klaret") is True

@@ -169,3 +169,46 @@ def test_visible_run_ignores_origin_grants():
     finally:
         reset_autonomous(token)
         _clear_origin()
+
+
+# ── Indbakkens udvej (12/10-2026) ────────────────────────────────────────
+#
+# Målt: `inbox_gate` frigives KUN af `inbox_done`/`inbox_drop` på dens poster
+# — og `_prepare_call` tjekker DENNE politik FØR gaten. Var de to ikke i
+# bund-sættet, var gaten en fælde: runnet kunne se posten (`inbox` er tilladt),
+# men aldrig lukke den, og dermed heller ikke mutere resten af runnet. 12/10
+# blev en recurring-brief blokeret og kunne ikke frigives.
+
+def test_autonomt_run_kan_lukke_sine_egne_indbakke_poster():
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    token = _as_origin("")  # bund-sættet alene: ingen delegeret udvidelse
+    try:
+        assert is_allowed("inbox") is True
+        assert is_allowed("inbox_done") is True
+        assert is_allowed("inbox_drop") is True
+        # Udvejen maa ikke aabne mere end noedvendigt: runnet kan stadig ikke
+        # sende eller skrive.
+        assert is_allowed("write_file") is False
+        assert is_allowed("send_discord_dm") is False
+    finally:
+        reset_autonomous(token)
+        _clear_origin()
+
+
+def test_autonom_udfoerelsesvej_slipper_inbox_done_igennem():
+    """Fælden ende-til-ende: `_prepare_call` svarede `gate_blocked` med
+    gate_type `autonomous_tool_policy` på `inbox_done` — altså blev runnet
+    nægtet netop det værktøj der kunne frigive det."""
+    from core.services.simple_tool_executor import _prepare_call
+
+    call = {"function": {"name": "inbox_done", "arguments": {"id": "wake-x"}}}
+    token = set_autonomous(True)
+    try:
+        kind, payload = _prepare_call(
+            call, force=True, run_id="autonomous-test", session_id="auto-test",
+            user_message="", controller=None, round_seen=set(), user_present=False,
+        )
+    finally:
+        reset_autonomous(token)
+    assert kind == "run", f"inbox_done blev afvist: {payload}"

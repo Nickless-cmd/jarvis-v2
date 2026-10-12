@@ -81,10 +81,17 @@ def ensure_default_job_handlers() -> list[str]:
     registered: list[str] = []
 
     def _chronicle_refresh_handler(payload: dict[str, Any]) -> dict[str, Any]:
-        """Rebuild the latest chronicle summary entry."""
+        """Rebuild the latest chronicle summary entry.
+
+        12/10-2026: kaldte `build_chronicle_summary`, som ikke findes i modulet.
+        Den funktion der skriver/opdaterer den nyeste chronicle-entry er
+        `maybe_write_chronicle_entry`. Samme tavse fejlklasse som
+        `dream_distillation_sweep`: ImportError'en blev fanget og rapporteret som
+        `status: error`, saa jobbet saa ud som om det koerte.
+        """
         try:
-            from core.services.chronicle_engine import build_chronicle_summary
-            result = build_chronicle_summary() or {}
+            from core.services.chronicle_engine import maybe_write_chronicle_entry
+            result = maybe_write_chronicle_entry() or {}
             return {"status": "ok", "kind": "chronicle_refresh", "result": result}
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
@@ -98,10 +105,21 @@ def ensure_default_job_handlers() -> list[str]:
             return {"status": "error", "error": str(exc)}
 
     def _dream_distillation_handler(payload: dict[str, Any]) -> dict[str, Any]:
-        """Distill pending dreams into consolidated form."""
+        """Distill pending dreams into consolidated form.
+
+        12/10-2026: kaldte `tick_dream_distillation_daemon`, som ikke findes i
+        modulet — den hedder `run_dream_distillation_daemon`. Fejlen var tavs i
+        den forstand at handleren fangede ImportError'en og returnerede
+        `status: error`, saa jobbet saa ud som om det koerte. Den blev foerst
+        synlig da `dream_distillation_sweep` fik en kadence og faktisk fyrede.
+        """
         try:
-            from core.services.dream_distillation_daemon import tick_dream_distillation_daemon
-            return {"status": "ok", "kind": "dream_distillation", "result": tick_dream_distillation_daemon()}
+            from core.services.dream_distillation_daemon import run_dream_distillation_daemon
+            return {
+                "status": "ok",
+                "kind": "dream_distillation",
+                "result": run_dream_distillation_daemon(trigger="periodic-scheduled"),
+            }
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 

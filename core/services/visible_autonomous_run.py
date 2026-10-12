@@ -160,6 +160,19 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     except Exception:
         logger.warning("autonomt model-par-tjek fejlede — lader parret gaa",
                        exc_info=True)
+    # PRE-FLIGHT GUT-GATE (12/10-2026). Gaten lå før på `runtime.autonomous_run_started` — et
+    # event der fyrer EFTER runnet er begyndt, så den kunne aldrig stoppe noget. Her er
+    # beslutningspunktet: bliver runnet afvist, fødes det ikke, og der publiceres intet
+    # started-event. Fail-open: kan gaten ikke kaldes, starter runnet som før.
+    try:
+        from core.services.gut_engine import preflight_allows
+    except Exception:  # gaten er rådgivende — kan den ikke importeres, starter runnet
+        preflight_allows = None  # type: ignore[assignment]
+    if preflight_allows is not None and not preflight_allows(message):
+        logger.info("autonomt run stoppet af gut-gaten (pre-flight): %s",
+                    (message or "")[:80])
+        return
+
     run = _vr.VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,

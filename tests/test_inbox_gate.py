@@ -203,6 +203,48 @@ def test_BAGDOERENE_slipper_igennem(inbox_db):
         assert v["grund"] == "bagdoer"
 
 
+def test_UDGAAENDE_til_en_ANDEN_bruger_slipper_igennem(inbox_db):
+    """12/10-2026 (Bjørn: «den skal være undtaget»).
+
+    Målt samme dag: Michelles og Mikkels morgenbrief fejlede kl. 05:30 fordi
+    gaten nægtede `send_discord_dm` — min egen åbne post havde fået to
+    påmindelser. En post i MIN indbakke lammede kanalen til ANDRE mennesker i
+    8,5 timer. Michelle kan hverken se eller lukke posten der blokerede hende;
+    at nægte den straffer den forkerte part.
+    """
+    p = _egen_aaben_post()
+    _lever_paamindelse(p, "t1")
+    _lever_paamindelse(p, "t2")
+    v = evaluer_inbox_mutation(
+        BJORN, "send_discord_dm", {"recipient": "Michelle", "content": "hej"},
+        tur="t3")
+    assert v["blokeret"] is False, "DM til en anden bruger blev naegtet"
+    assert v["grund"] == "udgaaende til en anden bruger"
+
+
+def test_UDGAAENDE_til_BJOERN_SELV_naegtes_stadig(inbox_db):
+    """Grænsen er `recipient`. Er den tom, er modtageren Bjørn selv
+    (`send_dm_to_owner`) — og så gælder gaten uændret. Det er præcis den kanal
+    den skal vogte: beskeden kommer i hans navn, og han kan lukke posten."""
+    p = _egen_aaben_post()
+    _lever_paamindelse(p, "t1")
+    _lever_paamindelse(p, "t2")
+    for args in ({}, {"content": "hej"}, {"recipient": "  "}):
+        v = evaluer_inbox_mutation(BJORN, "send_discord_dm", args, tur="t3")
+        assert v["blokeret"] is True, f"DM til Bjoern slap igennem med {args!r}"
+
+
+def test_undtagelsen_rammer_KUN_send_discord_dm(inbox_db):
+    """En anden mutation med et `recipient`-felt må ikke snige sig med."""
+    p = _egen_aaben_post()
+    _lever_paamindelse(p, "t1")
+    _lever_paamindelse(p, "t2")
+    v = evaluer_inbox_mutation(
+        BJORN, "edit_file", {"recipient": "Michelle", "path": "/tmp/x"},
+        tur="t3")
+    assert v["blokeret"] is True
+
+
 def test_et_ikke_muterende_SHELL_kald_naegtes_ikke(inbox_db):
     """Et `grep` gennem bash er ikke en mutation. Klassifikationen deles med
     R2.5 netop for at ét sted afgør det."""

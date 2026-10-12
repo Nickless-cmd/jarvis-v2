@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8876/16791 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8894/16809 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5915 | 11405 | 51% |
+| `core.runtime` | 817 | 1470 | 55% |
+| `core.services` | 5927 | 11416 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 123 | 198 | 62% |
+| `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 532 | 1073 | 49% |
+| `core.tools` | 533 | 1074 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -736,7 +736,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/agent_worktrees.py` :: `get_for_assignment` (L190)
 - `core/services/agent_worktrees.py` :: `quota_status` (L130)
 - `core/services/agent_worktrees.py` :: `worktree_root` (L80)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L245)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L266)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)
@@ -1181,10 +1181,10 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L163)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L64)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L30)
-- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L127)
-- `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L43)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L61)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_surface` (L27)
+- `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L124)
+- `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L40)
 - `core/services/experiment_runner.py` :: `list_experiments` (L177)
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L67)
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L71)
@@ -1236,7 +1236,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_prompt_section` (L150)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_from_sources` (L32)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
-- `core/services/gut_engine.py` :: `build_gut_surface` (L181)
+- `core/services/gut_engine.py` :: `build_gut_surface` (L347)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
 - `core/services/habits_pipeline.py` :: `accept_suggestion` (L413)
 - `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L459)
@@ -1246,11 +1246,11 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L440)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2178)
-- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1243)
-- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L487)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2193)
+- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L302)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1256)
+- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L272)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
 - `core/services/hf_connector.py` :: `model_info` (L85)
@@ -1363,7 +1363,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/memory_density.py` :: `list_recent` (L196)
 - `core/services/memory_density.py` :: `mark_promoted` (L185)
 - `core/services/memory_emotional_context.py` :: `get_mood_for_heading` (L61)
-- `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L104)
+- `core/services/memory_maintenance_daemon.py` :: `build_memory_maintenance_surface` (L189)
 - `core/services/memory_md_update_proposal_tracking.py` :: `build_runtime_memory_md_update_proposal_surface` (L95)
 - `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L59)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L27)
@@ -1867,7 +1867,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L675)
+- `core/services/semantic_memory.py` :: `get_stats` (L688)
 - `core/services/sensory_archive.py` :: `count` (L480)
 - `core/services/sensory_archive.py` :: `get` (L476)
 - `core/services/sensory_archive.py` :: `list_recent` (L455)
@@ -1878,8 +1878,8 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/sensory_archive.py` :: `search` (L467)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L344)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L470)
+- `core/services/session_inbox.py` :: `pending_count` (L354)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L480)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
@@ -2122,7 +2122,7 @@ Generated from source. 8876/16791 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6790)
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L6721)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L757)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L108)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L157)

@@ -315,24 +315,29 @@ _Gut-calibration wiring — fodrer cognitive_gut_state fra run-livscyklussen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `observe_run_event` | `(kind, payload)` | Dispatch fra run_closure_gate's listener. Kaster aldrig. | [src](../../../core/services/gut_calibration.py#L29) |
-| function | `_on_started` | `(payload)` | — | [src](../../../core/services/gut_calibration.py#L40) |
-| function | `_on_outcome` | `(payload, actual_outcome)` | — | [src](../../../core/services/gut_calibration.py#L74) |
+| function | `observe_run_event` | `(kind, payload)` | Dispatch fra run_closure_gate's listener. Kaster aldrig. | [src](../../../core/services/gut_calibration.py#L34) |
+| function | `_on_started` | `(payload)` | — | [src](../../../core/services/gut_calibration.py#L45) |
+| function | `_on_outcome` | `(payload, actual_outcome)` | — | [src](../../../core/services/gut_calibration.py#L62) |
 
 ## `core/services/gut_engine.py`
 _Gut Engine — intuition and calibration tracking._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L21) |
-| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L99) |
-| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L109) |
-| function | `_safe_record` | `(ledger, nerve, passed, reason)` | Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten. | [src](../../../core/services/gut_engine.py#L122) |
-| function | `_record_counterfactual` | `(conf, would_pass, no_bias_confidence, threshold, mode)` | Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L130) |
-| function | `gut_gate` | `(proceed_confidence, *, context=…, no_bias_confidence=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L160) |
-| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L218) |
-| function | `build_gut_surface` | `()` | — | [src](../../../core/services/gut_engine.py#L240) |
-| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L254) |
+| function | `_gut_bias` | `()` | Læs Lag-4-bias'en (0.0 = shadow/ingen ændring). Én sætning, så kaldestedets try er | [src](../../../core/services/gut_engine.py#L22) |
+| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L32) |
+| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L116) |
+| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L126) |
+| function | `_safe_record` | `(ledger, nerve, decision, reason)` | Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten. | [src](../../../core/services/gut_engine.py#L139) |
+| function | `_record_counterfactual` | `(conf, would_pass, no_bias_confidence, threshold, mode)` | Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L147) |
+| function | `gut_gate` | `(proceed_confidence, *, context=…, no_bias_confidence=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L179) |
+| function | `_blok_budget_brugt` | `(no=…)` | True når blokerings-budgettet for den rullende time er brugt. Ren — kaster ikke. | [src](../../../core/services/gut_engine.py#L257) |
+| function | `_record_backstop` | `(conf, hunch)` | Tæl en overkørsel: gaten ville stoppe, men bagkanten slap runnet igennem. | [src](../../../core/services/gut_engine.py#L265) |
+| function | `preflight_gut_gate` | `(*, task_description)` | PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L275) |
+| function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L313) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L325) |
+| function | `build_gut_surface` | `()` | — | [src](../../../core/services/gut_engine.py#L347) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L361) |
 
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8881/16796 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8886/16801 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8881/16796 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5918 | 11407 | 51% |
+| `core.services` | 5923 | 11412 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1236,7 +1236,7 @@ Generated from source. 8881/16796 functions/methods documented (52%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_prompt_section` (L150)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_from_sources` (L32)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
-- `core/services/gut_engine.py` :: `build_gut_surface` (L240)
+- `core/services/gut_engine.py` :: `build_gut_surface` (L347)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
 - `core/services/habits_pipeline.py` :: `accept_suggestion` (L413)
 - `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L459)

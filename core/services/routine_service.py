@@ -1,6 +1,7 @@
 """Authorized lifecycle service for versioned Routine definitions and runs."""
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Mapping
@@ -347,6 +348,79 @@ class RoutineService:
             raise KeyError(str(rest[0]))
         require_authorized(actor, Action.MUTATE, row)
         return _run_view(db_routines.cancel_run(str(rest[0])))
+
+    def list(self, *args: Any) -> list[RoutineView]:
+        actor, rest = self._actor_and_rest(args)
+        if rest:
+            raise TypeError("list expects no arguments")
+        rows = db_routines.list_routines(
+            owner_user_id=actor.canonical_user_id,
+            decrypt_for=actor.canonical_user_id,
+        )
+        return [_routine_view(row) for row in rows]
+
+    def list_runs(self, *args: Any) -> list[RunView]:
+        actor, rest = self._actor_and_rest(args)
+        if len(rest) != 1:
+            raise TypeError("list_runs expects routine_id")
+        routine_id = str(rest[0])
+        row = db_routines.get_routine(routine_id)
+        if row is None:
+            raise KeyError(routine_id)
+        require_authorized(actor, Action.READ_CONTENT, row)
+        return [_run_view(item) for item in db_routines.list_runs(routine_id)]
+
+    def list_run_events(self, *args: Any) -> list[dict[str, Any]]:
+        actor, rest = self._actor_and_rest(args)
+        if len(rest) != 1:
+            raise TypeError("list_run_events expects run_id")
+        run_id = str(rest[0])
+        row = db_routines.get_run(run_id)
+        if row is None:
+            raise KeyError(run_id)
+        require_authorized(actor, Action.READ_CONTENT, row)
+        return db_routines.read_run_events(
+            run_id, decrypt_for=actor.canonical_user_id,
+        )
+
+    def get_inbox_defaults(self, *args: Any) -> dict[str, object]:
+        actor, rest = self._actor_and_rest(args)
+        if rest:
+            raise TypeError("get_inbox_defaults expects no arguments")
+        return db_routines.get_inbox_preference(actor.canonical_user_id)
+
+    def set_inbox_defaults(
+        self, policy: Mapping[str, object], *args: Any,
+    ) -> dict[str, object]:
+        actor, rest = self._actor_and_rest(args)
+        if rest:
+            raise TypeError("set_inbox_defaults expects a policy only")
+        return db_routines.set_inbox_preference(
+            actor.canonical_user_id, policy=policy,
+        )
+
+    def get_redacted_diagnostic(self, *args: Any) -> dict[str, object] | None:
+        actor, rest = self._actor_and_rest(args)
+        if len(rest) != 1:
+            raise TypeError("get_redacted_diagnostic expects run_id")
+        run_id = str(rest[0])
+        row = db_routines.get_run(run_id)
+        if row is None:
+            return None
+        require_authorized(actor, Action.READ_REDACTED_FAILURE, row)
+        if str(row.get("status") or "") != "failed":
+            return None
+        opaque = lambda prefix, value: (
+            f"{prefix}_{hashlib.sha256(str(value).encode('utf-8')).hexdigest()[:16]}"
+        )
+        return {
+            "opaque_routine_ref": opaque("routine", row["routine_id"]),
+            "opaque_run_ref": opaque("run", row["run_id"]),
+            "occurred_at": str(row.get("finished_at") or row.get("updated_at") or ""),
+            "component": "runner",
+            "error_code": str(row.get("diagnostic_code") or "routine_execution_failed"),
+            "health_classification": "unknown",
+        }
 
     def archive_stopped_before(self, *, now: datetime | None = None) -> dict[str, int]:
         current = now or datetime.now(UTC)

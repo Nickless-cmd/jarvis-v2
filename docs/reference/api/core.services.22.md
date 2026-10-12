@@ -397,34 +397,40 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `StaleRoutineVersion` | `` | An edit lost the optimistic version race. | [src](../../../core/services/routine_service.py#L22) |
-| class | `InvalidRoutineTransition` | `` | A requested lifecycle transition is not valid from the current state. | [src](../../../core/services/routine_service.py#L26) |
-| class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L31) |
-| method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L54) |
-| class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L59) |
-| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L83) |
-| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L108) |
-| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L125) |
-| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L132) |
-| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L133) |
-| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L136) |
-| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L142) |
-| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L147) |
-| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L165) |
-| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L185) |
-| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L197) |
-| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L231) |
-| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L248) |
-| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L251) |
-| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L254) |
-| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L257) |
-| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L260) |
-| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L274) |
-| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L296) |
-| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L307) |
-| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L329) |
-| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L341) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L351) |
+| class | `StaleRoutineVersion` | `` | An edit lost the optimistic version race. | [src](../../../core/services/routine_service.py#L23) |
+| class | `InvalidRoutineTransition` | `` | A requested lifecycle transition is not valid from the current state. | [src](../../../core/services/routine_service.py#L27) |
+| class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L32) |
+| method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L55) |
+| class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L60) |
+| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L84) |
+| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L109) |
+| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L126) |
+| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L133) |
+| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L134) |
+| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L137) |
+| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L143) |
+| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L148) |
+| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L166) |
+| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L186) |
+| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L198) |
+| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L232) |
+| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L249) |
+| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L252) |
+| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L255) |
+| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L258) |
+| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L261) |
+| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L275) |
+| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L297) |
+| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L308) |
+| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L330) |
+| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L342) |
+| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L352) |
+| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L362) |
+| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L373) |
+| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L386) |
+| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L392) |
+| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L402) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L425) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._

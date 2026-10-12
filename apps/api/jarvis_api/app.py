@@ -145,6 +145,7 @@ from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
 from apps.api.jarvis_api.routes.internal_discord import router as internal_discord_router
 from apps.api.jarvis_api.routes.internal_errors import router as internal_errors_router
+from apps.api.jarvis_api.routes.routines import router as routines_router
 from apps.api.jarvis_api.mcp_server import create_mcp_app
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -1033,6 +1034,7 @@ def create_app() -> FastAPI:
     app.include_router(users_admin_router)
     app.include_router(internal_discord_router)
     app.include_router(internal_errors_router)  # Fase 0: canonical error reporter (loopback)
+    app.include_router(routines_router)
     app.mount("/mcp", mcp_app)
 
     # Last route: API endpoints keep precedence over the web renderer.

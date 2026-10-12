@@ -67,6 +67,9 @@ def test_routine_execution_modules_have_stable_dedicated_page():
     assert g.page_id("scripts", "migrate_routines", ["aaa", "migrate_routines"]) == (
         "scripts.routine-migration"
     )
+    assert g.page_id("apps.api.jarvis_api.routes", "routines", ["aaa", "routines"]) == (
+        "apps.api.jarvis_api.routes.routines"
+    )
     assert g.page_id("core.services", "zzz", names, chunk=1) == "core.services.02"
 
 

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-11 from app.routes (live) — 631 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-12 from app.routes (live) — 645 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -101,6 +101,20 @@
 | POST | `/api/project/watch/add` | dict | jarvisx_project |
 | POST | `/api/project/watch/clear` | dict | jarvisx_project |
 | POST | `/api/project/watch/poll` | dict | jarvisx_project |
+| GET | `/api/routines` | list | routines |
+| POST | `/api/routines` | dict | routines |
+| GET | `/api/routines/diagnostics/runs/{run_id}` | dict | routines |
+| GET | `/api/routines/inbox-defaults` | dict | routines |
+| PUT | `/api/routines/inbox-defaults` | dict | routines |
+| GET | `/api/routines/runs/{run_id}` | dict | routines |
+| POST | `/api/routines/runs/{run_id}/cancel` | dict | routines |
+| GET | `/api/routines/runs/{run_id}/events` | list | routines |
+| DELETE | `/api/routines/{routine_id}` | dict | routines |
+| GET | `/api/routines/{routine_id}` | dict | routines |
+| PATCH | `/api/routines/{routine_id}` | dict | routines |
+| POST | `/api/routines/{routine_id}/actions/{action}` | dict | routines |
+| GET | `/api/routines/{routine_id}/runs` | list | routines |
+| POST | `/api/routines/{routine_id}/runs` | dict | routines |
 | GET | `/api/scheduling/state` | dict | jarvisx_channels |
 | GET | `/api/sensory` | dict | sensory |
 | POST | `/api/sensory` | dict | sensory |

@@ -1,7 +1,7 @@
 # Routines: first-class, private autonomous work
 
 **Date:** 2026-10-12
-**Status:** Approved design
+**Status:** Revised after runtime review; awaiting final approval
 **Scope:** Jarvis runtime, API, migration, and Jarvis Desk
 
 ## 1. Purpose
@@ -91,6 +91,10 @@ session.
 10. Delivery retry never repeats the work performed by the run.
 11. Routine inbox notices are projections of routine events, not a second
     lifecycle truth, and never route through `session_inbox` or a chat session.
+12. Legacy ownership is assigned only from authoritative, structured evidence
+    that resolves to exactly one canonical user. Neither an unverified legacy
+    `user_id` nor names/recipients parsed from private instruction text are
+    ownership proof.
 
 ## 6. Domain model
 
@@ -117,6 +121,7 @@ Required fields:
   routine;
 - `retention_policy`;
 - `jarvis_restart_allowed`, default `false`;
+- `failure_policy`, including consecutive-failure threshold and backoff;
 - `status`: `draft`, `active`, `paused`, `stopped`, `archived`, or `deleted`;
 - monotonically increasing `version`;
 - created, updated, stopped, archived, and deleted timestamps as applicable.
@@ -210,6 +215,15 @@ The normal path is `queued -> running -> succeeded`. Failures transition to
 `failed`. Stop/cancel uses `running -> cancelling -> cancelled`. An inactive
 routine may record a `skipped` trigger without executing.
 
+Each routine has a consecutive execution-failure counter. A successful
+execution resets it. After the configured threshold (product default: three),
+the service atomically pauses the routine, suppresses new triggers, and creates
+an action-required durable inbox post for the owning user. Cancellation,
+skipped triggers, and delivery-only failures do not increment this counter.
+Any retry before the threshold uses bounded exponential backoff. Reactivation
+requires the owning user, or Jarvis when the routine's explicit restart policy
+allows it.
+
 Stopping a routine atomically:
 
 1. changes its state to `stopped`;
@@ -229,7 +243,16 @@ mutation, run, event, and delivery operation.
 | Owning user | Full | None | None | Own full failure |
 | Other member | None | None | None | None |
 | Owner | Full for own | None | Full | Redacted projection only |
-| Internal runner | Scoped execution capability | None | Scoped execution capability | Write projection |
+| Jarvis observer/executor | N/A | Scoped execution, no browsing | Scoped execution, no browsing | Redacted projection only |
+| Internal runner | N/A | Scoped execution capability | Scoped execution capability | Write projection |
+
+Jarvis' access is functional, not content ownership. Jarvis may claim and
+execute a run using the routine's sealed snapshot and may receive the same
+content-free failure projection as the owner, but cannot list or open another
+user's routine instruction, input, output, tool payloads, files, raw events, or
+raw logs. The projection is delivered through the durable operational inbox or
+observer surface, never injected into a Jarvis chat session. `owner_user_id`
+therefore remains singular and names the human owner/recipient.
 
 The owner-facing projection for another user's failed routine may contain only:
 
@@ -268,7 +291,8 @@ they no longer choose a chat destination.
 ### 9.1 Durable inbox projection
 
 Relevant routine events may create durable posts in Jarvis' existing,
-user-scoped inbox (`inbox_items` through `inbox_state`). They must never use
+user-scoped `inbox_items` table through the `core.services.inbox_state` service
+module. They must never use
 `session_inbox`, because that subsystem is tied to conversation delivery and
 would violate routine/session isolation.
 
@@ -283,6 +307,7 @@ The selectable event set includes:
 - run failed or cancelled unexpectedly;
 - approval or other user action required;
 - delivery permanently failed;
+- consecutive execution failures caused an automatic pause;
 - retention action due or performed.
 
 Inbox routing is user-determined:
@@ -303,6 +328,11 @@ instructions, tool payloads, or run output. A delete notice links only to the
 content-free tombstone. Closing or dropping an inbox post does not mutate the
 routine.
 
+For another user's failed routine, the owner role and Jarvis observer receive
+only the redacted operational projection defined in §8. They receive no deep
+link that can open the private routine or run. Other lifecycle notices remain
+strictly scoped to the routine owner (or, for `system_owner`, the owner role).
+
 ## 10. Jarvis Desk
 
 ### 10.1 Navigation
@@ -315,6 +345,12 @@ routine.
   filtering away routines based on the launch mode.
 - Existing `proaktive & autonome` rows disappear from the Chat session list
   after verified migration.
+
+Today that group is selected by the `auto-` session-ID prefix in
+`apps/jarvis-desk/src/lib/sessionGroups.ts`, not by `chat_sessions.kind`.
+Cutover must deliberately replace that prefix-based grouping and update the
+existing Python and Desk grouping tests; hiding rows must not be an accidental
+side effect of changing a database field.
 
 ### 10.2 Library and detail
 
@@ -359,17 +395,37 @@ level rather than assuming an entire `auto-{origin}-{day}` session has one
 owner. This matters because the current rotating session ID does not include a
 user ID and may contain work fired under different user contexts.
 
+The production baseline invalidates two tempting shortcuts: every measured
+`visible_runs` row has empty `user_id` and `workspace_name`, and
+`recurring_tasks.user_id` contains a mixture of external Discord IDs, canonical
+IDs, and test-like values. Some tasks also use an initiator/account ID that is
+not the intended recipient. These fields are evidence inputs, never ownership
+authority by themselves.
+
 Classification order:
 
-1. A linked scheduled/recurring task with an explicit user ID assigns its
-   corresponding run segment to that user.
-2. A run/message segment with one consistent, canonical user/workspace stamp is
-   assigned to that user.
-3. Known internal producers such as heartbeat, dream, council, and internal
-   self-maintenance become `system_owner`.
-4. Conflicting, missing, or otherwise ambiguous evidence enters migration
-   quarantine and is never assigned by guesswork. It is not owner-visible
-   `system_owner` content.
+1. Resolve every legacy external identity through the identity service (for
+   example, decrypting and mapping `users.discord_id_enc`) to a canonical user
+   ID. Never copy a Discord snowflake or arbitrary string into
+   `owner_user_id`.
+2. Assign a segment only when authoritative structured records—such as an
+   explicit delivery recipient, a canonical ownership link, or a verified
+   user-scoped execution context—converge on exactly one canonical user.
+   A task's creator/initiator ID alone is insufficient.
+3. Treat canonical run/workspace stamps as optional corroborating evidence.
+   The migrator must work when they are absent; the current production baseline
+   has none populated.
+4. Known internal producers become `system_owner` only through an explicit
+   producer registry, never merely because no user could be resolved.
+5. Test-like IDs, failed identity mappings, conflicting recipients, missing
+   evidence, and all other ambiguity enter migration quarantine. They are never
+   assigned by guesswork and are not owner-visible `system_owner` content.
+
+The classifier must not inspect or parse private instruction/output text to
+infer a person's identity. If the intended recipient exists only in prose, the
+record is ambiguous and goes to quarantine until a structured, auditable link
+is supplied. This prevents a plausible name mention from becoming an
+authorization decision.
 
 Migration preserves member encryption/scope and does not decrypt private content
 for the owner. Legacy sources become read-only and hidden from ordinary session
@@ -389,6 +445,8 @@ quarantine reason, and unresolved source. It contains no private content.
   effects using existing tool receipts where possible.
 - Delivery failure: retry delivery only, with bounded attempts and visible
   terminal failure.
+- Repeated execution failure: bounded backoff, then atomically pause at the
+  configured threshold and create an action-required owner inbox post.
 - Diagnostic projection failure: expose a generic opaque code, never fall back
   to raw errors.
 - Authorization uncertainty: return forbidden; never fall back to owner or
@@ -425,9 +483,16 @@ not.
 4. Enable user-created routines and manual **Run now**.
 5. Adapt scheduled and recurring tasks to enqueue routine runs.
 6. Adapt system producers, starting with the least risky and observable.
-7. Verify source/destination counts, then hide migrated autonomous sessions from
-   Chat navigation.
-8. Deprecate and later remove legacy autonomous chat routing after a stable
+7. Replace autonomous-path calls through
+   `core.services.visible_runs_outcomes._append_chat_message_with_retry`, direct
+   `append_chat_message` sites in `core.services.visible_runs`, and the
+   `notification_bridge`/`heartbeat_delivery` route into `session_inbox` with
+   Routine run recording, delivery outbox, and durable inbox projection.
+8. Verify source/destination counts, then replace Desk's `auto-` prefix group
+   and update `tests/test_autonome_sessioner_er_synlige.py`,
+   `apps/jarvis-desk/src/lib/sessionGroups.test.ts`, and
+   `apps/jarvis-desk/src/components/shell/Sidebar.groups.test.tsx`.
+9. Deprecate and later remove legacy autonomous chat routing after a stable
    observation window.
 
 Every phase remains reversible until legacy routing is finally removed.
@@ -451,6 +516,8 @@ Every phase remains reversible until legacy routing is finally removed.
 - Idempotent trigger, lease loss, crash recovery, stop/cancel, and concurrent
   scheduler tests.
 - Delivery retry tests proving work is not repeated.
+- Consecutive-failure tests proving backoff, threshold pause, counter reset on
+  success, and no counting of cancellation, skipped, or delivery-only failure.
 - Inbox projection tests for every selectable lifecycle/attention event,
   idempotency, user defaults, per-routine overrides, and informational versus
   action-required semantics.
@@ -468,6 +535,9 @@ Every phase remains reversible until legacy routing is finally removed.
 
 - Fixtures for single-user, mixed-user, internal, unstamped, and conflicting
   legacy sessions.
+- Fixtures for Discord-to-canonical mapping, initiator/recipient mismatch,
+  absent run stamps, and test-like IDs.
+- Proof that private prose is never parsed to make an ownership decision.
 - Repeat migration produces no duplicates.
 - Dry-run and applied counts reconcile.
 - Member content remains inaccessible to owner throughout migration.
@@ -595,3 +665,21 @@ is sound. But its two cleanest-sounding rules (#1 and #2) are the ones that woul
 do the wrong thing against the real database — and they read as safe precisely because
 they look provable. That is the lesson worth keeping: a rule that *sounds* verifiable is
 not the same as a rule whose evidence exists.
+
+## 17. Review resolution
+
+The normative design above incorporates G1–G11 from §16:
+
+- G1–G4: migration now requires canonical, structured, converging evidence;
+  missing stamps, mixed identity formats, initiator/recipient mismatch, and
+  test pollution fail closed into quarantine. Private prose is explicitly not
+  an identity oracle.
+- G5–G6: Jarvis is an observer/executor with sealed execution access and the
+  redacted failure projection, not a co-owner with content access. Diagnostics
+  use the durable inbox/observer surface and never Jarvis' chat session.
+- G7: `inbox_state` is identified as the service module over `inbox_items`.
+- G8–G10: rollout names the existing chat append, session-inbox delivery, Desk
+  prefix grouping, and tests that the cutover must deliberately replace.
+- G11: three consecutive execution failures pause by default after bounded
+  backoff and raise an action-required inbox post; the policy distinguishes
+  execution failures from cancellation, skips, and delivery failures.

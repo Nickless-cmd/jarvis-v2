@@ -114,7 +114,6 @@ from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
     auto_apply_safe_user_md_candidates,
 )
-from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.config import PROJECT_ROOT
 from core.runtime.workspace_paths import heartbeat_home, heartbeat_state_path
 from core.runtime.db import (
@@ -557,7 +556,11 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         continuity_source=continuity_source,
     )
     _write_heartbeat_state_artifact(
-        workspace_dir=ensure_default_workspace(name=name),
+        # 12/10-2026: var `ensure_default_workspace(name)` — den BOOTSTRAPPEDE
+        # en mappe som side-effekt, og `_write_heartbeat_state_artifact`
+        # ignorerer parameteren. Maalt: `tick_with_phases(name="t")` skabte
+        # `workspaces/t/` i produktionen.
+        workspace_dir=heartbeat_home(),
         payload={
             "state": merged,
             "policy": policy,
@@ -1561,7 +1564,9 @@ def _run_heartbeat_tick_locked(
             pass
 
     now = datetime.now(UTC)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: se noten ved `_write_heartbeat_state_artifact` — kaldet
+    # bootstrappede en workspace-mappe uden at nogen brugte den.
+    workspace_dir = heartbeat_home()
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     merged_before = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
@@ -6632,7 +6637,11 @@ def record_phased_tick(
     `heartbeat_phases`) — men det her er den der styrer kadencen selv.
     """
     policy = load_heartbeat_policy(name=name)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: DETTE var lækagen. `tick_with_phases(name="t")` i en test
+    # naaede herind og skabte `workspaces/t/` i produktionen — en mappe der
+    # ikke er en bruger. `workspace_dir` bruges kun til state-artefakten, som
+    # nu har sin egen resolver.
+    workspace_dir = heartbeat_home()
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     faser = (result.get("phases") or {}) if isinstance(result, dict) else {}
     handling = (faser.get("act") or {}) if isinstance(faser, dict) else {}
@@ -6675,7 +6684,8 @@ def record_phased_tick(
 
 def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResult:
     policy = load_heartbeat_policy(name=name)
-    workspace_dir = ensure_default_workspace(name=name)
+    # 12/10-2026: se noten ved `_write_heartbeat_state_artifact`.
+    workspace_dir = heartbeat_home()
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC).isoformat()
     tick = _record_heartbeat_outcome(

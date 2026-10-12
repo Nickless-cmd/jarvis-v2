@@ -52,6 +52,36 @@ def test_heartbeat_stien_flytter_sig_ikke_naar_en_anden_bruger_er_aktiv(
     )
 
 
+def test_et_tik_skaber_ikke_en_workspace_mappe(isolated_runtime, tmp_path) -> None:
+    """12/10-2026: `tick_with_phases(name="t")` skabte `workspaces/t/`.
+
+    Målt: mappen stod med 16 filer og frisk mtime hver gang testsuiten kørte,
+    og `t` er ikke en bruger i users.json. Årsagen var `record_phased_tick`s
+    `ensure_default_workspace(name=name)` — resultatet endte i en parameter
+    som state-skriveren ignorerer, så kaldet skabte en mappe ingen brugte.
+
+    Kontrakten: et tik bootstrapper ALDRIG et workspace. Testen fejler hvis
+    nogen fører `ensure_default_workspace` tilbage i tik-vejen.
+    """
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    heartbeat_runtime.record_phased_tick(
+        name="t",
+        trigger="test",
+        result={"phases": {"act": {"kind": "productive_idle"}, "reflect": {}}},
+    )
+
+    from core.runtime.workspace_paths import heartbeat_state_path
+
+    assert heartbeat_state_path().exists(), (
+        "tikket skrev ingen tilstand — så er der intet målt"
+    )
+    assert not (tmp_path / "workspaces" / "t").exists(), (
+        "et tik skabte en workspace-mappe — heartbeatets hjem er shared/, "
+        "ikke en mappe pr. navn"
+    )
+
+
 def test_load_heartbeat_policy_reads_ping_fields_from_workspace_file(
     isolated_runtime,
 ) -> None:

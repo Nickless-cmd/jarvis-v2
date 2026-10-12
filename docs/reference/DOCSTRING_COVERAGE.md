@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8904/16965 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8907/16991 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8904/16965 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 820 | 1511 | 54% |
-| `core.services` | 5933 | 11530 | 51% |
+| `core.services` | 5936 | 11555 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8904/16965 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 274 | 598 | 45% |
+| `scripts` | 274 | 599 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2490)
+## Undocumented public functions (2494)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1733,6 +1733,9 @@ Generated from source. 8904/16965 functions/methods documented (52%). The list b
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_override` (L19)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_user_defaults` (L12)
 - `core/services/routine_inbox.py` :: `project_event_to_inbox` (L68)
+- `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L51)
+- `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L55)
+- `core/services/routine_migration.py` :: `report_path` (L105)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L22)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
@@ -2446,6 +2449,7 @@ Generated from source. 8904/16965 functions/methods documented (52%). The list b
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/migrate_member_session_titles.py` :: `migrate` (L10)
+- `scripts/migrate_routines.py` :: `main` (L18)
 - `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)
 - `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)
 - `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)

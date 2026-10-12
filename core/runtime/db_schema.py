@@ -387,6 +387,23 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_events_created_at "
             "ON events (created_at)"
         )
+        # (kind, id) — 12/10-2026. De seks 5-sekunders-pollere (theory_of_mind,
+        # spatial_entity_ledger, session_inbox, verification_gate_telemetry,
+        # metacognition_signal_tracker) kører alle samme form:
+        #   SELECT id, payload_json FROM events
+        #   WHERE id > ? AND kind = ? ORDER BY id ASC LIMIT 100
+        # Den kan hverken bruge (kind, created_at) eller PK'en alene: med
+        # (kind, created_at) tvinges TEMP B-TREE-sortering, og med PK'en scannes
+        # alle rækker med kind'en for at finde de 100 første. (kind, id) giver
+        # ren indeks-seek: SEARCH ... USING INDEX (kind=? AND id>?), ingen
+        # sortering. Målt: tool.completed 1.699 -> 120 preads (14x);
+        # channel.chat_message_appended 2.548 -> 1.534. De fire hot-queries fra
+        # i dag er uændrede (11.319 vs 11.324; 19.038 vs 19.195 — inden for 1%).
+        # Pris ~74 MB.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_kind_id "
+            "ON events (kind, id)"
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_state_kv (

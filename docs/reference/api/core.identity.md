@@ -163,37 +163,39 @@ _Højniveau-bruger-adapter (spec 2026-06-15) ovenpå users-tabellen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/identity/user_db.py#L23) |
-| function | `_norm_email` | `(email)` | — | [src](../../../core/identity/user_db.py#L27) |
-| function | `_email_hash` | `(email)` | Deterministisk opslags-hash. Pepper fra runtime (eller fast fallback). | [src](../../../core/identity/user_db.py#L31) |
-| function | `_enc` | `(user_id, value)` | — | [src](../../../core/identity/user_db.py#L41) |
-| function | `_dec` | `(user_id, blob)` | — | [src](../../../core/identity/user_db.py#L47) |
-| function | `_row_to_public` | `(row)` | — | [src](../../../core/identity/user_db.py#L56) |
-| function | `create_user` | `(*, email, name, password, role=…, workspace=…)` | — | [src](../../../core/identity/user_db.py#L80) |
-| function | `get_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L99) |
-| function | `find_user_by_email` | `(email)` | — | [src](../../../core/identity/user_db.py#L104) |
-| function | `verify_login` | `(email, password)` | — | [src](../../../core/identity/user_db.py#L109) |
-| function | `set_google_email` | `(user_id, google_email, role=…)` | Knyt en Google-email til en konto (migration/linking). STORE-AGNOSTISK: | [src](../../../core/identity/user_db.py#L118) |
-| function | `has_google_link` | `(user_id)` | Har brugeren en Google-konto linket? (vedvarende UI-indikator). | [src](../../../core/identity/user_db.py#L133) |
-| function | `find_user_by_google_email` | `(google_email)` | Slå en konto op via sin linkede Google-email. Returnerer {user_id, role}. | [src](../../../core/identity/user_db.py#L138) |
-| function | `set_email_verified` | `(user_id, verified=…)` | — | [src](../../../core/identity/user_db.py#L152) |
-| function | `mute_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L157) |
-| function | `unmute_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L161) |
-| function | `set_quota_tier` | `(user_id, tier)` | — | [src](../../../core/identity/user_db.py#L165) |
-| function | `set_language` | `(user_id, language)` | Sæt brugerens sprog-præference (da/en/auto). Self-scope via account-route. | [src](../../../core/identity/user_db.py#L171) |
-| function | `set_consent` | `(user_id, *, data_processing=…, marketing=…, blind_access=…)` | — | [src](../../../core/identity/user_db.py#L178) |
-| function | `list_users` | `(*, include_deleted=…)` | — | [src](../../../core/identity/user_db.py#L190) |
-| function | `_effective_tier` | `(user)` | Eksplicit tier vinder. Uden eksplicit tier kvalificerer kun owner-rollen | [src](../../../core/identity/user_db.py#L203) |
-| function | `create_api_key` | `(user_id, *, ttl_days=…)` | Mint en langlivet API-nøgle (JWT m. jti) hvis brugerens tier kvalificerer. | [src](../../../core/identity/user_db.py#L213) |
-| function | `revoke_api_key` | `(user_id)` | Revokér brugerens API-nøgle: bloklist dens jti + ryd den lagrede nøgle. | [src](../../../core/identity/user_db.py#L231) |
-| function | `is_api_key_revoked` | `(jti)` | — | [src](../../../core/identity/user_db.py#L249) |
-| function | `_provision_workspace` | `(user)` | Opret + (§16) krypter brugerens workspace ved oprettelse: mappe + baseline- | [src](../../../core/identity/user_db.py#L257) |
-| function | `register_user` | `(*, email, name, password, base_url, role=…)` | Selvregistrering (officiel vej): opret bruger (email_verified=0) + | [src](../../../core/identity/user_db.py#L272) |
-| function | `verify_email_token` | `(token)` | Forbrug et verifikations-token → markér brugeren email_verified. | [src](../../../core/identity/user_db.py#L287) |
-| function | `add_user` | `(*, email, name, password, role=…, workspace=…, tier=…)` | Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger | [src](../../../core/identity/user_db.py#L296) |
-| function | `_audit` | `(*, user_id, action, actor)` | — | [src](../../../core/identity/user_db.py#L315) |
-| function | `read_audit_log` | `()` | — | [src](../../../core/identity/user_db.py#L324) |
-| function | `delete_user` | `(user_id, *, mode=…, actor=…)` | mode='soft' → deleted_at-timestamp (fortryd-venlig, grace-period). | [src](../../../core/identity/user_db.py#L330) |
+| class | `AmbiguousRoutineIdentity` | `` | An external account token matched more than one canonical user. | [src](../../../core/identity/user_db.py#L23) |
+| function | `_now` | `()` | — | [src](../../../core/identity/user_db.py#L27) |
+| function | `_norm_email` | `(email)` | — | [src](../../../core/identity/user_db.py#L31) |
+| function | `_email_hash` | `(email)` | Deterministisk opslags-hash. Pepper fra runtime (eller fast fallback). | [src](../../../core/identity/user_db.py#L35) |
+| function | `_enc` | `(user_id, value)` | — | [src](../../../core/identity/user_db.py#L45) |
+| function | `_dec` | `(user_id, blob)` | — | [src](../../../core/identity/user_db.py#L51) |
+| function | `_row_to_public` | `(row)` | — | [src](../../../core/identity/user_db.py#L60) |
+| function | `create_user` | `(*, email, name, password, role=…, workspace=…)` | — | [src](../../../core/identity/user_db.py#L84) |
+| function | `get_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L103) |
+| function | `find_user_by_email` | `(email)` | — | [src](../../../core/identity/user_db.py#L108) |
+| function | `find_user_by_discord_id` | `(discord_id)` | Resolve one encrypted Discord account to one active canonical user. | [src](../../../core/identity/user_db.py#L113) |
+| function | `verify_login` | `(email, password)` | — | [src](../../../core/identity/user_db.py#L132) |
+| function | `set_google_email` | `(user_id, google_email, role=…)` | Knyt en Google-email til en konto (migration/linking). STORE-AGNOSTISK: | [src](../../../core/identity/user_db.py#L141) |
+| function | `has_google_link` | `(user_id)` | Har brugeren en Google-konto linket? (vedvarende UI-indikator). | [src](../../../core/identity/user_db.py#L156) |
+| function | `find_user_by_google_email` | `(google_email)` | Slå en konto op via sin linkede Google-email. Returnerer {user_id, role}. | [src](../../../core/identity/user_db.py#L161) |
+| function | `set_email_verified` | `(user_id, verified=…)` | — | [src](../../../core/identity/user_db.py#L175) |
+| function | `mute_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L180) |
+| function | `unmute_user` | `(user_id)` | — | [src](../../../core/identity/user_db.py#L184) |
+| function | `set_quota_tier` | `(user_id, tier)` | — | [src](../../../core/identity/user_db.py#L188) |
+| function | `set_language` | `(user_id, language)` | Sæt brugerens sprog-præference (da/en/auto). Self-scope via account-route. | [src](../../../core/identity/user_db.py#L194) |
+| function | `set_consent` | `(user_id, *, data_processing=…, marketing=…, blind_access=…)` | — | [src](../../../core/identity/user_db.py#L201) |
+| function | `list_users` | `(*, include_deleted=…)` | — | [src](../../../core/identity/user_db.py#L213) |
+| function | `_effective_tier` | `(user)` | Eksplicit tier vinder. Uden eksplicit tier kvalificerer kun owner-rollen | [src](../../../core/identity/user_db.py#L226) |
+| function | `create_api_key` | `(user_id, *, ttl_days=…)` | Mint en langlivet API-nøgle (JWT m. jti) hvis brugerens tier kvalificerer. | [src](../../../core/identity/user_db.py#L236) |
+| function | `revoke_api_key` | `(user_id)` | Revokér brugerens API-nøgle: bloklist dens jti + ryd den lagrede nøgle. | [src](../../../core/identity/user_db.py#L254) |
+| function | `is_api_key_revoked` | `(jti)` | — | [src](../../../core/identity/user_db.py#L272) |
+| function | `_provision_workspace` | `(user)` | Opret + (§16) krypter brugerens workspace ved oprettelse: mappe + baseline- | [src](../../../core/identity/user_db.py#L280) |
+| function | `register_user` | `(*, email, name, password, base_url, role=…)` | Selvregistrering (officiel vej): opret bruger (email_verified=0) + | [src](../../../core/identity/user_db.py#L295) |
+| function | `verify_email_token` | `(token)` | Forbrug et verifikations-token → markér brugeren email_verified. | [src](../../../core/identity/user_db.py#L310) |
+| function | `add_user` | `(*, email, name, password, role=…, workspace=…, tier=…)` | Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger | [src](../../../core/identity/user_db.py#L319) |
+| function | `_audit` | `(*, user_id, action, actor)` | — | [src](../../../core/identity/user_db.py#L338) |
+| function | `read_audit_log` | `()` | — | [src](../../../core/identity/user_db.py#L347) |
+| function | `delete_user` | `(user_id, *, mode=…, actor=…)` | mode='soft' → deleted_at-timestamp (fortryd-venlig, grace-period). | [src](../../../core/identity/user_db.py#L353) |
 
 ## `core/identity/users.py`
 _User Registry — per-user workspace mapping for multi-user Jarvis._

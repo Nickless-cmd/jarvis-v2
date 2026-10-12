@@ -312,6 +312,18 @@ _Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
 |---|---|---|---|---|
 | function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
 
+## `core/services/routine_authorization.py`
+_The single authorization matrix for Routine records._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Action` | `` | — | [src](../../../core/services/routine_authorization.py#L11) |
+| class | `Decision` | `` | — | [src](../../../core/services/routine_authorization.py#L23) |
+| class | `RoutineForbidden` | `` | The principal is not allowed to perform a Routine action. | [src](../../../core/services/routine_authorization.py#L28) |
+| function | `_deny` | `(reason)` | — | [src](../../../core/services/routine_authorization.py#L44) |
+| function | `authorize` | `(principal, action, record)` | Evaluate access without decrypting or including record content in reasons. | [src](../../../core/services/routine_authorization.py#L48) |
+| function | `require_authorized` | `(principal, action, record)` | — | [src](../../../core/services/routine_authorization.py#L95) |
+
 ## `core/services/routine_crypto.py`
 _Owner-bound authenticated encryption for Routine content._
 
@@ -320,6 +332,14 @@ _Owner-bound authenticated encryption for Routine content._
 | function | `_owner_key` | `(owner_user_id)` | — | [src](../../../core/services/routine_crypto.py#L7) |
 | function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
 | function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
+
+## `core/services/routine_identity.py`
+_Canonical, fail-closed identity resolution for Routine entry points._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L9) |
+| function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L13) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._
@@ -628,38 +648,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `_safe_chronicle_consolidation` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1314) |
 | function | `_safe_self_review` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1324) |
 | function | `_safe_dream_family` | `()` | — | [src](../../../core/services/runtime_cognitive_conductor.py#L1379) |
-
-## `core/services/runtime_decision_engine.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuntimeDecisionInput` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L13) |
-| class | `RuntimeActionCandidate` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L24) |
-| class | `RuntimeDecision` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L33) |
-| function | `decide_next_action` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L42) |
-| function | `build_action_candidates` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L47) |
-| function | `choose_best_candidate` | `(candidates)` | — | [src](../../../core/services/runtime_decision_engine.py#L77) |
-| function | `_open_loop_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L98) |
-| function | `_initiative_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L142) |
-| function | `_memory_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L168) |
-| function | `_reflection_candidates` | `(inputs, *, visible_active, approval_pending)` | — | [src](../../../core/services/runtime_decision_engine.py#L189) |
-| function | `_looks_repo_focused` | `(loop)` | — | [src](../../../core/services/runtime_decision_engine.py#L236) |
-| function | `_apply_feedback` | `(candidate, inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L247) |
-| function | `_matching_note_loop_synergy` | `(candidate, inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L333) |
-| function | `_top_open_loop_title` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L352) |
-| function | `_apply_semantic_feedback` | `(candidate, inputs, *, score, signal_stats)` | — | [src](../../../core/services/runtime_decision_engine.py#L360) |
-| function | `_apply_persistent_learning` | `(candidate, runtime_learning_summary, *, score)` | — | [src](../../../core/services/runtime_decision_engine.py#L417) |
-| function | `_signal_weight` | `(signal_stats, signal)` | — | [src](../../../core/services/runtime_decision_engine.py#L490) |
-| function | `_candidate_is_repo_focused` | `(candidate)` | — | [src](../../../core/services/runtime_decision_engine.py#L495) |
-| function | `_candidate_learning_domain` | `(candidate)` | — | [src](../../../core/services/runtime_decision_engine.py#L506) |
-
-## `core/services/runtime_flows.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `create_flow` | `(*, task_id, current_step=…, step_state=…, plan=…, next_action=…)` | — | [src](../../../core/services/runtime_flows.py#L13) |
-| function | `get_flow` | `(flow_id)` | — | [src](../../../core/services/runtime_flows.py#L41) |
-| function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
-| function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
-| function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
 

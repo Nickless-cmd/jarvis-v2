@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_decision_engine.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RuntimeDecisionInput` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L13) |
+| class | `RuntimeActionCandidate` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L24) |
+| class | `RuntimeDecision` | `` | — | [src](../../../core/services/runtime_decision_engine.py#L33) |
+| function | `decide_next_action` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L42) |
+| function | `build_action_candidates` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L47) |
+| function | `choose_best_candidate` | `(candidates)` | — | [src](../../../core/services/runtime_decision_engine.py#L77) |
+| function | `_open_loop_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L98) |
+| function | `_initiative_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L142) |
+| function | `_memory_candidates` | `(inputs, *, visible_active)` | — | [src](../../../core/services/runtime_decision_engine.py#L168) |
+| function | `_reflection_candidates` | `(inputs, *, visible_active, approval_pending)` | — | [src](../../../core/services/runtime_decision_engine.py#L189) |
+| function | `_looks_repo_focused` | `(loop)` | — | [src](../../../core/services/runtime_decision_engine.py#L236) |
+| function | `_apply_feedback` | `(candidate, inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L247) |
+| function | `_matching_note_loop_synergy` | `(candidate, inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L333) |
+| function | `_top_open_loop_title` | `(inputs)` | — | [src](../../../core/services/runtime_decision_engine.py#L352) |
+| function | `_apply_semantic_feedback` | `(candidate, inputs, *, score, signal_stats)` | — | [src](../../../core/services/runtime_decision_engine.py#L360) |
+| function | `_apply_persistent_learning` | `(candidate, runtime_learning_summary, *, score)` | — | [src](../../../core/services/runtime_decision_engine.py#L417) |
+| function | `_signal_weight` | `(signal_stats, signal)` | — | [src](../../../core/services/runtime_decision_engine.py#L490) |
+| function | `_candidate_is_repo_focused` | `(candidate)` | — | [src](../../../core/services/runtime_decision_engine.py#L495) |
+| function | `_candidate_learning_domain` | `(candidate)` | — | [src](../../../core/services/runtime_decision_engine.py#L506) |
+
+## `core/services/runtime_flows.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `create_flow` | `(*, task_id, current_step=…, step_state=…, plan=…, next_action=…)` | — | [src](../../../core/services/runtime_flows.py#L13) |
+| function | `get_flow` | `(flow_id)` | — | [src](../../../core/services/runtime_flows.py#L41) |
+| function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
+| function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
+| function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
+
 ## `core/services/runtime_hook_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -696,27 +730,4 @@ _Predictive self-model — frequencies, not aspirations._
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/self_model_signal_tracking.py#L629) |
 | function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/self_model_signal_tracking.py#L636) |
 | function | `_quote` | `(text)` | — | [src](../../../core/services/self_model_signal_tracking.py#L640) |
-
-## `core/services/self_monitor.py`
-_Self-monitor — anti-loop detection from tool call history._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_tool_events` | `(limit=…)` | — | [src](../../../core/services/self_monitor.py#L37) |
-| function | `_looped_tools` | `(events)` | Find tools that errored repeatedly in succession. | [src](../../../core/services/self_monitor.py#L56) |
-| function | `_thrashing_score` | `(events)` | Crude thrash signal: count of tool.invoked in the recent window. | [src](../../../core/services/self_monitor.py#L88) |
-| function | `self_monitor_section` | `()` | Format anti-loop / thrash signals as a prompt section, or None. | [src](../../../core/services/self_monitor.py#L93) |
-
-## `core/services/self_mutation_lineage.py`
-_Runtime self-awareness of self-change and code mutation lineage._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_mutation_lineage.py#L33) |
-| function | `_categorize_path` | `(path)` | Return category if path is a Jarvis self-file, else None. | [src](../../../core/services/self_mutation_lineage.py#L60) |
-| function | `_relative_path` | `(path)` | — | [src](../../../core/services/self_mutation_lineage.py#L74) |
-| function | `record_self_mutation` | `(*, target_path, change_type, session_id=…)` | Record a completed file mutation to a Jarvis self-file. | [src](../../../core/services/self_mutation_lineage.py#L81) |
-| function | `build_self_mutation_lineage_surface` | `(*, limit=…)` | Returns recent self-mutations as a runtime-truth surface. | [src](../../../core/services/self_mutation_lineage.py#L112) |
-| function | `build_self_mutation_prompt_lines` | `(*, limit=…)` | Returns compact prompt lines for recent self-mutations. | [src](../../../core/services/self_mutation_lineage.py#L157) |
-| function | `_emit_self_mutation_lineage_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/self_mutation_lineage.py#L170) |
 

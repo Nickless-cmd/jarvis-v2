@@ -2,6 +2,36 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shadow_experiment_registry.py`
+_core/services/shadow_experiment_registry.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | Læs hele register-dict'en fra KV. Self-safe → {} ved fejl/ugyldig form. | [src](../../../core/services/shadow_experiment_registry.py#L51) |
+| function | `_save` | `(data)` | Skriv hele register-dict'en durabelt. Self-safe (best-effort). | [src](../../../core/services/shadow_experiment_registry.py#L64) |
+| function | `register_experiment` | `(name, review_after_hours, note=…, started_ts=…)` | Registrér et shadow-eksperiment. Idempotent på navn: hvis det allerede er | [src](../../../core/services/shadow_experiment_registry.py#L74) |
+| function | `_annotate` | `(rec, now)` | Berig én rå-record med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L109) |
+| function | `list_experiments` | `(now_ts=…)` | Alle registrerede eksperimenter, beriget med `hours_running` + `ripe`. | [src](../../../core/services/shadow_experiment_registry.py#L127) |
+| function | `ready_for_review` | `(now_ts=…)` | De modne (ripe), ikke-reviewede eksperimenter. Self-safe → []. | [src](../../../core/services/shadow_experiment_registry.py#L140) |
+| function | `mark_reviewed` | `(name)` | Markér et eksperiment som reviewet (fjerner det fra `ripe`). Self-safe. | [src](../../../core/services/shadow_experiment_registry.py#L145) |
+| function | `register_known_shadows` | `()` | Seed registeret med de bekræftede live shadows (idempotent, self-safe). | [src](../../../core/services/shadow_experiment_registry.py#L174) |
+| function | `_sidste_paamindelse` | `()` | Hvornaar fyrede vi sidst? 0.0 betyder «aldrig». Self-safe. | [src](../../../core/services/shadow_experiment_registry.py#L180) |
+| function | `_stempl_paamindelse` | `(now)` | Gem klokken durabelt. Self-safe (best-effort). | [src](../../../core/services/shadow_experiment_registry.py#L195) |
+| function | `build_shadow_review_surface` | `(now_ts=…)` | Byg surface til Central-route/`jc shadows`. Seeder kendte shadows, | [src](../../../core/services/shadow_experiment_registry.py#L211) |
+| function | `_emit_reminder` | `(ripe_names)` | Passiv Central-påmindelse: observe `central_meta/shadow_review_due`. | [src](../../../core/services/shadow_experiment_registry.py#L232) |
+| function | `tick_shadow_review_reminder` | `(now_ts=…)` | Tick: byg surface, og naar noget er modent OG klokken er forfalden, | [src](../../../core/services/shadow_experiment_registry.py#L248) |
+| function | `_byg_besked` | `(modne)` | Teksten Bjoern faar. Naevner de mest forfaldne ved navn og hvor laenge — | [src](../../../core/services/shadow_experiment_registry.py#L283) |
+| function | `_send_paamindelse` | `(modne)` | Lever paamindelsen gennem daemon-vagten. True hvis den blev antaget. | [src](../../../core/services/shadow_experiment_registry.py#L306) |
+
+## `core/services/shadow_ledger_writer.py`
+_Skygge-skrivning — den første kobling mellem drift og ledgeren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L51) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L55) |
+| function | `shadow_append` | `(session_id, *, message_id, role, content, created_at, user_id=…, workspace_name=…, reasoning_content=…, git_sha=…, content_json=…)` | Skriv beskeden i ledgeren HVIS sessionen er i skygge-tilstand. | [src](../../../core/services/shadow_ledger_writer.py#L60) |
+
 ## `core/services/shadow_scan_daemon.py`
 _Shadow Scan — my blindspots as visible signals._
 
@@ -559,37 +589,4 @@ _Overstort værktøjs-output gemmes i en fil i stedet for at blive klippet væk.
 | function | `gem` | `(tekst, *, session_id=…, vaerktoej=…)` | Skriv teksten til en privat fil og giv stien. "" hvis det ikke lykkes. | [src](../../../core/services/spild.py#L72) |
 | function | `henvisning` | `(sti, *, vist, i_alt)` | Den tekst der erstatter halen. Siger hvad der mangler OG hvor det er. | [src](../../../core/services/spild.py#L91) |
 | function | `ryd` | `(*, dage=…)` | Slet spildfiler ældre end `dage`. Giver antallet der blev slettet. | [src](../../../core/services/spild.py#L101) |
-
-## `core/services/staged_edits.py`
-_Staged edits — compose multi-file changes, review, then commit atomically._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `StagedEdit` | `` | — | [src](../../../core/services/staged_edits.py#L52) |
-| method | `StagedEdit.to_dict` | `(self)` | — | [src](../../../core/services/staged_edits.py#L63) |
-| method | `StagedEdit.from_dict` | `(cls, d)` | — | [src](../../../core/services/staged_edits.py#L67) |
-| class | `StagedBatch` | `` | All staged edits for a single session (the unit of commit/discard). | [src](../../../core/services/staged_edits.py#L82) |
-| method | `StagedBatch.to_dict` | `(self)` | — | [src](../../../core/services/staged_edits.py#L89) |
-| method | `StagedBatch.from_dict` | `(cls, d)` | — | [src](../../../core/services/staged_edits.py#L98) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/staged_edits.py#L110) |
-| function | `_path_for` | `(session_id)` | — | [src](../../../core/services/staged_edits.py#L114) |
-| function | `_load` | `(session_id)` | — | [src](../../../core/services/staged_edits.py#L119) |
-| function | `_save` | `(batch)` | — | [src](../../../core/services/staged_edits.py#L132) |
-| function | `_make_diff` | `(path, old, new)` | — | [src](../../../core/services/staged_edits.py#L142) |
-| function | `stage_edit` | `(*, session_id, path, old_text, new_text, replace_all=…, note=…)` | Stage an edit_file-style change without writing to disk. | [src](../../../core/services/staged_edits.py#L157) |
-| function | `stage_write` | `(*, session_id, path, content, note=…)` | Stage a write_file-style overwrite/create. If the target exists, | [src](../../../core/services/staged_edits.py#L205) |
-| function | `_persist_edit` | `(*, session_id, kind, path, old_content, new_content, note, file_existed)` | — | [src](../../../core/services/staged_edits.py#L234) |
-| function | `list_staged` | `(session_id, *, full_diffs=…)` | Return all staged edits for the session. | [src](../../../core/services/staged_edits.py#L280) |
-| function | `commit_staged` | `(session_id, *, stage_ids=…)` | Apply staged edits to disk in stage order. | [src](../../../core/services/staged_edits.py#L319) |
-| function | `discard_staged` | `(session_id, *, stage_ids=…)` | Drop staged edits without applying. | [src](../../../core/services/staged_edits.py#L417) |
-
-## `core/services/standing_orders_registry.py`
-_Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/standing_orders_registry.py#L13) |
-| function | `add_standing_order` | `(*, text, match_key=…)` | — | [src](../../../core/services/standing_orders_registry.py#L25) |
-| function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
-| function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
 

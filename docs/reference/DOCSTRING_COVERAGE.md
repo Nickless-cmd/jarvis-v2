@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8894/16833 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8897/16838 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,11 +21,11 @@ Generated from source. 8894/16833 functions/methods documented (52%). The list b
 | `core.context` | 72 | 99 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
-| `core.identity` | 74 | 167 | 44% |
+| `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 817 | 1489 | 54% |
-| `core.services` | 5927 | 11421 | 51% |
+| `core.services` | 5929 | 11425 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8894/16833 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2409)
+## Undocumented public functions (2410)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -296,18 +296,18 @@ Generated from source. 8894/16833 functions/methods documented (52%). The list b
 - `core/identity/runtime_candidates.py` :: `candidate_apply_readiness` (L359)
 - `core/identity/runtime_candidates.py` :: `total_pending_runtime_candidates` (L257)
 - `core/identity/runtime_contract.py` :: `build_runtime_contract_state` (L82)
-- `core/identity/user_db.py` :: `create_user` (L80)
-- `core/identity/user_db.py` :: `find_user_by_email` (L104)
-- `core/identity/user_db.py` :: `get_user` (L99)
-- `core/identity/user_db.py` :: `is_api_key_revoked` (L249)
-- `core/identity/user_db.py` :: `list_users` (L190)
-- `core/identity/user_db.py` :: `mute_user` (L157)
-- `core/identity/user_db.py` :: `read_audit_log` (L324)
-- `core/identity/user_db.py` :: `set_consent` (L178)
-- `core/identity/user_db.py` :: `set_email_verified` (L152)
-- `core/identity/user_db.py` :: `set_quota_tier` (L165)
-- `core/identity/user_db.py` :: `unmute_user` (L161)
-- `core/identity/user_db.py` :: `verify_login` (L109)
+- `core/identity/user_db.py` :: `create_user` (L84)
+- `core/identity/user_db.py` :: `find_user_by_email` (L108)
+- `core/identity/user_db.py` :: `get_user` (L103)
+- `core/identity/user_db.py` :: `is_api_key_revoked` (L272)
+- `core/identity/user_db.py` :: `list_users` (L213)
+- `core/identity/user_db.py` :: `mute_user` (L180)
+- `core/identity/user_db.py` :: `read_audit_log` (L347)
+- `core/identity/user_db.py` :: `set_consent` (L201)
+- `core/identity/user_db.py` :: `set_email_verified` (L175)
+- `core/identity/user_db.py` :: `set_quota_tier` (L188)
+- `core/identity/user_db.py` :: `unmute_user` (L184)
+- `core/identity/user_db.py` :: `verify_login` (L132)
 - `core/identity/users.py` :: `User.as_dict` (L59)
 - `core/identity/users.py` :: `find_user_by_name` (L134)
 - `core/identity/users.py` :: `find_user_by_workspace` (L144)
@@ -1694,6 +1694,7 @@ Generated from source. 8894/16833 functions/methods documented (52%). The list b
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)
 - `core/services/rhythm_engine.py` :: `build_rhythm_surface` (L73)
+- `core/services/routine_authorization.py` :: `require_authorized` (L95)
 - `core/services/routine_crypto.py` :: `open_sealed` (L23)
 - `core/services/routine_crypto.py` :: `seal` (L17)
 - `core/services/routine_types.py` :: `RoutinePatch.changes` (L106)

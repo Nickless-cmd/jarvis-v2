@@ -20,6 +20,10 @@ from core.services.keyring_store import get_user_key
 from core.runtime import db
 
 
+class AmbiguousRoutineIdentity(RuntimeError):
+    """An external account token matched more than one canonical user."""
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -104,6 +108,25 @@ def get_user(user_id: str) -> dict[str, Any] | None:
 def find_user_by_email(email: str) -> dict[str, Any] | None:
     row = db.get_user_row_by_email_hash(_email_hash(email))
     return _row_to_public(row) if row else None
+
+
+def find_user_by_discord_id(discord_id: str) -> dict[str, Any] | None:
+    """Resolve one encrypted Discord account to one active canonical user.
+
+    Discord IDs are deliberately not indexed in plaintext.  The bounded user
+    registry is decrypted row-by-row and ambiguity fails closed rather than
+    selecting an arbitrary account.
+    """
+    token = str(discord_id or "").strip()
+    if not token:
+        return None
+    matches = [
+        user for user in list_users()
+        if not user.get("deleted_at") and str(user.get("discord_id") or "") == token
+    ]
+    if len(matches) > 1:
+        raise AmbiguousRoutineIdentity("external identity matched multiple canonical users")
+    return matches[0] if matches else None
 
 
 def verify_login(email: str, password: str) -> dict[str, Any] | None:

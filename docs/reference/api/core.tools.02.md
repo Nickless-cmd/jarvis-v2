@@ -526,7 +526,7 @@ _Recurring scheduler tools — Jarvis can schedule repeating tasks._
 | function | `_parse_interval` | `(interval, unit)` | Return interval in minutes, or None on bad input. | [src](../../../core/tools/recurring_scheduler_tools.py#L13) |
 | function | `_exec_schedule_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L27) |
 | function | `_exec_list_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L82) |
-| function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L98) |
-| function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L236) |
-| function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L256) |
+| function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L102) |
+| function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L240) |
+| function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L260) |
 

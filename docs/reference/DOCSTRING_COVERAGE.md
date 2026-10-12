@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8901/16891 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8903/16906 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8901/16891 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 820 | 1501 | 54% |
-| `core.services` | 5930 | 11466 | 51% |
+| `core.services` | 5932 | 11481 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8901/16891 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2446)
+## Undocumented public functions (2454)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -763,6 +763,14 @@ Generated from source. 8901/16891 functions/methods documented (52%). The list b
 - `core/services/agentic_checkpoints.py` :: `compact_exchange` (L68)
 - `core/services/agentic_checkpoints.py` :: `latest_for_session` (L113)
 - `core/services/agentic_checkpoints.py` :: `save_checkpoint` (L78)
+- `core/services/agentic_execution.py` :: `CancellationProbe.check_before_effect` (L87)
+- `core/services/agentic_execution.py` :: `CancellationProbe.check_between_rounds` (L88)
+- `core/services/agentic_execution.py` :: `ExecutionSink.model_fragment` (L80)
+- `core/services/agentic_execution.py` :: `ExecutionSink.tool_requested` (L81)
+- `core/services/agentic_execution.py` :: `ExecutionSink.tool_result` (L82)
+- `core/services/agentic_execution.py` :: `ExecutionSink.usage` (L83)
+- `core/services/agentic_execution.py` :: `ModelDriver.complete` (L76)
+- `core/services/agentic_execution.py` :: `UsageRecord.plus` (L38)
 - `core/services/agentic_tool_cache.py` :: `get_cached_result` (L92)
 - `core/services/agentic_tool_cache.py` :: `store_result` (L106)
 - `core/services/agentic_working_conclusions.py` :: `build_round_observation` (L90)
@@ -2161,18 +2169,18 @@ Generated from source. 8901/16891 functions/methods documented (52%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
 - `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L51)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L542)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L548)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L545)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L555)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6710)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6735)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6773)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6769)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6706)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6668)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6790)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6721)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L549)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6717)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6742)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6780)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6776)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6713)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6675)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6797)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6728)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

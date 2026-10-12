@@ -234,6 +234,13 @@ from core.tools.workspace_capabilities import (
     load_workspace_capabilities,
 )
 
+# Session-neutral execution seam for new callers.  The mature SSE controller
+# remains intact while consumers migrate through the explicit adapter.
+from core.services.agentic_execution import (  # noqa: E402,F401
+    VisibleExecutionAdapter,
+    execute_agentic,
+)
+
 # Capability markup constants — udskilt til core/services/prompt_sections/capability_markup.py
 from core.services.prompt_sections.capability_markup import (  # noqa: E402
     CAPABILITY_ATTR_PATTERN,

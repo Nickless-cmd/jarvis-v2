@@ -48,6 +48,14 @@ def test_page_id_single_vs_chunked():
     assert pid.startswith("core.services.") and pid != "core.services"
 
 
+def test_routine_execution_modules_have_stable_dedicated_page():
+    names = ["aaa", "agentic_execution", "routine_prompt", "zzz"]
+    expected = "core.services.routine-execution"
+    assert g.page_id("core.services", "agentic_execution", names) == expected
+    assert g.page_id("core.services", "routine_prompt", names) == expected
+    assert g.page_id("core.services", "zzz", names, chunk=1) == "core.services.02"
+
+
 def test_coverage_counts_and_public_undocumented():
     entries = [
         {"module": "core/x.py", "members": [

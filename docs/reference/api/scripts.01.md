@@ -11,19 +11,19 @@ _Generate per-package codebase reference under docs/reference/api/ from AST (sta
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `iter_py` | `(root=…)` | Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping | [src](../../../scripts/api_docs_gen.py#L19) |
-| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L33) |
-| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L51) |
-| function | `module_entry` | `(text, relpath)` | Parse module source `text` into an entry dict for `relpath`: its module | [src](../../../scripts/api_docs_gen.py#L56) |
-| function | `package_of` | `(relpath)` | Return the dotted package name for a module `relpath` (its directory | [src](../../../scripts/api_docs_gen.py#L81) |
-| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | Return the page id for `module_name` within `pkg`. Packages with at most | [src](../../../scripts/api_docs_gen.py#L88) |
-| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L103) |
-| function | `coverage` | `(entries)` | Aggregate docstring coverage over module `entries`. Counts functions and | [src](../../../scripts/api_docs_gen.py#L107) |
-| function | `render_package_md` | `(page, entries)` | Render the Markdown reference page for `page`: a header plus, per module | [src](../../../scripts/api_docs_gen.py#L130) |
-| function | `render_index_md` | `(pages, cov)` | Render the API-reference index (README) Markdown: overall docstring | [src](../../../scripts/api_docs_gen.py#L155) |
-| function | `render_coverage_md` | `(cov)` | Render the docstring-coverage report Markdown from a `coverage()` dict: | [src](../../../scripts/api_docs_gen.py#L181) |
-| function | `build` | `()` | Scan all source modules and build the reference. Groups module entries by | [src](../../../scripts/api_docs_gen.py#L202) |
-| function | `main` | `()` | Build the reference and write it to disk: one Markdown page per page id, | [src](../../../scripts/api_docs_gen.py#L220) |
+| function | `iter_py` | `(root=…)` | Yield every `.py` file under the SCAN_DIRS of `root`, sorted, skipping | [src](../../../scripts/api_docs_gen.py#L23) |
+| function | `_sig` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L37) |
+| function | `_summary` | `(node)` | — | [src](../../../scripts/api_docs_gen.py#L55) |
+| function | `module_entry` | `(text, relpath)` | Parse module source `text` into an entry dict for `relpath`: its module | [src](../../../scripts/api_docs_gen.py#L60) |
+| function | `package_of` | `(relpath)` | Return the dotted package name for a module `relpath` (its directory | [src](../../../scripts/api_docs_gen.py#L85) |
+| function | `page_id` | `(pkg, module_name, sorted_names, chunk=…)` | Return the page id for `module_name` within `pkg`. Packages with at most | [src](../../../scripts/api_docs_gen.py#L92) |
+| function | `_is_public` | `(name)` | — | [src](../../../scripts/api_docs_gen.py#L113) |
+| function | `coverage` | `(entries)` | Aggregate docstring coverage over module `entries`. Counts functions and | [src](../../../scripts/api_docs_gen.py#L117) |
+| function | `render_package_md` | `(page, entries)` | Render the Markdown reference page for `page`: a header plus, per module | [src](../../../scripts/api_docs_gen.py#L140) |
+| function | `render_index_md` | `(pages, cov)` | Render the API-reference index (README) Markdown: overall docstring | [src](../../../scripts/api_docs_gen.py#L165) |
+| function | `render_coverage_md` | `(cov)` | Render the docstring-coverage report Markdown from a `coverage()` dict: | [src](../../../scripts/api_docs_gen.py#L191) |
+| function | `build` | `()` | Scan all source modules and build the reference. Groups module entries by | [src](../../../scripts/api_docs_gen.py#L212) |
+| function | `main` | `()` | Build the reference and write it to disk: one Markdown page per page id, | [src](../../../scripts/api_docs_gen.py#L230) |
 
 ## `scripts/api_reference_gen.py`
 _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._

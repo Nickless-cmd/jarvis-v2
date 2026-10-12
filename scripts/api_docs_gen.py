@@ -14,6 +14,10 @@ API_DIR = REPO / "docs" / "reference" / "api"
 COV_OUT = REPO / "docs" / "reference" / "DOCSTRING_COVERAGE.md"
 CHUNK = 40
 _SKIP = {"__pycache__", "tests", "node_modules"}
+_PINNED_PAGES = {
+    ("core.services", "agentic_execution"): "core.services.routine-execution",
+    ("core.services", "routine_prompt"): "core.services.routine-execution",
+}
 
 
 def iter_py(root: Path = REPO):
@@ -89,6 +93,12 @@ def page_id(pkg: str, module_name: str, sorted_names: list, chunk: int = CHUNK) 
     """Return the page id for `module_name` within `pkg`. Packages with at most
     `chunk` modules use `pkg` directly; larger ones are split into numbered
     chunks (`pkg.NN`) so no single page grows unusable."""
+    pinned = _PINNED_PAGES.get((pkg, module_name))
+    if pinned:
+        return pinned
+    sorted_names = [
+        name for name in sorted_names if (pkg, name) not in _PINNED_PAGES
+    ]
     if len(sorted_names) <= chunk:
         return pkg
     for i in range(0, len(sorted_names), chunk):

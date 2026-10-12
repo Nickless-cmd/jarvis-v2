@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 16809 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 16833 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,8 +27,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16809 functions/
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_composer_jarvis`
-- [`core.runtime.02`](core.runtime.02.md) — `db_composites` … `db_runtime_temporal_memory_signals`
-- [`core.runtime.03`](core.runtime.03.md) — `db_scheduled_tasks` … `ws_auth`
+- [`core.runtime.02`](core.runtime.02.md) — `db_composites` … `db_runtime_tasks`
+- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_temporal_memory_signals` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
 - [`core.services.02`](core.services.02.md) — `agent_pool_router` … `apophenia_guard`
 - [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `baggrundsjob_vagt`
@@ -50,15 +50,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 16809 functions/
 - [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
 - [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relationship_texture`
-- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_hooks`
-- [`core.services.23`](core.services.23.md) — `runtime_learning_signals` … `self_narrative_self_model_review_bridge`
-- [`core.services.24`](core.services.24.md) — `self_repair_engine` … `share_guard_store`
-- [`core.services.25`](core.services.25.md) — `shared_cache` … `state_flag_store`
-- [`core.services.26`](core.services.26.md) — `stream_degeneration` … `tiny_webchat_execution_pilot`
-- [`core.services.27`](core.services.27.md) — `tool_calling_evidence` … `user_md_update_proposal_tracking`
-- [`core.services.28`](core.services.28.md) — `user_model_daemon` … `visible_run_recovery_coordinator`
-- [`core.services.29`](core.services.29.md) — `visible_run_recovery_dispatcher` … `witness_signal_tracking`
-- [`core.services.30`](core.services.30.md) — `workspace_crypto` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_flows`
+- [`core.services.23`](core.services.23.md) — `runtime_hook_runtime` … `self_mutation_lineage`
+- [`core.services.24`](core.services.24.md) — `self_narrative_continuity_signal_tracking` … `shadow_ledger_writer`
+- [`core.services.25`](core.services.25.md) — `shadow_scan_daemon` … `standing_orders_registry`
+- [`core.services.26`](core.services.26.md) — `state_file_retention` … `thought_thread`
+- [`core.services.27`](core.services.27.md) — `tick_cache` … `user_contradiction_tracker`
+- [`core.services.28`](core.services.28.md) — `user_emotional_resonance` … `visible_run_journal`
+- [`core.services.29`](core.services.29.md) — `visible_run_outcome_state` … `weighted_slot_health`
+- [`core.services.30`](core.services.30.md) — `widget_dokument` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

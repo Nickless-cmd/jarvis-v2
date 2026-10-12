@@ -387,6 +387,31 @@ _Persistence for the private self-model / mood / promotion-decision tables._
 | function | `record_private_promotion_decision` | `(*, decision_id, source, run_id, work_id, promotion_target, promotion_action, promotion_scope, confidence, created_at)` | — | [src](../../../core/runtime/db_private_states.py#L217) |
 | function | `get_private_promotion_decision` | `()` | — | [src](../../../core/runtime/db_private_states.py#L262) |
 
+## `core/runtime/db_routines.py`
+_SQLite repository for first-class, owner-scoped Routines._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sql_values` | `(values)` | — | [src](../../../core/runtime/db_routines.py#L26) |
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_routines.py#L30) |
+| function | `_id` | `(prefix)` | — | [src](../../../core/runtime/db_routines.py#L34) |
+| function | `_json_bytes` | `(value)` | — | [src](../../../core/runtime/db_routines.py#L38) |
+| function | `_open_json` | `(owner_user_id, blob)` | — | [src](../../../core/runtime/db_routines.py#L42) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_routines.py#L46) |
+| function | `_definition_snapshot` | `(values)` | — | [src](../../../core/runtime/db_routines.py#L191) |
+| function | `_routine_values` | `(row, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L211) |
+| function | `create_routine` | `(*, owner_user_id, access_scope, name, instruction, capability_scope, trigger_kind, trigger_config, permission_policy, delivery_policy, inbox_policy, retention_policy, failure_policy, created_by=…, status=…, workspace_name=…, workspace_kind=…, workspace_root=…, jarvis_restart_allowed=…, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L232) |
+| function | `get_routine` | `(routine_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L287) |
+| function | `list_routines` | `(*, owner_user_id, include_deleted=…, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L294) |
+| function | `transition_routine` | `(routine_id, *, to_status, expected_version=…)` | — | [src](../../../core/runtime/db_routines.py#L308) |
+| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L345) |
+| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L390) |
+| function | `claim_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L403) |
+| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L428) |
+| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L461) |
+| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L490) |
+| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L517) |
+
 ## `core/runtime/db_runtime_browser.py`
 _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
 
@@ -888,59 +913,4 @@ _Persistence for the `runtime_tasks` table — Jarvis' durable task queue._
 | function | `get_runtime_task` | `(task_id)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L174) |
 | function | `list_runtime_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L207) |
 | function | `update_runtime_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L253) |
-
-## `core/runtime/db_runtime_temporal_memory_signals.py`
-_Persistence for Jarvis' runtime temporal/memory-* signal cluster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `upsert_runtime_temporal_recurrence_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert-or-merge a temporal-recurrence signal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L35) |
-| function | `list_runtime_temporal_recurrence_signals` | `(*, status=…, limit=…)` | Return temporal-recurrence signals as row dicts, newest first, optionally | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L106) |
-| function | `get_runtime_temporal_recurrence_signal` | `(signal_id)` | Return the temporal-recurrence signal with this signal_id as a row dict, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L153) |
-| function | `update_runtime_temporal_recurrence_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the temporal-recurrence signal | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L191) |
-| function | `supersede_runtime_temporal_recurrence_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) temporal-recurrence signals | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L226) |
-| function | `_ensure_runtime_temporal_recurrence_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L260) |
-| function | `_runtime_temporal_recurrence_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L301) |
-| function | `upsert_runtime_remembered_fact_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert-or-merge a remembered-fact signal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L325) |
-| function | `list_runtime_remembered_fact_signals` | `(*, status=…, limit=…)` | Return remembered-fact signals as row dicts, newest first, optionally | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L396) |
-| function | `get_runtime_remembered_fact_signal` | `(signal_id)` | Return the remembered-fact signal with this signal_id as a row dict, or | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L443) |
-| function | `update_runtime_remembered_fact_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the remembered-fact signal with | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L481) |
-| function | `supersede_runtime_remembered_fact_signals_for_dimension` | `(*, dimension_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) remembered-fact signals | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L516) |
-| function | `_ensure_runtime_remembered_fact_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L550) |
-| function | `_runtime_remembered_fact_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L591) |
-| function | `upsert_runtime_memory_md_update_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert-or-merge a MEMORY.md-update proposal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L615) |
-| function | `list_runtime_memory_md_update_proposals` | `(*, status=…, limit=…)` | Return MEMORY.md-update proposals as row dicts, newest first, optionally | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L686) |
-| function | `get_runtime_memory_md_update_proposal` | `(proposal_id)` | Return the MEMORY.md-update proposal with this proposal_id as a row dict, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L733) |
-| function | `update_runtime_memory_md_update_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the MEMORY.md-update proposal with | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L771) |
-| function | `supersede_runtime_memory_md_update_proposals_for_dimension` | `(*, dimension_key, exclude_proposal_id, updated_at, status_reason)` | Mark all still-live (fresh/active/fading/stale) MEMORY.md-update | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L806) |
-| function | `_ensure_runtime_memory_md_update_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L840) |
-| function | `_runtime_memory_md_update_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L881) |
-| function | `upsert_runtime_release_marker_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert-or-merge a release-marker signal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L905) |
-| function | `list_runtime_release_marker_signals` | `(*, status=…, limit=…)` | Return release-marker signals as row dicts, newest first, optionally | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L976) |
-| function | `get_runtime_release_marker_signal` | `(signal_id)` | Return the release-marker signal with this signal_id as a row dict, or | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1023) |
-| function | `update_runtime_release_marker_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the release-marker signal with | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1061) |
-| function | `supersede_runtime_release_marker_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) release-marker signals whose | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1096) |
-| function | `_ensure_runtime_release_marker_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1130) |
-| function | `_runtime_release_marker_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1171) |
-| function | `upsert_runtime_selective_forgetting_candidate` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert-or-merge a selective-forgetting candidate into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1195) |
-| function | `list_runtime_selective_forgetting_candidates` | `(*, status=…, limit=…)` | Return selective-forgetting candidates as row dicts, newest first, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1266) |
-| function | `get_runtime_selective_forgetting_candidate` | `(signal_id)` | Return the selective-forgetting candidate with this signal_id as a row | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1314) |
-| function | `update_runtime_selective_forgetting_candidate_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the selective-forgetting candidate | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1354) |
-| function | `supersede_runtime_selective_forgetting_candidates_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) selective-forgetting | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1389) |
-| function | `_ensure_runtime_selective_forgetting_candidate_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1423) |
-| function | `_runtime_selective_forgetting_candidate_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1466) |
-| function | `upsert_runtime_regulation_homeostasis_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert-or-merge a regulation/homeostasis signal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1492) |
-| function | `list_runtime_regulation_homeostasis_signals` | `(*, status=…, limit=…)` | Return regulation/homeostasis signals as row dicts, newest first, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1563) |
-| function | `get_runtime_regulation_homeostasis_signal` | `(signal_id)` | Return the regulation/homeostasis signal with this signal_id as a row | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1611) |
-| function | `update_runtime_regulation_homeostasis_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the regulation/homeostasis signal | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1651) |
-| function | `supersede_runtime_regulation_homeostasis_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/stale) regulation/homeostasis signals whose | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1686) |
-| function | `_ensure_runtime_regulation_homeostasis_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1720) |
-| function | `_runtime_regulation_homeostasis_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1763) |
-| function | `upsert_runtime_temperament_tendency_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert-or-merge a temperament-tendency signal into | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1789) |
-| function | `list_runtime_temperament_tendency_signals` | `(*, status=…, limit=…)` | Return temperament-tendency signals as row dicts, newest first, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1860) |
-| function | `get_runtime_temperament_tendency_signal` | `(signal_id)` | Return the temperament-tendency signal with this signal_id as a row dict, | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1908) |
-| function | `update_runtime_temperament_tendency_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the temperament-tendency signal | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1946) |
-| function | `supersede_runtime_temperament_tendency_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live (active/softening/stale) temperament-tendency signals | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L1981) |
-| function | `_ensure_runtime_temperament_tendency_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L2015) |
-| function | `_runtime_temperament_tendency_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_temporal_memory_signals.py#L2056) |
 

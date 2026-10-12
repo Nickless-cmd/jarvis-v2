@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8894/16809 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8894/16833 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8894/16809 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 817 | 1470 | 55% |
-| `core.services` | 5927 | 11416 | 51% |
+| `core.runtime` | 817 | 1489 | 54% |
+| `core.services` | 5927 | 11421 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8894/16809 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2394)
+## Undocumented public functions (2409)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L217)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -521,6 +521,17 @@ Generated from source. 8894/16809 functions/methods documented (52%). The list b
 - `core/runtime/db_private_states.py` :: `record_private_promotion_decision` (L217)
 - `core/runtime/db_private_states.py` :: `record_private_self_model` (L64)
 - `core/runtime/db_private_states.py` :: `record_private_state` (L143)
+- `core/runtime/db_routines.py` :: `append_run_event` (L428)
+- `core/runtime/db_routines.py` :: `claim_run` (L403)
+- `core/runtime/db_routines.py` :: `create_delivery` (L490)
+- `core/runtime/db_routines.py` :: `create_routine` (L232)
+- `core/runtime/db_routines.py` :: `create_run` (L345)
+- `core/runtime/db_routines.py` :: `get_routine` (L287)
+- `core/runtime/db_routines.py` :: `get_run` (L390)
+- `core/runtime/db_routines.py` :: `list_routines` (L294)
+- `core/runtime/db_routines.py` :: `put_quarantine` (L517)
+- `core/runtime/db_routines.py` :: `transition_routine` (L308)
+- `core/runtime/db_routines.py` :: `transition_run` (L461)
 - `core/runtime/db_runtime_browser.py` :: `ensure_runtime_browser_tables` (L13)
 - `core/runtime/db_runtime_browser.py` :: `get_runtime_browser_body` (L41)
 - `core/runtime/db_runtime_browser.py` :: `list_runtime_browser_bodies` (L149)
@@ -1683,6 +1694,10 @@ Generated from source. 8894/16809 functions/methods documented (52%). The list b
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)
 - `core/services/rhythm_engine.py` :: `build_rhythm_surface` (L73)
+- `core/services/routine_crypto.py` :: `open_sealed` (L23)
+- `core/services/routine_crypto.py` :: `seal` (L17)
+- `core/services/routine_types.py` :: `RoutinePatch.changes` (L106)
+- `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L44)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)
 - `core/services/rule_engine.py` :: `RuleEngine.clear_rules` (L92)
 - `core/services/rule_engine.py` :: `RuleEngine.get_rule` (L136)

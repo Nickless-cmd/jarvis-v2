@@ -312,6 +312,30 @@ _Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
 |---|---|---|---|---|
 | function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
 
+## `core/services/routine_crypto.py`
+_Owner-bound authenticated encryption for Routine content._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner_key` | `(owner_user_id)` | — | [src](../../../core/services/routine_crypto.py#L7) |
+| function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
+| function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
+
+## `core/services/routine_types.py`
+_Value objects shared by the Routine domain._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L13) |
+| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L22) |
+| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L32) |
+| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L38) |
+| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L44) |
+| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L49) |
+| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L70) |
+| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L90) |
+| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L106) |
+
 ## `core/services/rule_definitions.py`
 _Rule definitions — production rules feeding the rule_engine._
 
@@ -638,21 +662,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
 | function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
 | function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
-
-## `core/services/runtime_hook_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L19) |
-| function | `stop_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L36) |
-| function | `_hook_runtime_loop` | `(*, subscriber)` | — | [src](../../../core/services/runtime_hook_runtime.py#L49) |
-
-## `core/services/runtime_hooks.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `dispatch_unhandled_hook_events` | `(*, limit=…, event_kinds=…)` | — | [src](../../../core/services/runtime_hooks.py#L16) |
-| function | `dispatch_hook_event` | `(event)` | — | [src](../../../core/services/runtime_hooks.py#L41) |
-| function | `_tick_ref` | `(tick_id)` | `tick:<id>` — eller tom, hvis der ikke er et tick. | [src](../../../core/services/runtime_hooks.py#L167) |
-| function | `_find_active_task` | `(*, kind, goal, scope)` | — | [src](../../../core/services/runtime_hooks.py#L189) |
 

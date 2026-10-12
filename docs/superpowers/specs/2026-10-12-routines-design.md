@@ -488,7 +488,11 @@ not.
 3. Add a read-only Routine API/UI over the migration projection.
 4. Enable user-created routines and manual **Run now**.
 5. Adapt scheduled and recurring tasks to enqueue routine runs.
-6. Adapt system producers, starting with the least risky and observable.
+6. Known internal producers, including `heartbeat_runtime`, dream, and council,
+   must become `system_owner` routines through the explicit producer registry,
+   starting with the least risky and observable. After rollout, they must not
+   run alongside routines through legacy paths: there is exactly one source of
+   truth for what ran, the Routine run records.
 7. Replace autonomous-path calls through
    `core.services.visible_runs_outcomes._append_chat_message_with_retry`, direct
    `append_chat_message` sites in `core.services.visible_runs`, and the
@@ -544,6 +548,10 @@ Every phase remains reversible until legacy routing is finally removed.
 - Fixtures for Discord-to-canonical mapping, initiator/recipient mismatch,
   absent run stamps, and test-like IDs.
 - Proof that private prose is never parsed to make an ownership decision.
+- When fixtures include the measured production patterns (empty stamps, mixed
+  identity formats, and test-like IDs), the dry-run report must show a non-empty
+  quarantine. An empty quarantine means the classifier is guessing and the
+  dry-run must fail.
 - Repeat migration produces no duplicates.
 - Dry-run and applied counts reconcile.
 - Member content remains inaccessible to owner throughout migration.
@@ -751,3 +759,10 @@ are unchanged and remain absolute on every surface.
   assert quarantine is non-empty when the fixtures include the measured
   production patterns (empty stamps, mixed ID formats, test-like IDs). An empty
   quarantine on that fixture set would mean the classifier is guessing.
+
+**Resolved 2026-10-12 (owner):** §14 step 6 now requires known internal
+producers to become `system_owner` routines through the explicit producer
+registry, leaving Routine run records as the single source of truth for what
+ran. §15 Migration now requires a non-empty quarantine for the measured
+production-pattern fixture set and requires the dry-run to fail if quarantine
+is empty.

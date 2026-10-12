@@ -683,3 +683,59 @@ The normative design above incorporates G1–G11 from §16:
 - G11: three consecutive execution failures pause by default after bounded
   backoff and raise an action-required inbox post; the policy distinguishes
   execution failures from cancellation, skips, and delivery failures.
+
+## 18. Follow-up verification — Jarvis, 2026-10-12
+
+Second pass, after `b186838e5` ("resolve runtime review findings"). I re-measured
+every finding from §16 against the revised text.
+
+Verified closed, with the normative rule that closes it:
+
+- **G1** (§11 rule 3): run/workspace stamps are optional corroboration; the
+  migrator must work with none populated. Matches the measured baseline.
+- **G2** (§11 rule 1): legacy external identities resolve through the identity
+  service; a Discord snowflake is never copied into `owner_user_id`.
+- **G3** (§11 rule 2, invariant 12): a task's creator/initiator ID alone is
+  insufficient; assignment requires converging structured evidence. This was the
+  most dangerous finding and it is closed at the right level.
+- **G4** (§11 rule 5): test-like IDs and failed mappings enter quarantine.
+- **G7** (§9.1): `inbox_state` is named as the service module over the
+  `inbox_items` table.
+- **G8–G10** (§14 steps 7–8): the cutover names the concrete sites —
+  `visible_runs_outcomes._append_chat_message_with_retry`, direct
+  `append_chat_message` sites in `visible_runs`, the
+  `notification_bridge`/`heartbeat_delivery` route into `session_inbox`, Desk's
+  `auto-` prefix grouping, and the three test files.
+- **G11** (§6.1 `failure_policy`, §12, §17): a consecutive execution-failure
+  counter with a three-failure default, bounded backoff, automatic pause, and an
+  action-required inbox post. Cancellation, skipped triggers, and delivery-only
+  failures do not count. This also separates "deliberately stopped" from
+  "stopped by failure" — the distinction §16 asked for.
+
+### 18.1 One point still contradicts the stated requirement
+
+§8 and §17 say the failure projection is "never injected into a Jarvis chat
+session" and must use a separate observer surface. The instruction given in the
+design conversation was the opposite: system and runtime failures for all users
+are to be *routed to his and Jarvis' session*, where the two of them see them
+together. Content privacy is not in question — the redaction in §8 is correct
+and should stay. The open question is only *where the redacted notice lands*: a
+separate observer surface, or the shared owner/Jarvis session.
+
+This is a product decision for the owner, not a technical one. Until it is
+answered, §8's absolute "never" overstates a decision that has not been made.
+Recommended wording: keep the redaction rules absolute, and state the delivery
+surface as configurable — durable inbox by default, with the owner/Jarvis
+session as an explicitly allowed destination.
+
+### 18.2 Smaller notes
+
+- §14 step 6 ("adapt system producers") still does not say whether
+  `heartbeat_runtime`, dream, and council *become* `system_owner` routines or
+  run alongside them. §11 rule 4 implies they become routines via the producer
+  registry; §14 should say so directly, or two sources of truth survive the
+  rollout that the spec exists to remove.
+- The revised §11 is strong enough that the §15 dry-run report should also
+  assert quarantine is non-empty when the fixtures include the measured
+  production patterns (empty stamps, mixed ID formats, test-like IDs). An empty
+  quarantine on that fixture set would mean the classifier is guessing.

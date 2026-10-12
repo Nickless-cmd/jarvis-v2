@@ -90,7 +90,9 @@ session.
    later runs use the new version.
 10. Delivery retry never repeats the work performed by the run.
 11. Routine inbox notices are projections of routine events, not a second
-    lifecycle truth, and never route through `session_inbox` or a chat session.
+    lifecycle truth, and never route through `session_inbox`. The redacted
+    operational failure projection is delivered to the shared owner/Jarvis
+    session (§8) — still a projection, never a lifecycle truth.
 12. Legacy ownership is assigned only from authoritative, structured evidence
     that resolves to exactly one canonical user. Neither an unverified legacy
     `user_id` nor names/recipients parsed from private instruction text are
@@ -250,9 +252,12 @@ Jarvis' access is functional, not content ownership. Jarvis may claim and
 execute a run using the routine's sealed snapshot and may receive the same
 content-free failure projection as the owner, but cannot list or open another
 user's routine instruction, input, output, tool payloads, files, raw events, or
-raw logs. The projection is delivered through the durable operational inbox or
-observer surface, never injected into a Jarvis chat session. `owner_user_id`
-therefore remains singular and names the human owner/recipient.
+raw logs. The redacted operational failure projection for any user's routine is
+delivered to the shared owner/Jarvis session and to the durable operational
+inbox, so owner and Jarvis see the same content-free notice together. The
+redaction rules below are absolute on every surface; only the delivery surface
+is shared. `owner_user_id` therefore remains singular and names the human
+owner/recipient.
 
 The owner-facing projection for another user's failed routine may contain only:
 
@@ -329,8 +334,9 @@ content-free tombstone. Closing or dropping an inbox post does not mutate the
 routine.
 
 For another user's failed routine, the owner role and Jarvis observer receive
-only the redacted operational projection defined in §8. They receive no deep
-link that can open the private routine or run. Other lifecycle notices remain
+only the redacted operational projection defined in §8, delivered to the shared
+owner/Jarvis session and the durable inbox. They receive no deep link that can
+open the private routine or run. Other lifecycle notices remain
 strictly scoped to the routine owner (or, for `system_owner`, the owner role).
 
 ## 10. Jarvis Desk
@@ -675,8 +681,9 @@ The normative design above incorporates G1–G11 from §16:
   test pollution fail closed into quarantine. Private prose is explicitly not
   an identity oracle.
 - G5–G6: Jarvis is an observer/executor with sealed execution access and the
-  redacted failure projection, not a co-owner with content access. Diagnostics
-  use the durable inbox/observer surface and never Jarvis' chat session.
+  redacted failure projection, not a co-owner with content access. The redacted
+  failure projection for any user is delivered to the shared owner/Jarvis
+  session and the durable inbox; content privacy is unchanged.
 - G7: `inbox_state` is identified as the service module over `inbox_items`.
 - G8–G10: rollout names the existing chat append, session-inbox delivery, Desk
   prefix grouping, and tests that the cutover must deliberately replace.
@@ -712,7 +719,7 @@ Verified closed, with the normative rule that closes it:
   failures do not count. This also separates "deliberately stopped" from
   "stopped by failure" — the distinction §16 asked for.
 
-### 18.1 One point still contradicts the stated requirement
+### 18.1 One point still contradicted the stated requirement (resolved)
 
 §8 and §17 say the failure projection is "never injected into a Jarvis chat
 session" and must use a separate observer surface. The instruction given in the
@@ -727,6 +734,11 @@ answered, §8's absolute "never" overstates a decision that has not been made.
 Recommended wording: keep the redaction rules absolute, and state the delivery
 surface as configurable — durable inbox by default, with the owner/Jarvis
 session as an explicitly allowed destination.
+
+**Resolved 2026-10-12 (owner):** the failure projection is delivered to the
+shared owner/Jarvis session, so the two see failures for every user together.
+§5 invariant 11, §8, §9.1, and §17 are updated to match. The redaction rules
+are unchanged and remain absolute on every surface.
 
 ### 18.2 Smaller notes
 

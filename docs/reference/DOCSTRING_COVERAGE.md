@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8898/16812 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8899/16814 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8898/16812 functions/methods documented (52%). The list b
 | `core.identity` | 74 | 167 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 817 | 1470 | 55% |
-| `core.services` | 5928 | 11417 | 51% |
+| `core.runtime` | 817 | 1471 | 55% |
+| `core.services` | 5929 | 11418 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -423,11 +423,11 @@ Generated from source. 8898/16812 functions/methods documented (52%). The list b
 - `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L219)
 - `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L371)
 - `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L143)
-- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
-- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
-- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L240)
-- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L292)
-- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L92)
+- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L418)
+- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L202)
+- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L258)
+- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L310)
+- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L110)
 - `core/runtime/db_claude_dispatch.py` :: `ensure_claude_dispatch_tables` (L11)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_cleanup` (L302)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_insert` (L248)
@@ -954,8 +954,8 @@ Generated from source. 8898/16812 functions/methods documented (52%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L109)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L99)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L88)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L726)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1090)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L739)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1103)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L62)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L66)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L180)
@@ -2147,11 +2147,11 @@ Generated from source. 8898/16812 functions/methods documented (52%). The list b
 - `core/services/web_push_subscriptions.py` :: `delete` (L72)
 - `core/services/web_push_subscriptions.py` :: `save` (L38)
 - `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L145)
-- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L193)
-- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L210)
+- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L200)
+- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L217)
 - `core/services/weighted_slot_health.py` :: `quota_snapshot` (L69)
-- `core/services/weighted_slot_health.py` :: `rolling_average` (L204)
-- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L215)
+- `core/services/weighted_slot_health.py` :: `rolling_average` (L211)
+- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L222)
 - `core/services/widget_dokument.py` :: `maerke` (L70)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)

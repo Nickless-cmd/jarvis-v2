@@ -400,3 +400,43 @@ class TestAfslutningSkrivesSynkront:
         monkeypatch.setattr(vro, "connect", _braek)
         set_last_visible_run_outcome(
             _vis_run("visible-race"), status="completed", text_preview="Svar.")
+
+
+class TestDumpVagtenMaalerIndholdIkkeLaengde:
+    """12/10-2026 (fix godkendt af Bjørn): kriteriet var ren længde — `> 8000 tegn`.
+
+    Målt over 14 dage gav det 102 "error"-incidents, hvoraf NUL indeholdt rå
+    tool-output: de var almindelige, grundige svar. 102 falske fejl druknede de
+    ægte i Centralens billede. Kriteriet er derfor INDHOLD, ikke længde.
+    """
+
+    @pytest.fixture
+    def leaks(self, monkeypatch):
+        kald: list[dict] = []
+        monkeypatch.setattr(
+            "core.services.followup_observer.note_leak",
+            lambda run_id, **kw: kald.append({"run_id": run_id, **kw}), raising=False)
+        return kald
+
+    def test_et_langt_svar_uden_raa_struktur_er_ikke_et_dump(self, gemte, leaks) -> None:
+        """Kernen i fixet: 10.000 tegn almindelig prosa er et svar, ikke et dump."""
+        langt_svar = "Jeg har tjekket disken grundigt og fundet tre ting. " * 200
+        assert len(langt_svar) > 8000, "forudsætningen for testen holder ikke"
+        vro._persist_session_assistant_message(_Run(), langt_svar)
+        assert leaks == [], "et langt, almindeligt svar blev flagget som dump"
+        assert len(gemte) == 1, "svaret blev ædt af vagten"
+
+    def test_raa_tool_struktur_i_maengde_er_stadig_et_dump(self, gemte, leaks) -> None:
+        """Formålet bevares: et ægte dump skal fanges."""
+        raat = ('[tool_result:tool-result-abc] {"tool_use_id": "toolu_01"}\n'
+                'Use read_tool_result with result_id="tool-result-abc" to inspect.\n'
+                + "x" * 9000)
+        vro._persist_session_assistant_message(_Run(), raat)
+        assert len(leaks) == 1, "et ægte dump slap igennem den nye vagt"
+        assert "3 rå struktur" in leaks[0]["reason"], leaks[0]["reason"]
+
+    def test_graensen_er_tre_markoerer(self, gemte, leaks) -> None:
+        """Under grænsen er det ikke et mønster — det er en enkelt omtale."""
+        to_markoerer = ('[tool_result:x] og "tool_use_id" — se noten. ' + "y" * 9000)
+        vro._persist_session_assistant_message(_Run(), to_markoerer)
+        assert leaks == [], "to markører blev læst som et dump-mønster"

@@ -327,16 +327,29 @@ def _persist_session_assistant_message(
         )
         if delivered:
             return
-    # ── Leak/dump-guard (2026-06-23) ────────────────────────────────────────
+    # ── Leak/dump-guard (2026-06-23, revideret 12/10-2026) ──────────────────
     # Model echoer et råt (kæmpe) tool-result som svar i stedet for at opsummere
     # (Bjørns 27KB-dumps). Observe-only → synlig i Centralen, raffineres med data.
     # Markør-leaks ([tool_result:/[bash]:) fanges separat af presentation_invariant.
-    if len(normalized) > 8000:
+    #
+    # 12/10-2026: kriteriet var UDELUKKENDE længde (`> 8000 tegn`), og det var
+    # en falsk-positiv-maskine. Målt over 14 dage gav det 102 "error"-incidents,
+    # hvoraf NUL indeholdt rå tool-output — de var almindelige, grundige svar.
+    # Ægte markør-leaks blokeres/saneres allerede af `_assert_presentation_invariant`
+    # nedenfor (nerve: presentation_invariant, målt: 0 forekomster). Et langt svar
+    # er ikke et dump; et dump er rå maskin-struktur i mængde. Kriteriet er derfor
+    # INDHOLD, ikke længde.
+    _raa_struktur = sum(normalized.count(_m) for _m in (
+        '"tool_use_id"', "[tool_result:", "Use read_tool_result",
+    ))
+    if len(normalized) > 8000 and _raa_struktur >= 3:
         try:
             from core.services import followup_observer as _fo_leak
             _fo_leak.note_leak(
                 run.run_id, provider=run.provider, model=run.model,
-                chars=len(normalized), reason="svar > 8000 tegn (sandsynlig dump)")
+                chars=len(normalized),
+                reason=(f"svar > 8000 tegn med {_raa_struktur} rå struktur-"
+                        f"markører (sandsynlig dump)"))
         except Exception:
             pass
     # ── UDBYDER-FEJL-VAGT ved selve persisteringen (2026-09-02) ────────────

@@ -673,6 +673,16 @@ def _build_cognitive_surfaces() -> dict[str, object]:
             "core.services.gut_engine", fromlist=["build_gut_surface"]
         ).build_gut_surface(),
     )
+    # Counterfactual decision delta (12/10-2026): hvor ofte flyttede den lærte gut-bias
+    # gatens afgørelse? Læser den persistente gate_verdict-ledger. Uden denne flade ville
+    # tællingen være endnu en skrive-sti uden læser.
+    _safe_surface(
+        surfaces,
+        "gut_counterfactual",
+        lambda: __import__(
+            "core.services.gut_engine", fromlist=["build_gut_counterfactual_surface"]
+        ).build_gut_counterfactual_surface(),
+    )
     _safe_surface(
         surfaces,
         "forgetting_curve",

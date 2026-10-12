@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8878/16793 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8881/16796 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8878/16793 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 814 | 1467 | 55% |
-| `core.services` | 5915 | 11404 | 51% |
+| `core.services` | 5918 | 11407 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 125 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1236,7 +1236,7 @@ Generated from source. 8878/16793 functions/methods documented (52%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_prompt_section` (L150)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_from_sources` (L32)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
-- `core/services/gut_engine.py` :: `build_gut_surface` (L181)
+- `core/services/gut_engine.py` :: `build_gut_surface` (L240)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
 - `core/services/habits_pipeline.py` :: `accept_suggestion` (L413)
 - `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L459)
@@ -1247,9 +1247,9 @@ Generated from source. 8878/16793 functions/methods documented (52%). The list b
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2178)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2188)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1243)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1253)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)

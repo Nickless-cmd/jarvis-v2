@@ -45,6 +45,10 @@ def derive_gut_signal(
 
     # Weight by calibration — if gut has been wrong, reduce confidence
     adjusted_confidence = hunch_confidence * calibration
+    # Bias-FRI baseline (12/10-2026): bevares FØR Lag-4 lægges oveni, så counterfactual-
+    # tællingen kan svare på hvad gaten VILLE afgøre uden den lærte bias. Uden dette led
+    # findes svaret ikke — gaten ser kun den justerede værdi og kan ikke sammenlignes med sig selv.
+    confidence_no_bias = adjusted_confidence
 
     # Lag 4 (governed, shadow-gated): et lært proceed-bias justerer tilbøjeligheden. Default 0.0
     # (shadow/ingen ændring); kun ≠0 når Centralen HAR lært + Bjørn har flippet live-switch.
@@ -61,6 +65,7 @@ def derive_gut_signal(
     return {
         "hunch": hunch,
         "confidence": round(adjusted_confidence, 2),
+        "confidence_no_bias": round(confidence_no_bias, 2),
         "calibration_score": calibration,
         "raw_confidence": confidence,
         "task_hint": task_description[:80],
@@ -109,7 +114,55 @@ def _gate_threshold() -> float:
         return _DEFAULT_THRESHOLD
 
 
-def gut_gate(proceed_confidence: float, *, context: str = "") -> bool:
+# Counterfactual-tælling (12/10-2026). To nerves i den EKSISTERENDE ledger — ingen ny tabel.
+_COUNTERFACTUAL_NERVE = "gut_gate"
+_COUNTERFACTUAL_NERVE_NO_BIAS = "gut_gate_uden_bias"
+
+
+def _safe_record(ledger: object, nerve: str, passed: bool, reason: str) -> None:
+    """Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten."""
+    try:
+        ledger.record(nerve, "cognition", "green" if passed else "red", reason=reason)
+    except Exception:  # en tæller må ALDRIG kunne blokere gaten — fejler åbent
+        return
+
+
+def _record_counterfactual(
+    conf: float,
+    would_pass: bool,
+    no_bias_confidence: float | None,
+    threshold: float,
+    mode: str,
+) -> None:
+    """Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG.
+
+    Bruger de kanoniske decision-værdier (green = passerede, red = afvist), så
+    `gate_verdict_ledger.summary()` rapporterer withhold-raten direkte via non_green_pct.
+    Skrivningen er en in-memory tæller (ingen DB i hot-pathen); ledgeren flusher på cadence.
+    """
+    try:
+        from core.services import gate_verdict_ledger as ledger
+    except Exception:  # ledgeren er valgfri — uden den tæller vi bare ikke
+        return
+
+    _safe_record(ledger, _COUNTERFACTUAL_NERVE, would_pass,
+                 f"mode={mode} conf={conf:.3f} thr={threshold:.2f}")
+    if no_bias_confidence is None:
+        return
+    try:
+        nb = float(no_bias_confidence)
+    except (TypeError, ValueError):  # utolkbar baseline → kun med-bias tælles
+        return
+    _safe_record(ledger, _COUNTERFACTUAL_NERVE_NO_BIAS, nb >= threshold,
+                 f"conf={nb:.3f} thr={threshold:.2f}")
+
+
+def gut_gate(
+    proceed_confidence: float,
+    *,
+    context: str = "",
+    no_bias_confidence: float | None = None,
+) -> bool:
     """Beslut om et proceed-valg må fortsætte, gated på gut-confidence.
 
     Dette er det ægte forbrugs-punkt for `adjusted_confidence` (som bærer Centralens
@@ -131,6 +184,12 @@ def gut_gate(proceed_confidence: float, *, context: str = "") -> bool:
 
     threshold = _gate_threshold()
     would_pass = conf >= threshold
+
+    # Counterfactual-tælling (12/10-2026): registrér BÅDE den faktiske afgørelse (med den
+    # lærte bias) og hvad gaten ville have afgjort UDEN den. Forskellen er det eneste der
+    # kan svare på om erfaringen faktisk flytter en beslutning — uden den findes svaret ikke,
+    # fordi bias'en er positiv-only og derfor aldrig efterlader et withhold-spor.
+    _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode)
 
     # Egress-fri observation (shadow OG on) — kun skalarer, aldrig egress.
     try:
@@ -188,5 +247,43 @@ def build_gut_surface() -> dict[str, object]:
         "summary": (
             f"Calibration: {state['calibration_score']:.2f} "
             f"({state['calibrated_hits']}/{state['total_predictions']} correct)"
+        ),
+    }
+
+
+def build_gut_counterfactual_surface() -> dict[str, object]:
+    """Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse?
+
+    Læser den PERSISTENTE ledger (overlever genstart). Da bias'en i dag er positiv-only, er
+    med-bias-pass en overmængde af uden-bias-pass, og deltaet = antallet af hændelser hvor
+    erfaringen vendte en afvisning til en tilladelse. Det er dét tal der kan svare på om
+    erfaringen ændrer en beslutning — ikke om den bare er blevet gemt.
+    """
+    try:
+        from core.services import gate_verdict_ledger as ledger
+        counts = ledger.summary()
+    except Exception:  # ledgeren kan ikke læses → fladen melder "ingen data", kaster ikke
+        return {"active": False, "events": 0, "summary": "ledger utilgængelig"}
+
+    med = counts.get(_COUNTERFACTUAL_NERVE) or {}
+    uden = counts.get(_COUNTERFACTUAL_NERVE_NO_BIAS) or {}
+    total = int(med.get("total") or 0)
+    if not total:
+        return {"active": False, "events": 0,
+                "summary": "ingen gut_gate-afgørelser talt op endnu"}
+
+    pass_med = int(med.get("green") or 0)
+    pass_uden = int(uden.get("green") or 0)
+    delta = pass_med - pass_uden
+    return {
+        "active": True,
+        "events": total,
+        "pass_med_bias": pass_med,
+        "pass_uden_bias": pass_uden,
+        "counterfactual_delta": delta,
+        "delta_pct": round(100.0 * delta / total, 2),
+        "summary": (
+            f"bias flyttede afgørelsen i {delta} af {total} tilfælde "
+            f"({round(100.0 * delta / total, 2)} %)"
         ),
     }

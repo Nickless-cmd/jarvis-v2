@@ -52,7 +52,11 @@ def _on_started(payload: dict) -> None:
     # ingen effekt (dagens adfærd); shadow = observér would-gate; on = gaten afgør faktisk.
     # Kaster aldrig; påvirker ALDRIG calibration/hunch-stien ovenfor.
     try:
-        proceed = gut_gate(float(signal.get("confidence") or 0.0), context="autonomous_run")
+        proceed = gut_gate(
+            float(signal.get("confidence") or 0.0),
+            context="autonomous_run",
+            no_bias_confidence=signal.get("confidence_no_bias"),
+        )
         # on-mode: en "afvent"-afgørelse observeres eksplicit så konsekvensen er synlig i
         # Centralen. Vi ANNULLERER ikke run'et her (run er allerede startet — vinduet er
         # observations-gate, ikke en pre-flight veto), men signalet er nu ægte forbrugt og

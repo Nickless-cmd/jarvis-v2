@@ -1,7 +1,17 @@
 """Hermetiske tests for gut_engine — særligt gut_gate (den nye, ægte forbruger af
 adjusted_confidence). Ingen DB / eventbus: kv og record_private monkeypatches.
 """
+import pytest
+
 import core.services.gut_engine as ge
+
+
+@pytest.fixture(autouse=True)
+def _stub_ledger(monkeypatch):
+    """Hermetisk: gut_gate tæller i gate_verdict_ledger (modul-global, in-memory akkumulator).
+    Uden denne stub lækker tællinger fra denne suite ind i andre suiter."""
+    monkeypatch.setattr("core.services.gate_verdict_ledger.record", lambda *a, **k: None,
+                        raising=False)
 
 
 # ── kv + record_private stubs ────────────────────────────────────────────
@@ -133,3 +143,90 @@ def test_derive_hunch_unchanged_by_gate(monkeypatch):
                         lambda: 0.0, raising=False)
     sig = ge.derive_gut_signal(task_description="t", confidence=0.1)  # <0.3 → caution
     assert sig["hunch"] == "caution"
+
+
+# ── counterfactual-tælling (12/10-2026) ─────────────────────────────────
+def _capture_ledger(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.record",
+        lambda nerve, cluster, decision, reason="": calls.append(
+            {"nerve": nerve, "cluster": cluster, "decision": decision, "reason": reason}
+        ),
+        raising=False,
+    )
+    return calls
+
+
+def test_counterfactual_taeller_begge_afgoerelser(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    # 0.3524 passerer (>= 0.30); uden bias 0.25 gør ikke → erfaringen flyttede afgørelsen.
+    ge.gut_gate(0.3524, context="autonomous_run", no_bias_confidence=0.25)
+    assert [(c["nerve"], c["decision"]) for c in calls] == [
+        ("gut_gate", "green"),
+        ("gut_gate_uden_bias", "red"),
+    ]
+    assert all(c["cluster"] == "cognition" for c in calls)
+
+
+def test_counterfactual_uden_baseline_taeller_kun_med_bias(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    ge.gut_gate(0.90)
+    assert [c["nerve"] for c in calls] == ["gut_gate"]
+
+
+def test_counterfactual_off_taeller_intet(monkeypatch):
+    _install_kv(monkeypatch, {})  # default off → observerer intet, tæller intet
+    calls = _capture_ledger(monkeypatch)
+    ge.gut_gate(0.0)
+    assert calls == []
+
+
+def test_counterfactual_ledger_fejl_vaelter_ikke_gaten(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
+    _capture_private(monkeypatch)
+
+    def _boom(*a, **k):
+        raise RuntimeError("ledger nede")
+
+    monkeypatch.setattr("core.services.gate_verdict_ledger.record", _boom, raising=False)
+    assert ge.gut_gate(0.90) is True  # en tæller må ALDRIG blokere gaten
+
+
+def test_counterfactual_delta_laeses_fra_ledger(monkeypatch):
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.summary",
+        lambda: {
+            "gut_gate": {"total": 10, "green": 10},
+            "gut_gate_uden_bias": {"total": 10, "green": 7},
+        },
+        raising=False,
+    )
+    surf = ge.build_gut_counterfactual_surface()
+    assert surf["counterfactual_delta"] == 3
+    assert surf["events"] == 10
+    assert surf["delta_pct"] == 30.0
+
+
+def test_counterfactual_delta_tom_ledger(monkeypatch):
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {}, raising=False)
+    surf = ge.build_gut_counterfactual_surface()
+    assert surf["active"] is False
+    assert surf["events"] == 0
+
+
+def test_derive_eksponerer_bias_fri_baseline(monkeypatch):
+    monkeypatch.setattr(ge, "get_cognitive_gut_state",
+                        lambda: {"calibration_score": 1.0}, raising=False)
+    monkeypatch.setattr("core.services.central_adaptation.get_gut_bias",
+                        lambda: 0.20, raising=False)
+    sig = ge.derive_gut_signal(task_description="t", confidence=0.9,
+                               recent_success_count=6)
+    # hunch_confidence 0.8 * calibration 1.0 = 0.8 UDEN bias; 1.0 MED (clampet).
+    assert sig["confidence_no_bias"] == 0.8
+    assert sig["confidence"] == 1.0

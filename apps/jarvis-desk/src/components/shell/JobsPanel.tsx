@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Square, Trash2, ChevronRight, ChevronDown, X, Play, Maximize2, Minimize2 } from 'lucide-react'
 import {
-  listJobs, stopJob, pauseJob, resumeJob, varighed, kildeNavn,
+  listJobs, stopJob, pauseJob, resumeJob, removeJob, varighed, kildeNavn,
   type BackgroundJob,
 } from '../../lib/jobsApi'
 import { startJobsStream } from '../../lib/jobsStream'
@@ -255,23 +255,34 @@ export function JobsPanel({
     finally { setTravl('') }
   }
 
-  /** Ryd alle færdige. Kun supervisor-job kan fjernes — operatørens shells er
-   *  filer på hans maskine, og der findes ingen rute til at slette dem. Det
-   *  siges højt frem for at lade knappen se ud som om den tog dem alle. */
+  /** Ryd alle færdige.
+   *
+   *  12/10-2026 (Bjørn: «ret ryd-knappen så den også fjerner jobs på min
+   *  maskine»): operatørens shells er FILER i /tmp/jarvis-bg/ på hans egen
+   *  maskine. Før kunne de ikke ryddes herfra, og knappen sagde det højt. Nu
+   *  går sletningen over broen — samme vej som stop-knappen — så begge kilder
+   *  ryddes. Et job der stadig KØRER nægtes af serveren: filerne ER jobbet,
+   *  og et `rm` på et levende job ville fjerne pid-filen mens processen kørte
+   *  videre uden at kunne stoppes. */
   const rydFaerdige = async () => {
     if (!config) return
-    const kanFjernes = faerdige.filter((j) => j.kilde === 'supervisor')
+    const kanFjernes = faerdige.filter((j) => j.kilde === 'supervisor' || j.kilde === 'operator')
     setTravl('ryd')
     setBesked('')
     try {
-      for (const j of kanFjernes) await removeProcess(config, j.navn)
-      const shells = faerdige.filter((j) => j.kilde === 'operator').length
+      const fejlede: string[] = []
+      for (const j of kanFjernes) {
+        try {
+          if (j.kilde === 'supervisor') await removeProcess(config, j.navn)
+          else await removeJob(config, j)
+        } catch { fejlede.push(j.navn) }
+      }
       // Færdige scout-agenter er rækker i agent-registret, ikke processer —
       // der er intet at slette. De forsvinder af sig selv efter en time.
       const agenter = faerdige.filter((j) => j.kilde === 'agent').length
       setBesked([
-        shells ? `${shells} shell(s) på din maskine kan ikke ryddes herfra` : '',
         agenter ? `${agenter} scout-agent(er) forsvinder af sig selv efter en time` : '',
+        fejlede.length ? `${fejlede.length} kunne ikke ryddes` : '',
       ].filter(Boolean).join(' · '))
       hent()
     } catch {

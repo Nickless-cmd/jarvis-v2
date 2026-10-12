@@ -5,6 +5,7 @@ const listJobs = vi.fn()
 const stopJob = vi.fn()
 const pauseJob = vi.fn()
 const resumeJob = vi.fn()
+const removeJob = vi.fn()
 const startJobsStream = vi.fn()
 let streamHandlers: { onEvent: (event: unknown) => void; onError: (error: Error) => void }
 const abortJobsStream = vi.fn()
@@ -20,6 +21,7 @@ vi.mock('../../lib/jobsApi', async () => {
     stopJob: (...a: unknown[]) => stopJob(...a),
     pauseJob: (...a: unknown[]) => pauseJob(...a),
     resumeJob: (...a: unknown[]) => resumeJob(...a),
+    removeJob: (...a: unknown[]) => removeJob(...a),
   }
 })
 // Kontrakt-agenterne (G) har egne tests i JobsPanel.agents.test.tsx; her er listen tom, så de gamle
@@ -82,6 +84,7 @@ beforeEach(() => {
   stopJob.mockReset().mockResolvedValue(undefined)
   pauseJob.mockReset().mockResolvedValue(undefined)
   resumeJob.mockReset().mockResolvedValue(undefined)
+  removeJob.mockReset().mockResolvedValue(undefined)
   removeProcess.mockReset().mockResolvedValue(undefined)
 })
 
@@ -191,16 +194,30 @@ describe('JobsPanel', () => {
     await waitFor(() => expect(taeller).toHaveBeenCalledWith(2))   // FAERDIG tæller ikke med
   })
 
-  it('«Ryd færdige» siger hvad den IKKE kunne rydde', async () => {
+  it('«Ryd færdige» rydder BEGGE maskiner', async () => {
+    // 12/10-2026 (Bjørn: «ret ryd-knappen så den også fjerner jobs på min
+    // maskine»). Før ryddede knappen kun supervisorens register og SAGDE at
+    // operatørens shells ikke kunne fjernes. Nu går sletningen over broen —
+    // samme vej som stop-knappen.
     listJobs.mockResolvedValue({
       jobs: [FAERDIG, { ...MIN_MASKINE, status: 'exited', exit_code: 0 }], bridge_ok: true,
     })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Ryd færdige' }))
-    // Operatørens shells er filer på hans maskine; der findes ingen rute til
-    // at slette dem. Knappen må ikke se ud som om den tog dem alle.
-    expect(await screen.findByText(/1 shell\(s\) på din maskine kan ikke ryddes/)).toBeInTheDocument()
+    await waitFor(() => expect(removeJob).toHaveBeenCalledTimes(1))
+    expect(removeJob).toHaveBeenCalledWith(
+      cfg, expect.objectContaining({ id: MIN_MASKINE.id, kilde: 'operator' }))
     expect(removeProcess).toHaveBeenCalledTimes(1)
+  })
+
+  it('et job der nægtes meldes frem — ikke som en tavs succes', async () => {
+    removeJob.mockRejectedValue(new Error('jobbet kører stadig'))
+    listJobs.mockResolvedValue({
+      jobs: [{ ...MIN_MASKINE, status: 'exited', exit_code: 0 }], bridge_ok: true,
+    })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ryd færdige' }))
+    expect(await screen.findByText(/1 kunne ikke ryddes/)).toBeInTheDocument()
   })
 })
 

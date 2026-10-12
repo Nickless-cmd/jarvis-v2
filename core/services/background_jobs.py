@@ -127,6 +127,24 @@ _CACHE_TTL_S = 10.0
 _bro_cache: dict[str, tuple[float, str]] = {}
 
 
+def glem_bro_cache(uid: str = "") -> None:
+    """Glem det cachede bro-svar — kaldes efter en MUTATION.
+
+    Cachen sparer netvaerksture over broen (maalt 10/10-2026: 11.351 kald i
+    doegnet). Det er rigtigt for en LAESNING og forkert lige efter en
+    SKRIVNING: rydder man et faerdigt operator-job, ville panelets naeste
+    hentning faa det GAMLE svar og vise jobbet igen i op til ti sekunder — en
+    knap der ser ud som om den ikke virkede.
+
+    Tom `uid` toemmer hele cachen. Der ligger ét svar pr. bruger, saa det er
+    billigt og kan ikke skade.
+    """
+    if uid:
+        _bro_cache.pop(str(uid), None)
+    else:
+        _bro_cache.clear()
+
+
 def _bro_svar(uid: str, exec_fn) -> str:
     """Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches.
 

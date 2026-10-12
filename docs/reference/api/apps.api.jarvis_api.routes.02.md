@@ -263,14 +263,16 @@ _JarvisX process-supervisor + trading + operator-wakeup route group._
 | function | `pause_background_job` | `(kilde, job_id)` | Sæt en opgave på pause. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L206) |
 | function | `resume_background_job` | `(kilde, job_id)` | Kør videre hvor den slap. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L213) |
 | function | `stop_background_job` | `(kilde, job_id)` | Stop en opgave for altid. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L220) |
-| function | `_signal_job` | `(kilde, job_id, handling)` | Én vej for alle kilder — de signaleres bare ikke samme sted. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L229) |
-| function | `stop_managed_process` | `(name, grace=…)` | SIGTERM (then SIGKILL after grace) a managed process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L323) |
-| function | `remove_managed_process` | `(name)` | Remove a stopped process from the registry. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L334) |
-| class | `_SpawnPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L352) |
-| function | `spawn_managed_process` | `(payload)` | Spawn a managed background process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L360) |
-| function | `trading_state` | `()` | Read the current trading-bot state. Read-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L419) |
-| function | `_trading_inactive_default` | `(reason)` | Synthetic 'inactive' state so UI always has something to render. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L452) |
-| function | `operator_wakeup_fired` | `(payload)` | Hit af jarvis-desk når en operator_wakeup-timer fyrer. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L485) |
+| function | `remove_background_job` | `(kilde, job_id)` | Fjern et FAERDIGT job fra panelet. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L227) |
+| function | `_remove_job` | `(kilde, job_id)` | Slet det der KAN slettes — og sig nej til resten. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L233) |
+| function | `_signal_job` | `(kilde, job_id, handling)` | Én vej for alle kilder — de signaleres bare ikke samme sted. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L289) |
+| function | `stop_managed_process` | `(name, grace=…)` | SIGTERM (then SIGKILL after grace) a managed process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L383) |
+| function | `remove_managed_process` | `(name)` | Remove a stopped process from the registry. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L394) |
+| class | `_SpawnPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L412) |
+| function | `spawn_managed_process` | `(payload)` | Spawn a managed background process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L420) |
+| function | `trading_state` | `()` | Read the current trading-bot state. Read-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L479) |
+| function | `_trading_inactive_default` | `(reason)` | Synthetic 'inactive' state so UI always has something to render. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L512) |
+| function | `operator_wakeup_fired` | `(payload)` | Hit af jarvis-desk når en operator_wakeup-timer fyrer. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L545) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_project.py`
 _JarvisX project-anchor + file-watch route group._

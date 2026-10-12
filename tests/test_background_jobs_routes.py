@@ -178,3 +178,76 @@ def test_en_close_der_fejler_er_400_ikke_en_tavs_succes(monkeypatch):
         r._signal_job("shell", "bsh-0123456789", "stop")
     assert e.value.status_code == 400
     assert "daemonen" in str(e.value.detail)
+
+
+# ── Fjern et faerdigt job (12/10-2026) ──────────────────────────────────
+#
+# Bjoern: «ret ryd-knappen saa den ogsaa fjerner jobs paa min maskine». Foer
+# ryddede knappen kun supervisorens register; operatoerens shells er filer i
+# /tmp/jarvis-bg/ og havde ingen rute.
+
+
+def test_et_operator_job_slettes_over_broen(monkeypatch):
+    set_cmd = {}
+    monkeypatch.setattr(r, "_operator_exec_for_jobs",
+                        lambda n, a: set_cmd.update(cmd=a["command"]) or
+                        {"status": "ok", "result": {"stdout": "fjernet\n"}})
+    assert r._remove_job("operator", "bg_0123456789ab")["status"] == "ok"
+    for endelse in (".pid", ".rc", ".title", ".cmd", ".log"):
+        assert f"bg_0123456789ab{endelse}" in set_cmd["cmd"]
+
+
+def test_et_KOERENDE_job_naegtes(monkeypatch):
+    # Filerne ER jobbet. Et `rm` paa et levende job ville fjerne pid-filen mens
+    # processen koerte videre — uden at kunne stoppes.
+    monkeypatch.setattr(r, "_operator_exec_for_jobs",
+                        lambda n, a: {"status": "ok", "result": {"stdout": "koerer\n"}})
+    with pytest.raises(HTTPException) as e:
+        r._remove_job("operator", "bg_0123456789ab")
+    assert e.value.status_code == 400
+    assert "koerer" in str(e.value.detail)
+
+
+def test_sletning_GLEMMER_bro_cachen(monkeypatch):
+    # Uden invalideringen ville panelets naeste hentning faa det cachede svar og
+    # vise det slettede job igen i op til 10 s — en knap der ser ud som om den
+    # ikke virkede.
+    import core.identity.workspace_context as wc
+    import core.services.background_jobs as bj
+    monkeypatch.setattr(wc, "current_user_id", lambda: "bjorn")
+    monkeypatch.setattr(r, "_operator_exec_for_jobs",
+                        lambda n, a: {"status": "ok", "result": {"stdout": "fjernet"}})
+    bj._bro_cache["bjorn"] = (0.0, "gammelt svar")
+    r._remove_job("operator", "bg_0123456789ab")
+    assert "bjorn" not in bj._bro_cache
+
+
+def test_et_UGYLDIGT_id_afvises_ved_sletning():
+    for slem in ("bg_../../etc", "bg_ZZZZZZZZZZZZ", "; rm -rf /", ""):
+        with pytest.raises(HTTPException) as e:
+            r._remove_job("operator", slem)
+        assert e.value.status_code == 400
+
+
+def test_en_doed_bro_ved_sletning_er_502(monkeypatch):
+    monkeypatch.setattr(r, "_operator_exec_for_jobs", lambda n, a: {"status": "error"})
+    with pytest.raises(HTTPException) as e:
+        r._remove_job("operator", "bg_0123456789ab")
+    assert e.value.status_code == 502
+
+
+def test_supervisor_fjernes_gennem_registret(monkeypatch):
+    import core.services.process_supervisor as ps
+    kaldt = {}
+    monkeypatch.setattr(ps, "remove_process",
+                        lambda n: kaldt.update(navn=n) or {"status": "ok"})
+    assert r._remove_job("supervisor", "grid-bot")["status"] == "ok"
+    assert kaldt["navn"] == "grid-bot"
+
+
+def test_kilder_uden_noget_at_slette_afvises():
+    # Vaerktoejskald og scout-agenter er ikke beholdere — de forsvinder selv.
+    # En rute der svarede «ok» uden at fjerne noget ville vaere en loegn.
+    for kilde in ("tool", "agent", "shell", "maanen"):
+        with pytest.raises(HTTPException):
+            r._remove_job(kilde, "x")

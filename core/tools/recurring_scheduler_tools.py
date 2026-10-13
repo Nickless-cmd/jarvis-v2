@@ -85,7 +85,11 @@ def _exec_list_recurring(args: dict[str, Any]) -> dict[str, Any]:
         from core.services.recurring_tasks import list_recurring_tasks
         tasks = list_recurring_tasks()
         if not include_cancelled:
-            tasks = [t for t in tasks if t["status"] != "cancelled"]
+            # Kun de AKTIVE. Filteret var `!= 'cancelled'`, så en `completed`
+            # eller `disabled` task stod i listen som om den stadig fyrede —
+            # målt 12/10-2026, hvor begge statusser fandtes i DB'en uden at
+            # koden kendte dem.
+            tasks = [t for t in tasks if t["status"] == "active"]
         return {
             "status": "ok",
             "tasks": tasks,

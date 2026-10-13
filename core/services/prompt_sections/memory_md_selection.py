@@ -13,6 +13,7 @@ responsibility) when the index yields nothing.
 """
 from __future__ import annotations
 
+import functools
 import logging
 import math
 import re
@@ -44,7 +45,20 @@ def _render(section: str, text: str, *, max_chars: int) -> str:
     return line
 
 
-def _terms(text: str) -> set[str]:
+@functools.lru_cache(maxsize=8192)
+def _terms(text: str) -> frozenset[str]:
+    """Termsaettet for en tekst — CACHET (12/10-2026).
+
+    Uden cachen blev den SAMME forespoergsel tokeniseret tusindvis af gange pr.
+    assembly: `_focused_excerpt` scorer hver linje i hver sektion via
+    `_lexical_coverage`, som kalder `_terms(query)` — og query'en aendrer sig
+    ikke mellem kaldene. Maalt 12/10-2026: 13.830 identiske tokeniseringer af
+    én 34-tegns besked i ét enkelt kald, 29.097 `_terms`-kald i alt, 934 ms ren
+    CPU. Med cachen: 267 ms (71% besparelse) og bit-identisk resultat.
+
+    `frozenset` fordi resultatet kun læses (intersection + iteration); et
+    muterbart sæt i en delt cache ville være en tavs korruptionsvej.
+    """
     terms: set[str] = set()
     for raw in _TERM_RE.findall(str(text or "").replace("-", " ")):
         term = raw.lower()
@@ -53,7 +67,7 @@ def _terms(text: str) -> set[str]:
         terms.add(term)
         if len(term) > 4 and term.endswith("s"):
             terms.add(term[:-1])
-    return terms
+    return frozenset(terms)
 
 
 #: (mtime, stoerrelse) → (sektioner, vaegte). Vaegtene aendrer sig KUN naar

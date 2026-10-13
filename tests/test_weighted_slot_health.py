@@ -55,3 +55,42 @@ def test_provider_block_applies_to_all_models_on_one_profile(isolated_runtime, m
     clear_account_block("chatanywhere", "account2")
     assert active_account_block("chatanywhere", "account2", time.time()) is None
     assert health("m1", "account2")["blocked"] is False
+
+
+def test_tom_batch_state_udloeser_ikke_db_opslag():
+    """`state={}` betyder «batch-læsningen fandt ingen række» — ikke «hent selv».
+
+    Målt 12/10-2026: `state or get_state(...)` tvang ét SQLite-opslag pr. kandidat
+    uden række, 245 gange pr. route(). Med `state is not None` springes det over.
+    """
+    kaldt = {"n": 0}
+
+    def get_state(**_kw):
+        kaldt["n"] += 1
+        return {"metadata_json": json.dumps({"success_count": 9})}
+
+    result = adaptive_snapshot(
+        {"provider": "groq", "model": "shared", "priority": 20},
+        state={}, get_state=get_state, decode_metadata=decode_state_metadata,
+    )
+
+    assert kaldt["n"] == 0, "et tomt batch-state må ikke give et DB-opslag"
+    assert result["success_count"] == 0        # tom state → ingen metadata
+    assert result["effective_priority"] == 20
+
+
+def test_none_state_henter_som_foer():
+    """Callers der IKKE sender state (None) skal stadig hente selv."""
+    kaldt = {"n": 0}
+
+    def get_state(**_kw):
+        kaldt["n"] += 1
+        return {"metadata_json": json.dumps({"success_count": 9})}
+
+    result = adaptive_snapshot(
+        {"provider": "groq", "model": "shared", "priority": 20},
+        state=None, get_state=get_state, decode_metadata=decode_state_metadata,
+    )
+
+    assert kaldt["n"] == 1, "state=None skal hente state selv"
+    assert result["success_count"] == 9

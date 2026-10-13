@@ -94,6 +94,33 @@ _conn_pool = _threading_pool.local()
 _POOL_DISABLED = bool(_os_pool.environ.get("JARVIS_DB_NOPOOL"))
 
 
+def _journal_size_limit() -> int:
+    """WAL-filens loft i bytes efter et reset. Kan tunes uden commit.
+
+    SQLite's default er -1 = ingen grænse. I WAL-mode betyder det, at filen
+    beholder sin high-water-mark for evigt: hver gang WAL'en resettes (efter en
+    fuldført checkpoint), sammenligner SQLite filens størrelse med denne grænse
+    og klipper den ned — men kun hvis grænsen er sat. Målt 12/10-2026: filen stod
+    på 79,9 MB med 0 levende frames (mxFrame=678); den var allokeret, ikke i brug.
+    32 MB ligger over den målte arbejdsstørrelse (~12 MB, nået på ~4 min under
+    normal last) og under den patologiske — så et reset klipper kun sjældent, men
+    kan aldrig efterlade 80 MB. 0 eller negativ = ingen grænse.
+    """
+    raw = _os_pool.environ.get("JARVIS_DB_JOURNAL_SIZE_LIMIT")
+    if raw is None:
+        return 32 * 1024 * 1024
+    try:
+        return int(raw)
+    except ValueError:
+        _core_logger.warning(
+            "JARVIS_DB_JOURNAL_SIZE_LIMIT=%r er ikke et tal — bruger 32 MB", raw
+        )
+        return 32 * 1024 * 1024
+
+
+_JOURNAL_SIZE_LIMIT: int = _journal_size_limit()
+
+
 def _make_connection(_factory) -> sqlite3.Connection:
     """Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous)."""
     global _DB_WAL_INITIALIZED, _DB_CONNECT_LOGGED
@@ -107,6 +134,11 @@ def _make_connection(_factory) -> sqlite3.Connection:
             conn.execute("PRAGMA journal_mode = WAL")  # læsere + 1 writer samtidigt (§4. jul)
             _DB_WAL_INITIALIZED = True
         conn.execute("PRAGMA synchronous = NORMAL")
+        # WAL-filen klippes ned ved hvert reset (§12. okt). Uden en grænse
+        # beholder den sin high-water-mark for evigt — målt 79,9 MB med 0
+        # levende frames. Billig per-forbindelse, som synchronous: ingen
+        # fillås, ingen header-skrivning (modsat journal_mode=WAL ovenfor).
+        conn.execute(f"PRAGMA journal_size_limit = {_JOURNAL_SIZE_LIMIT}")
     except Exception:
         pass
     if not _DB_CONNECT_LOGGED:

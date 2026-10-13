@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8912/17043 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8926/17049 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 687 | 944 | 72% |
+| `apps.api.jarvis_api.routes` | 689 | 946 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,10 +24,10 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 822 | 1515 | 54% |
-| `core.services` | 5939 | 11584 | 51% |
+| `core.runtime` | 823 | 1517 | 54% |
+| `core.services` | 5949 | 11586 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 125 | 201 | 62% |
+| `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
@@ -437,11 +437,11 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L219)
 - `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L371)
 - `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L143)
-- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
-- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
-- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L240)
-- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L292)
-- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L92)
+- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L418)
+- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L202)
+- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L258)
+- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L310)
+- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L110)
 - `core/runtime/db_claude_dispatch.py` :: `ensure_claude_dispatch_tables` (L11)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_cleanup` (L302)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_insert` (L248)
@@ -460,8 +460,8 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L86)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L401)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L381)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L433)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L413)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L380)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L365)
@@ -839,7 +839,7 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/attention_contour.py` :: `describe_attention` (L114)
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
 - `core/services/auto_code_review.py` :: `review_pending_commit` (L77)
-- `core/services/auto_remember_subscriber.py` :: `stop_auto_remember_subscriber` (L457)
+- `core/services/auto_remember_subscriber.py` :: `stop_auto_remember_subscriber` (L467)
 - `core/services/automation_dsl.py` :: `build_automation_dsl_surface` (L228)
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)
 - `core/services/automation_dsl.py` :: `list_automations` (L190)
@@ -1008,8 +1008,8 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L109)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L99)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L88)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L726)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1090)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L739)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1103)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L62)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L66)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L180)
@@ -1126,7 +1126,7 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
 - `core/services/daemon_manager.py` :: `get_daemon_names` (L793)
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L840)
-- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
+- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L308)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
@@ -1331,7 +1331,7 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
 - `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L116)
-- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L427)
+- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L439)
 - `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L53)
 - `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
 - `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L41)
@@ -1441,7 +1441,7 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L52)
 - `core/services/metabolism_state_signal_tracking.py` :: `refresh_runtime_metabolism_state_signal_statuses` (L48)
 - `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L38)
-- `core/services/metacognition_signal_tracker.py` :: `stop_metacognition_tracker` (L359)
+- `core/services/metacognition_signal_tracker.py` :: `stop_metacognition_tracker` (L370)
 - `core/services/metacognitive_integration.py` :: `build_metacognitive_integration_surface` (L494)
 - `core/services/mirror_engine.py` :: `build_mirror_surface` (L56)
 - `core/services/missions_pipeline.py` :: `build_missions_surface` (L350)
@@ -1660,10 +1660,10 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
 - `core/services/recall.py` :: `empty_message` (L281)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L418)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L426)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L551)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L560)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L417)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L425)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L554)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L563)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -2011,8 +2011,8 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/sensory_archive.py` :: `search` (L467)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L354)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L480)
+- `core/services/session_inbox.py` :: `pending_count` (L365)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L491)
 - `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
@@ -2069,9 +2069,9 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/spaced_repetition.py` :: `build_spaced_repetition_surface` (L174)
 - `core/services/spaced_repetition.py` :: `get_profile` (L170)
 - `core/services/spaced_repetition.py` :: `list_due_reviews` (L103)
-- `core/services/spatial_entity_ledger.py` :: `list_observed_entities` (L218)
-- `core/services/spatial_entity_ledger.py` :: `recently_observed` (L252)
-- `core/services/spatial_entity_ledger.py` :: `stop_spatial_entity_ledger` (L371)
+- `core/services/spatial_entity_ledger.py` :: `list_observed_entities` (L229)
+- `core/services/spatial_entity_ledger.py` :: `recently_observed` (L263)
+- `core/services/spatial_entity_ledger.py` :: `stop_spatial_entity_ledger` (L382)
 - `core/services/staged_edits.py` :: `StagedBatch.from_dict` (L98)
 - `core/services/staged_edits.py` :: `StagedBatch.to_dict` (L89)
 - `core/services/staged_edits.py` :: `StagedEdit.from_dict` (L67)
@@ -2135,8 +2135,8 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/text_resonance.py` :: `recent_resonances` (L191)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
-- `core/services/theory_of_mind.py` :: `recent_facts` (L286)
-- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)
+- `core/services/theory_of_mind.py` :: `recent_facts` (L297)
+- `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L482)
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)
 - `core/services/thought_action_proposal_daemon.py` :: `build_proposal_surface` (L142)
 - `core/services/thought_action_proposal_daemon.py` :: `get_pending_proposals` (L138)
@@ -2150,8 +2150,8 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/tool_contract_shadow.py` :: `pr_vaerktoej` (L41)
 - `core/services/tool_contract_shadow.py` :: `taellere` (L37)
 - `core/services/tool_contract_shadow.py` :: `taellere_fra_cache` (L57)
-- `core/services/tool_embeddings.py` :: `get_embedding` (L89)
-- `core/services/tool_embeddings.py` :: `invalidate` (L109)
+- `core/services/tool_embeddings.py` :: `get_embedding` (L99)
+- `core/services/tool_embeddings.py` :: `invalidate` (L119)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.drain` (L61)
 - `core/services/tool_execution_trace.py` :: `BoundedOutputBuffer.put` (L40)
 - `core/services/tool_execution_trace.py` :: `bind_execution` (L297)
@@ -2280,11 +2280,11 @@ Generated from source. 8912/17043 functions/methods documented (52%). The list b
 - `core/services/web_push_subscriptions.py` :: `delete` (L72)
 - `core/services/web_push_subscriptions.py` :: `save` (L38)
 - `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L145)
-- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L193)
-- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L210)
+- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L200)
+- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L217)
 - `core/services/weighted_slot_health.py` :: `quota_snapshot` (L69)
-- `core/services/weighted_slot_health.py` :: `rolling_average` (L204)
-- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L215)
+- `core/services/weighted_slot_health.py` :: `rolling_average` (L211)
+- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L222)
 - `core/services/widget_dokument.py` :: `maerke` (L70)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)

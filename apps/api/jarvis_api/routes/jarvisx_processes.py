@@ -223,6 +223,66 @@ def stop_background_job(kilde: str, job_id: str) -> dict[str, Any]:
     return _signal_job(kilde, job_id, "stop")
 
 
+@router.post("/jobs/{kilde}/{job_id}/remove")
+def remove_background_job(kilde: str, job_id: str) -> dict[str, Any]:
+    """Fjern et FAERDIGT job fra panelet. Ejer-kun."""
+    _require_owner()
+    return _remove_job(kilde, job_id)
+
+
+def _remove_job(kilde: str, job_id: str) -> dict[str, Any]:
+    """Slet det der KAN slettes — og sig nej til resten.
+
+    Kun to kilder har noget at fjerne: supervisoren har sit register, og
+    operatoerens shells er filer paa hans egen maskine. Vaerktoejskald og
+    scout-agenter er ikke beholdere — de forsvinder af sig selv — og en rute
+    der svarede «ok» uden at fjerne noget ville vaere en loegn i panelets navn.
+
+    12/10-2026 (Bjoern: «ret ryd-knappen saa den ogsaa fjerner jobs paa min
+    maskine»): operator-grenen er ny. Filerne ligger i /tmp/jarvis-bg/ og naas
+    over broen — samme vej som stop-knappen.
+    """
+    if kilde == "supervisor":
+        from core.services.process_supervisor import remove_process
+        out = remove_process(job_id)
+        if out.get("status") == "error":
+            raise HTTPException(status_code=400, detail=out.get("error") or "remove failed")
+        return out
+    if kilde == "operator":
+        import re
+        # Samme moenster som `operator_background._valid`. Id'et bliver en del
+        # af en kommandolinje der koerer paa hans maskine.
+        if not re.fullmatch(r"bg_[0-9a-f]{12}", job_id):
+            raise HTTPException(status_code=400, detail="ugyldigt job-id")
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or ""
+        # Et KOERENDE job maa ikke slettes: filerne ER jobbet. Et `rm` paa et
+        # levende job ville fjerne pid-filen mens processen koerte videre uden
+        # at kunne stoppes — samme regel som supervisorens `remove_process`.
+        q = f"/tmp/jarvis-bg/{job_id}"
+        cmd = (
+            f'P=$(cat {q}.pid 2>/dev/null); '
+            f'if [ -n "$P" ] && kill -0 "$P" 2>/dev/null; then echo "koerer"; '
+            f'else rm -f {q}.pid {q}.rc {q}.title {q}.cmd {q}.log && echo "fjernet"; fi'
+        )
+        res = _operator_exec_for_jobs("operator_bash", {"command": cmd, "_user_id": uid})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail="broen svarede ikke")
+        ud = str((res.get("result") or {}).get("stdout") or "")
+        if "fjernet" not in ud:
+            raise HTTPException(
+                status_code=400,
+                detail=("jobbet koerer stadig — stop det foerst" if "koerer" in ud
+                        else "kunne ikke fjerne jobbet"))
+        # Bro-svaret er cachet i op til 10 s. Uden dette ville panelets naeste
+        # hentning faa den GAMLE liste og vise jobbet igen — den slags glitch
+        # der faar knappen til at se ud som om den ikke virkede.
+        from core.services.background_jobs import glem_bro_cache
+        glem_bro_cache(uid)
+        return {"status": "ok"}
+    raise HTTPException(status_code=400, detail="ukendt kilde")
+
+
 _SIGNALER = {"pause": "STOP", "resume": "CONT", "stop": "TERM"}
 
 

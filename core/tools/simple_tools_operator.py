@@ -76,11 +76,14 @@ def _operator_user_id_impl(args: dict[str, Any]) -> str:
     session_id = str(args.get("_runtime_session_id") or "").strip()
     if session_id:
         try:
-            import sqlite3
-            from pathlib import Path
-            import os
+            # Rettet 12/10-2026: `with sqlite3.connect(...) as conn:` lukkede ALDRIG.
+            # `Connection.__exit__` committer kun — den kalder ikke close(), så hvert
+            # kald efterlod et DB-håndtag. ClosingConnection lukker i __exit__ (samme
+            # wrapper de otte andre moduler bruger). Poolen må IKKE bruges her: den er
+            # nøglet på db_core.DB_PATH, mens stien her udledes af HOME pr. kald.
+            from core.runtime.db_core import ClosingConnection
             db_path = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2" / "state" / "jarvis.db"
-            with sqlite3.connect(str(db_path)) as conn:
+            with sqlite3.connect(str(db_path), factory=ClosingConnection) as conn:
                 row = conn.execute(
                     "SELECT user_id FROM message_user_attribution "
                     "WHERE session_id=? AND user_id IS NOT NULL AND user_id != '' "

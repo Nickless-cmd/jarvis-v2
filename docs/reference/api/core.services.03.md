@@ -321,17 +321,17 @@ _Auto-remember subscriber — closes cross-session memory loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `_SkipMemoryShadow` | `` | Sentinel: spring den valgfrie memory_write_policy-shadow over (ingen brugerkontekst). | [src](../../../core/services/auto_remember_subscriber.py#L43) |
-| function | `_is_trivial_user_turn` | `(text)` | True hvis user-beskeden er en ren acknowledgment uden nyt indhold. | [src](../../../core/services/auto_remember_subscriber.py#L75) |
-| function | `_is_trivial_assistant_turn` | `(text)` | True hvis assistant-svaret er en kort acknowledgment uden indhold. | [src](../../../core/services/auto_remember_subscriber.py#L94) |
-| function | `_connect` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L112) |
-| function | `_parse_json_loose` | `(text)` | Find første gyldige JSON-objekt i tekst. Robust over for LLM | [src](../../../core/services/auto_remember_subscriber.py#L160) |
-| function | `evaluate_turn_for_memory` | `(user_text, assistant_text)` | Spørg cheap LLM: "skal denne tur gemmes?" | [src](../../../core/services/auto_remember_subscriber.py#L191) |
-| function | `_find_preceding_user_text` | `(session_id, before_message_id)` | Find seneste user-besked i session FØR den givne assistant-besked. | [src](../../../core/services/auto_remember_subscriber.py#L275) |
-| function | `_process_visible_assistant_turn` | `(payload)` | Evaluér én assistant-tur og kald remember_this hvis salient. | [src](../../../core/services/auto_remember_subscriber.py#L309) |
-| function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — samme pattern som metacognition_signal_tracker. | [src](../../../core/services/auto_remember_subscriber.py#L398) |
-| function | `start_auto_remember_subscriber` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/auto_remember_subscriber.py#L440) |
-| function | `stop_auto_remember_subscriber` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L457) |
+| class | `_SkipMemoryShadow` | `` | Sentinel: spring den valgfrie memory_write_policy-shadow over (ingen brugerkontekst). | [src](../../../core/services/auto_remember_subscriber.py#L42) |
+| function | `_is_trivial_user_turn` | `(text)` | True hvis user-beskeden er en ren acknowledgment uden nyt indhold. | [src](../../../core/services/auto_remember_subscriber.py#L74) |
+| function | `_is_trivial_assistant_turn` | `(text)` | True hvis assistant-svaret er en kort acknowledgment uden indhold. | [src](../../../core/services/auto_remember_subscriber.py#L93) |
+| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/auto_remember_subscriber.py#L111) |
+| function | `_parse_json_loose` | `(text)` | Find første gyldige JSON-objekt i tekst. Robust over for LLM | [src](../../../core/services/auto_remember_subscriber.py#L170) |
+| function | `evaluate_turn_for_memory` | `(user_text, assistant_text)` | Spørg cheap LLM: "skal denne tur gemmes?" | [src](../../../core/services/auto_remember_subscriber.py#L201) |
+| function | `_find_preceding_user_text` | `(session_id, before_message_id)` | Find seneste user-besked i session FØR den givne assistant-besked. | [src](../../../core/services/auto_remember_subscriber.py#L285) |
+| function | `_process_visible_assistant_turn` | `(payload)` | Evaluér én assistant-tur og kald remember_this hvis salient. | [src](../../../core/services/auto_remember_subscriber.py#L319) |
+| function | `_listener_loop` | `(_q_unused=…)` | DB-polling listener — samme pattern som metacognition_signal_tracker. | [src](../../../core/services/auto_remember_subscriber.py#L408) |
+| function | `start_auto_remember_subscriber` | `()` | Start DB-polling listener. Idempotent. | [src](../../../core/services/auto_remember_subscriber.py#L450) |
+| function | `stop_auto_remember_subscriber` | `()` | — | [src](../../../core/services/auto_remember_subscriber.py#L467) |
 
 ## `core/services/automation_dsl.py`
 _Automation DSL — declarative triggers → actions._
@@ -589,23 +589,24 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L100) |
-| function | `_bro_svar` | `(uid, exec_fn)` | Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches. | [src](../../../core/services/background_jobs.py#L130) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L157) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L200) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L204) |
-| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L211) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L225) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L260) |
-| function | `_scout_jobs` | `(session_id=…)` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L267) |
-| function | `_scout_session` | `(agent_id)` | Samtalen en scout blev startet fra — "" når den ikke kan afgøres. | [src](../../../core/services/background_jobs.py#L319) |
-| function | `_tool_jobs` | `(session_id=…)` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L358) |
-| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L497) |
-| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L520) |
-| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L576) |
-| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L637) |
-| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L668) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…, session_id=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L681) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L746) |
+| function | `glem_bro_cache` | `(uid=…)` | Glem det cachede bro-svar — kaldes efter en MUTATION. | [src](../../../core/services/background_jobs.py#L130) |
+| function | `_bro_svar` | `(uid, exec_fn)` | Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches. | [src](../../../core/services/background_jobs.py#L148) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L175) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L218) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L222) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L229) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L243) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L278) |
+| function | `_scout_jobs` | `(session_id=…)` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L285) |
+| function | `_scout_session` | `(agent_id)` | Samtalen en scout blev startet fra — "" når den ikke kan afgøres. | [src](../../../core/services/background_jobs.py#L337) |
+| function | `_tool_jobs` | `(session_id=…)` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L376) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L515) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L538) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L594) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L655) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L686) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…, session_id=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L699) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L764) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._

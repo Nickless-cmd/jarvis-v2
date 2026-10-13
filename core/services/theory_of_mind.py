@@ -121,7 +121,18 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
+    """Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026).
+
+    Før lukkede `with _connect() as conn:` aldrig: `Connection.__exit__`
+    committer kun, kalder ikke `close()`. Målt 12/10: 204 samtidige DB-håndtag og
+    110 WAL-håndtag i runtime holdt WAL'ens læsemarkør bagud, så
+    `wal_checkpoint(TRUNCATE)` svarede busy=1. `ClosingConnection` lukker rigtigt
+    ved exit — samme wrapper db_core selv bruger i NOPOOL-stien. Modulets egen
+    DB_PATH bevares med vilje: poolen er nøglet på db_core.DB_PATH.
+    """
+    from core.runtime.db_core import ClosingConnection
+
+    conn = sqlite3.connect(str(DB_PATH), factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     _ensure_table(conn)
     return conn

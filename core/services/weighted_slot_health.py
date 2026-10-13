@@ -148,9 +148,16 @@ def adaptive_snapshot(
     get_state: Callable[..., dict[str, object] | None],
     decode_metadata: Callable[[dict[str, object]], dict[str, object]],
 ) -> dict[str, object]:
-    current_state = state or get_state(
-        provider=str(candidate["provider"]), model=str(candidate["model"]),
-    ) or {}
+    # 2026-10-12: `state is not None` — IKKE `state or`. Et tomt dict betyder
+    # «batch-læsningen fandt ingen række for denne kandidat», og et genkald til
+    # get_state ville give præcis det samme tomme svar. `state or` tvang derfor
+    # ét SQLite-opslag pr. kandidat UDEN række. Callers der ikke sender state
+    # (None) henter som før — kun den udtrykkeligt tomme state springes over.
+    current_state = state if state is not None else (
+        get_state(
+            provider=str(candidate["provider"]), model=str(candidate["model"]),
+        ) or {}
+    )
     metadata = decode_metadata(current_state)
     base_priority = int(candidate.get("priority") or 9999)
     success_count = int(metadata.get("success_count") or 0)

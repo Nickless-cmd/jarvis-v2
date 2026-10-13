@@ -607,7 +607,8 @@ _Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_usage_fraction` | `(provider)` | (brug/daily_limit) i seneste 24t-vindue. 0.0 ved fejl/ingen limit. | [src](../../../core/services/central_route_headroom.py#L11) |
-| function | `headroom_ok` | `(provider)` | False = proaktivt skip (>=95% brugt). | [src](../../../core/services/central_route_headroom.py#L29) |
-| function | `headroom_weight` | `(provider)` | 1.0 = fuld headroom; falder lineært mod 0.1 mellem 80% og 95%. | [src](../../../core/services/central_route_headroom.py#L34) |
+| function | `_clear_usage_cache` | `()` | Tøm brøk-cachen (tests, og efter en tvungen kvote-nulstilling). | [src](../../../core/services/central_route_headroom.py#L25) |
+| function | `_usage_fraction` | `(provider)` | (brug/daily_limit) i seneste 24t-vindue. 0.0 ved fejl/ingen limit. | [src](../../../core/services/central_route_headroom.py#L30) |
+| function | `headroom_ok` | `(provider)` | False = proaktivt skip (>=95% brugt). | [src](../../../core/services/central_route_headroom.py#L56) |
+| function | `headroom_weight` | `(provider)` | 1.0 = fuld headroom; falder lineært mod 0.1 mellem 80% og 95%. | [src](../../../core/services/central_route_headroom.py#L61) |
 

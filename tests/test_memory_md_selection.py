@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from core.services import memory_search
+from core.services.prompt_sections import memory_md_selection as mms
 from core.services.prompt_sections.memory_md_selection import select_memory_md_sections
 
 MEMORY_MD = """# MEMORY
@@ -168,8 +169,6 @@ def test_curated_files_are_picked_by_mtime_not_name(tmp_path):
 # «ligger» i 130 af dem (idf 1,97), «pfsense» i 11 (idf 4,44), lige vaegt.
 # Konsekvensen var bunker: 9 sektioner lige paa 0,667, 148 paa 0,333.
 
-import core.services.prompt_sections.memory_md_selection as mms
-
 
 @pytest.fixture(autouse=True)
 def _ryd_idf_cache():
@@ -256,7 +255,8 @@ def test_sektionerne_parses_kun_EN_gang_pr_filversion(tmp_path, monkeypatch):
 
 
 def test_en_aendret_fil_invaliderer_cachen(tmp_path):
-    import os, time
+    import os
+    import time
     sti = tmp_path / "MEMORY.md"
     sti.write_text("# T\n" + "".join(f"\n## A{i}\n\nkrop {i}\n" for i in range(30)), encoding="utf-8")
     foer, _ = mms._sektioner_og_vaegte(tmp_path)
@@ -265,3 +265,27 @@ def test_en_aendret_fil_invaliderer_cachen(tmp_path):
     os.utime(sti, (time.time() + 1, time.time() + 1))
     efter, _ = mms._sektioner_og_vaegte(tmp_path)
     assert [h for h, _ in foer] != [h for h, _ in efter], "cachen leverede den gamle fil"
+
+
+def test_terms_er_cachet(tmp_path):
+    """`_terms` skal ramme cachen — den SAMME forespoergsel blev tokeniseret
+    13.830 gange pr. assembly (maalt 12/10-2026: 934 ms ren CPU, 71% spild).
+
+    Uden `lru_cache` paa `_terms` fejler denne: hvert kald ville vaere et miss.
+    """
+    mms._terms.cache_clear()
+    for _ in range(50):
+        mms._terms("hvor ligger pfsense api-noeglen")
+    info = mms._terms.cache_info()
+    assert info.misses == 1, f"forventede 1 miss, fik {info.misses}"
+    assert info.hits == 49, f"forventede 49 hits, fik {info.hits}"
+
+
+def test_terms_resultat_kan_ikke_muteres(tmp_path):
+    """Cachet resultat skal vaere immutabelt — et delt muterbart saet ville
+    lade én kalder korrumpere naeste kalders tokenisering."""
+    mms._terms.cache_clear()
+    t = mms._terms("pfsense noegle env_override")
+    assert isinstance(t, frozenset)
+    with pytest.raises(AttributeError):
+        t.add("snik")  # type: ignore[attr-defined]

@@ -31,7 +31,25 @@ _INVOCATION_COLUMNS: dict[str, str] = {
 }
 
 
+# 2026-10-12: DDL'en kørte PER KALD. Målt: ét central_route.route(lane="cheap")
+# kalder denne 343 gange × 5 statements = 1.715 af i alt 2.548 SQLite-kald pr.
+# kald. DDL er idempotent, og connect() er en pool der genbruger forbindelsen, så
+# den behøver kun køre én gang pr. DB-sti. Nøglen namespaces pr. tabel — ellers
+# ville den første tabels guard blokere den næste. DB_PATH og ikke en boolsk flag:
+# tests repointer DB_PATH pr. test (tmp_path), så en ny sti får sit eget schema.
+_SCHEMA_DONE: set[str] = set()
+
+
 def _ensure_invocation_schema(conn) -> None:
+    from core.runtime.db_core import DB_PATH as _DB_PATH
+    _key = f"{_DB_PATH}:cheap_provider_invocations"
+    if _key in _SCHEMA_DONE:
+        return
+    _create_invocation_schema(conn)
+    _SCHEMA_DONE.add(_key)
+
+
+def _create_invocation_schema(conn) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS cheap_provider_invocations (

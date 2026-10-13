@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -434,9 +433,14 @@ def get_recurring_tasks_state() -> dict:
     tasks = _list()
     active = [t for t in tasks if t["status"] == "active"]
     cancelled = [t for t in tasks if t["status"] == "cancelled"]
+    # `completed` er en terminal tilstand ved siden af `cancelled`: opgaven nåede
+    # sit mål og skal ikke fyre igen. Uden den her faldt den ud af begge lister,
+    # mens `total` stadig talte den med (målt 12/10-2026).
+    completed = [t for t in tasks if t["status"] == "completed"]
     return {
         "active": active,
         "cancelled_count": len(cancelled),
+        "completed_count": len(completed),
         "total": len(tasks),
     }
 
@@ -461,7 +465,6 @@ def _fire_due() -> None:
         task_id = str(task["task_id"])
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
-        channel = str(task.get("channel") or "auto")
         ugedage = _ugedage(task.get("weekdays"))
         if ugedage and now.isoweekday() not in ugedage:
             # I dag er ikke en valgt ugedag. Ryk videre UDEN at fyre: en

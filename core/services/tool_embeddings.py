@@ -34,8 +34,18 @@ def _embed_base() -> str:
 
 
 def _connect() -> sqlite3.Connection:
+    """Egen database (tool_embeddings.sqlite) — IKKE poolen, som peger på jarvis.db.
+
+    Rettet 12/10-2026: `with _connect() as c:` lukkede den aldrig, fordi
+    `Connection.__exit__` committer men ikke kalder `close()`. Her kan poolen
+    ikke bruges — den genbruger forbindelser til `jarvis.db`. `ClosingConnection`
+    lukker rigtigt ved exit; det er samme wrapper db_core selv bruger i
+    NOPOOL-stien.
+    """
+    from core.runtime.db_core import ClosingConnection
+
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    c = sqlite3.connect(str(_DB_PATH))
+    c = sqlite3.connect(str(_DB_PATH), factory=ClosingConnection)
     c.execute(
         "CREATE TABLE IF NOT EXISTS tool_embeddings ("
         "  name TEXT PRIMARY KEY, "

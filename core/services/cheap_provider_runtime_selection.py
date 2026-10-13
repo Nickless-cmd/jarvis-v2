@@ -582,6 +582,13 @@ def select_cheap_lane_target(
     trace_context = CheapLaneTraceContext.create(
         correlation_id=correlation_id, daemon=daemon, task_kind=kind
     )
+    # 2026-10-12: batch-læs runtime-states ÉN gang for hele løkken. Før slog hver
+    # kandidat sin egen række op — målt 245 SQLite-kald pr. route(). En kandidat
+    # uden række får `{}`, og adaptive_snapshot springer nu genkaldet over.
+    _runtime_states = {
+        (str(_it["provider"]), str(_it["model"])): _it
+        for _it in list_cheap_provider_runtime_states(lane="cheap")
+    }
     evaluated: list[tuple[dict[str, object], dict[str, object]]] = []
     blocked: list[dict[str, object]] = []
     for candidate in candidates:
@@ -613,7 +620,13 @@ def select_cheap_lane_target(
                 "reason": reason,
             })
             continue
-        adaptive = _candidate_adaptive_snapshot(candidate)
+        adaptive = _candidate_adaptive_snapshot(
+            candidate,
+            state=_runtime_states.get(
+                (str(candidate.get("provider") or ""), str(candidate.get("model") or "")),
+                {},
+            ),
+        )
         trace.update({
             "eligible": True,
             "eligibility_reason": "eligible",
@@ -1287,12 +1300,26 @@ def _configured_cheap_candidates(
                         "updated_at": "",
                     }
                 )
-    candidates.sort(
-        key=lambda item: (
-            _candidate_adaptive_snapshot(item)["effective_priority"],
+    # 2026-10-12: batch-læs runtime-states ÉN gang før sorteringen. Før kaldte
+    # sort-nøglen _candidate_adaptive_snapshot pr. kandidat, og hver af dem
+    # hentede sin egen state med sit eget SQLite-opslag (målt: 245 kald pr.
+    # central_route.route(lane="cheap")). Rækkerne er unikke pr.
+    # (provider, model, lane), så batch-opslaget giver samme svar som enkeltkaldet.
+    _runtime_states = {
+        (str(_it["provider"]), str(_it["model"])): _it
+        for _it in list_cheap_provider_runtime_states(lane="cheap")
+    }
+
+    def _adaptive_sort_key(item: dict[str, object]) -> tuple[int, str]:
+        _state = _runtime_states.get(
+            (str(item.get("provider") or ""), str(item.get("model") or "")), {}
+        )
+        return (
+            int(_candidate_adaptive_snapshot(item, state=_state)["effective_priority"]),
             str(item.get("updated_at") or ""),
         )
-    )
+
+    candidates.sort(key=_adaptive_sort_key)
     # Routable-filter (2026-07-14): hold betalte providers (deepseek routable=False)
     # ude af den routbare cheap-pool — kun de gratis modeller tager last. deepseek
     # bevares som nød-bund (cheap_lane_floor), ikke i normal routing.

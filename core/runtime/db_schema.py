@@ -357,6 +357,53 @@ def init_db() -> None:
             )
             """
         )
+        # 2026-10-12: events havde INGEN indekser — 1,1 mio rækker, 606 MB, og
+        # hver kind-filtreret læsning var en fuld scan af hele tabellen. Målt i
+        # drift: 16+ kaldesteder scanner den hvert minut (longing_signal_daemon,
+        # memory_recall_telemetry, daemon_memory_safeguard, system_cartographer
+        # m.fl.), og ét kald fra cluster_innervoice læste 107.436 sider for ÉN
+        # række. Det var den vedvarende DB-læsning i runtime-trådene.
+        #
+        # (kind, created_at) — IKKE (kind) alene. Målt på en kopi af tabellen:
+        # (kind) gør det VÆRRE (743.818 preads mod 479.686), fordi DISTINCT-kind
+        # og COUNT(*)-læserne så tvinges gennem indekset i stedet for tabellen.
+        # (kind, created_at) er derimod en COVERING INDEX for dem og et præcist
+        # SEARCH for kind+created: 479.686 -> 37.798 preads i alt (12,7x), og de
+        # enkelte hot-queries 107.436 -> 9 (11.900x).
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_kind_created "
+            "ON events (kind, created_at)"
+        )
+        # (created_at) alene — 12/10-2026. `idx_events_kind_created` dækker KUN
+        # queries hvor `kind` står i WHERE. Læsere der filtrerer på TID uden kind
+        # tvinger stadig en fuld tabel-scan, og de er de dyreste i runtime:
+        # emergence._fetch_recent_events (21 dage, hver 30. heartbeat-tick, kaldt
+        # fra cadence_producers) læste 461.054 preads pr. kald = 1,84 GB.
+        # Målt på lille test-DB: SCAN + TEMP B-TREE uden indeks, SEARCH med.
+        # På den levende DB: 403.215 -> 540 preads for samme query-form (747x).
+        # To indekser er nødvendige — (kind, created_at) kan ikke søge på tid
+        # alene, og (created_at) kan ikke søge på kind alene. Pris ~74 MB.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_created_at "
+            "ON events (created_at)"
+        )
+        # (kind, id) — 12/10-2026. De seks 5-sekunders-pollere (theory_of_mind,
+        # spatial_entity_ledger, session_inbox, verification_gate_telemetry,
+        # metacognition_signal_tracker) kører alle samme form:
+        #   SELECT id, payload_json FROM events
+        #   WHERE id > ? AND kind = ? ORDER BY id ASC LIMIT 100
+        # Den kan hverken bruge (kind, created_at) eller PK'en alene: med
+        # (kind, created_at) tvinges TEMP B-TREE-sortering, og med PK'en scannes
+        # alle rækker med kind'en for at finde de 100 første. (kind, id) giver
+        # ren indeks-seek: SEARCH ... USING INDEX (kind=? AND id>?), ingen
+        # sortering. Målt: tool.completed 1.699 -> 120 preads (14x);
+        # channel.chat_message_appended 2.548 -> 1.534. De fire hot-queries fra
+        # i dag er uændrede (11.319 vs 11.324; 19.038 vs 19.195 — inden for 1%).
+        # Pris ~74 MB.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_kind_id "
+            "ON events (kind, id)"
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_state_kv (

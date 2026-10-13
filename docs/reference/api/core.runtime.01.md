@@ -538,12 +538,13 @@ _Persistence for the cheap-provider runtime-state + invocation cluster._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ensure_invocation_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_provider.py#L34) |
-| function | `upsert_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…, status=…, auth_ready=…, quota_limited=…, cooldown_until=…, last_error_code=…, last_error_message=…, last_success_at=…, last_failure_at=…, metadata_json=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L92) |
-| function | `get_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L184) |
-| function | `list_cheap_provider_runtime_states` | `(*, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L240) |
-| function | `record_cheap_provider_invocation` | `(*, provider, model=…, lane=…, status, error_code=…, error_message=…, retry_after_seconds=…, latency_ms=…, input_tokens=…, output_tokens=…, cost_usd=…, auth_profile=…, invocation_id=…, correlation_id=…, daemon=…, task_kind=…, egress=…, error_class=…, payload_status=…, cache_hit_tokens=…, cache_miss_tokens=…, attempt=…, retry_parent_id=…, fallback_parent_id=…, route_decision_id=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L292) |
-| function | `count_cheap_provider_invocations` | `(*, provider, lane=…, since, status=…, auth_profile=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L400) |
+| function | `_ensure_invocation_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_provider.py#L43) |
+| function | `_create_invocation_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_provider.py#L52) |
+| function | `upsert_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…, status=…, auth_ready=…, quota_limited=…, cooldown_until=…, last_error_code=…, last_error_message=…, last_success_at=…, last_failure_at=…, metadata_json=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L110) |
+| function | `get_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L202) |
+| function | `list_cheap_provider_runtime_states` | `(*, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L258) |
+| function | `record_cheap_provider_invocation` | `(*, provider, model=…, lane=…, status, error_code=…, error_message=…, retry_after_seconds=…, latency_ms=…, input_tokens=…, output_tokens=…, cost_usd=…, auth_profile=…, invocation_id=…, correlation_id=…, daemon=…, task_kind=…, egress=…, error_class=…, payload_status=…, cache_hit_tokens=…, cache_miss_tokens=…, attempt=…, retry_parent_id=…, fallback_parent_id=…, route_decision_id=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L310) |
+| function | `count_cheap_provider_invocations` | `(*, provider, lane=…, since, status=…, auth_profile=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L418) |
 
 ## `core/runtime/db_claude_dispatch.py`
 _Schema for the claude_dispatch_* tables._

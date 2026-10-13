@@ -18306,7 +18306,7 @@
       "created_at_formats": []
     },
     "events": {
-      "digest": "05:47:66:70:ca:04:ba:63:72:de:c3:be:8d:51:d1:a3:8d:4d:b1:22:5a:f9:18:f6:3f:5b:20:93:4b:91:d5:00",
+      "digest": "7a:81:29:68:0c:f7:33:04:16:2f:88:d8:1a:93:5d:ef:5b:c4:52:82:fd:b3:70:b4:a8:98:46:0d:33:28:e2:9c",
       "schema": {
         "columns": [
           {
@@ -18342,7 +18342,75 @@
             "hidden": 0
           }
         ],
-        "indexes": []
+        "indexes": [
+          {
+            "name": "idx_events_created_at",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_events_created_at ON events (created_at)"
+          },
+          {
+            "name": "idx_events_kind_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_events_kind_created ON events (kind, created_at)"
+          },
+          {
+            "name": "idx_events_kind_id",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_events_kind_id ON events (kind, id)"
+          }
+        ]
       },
       "created_at_formats": [
         "iso_utc_offset"

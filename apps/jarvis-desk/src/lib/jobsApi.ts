@@ -86,6 +86,17 @@ export async function resumeJob(config: ApiConfig, job: BackgroundJob): Promise<
                  { method: 'POST' })
 }
 
+/** Fjern et FÆRDIGT job fra listen. Rydder op, dræber ikke.
+ *
+ *  Supervisor-job fjernes fra registret; operatørens shells er FILER på hans
+ *  egen maskine og slettes over broen (12/10-2026). Et job der stadig kører
+ *  nægtes af serveren — filerne ER jobbet, og et `rm` på et levende job ville
+ *  fjerne pid-filen mens processen kørte videre uden at kunne stoppes. */
+export async function removeJob(config: ApiConfig, job: BackgroundJob): Promise<void> {
+  await apiFetch(config, `/api/jobs/${job.kilde}/${encodeURIComponent(job.id)}/remove`,
+                 { method: 'POST' })
+}
+
 /** «1t 51m 52s» — samme form som Claude Codes egen rude. Serveren tæller, vi
  *  formaterer; to ure der hver især tæller ville drive fra hinanden. */
 export function varighed(sekunder?: number | null): string {

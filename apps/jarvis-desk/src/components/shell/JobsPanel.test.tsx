@@ -5,6 +5,7 @@ const listJobs = vi.fn()
 const stopJob = vi.fn()
 const pauseJob = vi.fn()
 const resumeJob = vi.fn()
+const removeJob = vi.fn()
 const startJobsStream = vi.fn()
 let streamHandlers: { onEvent: (event: unknown) => void; onError: (error: Error) => void }
 const abortJobsStream = vi.fn()
@@ -20,6 +21,7 @@ vi.mock('../../lib/jobsApi', async () => {
     stopJob: (...a: unknown[]) => stopJob(...a),
     pauseJob: (...a: unknown[]) => pauseJob(...a),
     resumeJob: (...a: unknown[]) => resumeJob(...a),
+    removeJob: (...a: unknown[]) => removeJob(...a),
   }
 })
 // Kontrakt-agenterne (G) har egne tests i JobsPanel.agents.test.tsx; her er listen tom, så de gamle
@@ -82,6 +84,7 @@ beforeEach(() => {
   stopJob.mockReset().mockResolvedValue(undefined)
   pauseJob.mockReset().mockResolvedValue(undefined)
   resumeJob.mockReset().mockResolvedValue(undefined)
+  removeJob.mockReset().mockResolvedValue(undefined)
   removeProcess.mockReset().mockResolvedValue(undefined)
 })
 
@@ -191,16 +194,30 @@ describe('JobsPanel', () => {
     await waitFor(() => expect(taeller).toHaveBeenCalledWith(2))   // FAERDIG tæller ikke med
   })
 
-  it('«Ryd færdige» siger hvad den IKKE kunne rydde', async () => {
+  it('«Ryd færdige» rydder BEGGE maskiner', async () => {
+    // 12/10-2026 (Bjørn: «ret ryd-knappen så den også fjerner jobs på min
+    // maskine»). Før ryddede knappen kun supervisorens register og SAGDE at
+    // operatørens shells ikke kunne fjernes. Nu går sletningen over broen —
+    // samme vej som stop-knappen.
     listJobs.mockResolvedValue({
       jobs: [FAERDIG, { ...MIN_MASKINE, status: 'exited', exit_code: 0 }], bridge_ok: true,
     })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Ryd færdige' }))
-    // Operatørens shells er filer på hans maskine; der findes ingen rute til
-    // at slette dem. Knappen må ikke se ud som om den tog dem alle.
-    expect(await screen.findByText(/1 shell\(s\) på din maskine kan ikke ryddes/)).toBeInTheDocument()
+    await waitFor(() => expect(removeJob).toHaveBeenCalledTimes(1))
+    expect(removeJob).toHaveBeenCalledWith(
+      cfg, expect.objectContaining({ id: MIN_MASKINE.id, kilde: 'operator' }))
     expect(removeProcess).toHaveBeenCalledTimes(1)
+  })
+
+  it('et job der nægtes meldes frem — ikke som en tavs succes', async () => {
+    removeJob.mockRejectedValue(new Error('jobbet kører stadig'))
+    listJobs.mockResolvedValue({
+      jobs: [{ ...MIN_MASKINE, status: 'exited', exit_code: 0 }], bridge_ok: true,
+    })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ryd færdige' }))
+    expect(await screen.findByText(/1 kunne ikke ryddes/)).toBeInTheDocument()
   })
 })
 
@@ -247,6 +264,34 @@ describe('JobsPanel — belastningen på broen', () => {
       payload: { status: 'error', exit_code: 2, result_text: 'exit code 2: fil mangler' },
     }))
     expect(await screen.findByText('exit code 2: fil mangler')).toBeInTheDocument()
+  })
+
+  it('«Færdige» folder sig IKKE ud af sig selv når et job fejler', async () => {
+    // 12/10-2026 (Bjørn): «færdige opgaver folder sig ud af sig selv, og kun
+    // nogen gange folder det sammen igen». Auto-ekspanderingen er væk; fejlen
+    // ses i stedet som et tal på selve hovedet, så UI'et ikke rykker sig.
+    listJobs.mockResolvedValue({ jobs: [{ ...SERVER, job_key: 'tool:x', kilde: 'tool' }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await waitFor(() => expect(startJobsStream).toHaveBeenCalled())
+    act(() => streamHandlers.onEvent({
+      cursor: 2, type: 'job_finished', job_key: 'tool:x', source: 'tool', session_id: '',
+      payload: { status: 'error', exit_code: 2, result_text: 'exit code 2: fil mangler' },
+    }))
+    expect(await screen.findByText('1 fejlet')).toBeInTheDocument()
+    expect(screen.queryByText('exit code 2: fil mangler')).not.toBeInTheDocument()
+  })
+
+  it('uret tikker videre mellem snapshots', async () => {
+    // 12/10-2026 (Bjørn): «tiden skal opdateres korrekt istedet for den kun
+    // opdatere hvert 10. sekund». Serveren melder `sekunder` ved snapshot;
+    // panelet ankrer tallet og tæller selv videre derfra.
+    vi.useFakeTimers()
+    listJobs.mockResolvedValue({ jobs: [SERVER], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(screen.getByText('3t 6m 18s')).toBeInTheDocument()
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+    expect(screen.getByText('3t 6m 19s')).toBeInTheDocument()
   })
 
   it('viser at et stille job stadig kører, når output foldes ud', async () => {

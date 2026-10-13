@@ -118,7 +118,15 @@ def pak(html: str, *, titel: str = "") -> str:
         # `scrollHeight` maaler saa kun det SYNLIGE — hoejden blev meldt for
         # lavt, og rammen fik sit eget rullepanel. Dokumentet skal vokse med
         # sit indhold, ikke klippe det: klienten saetter hoejden.
-        "  html,body { overflow:hidden; }\n"
+        #
+        # 13/10-2026 — DENNE LINJE VAR SELV FEJLEN. Paastanden ovenfor er
+        # forkert: `scrollHeight` maaler ALTID hele indholdet; det er
+        # `clientHeight` der maaler det synlige. Maalt i Chrome: med
+        # `overflow:hidden` paa html,body kollapser `body.scrollHeight` til 0
+        # inde i en sandkasse, og hoejden blev meldt som 0 + 24 = 24 px. Rammen
+        # stod derfor fast paa sine 160 px mens indholdet blev klippet — praecis
+        # det Bjoern saa. Reglen er fjernet; dokumentet maa gerne vokse.
+        "  html,body { overflow:visible; }\n"
         "  body { font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;\n"
         "         color:#8a8a8a; padding:12px; }\n"
         "  a { pointer-events:none; text-decoration:none; color:inherit; }\n"

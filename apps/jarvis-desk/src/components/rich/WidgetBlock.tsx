@@ -164,20 +164,48 @@ export function WidgetBlock({ block, config }: {
 const HOEJDE_SCRIPT = `
 <script>
 (function () {
+  var sidste = -1;
   function sig() {
     try {
-      var h = Math.max(
+      // MÅL PÅ DET DER FAKTISK VOKSER. 13/10-2026: her stod
+      // \`document.body.scrollHeight\` — men server-dokumentet sætter
+      // \`overflow:hidden\` på html,body, og så kollapser body's scrollHeight
+      // til 0 i en sandkasse. Højden blev meldt som 0 + 24 = 24 px, klemt op
+      // på minimum 48, og rammen stod fast på sine 160 px mens indholdet blev
+      // klippet. Vi måler nu det HØJESTE af alle tre kandidater, så ét kollapset
+      // element ikke kan trække svaret ned.
+      var kandidater = [
         document.body ? document.body.scrollHeight : 0,
-        document.documentElement ? document.documentElement.scrollHeight : 0
-      );
+        document.body ? document.body.offsetHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0,
+        document.documentElement ? document.documentElement.offsetHeight : 0
+      ];
+      var h = Math.max.apply(null, kandidater);
+      if (h <= 0) return;
+      if (h === sidste) return;
+      sidste = h;
       parent.postMessage({ type: 'jarvis-widget-hoejde', hoejde: h + 24 }, '*');
     } catch (e) {}
   }
-  sig();
-  window.addEventListener('load', sig);
-  if (window.ResizeObserver && document.body) {
-    new ResizeObserver(sig).observe(document.body);
+  // FØRSTE MÅLING EFTER LAYOUT. \`sig()\` direkte her giver 0, fordi dokumentet
+  // endnu ikke er lagt ud. To rAF venter på at layoutet er beregnet.
+  function sigSnart() {
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(function () { requestAnimationFrame(sig); });
+    } else {
+      setTimeout(sig, 0);
+    }
   }
+  sigSnart();
+  window.addEventListener('load', sigSnart);
+  // ResizeObserver på documentElement, ikke body: det er documentElement der
+  // vokser når indholdet gør, og body's højde står stille.
+  if (window.ResizeObserver && document.documentElement) {
+    new ResizeObserver(sig).observe(document.documentElement);
+  }
+  // Sidste net: et par målte gen-målinger, så billeder og fonte der lander
+  // sent også får rammen til at følge med.
+  [50, 200, 600].forEach(function (ms) { setTimeout(sig, ms); });
 })();
 </script>
 `

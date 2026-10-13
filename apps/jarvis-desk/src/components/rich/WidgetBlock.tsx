@@ -100,7 +100,13 @@ export function WidgetBlock({ block, config }: {
       if (d.type === 'jarvis-widget-hoejde') {
         const h = Number(d.hoejde)
         if (!Number.isFinite(h) || h <= 0) return
-        setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+        // Loftet er et VÆRN mod et widget der melder vrøvl (Infinity, en løkke
+        // der vokser), ikke en layout-beslutning. 13/10-2026: det stod på 1200
+        // px, og Bjørn kunne ikke se bunden af en widget der var højere —
+        // «widget cutter din tegning så jeg kan ikk se den». Et rigtigt
+        // widget-dokument må gerne være højt; grænsen skal ligge langt over
+        // hvad et menneske skriver, ikke lige over hvad der passer i ruden.
+        setHoejde(Math.min(Math.max(Math.round(h), 48), 6000))
         return
       }
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -264,17 +263,40 @@ def _fire_due_tasks() -> None:
                             try:
                                 from core.services.visible_runs import start_autonomous_run
                                 from core.identity.owner_resolver import (
+                                    resolve_owner_app_session,
                                     resolve_owner_target_session,
+                                    session_is_external_channel,
+                                )
+                                from core.services.wakeup_dispatcher import (
+                                    pick_wakeup_run_target,
                                 )
 
-                                # Scheduled reminders are Bjørn's. They must
-                                # never land in a member's session (e.g.
-                                # Mikkel's DM whose session got pinned last).
-                                # resolve_owner_target_session refuses
-                                # non-owner sessions; empty string falls
-                                # through to autonomous_run creating a fresh
-                                # owner-owned session.
-                                target_session = resolve_owner_target_session()
+                                # KANAL-GUARD (13/10-2026). Før denne linje stod
+                                # her `resolve_owner_target_session()` direkte —
+                                # og den siger JA til en Discord-session, fordi
+                                # `is_owner_session` accepterer titlen
+                                # «Discord DM — {owner_id}». Målt samme aften:
+                                # fem scheduled tasks, booket i en app-samtale,
+                                # skrev i Bjørns Discord-DM.
+                                #
+                                # Wakeup-vejen havde allerede guarden; her
+                                # manglede den. `pick_wakeup_run_target` med
+                                # channel="app" afviser enhver ekstern kandidat
+                                # og falder til `resolve_owner_app_session`, som
+                                # KUN returnerer app/webchat-sessioner. None →
+                                # kalderen opretter en frisk app-session.
+                                #
+                                # En scheduled reminder er ALTID en app-sag: den
+                                # er booket af Jarvis inde i en samtale, ikke
+                                # sendt til Discord. Samme guard som
+                                # wakeup_dispatcher bruger (13/6-2026).
+                                target_session = pick_wakeup_run_target(
+                                    channel="app",
+                                    record_session="",
+                                    app_resolver=resolve_owner_app_session,
+                                    owner_resolver=resolve_owner_target_session,
+                                    is_external=session_is_external_channel,
+                                )
 
                                 self_directive = (
                                     f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"

@@ -87,3 +87,122 @@ def test_count_scheduled_tasks(isolated_runtime):
     assert runtime_db.count_scheduled_tasks(status="pending") == 2
     assert runtime_db.count_scheduled_tasks(status="fired") == 1
     assert runtime_db.count_scheduled_tasks(status="cancelled") == 0
+
+
+# ── Kanal-guard: en scheduled reminder må ALDRIG ramme Discord ───────────────
+#
+# 13/10-2026: fem scheduled tasks — booket i en app-samtale — skrev i Bjørns
+# Discord-DM. Årsagen var en asymmetri: wakeup-vejen gik gennem
+# `pick_wakeup_run_target` (som afviser eksterne kanaler), mens scheduled-vejen
+# kaldte `resolve_owner_target_session()` direkte — og den siger JA til en
+# Discord-session, fordi `is_owner_session` accepterer titlen
+# «Discord DM — {owner_id}».
+#
+# Testene nedenfor kører den ÆGTE guard-kode (den stubber kun de resolvers
+# guarden kalder), så de fejler hvis scheduled-vejen igen tager imod en
+# Discord-session.
+
+
+def _stub_fyring(monkeypatch, *, app_session: str, owner_session: str) -> dict:
+    """Kør `_fire_due_tasks()` for ÉN forfalden opgave med side-effekter stub'et.
+
+    Returnerer hvilken session det autonome run faktisk fik. `app_session` og
+    `owner_session` er de to resolvers svar — Discord-sessionen stilles op som
+    lokkemad i owner-rollen, præcis som den gjorde i produktion.
+    """
+    from datetime import UTC, datetime
+
+    from core.runtime import db as runtime_db
+    from core.services import scheduled_tasks as st
+
+    task = {
+        "task_id": "sched-kanalguard-1",
+        "focus": "Tjek byggeriet",
+        "run_at": datetime.now(UTC).isoformat(),
+        "status": "pending",
+        "scheduled_for_user_id": "",
+    }
+    monkeypatch.setattr(runtime_db, "get_due_scheduled_tasks", lambda *a, **k: [task])
+    monkeypatch.setattr(runtime_db, "mark_scheduled_task_fired", lambda *a, **k: None)
+
+    from core.services import routine_trigger_adapters as rta
+    monkeypatch.setattr(rta, "routine_cutover_enabled", lambda: False)
+
+    from core.runtime import settings as runtime_settings
+    monkeypatch.setattr(
+        runtime_settings,
+        "load_settings",
+        lambda: type("_S", (), {"nudge_system_enabled": True})(),
+    )
+    from core.services import outbound_nudges
+    monkeypatch.setattr(outbound_nudges, "push_nudge", lambda **k: {"nudge_id": "n-1"})
+
+    from core.services import notification_bridge as nb
+    monkeypatch.setattr(nb, "delivery_succeeded", lambda r: True)
+    monkeypatch.setattr(nb, "send_session_notification", lambda *a, **k: {"status": "ok"})
+
+    from core.services import scheduled_inbox
+    monkeypatch.setattr(scheduled_inbox, "registrer_fyret_opgave", lambda **k: {"status": "ok"})
+
+    from core.services import initiative_queue
+    monkeypatch.setattr(initiative_queue, "push_initiative", lambda **k: {"status": "ok"})
+
+    from core.services import agent_runtime
+    monkeypatch.setattr(agent_runtime, "run_due_agent_schedules", lambda **k: {"triggered_count": 0})
+
+    # GUARDEN EFTERLADES ÆGTE — kun dens tre resolvers stubbes, så den faktiske
+    # beslutning (channel="app" → afvis ekstern kandidat) kører.
+    from core.identity import owner_resolver as orr
+    monkeypatch.setattr(orr, "resolve_owner_app_session", lambda: app_session)
+    monkeypatch.setattr(orr, "resolve_owner_target_session", lambda: owner_session)
+    monkeypatch.setattr(
+        orr, "session_is_external_channel",
+        lambda sid: str(sid or "").startswith(("disc-", "tg-")),
+    )
+
+    kald: dict = {}
+
+    from core.services import visible_runs
+
+    def _start(prompt, *, session_id=None, origin=None, **k):
+        kald["run_session"] = session_id
+        kald["run_origin"] = origin
+        return {"status": "ok"}
+
+    monkeypatch.setattr(visible_runs, "start_autonomous_run", _start)
+
+    st._fire_due_tasks()
+    return kald
+
+
+def test_scheduled_run_kan_ikke_lande_i_discord(isolated_runtime, monkeypatch):
+    """Owner-resolveren ville vælge Discord — app-resolveren vinder."""
+    kald = _stub_fyring(monkeypatch, app_session="app-session-7", owner_session="disc-99")
+    assert kald.get("run_session") == "app-session-7"
+    assert not str(kald.get("run_session")).startswith(("disc-", "tg-"))
+
+
+def test_scheduled_run_falder_til_frisk_app_session_naar_ingen_findes(
+    isolated_runtime, monkeypatch
+):
+    """Ingen app-session findes → None (kalderen opretter en frisk), ALDRIG Discord."""
+    kald = _stub_fyring(monkeypatch, app_session="", owner_session="disc-99")
+    assert kald.get("run_session") is None
+
+
+def test_scheduled_dispatch_gaar_gennem_kanal_guarden():
+    """Struktur-vagt: kaldet skal stå med channel="app" og gennem guarden.
+
+    Fanger den konkrete regression: at nogen igen skriver
+    `target_session = resolve_owner_target_session()` direkte.
+    """
+    import pathlib
+
+    kilde = pathlib.Path("core/services/scheduled_tasks.py").read_text(encoding="utf-8")
+    assert "pick_wakeup_run_target(" in kilde, (
+        "scheduled-vejen kalder ikke kanal-guarden — en reminder kan lande i Discord"
+    )
+    assert 'channel="app"' in kilde
+    assert "target_session = resolve_owner_target_session()" not in kilde, (
+        "den uguardede resolver står stadig som target — 13/10-2026-regressionen"
+    )
